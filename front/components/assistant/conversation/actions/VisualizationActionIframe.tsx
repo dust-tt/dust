@@ -223,9 +223,9 @@ interface PublicVisualizationActionIframeProps {
 }
 
 // This interface represents the props for the VisualizationActionIframe component when it is used
-// in a private interactive context.
-interface InteractiveVisualizationActionIframeProps {
-  // TODO(INTERACTIVE_CONTENT 2025-07-25): Add support to retry the visualization.
+// in a private content creation context.
+interface ContentCreationVisualizationActionIframeProps {
+  // TODO(CONTENT_CREATION 2025-07-25): Add support to retry the visualization.
   agentConfigurationId: string | null;
   conversationId: string;
   isInDrawer?: boolean;
@@ -244,7 +244,7 @@ interface LegacyVisualizationActionIframeProps {
 }
 
 type VisualizationActionIframeProps =
-  | InteractiveVisualizationActionIframeProps
+  | ContentCreationVisualizationActionIframeProps
   | LegacyVisualizationActionIframeProps
   | PublicVisualizationActionIframeProps;
 
@@ -376,7 +376,7 @@ export const VisualizationActionIframe = forwardRef<
               )}
               {isErrored && (
                 <div className="flex h-full w-full flex-col items-center gap-4 py-8">
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="px-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     An error occured while rendering the visualization.
                     <div className="pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                       {errorMessage}

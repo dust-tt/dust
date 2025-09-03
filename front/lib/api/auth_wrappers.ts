@@ -525,6 +525,14 @@ export function withTokenAuthentication<T>(
           isFromExtension
         );
 
+        const orgId = workOSDecoded.value.org_id;
+        if (orgId) {
+          const workspace = userWithWorkspaces.workspaces.find(
+            (w) => w.workOSOrganizationId === orgId
+          );
+          userWithWorkspaces.selectedWorkspace = workspace?.sId;
+        }
+
         return await handler(req, res, userWithWorkspaces);
       } catch (error) {
         logger.error({ error }, "Failed to verify token");

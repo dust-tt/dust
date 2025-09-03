@@ -8,16 +8,22 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { ContentNode, DataSourceType, WorkspaceType } from "@app/types";
 import { isAdmin } from "@app/types";
 
-export type SlackChannel = { slackChannelId: string; slackChannelName: string };
+export type SlackChannel = {
+  slackChannelId: string;
+  slackChannelName: string;
+  autoRespondWithoutMention?: boolean;
+};
 
 // The "write" permission filter is applied to retrieve all available channels on Slack,
 const getUseResourceHook =
@@ -91,6 +97,7 @@ export function SlackIntegration({
   return (
     <ContentNodeTree
       // not limited to those synced with Dust.
+      isTitleFilterEnabled={true}
       selectedNodes={selectedNodes}
       setSelectedNodes={(updater) => {
         const newModel = updater(selectedNodes);
@@ -144,9 +151,22 @@ export function SlackAssistantDefaultManager({
   show,
   slackDataSource,
 }: SlackAssistantDefaultManagerProps) {
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const [selectedChannels, setSelectedChannels] =
     useState<SlackChannel[]>(existingSelection);
+  const [
+    autoRespondWithoutMentionEnabled,
+    setAutoRespondWithoutMentionEnabled,
+  ] = useState(false);
   const [hasChanged, setHasChanged] = useState(false);
+
+  useEffect(() => {
+    const currentAutoRespondWithoutMention =
+      existingSelection.length > 0
+        ? existingSelection[0].autoRespondWithoutMention || false
+        : false;
+    setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
+  }, [existingSelection]);
 
   const handleSelectionChange = (newSelection: SlackChannel[]) => {
     setSelectedChannels(newSelection);
@@ -154,7 +174,11 @@ export function SlackAssistantDefaultManager({
   };
 
   const saveChanges = () => {
-    onSave(selectedChannels);
+    const channelsWithEnhancedDefault = selectedChannels.map((channel) => ({
+      ...channel,
+      autoRespondWithoutMention: autoRespondWithoutMentionEnabled,
+    }));
+    onSave(channelsWithEnhancedDefault);
     setHasChanged(false);
     onClose();
   };
@@ -174,7 +198,7 @@ export function SlackAssistantDefaultManager({
               Set this agent as the default agent on one or several of your
               Slack channels. It will answer by default when the{" "}
               <span className="font-bold">{assistantHandle}</span> Slack bot is
-              mentionned in these channels.
+              mentioned in these channels.
             </div>
 
             {!isAdmin(owner) && (
@@ -199,6 +223,34 @@ export function SlackAssistantDefaultManager({
                 slackDataSource={slackDataSource}
               />
             )}
+
+            {hasFeature("slack_enhanced_default_agent") &&
+              selectedChannels.length > 0 && (
+                <div className="flex flex-col gap-2 border-t pt-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                        Enhanced Default Agent
+                      </span>
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                        Agent will automatically respond to all messages and
+                        thread replies in selected channels (not just @mentions)
+                      </span>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <SliderToggle
+                        selected={autoRespondWithoutMentionEnabled}
+                        onClick={() => {
+                          setAutoRespondWithoutMentionEnabled(
+                            !autoRespondWithoutMentionEnabled
+                          );
+                          setHasChanged(true);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
           </div>
         </SheetContainer>
         <SheetFooter

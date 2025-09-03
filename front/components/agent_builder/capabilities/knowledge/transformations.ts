@@ -62,7 +62,7 @@ export function transformTreeToSelectionConfigurations(
         selectedResources: [],
         excludedResources: [],
         isSelectAll: isFullDataSource,
-        tagsFilter: null,
+        tagsFilter: item.tagsFilter,
       };
     }
 
@@ -132,13 +132,14 @@ export function transformSelectionConfigurationsToTree(
     const { dataSourceView } = config;
     const baseParts = buildDataSourcePath(dataSourceView);
 
+    // If all nodes are selected, just add the data source path
     if (config.isSelectAll) {
-      // If all nodes are selected, just add the data source path
       inPaths.push({
         path: baseParts,
         name: dataSourceView.dataSource.name,
         type: "data_source",
         dataSourceView,
+        tagsFilter: config.tagsFilter,
       });
       continue;
     }
@@ -159,15 +160,29 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "node",
             node,
+            tagsFilter: config.tagsFilter,
           });
         } else {
           const pathParts = [baseParts, node.internalId];
-          inPaths.push({
-            path: pathParts.join("/"),
-            name: node.title,
-            type: "data_source",
-            dataSourceView: node.dataSourceView,
-          });
+          // For table nodes without parents, we should still create a "node" type
+          // so that ProcessingMethodSection can properly detect them
+          if (node.type === "table") {
+            inPaths.push({
+              path: pathParts.join("/"),
+              name: node.title,
+              type: "node",
+              node,
+              tagsFilter: config.tagsFilter,
+            });
+          } else {
+            inPaths.push({
+              path: pathParts.join("/"),
+              name: node.title,
+              type: "data_source",
+              dataSourceView: node.dataSourceView,
+              tagsFilter: config.tagsFilter,
+            });
+          }
         }
       }
     }
@@ -190,6 +205,7 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "node",
             node,
+            tagsFilter: null,
           });
         } else {
           const pathParts = [baseParts, node.internalId];
@@ -198,6 +214,7 @@ export function transformSelectionConfigurationsToTree(
             name: node.title,
             type: "data_source",
             dataSourceView: node.dataSourceView,
+            tagsFilter: null,
           });
         }
       }

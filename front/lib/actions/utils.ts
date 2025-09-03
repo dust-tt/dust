@@ -9,27 +9,26 @@ import {
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type {
-  MCPExecutionState,
-  ToolExecutionStatus,
-} from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import {
   isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
   isMCPInternalNotion,
+  isMCPInternalRunAgent,
   isMCPInternalSearch,
   isMCPInternalSlack,
   isMCPInternalWebsearch,
 } from "@app/lib/actions/types/guards";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationType, AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
+export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
 
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",
@@ -183,6 +182,10 @@ export function getCitationsCount({
     return NOTION_SEARCH_ACTION_NUM_RESULTS;
   }
 
+  if (isMCPInternalRunAgent(action)) {
+    return RUN_AGENT_ACTION_NUM_RESULTS;
+  }
+
   return getRetrievalTopK({
     agentConfiguration,
     stepActions,
@@ -218,9 +221,10 @@ export function computeStepContexts({
     });
 
     stepContexts.push({
-      retrievalTopK,
-      citationsOffset: currentOffset,
       citationsCount,
+      citationsOffset: currentOffset,
+      resumeState: null,
+      retrievalTopK,
       websearchResultCount: websearchResults,
     });
 
@@ -242,39 +246,20 @@ export function getMCPApprovalKey({
   return `conversation:${conversationId}:message:${messageId}:action:${actionId}`;
 }
 
-// TODO(durable-agents): remove this translation once status is backfilled, have
-//  getExecutionStatusFromConfig return a ToolExecutionStatus directly.
-export function approvalStatusToToolExecutionStatus(
-  approvalStatus: MCPExecutionState
-): ToolExecutionStatus {
-  switch (approvalStatus) {
-    case "allowed_explicitly":
-      return "ready_allowed_explicitly";
-    case "allowed_implicitly":
-      return "ready_allowed_implicitly";
-    case "denied":
-      return "denied";
-    case "pending":
-      return "blocked_validation_required";
-    default:
-      assertNever(approvalStatus);
-  }
-}
-
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType,
   agentMessage: AgentMessageType
 ): Promise<{
   stake?: MCPToolStakeLevelType;
-  status: "allowed_implicitly" | "pending";
+  status: "ready_allowed_implicitly" | "blocked_validation_required";
   serverId?: string;
 }> {
   // If the agent message is marked as "skipToolsValidation" we skip all tools validation
   // irrespective of the `actionConfiguration.permission`. This is set when the agent message was
   // created by an API call where the caller explicitly set `skipToolsValidation` to true.
   if (agentMessage.skipToolsValidation) {
-    return { status: "allowed_implicitly" };
+    return { status: "ready_allowed_implicitly" };
   }
 
   // Permissions:
@@ -284,25 +269,75 @@ export async function getExecutionStatusFromConfig(
   // - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
   switch (actionConfiguration.permission) {
     case "never_ask":
-      return { status: "allowed_implicitly" };
+      return { status: "ready_allowed_implicitly" };
     case "low": {
       // The user may not be populated, notably when using the public API.
       const user = auth.user();
-      const neverAskSetting = await user?.getMetadata(
-        `toolsValidations:${actionConfiguration.toolServerId}`
-      );
 
       if (
-        neverAskSetting &&
-        neverAskSetting.value.includes(`${actionConfiguration.name}`)
+        user &&
+        (await hasUserAlwaysApprovedTool({
+          user,
+          mcpServerId: actionConfiguration.toolServerId,
+          toolName: actionConfiguration.name,
+        }))
       ) {
-        return { status: "allowed_implicitly" };
+        return { status: "ready_allowed_implicitly" };
       }
-      return { status: "pending" };
+      return { status: "blocked_validation_required" };
     }
     case "high":
-      return { status: "pending" };
+      return { status: "blocked_validation_required" };
     default:
       assertNever(actionConfiguration.permission);
   }
+}
+
+const TOOLS_VALIDATION_WILDCARD = "*";
+
+const getToolsValidationKey = (mcpServerId: string) =>
+  `toolsValidations:${mcpServerId}`;
+
+export async function setUserAlwaysApprovedTool({
+  user,
+  mcpServerId,
+  toolName,
+}: {
+  user: UserResource;
+  mcpServerId: string;
+  toolName: string;
+}) {
+  if (!toolName) {
+    throw new Error("toolName is required");
+  }
+  if (!mcpServerId) {
+    throw new Error("mcpServerId is required");
+  }
+
+  await user.upsertMetadataArray(getToolsValidationKey(mcpServerId), toolName);
+}
+
+export async function hasUserAlwaysApprovedTool({
+  user,
+  mcpServerId,
+  toolName,
+}: {
+  user: UserResource;
+  mcpServerId: string;
+  toolName: string;
+}) {
+  if (!mcpServerId) {
+    throw new Error("mcpServerId is required");
+  }
+
+  if (!toolName) {
+    throw new Error("toolName is required");
+  }
+
+  const metadata = await user.getMetadataAsArray(
+    getToolsValidationKey(mcpServerId)
+  );
+  return (
+    metadata.includes(toolName) || metadata.includes(TOOLS_VALIDATION_WILDCARD)
+  );
 }

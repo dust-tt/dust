@@ -54,6 +54,10 @@ export function getDefaultConfiguration(
     set(additionalConfig, key, []);
   }
 
+  if (requirements.requiredFlavors.length > 0) {
+    set(additionalConfig, "flavors", []);
+  }
+
   defaults.additionalConfiguration = additionalConfig;
 
   return defaults;

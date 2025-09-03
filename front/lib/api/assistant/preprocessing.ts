@@ -188,11 +188,18 @@ export async function renderConversationForModel(
         ],
       });
     } else if (isContentFragmentType(m)) {
-      messages.push(
-        await renderLightContentFragmentForModel(auth, m, conversation, model, {
+      const renderedContentFragment = await renderLightContentFragmentForModel(
+        auth,
+        m,
+        conversation,
+        model,
+        {
           excludeImages: Boolean(excludeImages),
-        })
+        }
       );
+      if (renderedContentFragment) {
+        messages.push(renderedContentFragment);
+      }
     } else {
       assertNever(m);
     }

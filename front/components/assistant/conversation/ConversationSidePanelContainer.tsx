@@ -37,15 +37,8 @@ export default function ConversationSidePanelContainer({
   return (
     <>
       {/* Resizable Handle for Panels */}
-      {currentPanel && (
-        <ResizableHandle
-          className={cn(
-            "hidden transition-all duration-300 ease-out md:block",
-            !currentPanel && "translate-x-full opacity-0"
-          )}
-        />
-      )}
-      {/* Panel Container - either Interactive Content or Actions */}
+      <ResizableHandle withHandle disabled={!currentPanel} />
+      {/* Panel Container - either Content Creation or Actions */}
       <ResizablePanel
         ref={panelRef}
         minSize={20}

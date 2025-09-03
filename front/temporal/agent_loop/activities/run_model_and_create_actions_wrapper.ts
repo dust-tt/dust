@@ -3,7 +3,7 @@ import assert from "assert";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPAction as AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import logger from "@app/logger/logger";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -172,7 +172,8 @@ async function getExistingActionsAndBlobs(
       if (!isToolExecutionStatusFinal(mcpAction.status)) {
         actionBlobs.push({
           actionId: mcpAction.id,
-          needsApproval: mcpAction.executionState === "pending",
+          actionStatus: mcpAction.status,
+          needsApproval: mcpAction.status === "blocked_validation_required",
         });
       }
     }

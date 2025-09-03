@@ -317,9 +317,9 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 export const clientExecutableContentType =
   "application/vnd.dust.client-executable";
 
-// Interactive MIME types for specialized use cases (not exposed via APIs).
-export const INTERACTIVE_FILE_FORMATS = {
-  // Custom for client-executable code files managed by interactive_content MCP server.
+// Content Creation MIME types for specialized use cases (not exposed via APIs).
+export const CONTENT_CREATION_FILE_FORMATS = {
+  // Custom for client-executable code files managed by content_creation MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
   [clientExecutableContentType]: {
@@ -329,22 +329,23 @@ export const INTERACTIVE_FILE_FORMATS = {
   },
 } as const satisfies Record<string, FileFormat>;
 
-export function isInteractiveContentType(contentType: string): boolean {
-  return contentType === clientExecutableContentType;
+export function isContentCreationContentType(contentType: string): boolean {
+  return Object.keys(CONTENT_CREATION_FILE_FORMATS).includes(contentType);
 }
 
-// Define a type for interactive file content types.
-export type InteractiveFileContentType = keyof typeof INTERACTIVE_FILE_FORMATS;
+// Define a type for Content Creation file content types.
+export type ContentCreationFileContentType =
+  keyof typeof CONTENT_CREATION_FILE_FORMATS;
 
 export const ALL_FILE_FORMATS = {
+  ...CONTENT_CREATION_FILE_FORMATS,
   ...FILE_FORMATS,
-  ...INTERACTIVE_FILE_FORMATS,
 };
 
-// Union type for all supported content types (public + interactive).
+// Union type for all supported content types (public + Content Creation).
 export type AllSupportedFileContentType =
-  | SupportedFileContentType
-  | InteractiveFileContentType;
+  | ContentCreationFileContentType
+  | SupportedFileContentType;
 
 export type SupportedImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
@@ -382,18 +383,20 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isInteractiveFileContentType(
+export function isContentCreationFileContentType(
   contentType: string
-): contentType is InteractiveFileContentType {
-  return !!INTERACTIVE_FILE_FORMATS[contentType as InteractiveFileContentType];
+): contentType is ContentCreationFileContentType {
+  return !!CONTENT_CREATION_FILE_FORMATS[
+    contentType as ContentCreationFileContentType
+  ];
 }
 
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isSupportedFileContentType(contentType) ||
-    isInteractiveFileContentType(contentType)
+    isContentCreationFileContentType(contentType) ||
+    isSupportedFileContentType(contentType)
   );
 }
 

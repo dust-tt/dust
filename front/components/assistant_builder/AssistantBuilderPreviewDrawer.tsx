@@ -21,14 +21,14 @@ import { Separator } from "@radix-ui/react-select";
 import assert from "assert";
 import { useContext, useEffect, useRef, useState } from "react";
 
-import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
-import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { useAssistantBuilderContext } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import {
   usePreviewAssistant,
@@ -213,7 +213,7 @@ export default function AssistantBuilderRightPanel({
               </div>
             ) : (
               <ConversationsNavigationProvider>
-                <ActionValidationProvider
+                <BlockedActionsProvider
                   owner={owner}
                   conversation={conversation}
                 >
@@ -273,7 +273,7 @@ export default function AssistantBuilderRightPanel({
                       currentPanel={currentPanel}
                     />
                   </GenerationContextProvider>
-                </ActionValidationProvider>
+                </BlockedActionsProvider>
               </ConversationsNavigationProvider>
             )}
           </div>
@@ -358,7 +358,7 @@ export default function AssistantBuilderRightPanel({
         )}
         {rightPanelTab === "Performance" && agentConfiguration && (
           <div className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
-            <AssistantDetailsPerformance
+            <AgentPerformanceTab
               agentConfiguration={agentConfiguration}
               owner={owner}
               gridMode

@@ -180,7 +180,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
 
   return (
     <>
-      <div className="relative mb-4">
+      <div className="relative my-4">
         <SearchInput
           name="search"
           placeholder="Search tools"

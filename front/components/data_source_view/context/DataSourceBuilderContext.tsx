@@ -58,6 +58,8 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   SpaceType,
+  TagsFilter,
+  TagsFilterMode,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -144,6 +146,13 @@ type DataSourceBuilderState = StateType & {
    * Navigate to a specific node
    */
   navigateTo: (index: number) => void;
+
+  /**
+   * Update the `tagsFilter` of the given `sources` index
+   */
+  updateSourcesTags: (index: number, tagsFilter: TagsFilter) => void;
+
+  toggleInConversationFiltering: (mode: TagsFilterMode) => void;
 };
 
 type ActionType =
@@ -200,7 +209,7 @@ function dataSourceBuilderReducer(
         ...state,
         navigationHistory: [
           ...state.navigationHistory,
-          { type: "node", node: payload.node },
+          { type: "node", node: payload.node, tagsFilter: null },
         ],
       };
     }
@@ -215,7 +224,11 @@ function dataSourceBuilderReducer(
         ...state,
         navigationHistory: [
           ...state.navigationHistory.slice(0, 3),
-          { type: "data_source", dataSourceView: payload.dataSourceView },
+          {
+            type: "data_source",
+            dataSourceView: payload.dataSourceView,
+            tagsFilter: null,
+          },
         ],
       };
     }
@@ -391,6 +404,56 @@ export function DataSourceBuilderProvider({
     []
   );
 
+  const updateSourcesTags: DataSourceBuilderState["updateSourcesTags"] =
+    useCallback(
+      (index, tagsFilter) => {
+        field.onChange({
+          ...field.value,
+          in: field.value.in.map((source, i) => {
+            if (i === index) {
+              return {
+                ...source,
+                tagsFilter,
+              };
+            }
+
+            return source;
+          }),
+        });
+      },
+      [field]
+    );
+
+  const toggleInConversationFiltering: DataSourceBuilderState["toggleInConversationFiltering"] =
+    useCallback(
+      (mode) => {
+        field.onChange({
+          ...field.value,
+          in: field.value.in.map((source) => {
+            if ("tagsFilter" in source) {
+              // Initialize tagsFilter if null
+              const currentTagsFilter = source.tagsFilter || {
+                in: [],
+                not: [],
+                mode: "custom" as const,
+              };
+
+              return {
+                ...source,
+                tagsFilter: {
+                  ...currentTagsFilter,
+                  mode,
+                },
+              };
+            }
+
+            return source;
+          }),
+        });
+      },
+      [field]
+    );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -407,6 +470,8 @@ export function DataSourceBuilderProvider({
       setDataSourceViewEntry,
       addNodeEntry,
       navigateTo,
+      updateSourcesTags,
+      toggleInConversationFiltering,
     }),
     [
       state,
@@ -423,6 +488,8 @@ export function DataSourceBuilderProvider({
       setCategoryEntry,
       setSpaceEntry,
       setDataSourceViewEntry,
+      updateSourcesTags,
+      toggleInConversationFiltering,
     ]
   );
 

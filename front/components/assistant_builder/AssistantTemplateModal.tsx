@@ -13,19 +13,17 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 interface AssistantTemplateModalProps {
-  flow: BuilderFlow;
   onClose: () => void;
   owner: WorkspaceType;
   templateId: string | null;
 }
 
 export function AssistantTemplateModal({
-  flow,
   onClose,
   owner,
   templateId,
@@ -60,9 +58,7 @@ export function AssistantTemplateModal({
                     <span className="heading-lg text-foreground dark:text-foreground-night">
                       @{assistantTemplate.handle}
                     </span>
-                    <Link
-                      href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}&templateId=${assistantTemplate.sId}`}
-                    >
+                    <Link href={getAgentBuilderRoute(owner.sId, "new")}>
                       <Button
                         label="Use this template"
                         variant="primary"

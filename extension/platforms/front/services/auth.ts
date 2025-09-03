@@ -4,6 +4,7 @@ import type { StoredTokens } from "@app/shared/services/auth";
 import {
   AuthError,
   AuthService,
+  getConnectionDetails,
   getDustDomain,
 } from "@app/shared/services/auth";
 import type { StorageService } from "@app/shared/services/storage";
@@ -165,10 +166,21 @@ export class FrontAuthService extends AuthService {
       });
 
       const claims = jwtDecode<Record<string, string>>(data.access_token);
+
+      const dustDomain = getDustDomain(claims);
+      const connectionDetails = getConnectionDetails(claims);
+
+      if (
+        data.authentication_method === "SSO" &&
+        !connectionDetails.connectionStrategy
+      ) {
+        connectionDetails.connectionStrategy = data.authentication_method;
+      }
+
       // Get user details and workspaces
       const res = await this.fetchMe({
         accessToken: data.access_token,
-        dustDomain: getDustDomain(claims),
+        dustDomain,
       });
 
       if (res.isErr()) {
@@ -176,10 +188,16 @@ export class FrontAuthService extends AuthService {
       }
 
       const workspaces = res.value.user.workspaces;
+
+      const selectedWorkspace =
+        workspaces.find((w) => w.sId === res.value.user.selectedWorkspace) ||
+        workspaces[0];
+
       const storedUser = await this.saveUser({
         ...res.value.user,
-        dustDomain: getDustDomain(claims),
-        selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
+        ...connectionDetails,
+        dustDomain,
+        selectedWorkspace: selectedWorkspace?.sId ?? null,
       });
       return new Ok({ tokens, user: storedUser });
     } catch (error) {
@@ -227,14 +245,22 @@ export class FrontAuthService extends AuthService {
     return true;
   }
 
-  async getAccessToken(): Promise<string | null> {
+  async getAccessToken(forceRefresh?: boolean): Promise<string | null> {
     let tokens = await this.getStoredTokens();
-    if (!tokens || !tokens.accessToken || tokens.expiresAt < Date.now()) {
+    if (
+      !tokens ||
+      !tokens.accessToken ||
+      tokens.expiresAt < Date.now() ||
+      forceRefresh
+    ) {
       const refreshRes = await this.refreshToken();
       if (refreshRes.isOk()) {
         tokens = refreshRes.value;
+      } else {
+        tokens = null;
       }
     }
+
     return tokens?.accessToken ?? null;
   }
 

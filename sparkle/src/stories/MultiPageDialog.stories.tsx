@@ -3,16 +3,24 @@ import React, { useState } from "react";
 
 import { SearchInput } from "@sparkle/components";
 import { Button } from "@sparkle/components/Button";
+import { Checkbox } from "@sparkle/components/Checkbox";
+import { CollapsibleComponent } from "@sparkle/components/Collapsible";
 import {
   MultiPageDialog,
   MultiPageDialogContent,
   type MultiPageDialogPage,
   MultiPageDialogTrigger,
 } from "@sparkle/components/MultiPageDialog";
-import { Cog6ToothIcon, DocumentTextIcon, UserIcon } from "@sparkle/icons/app";
+import {
+  Cog6ToothIcon,
+  DocumentTextIcon,
+  ExclamationCircleIcon,
+  UserIcon,
+} from "@sparkle/icons/app";
+import { GmailLogo } from "@sparkle/logo/platforms";
 
 const meta: Meta<typeof MultiPageDialogContent> = {
-  title: "Primitives/MultiPageDialog",
+  title: "Modules/MultiPageDialog",
   component: MultiPageDialogContent,
 };
 
@@ -827,7 +835,6 @@ export const ScrollableContent: Story = {
       {
         id: "summary",
         title: "Summary",
-        description: "Review your information",
         icon: Cog6ToothIcon,
         content: (
           <div className="s-space-y-4">
@@ -883,6 +890,270 @@ export const ScrollableContent: Story = {
             variant: "primary",
             onClick: isLastPage ? handleSave : handleNext,
           }}
+        />
+      </MultiPageDialog>
+    );
+  },
+};
+
+export const ActionValidation: Story = {
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [currentPageId, setCurrentPageId] = useState("0");
+    const [neverAskAgain, setNeverAskAgain] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [isValidating, setIsValidating] = useState(false);
+
+    const validationPages = [
+      {
+        id: "0",
+        title: "Tool Validation Required",
+        icon: GmailLogo,
+        content: (
+          <div className="s-space-y-6 s-pt-4">
+            <div>
+              <p className="s-mb-6 s-text-sm s-text-muted-foreground">
+                Allow{" "}
+                <span className="s-font-semibold">@Marketing Assistant</span> to
+                use the tool <span className="s-font-semibold">Send Email</span>{" "}
+                from <span className="s-font-semibold">Gmail</span>?
+              </p>
+
+              <div className="s-space-y-3">
+                <CollapsibleComponent
+                  triggerChildren={
+                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      Details
+                    </span>
+                  }
+                  contentChildren={
+                    <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
+                      <h4 className="s-mb-2 s-text-sm s-font-medium">
+                        Email Details
+                      </h4>
+                      <div className="s-space-y-2 s-text-sm">
+                        <div>
+                          <span className="s-font-medium">To:</span>{" "}
+                          john.doe@example.com
+                        </div>
+                        <div>
+                          <span className="s-font-medium">Subject:</span>{" "}
+                          Welcome to our platform!
+                        </div>
+                        <div>
+                          <span className="s-font-medium">Content:</span> Thank
+                          you for signing up...
+                        </div>
+                      </div>
+                    </div>
+                  }
+                />
+
+                {errorMessage && (
+                  <div className="s-flex s-items-center s-gap-2 s-text-sm s-font-medium s-text-warning-800">
+                    <ExclamationCircleIcon className="s-h-4 s-w-4" />
+                    {errorMessage}
+                  </div>
+                )}
+
+                <div className="s-mt-4">
+                  <label className="s-copy-xs s-flex s-w-fit s-cursor-pointer s-flex-row s-items-center s-gap-2 s-py-2 s-pr-2 s-font-normal">
+                    <Checkbox
+                      size="xs"
+                      checked={neverAskAgain}
+                      onCheckedChange={(check) => {
+                        setNeverAskAgain(!!check);
+                      }}
+                    />
+                    <span>Always allow this tool</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "1",
+        title: "Bulk Email Validation",
+        icon: GmailLogo,
+        content: (
+          <div className="s-space-y-6 s-pt-4">
+            <div>
+              <p className="s-mb-6 s-text-sm s-text-muted-foreground">
+                Allow{" "}
+                <span className="s-font-semibold">@Marketing Assistant</span> to
+                use the tool{" "}
+                <span className="s-font-semibold">Send Bulk Email</span> from{" "}
+                <span className="s-font-semibold">Gmail</span>?
+              </p>
+
+              <div className="s-space-y-3">
+                <CollapsibleComponent
+                  triggerChildren={
+                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      Details
+                    </span>
+                  }
+                  contentChildren={
+                    <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
+                      <h4 className="s-mb-2 s-text-sm s-font-medium">
+                        Campaign Details
+                      </h4>
+                      <div className="s-space-y-2 s-text-sm">
+                        <div>
+                          <span className="s-font-medium">Recipients:</span>{" "}
+                          1,250 subscribers
+                        </div>
+                        <div>
+                          <span className="s-font-medium">Subject:</span>{" "}
+                          Monthly Newsletter - March 2024
+                        </div>
+                        <div>
+                          <span className="s-font-medium">Template:</span>{" "}
+                          Newsletter Template v2
+                        </div>
+                      </div>
+                    </div>
+                  }
+                />
+
+                <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
+                  <h4 className="s-mb-1 s-text-sm s-font-medium s-text-blue-900">
+                    Security Notice
+                  </h4>
+                  <p className="s-text-xs s-text-blue-700">
+                    This action will send emails to a large number of
+                    recipients. Please review the content carefully.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "2",
+        title: "Email Template Validation",
+        icon: GmailLogo,
+        content: (
+          <div className="s-space-y-6 s-pt-4">
+            <div>
+              <p className="s-mb-6 s-text-sm s-text-muted-foreground">
+                Allow{" "}
+                <span className="s-font-semibold">@Marketing Assistant</span> to
+                use the tool{" "}
+                <span className="s-font-semibold">Create Email Template</span>{" "}
+                from <span className="s-font-semibold">Gmail</span>?
+              </p>
+
+              <div className="s-space-y-3">
+                <CollapsibleComponent
+                  triggerChildren={
+                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      Details
+                    </span>
+                  }
+                  contentChildren={
+                    <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
+                      <h4 className="s-mb-2 s-text-sm s-font-medium">
+                        Template Details
+                      </h4>
+                      <div className="s-space-y-2 s-text-sm">
+                        <div>
+                          <span className="s-font-medium">Name:</span> Welcome
+                          Series - Day 1
+                        </div>
+                        <div>
+                          <span className="s-font-medium">Category:</span>{" "}
+                          Onboarding
+                        </div>
+                        <div>
+                          <span className="s-font-medium">Variables:</span>{" "}
+                          {"{{name}}"}, {"{{company}}"}, {"{{trial_end_date}}"}
+                        </div>
+                      </div>
+                    </div>
+                  }
+                />
+
+                <div className="s-rounded-md s-border s-bg-green-50 s-p-3">
+                  <h4 className="s-mb-1 s-text-sm s-font-medium s-text-green-900">
+                    Low Risk Action
+                  </h4>
+                  <p className="s-text-xs s-text-green-700">
+                    This action only creates a template and does not send any
+                    emails.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+    ];
+
+    const isLastPage =
+      currentPageId === (validationPages.length - 1).toString();
+
+    const handleApprove = async () => {
+      setIsValidating(true);
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setIsValidating(false);
+      if (isLastPage) {
+        setIsOpen(false);
+      } else {
+        // Move to next page
+        const nextPageIndex = parseInt(currentPageId) + 1;
+        setCurrentPageId(nextPageIndex.toString());
+      }
+    };
+
+    const handleDecline = async () => {
+      setIsValidating(true);
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setIsValidating(false);
+      setErrorMessage("Action was declined by user");
+      if (isLastPage) {
+        setIsOpen(false);
+      }
+    };
+
+    return (
+      <MultiPageDialog open={isOpen} onOpenChange={setIsOpen}>
+        <MultiPageDialogTrigger asChild>
+          <Button label="Open Email Validation Dialog" />
+        </MultiPageDialogTrigger>
+        <MultiPageDialogContent
+          pages={validationPages}
+          currentPageId={currentPageId}
+          onPageChange={setCurrentPageId}
+          size="md"
+          isAlertDialog
+          showNavigation={true}
+          showHeaderNavigation={false}
+          hideCloseButton={true}
+          footerContent={
+            <div className="s-flex s-flex-row s-justify-end s-gap-2">
+              <Button
+                variant="outline"
+                label={"Decline"}
+                onClick={handleDecline}
+                disabled={isValidating}
+                isLoading={isValidating}
+              />
+              <Button
+                variant="highlight"
+                label={"Allow"}
+                autoFocus
+                onClick={handleApprove}
+                disabled={isValidating}
+                isLoading={isValidating}
+              />
+            </div>
+          }
         />
       </MultiPageDialog>
     );

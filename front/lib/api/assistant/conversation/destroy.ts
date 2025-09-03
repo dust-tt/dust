@@ -1,12 +1,8 @@
 import chunk from "lodash/chunk";
-import { Op } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMCPAction,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -16,6 +12,7 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -29,13 +26,10 @@ async function destroyActionsRelatedResources(
   agentMessageIds: Array<ModelId>
 ) {
   // First, retrieve the MCP actions.
-  const mcpActions = await AgentMCPAction.findAll({
-    attributes: ["id"],
-    where: {
-      agentMessageId: { [Op.in]: agentMessageIds },
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
+  const mcpActions = await AgentMCPActionResource.listByAgentMessageIds(
+    auth,
+    agentMessageIds
+  );
 
   // Destroy MCP action output items.
   await AgentMCPActionOutputItem.destroy({
@@ -43,8 +37,8 @@ async function destroyActionsRelatedResources(
   });
 
   // Destroy the actions.
-  await AgentMCPAction.destroy({
-    where: { agentMessageId: agentMessageIds },
+  await AgentMCPActionResource.deleteByAgentMessageId(auth, {
+    agentMessageIds,
   });
 }
 

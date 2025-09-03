@@ -12,13 +12,14 @@ import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,
   slack_channel_internal_ids: t.array(t.string),
   connector_id: t.string,
+  auto_respond_without_mention: t.union([t.boolean, t.undefined]),
 });
 
 type PatchSlackChannelsLinkedWithAgentReqBody = t.TypeOf<
@@ -56,6 +57,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     connector_id: connectorId,
     agent_configuration_id: agentConfigurationId,
     slack_channel_internal_ids: slackChannelInternalIds,
+    auto_respond_without_mention: autoRespondWithoutMention,
   } = bodyValidation.right;
 
   const slackChannelIds = slackChannelInternalIds.map((s) =>
@@ -78,7 +80,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
 
   const slackClient = await getSlackClient(parseInt(connectorId));
 
-  await sequelizeConnection.transaction(async (t) => {
+  await withTransaction(async (t) => {
     if (missingSlackChannelIds.length) {
       const remoteChannels = (
         await getChannels(slackClient, parseInt(connectorId), false)
@@ -110,6 +112,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
               agentConfigurationId,
               permission: "write",
               private: remoteChannel.private,
+              autoRespondWithoutMention: autoRespondWithoutMention ?? false,
             },
             {
               transaction: t,
@@ -132,7 +135,10 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     await Promise.all(
       slackChannelIds.map((slackChannelId) =>
         SlackChannel.update(
-          { agentConfigurationId },
+          {
+            agentConfigurationId,
+            autoRespondWithoutMention: autoRespondWithoutMention ?? false,
+          },
           { where: { connectorId, slackChannelId }, transaction: t }
         )
       )
@@ -174,6 +180,7 @@ type GetSlackChannelsLinkedWithAgentResBody = WithConnectorsAPIErrorReponse<{
     slackChannelId: string;
     slackChannelName: string;
     agentConfigurationId: string;
+    autoRespondWithoutMention: boolean;
   }[];
 }>;
 
@@ -209,6 +216,7 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
       // We know that agentConfigurationId is not null because of the where clause above
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       agentConfigurationId: c.agentConfigurationId!,
+      autoRespondWithoutMention: c.autoRespondWithoutMention,
     })),
   });
 };

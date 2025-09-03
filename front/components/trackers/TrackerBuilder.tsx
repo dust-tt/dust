@@ -28,6 +28,7 @@ import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuild
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isConnectorTypeTrackable } from "@app/lib/connector_providers";
+import { useModels } from "@app/lib/swr/models";
 import { isEmailValid } from "@app/lib/utils";
 import type {
   APIError,
@@ -60,6 +61,7 @@ export const TrackerBuilder = ({
   initialTrackerId: string | null;
 }) => {
   const router = useRouter();
+  const { models } = useModels({ owner });
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
 
@@ -361,7 +363,7 @@ export const TrackerBuilder = ({
                   setEdited(true);
                 }
               }}
-              models={[]}
+              models={models}
             />
             {initialTrackerId && (
               <Button

@@ -37,6 +37,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { normalizeArrays } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -478,6 +479,7 @@ export async function createAgentConfiguration(
             agentConfigurationInstance,
             { transaction: t }
           );
+          await auth.refresh({ transaction: t });
           await group.setMembers(auth, editors, { transaction: t });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
@@ -504,7 +506,19 @@ export async function createAgentConfiguration(
             );
             throw result.error;
           }
-          await group.setMembers(auth, editors, { transaction: t });
+          const setMembersRes = await group.setMembers(auth, editors, {
+            transaction: t,
+          });
+          if (setMembersRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error setting members to agent ${existingAgent.sId}: ${setMembersRes.error}`
+            );
+            throw setMembersRes.error;
+          }
         }
       }
 
@@ -898,6 +912,26 @@ export async function archiveAgentConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  // Disable all triggers for this agent before archiving
+  const triggers = await TriggerResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  for (const trigger of triggers) {
+    const disableResult = await trigger.disable(auth);
+    if (disableResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          agentConfigurationId,
+          triggerId: trigger.sId,
+          error: disableResult.error,
+        },
+        `Failed to disable trigger ${trigger.sId} when archiving agent ${agentConfigurationId}`
+      );
+    }
+  }
+
   const updated = await AgentConfiguration.update(
     { status: "archived" },
     {
@@ -942,6 +976,28 @@ export async function restoreAgentConfiguration(
       },
     }
   );
+
+  // Re-enable all triggers for this agent after restoring
+  if (updated[0] > 0) {
+    const triggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId
+    );
+    for (const trigger of triggers) {
+      const enableResult = await trigger.enable(auth);
+      if (enableResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+            error: enableResult.error,
+          },
+          `Failed to enable trigger ${trigger.sId} when restoring agent ${agentConfigurationId}`
+        );
+      }
+    }
+  }
 
   const affectedCount = updated[0];
   return affectedCount > 0;

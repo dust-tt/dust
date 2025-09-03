@@ -15,11 +15,10 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare sId: string;
   declare name: string;
-  declare description: string;
   declare kind: TriggerKind;
   declare customPrompt: string | null;
+  declare enabled: CreationOptional<boolean>;
 
   /**
    * We use the sId, because it's static between an agent versions,
@@ -43,19 +42,11 @@ TriggerModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     agentConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    description: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -68,6 +59,11 @@ TriggerModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    enabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
     configuration: {
       type: DataTypes.JSONB,
       allowNull: false,
@@ -78,14 +74,13 @@ TriggerModel.init(
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (trigger: TriggerModel) => {
-        if (!isValidTriggerKind(trigger.kind)) {
+        if (trigger.changed("kind") && !isValidTriggerKind(trigger.kind)) {
           throw new Error(`Invalid trigger kind: ${trigger.kind}`);
         }
       },
     },
     indexes: [
-      { fields: ["workspaceId"] },
-      { fields: ["workspaceId", "agentConfigurationId"] },
+      { fields: ["workspaceId", "agentConfigurationId", "name"], unique: true },
     ],
   }
 );

@@ -7,6 +7,22 @@ interface GenerateUniqueActionNameParams {
   selectedToolsInSheet?: SelectedTool[];
 }
 
+// Convert stored name back to user-friendly format for display
+export function nameToDisplayFormat(name: string): string {
+  return name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+// Convert display format name back to storage format
+export function nameToStorageFormat(displayName: string): string {
+  return displayName
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, ""); // Remove any non-alphanumeric characters except underscores
+}
+
 // TODO: refactor an make it reusable for mcp tools with data source selection.
 export function generateUniqueActionName({
   baseName,

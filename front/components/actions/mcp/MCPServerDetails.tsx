@@ -118,7 +118,7 @@ export function MCPServerDetails({
             </Tabs>
           </SheetHeader>
 
-          <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
+          <SheetContainer>
             {mcpServerView && (
               <>
                 {selectedTab === "info" && (

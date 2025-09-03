@@ -213,7 +213,7 @@ export async function submitAssistantBuilderForm({
   const newAgentConfiguration: {
     agentConfiguration: LightAgentConfigurationType | AgentConfigurationType;
   } = await res.json();
-  const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
+  const newAgentConfigurationId = newAgentConfiguration.agentConfiguration.sId;
 
   // PATCH the linked Slack channels if either:
   // - there were already linked channels
@@ -227,7 +227,7 @@ export async function submitAssistantBuilderForm({
     ).length
   ) {
     const slackLinkRes = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationSid}/linked_slack_channels`,
+      `/api/w/${owner.sId}/assistant/agent_configurations/${newAgentConfigurationId}/linked_slack_channels`,
       {
         method: "PATCH",
         headers: {
@@ -238,6 +238,10 @@ export async function submitAssistantBuilderForm({
           slack_channel_internal_ids: selectedSlackChannels.map(
             ({ slackChannelId }) => slackChannelId
           ),
+          auto_respond_without_mention:
+            selectedSlackChannels.length > 0
+              ? selectedSlackChannels[0].autoRespondWithoutMention
+              : undefined,
         }),
       }
     );
@@ -246,6 +250,44 @@ export async function submitAssistantBuilderForm({
       return new Err(
         new Error("An error occurred while linking Slack channels.")
       );
+    }
+  }
+
+  if (isDraft) {
+    return new Ok(newAgentConfiguration.agentConfiguration);
+  }
+
+  const triggerSyncRes = await fetch(
+    `/api/w/${owner.sId}/assistant/agent_configurations/${newAgentConfigurationId}/triggers`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        triggers: builderState.triggers.map((trigger) => ({
+          name: trigger.name,
+          kind: trigger.kind,
+          customPrompt: trigger.customPrompt,
+          configuration: trigger.configuration,
+          sId: trigger.sId,
+        })),
+      }),
+    }
+  );
+
+  if (!triggerSyncRes.ok) {
+    try {
+      const error = await triggerSyncRes.json();
+      return new Err(
+        new Error(
+          error?.api_error?.message ||
+            error?.error?.message ||
+            "An error occurred while syncing triggers."
+        )
+      );
+    } catch {
+      return new Err(new Error("An error occurred while syncing triggers."));
     }
   }
 

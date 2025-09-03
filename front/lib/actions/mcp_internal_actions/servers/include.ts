@@ -17,11 +17,7 @@ import type {
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  findTagsSchema,
-  makeFindTagsDescription,
-  makeFindTagsTool,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   checkConflictingTags,
   getCoreSearchArgs,
@@ -32,7 +28,6 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getDataSourceNameFromView,
@@ -50,20 +45,11 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "include_data",
-  version: "1.0.0",
-  description: "Include data exhaustively",
-  icon: "ActionTimeIcon",
-  authorization: null,
-  documentationUrl: null,
-};
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("include_data");
 
   const commonInputsSchema = {
     timeFrame:
@@ -297,12 +283,10 @@ function createServer(
       )
     );
 
-    server.tool(
-      FIND_TAGS_TOOL_NAME,
-      makeFindTagsDescription(INCLUDE_TOOL_NAME),
-      findTagsSchema,
-      makeFindTagsTool(auth)
-    );
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `This tool is meant to be used before the ${INCLUDE_TOOL_NAME} tool.`,
+    });
   }
 
   return server;

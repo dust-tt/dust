@@ -43,7 +43,10 @@ import {
   isRemoteDatabase,
   isWebsite,
 } from "@app/lib/data_sources";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import {
+  useDataSourceViewContentNodes,
+  useInfiniteDataSourceViewContentNodes,
+} from "@app/lib/swr/data_source_views";
 import { useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
   ContentNode,
@@ -65,6 +68,7 @@ import {
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;
+const PAGE_SIZE = 1000;
 
 const getUseResourceHook =
   (
@@ -699,6 +703,11 @@ interface DataSourceViewSelectorProps {
   selectionMode?: "checkbox" | "radio";
 }
 
+// When `isRootSelectable` is false, you cannot select the entire data source and automatically sync new nodes
+// added to the data source. You can however select all the available nodes at that moment and we show the button to
+// select all in UI. We need to send all the available node ids to the backend, so we need to fetch
+// all the available nodes separately (= different from the paginated nodes a user is seeing in the UI).
+// We use useInfiniteDataSourceViewContentNodes hook and we keep fetching data until hasNextPage is false inside the useEffect.
 export function DataSourceViewSelector({
   owner,
   readonly = false,
@@ -745,10 +754,16 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
-  const { nodes: rootNodes } = useContentNodes({
+  const {
+    nodes: rootNodes,
+    hasNextPage,
+    isLoadingMore,
+    loadMore,
+  } = useInfiniteDataSourceViewContentNodes({
     owner,
     dataSourceView,
     viewType,
+    pagination: { limit: PAGE_SIZE, cursor: null },
   });
 
   const hasActiveSelection =
@@ -899,6 +914,16 @@ export function DataSourceViewSelector({
     [searchResult, isExpanded]
   );
 
+  useEffect(() => {
+    const handleLoadMore = async () => {
+      await loadMore();
+    };
+
+    if (hasNextPage && !isLoadingMore) {
+      void handleLoadMore();
+    }
+  }, [hasNextPage, isLoadingMore, loadMore]);
+
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
@@ -928,7 +953,7 @@ export function DataSourceViewSelector({
             <Button
               variant="ghost"
               size="xs"
-              disabled={rootNodes.length === 0}
+              disabled={rootNodes.length === 0 || isLoadingMore}
               className="mr-4 text-xs"
               label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}

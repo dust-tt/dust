@@ -500,6 +500,32 @@ export const isRunAgentQueryResourceType = (
   );
 };
 
+// Toolsets results.
+
+export const ToolsetsResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOLSET_LIST_RESULT),
+  text: z.string(),
+  uri: z.literal(""),
+  id: z.string(),
+  description: z.string(),
+});
+
+export type ToolsetsResultResourceType = z.infer<
+  typeof ToolsetsResultResourceSchema
+>;
+
+export const isToolsetsResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: ToolsetsResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    ToolsetsResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Agent creation results.
 
 export const AgentCreationResultResourceSchema = z.object({
@@ -765,24 +791,24 @@ export function isImageProgressOutput(
   return output !== undefined && output.type === "image";
 }
 
-// Interactive file.
+// Content creation file.
 
-const NotificationInteractiveFileContentSchema = z.object({
-  type: z.literal("interactive_file"),
+const NotificationContentCreationFileContentSchema = z.object({
+  type: z.literal("content_creation_file"),
   fileId: z.string(),
   mimeType: z.string(),
   title: z.string(),
   updatedAt: z.string(),
 });
 
-type InteractiveFileContentProgressOutput = z.infer<
-  typeof NotificationInteractiveFileContentSchema
+type ContentCreationFileContentProgressOutput = z.infer<
+  typeof NotificationContentCreationFileContentSchema
 >;
 
-export function isInteractiveFileContentOutput(
+export function isContentCreationFileContentOutput(
   output: ProgressNotificationOutput
-): output is InteractiveFileContentProgressOutput {
-  return output !== undefined && output.type === "interactive_file";
+): output is ContentCreationFileContentProgressOutput {
+  return output !== undefined && output.type === "content_creation_file";
 }
 
 const InternalAllowedIconSchema = z.enum(
@@ -816,18 +842,6 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
       .optional(),
   }),
 });
-
-type NotificationToolApproveBubbleUpContentType = z.infer<
-  typeof NotificationToolApproveBubbleUpContentSchema
->;
-
-export function isToolApproveBubbleUpNotificationType(
-  notificationOutput: ProgressNotificationOutput
-): notificationOutput is NotificationToolApproveBubbleUpContentType {
-  return NotificationToolApproveBubbleUpContentSchema.safeParse(
-    notificationOutput
-  ).success;
-}
 
 const NotificationTextContentSchema = z.object({
   type: z.literal("text"),
@@ -913,10 +927,10 @@ export function isRunAgentProgressOutput(
 
 export const ProgressNotificationOutputSchema = z
   .union([
+    NotificationContentCreationFileContentSchema,
     NotificationImageContentSchema,
-    NotificationInteractiveFileContentSchema,
-    NotificationRunAgentContentSchema,
     NotificationRunAgentChainOfThoughtSchema,
+    NotificationRunAgentContentSchema,
     NotificationRunAgentGenerationTokensSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,

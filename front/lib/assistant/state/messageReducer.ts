@@ -1,13 +1,13 @@
-import type {
-  MCPActionType,
-  ToolNotificationEvent,
-} from "@app/lib/actions/mcp";
+import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type { ModelId } from "@app/types";
+import type { LightAgentMessageWithActionsType, ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import type { LightAgentMessageType } from "@app/types/assistant/conversation";
+import type {
+  AgentMCPActionType,
+  AgentMCPActionWithOutputType,
+} from "@app/types/actions";
 
 export type AgentStateClassification =
   | "thinking"
@@ -18,20 +18,24 @@ export type AgentStateClassification =
 export type ActionProgressState = Map<
   ModelId,
   {
-    action: MCPActionType;
+    action: AgentMCPActionType;
     progress?: ProgressNotificationContentType;
   }
 >;
 
 export interface MessageTemporaryState {
-  message: LightAgentMessageType;
+  message: LightAgentMessageWithActionsType;
   agentState: AgentStateClassification;
   isRetrying: boolean;
   lastUpdated: Date;
   actionProgress: ActionProgressState;
+  useFullChainOfThought: boolean;
 }
 
-export type AgentMessageStateEvent = AgentMessageEvents | ToolNotificationEvent;
+export type AgentMessageStateEvent = (
+  | AgentMessageEvents
+  | ToolNotificationEvent
+) & { step: number };
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
@@ -39,9 +43,9 @@ type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
 >;
 
 function updateMessageWithAction(
-  m: LightAgentMessageType,
-  action: MCPActionType
-): LightAgentMessageType {
+  m: LightAgentMessageWithActionsType,
+  action: AgentMCPActionWithOutputType
+): LightAgentMessageWithActionsType {
   return {
     ...m,
     chainOfThought: "",
@@ -56,7 +60,7 @@ function updateProgress(
   const actionId = event.action.id;
   const currentProgress = state.actionProgress.get(actionId);
 
-  const newState = {
+  return {
     ...state,
     actionProgress: new Map(state.actionProgress).set(actionId, {
       action: event.action,
@@ -70,8 +74,6 @@ function updateProgress(
       },
     }),
   };
-
-  return newState;
 }
 
 export const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
@@ -154,7 +156,10 @@ export function messageReducer(
     case "agent_message_success":
       return {
         ...state,
-        message: getLightAgentMessageFromAgentMessage(event.message),
+        message: {
+          ...getLightAgentMessageFromAgentMessage(event.message),
+          actions: state.message.actions,
+        },
         agentState: "done",
       };
 
@@ -170,7 +175,8 @@ export function messageReducer(
           newState.agentState = "writing";
           break;
         case "chain_of_thought":
-          if (event.text === "\n\n") {
+          // If we're not using the full chain of thought, reset at paragraph boundaries.
+          if (!state.useFullChainOfThought && event.text === "\n\n") {
             newState.message.chainOfThought = "";
           } else {
             newState.message.chainOfThought =

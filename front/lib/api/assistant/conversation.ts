@@ -115,10 +115,12 @@ export async function createConversation(
     title,
     visibility,
     depth = 0,
+    triggerId,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
+    triggerId?: ModelId | null;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
@@ -128,6 +130,7 @@ export async function createConversation(
     title,
     visibility,
     depth,
+    triggerId,
     requestedGroupIds: [],
   });
 
@@ -139,6 +142,7 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     depth: conversation.depth,
+    triggerId: conversation.triggerSId(),
     content: [],
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
@@ -473,7 +477,10 @@ export async function postUserMessage(
         return;
       }
 
-      return ConversationResource.upsertParticipation(auth, conversation);
+      return ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+      });
     })(),
   ]);
 
@@ -892,7 +899,10 @@ export async function editUserMessage(
         })
       )
     ),
-    ConversationResource.upsertParticipation(auth, conversation),
+    ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+    }),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);

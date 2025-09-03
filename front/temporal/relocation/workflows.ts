@@ -18,6 +18,10 @@ import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
+import {
+  CORE_API_LIST_NODES_BATCH_SIZE,
+  CORE_API_LIST_TABLES_BATCH_SIZE,
+} from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import type { ModelId } from "@app/types";
 
@@ -180,6 +184,7 @@ export async function workspaceRelocateFrontTableWorkflow({
 
   let hasMoreRows = true;
   let currentId: ModelId | undefined = lastProcessedId;
+  let limit: number | null = null;
 
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
@@ -192,26 +197,29 @@ export async function workspaceRelocateFrontTableWorkflow({
       });
     }
 
-    const { dataPath, hasMore, lastId } =
+    const { dataPath, hasMore, lastId, nextLimit } =
       await sourceRegionActivities.readFrontTableChunk({
         lastId: currentId,
-        limit: CHUNK_SIZE,
         workspaceId,
         tableName,
         sourceRegion,
         destRegion,
+        limit: limit || CHUNK_SIZE,
       });
+
+    if (dataPath) {
+      await destinationRegionActivities.processFrontTableChunk({
+        dataPath,
+        destRegion,
+        sourceRegion,
+        tableName,
+        workspaceId,
+      });
+    }
 
     hasMoreRows = hasMore;
     currentId = lastId;
-
-    await destinationRegionActivities.processFrontTableChunk({
-      dataPath,
-      destRegion,
-      sourceRegion,
-      tableName,
-      workspaceId,
-    });
+    limit = nextLimit;
   } while (hasMoreRows);
 }
 
@@ -625,7 +633,7 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
     getCoreDestinationRegionActivities(destRegion);
 
   let pageCursor: string | null = initialPageCursor;
-
+  let limit: number | null = null;
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
       await continueAsNew<typeof workspaceRelocateDataSourceDocumentsWorkflow>({
@@ -638,27 +646,31 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
       });
     }
 
-    const { dataPath, nextPageCursor } =
+    const { dataPath, nextPageCursor, nextLimit } =
       await sourceRegionActivities.getDataSourceDocuments({
         pageCursor,
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        limit: limit || CORE_API_LIST_NODES_BATCH_SIZE,
       });
 
-    const sourceRegionDustFacingUrl =
-      await sourceRegionActivities.getRegionDustFacingUrl();
+    if (dataPath) {
+      const sourceRegionDustFacingUrl =
+        await sourceRegionActivities.getRegionDustFacingUrl();
 
-    await destinationRegionActivities.processDataSourceDocuments({
-      destIds,
-      dataPath,
-      destRegion,
-      sourceRegion,
-      sourceRegionDustFacingUrl,
-      workspaceId,
-    });
+      await destinationRegionActivities.processDataSourceDocuments({
+        destIds,
+        dataPath,
+        destRegion,
+        sourceRegion,
+        sourceRegionDustFacingUrl,
+        workspaceId,
+      });
+    }
 
     pageCursor = nextPageCursor;
+    limit = nextLimit;
   } while (pageCursor);
 }
 
@@ -733,7 +745,7 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
     getCoreDestinationRegionActivities(destRegion);
 
   let pageCursor: string | null = initialPageCursor;
-
+  let limit: number | null = null;
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
       await continueAsNew<typeof workspaceRelocateDataSourceTablesWorkflow>({
@@ -746,27 +758,30 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
       });
     }
 
-    const { dataPath, nextPageCursor } =
+    const { dataPath, nextPageCursor, nextLimit } =
       await sourceRegionActivities.getDataSourceTables({
         pageCursor,
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        limit: limit || CORE_API_LIST_TABLES_BATCH_SIZE,
       });
+    if (dataPath) {
+      const sourceRegionDustFacingUrl =
+        await sourceRegionActivities.getRegionDustFacingUrl();
 
-    const sourceRegionDustFacingUrl =
-      await sourceRegionActivities.getRegionDustFacingUrl();
-
-    await destinationRegionActivities.processDataSourceTables({
-      destIds,
-      dataPath,
-      destRegion,
-      sourceRegion,
-      sourceRegionDustFacingUrl,
-      workspaceId,
-    });
+      await destinationRegionActivities.processDataSourceTables({
+        destIds,
+        dataPath,
+        destRegion,
+        sourceRegion,
+        sourceRegionDustFacingUrl,
+        workspaceId,
+      });
+    }
 
     pageCursor = nextPageCursor;
+    limit = nextLimit;
   } while (pageCursor);
 }
 

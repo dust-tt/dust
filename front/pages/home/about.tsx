@@ -37,7 +37,7 @@ export async function getStaticProps() {
 }
 
 const PEOPLE: Record<
-  string,
+  string, // The handle is the prefix of the email address
   {
     name: string;
     title: string;
@@ -125,7 +125,7 @@ const PEOPLE: Record<
   },
   tmartin: {
     name: "Thibault Martin",
-    title: "Operations",
+    title: "GTM & Operations",
     image: "https://avatars.githubusercontent.com/u/168569391?v=4",
     github: "https://github.com/thib-martin",
     linkedIn: "https://www.linkedin.com/in/thibault-martin-27b19b5a/",
@@ -174,7 +174,7 @@ const PEOPLE: Record<
   },
   ahammour: {
     name: "Abboud Hammour",
-    title: "Customer Success",
+    title: "Solutions Engineer",
     image: "https://avatars.githubusercontent.com/u/170936020?v=4",
     github: "https://github.com/ahammour",
     linkedIn: "https://www.linkedin.com/in/abboud-hammour/",
@@ -249,13 +249,6 @@ const PEOPLE: Record<
     github: "https://github.com/atrwendy",
     linkedIn: "https://www.linkedin.com/in/wendyzhao07/",
   },
-  max: {
-    name: "Maxime Cattet",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/1371886?v=4",
-    github: "https://github.com/johnoppenheimer",
-    linkedIn: "https://www.linkedin.com/in/maximecattet",
-  },
   gaelle: {
     name: "Gaëlle Caplier",
     title: "Customer Success",
@@ -298,12 +291,104 @@ const PEOPLE: Record<
     github: "https://github.com/vincesarkisian",
     linkedIn: "https://www.linkedin.com/in/vincesarkisian/",
   },
-  lvndry: {
+  louis: {
+    name: "Louis Caulet",
+    title: "Enterprise Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U093VA5K3JQ-6e18517d0b48-512",
+    github: "https://github.com/louiscaulet",
+    linkedIn: "https://www.linkedin.com/in/louiscaulet",
+  },
+  faateh: {
+    name: "Faateh Dhillon",
+    title: "Senior Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U093VA8B7E0-e078a8e04a44-512",
+    github: "https://github.com/faateh-dust",
+    linkedIn: "https://www.linkedin.com/in/faatehalidhillon",
+  },
+  nicole: {
+    name: "Nicole Kreider",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U096T3FG7HU-4967c6b16ae2-512",
+    github: "https://github.com/nkreider-dot",
+    linkedIn: "https://www.linkedin.com/in/nkreider",
+  },
+  lauriane: {
+    name: "Lauriane Paour",
+    title: "Solution Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U096NGVETPD-0d8f0affddf6-512",
+    linkedIn: "https://www.linkedin.com/in/lauriane-paour-152760106/",
+    github: null,
+  },
+  landry: {
     name: "Landry Monga",
     title: "Software Engineer",
     image: "https://avatars.githubusercontent.com/u/23080211?v=4",
     github: "https://github.com/lvndry",
     linkedIn: "https://www.linkedin.com/in/landry-monga",
+  },
+  come: {
+    name: "Côme Lucien-Brun",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATL7UVB5-873d7e42eb96-512",
+    github: "https://github.com/come-lb",
+    linkedIn: "https://www.linkedin.com/in/comelb",
+  },
+  theog: {
+    name: "Théo Gantzer",
+    title: "Data",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATLHUB0B-6ab7143a82c5-512",
+    linkedIn: "https://www.linkedin.com/in/theo-gantzer",
+    github: "https://github.com/theogz",
+  },
+  okal: {
+    name: "Okal Otieno",
+    title: "Solution Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09ATLV5RNX-f840cb7fa121-512",
+    linkedIn: "https://www.linkedin.com/in/okalotieno",
+    github: "https://github.com/okal",
+  },
+  anas: {
+    name: "Anas Lecaillon",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/31699174?v=4",
+    linkedIn: "https://www.linkedin.com/in/anas-lecaillon",
+    github: "https://github.com/anonx3247",
+  },
+  z: {
+    name: "Zeïd Marouf",
+    title: "Security Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNRFDJL-bbc7ebca4159-512",
+    linkedIn: "https://www.linkedin.com/in/zeidmarouf",
+    github: "https://github.com/zmarouf",
+  },
+  rcs: {
+    name: "Rémy-Christophe Schermesser",
+    title: "Software Engineer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09D77UR8S0-3af0e8ba603b-512",
+    linkedIn: "https://www.linkedin.com/in/r%C3%A9my-christophe-s-0204834/",
+    github: "https://avatars.githubusercontent.com/u/16667?v=4",
+  },
+  pierre: {
+    name: "Pierre Milliotte",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/39985796?v=4",
+    linkedIn: "https://www.linkedin.com/in/pierre-milliotte-664962a4/",
+    github: "https://github.com/pmilliotte",
+  },
+  alex: {
+    name: "Alexandre Casanova",
+    title: "Enterprise Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U09DVNHFS2C-9a2d6df66ced-512",
+    linkedIn: "https://www.linkedin.com/in/alexandre-casanova-a89927a5/",
+    github: "https://github.com/AlexandreCasa",
+  },
+  neyla: {
+    name: "Neyla Belmaachi",
+    title: "Business Development Representative",
+    image:
+      "https://media.licdn.com/dms/image/v2/D4D03AQFOta7Ao6aodg/profile-displayphoto-shrink_800_800/B4DZeCQlSRH4Ac-/0/1750237075055?e=1759968000&v=beta&t=HR_yS-qenHyqOcrwWAXiqO3czAvb0KGRDpja8sutgIs",
+    linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
+    github: null,
   },
 };
 

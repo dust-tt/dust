@@ -393,6 +393,17 @@ export const RunAgentResultResourceSchema = z.object({
   conversationId: z.string(),
   text: z.string(),
   uri: z.string(),
+  refs: z
+    .record(
+      z.string(),
+      z.object({
+        description: z.string().optional(),
+        href: z.string().optional(),
+        title: z.string(),
+        provider: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export type RunAgentResultResourceType = z.infer<
@@ -408,6 +419,32 @@ export const isRunAgentResultResourceType = (
   return (
     outputBlock.type === "resource" &&
     RunAgentResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+// Toolsets results.
+
+export const ToolsetsResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOLSET_LIST_RESULT),
+  text: z.string(),
+  uri: z.literal(""),
+  id: z.string(),
+  description: z.string(),
+});
+
+export type ToolsetsResultResourceType = z.infer<
+  typeof ToolsetsResultResourceSchema
+>;
+
+export const isToolsetsResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: ToolsetsResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    ToolsetsResultResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -476,24 +513,24 @@ export function isImageProgressOutput(
   return output !== undefined && output.type === "image";
 }
 
-// Interactive file.
+// Canvas file.
 
-export const NotificationInteractiveFileContentSchema = z.object({
-  type: z.literal("interactive_file"),
+export const NotificationContentCreationFileContentSchema = z.object({
+  type: z.literal("content_creation_file"),
   fileId: z.string(),
   mimeType: z.string(),
   title: z.string(),
   updatedAt: z.string(),
 });
 
-type InteractiveFileContentOutput = z.infer<
-  typeof NotificationInteractiveFileContentSchema
+type ContentCreationFileContentOutput = z.infer<
+  typeof NotificationContentCreationFileContentSchema
 >;
 
-export function isInteractiveFileContentOutput(
+export function isContentCreationFileContentOutput(
   output: ProgressNotificationOutput
-): output is InteractiveFileContentOutput {
-  return output !== undefined && output.type === "interactive_file";
+): output is ContentCreationFileContentOutput {
+  return output !== undefined && output.type === "content_creation_file";
 }
 
 const NotificationTextContentSchema = z.object({
@@ -511,7 +548,7 @@ const NotificationRunAgentContentSchema = z.object({
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
-    NotificationInteractiveFileContentSchema,
+    NotificationContentCreationFileContentSchema,
     NotificationRunAgentContentSchema,
     NotificationTextContentSchema,
   ])

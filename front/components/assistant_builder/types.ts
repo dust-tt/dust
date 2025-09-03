@@ -58,6 +58,18 @@ export type AssistantBuilderTagsFilter = {
   in: string[];
 };
 
+export type AssistantBuilderTriggerType = {
+  sId?: string;
+  name: string;
+  kind: "schedule";
+  customPrompt: string | null;
+  editor: UserType["id"] | null;
+  configuration: {
+    cron: string;
+    timezone: string;
+  } | null;
+};
+
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
@@ -158,6 +170,7 @@ export type AssistantBuilderState = {
     responseFormat?: string;
   };
   actions: AssistantBuilderMCPOrVizState[];
+  triggers: AssistantBuilderTriggerType[];
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
@@ -177,6 +190,7 @@ export type AssistantBuilderInitialState = {
     responseFormat?: string;
   } | null;
   actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
+  triggers: AssistantBuilderTriggerType[];
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
@@ -199,6 +213,7 @@ export type ActionSpecificationWithType = ActionSpecification & {
 export function getDefaultAssistantState() {
   return {
     actions: [],
+    triggers: [],
     handle: null,
     scope: "hidden",
     description: null,

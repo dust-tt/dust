@@ -208,13 +208,17 @@ export async function submitAgentBuilderForm({
 
     const agentConfiguration = result.agentConfiguration;
 
+    // We don't update Slack channels nor triggers when saving a draft agent.
+    if (isDraft) {
+      return new Ok(agentConfiguration);
+    }
+
     const { slackChannels, slackProvider } = formData.agentSettings;
-    // PATCH the linked Slack channels if either:
-    // - there were already linked channels
-    // - there are newly selected channels
     // If the user selected channels that were already routed to a different agent, the current behavior is to
     // unlink them from the previous agent and link them to this one.
-    if (slackChannels.length) {
+    if (slackProvider && slackChannels.length > 0) {
+      const autoRespondWithoutMention =
+        slackChannels[0].autoRespondWithoutMention;
       const slackLinkRes = await fetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
         {
@@ -227,6 +231,7 @@ export async function submitAgentBuilderForm({
             slack_channel_internal_ids: slackChannels.map(
               ({ slackChannelId }) => slackChannelId
             ),
+            auto_respond_without_mention: autoRespondWithoutMention,
           }),
         }
       );
@@ -236,11 +241,6 @@ export async function submitAgentBuilderForm({
           new Error("An error occurred while linking Slack channels.")
         );
       }
-    }
-
-    // We don't register triggers when saving a draft agent.
-    if (isDraft) {
-      return new Ok(agentConfiguration);
     }
 
     const triggerSyncRes = await fetch(

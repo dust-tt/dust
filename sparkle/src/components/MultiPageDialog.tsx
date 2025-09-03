@@ -2,7 +2,7 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useState } from "react";
 
-import { Button, Icon, ScrollArea, Separator } from "@sparkle/components";
+import { Avatar, Button, ScrollArea, Separator } from "@sparkle/components";
 import {
   Dialog,
   DialogClose,
@@ -51,7 +51,10 @@ const MultiPageDialogFooter = ({
 }: MultiPageDialogFooterProps) => {
   const content = (
     <div
-      className={cn("s-flex s-flex-none s-flex-col s-gap-3 s-p-4", className)}
+      className={cn(
+        "s-flex s-flex-none s-flex-col s-gap-3 s-px-4 s-py-2",
+        className
+      )}
       {...props}
     >
       {children}
@@ -95,6 +98,7 @@ interface MultiPageDialogProps {
   rightButton?: React.ComponentProps<typeof Button>;
   footerContent?: React.ReactNode;
   addFooterSeparator?: boolean;
+  hideCloseButton?: boolean;
 }
 
 interface MultiPageDialogContentProps extends MultiPageDialogProps {
@@ -124,6 +128,7 @@ const MultiPageDialogContent = React.forwardRef<
       centerButton,
       rightButton,
       footerContent,
+      hideCloseButton,
       ...props
     },
     ref
@@ -187,10 +192,10 @@ const MultiPageDialogContent = React.forwardRef<
       >
         <div className={cn(multiPageDialogLayoutVariants())}>
           <DialogHeader
-            hideButton={showHeaderNavigation}
+            hideButton={hideCloseButton || showHeaderNavigation}
             className="s-flex-none"
           >
-            <div className="s-flex s-items-center s-justify-between s-pr-8">
+            <div className="s-flex s-items-center s-justify-between">
               <div className="s-flex s-items-center s-gap-3">
                 {showNavigation && showHeaderNavigation && (
                   <div className="s-flex s-items-center s-gap-1">
@@ -222,7 +227,7 @@ const MultiPageDialogContent = React.forwardRef<
                 )}
                 <div
                   className={cn(
-                    "s-flex s-items-center s-gap-2 s-transition-all s-duration-200 s-ease-out",
+                    "s-flex s-items-center s-gap-3 s-transition-all s-duration-200 s-ease-out",
                     {
                       "s-transform s-opacity-0": isTransitioning,
                       "s-translate-x-1":
@@ -233,15 +238,16 @@ const MultiPageDialogContent = React.forwardRef<
                     }
                   )}
                 >
-                  {currentPage.icon && (
-                    <Icon
-                      visual={currentPage.icon}
-                      size="lg"
-                      className="s-text-foreground"
-                    />
-                  )}
                   <div>
-                    <DialogTitle>{currentPage.title}</DialogTitle>
+                    <DialogTitle
+                      visual={
+                        currentPage.icon ? (
+                          <Avatar icon={currentPage.icon} size="sm" />
+                        ) : undefined
+                      }
+                    >
+                      {currentPage.title}
+                    </DialogTitle>
                     {currentPage.description && (
                       <DialogDescription>
                         {currentPage.description}
@@ -251,8 +257,13 @@ const MultiPageDialogContent = React.forwardRef<
                 </div>
               </div>
               {showNavigation && pages.length > 1 && (
-                <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                  {currentPageIndex + 1} / {pages.length}
+                <div
+                  className={cn(
+                    "s-text-xs s-font-semibold s-text-muted-foreground-night",
+                    !hideCloseButton && "s-pr-8"
+                  )}
+                >
+                  {currentPageIndex + 1}/{pages.length}
                 </div>
               )}
             </div>
@@ -284,7 +295,7 @@ const MultiPageDialogContent = React.forwardRef<
               <ScrollArea
                 className={currentPage.fixedContent ? "s-flex-1" : "s-h-full"}
               >
-                <div className="s-flex s-flex-col s-gap-2 s-px-5 s-py-4">
+                <div className="s-flex s-flex-col s-gap-2 s-px-5">
                   {currentPage.content}
                 </div>
               </ScrollArea>

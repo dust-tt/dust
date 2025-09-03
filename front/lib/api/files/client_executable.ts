@@ -1,10 +1,11 @@
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { InteractiveFileContentType, Result } from "@app/types";
+import type { ContentCreationFileContentType, Result } from "@app/types";
 import {
   clientExecutableContentType,
-  INTERACTIVE_FILE_FORMATS,
+  CONTENT_CREATION_FILE_FORMATS,
+  isContentCreationContentType,
   normalizeError,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -15,7 +16,7 @@ export async function createClientExecutableFile(
     content: string;
     conversationId: string;
     fileName: string;
-    mimeType: InteractiveFileContentType;
+    mimeType: ContentCreationFileContentType;
   }
 ): Promise<Result<FileResource, Error>> {
   const { content, conversationId, fileName, mimeType } = params;
@@ -24,8 +25,10 @@ export async function createClientExecutableFile(
     const workspace = auth.getNonNullableWorkspace();
 
     // Validate that the MIME type is supported.
-    if (mimeType !== clientExecutableContentType) {
-      const supportedTypes = Object.keys(INTERACTIVE_FILE_FORMATS).join(", ");
+    if (!isContentCreationContentType(mimeType)) {
+      const supportedTypes = Object.keys(CONTENT_CREATION_FILE_FORMATS).join(
+        ", "
+      );
 
       return new Err(
         new Error(
@@ -35,7 +38,7 @@ export async function createClientExecutableFile(
     }
 
     // Validate that the file extension matches the MIME type.
-    const fileFormat = INTERACTIVE_FILE_FORMATS[mimeType];
+    const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
     const fileNameParts = fileName.split(".");
     if (fileNameParts.length < 2) {
       const supportedExts = fileFormat.exts.join(", ");
@@ -144,11 +147,11 @@ export async function getClientExecutableFileContent(
       return new Err(new Error(`File not found: ${fileId}`));
     }
 
-    // Check if it's an interactive file.
+    // Check if it's a content creation file.
     if (fileResource.contentType !== clientExecutableContentType) {
       return new Err(
         new Error(
-          `File '${fileId}' is not an interactive content file ` +
+          `File '${fileId}' is not a content creation file ` +
             `(content type: ${fileResource.contentType})`
         )
       );

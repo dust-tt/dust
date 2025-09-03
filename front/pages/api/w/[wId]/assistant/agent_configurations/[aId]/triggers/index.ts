@@ -5,7 +5,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -17,7 +16,10 @@ import type {
 import { TriggerSchema } from "@app/types/assistant/triggers";
 
 export interface GetTriggersResponseBody {
-  triggers: TriggerType[];
+  triggers: (TriggerType & {
+    isSubscriber: boolean;
+    isEditor: boolean;
+  })[];
 }
 
 export interface PatchTriggersRequestBody {
@@ -25,7 +27,7 @@ export interface PatchTriggersRequestBody {
     {
       sId?: string;
       name: string;
-      description: string;
+      customPrompt: string;
     } & TriggerConfiguration
   >;
 }
@@ -69,8 +71,16 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const triggersWithIsSubscriber = await Promise.all(
+        triggers.map(async (trigger) => ({
+          ...trigger.toJSON(),
+          isSubscriber: await trigger.isSubscriber(auth),
+          isEditor: trigger.editor === auth.getNonNullableUser().id,
+        }))
+      );
+
       return res.status(200).json({
-        triggers: triggers.map((trigger) => trigger.toJSON()),
+        triggers: triggersWithIsSubscriber,
       });
     }
 
@@ -102,7 +112,23 @@ async function handler(
       const { triggers: requestTriggers } = req.body;
       const workspace = auth.getNonNullableWorkspace();
 
-      const currentTriggersMap = new Map(triggers.map((t) => [t.sId, t]));
+      if (requestTriggers.length > 0) {
+        const triggerNames = requestTriggers.map(
+          (t: { name: string }) => t.name
+        );
+        const uniqueTriggerNames = new Set(triggerNames);
+        if (uniqueTriggerNames.size !== triggerNames.length) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Trigger names must be unique for a given agent.",
+            },
+          });
+        }
+      }
+
+      const currentTriggersMap = new Map(triggers.map((t) => [t.sId(), t]));
       const resultTriggers: TriggerType[] = [];
       const errors: Error[] = [];
 
@@ -128,7 +154,7 @@ async function handler(
           const existingTrigger = currentTriggersMap.get(triggerData.sId)!;
           const updatedTrigger = await TriggerResource.update(
             auth,
-            existingTrigger.sId,
+            existingTrigger.sId(),
             validatedTrigger
           );
           if (updatedTrigger.isErr()) {
@@ -144,15 +170,13 @@ async function handler(
           resultTriggers.push(updatedTrigger.value.toJSON());
           currentTriggersMap.delete(triggerData.sId);
         } else {
-          const sId = generateRandomModelSId();
           const newTrigger = await TriggerResource.makeNew(auth, {
-            sId,
             workspaceId: workspace.id,
             agentConfigurationId,
             name: validatedTrigger.name,
-            description: validatedTrigger.description,
             kind: validatedTrigger.kind,
             configuration: validatedTrigger.configuration,
+            customPrompt: validatedTrigger.customPrompt,
             editor: auth.getNonNullableUser().id,
           });
 

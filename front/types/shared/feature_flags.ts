@@ -17,10 +17,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Activates the advanced search option: browse selected data like a file system",
     stage: "on_demand",
   },
-  agent_builder_v2: {
-    description: "Version 2 of the agent builder interface (wip)",
-    stage: "dust_only",
-  },
   agent_to_yaml: {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
@@ -65,7 +61,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   interactive_content_server: {
     description:
-      "Interactive content MCP server - gives access to the new visualization layout",
+      "Content Creation MCP server - gives access to the new visualization layout",
     stage: "on_demand",
   },
   google_ai_studio_experimental_models_feature: {
@@ -74,6 +70,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
+    stage: "rolling_out",
+  },
+  google_drive_tool: {
+    description: "Google Drive MCP tool",
     stage: "rolling_out",
   },
   index_private_slack_channel: {
@@ -162,6 +162,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   toolsets_tool: {
     description: "Toolsets MCP tool",
+    stage: "dust_only",
+  },
+  slack_enhanced_default_agent: {
+    description:
+      "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

@@ -6,10 +6,12 @@ import {
   AgentActionSuccessEvent,
   AgentConfigurationViewType,
   AgentErrorEvent,
+  AgentGenerationCancelledEvent,
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   APIError,
   AppsCheckRequestType,
+  BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
   ConversationPublicType,
   CreateConversationResponseType,
@@ -50,6 +52,7 @@ import {
 import {
   APIErrorSchema,
   AppsCheckResponseSchema,
+  BlockedActionsResponseSchema,
   CancelMessageGenerationResponseSchema,
   CreateConversationResponseSchema,
   CreateGenericAgentConfigurationResponseSchema,
@@ -76,6 +79,7 @@ import {
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
   RegisterMCPResponseSchema,
+  RetryMessageResponseSchema,
   Result,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
@@ -104,6 +108,7 @@ type AgentEvent =
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | AgentErrorEvent
+  | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
   | UserMessageErrorEvent
@@ -827,6 +832,7 @@ export class DustAPI {
     const terminalEventTypes: AgentEvent["type"][] = [
       "agent_message_success",
       "agent_error",
+      "agent_generation_cancelled",
       "user_message_error",
     ];
 
@@ -1365,6 +1371,35 @@ export class DustAPI {
     return new Ok(r.value.nodes);
   }
 
+  async retryMessage({
+    conversationId,
+    messageId,
+    blockedOnly = false,
+  }: {
+    conversationId: string;
+    messageId: string;
+    blockedOnly?: boolean;
+  }) {
+    const query = blockedOnly 
+      ? new URLSearchParams({ blocked_only: "true" })
+      : undefined;
+
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/messages/${messageId}/retry`,
+      query,
+    });
+
+    const r = await this._resultFromResponse(
+      RetryMessageResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.message);
+  }
+
   private async _fetchWithError(
     url: string,
     {
@@ -1421,6 +1456,19 @@ export class DustAPI {
   }
 
   // MCP Related.
+
+  async getBlockedActions({
+    conversationId,
+  }: {
+    conversationId: string;
+  }): Promise<Result<BlockedActionsResponseType, APIError>> {
+    const res = await this.request({
+      method: "GET",
+      path: `assistant/conversations/${conversationId}/actions/blocked`,
+    });
+
+    return this._resultFromResponse(BlockedActionsResponseSchema, res);
+  }
 
   async validateAction({
     conversationId,

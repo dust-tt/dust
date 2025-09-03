@@ -12,7 +12,6 @@ import {
   makeMCPToolTextError,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { EnvironmentConfig, normalizeError } from "@app/types";
@@ -48,20 +47,8 @@ const createOctokit = async (
   });
 };
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "github",
-  version: "1.0.0",
-  description: "GitHub tools to manage issues and pull requests.",
-  authorization: {
-    provider: "github" as const,
-    supported_use_cases: ["platform_actions"] as const,
-  },
-  icon: "GithubLogo",
-  documentationUrl: null,
-};
-
 const createServer = (auth: Authenticator): McpServer => {
-  const server = makeInternalMCPServer(serverInfo);
+  const server = makeInternalMCPServer("github");
 
   server.tool(
     "create_issue",
@@ -1008,6 +995,235 @@ const createServer = (auth: Authenticator): McpServer => {
       } catch (e) {
         return makeMCPToolTextError(
           `Error listing GitHub issues: ${normalizeError(e).message}`
+        );
+      }
+    }
+  );
+
+  server.tool(
+    "list_pull_requests",
+    "List pull requests from a specified GitHub repository with optional filtering.",
+    {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      state: z
+        .enum(["OPEN", "CLOSED", "MERGED", "ALL"])
+        .optional()
+        .describe("Filter pull requests by state. Defaults to OPEN."),
+      sort: z
+        .enum(["CREATED_AT", "UPDATED_AT"])
+        .optional()
+        .describe("What to sort results by. Defaults to CREATED_AT."),
+      direction: z
+        .enum(["ASC", "DESC"])
+        .optional()
+        .describe("The direction of the sort. Defaults to DESC."),
+      perPage: z
+        .number()
+        .min(1)
+        .max(65)
+        .optional()
+        .describe("Results per page. Defaults to 30, max 65."),
+      after: z.string().optional().describe("The cursor to start after."),
+      before: z.string().optional().describe("The cursor to start before."),
+    },
+    async (
+      {
+        owner,
+        repo,
+        state = "OPEN",
+        sort = "CREATED_AT",
+        direction = "DESC",
+        perPage = 30,
+        after,
+        before,
+      },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const query = `
+          query($owner: String!, $repo: String!, $first: Int!, $orderBy: IssueOrder, $states: [PullRequestState!], $after: String, $before: String) {
+            repository(owner: $owner, name: $repo) {
+              pullRequests(first: $first, orderBy: $orderBy, states: $states, after: $after, before: $before) {
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                  startCursor
+                  hasPreviousPage
+                }
+                nodes {
+                  number
+                  title
+                  state
+                  createdAt
+                  updatedAt
+                  mergedAt
+                  closedAt
+                  author {
+                    login
+                  }
+                  baseRefName
+                  headRefName
+                  additions
+                  deletions
+                  changedFiles
+                  labels(first: 10) {
+                    nodes {
+                      name
+                      color
+                    }
+                  }
+                  assignees(first: 10) {
+                    nodes {
+                      login
+                    }
+                  }
+                  reviewRequests(first: 10) {
+                    nodes {
+                      requestedReviewer {
+                        ... on User {
+                          login
+                        }
+                      }
+                    }
+                  }
+                  comments {
+                    totalCount
+                  }
+                  reviews {
+                    totalCount
+                  }
+                }
+              }
+            }
+          }`;
+
+        // Map our enum values to GitHub's GraphQL enum values
+        let graphqlStates;
+        if (state === "ALL") {
+          graphqlStates = undefined;
+        } else if (state === "OPEN") {
+          graphqlStates = ["OPEN"];
+        } else if (state === "CLOSED") {
+          graphqlStates = ["CLOSED"];
+        } else if (state === "MERGED") {
+          graphqlStates = ["MERGED"];
+        }
+
+        const pullRequests = (await octokit.graphql(query, {
+          owner,
+          repo,
+          before,
+          after,
+          first: perPage,
+          orderBy: {
+            field: sort,
+            direction: direction,
+          },
+          states: graphqlStates,
+        })) as {
+          repository: {
+            pullRequests: {
+              pageInfo: {
+                hasNextPage: boolean;
+                endCursor: string | null;
+                startCursor: string | null;
+                hasPreviousPage: boolean;
+              };
+              nodes: {
+                number: number;
+                title: string;
+                state: string;
+                createdAt: string;
+                updatedAt: string;
+                mergedAt: string | null;
+                closedAt: string | null;
+                author: {
+                  login: string;
+                };
+                baseRefName: string;
+                headRefName: string;
+                additions: number;
+                deletions: number;
+                changedFiles: number;
+                labels: {
+                  nodes: {
+                    name: string;
+                    color: string;
+                  }[];
+                };
+                assignees: {
+                  nodes: {
+                    login: string;
+                  }[];
+                };
+                reviewRequests: {
+                  nodes: {
+                    requestedReviewer: {
+                      login: string;
+                    };
+                  }[];
+                };
+                comments: {
+                  totalCount: number;
+                };
+                reviews: {
+                  totalCount: number;
+                };
+              }[];
+            };
+          };
+        };
+
+        const formattedPullRequests =
+          pullRequests.repository.pullRequests.nodes.map((pr) => ({
+            number: pr.number,
+            title: pr.title,
+            state: pr.state,
+            createdAt: pr.createdAt,
+            updatedAt: pr.updatedAt,
+            mergedAt: pr.mergedAt,
+            closedAt: pr.closedAt,
+            author: pr.author.login,
+            baseRefName: pr.baseRefName,
+            headRefName: pr.headRefName,
+            additions: pr.additions,
+            deletions: pr.deletions,
+            changedFiles: pr.changedFiles,
+            labels: pr.labels.nodes.map((label) => ({
+              name: label.name,
+              color: label.color,
+            })),
+            assignees: pr.assignees.nodes.map((assignee) => assignee.login),
+            reviewRequests: pr.reviewRequests.nodes.map(
+              (request) => request.requestedReviewer.login
+            ),
+            commentCount: pr.comments.totalCount,
+            reviewCount: pr.reviews.totalCount,
+          }));
+
+        return makeMCPToolTextSuccess({
+          message: `Retrieved ${formattedPullRequests.length} pull requests`,
+          result: JSON.stringify(
+            {
+              pullRequests: formattedPullRequests,
+              pageInfo: pullRequests.repository.pullRequests.pageInfo,
+            },
+            null,
+            2
+          ),
+        });
+      } catch (e) {
+        return makeMCPToolTextError(
+          `Error listing GitHub pull requests: ${normalizeError(e).message}`
         );
       }
     }

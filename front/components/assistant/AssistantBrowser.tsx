@@ -36,7 +36,7 @@ import {
   subFilter,
   tagsSorter,
 } from "@app/lib/utils";
-import { setQueryParam } from "@app/lib/utils/router";
+import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
@@ -302,7 +302,7 @@ export function AssistantBrowser({
 
             <Button
               tooltip="Manage agents"
-              href={`/w/${owner.sId}/builder/assistants/`}
+              href={getAgentBuilderRoute(owner.sId, "manage")}
               variant="primary"
               icon={RobotIcon}
               label="Manage"

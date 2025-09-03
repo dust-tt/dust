@@ -1,6 +1,6 @@
 import _ from "lodash";
 
-// We use this to detect if an interactive file uses conversation files.
+// We use this to detect if a Content Creation file uses conversation files.
 // In which case, we don't want to display it publicly. Our proxy here is to look for usage of the
 // `useFile` hook.
 export function isFileUsingConversationFiles(content: string): boolean {

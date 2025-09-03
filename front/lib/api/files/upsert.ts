@@ -32,7 +32,7 @@ import type {
 import {
   assertNever,
   Err,
-  isInteractiveFileContentType,
+  isContentCreationFileContentType,
   isSupportedImageContentType,
   Ok,
   slugify,
@@ -416,8 +416,8 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Interactive files should not be processed.
-  if (isInteractiveFileContentType(contentType)) {
+  // Content Creation files should not be processed.
+  if (isContentCreationFileContentType(contentType)) {
     return undefined;
   }
 

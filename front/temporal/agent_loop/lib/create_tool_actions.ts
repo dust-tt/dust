@@ -1,12 +1,13 @@
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { createMCPAction } from "@app/lib/actions/mcp";
+import type {
+  MCPApproveExecutionEvent,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
-import {
-  approvalStatusToToolExecutionStatus,
-  getExecutionStatusFromConfig,
-} from "@app/lib/actions/utils";
+import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -21,6 +22,7 @@ import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
 
 export interface ActionBlob {
   actionId: ModelId;
+  actionStatus: ToolExecutionStatus;
   needsApproval: boolean;
 }
 
@@ -49,6 +51,9 @@ export async function createToolActionsActivity(
   const conversationId = conversation.sId;
 
   const actionBlobs: ActionBlob[] = [];
+  const approvalEvents: Array<
+    Omit<MCPApproveExecutionEvent, "isLastBlockingEventForStep">
+  > = [];
 
   for (const [
     index,
@@ -68,8 +73,28 @@ export async function createToolActionsActivity(
     });
 
     if (result) {
-      actionBlobs.push(result);
+      actionBlobs.push(result.actionBlob);
+      if (result.approvalEventData) {
+        approvalEvents.push(result.approvalEventData);
+      }
     }
+  }
+
+  // Publish all approval events with the isLastBlockingEventForStep flag
+  for (const [idx, eventData] of approvalEvents.entries()) {
+    const isLastApproval = idx === approvalEvents.length - 1;
+
+    await updateResourceAndPublishEvent(
+      {
+        ...eventData,
+        isLastBlockingEventForStep: isLastApproval,
+      },
+      agentMessageRow,
+      {
+        conversationId,
+        step,
+      }
+    );
   }
 
   return {
@@ -98,7 +123,13 @@ async function createActionForTool(
     stepContext: StepContext;
     step: number;
   }
-): Promise<ActionBlob | void> {
+): Promise<{
+  actionBlob: ActionBlob;
+  approvalEventData?: Omit<
+    MCPApproveExecutionEvent,
+    "isLastBlockingEventForStep"
+  >;
+} | void> {
   const { status } = await getExecutionStatusFromConfig(
     auth,
     actionConfiguration,
@@ -112,7 +143,7 @@ async function createActionForTool(
     mcpServerConfigurationId: actionConfiguration.id.toString(),
     step,
     stepContentId,
-    status: approvalStatusToToolExecutionStatus(status),
+    status,
   });
 
   const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
@@ -123,11 +154,15 @@ async function createActionForTool(
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
+        conversationId,
         error: {
           code: "tool_error",
           message: validateToolInputsResult.error.message,
           metadata: null,
         },
+        // This is not exactly correct, but it's not relevant here as we only care about the
+        // blocking nature of the event, which is not the case here.
+        isLastBlockingEventForStep: false,
       },
       agentMessageRow,
       {
@@ -146,13 +181,12 @@ async function createActionForTool(
   // Create the action object in the database and yield an event for the generation of the params.
   // We store the action here as the params have been generated, if an error occurs later on,
   // the error will be stored on the parent agent message.
-  const { action: agentMCPAction, mcpAction } = await createMCPAction(auth, {
+  const action = await createMCPAction(auth, {
     actionBaseParams,
     actionConfiguration,
     augmentedInputs,
     stepContentId,
     stepContext,
-    approvalStatus: status,
   });
 
   // Publish the tool params event.
@@ -162,7 +196,9 @@ async function createActionForTool(
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: mcpAction,
+      // TODO: cleanup the type field from the public API users and remove everywhere.
+      // TODO: move the output field to a separate field.
+      action: { ...action.toJSON(), output: null, generatedFiles: [] },
     },
     agentMessageRow,
     {
@@ -171,39 +207,30 @@ async function createActionForTool(
     }
   );
 
-  if (status === "pending") {
-    await updateResourceAndPublishEvent(
-      {
-        type: "tool_approve_execution",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        conversationId,
-        actionId: mcpAction.getSId(auth.getNonNullableWorkspace()),
-        inputs: mcpAction.params,
-        stake: actionConfiguration.permission,
-        metadata: {
-          toolName: actionConfiguration.originalName,
-          mcpServerName: actionConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
-          icon: actionConfiguration.icon,
-        },
-      },
-      agentMessageRow,
-      {
-        conversationId,
-        step,
-      }
-    );
-  }
-
-  // Update the action to surface the execution state.
-  await agentMCPAction.update({
-    executionState: status,
-  });
-
   return {
-    actionId: agentMCPAction.id,
-    needsApproval: status === "pending",
+    actionBlob: {
+      actionId: action.id,
+      actionStatus: status,
+      needsApproval: status === "blocked_validation_required",
+    },
+    approvalEventData:
+      status === "blocked_validation_required"
+        ? {
+            type: "tool_approve_execution",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            conversationId,
+            actionId: action.sId,
+            inputs: action.augmentedInputs,
+            stake: actionConfiguration.permission,
+            metadata: {
+              toolName: actionConfiguration.originalName,
+              mcpServerName: actionConfiguration.mcpServerName,
+              agentName: agentConfiguration.name,
+              icon: actionConfiguration.icon,
+            },
+          }
+        : undefined,
   };
 }

@@ -236,13 +236,23 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.RESEARCH:
+    case GLOBAL_AGENTS_SID.DUST_DEEP:
       return {
-        sId: GLOBAL_AGENTS_SID.RESEARCH,
-        name: "research",
-        description: "An agent that can do deep research on your company data.",
+        sId: GLOBAL_AGENTS_SID.DUST_DEEP,
+        name: "dust-deep",
+        description:
+          "Deep research agent with company data, web search, browsing, Content Creation, and data warehouses.",
         pictureUrl:
-          "https://dust.tt/static/systemavatar/research_avatar_full.png",
+          "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_TASK:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_TASK,
+        name: "dust-task",
+        description:
+          "Task sub-agent for focused research using company data, web search, browsing, and data warehouses.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };
     default:
       assertNever(sId);

@@ -11,8 +11,8 @@ import {
 import type { ConversationType } from "@app/types";
 import {
   isAgentMessageType,
+  isContentCreationFileContentType,
   isContentFragmentType,
-  isInteractiveFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
 
@@ -34,13 +34,16 @@ export function listAttachments(
         continue;
       }
 
-      attachments.push(getAttachmentFromContentFragment(m));
+      const attachment = getAttachmentFromContentFragment(m);
+      if (attachment) {
+        attachments.push(attachment);
+      }
     } else if (isAgentMessageType(m)) {
       const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
 
       for (const f of generatedFiles) {
-        // Interactive files should not be shown in the JIT.
-        if (isInteractiveFileContentType(f.contentType)) {
+        // Content Creation files should not be shown in the JIT.
+        if (isContentCreationFileContentType(f.contentType)) {
           continue;
         }
 

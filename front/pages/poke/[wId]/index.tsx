@@ -30,6 +30,7 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { TrackerDataTable } from "@app/components/poke/trackers/table";
+import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
@@ -248,6 +249,7 @@ const WorkspacePage = ({
               whitelistableFeatures={whitelistableFeatures}
             />
             <TrackerDataTable owner={owner} />
+            <TriggerDataTable owner={owner} />
           </div>
         </div>
       </div>

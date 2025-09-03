@@ -11,24 +11,22 @@ import {
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import type {
   ActionProgressState,
   AgentStateClassification,
 } from "@app/lib/assistant/state/messageReducer";
-import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
+import type {
+  LightAgentMessageType,
+  LightAgentMessageWithActionsType,
+  LightWorkspaceType,
+} from "@app/types";
+import { isLightAgentMessageWithActionsType } from "@app/types";
 
 interface AgentMessageActionsProps {
-  agentMessage: LightAgentMessageType;
+  agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
-}
-
-function isMCPActionType(
-  action: { type: "tool_action"; id: number } | undefined
-): action is MCPActionType {
-  return action !== undefined && "functionCallName" in action;
 }
 
 export function AgentMessageActions({
@@ -39,17 +37,21 @@ export function AgentMessageActions({
 }: AgentMessageActionsProps) {
   const { openPanel } = useConversationSidePanelContext();
 
-  const lastAction = agentMessage.actions[agentMessage.actions.length - 1];
+  const isAgentMessageWithActions =
+    isLightAgentMessageWithActionsType(agentMessage);
+  const lastAction = isAgentMessageWithActions
+    ? agentMessage.actions[agentMessage.actions.length - 1]
+    : null;
   const hasSidePanelContent =
-    agentMessage.actions.length > 0 || agentMessage.chainOfThought;
+    (isAgentMessageWithActions && agentMessage.actions.length > 0) ||
+    agentMessage.chainOfThought;
+
   const chainOfThought = agentMessage.chainOfThought || "";
+
   const onClick = () => {
     openPanel({
       type: "actions",
       messageId: agentMessage.sId,
-      metadata: {
-        actionProgress,
-      },
     });
   };
 
@@ -57,7 +59,9 @@ export function AgentMessageActions({
     return null;
   }
 
-  const lastNotification = actionProgress.get(lastAction?.id)?.progress ?? null;
+  const lastNotification = lastAction
+    ? actionProgress.get(lastAction.id)?.progress ?? null
+    : null;
 
   return lastAgentStateClassification !== "done" ? (
     <div
@@ -67,8 +71,7 @@ export function AgentMessageActions({
         lastAction ? "cursor-pointer" : ""
       )}
     >
-      {isMCPActionType(lastAction) &&
-      lastAgentStateClassification === "acting" ? (
+      {lastAction && lastAgentStateClassification === "acting" ? (
         <Card variant="secondary" size="sm">
           <MCPActionDetails
             viewType="conversation"

@@ -8,8 +8,8 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { useActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -63,11 +63,8 @@ export function ConversationContainer({
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
 
-  const {
-    hasPendingValidations,
-    totalPendingValidations,
-    showValidationDialog,
-  } = useActionValidationContext();
+  const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
+    useActionValidationContext();
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
   const { scrollConversationsToTop } = useConversationsNavigation();
@@ -86,7 +83,7 @@ export function ConversationContainer({
     },
   });
 
-  const { mutateMessages } = useConversationMessages({
+  const { mutateMessages, isMessagesError } = useConversationMessages({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
@@ -324,6 +321,23 @@ export function ConversationContainer({
 
   const { startConversationRef } = useWelcomeTourGuide();
 
+  if (isMessagesError) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="flex flex-col gap-3 text-center">
+          <div>
+            <span className="text-4xl leading-10 text-foreground dark:text-foreground-night">
+              🚫
+            </span>
+            <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+              You don't have access to this conversation.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
@@ -348,22 +362,22 @@ export function ConversationContainer({
         </div>
       )}
 
-      {hasPendingValidations && (
+      {activeConversationId && hasBlockedActions && (
         <ContentMessageInline
           icon={InformationCircleIcon}
           variant="primary"
           className="mb-5 flex max-h-screen w-full sm:w-full sm:max-w-3xl"
         >
           <span className="font-bold">
-            {totalPendingValidations} action
-            {pluralize(totalPendingValidations)}
+            {totalBlockedActions} action
+            {pluralize(totalBlockedActions)}
           </span>{" "}
-          require{conjugate(totalPendingValidations)} manual approval
+          require{conjugate(totalBlockedActions)} manual approval
           <ContentMessageAction
             label="Review actions"
             variant="outline"
             size="xs"
-            onClick={() => showValidationDialog()}
+            onClick={() => showBlockedActionsDialog()}
           />
         </ContentMessageInline>
       )}
@@ -375,7 +389,7 @@ export function ConversationContainer({
         }
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
-        disable={hasPendingValidations}
+        disable={activeConversationId !== null && hasBlockedActions}
       />
 
       {!activeConversationId && (

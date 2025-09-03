@@ -1,11 +1,11 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
 import { BarFooter, BarHeader, Button, ScrollArea } from "@dust-tt/sparkle";
+import { XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
-import { AgentAccessPublicationDialog } from "@app/components/agent_builder/settings/AgentAccessPublicationDialog";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -39,16 +39,21 @@ export function AgentBuilderLeftPanel({
         variant="default"
         className="mx-4"
         title={title}
-        rightActions={<AgentAccessPublicationDialog />}
+        rightActions={
+          <Button icon={XMarkIcon} onClick={handleCancel} variant="ghost" />
+        }
       />
       <ScrollArea className="flex-1">
-        <div className="mx-auto space-y-10 p-4 2xl:max-w-4xl">
+        <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
           {hasFeature("hootl") && (
-            <AgentBuilderTriggersBlock isTriggersLoading={isTriggersLoading} />
+            <AgentBuilderTriggersBlock
+              owner={owner}
+              isTriggersLoading={isTriggersLoading}
+            />
           )}
           <AgentBuilderSettingsBlock
             isSettingBlocksOpen={!agentConfigurationId}
@@ -61,7 +66,7 @@ export function AgentBuilderLeftPanel({
         leftActions={
           <Button
             variant="outline"
-            label="Close"
+            label="Cancel"
             onClick={handleCancel}
             type="button"
           />

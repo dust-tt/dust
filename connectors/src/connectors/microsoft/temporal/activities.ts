@@ -1086,6 +1086,15 @@ export async function microsoftGarbageCollectionActivity({
 
   const chunkedRequests = _.chunk(requests, 20);
 
+  const nodeResources = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    nodesToCheck.map((n) => n.internalId)
+  );
+
+  const nodeResourceMap = new Map(
+    nodeResources.map((resource) => [resource.internalId, resource])
+  );
+
   for (const chunk of chunkedRequests) {
     let batchRes: {
       responses: Array<{
@@ -1125,6 +1134,13 @@ export async function microsoftGarbageCollectionActivity({
       const node = nodesToCheck[Number(res.id)];
       if (node && (res.status === 200 || res.status === 404)) {
         const driveOrItem = res.status === 200 ? res.body : null;
+
+        // don't delete if we don't have the item in DB / the item have a skip reason
+        const nodeResource = nodeResourceMap.get(node.internalId);
+        if (!nodeResource || nodeResource.skipReason) {
+          continue;
+        }
+
         switch (node.nodeType) {
           case "drive":
             if (!driveOrItem) {
@@ -1266,10 +1282,20 @@ async function isOutsideRootNodes({
   rootNodeIds: string[];
   startGarbageCollectionTs: number;
 }) {
-  if (
-    rootNodeIds.includes(getDriveItemInternalId(driveItem)) ||
-    rootNodeIds.includes(getDriveInternalIdFromItem(driveItem))
-  ) {
+  try {
+    if (
+      rootNodeIds.includes(getDriveItemInternalId(driveItem)) ||
+      rootNodeIds.includes(getDriveInternalIdFromItem(driveItem))
+    ) {
+      return false;
+    }
+  } catch (error) {
+    logger.error(
+      {
+        driveItem,
+      },
+      "Error checking driveItem internalId on deletion."
+    );
     return false;
   }
 

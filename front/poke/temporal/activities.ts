@@ -26,6 +26,7 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -40,6 +41,7 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import {
   LabsTranscriptsConfigurationModel,
@@ -49,13 +51,13 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -266,6 +268,13 @@ export async function deleteAgentsActivity({
       },
     });
 
+    await AgentMemoryModel.destroy({
+      where: {
+        agentConfigurationId: agent.sId,
+        workspaceId: workspace.id,
+      },
+    });
+
     const group = await GroupResource.fetchByAgentConfiguration({
       auth,
       agentConfiguration: agent,
@@ -299,7 +308,7 @@ export async function deleteAppsActivity({
     }
   }
 
-  await KeyResource.deleteAllForWorkspace(workspace);
+  await KeyResource.deleteAllForWorkspace(auth);
 
   await Provider.destroy({
     where: {
@@ -387,9 +396,7 @@ export const deleteRemoteMCPServersActivity = async ({
 }) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-  await MCPServerConnectionResource.deleteAllForWorkspace(
-    auth.getNonNullableWorkspace()
-  );
+  await MCPServerConnectionResource.deleteAllForWorkspace(auth);
 
   const remoteMCPServers = await RemoteMCPServerResource.listByWorkspace(auth);
   for (const remoteMCPServer of remoteMCPServers) {
@@ -455,6 +462,13 @@ export async function deleteMembersActivity({
         // Delete the user's files.
         await FileResource.deleteAllForUser(auth, user.toJSON());
         await membership.delete(auth, {});
+
+        // Delete the user's agent memories.
+        await AgentMemoryModel.destroy({
+          where: {
+            userId: user.id,
+          },
+        });
 
         await user.delete(auth, {});
       }
@@ -569,10 +583,10 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
-  await TriggerResource.deleteAllForWorkspace(workspace);
-  await FileResource.deleteAllForWorkspace(workspace);
-  await RunResource.deleteAllForWorkspace(workspace);
-  await MembershipResource.deleteAllForWorkspace(workspace);
+  await TriggerResource.deleteAllForWorkspace(auth);
+  await FileResource.deleteAllForWorkspace(auth);
+  await RunResource.deleteAllForWorkspace(auth);
+  await MembershipResource.deleteAllForWorkspace(auth);
   await WorkspaceHasDomainModel.destroy({
     where: { workspaceId: workspace.id },
   });
@@ -590,6 +604,7 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
+  await AgentMemoryResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

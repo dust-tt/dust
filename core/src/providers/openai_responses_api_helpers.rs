@@ -560,6 +560,9 @@ pub async fn openai_responses_api_completion(
         usage: response.usage.map(|usage| LLMTokenUsage {
             prompt_tokens: usage.input_tokens,
             completion_tokens: usage.output_tokens,
+            cached_tokens: usage
+                .input_tokens_details
+                .and_then(|details| details.cached_tokens),
             reasoning_tokens: usage
                 .output_tokens_details
                 .and_then(|details| details.reasoning_tokens),

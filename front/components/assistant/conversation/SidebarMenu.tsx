@@ -43,6 +43,7 @@ import {
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
@@ -302,14 +303,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <>
                         <DropdownMenuLabel>Agent</DropdownMenuLabel>
                         <DropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+                          href={getAgentBuilderRoute(owner.sId, "new")}
                           icon={DocumentIcon}
                           label="New agent from scratch"
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />
                         <DropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                          href={getAgentBuilderRoute(owner.sId, "create")}
                           icon={MagicIcon}
                           label="New agent from template"
                           data-gtm-label="assistantCreationButton"
@@ -339,7 +340,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
-                        href={`/w/${owner.sId}/builder/assistants`}
+                        href={getAgentBuilderRoute(owner.sId, "manage")}
                         icon={RobotIcon}
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
@@ -476,7 +477,7 @@ const RenderConversation = ({
           icon={
             conversation.actionRequired
               ? ActionRequiredIcon
-              : conversation.unread
+              : conversation.triggerId
                 ? ClockIcon
                 : undefined
           }

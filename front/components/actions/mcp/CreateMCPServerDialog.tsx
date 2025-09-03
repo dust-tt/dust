@@ -495,7 +495,7 @@ export function CreateMCPServerDialog({
           rightButtonProps={{
             isLoading,
             label: authorization ? "Setup connection" : "Save",
-            variant: "highlight",
+            variant: "primary",
             onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();

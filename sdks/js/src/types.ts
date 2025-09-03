@@ -6,7 +6,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationInteractiveFileContentSchema } from "./output_schemas";
+import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
@@ -588,7 +588,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
-  | "agent_builder_v2"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
@@ -603,6 +602,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
+  | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl"
   | "index_private_slack_channel"
@@ -622,6 +622,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "show_debug_tools"
   | "slack_semantic_search"
+  | "slack_enhanced_default_agent"
   | "toolsets_tool"
   | "usage_data_api"
   | "xai_feature"
@@ -690,9 +691,9 @@ const MCPActionTypeSchema = z.object({
   internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
+  status: z.string(),
   params: z.record(z.any()),
   output: CallToolResultSchema.shape.content.nullable(),
-  type: z.literal("tool_action"),
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
@@ -1045,10 +1046,10 @@ const NotificationRunAgentGenerationTokensSchema = z.object({
 });
 
 const NotificationContentSchema = z.union([
+  NotificationContentCreationFileContentSchema,
   NotificationImageContentSchema,
-  NotificationInteractiveFileContentSchema,
-  NotificationRunAgentContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
+  NotificationRunAgentContentSchema,
   NotificationRunAgentGenerationTokensSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
@@ -1082,25 +1083,51 @@ export type MCPValidationMetadataPublicType = z.infer<
   typeof MCPValidationMetadataSchema
 >;
 
-const PendingValidationSchema = z.object({
-  conversationId: z.string(),
-  messageId: z.string(),
+const ToolExecutionBlockedStatusSchema = z.enum([
+  "blocked_authentication_required",
+  "blocked_validation_required",
+  "blocked_child_action_input_required",
+]);
+
+export type ToolExecutionBlockedStatusType = z.infer<
+  typeof ToolExecutionBlockedStatusSchema
+>;
+
+const ToolExecutionMetadataSchema = z.object({
   actionId: z.string(),
   inputs: z.record(z.any()),
   stake: MCPStakeLevelSchema,
   metadata: MCPValidationMetadataSchema,
 });
 
-const MCPApproveExecutionEventSchema = PendingValidationSchema.extend({
-  type: z.literal("tool_approve_execution"),
-  created: z.number(),
-  configurationId: z.string(),
+const BlockedActionExecutionSchema = ToolExecutionMetadataSchema.extend({
+  messageId: z.string(),
+  conversationId: z.string(),
+  status: ToolExecutionBlockedStatusSchema,
 });
+
+export type BlockedActionExecutionType = z.infer<
+  typeof BlockedActionExecutionSchema
+>;
+
+const MCPApproveExecutionEventSchema = ToolExecutionMetadataSchema.extend({
+  type: z.literal("tool_approve_execution"),
+  configurationId: z.string(),
+  conversationId: z.string(),
+  created: z.number(),
+  isLastBlockingEventForStep: z.boolean().optional(),
+  messageId: z.string(),
+});
+
+export type MCPApproveExecutionEvent = z.infer<
+  typeof MCPApproveExecutionEventSchema
+>;
 
 const ToolErrorEventSchema = z.object({
   type: z.literal("tool_error"),
   created: z.number(),
   configurationId: z.string(),
+  isLastBlockingEventForStep: z.boolean().optional(),
   messageId: z.string(),
   error: z.object({
     code: z.string(),
@@ -1701,6 +1728,13 @@ export const PostUserMessageResponseSchema = z.object({
 
 export type PostUserMessageResponseType = z.infer<
   typeof PostUserMessageResponseSchema
+>;
+
+export const RetryMessageResponseSchema = z.object({
+  message: AgentMessageTypeSchema,
+});
+export type RetryMessageResponseType = z.infer<
+  typeof RetryMessageResponseSchema
 >;
 
 export const GetConversationResponseSchema = z.object({
@@ -2575,7 +2609,9 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionScanIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
+  | "AsanaLogo"
   | "CommandLineIcon"
+  | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GmailLogo"
@@ -2993,12 +3029,12 @@ const MCP_VALIDATION_OUTPUTS = [
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
 
-export const PendingValidationsResponseSchema = z.object({
-  pendingValidations: z.array(PendingValidationSchema),
+export const BlockedActionsResponseSchema = z.object({
+  blockedActions: z.array(BlockedActionExecutionSchema),
 });
 
-export type PendingValidationsResponseType = z.infer<
-  typeof PendingValidationsResponseSchema
+export type BlockedActionsResponseType = z.infer<
+  typeof BlockedActionsResponseSchema
 >;
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);

@@ -1,13 +1,13 @@
 import Head from "next/head";
 
-import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/content/PublicInteractiveContentContainer";
+import { PublicContentCreationContainer } from "@app/components/assistant/conversation/content_creation/PublicContentCreationContainer";
 import config from "@app/lib/api/config";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
-  INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  CONTENT_CREATION_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
@@ -55,7 +55,10 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   if (shareScope === "conversation_participants") {
     return {
       redirect: {
-        destination: `/w/${workspace.sId}/assistant/${file.useCaseMetadata?.conversationId}#?${SIDE_PANEL_TYPE_HASH_PARAM}=${INTERACTIVE_CONTENT_SIDE_PANEL_TYPE}&${SIDE_PANEL_HASH_PARAM}=${file.sId}`,
+        destination:
+          `/w/${workspace.sId}/assistant/${file.useCaseMetadata?.conversationId}#?` +
+          `${SIDE_PANEL_TYPE_HASH_PARAM}=${CONTENT_CREATION_SIDE_PANEL_TYPE}&` +
+          `${SIDE_PANEL_HASH_PARAM}=${file.sId}`,
         permanent: false,
       },
     };
@@ -128,7 +131,7 @@ export default function SharedFilePage({
         <link rel="icon" type="image/png" href="/static/favicon.png" />
       </Head>
       <div className="flex h-screen w-full">
-        <PublicInteractiveContentContainer shareToken={token} />
+        <PublicContentCreationContainer shareToken={token} />
       </div>
     </>
   );

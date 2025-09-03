@@ -59,6 +59,15 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      containers: {
+        xxxs: "16rem",
+        xxs: "24rem",
+        xs: "32rem",
+        sm: "40rem",
+        md: "48rem",
+        lg: "64rem",
+        xl: "80rem",
+      },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":
@@ -66,7 +75,10 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/container-queries"),
+  ],
   safelist: [
     {
       pattern: /./, // This matches all class names.

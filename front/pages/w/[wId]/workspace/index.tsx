@@ -2,6 +2,7 @@ import {
   ArrowPathIcon,
   Button,
   ContextItem,
+  DocumentTextIcon,
   Input,
   Page,
   PencilSquareIcon,
@@ -25,6 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
+import { useContentCreationSharingToggle } from "@app/hooks/useContentCreationSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -229,6 +231,10 @@ export default function WorkspaceAdmin({
             <ProviderManagementModal owner={owner} plan={subscription.plan} />
           </div>
         </Page.Vertical>
+        <Page.Vertical align="stretch" gap="md">
+          <Page.H variant="h4">Capabilities</Page.H>
+          <ContentCreationSharingToggle owner={owner} />
+        </Page.Vertical>
         {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Integrations</Page.H>
@@ -394,6 +400,30 @@ function SlackBotToggle({
               }}
             />
           </div>
+        }
+      />
+    </ContextItem.List>
+  );
+}
+
+function ContentCreationSharingToggle({ owner }: { owner: WorkspaceType }) {
+  const { isEnabled, isChanging, doToggleContentCreationSharing } =
+    useContentCreationSharingToggle({ owner });
+
+  return (
+    <ContextItem.List>
+      <div className="h-full border-b border-border dark:border-border-night" />
+      <ContextItem
+        title="Content Creation file sharing"
+        subElement="Enable Content Creation files sharing"
+        visual={<DocumentTextIcon className="h-6 w-6" />}
+        hasSeparatorIfLast={true}
+        action={
+          <SliderToggle
+            selected={isEnabled}
+            disabled={isChanging}
+            onClick={doToggleContentCreationSharing}
+          />
         }
       />
     </ContextItem.List>

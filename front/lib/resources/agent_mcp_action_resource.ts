@@ -1,45 +1,70 @@
 import assert from "assert";
-import type { Attributes, NonAttribute, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  NonAttribute,
+  Transaction,
+} from "sequelize";
 import { Op } from "sequelize";
 
-import { TOOL_EXECUTION_BLOCKED_STATUSES } from "@app/lib/actions/statuses";
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import {
+  isToolExecutionStatusBlocked,
+  TOOL_EXECUTION_BLOCKED_STATUSES,
+} from "@app/lib/actions/statuses";
+import type { StepContext } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { MCPActionValidationRequest, ModelId, Result } from "@app/types";
+import logger from "@app/logger/logger";
+import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { AgentMCPActionType } from "@app/types/actions";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMCPActionResource
-  extends ReadonlyAttributesType<AgentMCPAction> {}
+  extends ReadonlyAttributesType<AgentMCPActionModel> {}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
-  static model: ModelStaticWorkspaceAware<AgentMCPAction> = AgentMCPAction;
+export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
+  static model: ModelStaticWorkspaceAware<AgentMCPActionModel> =
+    AgentMCPActionModel;
 
   constructor(
-    model: ModelStaticWorkspaceAware<AgentMCPAction>,
-    blob: Attributes<AgentMCPAction>,
+    model: ModelStaticWorkspaceAware<AgentMCPActionModel>,
+    blob: Attributes<AgentMCPActionModel>,
     // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
-    readonly stepContent: NonAttribute<AgentStepContentModel>
+    readonly stepContent: NonAttribute<AgentStepContentModel>,
+    readonly metadata: {
+      internalMCPServerName: InternalMCPServerNameType | null;
+      mcpServerId: string;
+    }
   ) {
     super(model, blob);
   }
 
   private static async baseFetch(
     auth: Authenticator,
-    { where, limit, order }: ResourceFindOptions<AgentMCPAction> = {}
-  ) {
+    { where, limit, order }: ResourceFindOptions<AgentMCPActionModel>,
+    transaction?: Transaction
+  ): Promise<AgentMCPActionResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const actions = await this.model.findAll({
@@ -49,6 +74,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       },
       limit,
       order,
+      transaction,
     });
 
     const stepContents = await AgentStepContentModel.findAll({
@@ -67,14 +93,98 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
 
       // Each action must have a step content.
       assert(stepContent, "Step content not found.");
-      return new this(this.model, a.get(), stepContent);
+      const internalMCPServerName = a.toolConfiguration.toolServerId
+        ? getInternalMCPServerNameFromSId(a.toolConfiguration.toolServerId)
+        : null;
+
+      return new this(this.model, a.get(), stepContent, {
+        internalMCPServerName,
+        mcpServerId: a.toolConfiguration.toolServerId,
+      });
     });
   }
 
-  static async listPendingValidationsForConversation(
+  static async makeNew(
+    auth: Authenticator,
+    blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<AgentMCPActionResource> {
+    const workspace = auth.getNonNullableWorkspace();
+    const internalMCPServerName = getInternalMCPServerNameFromSId(
+      blob.toolConfiguration.toolServerId
+    );
+
+    const action = await AgentMCPActionModel.create(
+      {
+        ...blob,
+        workspaceId: workspace.id,
+      },
+      { transaction }
+    );
+
+    const stepContent = await AgentStepContentModel.findOne({
+      where: {
+        id: action.stepContentId,
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+    assert(stepContent, "Step content not found.");
+
+    return new this(this.model, action.get(), stepContent, {
+      internalMCPServerName,
+      mcpServerId: blob.toolConfiguration.toolServerId,
+    });
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId,
+    transaction?: Transaction
+  ): Promise<AgentMCPActionResource | null> {
+    const [action] = await this.baseFetch(
+      auth,
+      {
+        where: { id },
+      },
+      transaction
+    );
+    return action;
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<AgentMCPActionResource | null> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return null;
+    }
+
+    const [action] = await AgentMCPActionResource.fetchByModelIds(auth, [
+      modelId,
+    ]);
+
+    return action;
+  }
+
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
+  }
+
+  static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversationId: string
-  ): Promise<MCPActionValidationRequest[]> {
+  ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
     const conversation = await ConversationResource.fetchById(
@@ -85,7 +195,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       return [];
     }
 
-    const pendingActions = await AgentMCPAction.findAll({
+    const latestAgentMessages =
+      await conversation.getLatestAgentMessageIdByRank(auth);
+
+    const blockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessage,
@@ -105,12 +218,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       ],
       where: {
         workspaceId: owner.id,
-        executionState: "pending",
+        status: {
+          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+        },
       },
       order: [["createdAt", "ASC"]],
     });
 
-    const pendingValidations: MCPActionValidationRequest[] = [];
+    const blockedActionsList: BlockedToolExecution[] = [];
 
     // We get the latest version here, it may show a different name than the one used when the
     // action was created, taking this shortcut for the sake of simplicity.
@@ -118,22 +233,73 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       agentIds: [
         ...new Set(
           removeNulls(
-            pendingActions.map((a) => a.agentMessage?.agentConfigurationId)
+            blockedActions.map((a) => a.agentMessage?.agentConfigurationId)
           )
         ),
       ],
       variant: "extra_light",
     });
 
-    for (const action of pendingActions) {
+    const mcpServerViewIds = [
+      ...new Set(
+        removeNulls(
+          blockedActions.map(({ toolConfiguration }) => {
+            return isLightServerSideMCPToolConfiguration(toolConfiguration)
+              ? toolConfiguration.mcpServerViewId
+              : null;
+          })
+        )
+      ),
+    ];
+
+    const mcpServerViews = await MCPServerViewResource.fetchByIds(
+      auth,
+      mcpServerViewIds
+    );
+
+    const mcpServerViewMap = new Map(
+      mcpServerViews.map((view) => [view.sId, view])
+    );
+
+    for (const action of blockedActions) {
       const agentMessage = action.agentMessage;
       assert(agentMessage?.message, "No message for agent message.");
+
+      // Ignore actions that are not the latest version of the agent message.
+      if (
+        !latestAgentMessages.some((m) => m.agentMessageId === agentMessage.id)
+      ) {
+        continue;
+      }
+
       const agentConfiguration = agentConfigurations.find(
         (a) => a.sId === agentMessage.agentConfigurationId
       );
       assert(agentConfiguration, "Agent not found.");
 
-      pendingValidations.push({
+      // We just fetched on the status being blocked, we just don't get it typed properly.
+      assert(
+        isToolExecutionStatusBlocked(action.status),
+        "Action is not blocked."
+      );
+      const mcpServerView = isLightServerSideMCPToolConfiguration(
+        action.toolConfiguration
+      )
+        ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
+        : null;
+
+      const authorizationInfo =
+        mcpServerView?.toJSON().server.authorization ?? null;
+
+      const mcpServerId = mcpServerView?.mcpServerId;
+      const mcpServerDisplayName = mcpServerView
+        ? getMcpServerViewDisplayName(mcpServerView.toJSON())
+        : undefined;
+
+      const baseActionParams: Omit<
+        BlockedToolExecution,
+        "status" | "authorizationInfo"
+      > = {
         messageId: agentMessage.message.sId,
         conversationId,
         actionId: this.modelIdToSId({
@@ -148,10 +314,57 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
         },
-      });
+      };
+
+      if (action.status === "blocked_authentication_required") {
+        if (!mcpServerId || !mcpServerDisplayName || !authorizationInfo) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId,
+              messageId: agentMessage.message.sId,
+              workspaceId: owner.id,
+            },
+            `MCP server view or authorization info not found for blocked action ${action.id}`
+          );
+
+          continue;
+        }
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          authorizationInfo,
+          metadata: {
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
+          },
+        });
+      } else {
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          metadata: {
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
+          },
+          authorizationInfo: null,
+        });
+      }
     }
 
-    return pendingValidations;
+    return blockedActionsList;
+  }
+
+  static async listByAgentMessageIds(
+    auth: Authenticator,
+    agentMessageIds: Array<ModelId>
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: { agentMessageId: { [Op.in]: agentMessageIds } },
+    });
   }
 
   static async listBlockedActionsForAgentMessage(
@@ -182,12 +395,67 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     return actions;
   }
 
+  toJSON(): AgentMCPActionType {
+    assert(
+      this.stepContent.value.type === "function_call",
+      "Action linked to a non-function call step content."
+    );
+
+    return {
+      agentMessageId: this.agentMessageId,
+      functionCallName: this.stepContent.value.value.name,
+      id: this.id,
+      internalMCPServerName: this.metadata.internalMCPServerName,
+      mcpServerId: this.metadata.mcpServerId,
+      params: this.augmentedInputs,
+      status: this.status,
+    };
+  }
+
+  async updateStatus(
+    status: ToolExecutionStatus
+  ): Promise<[affectedCount: number]> {
+    return this.update({
+      status,
+    });
+  }
+
+  async updateStepContext(
+    stepContext: StepContext
+  ): Promise<[affectedCount: number]> {
+    return this.update({
+      stepContext,
+    });
+  }
+
+  static async deleteByAgentMessageId(
+    auth: Authenticator,
+    params: {
+      agentMessageIds: Array<ModelId>;
+      transaction?: Transaction;
+    }
+  ): Promise<Result<undefined, Error>> {
+    try {
+      const workspaceId = auth.getNonNullableWorkspace().id;
+      await AgentMCPActionModel.destroy({
+        where: {
+          agentMessageId: { [Op.in]: params.agentMessageIds },
+          workspaceId,
+        },
+        transaction: params.transaction,
+      });
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await AgentMCPAction.destroy({
+      await AgentMCPActionModel.destroy({
         where: {
           id: this.id,
         },
@@ -206,7 +474,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     });
   }
 
-  private static modelIdToSId({
+  static modelIdToSId({
     id,
     workspaceId,
   }: {

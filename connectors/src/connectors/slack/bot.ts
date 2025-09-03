@@ -84,6 +84,7 @@ type BotAnswerParams = {
   slackBotId?: string;
   slackMessageTs: string;
   slackThreadTs?: string;
+  enabledMessageSplitting?: boolean;
 };
 
 export async function getSlackConnector(params: BotAnswerParams) {
@@ -124,7 +125,8 @@ export async function botAnswerMessage(
       undefined,
       params,
       connector,
-      slackConfig
+      slackConfig,
+      params.enabledMessageSplitting ?? false
     );
 
     await processErrorResult(res, params, connector);
@@ -203,7 +205,8 @@ export async function botReplaceMention(
       mentionOverride,
       params,
       connector,
-      slackConfig
+      slackConfig,
+      false
     );
 
     await processErrorResult(res, params, connector);
@@ -296,6 +299,41 @@ export async function botValidateToolExecution(
       actionId,
       approved,
     });
+
+    // Retry blocked actions on the main conversation if it differs from the event's conversation.
+    if (
+      slackChatBotMessage.conversationId &&
+      slackChatBotMessage.conversationId !== conversationId
+    ) {
+      const retryRes = await dustAPI.retryMessage({
+        conversationId,
+        messageId,
+        blockedOnly: true,
+      });
+
+      if (retryRes.isErr()) {
+        logger.error(
+          {
+            error: retryRes.error,
+            connectorId: connector.id,
+            mainConversationId: slackChatBotMessage.conversationId,
+            eventConversationId: conversationId,
+            agentMessageId: messageId,
+          },
+          "Failed to retry blocked actions on the main conversation"
+        );
+      } else {
+        logger.info(
+          {
+            connectorId: connector.id,
+            mainConversationId: slackChatBotMessage.conversationId,
+            eventConversationId: conversationId,
+            agentMessageId: messageId,
+          },
+          "Successfully retried blocked actions on the main conversation"
+        );
+      }
+    }
 
     if (responseUrl) {
       // Use response_url to delete the message
@@ -448,7 +486,8 @@ async function answerMessage(
     slackThreadTs,
   }: BotAnswerParams,
   connector: ConnectorResource,
-  slackConfig: SlackConfigurationResource
+  slackConfig: SlackConfigurationResource,
+  enabledMessageSplitting: boolean = false
 ): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -968,6 +1007,7 @@ async function answerMessage(
     userMessage,
     slackChatBotMessage,
     agentConfigurations: mostPopularAgentConfigurations,
+    enabledMessageSplitting,
   });
 
   if (streamRes.isErr()) {

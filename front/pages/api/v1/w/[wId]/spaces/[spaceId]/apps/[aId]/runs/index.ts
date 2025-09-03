@@ -63,17 +63,21 @@ function extractUsageFromExecutions(
           token_usage: {
             prompt_tokens: number;
             completion_tokens: number;
+            cached_tokens?: number;
             reasoning_tokens?: number;
           };
         };
         if (token_usage) {
           const promptTokens = token_usage.prompt_tokens;
           const completionTokens = token_usage.completion_tokens;
+          const cachedTokens = token_usage.cached_tokens;
+
           usages.push({
             providerId: block.provider_id,
             modelId: block.model_id,
             promptTokens,
             completionTokens,
+            cachedTokens: cachedTokens ?? null,
           });
         }
       }

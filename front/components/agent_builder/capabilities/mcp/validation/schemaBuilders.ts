@@ -85,7 +85,8 @@ function createAdditionalConfigurationSchema(
     requirements.requiredNumbers.length > 0 ||
     requirements.requiredBooleans.length > 0 ||
     Object.keys(requirements.requiredEnums).length > 0 ||
-    Object.keys(requirements.requiredLists).length > 0;
+    Object.keys(requirements.requiredLists).length > 0 ||
+    requirements.requiredFlavors.length > 0;
 
   if (!hasRequiredFields) {
     return z.object({});
@@ -140,6 +141,11 @@ function createAdditionalConfigurationSchema(
         }
       }
     });
+
+    // Add flavors field only when there are required flavors.
+    if (requirements.requiredFlavors.length > 0) {
+      nestedStructure.flavors = z.array(z.string());
+    }
 
     return z.object(nestedStructure);
   };

@@ -11,8 +11,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import {
   isExtractQueryResourceType,
   isExtractResultResourceType,
@@ -20,7 +19,7 @@ import {
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 interface MCPExtractActionQueryProps {
-  action: MCPActionType;
+  toolParams: Record<string, unknown>;
   queryResource?: {
     text: string;
     mimeType: string;
@@ -41,18 +40,19 @@ interface MCPExtractActionResultsProps {
 }
 
 export function MCPExtractActionDetails({
-  action,
+  toolParams,
+  toolOutput,
   viewType,
-}: MCPActionDetailsProps) {
-  const queryResource = action.output
+}: ToolExecutionDetailsProps) {
+  const queryResource = toolOutput
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];
 
-  const resultResource = action.output
+  const resultResource = toolOutput
     ?.filter(isExtractResultResourceType)
     .map((o) => o.resource)?.[0];
 
-  const jsonSchema = action.params?.jsonSchema as JSONSchema | undefined;
+  const jsonSchema = toolParams?.jsonSchema as JSONSchema | undefined;
 
   return (
     <ActionDetailsWrapper
@@ -68,7 +68,7 @@ export function MCPExtractActionDetails({
             Query
           </span>
           <MCPExtractActionQuery
-            action={action}
+            toolParams={toolParams}
             queryResource={queryResource}
           />
         </div>
@@ -117,10 +117,10 @@ export function MCPExtractActionDetails({
 }
 
 function MCPExtractActionQuery({
-  action,
+  toolParams,
   queryResource,
 }: MCPExtractActionQueryProps) {
-  const timeFrameParam = action.params?.timeFrame;
+  const timeFrameParam = toolParams?.timeFrame;
 
   if (queryResource) {
     return (

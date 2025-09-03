@@ -202,10 +202,9 @@ export class RunResource extends BaseResource<RunModel> {
     });
   }
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
+  static async deleteAllForWorkspace(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+
     assert(typeof workspace.id === "number");
     await RunUsageModel.destroy({
       where: {
@@ -217,12 +216,10 @@ export class RunResource extends BaseResource<RunModel> {
           ),
         },
       },
-      transaction,
     });
 
     return this.model.destroy({
       where: { workspaceId: workspace.id },
-      transaction,
     });
   }
 
@@ -280,6 +277,7 @@ export class RunResource extends BaseResource<RunModel> {
       modelId: usage.modelId as ModelIdType,
       promptTokens: usage.promptTokens,
       providerId: usage.providerId as ModelProviderIdType,
+      cachedTokens: usage.cachedTokens,
     }));
   }
 }
@@ -298,4 +296,5 @@ export interface RunUsageType {
   modelId: ModelIdType;
   promptTokens: number;
   providerId: ModelProviderIdType;
+  cachedTokens: number | null;
 }

@@ -1,16 +1,20 @@
 import {
   Button,
-  Chip,
+  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Hoverable,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
-import { useController, useWatch } from "react-hook-form";
+import React from "react";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
+import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -21,12 +25,42 @@ import {
   isInternalAllowedIcon,
 } from "@app/lib/actions/mcp_icons";
 import {
-  SEARCH_SERVER_NAME,
+  DATA_WAREHOUSE_SERVER_NAME,
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isRemoteDatabase } from "@app/lib/data_sources";
 
 const tablesServer = [TABLE_QUERY_SERVER_NAME, TABLE_QUERY_V2_SERVER_NAME];
+
+function isRemoteDatabaseItem(item: DataSourceBuilderTreeItemType): boolean {
+  return (
+    (item.type === "data_source" &&
+      isRemoteDatabase(item.dataSourceView.dataSource)) ||
+    (item.type === "node" &&
+      isRemoteDatabase(item.node.dataSourceView.dataSource))
+  );
+}
+
+function isTableItem(item: DataSourceBuilderTreeItemType): boolean {
+  return item.type === "node" && item.node.type === "table";
+}
+
+function isRemoteDatabaseOrTableItem(
+  item: DataSourceBuilderTreeItemType
+): boolean {
+  return isRemoteDatabaseItem(item) || isTableItem(item);
+}
+
+function isNonTableDataItem(item: DataSourceBuilderTreeItemType): boolean {
+  return (
+    (item.type === "data_source" &&
+      !isRemoteDatabase(item.dataSourceView.dataSource)) ||
+    (item.type === "node" &&
+      item.node.type !== "table" &&
+      !isRemoteDatabase(item.node.dataSourceView.dataSource))
+  );
+}
 
 export function ProcessingMethodSection() {
   const { mcpServerViewsWithKnowledge, isMCPServerViewsLoading } =
@@ -36,62 +70,81 @@ export function ProcessingMethodSection() {
   } = useController<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
+  const { setValue } = useFormContext<CapabilityFormData>();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
-  const { hasOnlyTablesSelected, hasSomeTablesSelected } = useMemo(() => {
-    if (!sources?.in?.length) {
-      return { hasOnlyTablesSelected: false, hasSomeTablesSelected: false };
+  const [serversToDisplay, warningContent] = useMemo((): [
+    MCPServerViewTypeWithLabel[] | null,
+    React.ReactNode | null,
+  ] => {
+    if (sources.in.length <= 0) {
+      return [null, null];
     }
 
-    let tableCount = 0;
-    let totalCount = 0;
+    // Check if current server selection creates a warning condition
+    let warning: React.ReactNode | null = null;
 
-    for (const item of sources.in) {
-      // Count all selectable items (nodes)
-      if (item.type === "node") {
-        totalCount++;
-        // Check if this node is a table
-        if (item.node?.type === "table") {
-          tableCount++;
+    if (mcpServerView) {
+      const isTableOrWarehouseServer =
+        tablesServer.includes(mcpServerView.server.name) ||
+        mcpServerView.server.name === DATA_WAREHOUSE_SERVER_NAME;
+
+      if (isTableOrWarehouseServer) {
+        // Warning for tables query or data warehouse servers with non-table data
+        if (sources.in.some(isNonTableDataItem)) {
+          warning = (
+            <>
+              <strong>{getMcpServerViewDisplayName(mcpServerView)}</strong> will
+              ignore text documents and files in your selection. Create a
+              separated knowledge tools if you need both.
+            </>
+          );
+        }
+      } else {
+        // Warning for non-table servers with only remote databases and/or tables
+        if (sources.in.every(isRemoteDatabaseOrTableItem)) {
+          warning = (
+            <>
+              <strong>{getMcpServerViewDisplayName(mcpServerView)}</strong> will
+              ignore tables in your selection. Switch processing method if you
+              want to use your structured data.
+            </>
+          );
         }
       }
     }
 
-    return {
-      hasOnlyTablesSelected: totalCount > 0 && tableCount === totalCount,
-      hasSomeTablesSelected: tableCount > 0,
-    };
-  }, [sources]);
+    return [mcpServerViewsWithKnowledge, warning];
+  }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
 
   useEffect(() => {
-    if (hasOnlyTablesSelected) {
-      const tableServer = mcpServerViewsWithKnowledge.find(
-        (serverView) =>
-          serverView.serverType === "internal" &&
-          tablesServer.includes(serverView.server.name)
-      );
-      if (tableServer) {
-        onChange(tableServer);
-      }
-    } else {
-      const searchServer = mcpServerViewsWithKnowledge.find(
-        (serverView) =>
-          serverView.serverType === "internal" &&
-          serverView.server.name === SEARCH_SERVER_NAME
-      );
-      if (searchServer) {
-        onChange(searchServer);
+    // Update mcpServerView only if it's null and we have servers to display
+    if (serversToDisplay && mcpServerView === null) {
+      const [defaultServer] = serversToDisplay;
+      if (defaultServer) {
+        setValue("mcpServerView", defaultServer, { shouldDirty: false });
       }
     }
-  }, [hasOnlyTablesSelected, mcpServerViewsWithKnowledge, onChange]);
+  }, [serversToDisplay, setValue, mcpServerView]);
 
   return (
-    <div className="space-y-4">
+    <div className="mt-2 flex flex-col space-y-4">
       <div>
         <h3 className="mb-2 text-lg font-semibold">Processing method</h3>
+        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Sets the approach for finding and retrieving information from your
+          data sources. Need help? Check our{" "}
+          <Hoverable
+            variant="primary"
+            href="https://docs.dust.tt/docs/knowledge"
+            target="_blank"
+          >
+            guide.
+          </Hoverable>
+        </span>
       </div>
 
-      <div className="space-y-2">
+      <div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -107,18 +160,14 @@ export function ProcessingMethodSection() {
                   ? InternalActionIcons[mcpServerView.server.icon]
                   : undefined
               }
-              variant="outline"
+              variant="primary"
+              isSelect
             />
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="start">
-            {mcpServerViewsWithKnowledge
-              .filter((view) =>
-                hasOnlyTablesSelected
-                  ? tablesServer.includes(view.server.name)
-                  : !tablesServer.includes(view.server.name)
-              )
-              .map((view) => (
+          <DropdownMenuContent align="start" className="max-w-100">
+            {serversToDisplay &&
+              serversToDisplay.map((view) => (
                 <DropdownMenuItem
                   key={view.id}
                   label={getMcpServerViewDisplayName(view)}
@@ -129,11 +178,19 @@ export function ProcessingMethodSection() {
               ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {!hasOnlyTablesSelected && hasSomeTablesSelected && (
-          <Chip color="info" size="sm" label=" Your tables will be ignored " />
-        )}
       </div>
+
+      <span className="text-sm text-muted-foreground dark:text-muted-foreground">
+        {mcpServerView?.server.description}
+      </span>
+
+      {warningContent && (
+        <div>
+          <ContentMessage variant="info" size="lg">
+            {warningContent}
+          </ContentMessage>
+        </div>
+      )}
     </div>
   );
 }

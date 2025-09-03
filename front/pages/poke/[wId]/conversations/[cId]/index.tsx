@@ -149,7 +149,7 @@ const AgentMessageView = ({
         )}
         <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
           date: {new Date(message.created).toLocaleString()} • message version :{" "}
-          {message.version} {" • "} agent sId :
+          {message.version} • message sId : {message.sId} {" • "} agent sId :
           <a
             href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
             target="_blank"
@@ -208,8 +208,8 @@ const AgentMessageView = ({
                   }
                 />
               )}
-              action: step={a.step}{" "}
-              <b className="px-1">{a.functionCallName}()</b>{" "}
+              {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
+              step {a.step}: <b className="px-1">{a.functionCallName}()</b>{" "}
               <i>
                 [{a.type}, {a.functionCallId}]
               </i>

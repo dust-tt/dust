@@ -95,10 +95,16 @@ function getGroupedMCPServerViews({
     groupBy(mcpServerViewsWithLabel, (view) => {
       const requirements = getMCPServerRequirements(view);
 
+      // Special handling for content_creation server:
+      // The content_creation server includes list and cat tools for convenience, but its primary purpose is
+      // not data source operations. We don't want it to be classified as requiring knowledge.
+      const isContentCreationServer = view.server.name === "content_creation";
+
       const isWithKnowledge =
-        requirements.requiresDataSourceConfiguration ||
-        requirements.requiresDataWarehouseConfiguration ||
-        requirements.requiresTableConfiguration;
+        !isContentCreationServer &&
+        (requirements.requiresDataSourceConfiguration ||
+          requirements.requiresDataWarehouseConfiguration ||
+          requirements.requiresTableConfiguration);
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"

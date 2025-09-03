@@ -15,6 +15,7 @@ import { useState } from "react";
 
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
 interface CreateAgentButtonProps {
@@ -49,15 +50,13 @@ export const CreateAgentButton = ({
           disabled={isLoading}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="start">
         <DropdownMenuItem
           label="agent from scratch"
           icon={DocumentIcon}
           onClick={() => {
             setIsLoading(true);
-            void router.push(
-              `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`
-            );
+            void router.push(getAgentBuilderRoute(owner.sId, "new"));
           }}
         />
         <DropdownMenuItem
@@ -65,9 +64,7 @@ export const CreateAgentButton = ({
           icon={MagicIcon}
           onClick={() => {
             setIsLoading(true);
-            void router.push(
-              `/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`
-            );
+            void router.push(getAgentBuilderRoute(owner.sId, "create"));
           }}
         />
         {hasFeature("agent_to_yaml") && (

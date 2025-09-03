@@ -1,5 +1,5 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
@@ -33,12 +33,14 @@ import {
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolTextError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
@@ -53,21 +55,11 @@ type TablesQueryOutputResources =
   | ToolGeneratedFileType
   | ToolMarkerResourceType;
 
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "query_tables_v2",
-  version: "1.0.0",
-  description:
-    "Tables, Spreadsheets, Notion DBs (quantitative) (mcp, exploded).",
-  icon: "ActionTableIcon",
-  authorization: null,
-  documentationUrl: null,
-};
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("query_tables_v2");
 
   server.tool(
     GET_DATABASE_SCHEMA_TOOL_NAME,

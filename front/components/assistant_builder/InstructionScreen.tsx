@@ -37,6 +37,7 @@ import { useUserMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
@@ -334,9 +335,7 @@ export function InstructionScreen({
                 variant="highlight"
                 size="xs"
                 onClick={() => {
-                  void router.push(
-                    `/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`
-                  );
+                  void router.push(getAgentBuilderRoute(owner.sId, "create"));
                 }}
                 label="Browse templates"
               />
@@ -364,7 +363,7 @@ export function InstructionScreen({
                   You can also use one of our{" "}
                   <Hoverable
                     variant="highlight"
-                    href={`/w/${owner.sId}/builder/assistants/create`}
+                    href={getAgentBuilderRoute(owner.sId, "create")}
                     target="_blank"
                   >
                     templates

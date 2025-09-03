@@ -1,20 +1,22 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  Chip,
-  ContentMessage,
   MultiPageSheet,
   MultiPageSheetContent,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ActionIcons } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { UseFieldArrayAppend } from "react-hook-form";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
-import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderFormData,
@@ -22,16 +24,24 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
+import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
-import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
-import { getConfigurationFooterContent } from "@app/components/agent_builder/capabilities/mcp/utils/footerUtils";
+import {
+  generateUniqueActionName,
+  nameToStorageFormat,
+} from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { createFormResetHandler } from "@app/components/agent_builder/capabilities/mcp/utils/formStateUtils";
 import {
   getMCPConfigurationFormSchema,
   validateMCPActionConfiguration,
 } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
+import {
+  getInfoPageDescription,
+  getInfoPageIcon,
+  getInfoPageTitle,
+} from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import {
   getFooterButtons,
   getInitialConfigurationTool,
@@ -42,6 +52,7 @@ import {
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
+import { FlavorSection } from "@app/components/agent_builder/capabilities/shared/FlavorSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -62,14 +73,9 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
-import { isCustomServerIconType } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
-import { useSpaces } from "@app/lib/swr/spaces";
 import { O4_MINI_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
@@ -129,7 +135,6 @@ export function MCPServerViewsSheet({
   getAgentInstructions,
 }: MCPServerViewsSheetProps) {
   const { owner } = useAgentBuilderContext();
-  const { spaces } = useSpaces({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const {
@@ -139,17 +144,11 @@ export function MCPServerViewsSheet({
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
-  // For getting all agents to find selected Child Agent
-  const { agentConfigurations: allAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-    });
-
   const [selectedToolsInSheet, setSelectedToolsInSheet] = useState<
     SelectedTool[]
   >([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [isOpen, setIsOpen] = useState(!!mode);
   const [currentPageId, setCurrentPageId] = useState<ConfigurationPagePageId>(
@@ -211,8 +210,8 @@ export function MCPServerViewsSheet({
         ? views
         : views.filter((view) => {
             const term = searchTerm.toLowerCase();
-            return [view.label, view.description, view.name].some((field) =>
-              field?.toLowerCase().includes(term)
+            return [view.label, view.server.description, view.server.name].some(
+              (field) => field?.toLowerCase().includes(term)
             );
           });
 
@@ -278,6 +277,8 @@ export function MCPServerViewsSheet({
         if (mcpServerView) {
           setInfoMCPServerView(mcpServerView);
         }
+      } else {
+        setInfoMCPServerView(null);
       }
     } else if (mode?.type === "add") {
       setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
@@ -288,6 +289,16 @@ export function MCPServerViewsSheet({
     }
     setIsOpen(!!mode);
   }, [mode, allMcpServerViews]);
+
+  // Focus SearchInput when opening on TOOL_SELECTION page
+  useEffect(() => {
+    if (isOpen && currentPageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
+      // Small delay to ensure the component is fully rendered
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen, currentPageId]);
 
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInSheet((prev) => {
@@ -369,9 +380,16 @@ export function MCPServerViewsSheet({
             },
           },
         };
+
+        // For reasoning tools, add directly to selected tools instead of going to configure page
+        toggleToolSelection({
+          type: "MCP",
+          view: mcpServerView,
+          configuredAction,
+        });
+        return;
       }
 
-      // Switch to configure mode instead of directly setting states
       onModeChange({
         type: "configure",
         action: configuredAction,
@@ -469,17 +487,6 @@ export function MCPServerViewsSheet({
     resetFormValues(form);
   }, [resetFormValues, form]);
 
-  const watchedConfiguration = useWatch({
-    control: form.control,
-    name: "configuration",
-  });
-
-  const configurationFooterContent = getConfigurationFooterContent({
-    requirements,
-    watchedConfiguration,
-    allAgentConfigurations,
-  });
-
   const resetToSelection = useCallback(() => {
     setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
     setConfigurationTool(null);
@@ -506,10 +513,12 @@ export function MCPServerViewsSheet({
         <>
           {!isMCPServerViewsLoading && (
             <SearchInput
+              ref={searchInputRef}
               value={searchTerm}
               onChange={setSearchTerm}
-              name="search-mcp-servers"
-              placeholder="Search servers..."
+              name="search-mcp"
+              placeholder="Search tools..."
+              className="mt-4"
             />
           )}
           <MCPServerSelectionPage
@@ -540,7 +549,7 @@ export function MCPServerViewsSheet({
         configurationTool && mcpServerView && requirements && formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
-              <div className="h-full space-y-6">
+              <div className="h-full space-y-6 pt-3">
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
@@ -560,13 +569,17 @@ export function MCPServerViewsSheet({
                 )}
 
                 {requirements.requiresDustAppConfiguration && (
-                  <DustAppSection allowedSpaces={spaces} />
+                  <DustAppSection />
                 )}
 
                 {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
+                )}
+
+                {requirements.requiredFlavors.length > 0 && (
+                  <FlavorSection flavors={requirements.requiredFlavors} />
                 )}
 
                 <AdditionalConfigurationSection
@@ -584,62 +597,34 @@ export function MCPServerViewsSheet({
             <Spinner />
           </div>
         ),
-      footerContent: configurationFooterContent,
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.INFO,
-      title: infoMCPServerView
-        ? getMcpServerViewDisplayName(infoMCPServerView)
-        : "Tool information",
-      description:
-        infoMCPServerView?.server.description ?? "No description available",
-      icon: infoMCPServerView
-        ? isCustomServerIconType(infoMCPServerView.server.icon)
-          ? ActionIcons[infoMCPServerView.server.icon]
-          : InternalActionIcons[infoMCPServerView.server.icon]
-        : undefined,
-      content: infoMCPServerView ? (
-        <div className="flex h-full flex-col space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold text-foreground dark:text-foreground-night">
-                  Available Tools
-                </h3>
-                <Chip
-                  size="xs"
-                  color="info"
-                  label={`${infoMCPServerView.server.tools?.length || 0} tools`}
-                />
-              </div>
-
-              {infoMCPServerView.server.tools &&
-              infoMCPServerView.server.tools.length > 0 ? (
-                <div className="flex flex-col gap-4">
-                  <span className="text-md text-muted-foreground dark:text-muted-foreground-night">
-                    These tools will be available to your agent during
-                    conversations and can be configured with different
-                    permission levels:
-                  </span>
-                  <ToolsList
-                    owner={owner}
-                    mcpServerView={infoMCPServerView}
-                    disableUpdates
-                  />
-                </div>
-              ) : (
-                <ContentMessage variant="primary" size="sm">
-                  No tools are currently available for this server.
-                </ContentMessage>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex h-40 w-full items-center justify-center">
-          <Spinner />
-        </div>
+      title: getInfoPageTitle(
+        infoMCPServerView,
+        mode?.type === "info" ? mode.action : null
       ),
+      description: getInfoPageDescription(
+        infoMCPServerView,
+        mode?.type === "info" ? mode.action : null
+      ),
+      icon: getInfoPageIcon(
+        infoMCPServerView,
+        mode?.type === "info" ? mode.action : null
+      ),
+      content:
+        infoMCPServerView ||
+        (mode?.type === "info" &&
+          mode.action?.type === "DATA_VISUALIZATION") ? (
+          <MCPServerInfoPage
+            infoMCPServerView={infoMCPServerView}
+            infoAction={mode?.type === "info" ? mode.action : null}
+          />
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ),
     },
   ];
 
@@ -672,11 +657,13 @@ export function MCPServerViewsSheet({
 
       const newActionName = isNewActionOrNameChanged
         ? generateUniqueActionName({
-            baseName: formData.name,
+            baseName: nameToStorageFormat(formData.name),
             existingActions: actions,
             selectedToolsInSheet,
           })
-        : formData.name;
+        : mode?.type === "edit"
+          ? configurationTool.name
+          : formData.name;
 
       const configuredAction: AgentBuilderAction = {
         ...configurationTool,
@@ -747,7 +734,7 @@ export function MCPServerViewsSheet({
         className="h-full"
         showNavigation={false}
         showHeaderNavigation={false}
-        size="lg"
+        size="xl"
         pages={pages}
         currentPageId={currentPageId}
         onPageChange={(pageId) => {

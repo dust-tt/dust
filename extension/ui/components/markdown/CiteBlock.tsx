@@ -100,7 +100,9 @@ export function getCiteDirective() {
           const references = node.children[0]?.value
             .split(",")
             .map((s: string) => s.trim())
-            .filter((s: string) => s.length == 2)
+            // Citations used to be 2 characters long, but are now 3 characters long.
+            // We support both for backward compatibility.
+            .filter((s: string) => s.length === 2 || s.length === 3)
             .map((ref: string) => ({
               counter: counter(ref),
               ref,

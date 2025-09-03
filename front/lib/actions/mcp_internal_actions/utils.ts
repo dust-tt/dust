@@ -4,13 +4,21 @@ import type {
   TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 
 export function makeInternalMCPServer(
-  serverInfo: InternalMCPServerDefinitionType
+  serverName: InternalMCPServerNameType,
+  options?: {
+    augmentedInstructions?: string;
+  }
 ): McpServer {
+  const { serverInfo } = INTERNAL_MCP_SERVERS[serverName];
+  const instructions =
+    options?.augmentedInstructions ?? serverInfo.instructions ?? undefined;
+
   return new McpServer(serverInfo, {
-    instructions: serverInfo.instructions,
+    instructions,
   });
 }
 

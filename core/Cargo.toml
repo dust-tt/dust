@@ -36,6 +36,10 @@ name = "elasticsearch_backfill_folders_index"
 path = "bin/elasticsearch/backfill_folders_index.rs"
 
 [[bin]]
+name = "elasticsearch_export_nodes"
+path = "bin/elasticsearch/export_nodes.rs"
+
+[[bin]]
 name = "qdrant_create_collection"
 path = "bin/qdrant/create_collection.rs"
 
