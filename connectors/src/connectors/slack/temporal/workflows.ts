@@ -8,8 +8,8 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
-import type { ModelId } from "@connectors/types";
-import { concurrentExecutor } from "@connectors/types";
+import type { ModelId } from "../../../types";
+import { concurrentExecutor } from "../../../types/shared/utils/async_utils";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
