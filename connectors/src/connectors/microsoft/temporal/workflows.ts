@@ -227,14 +227,14 @@ export async function incrementalSyncWorkflow({
         error
       );
       throw error; // Re-throw to fail the workflow
+    } finally {
+      // Step 3: Clean up the temporary GCS file (always runs)
+      await cleanupDeltaGCSFile({
+        connectorId,
+        driveId: nodeId,
+        gcsFilePath,
+      });
     }
-
-    // Step 3: Clean up the temporary GCS file
-    await cleanupDeltaGCSFile({
-      connectorId,
-      driveId: nodeId,
-      gcsFilePath,
-    });
   }
 
   await syncSucceeded(connectorId);

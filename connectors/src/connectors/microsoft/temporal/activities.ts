@@ -59,19 +59,11 @@ import type { ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 import { isDevelopment } from "@connectors/types";
 
-/**
- * Type for delta data stored in GCS during Microsoft incremental sync
- * This data structure contains all the information needed to process delta changes
- * in batches without re-fetching or re-processing the data
- */
+// Delta data stored in GCS for Microsoft incremental sync batch processing
 interface DeltaDataInGCS {
-  /** Delta link for the next sync operation */
   deltaLink: string;
-  /** Array of root node IDs that are being synced */
   rootNodeIds: string[];
-  /** Pre-sorted and processed list of changed items ready for batch processing */
   sortedChangedItems: DriveItem[];
-  /** Total count of items to be processed */
   totalItems: number;
 }
 
