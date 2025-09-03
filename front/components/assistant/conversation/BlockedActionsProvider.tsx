@@ -153,6 +153,7 @@ export function BlockedActionsProvider({
     );
   }, [blockedActionsQueue]);
 
+  // TODO: support "auth" step
   const [currentStep, setCurrentStep] = useState<"validation">("validation");
 
   const [currentValidationIndex, setCurrentValidationIndex] = useState(0);
@@ -178,6 +179,11 @@ export function BlockedActionsProvider({
     setSubmitStatus(status);
 
     const currentBlockedAction = pendingValidations[currentValidationIndex];
+    if (!currentBlockedAction) {
+      setErrorMessage("No blocked action found. Please try again.");
+      return;
+    }
+
     const { blockedAction, message } = currentBlockedAction;
 
     const result = await validateAction({
