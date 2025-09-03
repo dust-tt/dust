@@ -55,32 +55,35 @@ function useBlockedActionsQueue({
     }
   }, [conversationId, blockedActions]);
 
-  const enqueueBlockedAction = ({
-    message,
-    blockedAction,
-  }: {
-    message: LightAgentMessageType;
-    blockedAction: BlockedToolExecution;
-  }) => {
-    // Only enqueue actions for the current conversation
-    if (blockedAction.conversationId !== conversationId) {
-      return;
-    }
+  const enqueueBlockedAction = useCallback(
+    ({
+      message,
+      blockedAction,
+    }: {
+      message: LightAgentMessageType;
+      blockedAction: BlockedToolExecution;
+    }) => {
+      // Only enqueue actions for the current conversation
+      if (blockedAction.conversationId !== conversationId) {
+        return;
+      }
 
-    setBlockedActionsQueue((prevQueue) => {
-      const existingIndex = prevQueue.findIndex(
-        (v) => v.blockedAction.actionId === blockedAction.actionId
-      );
+      setBlockedActionsQueue((prevQueue) => {
+        const existingIndex = prevQueue.findIndex(
+          (v) => v.blockedAction.actionId === blockedAction.actionId
+        );
 
-      // If the action is not in the queue, add it.
-      // If the action is in the queue, replace it with the new one.
-      return existingIndex === -1
-        ? [...prevQueue, { blockedAction, message }]
-        : prevQueue.map((item, index) =>
-            index === existingIndex ? { blockedAction, message } : item
-          );
-    });
-  };
+        // If the action is not in the queue, add it.
+        // If the action is in the queue, replace it with the new one.
+        return existingIndex === -1
+          ? [...prevQueue, { blockedAction, message }]
+          : prevQueue.map((item, index) =>
+              index === existingIndex ? { blockedAction, message } : item
+            );
+      });
+    },
+    [conversationId]
+  );
 
   const removeCompletedAction = useCallback((actionId: string) => {
     setBlockedActionsQueue((prevQueue) =>
