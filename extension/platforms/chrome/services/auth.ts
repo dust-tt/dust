@@ -46,9 +46,14 @@ export class ChromeAuthService extends AuthService {
       }
       const response = await sendRefreshTokenMessage(this, tokens.refreshToken);
       if (!response.success) {
+        datadogLogs.logger.error("Refresh token failed", {
+          response: response.error,
+        });
         return new Err(new AuthError("not_authenticated", response.error));
       }
       if (!response?.accessToken) {
+        datadogLogs.logger.error("Refresh failed: No access token received");
+
         return new Err(
           new AuthError("not_authenticated", "No access token received")
         );
@@ -73,6 +78,7 @@ export class ChromeAuthService extends AuthService {
         throw new Error(response.error);
       }
       if (!response.accessToken) {
+        datadogLogs.logger.error("Login failed: No access token received");
         throw new Error("No access token received.");
       }
       const tokens = await this.saveTokens(response);
@@ -151,12 +157,11 @@ export class ChromeAuthService extends AuthService {
       const refreshRes = await this.refreshToken(tokens);
       if (refreshRes.isOk()) {
         tokens = refreshRes.value;
+      } else {
+        tokens = null;
       }
     }
-    // We wanted a refreshed token, don't return the one we have which is invalid.
-    if (forceRefresh) {
-      return null;
-    }
+
     return tokens?.accessToken ?? null;
   }
 
