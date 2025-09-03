@@ -1124,6 +1124,72 @@ async fn runs_delete(
     }
 }
 
+async fn runs_cancel(
+    Path((project_id, run_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    // Load the run and update its status to cancelled (errored)
+    match state.store.load_run(&project, &run_id, None).await {
+        Ok(Some(mut run)) => {
+            // Cancel the run (marks run and all running blocks as errored)
+            run.cancel();
+            
+            // Update the run status in the database
+            match state
+                .store
+                .update_run_status(&project, &run_id, run.status())
+                .await
+            {
+                Err(e) => {
+                    error!(error = %e, run = run_id, "Failed to update run status to cancelled");
+                    error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to cancel run",
+                        Some(e),
+                    )
+                }
+                Ok(_) => {
+                    info!(run = run_id, "Run cancelled successfully");
+                    (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "success": true
+                            })),
+                        }),
+                    )
+                }
+            }
+        }
+        Ok(None) => {
+            // Run not found in database
+            info!(run = run_id, "Run not found for cancellation");
+            (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "success": true
+                    })),
+                }),
+            )
+        }
+        Err(e) => {
+            error!(error = %e, run = run_id, "Failed to load run for cancellation");
+            error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to load run",
+                Some(e),
+            )
+        }
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct RunsListQuery {
     offset: usize,
@@ -4212,6 +4278,10 @@ fn main() {
         .route(
             "/projects/{project_id}/runs/{run_id}",
             delete(runs_delete),
+        )
+        .route(
+            "/projects/{project_id}/runs/{run_id}/cancel",
+            post(runs_cancel),
         )
         .route(
             "/projects/{project_id}/runs/{run_id}/blocks/{block_type}/{block_name}",

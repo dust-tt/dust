@@ -7,6 +7,7 @@ import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers"
 import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
 import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
+import type { PostRunCancelResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/cancel";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
 import type {
   AppType,
@@ -164,4 +165,39 @@ export function useKeys(owner: LightWorkspaceType) {
     isValidating,
     keys: data?.keys ?? emptyArray(),
   };
+}
+
+export function useCancelRun({
+  owner,
+  app,
+}: {
+  owner: LightWorkspaceType;
+  app: AppType;
+}) {
+  const doCancel = async (runId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(
+        `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${runId}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Failed to cancel run:", await res.text());
+        return false;
+      }
+
+      const data: PostRunCancelResponseBody = await res.json();
+      return data.success;
+    } catch (error) {
+      console.error("Error canceling run:", error);
+      return false;
+    }
+  };
+
+  return { doCancel };
 }
