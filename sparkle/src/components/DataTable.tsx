@@ -39,9 +39,18 @@ import {
   Spinner,
   Tooltip,
 } from "@sparkle/components";
-import { radioIndicatorStyles, radioStyles } from "@sparkle/components/RadioGroup";
+import {
+  radioIndicatorStyles,
+  radioStyles,
+} from "@sparkle/components/RadioGroup";
 import { useCopyToClipboard } from "@sparkle/hooks";
-import { ArrowDownIcon, ArrowUpIcon, ClipboardCheckIcon, ClipboardIcon, MoreIcon } from "@sparkle/icons/app";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  MoreIcon,
+} from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -721,8 +730,8 @@ DataTable.Row = function Row({
       className={cn(
         "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
         "s-border-separator dark:s-border-separator-night",
-        onClick
-          && "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
+        onClick &&
+          "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
         props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
         widthClassName,
         className
