@@ -188,7 +188,7 @@ export function useCancelRun({
       );
 
       if (!res.ok) {
-        logger.error({ err: res.text() }, "Failed to cancel run");
+        logger.error({ err: await res.text() }, "Failed to cancel run");
         return false;
       }
 
