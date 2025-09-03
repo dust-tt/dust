@@ -39,15 +39,15 @@ export function MCPActionHeader({
 
   return (
     <div className="flex w-full flex-row items-center justify-between">
-      <div className="items-top flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col items-center gap-3 sm:flex-row">
         {getAvatar(mcpServerView.server, "md")}
         <div className="flex grow flex-col gap-0 pr-9">
-          <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
+          <h2 className="heading-base line-clamp-1 text-foreground dark:text-foreground-night">
             {getMcpServerViewDisplayName(mcpServerView, newAction)}
           </h2>
-          <div className="line-clamp-1 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="line-clamp-2 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
             {mcpServerView.server.description}
-          </div>
+          </p>
         </div>
       </div>
       {allowNameEdit && (

@@ -25,11 +25,26 @@ export function FlavorSection({ flavors }: FlavorSectionProps) {
     "FlavorSection - field.value must be an array or null"
   );
 
+  function onToggleFlavor(name: string) {
+    if (Array.isArray(fieldValue) || fieldValue === undefined) {
+      const isSelected = fieldValue !== undefined && fieldValue.includes(name);
+      const currentValue = fieldValue || [];
+
+      if (isSelected) {
+        const newList = currentValue.filter((value) => value !== name);
+        field.onChange(newList);
+      } else {
+        field.onChange([...currentValue, name]);
+      }
+    }
+  }
+
   return (
     flavors.length > 0 && (
       <>
         <ConfigurationSectionContainer
-          title="Select Flavors"
+          title="Select contents"
+          description="Choose your preferred content type for focused guidance."
           error={fieldState.error?.message}
         >
           <div className="grid grid-cols-2 gap-3">
@@ -40,11 +55,8 @@ export function FlavorSection({ flavors }: FlavorSectionProps) {
                 label={f.name}
                 description={f.description}
                 isSelected={fieldValue?.includes(f.name)}
-                canAdd={true}
-                onClick={() => {
-                  const currentValue = fieldValue || [];
-                  field.onChange([...currentValue, f.name]);
-                }}
+                canAdd={!fieldValue?.includes(f.name)}
+                onClick={() => onToggleFlavor(f.name)}
               />
             ))}
           </div>
