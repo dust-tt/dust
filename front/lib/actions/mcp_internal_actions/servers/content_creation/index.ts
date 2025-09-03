@@ -210,11 +210,14 @@ const createServer = (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
+        const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+
         const result = await editClientExecutableFile(auth, {
           fileId: file_id,
           oldString: old_string,
           newString: new_string,
           expectedReplacements: expected_replacements,
+          agentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {

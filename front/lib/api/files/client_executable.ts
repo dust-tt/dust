@@ -109,11 +109,18 @@ export async function editClientExecutableFile(
     oldString: string;
     newString: string;
     expectedReplacements?: number;
+    agentConfigurationId?: string;
   }
 ): Promise<
   Result<{ fileResource: FileResource; replacementCount: number }, Error>
 > {
-  const { fileId, oldString, newString, expectedReplacements = 1 } = params;
+  const {
+    fileId,
+    oldString,
+    newString,
+    expectedReplacements = 1,
+    agentConfigurationId,
+  } = params;
 
   // Fetch the existing file.
   const fileContentResult = await getClientExecutableFileContent(auth, fileId);
@@ -140,6 +147,13 @@ export async function editClientExecutableFile(
         `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`
       )
     );
+  }
+
+  if (agentConfigurationId && fileResource.useCaseMetadata) {
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      agentConfigurationId,
+    });
   }
 
   // Perform the replacement.
