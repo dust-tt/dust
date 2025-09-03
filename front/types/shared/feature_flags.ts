@@ -167,7 +167,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   slack_enhanced_default_agent: {
     description:
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
-    stage: "dust_only",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

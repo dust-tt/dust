@@ -233,8 +233,8 @@ export function SlackAssistantDefaultManager({
                         Enhanced Default Agent
                       </span>
                       <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                        Agent will automatically respond to all messages and
-                        thread replies in selected channels (not just @mentions)
+                        Agent will automatically respond to all new threads (not
+                        just @mentions).
                       </span>
                     </div>
                     <div className="flex-shrink-0">
