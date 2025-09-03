@@ -1133,6 +1133,25 @@ async fn runs_cancel(
     // Load the run and update its status to cancelled (errored)
     match state.store.load_run(&project, &run_id, None).await {
         Ok(Some(mut run)) => {
+            // Check if the run is at least 1 hour old before allowing cancellation
+            let current_time = utils::now();
+            let run_age_ms = current_time - run.created();
+            const ONE_HOUR_MS: u64 = 60 * 60 * 1000; // 1 hour in milliseconds
+
+            if run_age_ms < ONE_HOUR_MS {
+                info!(
+                    run = run_id,
+                    age_ms = run_age_ms,
+                    "Run is too recent to cancel (must be at least 1 hour old)"
+                );
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "run_too_recent",
+                    "Run must be at least 1 hour old before it can be cancelled",
+                    None,
+                );
+            }
+
             // Cancel the run (marks run and all running blocks as errored)
             run.cancel();
 
