@@ -9,13 +9,14 @@ import { cn } from "@sparkle/lib/utils";
 
 export const radioStyles = cva(
   cn(
-    "s-aspect-square s-rounded-full s-border",
-    "s-s-border-border-dark dark:s-border-primary-500",
+    "s-aspect-square s-rounded-full s-border s-transition s-duration-200 s-ease-in-out",
+    "s-border-border-dark dark:s-border-primary-500",
     "s-bg-background dark:s-bg-background-night",
     "s-text-foreground dark:s-text-foreground-night",
     "s-flex s-items-center s-justify-center",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring",
-    "disabled:s-cursor-not-allowed disabled:s-opacity-50",
+    "hover:s-border-highlight hover:s-bg-highlight-50 dark:hover:s-bg-highlight-100-night hover:dark:s-border-highlight",
+    "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-border-border-dark disabled:dark:s-border-border-dark-night disabled:s-bg-background dark:disabled:s-bg-background-night",
     "checked:s-ring-0",
     "checked:s-bg-highlight-500 dark:checked:s-bg-highlight-500-night"
   ),
