@@ -274,7 +274,7 @@ export default function AssistantBuilder({
     const anyActionError =
       mcpServerViews.length > 0 &&
       builderState.actions.some((action) =>
-        hasActionError(action, mcpServerViews)
+        hasActionError(action, mcpServerViews, owner)
       );
 
     setHasAnyActionsError(anyActionError);

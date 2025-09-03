@@ -167,7 +167,7 @@ export function MCPAction({
     return null;
   }
 
-  const requirements = getMCPServerRequirements(selectedMCPServerView);
+  const requirements = getMCPServerRequirements(selectedMCPServerView, owner);
   const withDataSource =
     requirements.requiresDataSourceConfiguration ||
     requirements.requiresDataWarehouseConfiguration ||
@@ -369,7 +369,8 @@ export function MCPAction({
 
 export function hasErrorActionMCP(
   action: AssistantBuilderMCPConfiguration,
-  mcpServerViews: MCPServerViewType[]
+  mcpServerViews: MCPServerViewType[],
+  owner: WorkspaceType
 ): string | null {
   if (action.type === "MCP") {
     const mcpServerView = mcpServerViews.find(
@@ -380,7 +381,7 @@ export function hasErrorActionMCP(
       return "Please select a tool.";
     }
 
-    const requirements = getMCPServerRequirements(mcpServerView);
+    const requirements = getMCPServerRequirements(mcpServerView, owner);
     if (
       requirements.requiresDataSourceConfiguration &&
       !action.configuration.dataSourceConfigurations

@@ -198,7 +198,7 @@ function makeQueryResource(
 const buildCommonSearchParams = (
   channelOptions?: ReadonlyArray<z.ZodType<{ value: string; label: string }>>
 ) => ({
-  channels: z.object({
+  searchableChannels: z.object({
     // "options" are optionals because we only need them for the UI but they won't be provided when the tool is called.
     // Note: I don't know how to make this work without the any.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

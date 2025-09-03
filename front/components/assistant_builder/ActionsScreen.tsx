@@ -83,11 +83,12 @@ function ActionModeSection({
 
 export function hasActionError(
   action: AssistantBuilderActionAndDataVisualizationConfiguration,
-  mcpServerViews: MCPServerViewType[]
+  mcpServerViews: MCPServerViewType[],
+  owner: WorkspaceType
 ): string | null {
   switch (action.type) {
     case "MCP":
-      return hasErrorActionMCP(action, mcpServerViews);
+      return hasErrorActionMCP(action, mcpServerViews, owner);
     case "DATA_VISUALIZATION":
       return null;
     default:
@@ -486,7 +487,7 @@ function NewActionModal({
         newActionConfig &&
         !titleError &&
         descriptionValid &&
-        !hasActionError(newActionConfig, mcpServerViews)
+        !hasActionError(newActionConfig, mcpServerViews, owner)
       ) {
         newActionConfig.name = newActionConfig.name.trim();
         newActionConfig.description = newActionConfig.description.trim();
@@ -501,7 +502,7 @@ function NewActionModal({
         }
         if (newActionConfig) {
           setShowInvalidActionError(
-            hasActionError(newActionConfig, mcpServerViews)
+            hasActionError(newActionConfig, mcpServerViews, owner)
           );
         }
       }
@@ -631,7 +632,7 @@ function ActionCard({
       : null;
 
   const actionError = !isMCPServerViewsLoading
-    ? hasActionError(action, mcpServerViews)
+    ? hasActionError(action, mcpServerViews, owner)
     : false;
 
   return (
