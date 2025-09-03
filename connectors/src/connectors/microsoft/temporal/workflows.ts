@@ -29,6 +29,7 @@ const { microsoftDeletionActivity, microsoftGarbageCollectionActivity } =
   });
 
 const {
+  syncDeltaForRootNodesInDrive,
   fetchDeltaForRootNodesInDrive,
   processDeltaChangesFromGCS,
   cleanupDeltaGCSFile,
@@ -176,6 +177,26 @@ export async function fullSyncWorkflow({
 }
 
 export async function incrementalSyncWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  await syncStarted(connectorId);
+  const nodeIdsToSync = await getRootNodesToSync(connectorId);
+  const groupedItems = await groupRootItemsByDriveId(nodeIdsToSync);
+
+  const startSyncTs = new Date().getTime();
+  for (const nodeId of Object.keys(groupedItems)) {
+    await syncDeltaForRootNodesInDrive({
+      connectorId,
+      driveId: nodeId,
+      rootNodeIds: groupedItems[nodeId] as string[],
+      startSyncTs,
+    });
+  }
+}
+
+export async function incrementalSyncWorkflowV2({
   connectorId,
 }: {
   connectorId: ModelId;

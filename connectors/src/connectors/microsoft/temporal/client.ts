@@ -7,7 +7,10 @@ import { getRootNodesToSync } from "@connectors/connectors/microsoft/temporal/ac
 import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
 import type { FolderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
 import { folderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
-import { microsoftGarbageCollectionWorkflow } from "@connectors/connectors/microsoft/temporal/workflows";
+import {
+  incrementalSyncWorkflowV2,
+  microsoftGarbageCollectionWorkflow,
+} from "@connectors/connectors/microsoft/temporal/workflows";
 import {
   fullSyncWorkflow,
   incrementalSyncWorkflow,
@@ -108,7 +111,7 @@ export async function launchMicrosoftIncrementalSyncWorkflow(
 
   try {
     await terminateWorkflow(workflowId);
-    await client.workflow.start(incrementalSyncWorkflow, {
+    await client.workflow.start(incrementalSyncWorkflowV2, {
       args: [{ connectorId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,

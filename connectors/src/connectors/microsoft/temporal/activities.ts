@@ -569,6 +569,344 @@ export async function syncFiles({
   };
 }
 
+// Legacy activity, only for compatibilty.
+export async function syncDeltaForRootNodesInDrive({
+  connectorId,
+  driveId,
+  rootNodeIds,
+  startSyncTs,
+}: {
+  connectorId: ModelId;
+  driveId: string;
+  rootNodeIds: string[];
+  startSyncTs: number;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const providerConfig =
+    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+
+  if (!providerConfig) {
+    throw new Error(`Configuration for connector ${connectorId} not found`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const nodeTypes = rootNodeIds.map(
+    (nodeId) => typeAndPathFromInternalId(nodeId).nodeType
+  );
+  if (
+    nodeTypes.some((nodeType) => nodeType !== "drive" && nodeType !== "folder")
+  ) {
+    throw new Error(`Some of ${rootNodeIds} are not a drive or folder`);
+  }
+  const nodes = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    rootNodeIds
+  );
+  let node = nodes[0];
+
+  if (nodes.length !== rootNodeIds.length || !node) {
+    const logger = getActivityLogger(connector);
+    logger.error(
+      {
+        connectorId,
+        rootNodeIds,
+        foundNodes: nodes.length,
+        expectedNodes: rootNodeIds.length,
+      },
+      "Some root nodes not found in database, skipping delta sync for this drive"
+    );
+    return;
+  }
+
+  const client = await getClient(connector.connectionId);
+
+  const logger = getActivityLogger(connector);
+  logger.info({ connectorId, rootNodeIds }, "Syncing delta for node");
+
+  // Goes through pagination to return all delta results. This is because delta
+  // list can include same item more than once and api recommendation is to
+  // ignore all but the last one.
+  //
+
+  // although the list might be long, this should not be an issue since in case
+  // of activity retry, files already synced won't be synced again thanks to the
+  // lastSeenTs check VS startSyncTs
+  //
+  // If it ever becomes an issue, redis-caching the list and having activities
+  // grabbing pages of it can be implemented
+
+  if (!node.deltaLink) {
+    const logger = getActivityLogger(connector);
+    logger.info(
+      { connectorId, internalId: node.internalId },
+      "No delta link for root node, populating delta"
+    );
+    const internalId = node.internalId;
+    await populateDeltas(connectorId, [internalId]);
+    node =
+      (await MicrosoftNodeResource.fetchByInternalId(
+        connectorId,
+        node.internalId
+      )) ?? undefined;
+    if (!node) {
+      throw new Error(
+        `Unreachable: Node ${internalId} (connectorId: ${connectorId}) not found after populateDeltas, skipping delta sync`
+      );
+    }
+  }
+  const { results, deltaLink } = await getDeltaData({
+    logger,
+    client,
+    node,
+    heartbeat,
+  });
+  const uniqueChangedItems = removeAllButLastOccurences(results);
+
+  const sortedChangedItems: DriveItem[] = [];
+  const containsWholeDrive = rootNodeIds.some(
+    (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
+  );
+
+  logger.info(
+    {
+      uniqueChangedItems: uniqueChangedItems.length,
+      containsWholeDrive,
+    },
+    "Changes to process"
+  );
+
+  if (containsWholeDrive) {
+    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+  } else {
+    const microsoftNodes = await concurrentExecutor(
+      rootNodeIds,
+      async (rootNodeId) => {
+        try {
+          return (await getItem(
+            logger,
+            client,
+            typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
+          )) as { id: string };
+        } catch (error) {
+          if (isItemNotFoundError(error)) {
+            // Resource not found will be garbage collected later and is not blocking the activity
+            logger.info(
+              { rootNodeId, error: error.message },
+              "Root node not found, skipping"
+            );
+            return null;
+          }
+          throw error;
+        }
+      },
+      { concurrency: 5 }
+    );
+    const validMicrosoftNodes = microsoftNodes.filter(
+      (node): node is { id: string } => node !== null
+    );
+    validMicrosoftNodes.forEach((rootNode) => {
+      sortedChangedItems.push(
+        ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
+      );
+    });
+    // if only parts of the drive are selected, look for folders that may
+    // have been removed from selection and scrub them
+    await scrubRemovedFolders({
+      connector,
+      uniqueChangedItems,
+      sortedChangedItems,
+    });
+  }
+  let count = 0;
+  let skipped = 0;
+  let deleted = 0;
+  let folders = 0;
+  let files = 0;
+  for (const driveItem of sortedChangedItems) {
+    count++;
+    if (count % 1000 === 0) {
+      logger.info(
+        {
+          count,
+          skipped,
+          deleted,
+          folders,
+          files,
+          total: sortedChangedItems.length,
+        },
+        "Processing delta changes"
+      );
+    }
+
+    await heartbeat();
+    if (!driveItem.parentReference) {
+      throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
+    }
+
+    const internalId = getDriveItemInternalId(driveItem);
+
+    if (driveItem.file) {
+      if (driveItem.deleted) {
+        const isDeleted = await deleteFile({
+          connectorId,
+          internalId,
+          dataSourceConfig,
+        });
+        if (isDeleted) {
+          deleted++;
+        } else {
+          skipped++;
+        }
+      } else {
+        const isSynced = await syncOneFile({
+          connectorId,
+          dataSourceConfig,
+          providerConfig,
+          file: driveItem,
+          parentInternalId: getParentReferenceInternalId(
+            driveItem.parentReference
+          ),
+          startSyncTs,
+          heartbeat,
+        });
+        if (isSynced) {
+          files++;
+        } else {
+          skipped++;
+        }
+      }
+    } else if (driveItem.folder) {
+      if (driveItem.deleted) {
+        // no need to delete children here since they will all be listed
+        // in the delta with the 'deleted' field set
+        // we can delete, even if it is not a root node, because microsoft
+        // tells us the client has already deleted the folder
+        const isDeleted = await deleteFolder({
+          connectorId,
+          dataSourceConfig,
+          internalId,
+          deleteRootNode: true,
+        });
+        if (isDeleted) {
+          deleted++;
+        } else {
+          skipped++;
+        }
+      } else {
+        const { item, type } = driveItem.root
+          ? {
+              item: await getItem(
+                logger,
+                client,
+                `/drives/${driveItem.parentReference.driveId}`
+              ),
+              type: "drive" as const,
+            }
+          : { item: driveItem, type: "folder" as const };
+
+        const blob = itemToMicrosoftNode(type, item);
+
+        if (rootNodeIds.includes(blob.internalId)) {
+          blob.name = blob.name + ` (${extractPath(item)})`;
+        }
+
+        const existingResource = await MicrosoftNodeResource.fetchByInternalId(
+          connectorId,
+          blob.internalId
+        );
+        if (
+          existingResource &&
+          isAlreadySeenItem({
+            driveItemResource: existingResource,
+            startSyncTs,
+          })
+        ) {
+          skipped++;
+          continue;
+        }
+
+        const isMoved = await isFolderMovedInSameRoot({
+          connectorId,
+          folder: driveItem,
+          internalId,
+        });
+
+        const resource = await MicrosoftNodeResource.updateOrCreate(
+          connectorId,
+          blob
+        );
+
+        // add parent information to new node resource. for the toplevel folder,
+        // parent is null
+        const parentInternalId = getParentReferenceInternalId(
+          driveItem.parentReference
+        );
+
+        const isTopLevel =
+          resource.internalId === driveId ||
+          (rootNodeIds.indexOf(resource.internalId) !== -1 &&
+            !(await MicrosoftNodeResource.fetchByInternalId(
+              connectorId,
+              parentInternalId
+            )));
+
+        await resource.update({
+          parentInternalId: isTopLevel ? null : parentInternalId,
+        });
+
+        const parents = await getParents({
+          connectorId,
+          internalId: blob.internalId,
+          startSyncTs,
+        });
+
+        logger.info(
+          { parents, title: blob.name, internalId: blob.internalId },
+          "Upserting folder"
+        );
+
+        await upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: blob.internalId,
+          parents,
+          parentId: parents[1] || null,
+          title: blob.name ?? "Untitled Folder",
+          mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
+          sourceUrl: blob.webUrl ?? undefined,
+        });
+
+        if (isMoved) {
+          await updateDescendantsParentsInCore({
+            dataSourceConfig,
+            folder: resource,
+            startSyncTs,
+          });
+        }
+
+        await resource.update({
+          lastSeenTs: new Date(),
+        });
+        folders++;
+      }
+    } else {
+      throw new Error(`Unexpected: driveItem is neither file nor folder`);
+    }
+  }
+
+  await concurrentExecutor(
+    nodes,
+    (node) => node && node.update({ deltaLink }),
+    { concurrency: 5 }
+  );
+
+  logger.info({ connectorId, driveId, rootNodeIds }, "Delta sync complete");
+}
+
 export async function fetchDeltaForRootNodesInDrive({
   connectorId,
   driveId,
