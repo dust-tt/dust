@@ -142,15 +142,11 @@ export const useDataSourceColumns = () => {
                   }
 
                   if (selectionState === "partial") {
-                    // User confirmed they want to unselect all
                     removeNode(row.original.entry);
                   } else if (state) {
-                    // User wants to select
                     selectNode(row.original.entry);
                   } else {
-                    // User wants to unselect
                     if (row.original.entry.type === "data_source") {
-                      // Show confirmation for data_source
                       const confirmed = await confirm({
                         title: "Are you sure?",
                         message: `Do you want to unselect "${navigationHistoryEntryTitle(row.original.entry)}"?`,
@@ -161,7 +157,6 @@ export const useDataSourceColumns = () => {
                         removeNode(row.original.entry);
                       }
                     } else {
-                      // No confirmation needed for other types
                       removeNode(row.original.entry);
                     }
                   }
