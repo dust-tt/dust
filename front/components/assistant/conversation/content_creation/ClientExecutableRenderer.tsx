@@ -3,10 +3,6 @@ import {
   Button,
   CodeBlock,
   CommandLineIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
