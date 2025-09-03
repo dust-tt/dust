@@ -173,7 +173,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         <DataTable
           data={filteredTriggers}
           columns={triggerColumns}
-          sorting={[{ id: "name", desc: false }]}
+          sorting={[{ id: "agentName", desc: false }]}
         />
       ) : triggers.length === 0 ? (
         <div className="py-8 text-center text-muted-foreground">
