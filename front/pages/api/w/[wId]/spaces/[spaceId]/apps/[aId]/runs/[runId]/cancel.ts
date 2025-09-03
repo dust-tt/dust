@@ -9,7 +9,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { CoreAPI, isString } from "@app/types";
 
 export type PostRunCancelResponseBody = {
   success: boolean;
@@ -22,7 +22,7 @@ async function handler(
   { space }: { space: SpaceResource }
 ) {
   const { aId, runId } = req.query;
-  if (typeof aId !== "string" || typeof runId !== "string") {
+  if (!isString(aId) || !isString(runId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

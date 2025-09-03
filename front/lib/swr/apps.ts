@@ -1,6 +1,7 @@
 import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import logger from "@app/logger/logger";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
@@ -187,14 +188,14 @@ export function useCancelRun({
       );
 
       if (!res.ok) {
-        console.error("Failed to cancel run:", await res.text());
+        logger.error({ err: res.text() }, "Failed to cancel run");
         return false;
       }
 
       const data: PostRunCancelResponseBody = await res.json();
       return data.success;
     } catch (error) {
-      console.error("Error canceling run:", error);
+      logger.error({ err: error }, "Error canceling run");
       return false;
     }
   };
