@@ -14,7 +14,6 @@ import {
   useState,
 } from "react";
 
-import { AuthenticationDialogPage } from "@app/components/assistant/conversation/blocked_actions/AuthentificationDialogPage";
 import { ToolValidationDialogPage } from "@app/components/assistant/conversation/blocked_actions/ToolValidationDialogPage";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useValidateAction } from "@app/hooks/useValidateAction";
@@ -22,7 +21,6 @@ import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
-import { useCreatePersonalConnection } from "@app/lib/swr/mcp_servers";
 import type {
   ConversationWithoutContentType,
   LightAgentMessageType,
@@ -35,10 +33,6 @@ type BlockedActionQueueItem = {
 };
 
 const EMPTY_BLOCKED_ACTIONS_QUEUE: BlockedActionQueueItem[] = [];
-
-type AuthenticationRequiredBlockedAction = BlockedToolExecution & {
-  status: "blocked_authentication_required";
-};
 
 function useBlockedActionsQueue({
   blockedActions,
@@ -156,16 +150,7 @@ export function BlockedActionsProvider({
     );
   }, [blockedActionsQueue]);
 
-  const pendingAuthorizations = useMemo(() => {
-    return blockedActionsQueue.filter(
-      (action) =>
-        action.blockedAction.status === "blocked_authentication_required"
-    );
-  }, [blockedActionsQueue]);
-
-  const [currentStep, setCurrentStep] = useState<"auth" | "validation">(
-    "validation"
-  );
+  const [currentStep, setCurrentStep] = useState<"validation">("validation");
 
   const [currentValidationIndex, setCurrentValidationIndex] = useState(0);
 
@@ -178,64 +163,13 @@ export function BlockedActionsProvider({
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Track connection states for authentication actions
-  const [connectionStates, setConnectionStates] = useState<
-    Record<string, "connecting" | "connected" | "idle">
-  >({});
-
   const { validateAction, isValidating } = useValidateAction({
     owner,
     conversation,
     onError: setErrorMessage,
   });
 
-  const { createPersonalConnection } = useCreatePersonalConnection(owner);
-
   useNavigationLock(isDialogOpen);
-
-  const handleRetry = useCallback(async () => {
-    if (!conversationId) {
-      return;
-    }
-
-    const firstMessage =
-      pendingValidations[0]?.message || pendingAuthorizations[0]?.message;
-    if (!firstMessage) {
-      return;
-    }
-
-    try {
-      await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${firstMessage.sId}/retry?blocked_only=true`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      pendingValidations.forEach((item) => {
-        removeCompletedAction(item.blockedAction.actionId);
-      });
-
-      pendingAuthorizations.forEach((item) => {
-        removeCompletedAction(item.blockedAction.actionId);
-      });
-
-      setIsDialogOpen(false);
-      setCurrentStep("validation");
-      setCurrentValidationIndex(0);
-    } catch (error) {
-      setErrorMessage("Failed to resume conversation. Please try again.");
-    }
-  }, [
-    conversationId,
-    pendingValidations,
-    pendingAuthorizations,
-    owner.sId,
-    removeCompletedAction,
-  ]);
 
   useEffect(() => {
     // Close the dialog when there are no more blocked actions
@@ -245,34 +179,6 @@ export function BlockedActionsProvider({
       setCurrentValidationIndex(0);
     }
   }, [blockedActionsQueue.length, isDialogOpen, isValidating]);
-
-  useEffect(() => {
-    if (
-      pendingAuthorizations.length > 0 &&
-      Object.values(connectionStates).every((state) => state === "connected")
-    ) {
-      void handleRetry();
-    }
-  }, [connectionStates, pendingAuthorizations.length, handleRetry]);
-
-  useEffect(() => {
-    if (
-      currentStep === "auth" &&
-      pendingAuthorizations.length === 0 &&
-      pendingValidations.length > 0
-    ) {
-      setCurrentStep("validation");
-      setCurrentValidationIndex(0);
-    }
-
-    if (
-      currentStep === "validation" &&
-      pendingValidations.length === 0 &&
-      pendingAuthorizations.length > 0
-    ) {
-      setCurrentStep("auth");
-    }
-  }, [currentStep, pendingAuthorizations.length, pendingValidations.length]);
 
   const submitValidation = async (status: MCPValidationOutputType) => {
     setSubmitStatus(status);
@@ -306,52 +212,32 @@ export function BlockedActionsProvider({
         removeCompletedAction(item.blockedAction.actionId);
       });
 
-      // If there are still pending authorizations, switch to auth step
-      if (pendingAuthorizations.length > 0) {
-        setCurrentStep("auth");
-        setCurrentValidationIndex(0);
-      } else {
-        // Close dialog if no more blocked actions
-        setIsDialogOpen(false);
-        setCurrentStep("validation");
-        setCurrentValidationIndex(0);
-      }
+      // Close dialog if no more blocked actions
+      setIsDialogOpen(false);
+      setCurrentStep("validation");
+      setCurrentValidationIndex(0);
     }
   };
 
-  const showBlockedActionsDialog = useCallback(() => {
-    if (blockedActionsQueue.length > 0) {
-      // Always show validation first if there are pending validations
-      if (pendingAuthorizations.length > 0) {
-        setCurrentStep("auth");
-      } else if (pendingValidations.length > 0) {
-        setCurrentStep("validation");
-      }
-
+  useEffect(() => {
+    if (pendingValidations.length > 0 && !isDialogOpen) {
+      setCurrentStep("validation");
       setCurrentValidationIndex(0);
       setIsDialogOpen(true);
     }
-  }, [
-    blockedActionsQueue.length,
-    pendingValidations.length,
-    pendingAuthorizations.length,
-  ]);
+  }, [pendingValidations.length, isDialogOpen]);
 
-  const handleConnectionStateChange = useCallback(
-    (actionId: string, status: "connecting" | "connected" | "idle") => {
-      setConnectionStates((prev) => ({
-        ...prev,
-        [actionId]: status,
-      }));
-    },
-    []
-  );
+  const showBlockedActionsDialog = useCallback(() => {
+    if (blockedActionsQueue.length > 0 && pendingValidations.length > 0) {
+      setCurrentStep("validation");
+      setCurrentValidationIndex(0);
+      setIsDialogOpen(true);
+    }
+  }, [blockedActionsQueue.length, pendingValidations.length]);
 
   const hasPendingValidations = pendingValidations.length > 0;
-  const hasPendingAuthorizations = pendingAuthorizations.length > 0;
-  const hasBlockedActions = hasPendingValidations || hasPendingAuthorizations;
-  const totalBlockedActions =
-    pendingValidations.length + pendingAuthorizations.length;
+  const hasBlockedActions = hasPendingValidations;
+  const totalBlockedActions = pendingValidations.length;
 
   const pages = useMemo(() => {
     if (currentStep === "validation" && hasPendingValidations) {
@@ -375,40 +261,13 @@ export function BlockedActionsProvider({
       });
     }
 
-    if (currentStep === "auth" && hasPendingAuthorizations) {
-      return [
-        {
-          id: "authorization",
-          title: "Authentication Required",
-          icon: ActionPieChartIcon,
-          content: (
-            <AuthenticationDialogPage
-              authActions={pendingAuthorizations.map(
-                (item) =>
-                  item.blockedAction as AuthenticationRequiredBlockedAction
-              )}
-              connectionStates={connectionStates}
-              onConnectionStateChange={handleConnectionStateChange}
-              createPersonalConnection={createPersonalConnection}
-              errorMessage={errorMessage}
-            />
-          ),
-        },
-      ];
-    }
-
     return [];
   }, [
     currentStep,
     hasPendingValidations,
-    hasPendingAuthorizations,
     pendingValidations,
-    pendingAuthorizations,
     errorMessage,
     neverAskAgain,
-    connectionStates,
-    handleConnectionStateChange,
-    createPersonalConnection,
   ]);
 
   const currentPageId = useMemo(() => {
@@ -421,10 +280,6 @@ export function BlockedActionsProvider({
       pendingValidations[currentValidationIndex]
     ) {
       return `validation-${pendingValidations[currentValidationIndex].blockedAction.actionId}`;
-    }
-
-    if (currentStep === "auth") {
-      return "authorization";
     }
 
     return pages[0]?.id || "";
@@ -447,7 +302,7 @@ export function BlockedActionsProvider({
             pages={pages}
             currentPageId={currentPageId}
             onPageChange={() => {}}
-            hideCloseButton={currentStep === "auth"}
+            hideCloseButton={false}
             size="lg"
             isAlertDialog
             showNavigation={currentStep === "validation" && pages.length > 1}
