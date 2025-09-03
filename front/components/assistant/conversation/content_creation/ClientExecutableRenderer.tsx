@@ -77,6 +77,8 @@ interface ClientExecutableRendererProps {
   owner: LightWorkspaceType;
 }
 
+const FULL_SCREEN_HASH_PARAM = "fullScreen";
+
 export function ClientExecutableRenderer({
   conversation,
   fileId,
@@ -94,7 +96,9 @@ export function ClientExecutableRenderer({
   const panel = panelRef?.current;
 
   // Track fullscreen state in URL hash parameters
-  const [fullScreenHash, setFullScreenHash] = useHashParam("fullScreen");
+  const [fullScreenHash, setFullScreenHash] = useHashParam(
+    FULL_SCREEN_HASH_PARAM
+  );
   const isFullScreen = fullScreenHash === "true";
 
   const { fileContent, isFileContentLoading, error } = useFileContent({
