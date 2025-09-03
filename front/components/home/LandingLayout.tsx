@@ -22,7 +22,7 @@ import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import UTMHandler from "@app/components/UTMHandler";
 import { useGeolocation } from "@app/lib/swr/geo";
-import { classNames } from "@app/lib/utils";
+import { classNames, getFaviconPath } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
   shape: number;
@@ -253,11 +253,12 @@ const CookieBanner = ({
 };
 
 const Header = () => {
+  const faviconPath = getFaviconPath();
+
   return (
     <Head>
       <title>Accelerate your entire organization with custom AI agents</title>
-      <link rel="shortcut icon" href="/static/favicon.png" />
-      <link rel="icon" type="image/png" href="/static/favicon.png" />
+      <link rel="icon" type="image/png" href={faviconPath} />
       <link
         rel="preload"
         href="/static/fonts/Geist-Regular.woff2"

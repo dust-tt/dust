@@ -6,6 +6,7 @@ import { formatFilenameForDisplay } from "@app/lib/files";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getFaviconPath } from "@app/lib/utils";
 import {
   CANVAS_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
@@ -86,6 +87,7 @@ export default function SharedFilePage({
   workspaceName,
 }: SharedFilePageProps) {
   const humanFriendlyTitle = formatFilenameForDisplay(title);
+  const faviconPath = getFaviconPath();
   const description = `Discover what ${workspaceName} built with AI. Explore now.`;
 
   return (
@@ -127,8 +129,7 @@ export default function SharedFilePage({
         />
 
         {/* Favicon */}
-        <link rel="shortcut icon" href="/static/favicon.png" />
-        <link rel="icon" type="image/png" href="/static/favicon.png" />
+        <link rel="icon" type="image/png" href={faviconPath} />
       </Head>
       <div className="flex h-screen w-full">
         <PublicCanvasContainer shareToken={token} />
