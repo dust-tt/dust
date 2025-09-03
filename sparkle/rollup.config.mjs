@@ -57,23 +57,25 @@ const config = {
     json(),
     // Conditionally include terser based on environment variable
     // Set DISABLE_TERSER=1 to disable minification (fixes webpack exports issue in dev)
-    ...(process.env.DISABLE_TERSER ? [] : [
-      terser({
-        compress: {
-          passes: 2,
-          drop_console: true,
-          keep_fnames: false,
-        },
-        format: {
-          comments: false,
-          preserve_annotations: false,
-        },
-        mangle: {
-          properties: false,
-        },
-        sourceMap: false,
-      })
-    ]),
+    ...(process.env.DISABLE_TERSER
+      ? []
+      : [
+          terser({
+            compress: {
+              passes: 2,
+              drop_console: true,
+              keep_fnames: false,
+            },
+            format: {
+              comments: false,
+              preserve_annotations: false,
+            },
+            mangle: {
+              properties: false,
+            },
+            sourceMap: false,
+          }),
+        ]),
   ],
 };
 
