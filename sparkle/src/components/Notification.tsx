@@ -19,19 +19,11 @@ export type NotificationType = {
   title?: string;
   description?: string;
   type: "success" | "error" | "info";
-  duration?: number;
 };
 
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
   (n) => n
 );
-export interface NotificationProps {
-  className?: string;
-  description?: string;
-  title?: string;
-  variant: "success" | "error" | "info";
-  onClick?: () => void;
-}
 
 function NotificationContent({
   type,
@@ -124,7 +116,7 @@ export const Notification = {
             />
           ),
           {
-            duration: notification.duration ?? NOTIFICATION_DELAY,
+            duration: NOTIFICATION_DELAY,
           }
         );
       },
