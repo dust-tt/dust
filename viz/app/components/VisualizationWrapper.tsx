@@ -487,8 +487,6 @@ export function VisualizationWrapper({
           scope={runnerParams.scope}
           onRendered={(error) => {
             if (error) {
-              // This catches content generation errors from the Runner component
-              console.error("Content generation error:", error);
               setErrorMessage(error);
               communicateErrorToParent(error);
             }

@@ -301,8 +301,6 @@ export const VisualizationActionIframe = forwardRef<
     [codeFullyGenerated, iframeLoaded, isErrored]
   );
 
-  console.log("agentConfigurationId", agentConfigurationId);
-
   const handleVisualizationRetry = useVisualizationRetry({
     workspaceId: workspace?.sId ?? null,
     conversationId,

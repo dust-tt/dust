@@ -122,6 +122,7 @@ export function useUpsertFileAsDatasourceEntry(
 }
 
 type InternalFileMetadata = FileType & {
+  conversationId?: string;
   agentConfigurationId?: string;
 };
 
@@ -134,7 +135,6 @@ export function useFileMetadata({
   owner: LightWorkspaceType;
   cacheKey?: string | null;
 }) {
-  // Internally, our metadata may include extra fields not present in the public client type.
   const fileMetadataFetcher: Fetcher<InternalFileMetadata> = fetcher;
 
   // Include cacheKey in the SWR key if provided to force cache invalidation.
