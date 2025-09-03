@@ -2,6 +2,8 @@ import {
   Button,
   cn,
   CodeBlock,
+  ContentMessage,
+  ExclamationCircleIcon,
   Markdown,
   MarkdownContentContext,
   Sheet,
@@ -383,22 +385,34 @@ export const VisualizationActionIframe = forwardRef<
                 </div>
               )}
               {isErrored && (
-                <div className="flex h-full w-full flex-col items-center gap-4 py-8">
-                  <div className="px-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    An error occured while rendering the visualization.
-                    <div className="pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {errorMessage}
+                <div className="flex h-full w-full items-center justify-center p-6">
+                  <ContentMessage
+                    title="Visualization Error"
+                    variant="warning"
+                    icon={ExclamationCircleIcon}
+                    className="max-w-md text-center"
+                  >
+                    <div className="mb-4 text-sm">
+                      An error occurred while rendering the visualization.
                     </div>
-                  </div>
 
-                  {canRetry && !retryClicked && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      label="Retry Visualization"
-                      onClick={handleRetryClick}
-                    />
-                  )}
+                    {errorMessage && (
+                      <div className="mb-4 rounded-md bg-warning-50 p-3 text-xs text-warning-900 dark:bg-warning-50-night dark:text-warning-900-night">
+                        {errorMessage}
+                      </div>
+                    )}
+
+                    {canRetry && !retryClicked && (
+                      <div className="flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          label="Retry Visualization"
+                          onClick={handleRetryClick}
+                        />
+                      </div>
+                    )}
+                  </ContentMessage>
                 </div>
               )}
             </div>

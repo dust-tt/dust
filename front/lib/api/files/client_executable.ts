@@ -149,7 +149,10 @@ export async function editClientExecutableFile(
     );
   }
 
-  if (agentConfigurationId && fileResource.useCaseMetadata) {
+  if (
+    agentConfigurationId &&
+    fileResource.useCaseMetadata?.agentConfigurationId !== agentConfigurationId
+  ) {
     await fileResource.setUseCaseMetadata({
       ...fileResource.useCaseMetadata,
       agentConfigurationId,
