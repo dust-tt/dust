@@ -66,8 +66,6 @@ export function ConversationSidePanelProvider({
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
 
-  console.log("panelRef", panelRef);
-
   const setPanelRef = (ref: ImperativePanelHandle | null) => {
     panelRef.current = ref;
   };
