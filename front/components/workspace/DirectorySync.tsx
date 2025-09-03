@@ -113,7 +113,13 @@ function DirectorySyncStatus({
                 {dsyncStatus.connection?.type}
               </Page.P>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button
+                label="Configure Directory sync"
+                size="sm"
+                variant="outline"
+                onClick={onSetupClick}
+              />
               <Button
                 label="De-activate Directory sync"
                 size="sm"
