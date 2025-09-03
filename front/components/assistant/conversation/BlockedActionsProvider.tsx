@@ -45,6 +45,8 @@ type AuthenticationRequiredBlockedAction = Extract<
   { status: "blocked_authentication_required" }
 >;
 
+const EMPTY_BLOCKED_ACTIONS_QUEUE: BlockedActionQueueItem[] = [];
+
 interface AuthenticationDialogPageProps {
   authActions: AuthenticationRequiredBlockedAction[];
   connectionStates: Record<string, "connecting" | "connected" | "idle">;
@@ -256,6 +258,8 @@ function useBlockedActionsQueue({
           }));
         return [...prevQueue, ...newItems];
       });
+    } else {
+      setBlockedActionsQueue(EMPTY_BLOCKED_ACTIONS_QUEUE);
     }
   }, [blockedActions]);
 
