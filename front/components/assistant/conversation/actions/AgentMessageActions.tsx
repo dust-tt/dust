@@ -55,10 +55,6 @@ export function AgentMessageActions({
     });
   };
 
-  if (lastAgentStateClassification === "done" && !hasSidePanelContent) {
-    return null;
-  }
-
   const lastNotification = lastAction
     ? actionProgress.get(lastAction.id)?.progress ?? null
     : null;
