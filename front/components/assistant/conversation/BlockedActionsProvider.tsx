@@ -256,6 +256,8 @@ function useBlockedActionsQueue({
           }));
         return [...prevQueue, ...newItems];
       });
+    } else {
+      setBlockedActionsQueue([]);
     }
   }, [blockedActions]);
 
