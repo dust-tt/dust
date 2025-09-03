@@ -2,16 +2,16 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
-  ClockIcon,
   DocumentIcon,
+  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  ExclamationCircleIcon,
   FolderOpenIcon,
   Icon,
-  InformationCircleIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -450,8 +450,8 @@ const RenderConversation = ({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const ActionRequiredIcon = () => (
-    <Icon visual={InformationCircleIcon} className="text-golden-700" />
+  const UnreadIcon = () => (
+    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
   );
 
   return (
@@ -476,12 +476,13 @@ const RenderConversation = ({
           selected={router.query.cId === conversation.sId}
           icon={
             conversation.actionRequired
-              ? ActionRequiredIcon
-              : conversation.triggerId
-                ? ClockIcon
+              ? ExclamationCircleIcon
+              : conversation.unread
+                ? UnreadIcon
                 : undefined
           }
           label={conversationLabel}
+          className={conversation.unread ? "font-medium" : undefined}
           href={`/w/${owner.sId}/assistant/${conversation.sId}`}
           shallow
         />

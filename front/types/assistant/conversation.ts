@@ -223,8 +223,8 @@ export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
   updated?: number;
-  unread?: boolean;
-  actionRequired?: boolean;
+  unread: boolean;
+  actionRequired: boolean;
   owner: WorkspaceType;
   sId: string;
   title: string | null;

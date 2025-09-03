@@ -1,7 +1,11 @@
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationWithoutContentType } from "@app/types";
+import { assertNever } from "@app/types";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
@@ -65,18 +69,51 @@ async function processEventForDatabase(
 }
 
 export async function updateResourceAndPublishEvent(
-  event: AgentMessageEvents,
-  agentMessageRow: AgentMessage,
+  auth: Authenticator,
   {
-    conversationId,
+    event,
+    agentMessageRow,
+    conversation,
     step,
   }: {
-    conversationId: string;
+    event: AgentMessageEvents;
+    agentMessageRow: AgentMessage;
+    conversation: ConversationWithoutContentType;
     step: number;
   }
 ): Promise<void> {
   // Process database operations BEFORE publishing to Redis.
   await processEventForDatabase(event, agentMessageRow, step);
 
-  await publishConversationRelatedEvent({ conversationId, event, step });
+  // If the agent message is not in a created status, we want to mark the conversation as unread for all participants.
+  switch (agentMessageRow.status) {
+    case "created":
+      // Do nothing.
+      break;
+    case "succeeded":
+    case "failed":
+    case "cancelled":
+      // No excluded user because the message is created by the agent.
+      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
+        conversation,
+      });
+      await publishConversationRelatedEvent({
+        conversationId: conversation.sId,
+        event: {
+          type: "agent_message_done",
+          created: Date.now(),
+          configurationId: event.configurationId,
+          messageId: event.messageId,
+        },
+      });
+      break;
+    default:
+      assertNever(agentMessageRow.status);
+  }
+
+  await publishConversationRelatedEvent({
+    conversationId: conversation.sId,
+    event,
+    step,
+  });
 }
