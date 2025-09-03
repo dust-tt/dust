@@ -1,4 +1,6 @@
 import type { LightAgentConfigurationType } from "@dust-tt/client";
+import type { AdaptiveCard } from "@microsoft/teams-ai";
+import type { Activity } from "botbuilder";
 
 import { apiConfig } from "@connectors/lib/api/config";
 
@@ -38,8 +40,8 @@ export function createResponseAdaptiveCard({
   agentConfigurations: LightAgentConfigurationType[];
   originalMessage?: string;
   isError?: boolean;
-}): any {
-  const card = {
+}): Partial<Activity> {
+  const card: AdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
     version: "1.4",
@@ -53,11 +55,11 @@ export function createResponseAdaptiveCard({
         color: isError ? "Attention" : "Default",
       },
     ],
-    actions: [] as any[],
+    actions: [],
   };
 
   // Add separator and footer section
-  (card.body as any).push({
+  card.body.push({
     type: "Container",
     spacing: "Medium",
     separator: true,
@@ -118,15 +120,12 @@ export function createResponseAdaptiveCard({
  */
 export function createStreamingAdaptiveCard({
   response,
-  assistantName,
-  conversationUrl,
-  workspaceId,
 }: {
   response: string;
   assistantName: string;
   conversationUrl: string | null;
   workspaceId: string;
-}): any {
+}): Partial<Activity> {
   return {
     type: "message",
     attachments: [
@@ -174,7 +173,7 @@ export function createStreamingAdaptiveCard({
 /**
  * Creates a simple adaptive card for thinking/loading state
  */
-export function createThinkingAdaptiveCard(): any {
+export function createThinkingAdaptiveCard(): Partial<Activity> {
   return {
     type: "message",
     attachments: [
@@ -209,7 +208,7 @@ export function createErrorAdaptiveCard({
   error: string;
   workspaceId: string;
   conversationUrl?: string | null;
-}): any {
+}): Partial<Activity> {
   return {
     type: "message",
     attachments: [
@@ -257,7 +256,7 @@ export function createErrorAdaptiveCard({
 export function createAgentSelectionCard(
   agentConfigurations: LightAgentConfigurationType[],
   originalMessage: string
-): any {
+): Partial<Activity> {
   return {
     type: "message",
     attachments: [

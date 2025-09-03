@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 import axios from "axios";
+import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -42,7 +43,7 @@ export async function botAnswerTeamsMessage(
     conversationId: string;
     activityId: string;
     userId?: string;
-    botContext?: any; // Direct Bot Framework context
+    botContext?: TurnContext; // Direct Bot Framework context
     streamingMessages?: Map<string, string>;
   }
 ): Promise<Result<undefined, Error>> {
@@ -515,11 +516,11 @@ const sendTeamsResponse = async (
     conversationId: string;
     activityId: string;
     userId?: string;
-    botContext?: any;
+    botContext?: TurnContext;
     streamingMessages?: Map<string, string>;
   },
   isStreaming: boolean,
-  adaptiveCard: any
+  adaptiveCard: Partial<Activity>
 ) => {
   try {
     // If we have direct Bot Framework context, use it directly

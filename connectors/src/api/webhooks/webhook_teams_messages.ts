@@ -1,3 +1,4 @@
+import type { TurnContext } from "botbuilder";
 import { CloudAdapter } from "botbuilder";
 import type { Request, Response } from "express";
 
@@ -88,7 +89,7 @@ export async function teamsMessagesWebhook(req: Request, res: Response) {
   }
 }
 
-async function handleMessage(context: any) {
+async function handleMessage(context: TurnContext) {
   // Check if it's an adaptive card submit
   if (context.activity.value?.action === "ask_agent") {
     await handleAgentSelection(context);
@@ -101,14 +102,14 @@ async function handleMessage(context: any) {
   }
 }
 
-async function handleInvoke(context: any) {
+async function handleInvoke(context: TurnContext) {
   // Handle message extensions (compose extensions)
   if (context.activity.name === "composeExtension/query") {
     await handleMessageExtension(context);
   }
 }
 
-async function handleAgentSelection(context: any) {
+async function handleAgentSelection(context: TurnContext) {
   const { agentId, agentName, originalMessage } = context.activity.value;
 
   logger.info(
@@ -136,7 +137,7 @@ async function handleAgentSelection(context: any) {
   await processTeamsMessage(context, agentMessage);
 }
 
-async function handleTextMessage(context: any) {
+async function handleTextMessage(context: TurnContext) {
   logger.info({ text: context.activity.text }, "Handling regular text message");
 
   // Send thinking message
@@ -153,7 +154,7 @@ async function handleTextMessage(context: any) {
   await processTeamsMessage(context, context.activity.text);
 }
 
-async function handleMessageExtension(context: any) {
+async function handleMessageExtension(context: TurnContext) {
   try {
     const query = context.activity.value;
     logger.info({ query }, "Handling message extension query");
@@ -218,7 +219,7 @@ async function handleMessageExtension(context: any) {
   }
 }
 
-async function processTeamsMessage(context: any, message: string) {
+async function processTeamsMessage(context: TurnContext, message: string) {
   try {
     // Find the connector for this Teams conversation
     // For now, use the first Microsoft connector - in production you'd want to identify the specific one
