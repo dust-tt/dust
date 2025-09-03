@@ -105,7 +105,7 @@ export function UserMenu({
             >
               {user.firstName}
             </span>
-            <span className="w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
               {owner.name}
             </span>
           </div>

@@ -195,6 +195,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
+    const latestAgentMessages =
+      await conversation.getLatestAgentMessageIdByRank(auth);
+
     const blockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
@@ -261,6 +264,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     for (const action of blockedActions) {
       const agentMessage = action.agentMessage;
       assert(agentMessage?.message, "No message for agent message.");
+
+      // Ignore actions that are not the latest version of the agent message.
+      if (
+        !latestAgentMessages.some((m) => m.agentMessageId === agentMessage.id)
+      ) {
+        continue;
+      }
+
       const agentConfiguration = agentConfigurations.find(
         (a) => a.sId === agentMessage.agentConfigurationId
       );

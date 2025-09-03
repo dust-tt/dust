@@ -77,7 +77,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     workspaceId: owner.sId,
   });
 
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
@@ -304,24 +303,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <>
                         <DropdownMenuLabel>Agent</DropdownMenuLabel>
                         <DropdownMenuItem
-                          href={getAgentBuilderRoute(
-                            owner.sId,
-                            "new",
-                            hasAgentBuilderV2,
-                            "flow=personal_assistants"
-                          )}
+                          href={getAgentBuilderRoute(owner.sId, "new")}
                           icon={DocumentIcon}
                           label="New agent from scratch"
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />
                         <DropdownMenuItem
-                          href={getAgentBuilderRoute(
-                            owner.sId,
-                            "create",
-                            hasAgentBuilderV2,
-                            "flow=personal_assistants"
-                          )}
+                          href={getAgentBuilderRoute(owner.sId, "create")}
                           icon={MagicIcon}
                           label="New agent from template"
                           data-gtm-label="assistantCreationButton"
@@ -351,11 +340,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
-                        href={getAgentBuilderRoute(
-                          owner.sId,
-                          "manage",
-                          hasAgentBuilderV2
-                        )}
+                        href={getAgentBuilderRoute(owner.sId, "manage")}
                         icon={RobotIcon}
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"

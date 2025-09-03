@@ -130,7 +130,7 @@ const createServer = (
       }
 
       const { agentConfiguration: agent, subAgentConfiguration } = result.value;
-      const agentUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/assistants/${agent.sId}`;
+      const agentUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/agents/${agent.sId}`;
 
       // Prepare the structured output resource
       const agentCreationResource: AgentCreationResultResourceType = {
@@ -150,7 +150,7 @@ const createServer = (
               name: subAgentConfiguration.name,
               description: subAgentConfiguration.description,
               pictureUrl: subAgentConfiguration.pictureUrl,
-              url: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/assistants/${subAgentConfiguration.sId}`,
+              url: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/agents/${subAgentConfiguration.sId}`,
             }
           : undefined,
       };

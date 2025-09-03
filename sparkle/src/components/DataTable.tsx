@@ -728,16 +728,15 @@ DataTable.Row = function Row({
   return (
     <tr
       className={cn(
-        "s-group/dt s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
         "s-border-separator dark:s-border-separator-night",
-        onClick
-          ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
-          : "",
+        onClick &&
+          "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
         props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
         widthClassName,
         className
       )}
-      onClick={onClick ? onClick : undefined}
+      onClick={onClick || undefined}
       {...props}
     >
       {children}

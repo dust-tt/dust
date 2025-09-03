@@ -45,6 +45,8 @@ type AuthenticationRequiredBlockedAction = Extract<
   { status: "blocked_authentication_required" }
 >;
 
+const EMPTY_BLOCKED_ACTIONS_QUEUE: BlockedActionQueueItem[] = [];
+
 interface AuthenticationDialogPageProps {
   authActions: AuthenticationRequiredBlockedAction[];
   connectionStates: Record<string, "connecting" | "connected" | "idle">;
@@ -256,30 +258,35 @@ function useBlockedActionsQueue({
           }));
         return [...prevQueue, ...newItems];
       });
+    } else {
+      setBlockedActionsQueue(EMPTY_BLOCKED_ACTIONS_QUEUE);
     }
   }, [blockedActions]);
 
-  const enqueueBlockedAction = ({
-    message,
-    blockedAction,
-  }: {
-    message: LightAgentMessageType;
-    blockedAction: BlockedToolExecution;
-  }) => {
-    setBlockedActionsQueue((prevQueue) => {
-      const existingIndex = prevQueue.findIndex(
-        (v) => v.blockedAction.actionId === blockedAction.actionId
-      );
+  const enqueueBlockedAction = useCallback(
+    ({
+      message,
+      blockedAction,
+    }: {
+      message: LightAgentMessageType;
+      blockedAction: BlockedToolExecution;
+    }) => {
+      setBlockedActionsQueue((prevQueue) => {
+        const existingIndex = prevQueue.findIndex(
+          (v) => v.blockedAction.actionId === blockedAction.actionId
+        );
 
-      // If the action is not in the queue, add it.
-      // If the action is in the queue, replace it with the new one.
-      return existingIndex === -1
-        ? [...blockedActionsQueue, { blockedAction, message }]
-        : prevQueue.map((item, index) =>
-            index === existingIndex ? { blockedAction, message } : item
-          );
-    });
-  };
+        // If the action is not in the queue, add it.
+        // If the action is in the queue, replace it with the new one.
+        return existingIndex === -1
+          ? [...blockedActionsQueue, { blockedAction, message }]
+          : prevQueue.map((item, index) =>
+              index === existingIndex ? { blockedAction, message } : item
+            );
+      });
+    },
+    [blockedActionsQueue]
+  );
 
   const shiftBlockedActionQueue = useCallback(() => {
     setBlockedActionsQueue((prevQueue) => prevQueue.slice(1));

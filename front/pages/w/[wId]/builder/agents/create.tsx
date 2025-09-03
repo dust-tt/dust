@@ -15,16 +15,12 @@ import { useMemo, useState } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
-import type { BuilderFlow } from "@app/components/agent_builder/types";
-import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { getFeatureFlags } from "@app/lib/auth";
-import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -37,7 +33,6 @@ import type {
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  flow: BuilderFlow;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   templateTagsMapping: TemplateTagsType;
@@ -51,34 +46,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (
-    !featureFlags.includes("agent_builder_v2") ||
-    (await isRestrictedFromAgentCreation(owner))
-  ) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const flow: BuilderFlow = BUILDER_FLOWS.includes(
-    context.query.flow as BuilderFlow
-  )
-    ? (context.query.flow as BuilderFlow)
-    : "personal_assistants";
-
   return {
     props: {
       owner,
       subscription,
-      flow,
       templateTagsMapping: TEMPLATES_TAGS_CONFIG,
     },
   };
 });
 
 export default function CreateAgent({
-  flow,
   owner,
   subscription,
   templateTagsMapping,
@@ -260,7 +237,6 @@ export default function CreateAgent({
           </div>
         </Page>
         <AgentTemplateModal
-          flow={flow}
           owner={owner}
           templateId={selectedTemplateId}
           onClose={closeTemplateModal}

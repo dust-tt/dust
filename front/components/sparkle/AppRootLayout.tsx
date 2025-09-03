@@ -7,6 +7,7 @@ import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
 import { useUser } from "@app/lib/swr/user";
+import { getFaviconPath } from "@app/lib/utils";
 
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
 // Until then, AppLayout has been split into AppRootLayout and AppContentLayout.
@@ -18,6 +19,7 @@ export default function AppRootLayout({
 }) {
   const { user } = useUser();
   useDatadogLogs();
+  const faviconPath = getFaviconPath();
 
   useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {
@@ -42,8 +44,7 @@ export default function AppRootLayout({
     <ThemeProvider>
       <WelcomeTourGuideProvider>
         <Head>
-          <link rel="shortcut icon" href="/static/favicon.png" />
-          <link rel="icon" type="image/png" href="/static/favicon.png" />
+          <link rel="icon" type="image/png" href={faviconPath} />
 
           <meta name="apple-mobile-web-app-title" content="Dust" />
           <link rel="apple-touch-icon" href="/static/AppIcon.png" />

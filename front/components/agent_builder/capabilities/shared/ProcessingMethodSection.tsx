@@ -118,14 +118,29 @@ export function ProcessingMethodSection() {
   }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
 
   useEffect(() => {
-    // Update mcpServerView only if it's null and we have servers to display
-    if (serversToDisplay && mcpServerView === null) {
-      const [defaultServer] = serversToDisplay;
-      if (defaultServer) {
-        setValue("mcpServerView", defaultServer, { shouldDirty: false });
+    if (serversToDisplay) {
+      let suggestedServer = serversToDisplay[0];
+      // If all selected sources are tables or remote databases, suggest
+      // table query method
+      if (
+        sources.in.length > 0 &&
+        sources.in.every(isRemoteDatabaseOrTableItem)
+      ) {
+        const tableQueryServer = serversToDisplay.find(
+          (server) =>
+            tablesServer.includes(server.server.name) ||
+            server.server.name === DATA_WAREHOUSE_SERVER_NAME
+        );
+        if (tableQueryServer) {
+          suggestedServer = tableQueryServer;
+        }
+      }
+
+      if (suggestedServer) {
+        setValue("mcpServerView", suggestedServer, { shouldDirty: true });
       }
     }
-  }, [serversToDisplay, setValue, mcpServerView]);
+  }, [serversToDisplay, setValue, mcpServerView, sources.in]);
 
   return (
     <div className="mt-2 flex flex-col space-y-4">

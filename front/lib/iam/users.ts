@@ -11,6 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -277,6 +278,8 @@ export async function mergeUserIdentities({
   // Migrate authorship of files from the secondary user to the primary user.
   await FileModel.update(userIdValues, userIdOptions);
   await DustAppSecret.update(userIdValues, userIdOptions);
+  // Migrate authorship of agent memories from the secondary user to the primary user.
+  await AgentMemoryModel.update(userIdValues, userIdOptions);
 
   // Delete all group memberships for the secondary user that are already member.
   const groups = await GroupMembershipModel.findAll({

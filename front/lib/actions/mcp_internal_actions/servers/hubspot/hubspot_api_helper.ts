@@ -1003,7 +1003,17 @@ export const getDeal = async (
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    const deal = await hubspotClient.crm.deals.basicApi.getById(dealId);
+    const deal = await hubspotClient.crm.deals.basicApi.getById(dealId, [
+      "amount",
+      "hubspot_owner_id",
+      "closedate",
+      "createdate",
+      "dealname",
+      "dealstage",
+      "hs_lastmodifieddate",
+      "hs_object_id",
+      "pipeline",
+    ]);
     return deal;
   } catch (error: any) {
     if (error.code === 404) {

@@ -119,6 +119,9 @@ export const TagsSelector = ({
 
   const onKeyDown = async (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+
       if (showCreateOption) {
         await handleCreateTag(searchText.trim());
       } else {

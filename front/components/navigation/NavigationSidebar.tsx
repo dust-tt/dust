@@ -177,7 +177,7 @@ export const NavigationSidebar = React.forwardRef<
       {user && (
         <div
           className={classNames(
-            "flex items-center border-t px-1 py-2",
+            "flex items-center border-t px-2 py-2",
             "border-border-dark dark:border-border-dark-night",
             "text-foreground dark:text-foreground-night"
           )}

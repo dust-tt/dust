@@ -20,7 +20,7 @@ import {
 import { GmailLogo } from "@sparkle/logo/platforms";
 
 const meta: Meta<typeof MultiPageDialogContent> = {
-  title: "Primitives/MultiPageDialog",
+  title: "Modules/MultiPageDialog",
   component: MultiPageDialogContent,
 };
 
