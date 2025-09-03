@@ -6,9 +6,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
   Input,
   Label,
+  Tooltip,
 } from "@dust-tt/sparkle";
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, { useMemo } from "react";
 
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
@@ -58,20 +61,29 @@ function BooleanConfigurationSection({
     // We make sure to save a boolean value that said.
     const value = !!additionalConfiguration[key];
     return (
-      <div key={key} className="mb-2 flex items-center gap-4">
-        <Label htmlFor={`boolean-${key}`} className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <div className="flex items-center gap-1">
+          <Label htmlFor={`boolean-${key}`} className="w-1/5 text-sm font-medium">
+            {formatKeyForDisplay(key)}
+          </Label>
+          {description && (
+            <Tooltip
+              trigger={
+                <Icon
+                  visual={InformationCircleIcon}
+                  size="xs"
+                  className="text-gray-400"
+                />
+              }
+              label={description}
+            />
+          )}
+        </div>
         <Checkbox
           id={`boolean-${key}`}
           checked={value}
           onCheckedChange={(checked) => onConfigUpdate(key, !!checked)}
         />
-        {description && (
-          <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night flex-1">
-            {description}
-          </Label>
-        )}
       </div>
     );
   });
@@ -95,29 +107,36 @@ function NumberConfigurationSection({
   return requiredNumbers.map(({ key, description }) => {
     const value = additionalConfiguration[key] ?? null;
     return (
-      <div key={key} className="mb-2 flex items-center gap-4">
-        <Label htmlFor={`number-${key}`} className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
-        <div className="flex-1">
-          <Input
-            id={`number-${key}`}
-            type="number"
-            value={value?.toString() || ""}
-            onChange={(e) => {
-              const parsed = parseFloat(e.target.value);
-              if (!isNaN(parsed)) {
-                onConfigUpdate(key, parsed);
-              }
-            }}
-            placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
-          />
-        </div>
-        {description && (
-          <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night flex-1">
-            {description}
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <div className="flex items-center gap-1">
+          <Label htmlFor={`number-${key}`} className="w-1/5 text-sm font-medium">
+            {formatKeyForDisplay(key)}
           </Label>
-        )}
+          {description && (
+            <Tooltip
+              trigger={
+                <Icon
+                  visual={InformationCircleIcon}
+                  size="xs"
+                  className="text-gray-400"
+                />
+              }
+              label={description}
+            />
+          )}
+        </div>
+        <Input
+          id={`number-${key}`}
+          type="number"
+          value={value?.toString() || ""}
+          onChange={(e) => {
+            const parsed = parseFloat(e.target.value);
+            if (!isNaN(parsed)) {
+              onConfigUpdate(key, parsed);
+            }
+          }}
+          placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
+        />
       </div>
     );
   });
@@ -141,24 +160,31 @@ function StringConfigurationSection({
   return requiredStrings.map(({ key, description }) => {
     const value = additionalConfiguration[key] ?? "";
     return (
-      <div key={key} className="mb-2 flex items-center gap-4">
-        <Label htmlFor={`string-${key}`} className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
-        <div className="flex-1">
-          <Input
-            id={`string-${key}`}
-            type="text"
-            value={value.toString()}
-            onChange={(e) => onConfigUpdate(key, e.target.value)}
-            placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
-          />
-        </div>
-        {description && (
-          <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night flex-1">
-            {description}
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <div className="flex items-center gap-1">
+          <Label htmlFor={`string-${key}`} className="w-1/5 text-sm font-medium">
+            {formatKeyForDisplay(key)}
           </Label>
-        )}
+          {description && (
+            <Tooltip
+              trigger={
+                <Icon
+                  visual={InformationCircleIcon}
+                  size="xs"
+                  className="text-gray-400"
+                />
+              }
+              label={description}
+            />
+          )}
+        </div>
+        <Input
+          id={`string-${key}`}
+          type="text"
+          value={value.toString()}
+          onChange={(e) => onConfigUpdate(key, e.target.value)}
+          placeholder={`Enter value for ${formatKeyForDisplay(key)}`}
+        />
       </div>
     );
   });
@@ -182,10 +208,24 @@ function EnumConfigurationSection({
   return Object.entries(requiredEnums).map(([key, { options: enumValues, description }]) => {
     const displayLabel = `Select ${formatKeyForDisplay(key)}`;
     return (
-      <div key={key} className="mb-2 flex items-center gap-4">
-        <Label className="w-1/5 text-sm font-medium">
-          {formatKeyForDisplay(key)}
-        </Label>
+      <div key={key} className="mb-2 flex items-center gap-1">
+        <div className="flex items-center gap-1">
+          <Label className="w-1/5 text-sm font-medium">
+            {formatKeyForDisplay(key)}
+          </Label>
+          {description && (
+            <Tooltip
+              trigger={
+                <Icon
+                  visual={InformationCircleIcon}
+                  size="xs"
+                  className="text-gray-400"
+                />
+              }
+              label={description}
+            />
+          )}
+        </div>
         <div className="flex-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -208,11 +248,6 @@ function EnumConfigurationSection({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {description && (
-          <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night flex-1">
-            {description}
-          </Label>
-        )}
       </div>
     );
   });
@@ -244,52 +279,59 @@ function ListConfigurationSection({
       displayLabel = `${currentValue.length} selected`;
     }
 
-    return (
+        return (
       <div key={key} className="mb-2">
         <div className="flex items-center gap-1">
-          <Label className="w-1/5 text-sm font-medium">
-            {formatKeyForDisplay(key)}
-          </Label>
-          <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              isSelect
-              label={displayLabel}
-              size="sm"
-              tooltip={displayLabel}
-              variant="outline"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {Object.entries(listValues).map(([value, label]) => (
-              <DropdownMenuCheckboxItem
-                key={value}
-                label={label}
-                checked={
-                  Array.isArray(currentValue) && currentValue.includes(value)
-                }
-                onCheckedChange={(checked) => {
-                  const currentValue = additionalConfiguration[key] ?? [];
-                  if (Array.isArray(currentValue)) {
-                    const newValues = checked
-                      ? [...currentValue, value]
-                      : currentValue.filter((v) => v !== value);
-
-                    onConfigUpdate(key, newValues);
-                  }
-                }}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        </div>
-        {description && (
-          <div className="ml-[20%] mt-1">
-            <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              {description}
+          <div className="flex items-center gap-1">
+            <Label className="w-1/5 text-sm font-medium">
+              {formatKeyForDisplay(key)}
             </Label>
+            {description && (
+              <Tooltip
+                trigger={
+                  <Icon
+                    visual={InformationCircleIcon}
+                    size="xs"
+                    className="text-gray-400"
+                  />
+                }
+                label={description}
+              />
+            )}
           </div>
-        )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                isSelect
+                label={displayLabel}
+                size="sm"
+                tooltip={displayLabel}
+                variant="outline"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {Object.entries(listValues).map(([value, label]) => (
+                <DropdownMenuCheckboxItem
+                  key={value}
+                  label={label}
+                  checked={
+                    Array.isArray(currentValue) && currentValue.includes(value)
+                  }
+                  onCheckedChange={(checked) => {
+                    const currentValue = additionalConfiguration[key] ?? [];
+                    if (Array.isArray(currentValue)) {
+                      const newValues = checked
+                        ? [...currentValue, value]
+                        : currentValue.filter((v) => v !== value);
+
+                      onConfigUpdate(key, newValues);
+                    }
+                  }}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     );
   });

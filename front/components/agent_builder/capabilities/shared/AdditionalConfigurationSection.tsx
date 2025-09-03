@@ -5,10 +5,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
   Input,
   Label,
   SearchInput,
+  Tooltip,
 } from "@dust-tt/sparkle";
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -46,29 +49,38 @@ function BooleanConfigurationInput({
 }: { 
   configKey: string;
   description?: string;
-}) {
+}) {  
   const { field } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
 
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-4">
-      <Label
-        htmlFor={`boolean-${configKey}`}
-        className="w-1/5 text-sm font-medium"
-      >
-        {formatKeyForDisplay(configKey)}
-      </Label>
+    <div key={configKey} className="mb-2 flex items-center gap-1">
+      <div className="flex items-center gap-1">
+        <Label
+          htmlFor={`boolean-${configKey}`}
+          className="w-1/5 text-sm font-medium"
+        >
+          {formatKeyForDisplay(configKey)}
+        </Label>
+        {description && (
+          <Tooltip
+            trigger={
+              <Icon
+                visual={InformationCircleIcon}
+                size="xs"
+                className="text-gray-400"
+              />
+            }
+            label={description}
+          />
+        )}
+      </div>
       <Checkbox
         id={`boolean-${configKey}`}
         checked={field.value === true}
         onCheckedChange={(checked) => field.onChange(checked)}
       />
-      {description && (
-        <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night flex-1">
-          {description}
-        </Label>
-      )}
     </div>
   );
 }
@@ -99,28 +111,35 @@ function NumberConfigurationInput({
   });
 
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-4">
-      <Label
-        htmlFor={`number-${configKey}`}
-        className="w-1/5 text-sm font-medium"
-      >
-        {formatKeyForDisplay(configKey)}
-      </Label>
-      <div className="flex-1">
-        <Input
-          id={`number-${configKey}`}
-          type="number"
-          {...field}
-          placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
-          isError={!!fieldState.error}
-          message={fieldState.error?.message}
-        />
-      </div>
-      {description && (
-        <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night flex-1">
-          {description}
+    <div key={configKey} className="mb-2 flex items-center gap-1">
+      <div className="flex items-center gap-1">
+        <Label
+          htmlFor={`number-${configKey}`}
+          className="w-1/5 text-sm font-medium"
+        >
+          {formatKeyForDisplay(configKey)}
         </Label>
-      )}
+        {description && (
+          <Tooltip
+            trigger={
+              <Icon
+                visual={InformationCircleIcon}
+                size="xs"
+                className="text-gray-400"
+              />
+            }
+            label={description}
+          />
+        )}
+      </div>
+      <Input
+        id={`number-${configKey}`}
+        type="number"
+        {...field}
+        placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
+        isError={!!fieldState.error}
+        message={fieldState.error?.message}
+      />
     </div>
   );
 }
@@ -151,28 +170,35 @@ function StringConfigurationInput({
   });
 
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-4">
-      <Label
-        htmlFor={`string-${configKey}`}
-        className="w-1/5 text-sm font-medium"
-      >
-        {formatKeyForDisplay(configKey)}
-      </Label>
-      <div className="flex-1">
-        <Input
-          id={`string-${configKey}`}
-          type="text"
-          {...field}
-          placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
-          isError={!!fieldState.error}
-          message={fieldState.error?.message}
-        />
-      </div>
-      {description && (
-        <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night flex-1">
-          {description}
+    <div key={configKey} className="mb-2 flex items-center gap-1">
+      <div className="flex items-center gap-1">
+        <Label
+          htmlFor={`string-${configKey}`}
+          className="w-1/5 text-sm font-medium"
+        >
+          {formatKeyForDisplay(configKey)}
         </Label>
-      )}
+        {description && (
+          <Tooltip
+            trigger={
+              <Icon
+                visual={InformationCircleIcon}
+                size="xs"
+                className="text-gray-400"
+              />
+            }
+            label={description}
+          />
+        )}
+      </div>
+      <Input
+        id={`string-${configKey}`}
+        type="text"
+        {...field}
+        placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
+        isError={!!fieldState.error}
+        message={fieldState.error?.message}
+      />
     </div>
   );
 }
@@ -206,10 +232,24 @@ function EnumConfigurationInput({
 
   const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-4">
-      <Label className="w-1/5 text-sm font-medium">
-        {formatKeyForDisplay(configKey)}
-      </Label>
+    <div key={configKey} className="mb-2 flex items-center gap-1">
+      <div className="flex items-center gap-1">
+        <Label className="w-1/5 text-sm font-medium">
+          {formatKeyForDisplay(configKey)}
+        </Label>
+        {description && (
+          <Tooltip
+            trigger={
+              <Icon
+                visual={InformationCircleIcon}
+                size="xs"
+                className="text-gray-400"
+              />
+            }
+            label={description}
+          />
+        )}
+      </div>
       <div className="flex-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -237,11 +277,6 @@ function EnumConfigurationInput({
           </div>
         )}
       </div>
-      {description && (
-        <Label className="text-xs text-muted-foreground dark:text-muted-foreground-night flex-1">
-          {description}
-        </Label>
-      )}
     </div>
   );
 }
