@@ -68,7 +68,7 @@ function NotificationContent({
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
         "s-border-border dark:s-border-border-night",
         "s-bg-background dark:s-bg-background-night",
-        "s-relative s-p-4 s-shadow-xl"
+        "s-p-4 s-shadow-xl"
       )}
     >
       <Icon
@@ -77,7 +77,7 @@ function NotificationContent({
         className={variantClassName({ type })}
         aria-hidden="true"
       />
-      <div className="s-flex s-flex-grow s-flex-col">
+      <div className="s-flex s-min-w-0 s-flex-grow s-flex-col">
         <div
           className={cn(
             "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
@@ -90,7 +90,7 @@ function NotificationContent({
           <div
             className={cn(
               "s-text-muted-foreground dark:s-text-muted-foreground-night",
-              "s-line-clamp-3 s-pr-2 s-text-sm s-font-normal"
+              "s-line-clamp-3 s-text-sm s-font-normal"
             )}
           >
             {description}
@@ -103,7 +103,7 @@ function NotificationContent({
           size="xs"
           variant="ghost"
           onClick={onDismiss}
-          className="s-absolute s-right-2 s-top-2 s-rounded s-p-1"
+          className="s-shrink-0 s-self-start"
         />
       )}
     </div>
