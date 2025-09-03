@@ -102,9 +102,13 @@ export const useDataSourceColumns = () => {
                   }
                 }
 
-                state
-                  ? selectCurrentNavigationEntry()
-                  : removeCurrentNavigationEntry();
+                if (isUnselectingPartial) {
+                  removeCurrentNavigationEntry();
+                } else {
+                  state
+                    ? selectCurrentNavigationEntry()
+                    : removeCurrentNavigationEntry();
+                }
               }}
             />
           );
