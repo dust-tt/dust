@@ -100,8 +100,10 @@ export async function syncChannel(
   const remoteChannel = await withSlackErrorHandling(() =>
     getChannelById(slackClient, connectorId, channelId)
   );
-  if (!remoteChannel.name) {
-    throw new Error(`Could not find channel name for channel ${channelId}`);
+  if (!remoteChannel || !remoteChannel.name) {
+    throw new Error(
+      `Could not find channel or channel name for channel ${channelId}`
+    );
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
