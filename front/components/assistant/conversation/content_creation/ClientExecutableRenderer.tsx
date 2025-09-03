@@ -8,15 +8,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EyeIcon,
+  FullscreenExitIcon,
+  FullscreenIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useRef, useState } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
 import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
 import { ShareContentCreationFilePopover } from "@app/components/assistant/conversation/content_creation/ShareContentCreationFilePopover";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
 import type {
@@ -79,8 +82,20 @@ export function ClientExecutableRenderer({
   fileName,
   owner,
 }: ClientExecutableRendererProps) {
-  const { closePanel } = useConversationSidePanelContext();
+  const { isNavigationBarOpen, setIsNavigationBarOpen } =
+    useDesktopNavigation();
+  const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
+  const prevPanelSizeRef = useRef(40);
+
+  const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  const panel = panelRef?.current;
+
+  // We need to track this with state to re-render.
+  const [isFullScreen, setIsFullScreen] = useState(
+    panel ? panel.getSize() === 100 : false
+  );
 
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
@@ -93,6 +108,27 @@ export function ClientExecutableRenderer({
   );
 
   const [showCode, setShowCode] = React.useState(false);
+
+  function exitFullScreen() {
+    // If the nav bar was open before we go to full screen mode, restore it but
+    // otherwise keep it close.
+    if (isNavBarPrevOpenRef.current) {
+      setIsNavigationBarOpen(true);
+    }
+    setIsFullScreen(false);
+    panel?.resize(prevPanelSizeRef.current);
+  }
+
+  function goToFullScreen() {
+    if (panel) {
+      isNavBarPrevOpenRef.current = isNavigationBarOpen;
+      prevPanelSizeRef.current = panel.getSize();
+
+      panel.resize(100);
+      setIsFullScreen(true);
+      setIsNavigationBarOpen(false);
+    }
+  }
 
   if (isFileContentLoading) {
     return (
@@ -116,8 +152,17 @@ export function ClientExecutableRenderer({
       <ContentCreationHeader
         title={fileName || "Client Executable"}
         subtitle={fileId}
-        onClose={closePanel}
+        onClose={isFullScreen ? exitFullScreen : closePanel}
       >
+        {!isFullScreen && (
+          <Button
+            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+            variant="ghost"
+            onClick={goToFullScreen}
+            tooltip={isFullScreen ? "expand" : "shrink"}
+          />
+        )}
+
         <Button
           icon={showCode ? EyeIcon : CommandLineIcon}
           onClick={() => setShowCode(!showCode)}
