@@ -1,8 +1,8 @@
 import { ContentMessage, ExclamationCircleIcon } from "@dust-tt/sparkle";
 import React from "react";
 
-import { CanvasHeader } from "@app/components/assistant/conversation/canvas/CanvasHeader";
-import { CenteredState } from "@app/components/assistant/conversation/canvas/CenteredState";
+import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
+import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface UnsupportedContentRendererProps {
@@ -20,7 +20,7 @@ export function UnsupportedContentRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <CanvasHeader
+      <ContentCreationHeader
         onClose={closePanel}
         subtitle={fileId}
         title={fileName || "Unsupported Content"}
@@ -36,7 +36,8 @@ export function UnsupportedContentRenderer({
           >
             <div className="space-y-2">
               <p>
-                This content type is not yet supported in the canvas drawer.
+                This content type is not yet supported in the Content Creation
+                drawer.
               </p>
               <div className="text-xs opacity-75">
                 <p>

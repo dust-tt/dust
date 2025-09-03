@@ -13,32 +13,23 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 interface AssistantTemplateModalProps {
-  flow: BuilderFlow;
   onClose: () => void;
   owner: WorkspaceType;
   templateId: string | null;
 }
 
 export function AssistantTemplateModal({
-  flow,
   onClose,
   owner,
   templateId,
 }: AssistantTemplateModalProps) {
   const { assistantTemplate, isAssistantTemplateLoading } =
     useAssistantTemplate({ templateId });
-
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
 
   return (
     <Sheet
@@ -67,14 +58,7 @@ export function AssistantTemplateModal({
                     <span className="heading-lg text-foreground dark:text-foreground-night">
                       @{assistantTemplate.handle}
                     </span>
-                    <Link
-                      href={getAgentBuilderRoute(
-                        owner.sId,
-                        "new",
-                        hasAgentBuilderV2,
-                        `flow=${flow}&templateId=${assistantTemplate.sId}`
-                      )}
-                    >
+                    <Link href={getAgentBuilderRoute(owner.sId, "new")}>
                       <Button
                         label="Use this template"
                         variant="primary"

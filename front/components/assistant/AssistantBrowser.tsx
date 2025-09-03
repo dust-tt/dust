@@ -302,11 +302,7 @@ export function AssistantBrowser({
 
             <Button
               tooltip="Manage agents"
-              href={getAgentBuilderRoute(
-                owner.sId,
-                "manage",
-                featureFlags.includes("agent_builder_v2")
-              )}
+              href={getAgentBuilderRoute(owner.sId, "manage")}
               variant="primary"
               icon={RobotIcon}
               label="Manage"

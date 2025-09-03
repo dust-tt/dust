@@ -3,17 +3,19 @@ import { useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
 
-export function useCanvasesSharingToggle({
-  owner,
-}: {
+interface UseContentCreationSharingToggleProps {
   owner: LightWorkspaceType;
-}) {
+}
+
+export function useContentCreationSharingToggle({
+  owner,
+}: UseContentCreationSharingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
 
-  const isEnabled = owner.metadata?.allowCanvasFileSharing !== false;
+  const isEnabled = owner.metadata?.allowContentCreationFileSharing !== false;
 
-  const doToggleCanvasesSharing = async () => {
+  const doToggleContentCreationSharing = async () => {
     setIsChanging(true);
     try {
       const res = await fetch(`/api/w/${owner.sId}`, {
@@ -22,20 +24,21 @@ export function useCanvasesSharingToggle({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          allowCanvasFileSharing: !isEnabled,
+          allowContentCreationFileSharing: !isEnabled,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update canvas sharing setting");
+        throw new Error("Failed to update Content Creation sharing setting");
       }
 
       window.location.reload();
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update canvas sharing setting",
-        description: "Could not update the canvas file sharing setting.",
+        title: "Failed to update Content Creation sharing setting",
+        description:
+          "Could not update the Content Creation file sharing setting.",
       });
       setIsChanging(false);
     }
@@ -44,6 +47,6 @@ export function useCanvasesSharingToggle({
   return {
     isEnabled,
     isChanging,
-    doToggleCanvasesSharing,
+    doToggleContentCreationSharing,
   };
 }

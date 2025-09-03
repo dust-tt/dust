@@ -44,7 +44,7 @@ import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
-import { removeNulls } from "@app/types";
+import { isBuilder, removeNulls } from "@app/types";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[]
@@ -112,7 +112,7 @@ export default function AgentBuilder({
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId: owner.sId,
-      disabled: !agentConfiguration,
+      disabled: !agentConfiguration || !isBuilder(owner),
     });
 
   const slackProvider = useMemo(() => {
@@ -170,7 +170,7 @@ export default function AgentBuilder({
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
-        editors: editors ?? emptyArray(),
+        editors: agentConfiguration || editors.length > 0 ? editors : [user],
         slackChannels: agentSlackChannels,
       },
     };
@@ -218,7 +218,9 @@ export default function AgentBuilder({
         formData,
         owner,
         isDraft: false,
-        agentConfigurationId: agentConfiguration?.sId || null,
+        agentConfigurationId: duplicateAgentId
+          ? null
+          : agentConfiguration?.sId || null,
       });
 
       if (!result.isOk()) {
@@ -234,16 +236,17 @@ export default function AgentBuilder({
       }
 
       const createdAgent = result.value;
+      const isCreatingNew = duplicateAgentId || !agentConfiguration;
+
       sendNotification({
-        title: agentConfiguration ? "Agent saved" : "Agent created",
-        description: agentConfiguration
-          ? "Your agent has been successfully saved"
-          : "Your agent has been successfully created",
+        title: isCreatingNew ? "Agent created" : "Agent saved",
+        description: isCreatingNew
+          ? "Your agent has been successfully created"
+          : "Your agent has been successfully saved",
         type: "success",
       });
 
-      if (!agentConfiguration && createdAgent.sId) {
-        // For new agents, navigate immediately - form will be clean after navigation
+      if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
         await router.replace(newUrl, undefined, { shallow: true });
       } else {
@@ -275,7 +278,7 @@ export default function AgentBuilder({
 
   const isSaveDisabled = duplicateAgentId
     ? false
-    : !isDirty || isSubmitting || isActionsLoading || isTriggersLoading;
+    : isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 

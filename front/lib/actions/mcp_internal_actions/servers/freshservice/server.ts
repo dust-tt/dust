@@ -450,7 +450,7 @@ const createServer = (): McpServer => {
     "Adds a note to an existing ticket",
     {
       ticket_id: z.number().describe("The ID of the ticket"),
-      body: z.string().describe("The note content"),
+      body: z.string().describe("Content of the note in HTML format"),
       private: z
         .boolean()
         .optional()
@@ -467,10 +467,8 @@ const createServer = (): McpServer => {
             {
               method: "POST",
               body: JSON.stringify({
-                note: {
-                  body,
-                  private: isPrivate,
-                },
+                body,
+                private: isPrivate,
               }),
             }
           );
@@ -490,7 +488,7 @@ const createServer = (): McpServer => {
     "Adds a reply to a ticket conversation",
     {
       ticket_id: z.number().describe("The ID of the ticket"),
-      body: z.string().describe("The reply content"),
+      body: z.string().describe("Content of the note in HTML format"),
     },
     async ({ ticket_id, body }, { authInfo }) => {
       return withAuth({
@@ -502,9 +500,7 @@ const createServer = (): McpServer => {
             {
               method: "POST",
               body: JSON.stringify({
-                reply: {
-                  body,
-                },
+                body,
               }),
             }
           );

@@ -44,7 +44,7 @@ const WorkspaceWorkOSUpdateBodySchema = t.type({
 });
 
 const WorkspaceInteractiveContentSharingUpdateBodySchema = t.type({
-  allowCanvasFileSharing: t.boolean,
+  allowContentCreationFileSharing: t.boolean,
 });
 
 const PostWorkspaceRequestBodySchema = t.union([
@@ -146,11 +146,11 @@ async function handler(
           workOSOrganizationId: body.workOSOrganizationId,
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
-      } else if ("allowCanvasFileSharing" in body) {
+      } else if ("allowContentCreationFileSharing" in body) {
         const previousMetadata = owner.metadata || {};
         const newMetadata = {
           ...previousMetadata,
-          allowCanvasFileSharing: body.allowCanvasFileSharing,
+          allowContentCreationFileSharing: body.allowContentCreationFileSharing,
         };
         await w.update({ metadata: newMetadata });
         owner.metadata = newMetadata;

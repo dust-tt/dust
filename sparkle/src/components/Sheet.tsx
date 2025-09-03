@@ -184,7 +184,11 @@ interface SheetContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   noScroll?: boolean;
 }
 
-const SheetContainer = ({ children, noScroll }: SheetContainerProps) => {
+const SheetContainer = ({
+  children,
+  noScroll,
+  className,
+}: SheetContainerProps) => {
   const ScrollContainer = noScroll
     ? ({
         children,
@@ -201,7 +205,12 @@ const SheetContainer = ({ children, noScroll }: SheetContainerProps) => {
         "s-border-t s-border-border/60 s-transition-all s-duration-300 dark:s-border-border-night/60"
       )}
     >
-      <div className="s-relative s-flex s-h-full s-flex-col s-gap-5 s-px-5 s-pt-3 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night">
+      <div
+        className={cn(
+          "s-relative s-flex s-h-full s-flex-col s-gap-5 s-px-5 s-pt-3 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night",
+          className
+        )}
+      >
         {children}
       </div>
     </ScrollContainer>

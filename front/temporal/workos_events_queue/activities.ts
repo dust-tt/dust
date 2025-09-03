@@ -636,10 +636,7 @@ async function handleGroupDelete(
   event: DirectoryGroup
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const group = await GroupResource.fetchByWorkOSGroupId(
-    auth,
-    event.directoryId
-  );
+  const group = await GroupResource.fetchByWorkOSGroupId(auth, event.id);
 
   if (!group) {
     // Group already deleted, log and return success to avoid blocking the workflow

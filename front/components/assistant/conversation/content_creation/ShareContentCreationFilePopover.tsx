@@ -24,7 +24,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { useShareCanvasFile } from "@app/lib/swr/files";
+import { useShareContentCreationFile } from "@app/lib/swr/files";
 import type { FileShareScope, LightWorkspaceType } from "@app/types";
 
 interface FileSharingDropdownProps {
@@ -100,17 +100,17 @@ function FileSharingDropdown({
   );
 }
 
-interface ShareCanvasFilePopoverProps {
+interface ShareContentCreationFilePopoverProps {
   fileId: string;
   owner: LightWorkspaceType;
   isUsingConversationFiles: boolean;
 }
 
-export function ShareCanvasFilePopover({
+export function ShareContentCreationFilePopover({
   fileId,
   owner,
   isUsingConversationFiles,
-}: ShareCanvasFilePopoverProps) {
+}: ShareContentCreationFilePopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
@@ -118,10 +118,11 @@ export function ShareCanvasFilePopover({
     "conversation_participants"
   );
 
-  const isSharingForbidden = owner.metadata?.allowCanvasFileSharing === false;
+  const isSharingForbidden =
+    owner.metadata?.allowContentCreationFileSharing === false;
 
   const { doShare, fileShare, isFileShareLoading, isFileShareError } =
-    useShareCanvasFile({
+    useShareContentCreationFile({
       fileId,
       owner,
     });
@@ -168,7 +169,7 @@ export function ShareCanvasFilePopover({
       <PopoverContent className="flex w-96 flex-col" align="end">
         <div className="flex flex-col gap-4">
           <div className="text-base font-semibold text-primary dark:text-primary-night">
-            Share this Canvas
+            Share this Content Creation
           </div>
 
           <div className="flex flex-col">
@@ -185,15 +186,15 @@ export function ShareCanvasFilePopover({
                   title={
                     isSharingForbidden
                       ? "Sharing disabled by admin"
-                      : "This canvas contains company data"
+                      : "This Content Creation contains company data"
                   }
                   variant="golden"
                   icon={InformationCircleIcon}
                 >
                   {isSharingForbidden
-                    ? "Your workspace administrator has turned off sharing of Canvas files."
-                    : "The Canvas relies on conversation files, sharing is therefore disabled " +
-                      "to protect company information."}
+                    ? "Your workspace administrator has turned off sharing of Content Creation files."
+                    : "The Content Creation relies on conversation files, sharing is therefore" +
+                      "disabled to protect company information."}
                 </ContentMessage>
               )}
             {/* File sharing link. */}

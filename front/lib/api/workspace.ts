@@ -396,7 +396,7 @@ export async function deleteWorkspace(
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   publicApiLimits?: PublicAPILimitsType;
-  allowCanvasFileSharing?: boolean;
+  allowContentCreationFileSharing?: boolean;
 }
 
 export async function updateWorkspaceMetadata(

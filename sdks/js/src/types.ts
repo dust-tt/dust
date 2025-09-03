@@ -6,7 +6,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationCanvasFileContentSchema } from "./output_schemas";
+import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
@@ -588,7 +588,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
-  | "agent_builder_v2"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
@@ -1047,7 +1046,7 @@ const NotificationRunAgentGenerationTokensSchema = z.object({
 });
 
 const NotificationContentSchema = z.union([
-  NotificationCanvasFileContentSchema,
+  NotificationContentCreationFileContentSchema,
   NotificationImageContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,
