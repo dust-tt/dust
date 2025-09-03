@@ -132,7 +132,7 @@ export const INTERNAL_MCP_SERVERS = {
       description: "GitHub tools to manage issues and pull requests.",
       authorization: {
         provider: "github" as const,
-        supported_use_cases: ["platform_actions"] as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
       icon: "GithubLogo",
       documentationUrl: null,
