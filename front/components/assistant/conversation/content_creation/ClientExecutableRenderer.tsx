@@ -172,7 +172,7 @@ export function ClientExecutableRenderer({
             icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
             variant="ghost"
             onClick={goToFullScreen}
-            tooltip={isFullScreen ? "expand" : "shrink"}
+            tooltip={"Go to full screen mode"}
           />
         )}
 
