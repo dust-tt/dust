@@ -2,21 +2,24 @@ import { cva } from "class-variance-authority";
 import React from "react";
 import { toast, Toaster } from "sonner";
 
+import { Button } from "@sparkle/components/Button";
 import {
   CheckCircleIcon,
   InformationCircleIcon,
   XCircleIcon,
+  XMarkIcon,
 } from "@sparkle/icons/app";
 import { assertNever, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
-const NOTIFICATION_DELAY = 5000;
+const NOTIFICATION_DELAY = 3000;
 
 export type NotificationType = {
   title?: string;
   description?: string;
   type: "success" | "error" | "info";
+  duration?: number;
 };
 
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
@@ -30,7 +33,12 @@ export interface NotificationProps {
   onClick?: () => void;
 }
 
-function NotificationContent({ type, title, description }: NotificationType) {
+function NotificationContent({
+  type,
+  title,
+  description,
+  onDismiss,
+}: NotificationType & { onDismiss?: () => void }) {
   const icon = (() => {
     switch (type) {
       case "success":
@@ -60,7 +68,7 @@ function NotificationContent({ type, title, description }: NotificationType) {
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
         "s-border-border dark:s-border-border-night",
         "s-bg-background dark:s-bg-background-night",
-        "s-p-4 s-shadow-xl"
+        "s-relative s-p-4 s-shadow-xl"
       )}
     >
       <Icon
@@ -69,7 +77,7 @@ function NotificationContent({ type, title, description }: NotificationType) {
         className={variantClassName({ type })}
         aria-hidden="true"
       />
-      <div className="s-flex s-flex-col">
+      <div className="s-flex s-flex-grow s-flex-col">
         <div
           className={cn(
             "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
@@ -89,6 +97,15 @@ function NotificationContent({ type, title, description }: NotificationType) {
           </div>
         )}
       </div>
+      {onDismiss && (
+        <Button
+          icon={XMarkIcon}
+          size="xs"
+          variant="ghost"
+          onClick={onDismiss}
+          className="s-absolute s-right-2 s-top-2 s-rounded s-p-1"
+        />
+      )}
     </div>
   );
 }
@@ -98,15 +115,16 @@ export const Notification = {
     const sendNotification = React.useCallback(
       (notification: NotificationType) => {
         toast.custom(
-          () => (
+          (t) => (
             <NotificationContent
               type={notification.type}
               title={notification.title}
               description={notification.description}
+              onDismiss={() => toast.dismiss(t)}
             />
           ),
           {
-            duration: NOTIFICATION_DELAY,
+            duration: notification.duration ?? NOTIFICATION_DELAY,
           }
         );
       },
