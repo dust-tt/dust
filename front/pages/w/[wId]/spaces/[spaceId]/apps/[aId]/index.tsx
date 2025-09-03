@@ -184,9 +184,10 @@ export default function AppView({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Check if run has been running for more than 1 hour
-  const showCancelButton = run?.status.run === "running" && 
-    run?.created && 
-    (Date.now() - run.created > 60 * 60 * 1000); // 1 hour in milliseconds
+  const showCancelButton =
+    run?.status.run === "running" &&
+    run?.created &&
+    Date.now() - run.created > 60 * 60 * 1000; // 1 hour in milliseconds
 
   const saveState = async (spec: SpecificationType, config: BlockRunConfig) => {
     if (saveTimeout) {
@@ -350,7 +351,7 @@ export default function AppView({
         await mutate(
           `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/saved/status`
         );
-        
+
         // Mutate all blocks to trigger a refresh
         if (run?.run_id) {
           await Promise.all(
@@ -402,7 +403,9 @@ export default function AppView({
           ) : (
             <Button
               variant="outline"
-              disabled={!runnable || runRequested || run?.status.run == "running"}
+              disabled={
+                !runnable || runRequested || run?.status.run == "running"
+              }
               label={
                 runRequested || run?.status.run == "running" ? "Running" : "Run"
               }

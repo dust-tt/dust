@@ -1135,7 +1135,7 @@ async fn runs_cancel(
         Ok(Some(mut run)) => {
             // Cancel the run (marks run and all running blocks as errored)
             run.cancel();
-            
+
             // Update the run status in the database
             match state
                 .store
