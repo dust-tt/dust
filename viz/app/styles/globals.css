@@ -334,7 +334,7 @@
   /* Slide variant padding */
   .slide-top-padding {
     padding: var(--responsive-space-8);
-    padding-top: var(--responsive-space-24);
+    padding-top: var(--responsive-space-12);
   }
   .slide-centered-padding {
     padding: var(--responsive-space-8);
@@ -375,5 +375,11 @@
 
   .slide-content {
     color: hsl(var(--slide-content-text));
+  }
+
+  /* Chart axis styling for better visibility in slideshows */
+  .responsive-text .recharts-cartesian-axis-tick text {
+    font-size: 14px;
+    font-weight: 600;
   }
 }

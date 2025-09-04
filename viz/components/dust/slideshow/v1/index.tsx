@@ -19,6 +19,27 @@ import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigatio
 
 // Preview components.
 
+interface SlideMiniatureProps {
+  slide: React.ReactElement;
+}
+
+export function SlideMiniature({ slide }: SlideMiniatureProps) {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <div
+        className="origin-top-left pointer-events-none"
+        style={{
+          width: "1920px",
+          height: "1080px",
+          transform: "scale(0.11)",
+        }}
+      >
+        {React.cloneElement(slide, { isPreview: false })}
+      </div>
+    </div>
+  );
+}
+
 interface SlidePreviewProps {
   index: number;
   isActive: boolean;
@@ -26,7 +47,12 @@ interface SlidePreviewProps {
   slide: React.ReactElement;
 }
 
-function SlidePreview({ slide, index, isActive, onClick }: SlidePreviewProps) {
+export function SlidePreview({
+  slide,
+  index,
+  isActive,
+  onClick,
+}: SlidePreviewProps) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -38,27 +64,14 @@ function SlidePreview({ slide, index, isActive, onClick }: SlidePreviewProps) {
         <div className="w-full cursor-pointer">
           <div
             className={cn(
-              "relative w-full aspect-video rounded-xl border text-xs overflow-hidden hover:border-muted",
-              isActive ? "border-primary border-2" : "border-border"
+              "relative w-full aspect-video rounded-xl overflow-hidden hover:border-muted",
+              "border-2 border-box",
+              isActive && "border-primary"
             )}
           >
-            {/* Scaled down version of the slide */}
-            <div
-              className="w-full h-full origin-top-left pointer-events-none"
-              style={{
-                transform: "scale(0.15)",
-                width: "667%",
-                height: "667%",
-              }}
-            >
-              {React.cloneElement(slide, { isPreview: true })}
-            </div>
-            {/* Slide number overlay */}
-            <span
-              className={cn(
-                "absolute bottom-1 right-1 text-xs opacity-70 bg-background/80 px-1 rounded z-10"
-              )}
-            >
+            <SlideMiniature slide={slide} />
+
+            <span className="absolute bottom-1 right-1 text-xs opacity-70 bg-background/80 px-1 rounded z-10">
               {index + 1}
             </span>
           </div>
@@ -260,9 +273,7 @@ export function Slide({
         )}
       >
         {isPreview ? (
-          <div className="p-4 w-full h-full" style={{ fontSize: "0.4em" }}>
-            {children}
-          </div>
+          <div className="p-4 w-full h-full">{children}</div>
         ) : (
           children
         )}
