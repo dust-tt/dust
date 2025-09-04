@@ -363,13 +363,13 @@
   }
 
   .slide-heading1 {
-    @apply leading-tight m-0 mb-6 break-normal hyphens-none leading-96p;
+    @apply leading-tight m-0 break-normal hyphens-none leading-96p;
     font-size: var(--responsive-slide-text-heading1);
     font-family: var(--font-inter);
   }
 
   .slide-heading2 {
-    @apply leading-tight m-0 mb-6 break-normal text-8xl hyphens-none leading-103p;
+    @apply leading-tight m-0 break-normal text-8xl hyphens-none leading-103p;
     font-family: var(--font-inter);
   }
 
