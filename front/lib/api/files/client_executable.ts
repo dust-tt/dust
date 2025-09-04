@@ -1,3 +1,4 @@
+import { InvalidExtensionForMimeTypeError } from "@app/lib/api/files/errors";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -52,11 +53,11 @@ export async function createClientExecutableFile(
 
     const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
     if (!(fileFormat.exts as string[]).includes(extension)) {
-      const supportedExts = fileFormat.exts.join(", ");
       return new Err(
-        new Error(
-          `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
-            `Supported extensions: ${supportedExts}.`
+        new InvalidExtensionForMimeTypeError(
+          extension,
+          mimeType,
+          fileFormat.exts
         )
       );
     }
