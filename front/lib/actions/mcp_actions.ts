@@ -69,7 +69,6 @@ import {
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getBaseServerId } from "@app/lib/api/actions/mcp/client_side_registry";
-import { UntrackedError } from "@app/lib/api/errors";
 import type {
   ClientSideMCPToolTypeWithStakeLevel,
   MCPToolType,
@@ -495,14 +494,6 @@ export async function* tryCallMCPTool(
       result: new Ok(content),
     };
   } catch (error) {
-    if (error instanceof UntrackedError) {
-      yield {
-        type: "result",
-        result: new Err(error),
-      };
-      return;
-    }
-
     logger.error(
       {
         conversationId,
