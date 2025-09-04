@@ -10,9 +10,12 @@ import {
   createCompany,
   createContact,
   createDeal,
+  createInvoice,
   createLead,
+  createMarketingEvent,
   createMeeting,
   createNote,
+  createQuote,
   createTask,
   getAssociatedMeetings,
   getCompany,
@@ -20,10 +23,14 @@ import {
   getCurrentUserId,
   getDeal,
   getFilePublicUrl,
+  getInvoice,
   getLatestObjects,
+  getLead,
+  getMarketingEvent,
   getMeeting,
   getObjectByEmail,
   getObjectProperties,
+  getQuote,
   getUserActivity,
   getUserDetails,
   listAssociations,
@@ -37,6 +44,10 @@ import {
   updateCompany,
   updateContact,
   updateDeal,
+  updateInvoice,
+  updateLead,
+  updateMarketingEvent,
+  updateQuote,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
 import {
   formatHubSpotCreateSuccess,
@@ -375,13 +386,9 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_lead",
-    "Creates a new lead in Hubspot (as a Deal), with optional associations. Ensure properties correctly define it as a lead.",
+    "Creates a new lead in Hubspot, with optional associations.",
     {
-      properties: z
-        .record(z.string())
-        .describe(
-          "Properties for the lead (deal), including those that identify it as a lead."
-        ),
+      properties: z.record(z.string()).describe("Properties for the lead."),
       associations: z
         .array(
           z.object({
@@ -401,7 +408,112 @@ const createServer = (): McpServer => {
             associations,
           });
           return makeMCPToolJSONSuccess({
-            message: "Lead (as Deal) created successfully.",
+            message: "Lead created successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "create_invoice",
+    "Creates a new invoice in Hubspot, with optional associations.",
+    {
+      properties: z.record(z.string()).describe("Properties for the invoice."),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z
+              .string()
+              .describe("e.g., contacts, companies, deals"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createInvoice({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Invoice created successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "create_quote",
+    "Creates a new quote in Hubspot, with optional associations.",
+    {
+      properties: z.record(z.string()).describe("Properties for the quote."),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z
+              .string()
+              .describe("e.g., contacts, companies, deals"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createQuote({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Quote created successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "create_marketing_event",
+    "Creates a new marketing event in Hubspot, with optional associations.",
+    {
+      properties: z
+        .record(z.string())
+        .describe("Properties for the marketing event."),
+      associations: z
+        .array(
+          z.object({
+            toObjectId: z.string(),
+            toObjectType: z.string().describe("e.g., contacts, companies"),
+          })
+        )
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    async ({ properties, associations }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createMarketingEvent({
+            accessToken,
+            properties,
+            associations,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Marketing event created successfully.",
             result,
           });
         },
@@ -632,6 +744,100 @@ const createServer = (): McpServer => {
     }
   );
 
+  server.tool(
+    "get_invoice",
+    "Retrieves a Hubspot invoice by its ID.",
+    {
+      invoiceId: z.string().describe("The ID of the invoice to retrieve."),
+    },
+    async ({ invoiceId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getInvoice(accessToken, invoiceId);
+          if (!result) {
+            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Invoice retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_quote",
+    "Retrieves a Hubspot quote by its ID.",
+    {
+      quoteId: z.string().describe("The ID of the quote to retrieve."),
+    },
+    async ({ quoteId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getQuote(accessToken, quoteId);
+          if (!result) {
+            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Quote retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_lead",
+    "Retrieves a Hubspot lead by its ID.",
+    {
+      leadId: z.string().describe("The ID of the lead to retrieve."),
+    },
+    async ({ leadId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getLead(accessToken, leadId);
+          if (!result) {
+            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Lead retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_marketing_event",
+    "Retrieves a Hubspot marketing event by its ID.",
+    {
+      eventId: z
+        .string()
+        .describe("The ID of the marketing event to retrieve."),
+    },
+    async ({ eventId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getMarketingEvent(accessToken, eventId);
+          if (!result) {
+            return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Marketing event retrieved successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
   // Definition for getMeeting tool
   server.tool(
     "get_meeting",
@@ -732,8 +938,11 @@ const createServer = (): McpServer => {
     "products",
     "line_items",
     "quotes",
+    "invoices",
+    "leads",
+    "marketing_events",
     "feedback_submissions",
-  ]); // Add other searchable types as needed
+  ]);
 
   server.tool(
     "update_contact",
@@ -810,6 +1019,122 @@ const createServer = (): McpServer => {
             properties,
           });
           return makeMCPToolJSONSuccess({
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_invoice",
+    "Updates properties of a HubSpot invoice by ID.",
+    {
+      invoiceId: z.string().describe("The ID of the invoice to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ invoiceId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateInvoice({
+            accessToken,
+            invoiceId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Invoice updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_quote",
+    "Updates properties of a HubSpot quote by ID.",
+    {
+      quoteId: z.string().describe("The ID of the quote to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ quoteId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateQuote({
+            accessToken,
+            quoteId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Quote updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_lead",
+    "Updates properties of a HubSpot lead by ID.",
+    {
+      leadId: z.string().describe("The ID of the lead to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ leadId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateLead({
+            accessToken,
+            leadId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Lead updated successfully.",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_marketing_event",
+    "Updates properties of a HubSpot marketing event by ID.",
+    {
+      eventId: z.string().describe("The ID of the marketing event to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    async ({ eventId, properties }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await updateMarketingEvent({
+            accessToken,
+            eventId,
+            properties,
+          });
+          return makeMCPToolJSONSuccess({
+            message: "Marketing event updated successfully.",
             result,
           });
         },
