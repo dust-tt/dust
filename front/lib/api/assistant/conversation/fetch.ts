@@ -118,6 +118,12 @@ export async function getConversation(
     (content[m.rank] as any).push(m);
   }
 
+  const { actionRequired, unread } =
+    await ConversationResource.getActionRequiredAndUnreadForUser(
+      auth,
+      conversation.id
+    );
+
   return new Ok({
     id: conversation.id,
     created: conversation.createdAt.getTime(),
@@ -128,6 +134,8 @@ export async function getConversation(
     depth: conversation.depth,
     triggerId: conversation.triggerSId(),
     content,
+    actionRequired,
+    unread,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
   });

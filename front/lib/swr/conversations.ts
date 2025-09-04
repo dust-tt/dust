@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
@@ -12,6 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
@@ -25,6 +26,8 @@ import type {
   FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
+
+const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
 export function useConversation({
   conversationId,
@@ -477,4 +480,59 @@ export function useConversationFiles({
     isConversationFilesError: error,
     mutateConversationFiles: mutate,
   };
+}
+
+export function useConversationMarkAsRead({
+  conversation,
+  workspaceId,
+}: {
+  conversation: ConversationWithoutContentType | null;
+  workspaceId: string;
+}) {
+  const [state, setState] = useState<"idle" | "marking" | "marked">("idle");
+  const { mutateConversations } = useConversations({
+    workspaceId,
+    options: {
+      disabled: true,
+    },
+  });
+
+  const markAsRead = useCallback(async (): Promise<void> => {
+    setState("marking");
+    try {
+      const response = await fetch(
+        `/api/w/${workspaceId}/assistant/conversations/${conversation?.sId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            read: true,
+          } as PatchConversationsRequestBody),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to mark conversation as read");
+      }
+      void mutateConversations();
+      setState("marked");
+    } catch (error) {
+      console.error("Error marking conversation as read:", error);
+    }
+  }, [conversation?.sId, workspaceId, mutateConversations]);
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout | null = null;
+    if (conversation?.sId && state === "idle" && conversation.unread) {
+      timeout = setTimeout(markAsRead, DELAY_BEFORE_MARKING_AS_READ);
+    }
+
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [conversation?.sId, conversation?.unread, state, markAsRead]);
 }

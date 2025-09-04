@@ -84,8 +84,8 @@ export async function runToolActivity(
     switch (event.type) {
       case "tool_error":
         // For tool errors, send immediately.
-        await updateResourceAndPublishEvent(
-          {
+        await updateResourceAndPublishEvent(auth, {
+          event: {
             type: "tool_error",
             created: event.created,
             configurationId: agentConfiguration.sId,
@@ -99,11 +99,9 @@ export async function runToolActivity(
             isLastBlockingEventForStep: true,
           },
           agentMessageRow,
-          {
-            conversationId: conversation.sId,
-            step,
-          }
-        );
+          conversation,
+          step,
+        });
 
         return { deferredEvents };
 
@@ -128,8 +126,8 @@ export async function runToolActivity(
         return { deferredEvents };
 
       case "tool_success":
-        await updateResourceAndPublishEvent(
-          {
+        await updateResourceAndPublishEvent(auth, {
+          event: {
             type: "agent_action_success",
             created: event.created,
             configurationId: agentConfiguration.sId,
@@ -137,16 +135,16 @@ export async function runToolActivity(
             action: event.action,
           },
           agentMessageRow,
-          {
-            conversationId: conversation.sId,
-            step,
-          }
-        );
+          conversation,
+          step,
+        });
         break;
       case "tool_params":
       case "tool_notification":
-        await updateResourceAndPublishEvent(event, agentMessageRow, {
-          conversationId: conversation.sId,
+        await updateResourceAndPublishEvent(auth, {
+          event,
+          agentMessageRow,
+          conversation,
           step,
         });
         break;

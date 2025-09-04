@@ -144,6 +144,8 @@ export async function createConversation(
     depth: conversation.depth,
     triggerId: conversation.triggerSId(),
     content: [],
+    unread: false,
+    actionRequired: false,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
   };
@@ -599,6 +601,12 @@ export async function postUserMessage(
         rank: m.rank,
       };
 
+      // Mark the conversation as unread for all participants except the user.
+      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
+        conversation,
+        excludedUser: user?.toJSON(),
+      });
+
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
         await Promise.all(
           mentions.filter(isAgentMention).map((mention) => {
@@ -1038,6 +1046,12 @@ export async function editUserMessage(
         context: message.context,
         rank: m.rank,
       };
+
+      // Mark the conversation as unread for all participants except the user.
+      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
+        conversation,
+        excludedUser: user?.toJSON(),
+      });
 
       // For now agent messages are appended at the end of conversation
       // it is fine since for now editing with new mentions is only supported

@@ -1745,6 +1745,14 @@ export type GetConversationResponseType = z.infer<
   typeof GetConversationResponseSchema
 >;
 
+export const PatchConversationRequestSchema = z.object({
+  read: z.literal(true),
+});
+
+export type PatchConversationRequestType = z.infer<
+  typeof PatchConversationRequestSchema
+>;
+
 export const TokenizeResponseSchema = z.object({
   tokens: CoreAPITokenTypeSchema.array(),
 });

@@ -95,6 +95,7 @@ function isMessageEventParams(
       return true;
     case "user_message_new":
     case "agent_message_new":
+    case "agent_message_done":
       return false;
     default:
       assertNever(eventType);
