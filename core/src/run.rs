@@ -287,4 +287,14 @@ impl Run {
     pub fn set_block_status(&mut self, status: BlockStatus) {
         self.status.set_block_status(status);
     }
+
+    /// Cancel the run by marking it and all running blocks as errored
+    pub fn cancel(&mut self) {
+        self.status.run = Status::Errored;
+        for block in &mut self.status.blocks {
+            if block.status == Status::Running {
+                block.status = Status::Errored;
+            }
+        }
+    }
 }

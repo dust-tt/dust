@@ -159,7 +159,16 @@ function AgentActionsPanelContent({
         className="flex-1 overflow-y-auto p-4 pb-12"
         onScroll={handleScroll}
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex h-full flex-col gap-4">
+          {!shouldStream &&
+            agentMessageToRender.actions.length === 0 &&
+            !agentMessageToRender.chainOfThought && (
+              <div className="flex h-full items-center justify-center">
+                <span className="text-sm text-muted-foreground">
+                  There's no step to display for this message.
+                </span>
+              </div>
+            )}
           {/* Render all parsed steps in order */}
           {Object.entries(steps || {})
             .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))

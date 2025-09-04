@@ -1,12 +1,14 @@
 import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import logger from "@app/logger/logger";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
 import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
+import type { PostRunCancelResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/cancel";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
 import type {
   AppType,
@@ -164,4 +166,39 @@ export function useKeys(owner: LightWorkspaceType) {
     isValidating,
     keys: data?.keys ?? emptyArray(),
   };
+}
+
+export function useCancelRun({
+  owner,
+  app,
+}: {
+  owner: LightWorkspaceType;
+  app: AppType;
+}) {
+  const doCancel = async (runId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(
+        `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${runId}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        logger.error({ err: await res.text() }, "Failed to cancel run");
+        return false;
+      }
+
+      const data: PostRunCancelResponseBody = await res.json();
+      return data.success;
+    } catch (error) {
+      logger.error({ err: error }, "Error canceling run");
+      return false;
+    }
+  };
+
+  return { doCancel };
 }

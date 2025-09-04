@@ -18,7 +18,6 @@ import {
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 
@@ -152,10 +151,9 @@ export function getKnowledgeDefaultValues({
         (view) => view.server.name === targetServerName
       );
     }
-
-    return mcpServerViews.find(
-      (view) => view.server.name === SEARCH_SERVER_NAME
-    );
+    // at creation time we set it to null and will suggest the most relevant
+    // processing method when landing on the configuration page
+    return null;
   })();
 
   const storedName =
