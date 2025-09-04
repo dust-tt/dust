@@ -73,13 +73,18 @@ async function handler(
   });
 
   if (result.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to validate action",
+    return apiError(
+      req,
+      res,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to validate action",
+        },
       },
-    });
+      result.error
+    );
   }
 
   res.status(200).json({ success: true });

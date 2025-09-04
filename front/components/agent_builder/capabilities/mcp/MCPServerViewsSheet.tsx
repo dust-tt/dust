@@ -52,7 +52,6 @@ import {
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
-import { FlavorSection } from "@app/components/agent_builder/capabilities/shared/FlavorSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -585,10 +584,6 @@ export function MCPServerViewsSheet({
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
-                )}
-
-                {requirements.requiredFlavors.length > 0 && (
-                  <FlavorSection flavors={requirements.requiredFlavors} />
                 )}
 
                 <AdditionalConfigurationSection

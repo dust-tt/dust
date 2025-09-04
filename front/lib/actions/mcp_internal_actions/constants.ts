@@ -732,32 +732,11 @@ The directive should be used to display a clickable version of the agent name in
       name: "content_creation",
       version: "1.0.0",
       description:
-        "Create interactive content including dashboards with data visualizations, slide presentations, or any custom interactive components.",
+        "Create dashboards, presentations, or any interactive content with charts, KPIs, and data visualizations.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
       instructions: CONTENT_CREATION_INSTRUCTIONS,
-      flavors: [
-        {
-          id: "dashboards",
-          name: "Dashboard",
-          description:
-            "Create interactive dashboards with charts, KPIs, and data visualizations",
-          icon: "ActionPieChartIcon",
-        },
-        {
-          id: "slides",
-          name: "Slides",
-          description: "Build slide decks and presentations",
-          icon: "ActionSlideshowIcon",
-        },
-        {
-          id: "other",
-          name: "Others",
-          description: "Create any interactive content with full flexibility",
-          icon: "ActionDocumentTextIcon",
-        },
-      ],
     },
   },
   outlook: {

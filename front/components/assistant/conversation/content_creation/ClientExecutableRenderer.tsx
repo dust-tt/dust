@@ -3,10 +3,6 @@ import {
   Button,
   CodeBlock,
   CommandLineIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   EyeIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -44,25 +40,13 @@ function ExportContentDropdown({ iframeRef }: ExportContentDropdownProps) {
   );
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          icon={ArrowDownOnSquareIcon}
-          isSelect
-          size="xs"
-          tooltip="Export content"
-          variant="ghost"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem onClick={() => exportVisualization("png")}>
-          Export as PNG
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => exportVisualization("svg")}>
-          Export as SVG
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button
+      icon={ArrowDownOnSquareIcon}
+      size="xs"
+      tooltip="Export as PNG"
+      variant="ghost"
+      onClick={() => exportVisualization("png")}
+    />
   );
 }
 

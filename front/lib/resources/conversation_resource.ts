@@ -30,6 +30,7 @@ import type {
   LightAgentConfigurationType,
   ParticipantActionType,
   Result,
+  UserType,
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
@@ -351,6 +352,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_access_restricted"));
     }
 
+    const { actionRequired, unread } =
+      await ConversationResource.getActionRequiredAndUnreadForUser(
+        auth,
+        conversation.id
+      );
+
     return new Ok({
       id: conversation.id,
       created: conversation.createdAt.getTime(),
@@ -360,6 +367,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       visibility: conversation.visibility,
       depth: conversation.depth,
       triggerId: conversation.triggerSId(),
+      actionRequired,
+      unread,
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
     });
@@ -469,20 +478,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [["createdAt", "DESC"]],
     });
 
-    return conversations.map((c) => ({
-      id: c.id,
-      created: c.createdAt.getTime(),
-      sId: c.sId,
-      owner,
-      title: c.title,
-      visibility: c.visibility,
-      depth: c.depth,
-      triggerId: triggerId,
-      requestedGroupIds: new this(
-        this.model,
-        c
-      ).getConversationRequestedGroupIdsFromModel(auth),
-    }));
+    return Promise.all(
+      conversations.map(async (c) => {
+        const { actionRequired, unread } =
+          await ConversationResource.getActionRequiredAndUnreadForUser(
+            auth,
+            c.id
+          );
+
+        return {
+          id: c.id,
+          created: c.createdAt.getTime(),
+          sId: c.sId,
+          owner,
+          title: c.title,
+          visibility: c.visibility,
+          depth: c.depth,
+          triggerId: triggerId,
+          actionRequired,
+          unread,
+          requestedGroupIds: new this(
+            this.model,
+            c
+          ).getConversationRequestedGroupIdsFromModel(auth),
+        };
+      })
+    );
   }
 
   static async markAsActionRequired(
@@ -525,10 +546,79 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
         },
+        // Do not update `updatedAt.
+        silent: true,
       }
     );
 
     return new Ok(updated);
+  }
+
+  static async markAsUnreadForOtherParticipants(
+    auth: Authenticator,
+    {
+      conversation,
+      excludedUser,
+    }: {
+      conversation: ConversationWithoutContentType;
+      excludedUser?: UserType;
+    }
+  ) {
+    const updated = await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
+        },
+      }
+    );
+    return new Ok(updated);
+  }
+
+  static async markAsRead(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationWithoutContentType }
+  ) {
+    const updated = await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+        // Do not update `updatedAt.
+        silent: true,
+      }
+    );
+    return new Ok(updated);
+  }
+
+  static async getActionRequiredAndUnreadForUser(
+    auth: Authenticator,
+    id: number
+  ) {
+    if (!auth.user()) {
+      return {
+        actionRequired: false,
+        unread: false,
+      };
+    }
+
+    const participant = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
+    return {
+      actionRequired: participant?.actionRequired ?? false,
+      unread: participant?.unread ?? false,
+    };
   }
 
   static async upsertParticipation(

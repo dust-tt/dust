@@ -11,6 +11,8 @@ const STATIC_ALLOWED_ORIGINS = [
 const ALLOWED_ORIGIN_PATTERNS = [
   // Zendesk domains
   new RegExp("^https://.+\\.zendesk\\.com$"),
+  // Microsoft Office domains (Excel, Word, PowerPoint, etc.)
+  new RegExp("^https://.*\\.officeapps\\.live\\.com$"),
 ] as const;
 
 type StaticAllowedOriginType = (typeof STATIC_ALLOWED_ORIGINS)[number];
