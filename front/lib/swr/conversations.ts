@@ -508,7 +508,6 @@ export function useConversationMarkAsRead({
       return;
     }
     try {
-      console.log("Marking conversation as read");
       const response = await fetch(
         `/api/w/${workspaceId}/assistant/conversations/${conversation.sId}`,
         {
@@ -540,10 +539,8 @@ export function useConversationMarkAsRead({
   }, [conversation, workspaceId, mutateConversation, mutateConversations]);
 
   useEffect(() => {
-    console.log("useEffect", conversation);
     let timeout: NodeJS.Timeout | null = null;
     if (conversation?.sId && conversation.unread) {
-      console.log("Marking conversation as read with delay");
       timeout = setTimeout(markAsRead, DELAY_BEFORE_MARKING_AS_READ);
     }
 
