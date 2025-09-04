@@ -151,7 +151,8 @@ export function getKnowledgeDefaultValues({
         (view) => view.server.name === targetServerName
       );
     }
-
+    // at creation time we set it to null and will suggest the most relevant
+    // processing method when landing on the configuration page
     return null;
   })();
 
