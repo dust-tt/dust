@@ -1,24 +1,28 @@
 import {
-  ArrowUpOnSquareIcon,
   Button,
   CheckIcon,
-  ClipboardCheckIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   Input,
   LinkIcon,
+  MoreIcon,
   PencilSquareIcon,
-  Popover,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
-import React, { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useConversation,
   useDeleteConversation,
@@ -36,6 +40,8 @@ export function ConversationTitle({
   const router = useRouter();
   const { activeConversationId } = useConversationsNavigation();
 
+  const sendNotification = useSendNotification();
+
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -52,7 +58,6 @@ export function ConversationTitle({
     }
   }, [conversation, doDelete, owner.sId, router]);
 
-  const [copyLinkSuccess, setCopyLinkSuccess] = useState<boolean>(false);
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [editedTitle, setEditedTitle] = useState<string>("");
@@ -62,11 +67,8 @@ export function ConversationTitle({
 
   const copyConversationLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink || "");
-    setCopyLinkSuccess(true);
-    setTimeout(() => {
-      setCopyLinkSuccess(false);
-    }, 1000);
-  }, [shareLink]);
+    sendNotification({ type: "success", title: "Link copied !" });
+  }, [shareLink, sendNotification]);
 
   const onTitleChange = useCallback(
     async (title: string) => {
@@ -192,53 +194,26 @@ export function ConversationTitle({
               conversationId={activeConversationId}
               owner={owner}
             />
-            <Button
-              size="sm"
-              variant="ghost"
-              tooltip="Delete Conversation"
-              icon={TrashIcon}
-              onClick={() => setShowDeleteDialog(true)}
-            />
-            <Popover
-              popoverTriggerAsChild
-              trigger={
-                <div>
-                  <div className="hidden sm:flex">
-                    <Button
-                      size="sm"
-                      label="Share"
-                      icon={ArrowUpOnSquareIcon}
-                      variant="ghost"
-                    />
-                  </div>
-                  <div className="flex sm:hidden">
-                    <Button
-                      size="sm"
-                      tooltip="Share"
-                      icon={ArrowUpOnSquareIcon}
-                      variant="ghost"
-                    />
-                  </div>
-                </div>
-              }
-              content={
-                <div className="flex flex-col gap-y-4">
-                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                    Share the conversation link with other members of your
-                    workspace to invite them to contribute.
-                  </div>
-                  <div className="flex">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      label={copyLinkSuccess ? "Copied!" : "Copy the link"}
-                      icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
-                      onClick={copyConversationLink}
-                    />
-                  </div>
-                </div>
-              }
-            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" icon={MoreIcon} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Conversation</DropdownMenuLabel>
+                <DropdownMenuItem
+                  label="Delete"
+                  onClick={() => setShowDeleteDialog(true)}
+                  icon={TrashIcon}
+                  variant="warning"
+                />
+                <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
+                <DropdownMenuItem
+                  label="Copy the link"
+                  onClick={copyConversationLink}
+                  icon={LinkIcon}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </AppLayoutTitle>
