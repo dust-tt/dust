@@ -40,14 +40,6 @@ function ConversationListMenuItem({
   selectedConversationId,
   navigate,
 }: ConversationListMenuItemProps) {
-  conversation,
-  selectedConversationId,
-  navigate,
-}: {
-  conversation: ConversationWithoutContentPublicType;
-  selectedConversationId: string;
-  navigate: NavigateFunction;
-}) {
   const UnreadIcon = () => (
     <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
   );
@@ -166,6 +158,7 @@ const Content = () => {
               {conversationsByDate[dateLabel as GroupLabel].map(
                 (conversation) => (
                   <ConversationListMenuItem
+                    key={conversation.sId}
                     conversation={conversation}
                     selectedConversationId={conversationId!}
                     navigate={navigate}
