@@ -96,7 +96,9 @@ const createServer = (
       ) => {
         const validationResult = validateTailwindCode(content);
         if (validationResult.isErr()) {
-          return new Err(new MCPError(validationResult.error.message));
+          return new Err(
+            new MCPError(validationResult.error.message, { tracked: false })
+          );
         }
 
         const { conversation } = agentLoopContext?.runContext ?? {};

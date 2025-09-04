@@ -42,7 +42,6 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { TailwindArbitraryValuesError } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/validation";
 import {
   extractToolBlockedAwaitingInputResponse,
   isToolBlockedAwaitingInputResponse,
@@ -70,7 +69,7 @@ import {
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getBaseServerId } from "@app/lib/api/actions/mcp/client_side_registry";
-import { InvalidExtensionForMimeTypeError } from "@app/lib/api/files/errors";
+import { UntrackedError } from "@app/lib/api/errors";
 import type {
   ClientSideMCPToolTypeWithStakeLevel,
   MCPToolType,
@@ -496,15 +495,7 @@ export async function* tryCallMCPTool(
       result: new Ok(content),
     };
   } catch (error) {
-    if (error instanceof TailwindArbitraryValuesError) {
-      yield {
-        type: "result",
-        result: new Err(error),
-      };
-      return;
-    }
-
-    if (error instanceof InvalidExtensionForMimeTypeError) {
+    if (error instanceof UntrackedError) {
       yield {
         type: "result",
         result: new Err(error),
@@ -672,7 +663,7 @@ export async function tryListMCPTools(
       const { instructions, tools: rawToolsFromServer } =
         toolsAndInstructionsRes.value;
 
-      const processedTools = [];
+      const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
         // Fix the tool name to be valid for the model.

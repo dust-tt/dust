@@ -2,15 +2,6 @@ import type { Result } from "@app/types";
 import { Err } from "@app/types";
 import { Ok } from "@app/types";
 
-export class TailwindArbitraryValuesError extends Error {
-  constructor(examples: string) {
-    super(
-      `Forbidden Tailwind arbitrary values detected: ${examples}. ` +
-        `Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] are not allowed. ` +
-        `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`
-    );
-  }
-}
 // Regular expression to capture the value inside a className attribute. This pattern assumes
 // double quotes for simplicity.
 const classNameRegex = /className\s*=\s*"([^"]*)"/g;
@@ -46,7 +37,13 @@ export function validateTailwindCode(code: string): Result<undefined, Error> {
   if (matches.length > 0) {
     const uniqueMatches = Array.from(new Set(matches));
     const examples = uniqueMatches.slice(0, 3).join(", ");
-    return new Err(new TailwindArbitraryValuesError(examples));
+    return new Err(
+      new Error(
+        `Forbidden Tailwind arbitrary values detected: ${examples}. ` +
+          `Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] are not allowed. ` +
+          `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`
+      )
+    );
   }
   return new Ok(undefined);
 }
