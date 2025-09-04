@@ -310,7 +310,7 @@ export function BlockedActionsProvider({
             pages={pages}
             currentPageId={currentPageId}
             onPageChange={() => {}}
-            hideCloseButton={false}
+            hideCloseButton
             size="lg"
             isAlertDialog
             showNavigation={currentStep === "validation" && pages.length > 1}
