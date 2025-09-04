@@ -4,12 +4,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { Op } from "sequelize";
 
-import {
-  getChannels,
-  joinChannel,
-} from "@connectors/connectors/slack/lib/channels";
+import { getChannels } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
+import { launchJoinChannelWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
@@ -146,7 +144,11 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   });
   const joinPromises = await Promise.all(
     slackChannelIds.map((slackChannelId) =>
-      joinChannel(parseInt(connectorId), slackChannelId)
+      launchJoinChannelWorkflow(
+        parseInt(connectorId),
+        slackChannelId,
+        "join-only"
+      )
     )
   );
   for (const joinRes of joinPromises) {
@@ -158,7 +160,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
           status_code: 400,
           api_error: {
             type: "connector_update_error",
-            message: `Could not join channel: ${joinRes.error}`,
+            message: `Could not launch join channel workflow: ${joinRes.error}`,
           },
         },
         joinRes.error
