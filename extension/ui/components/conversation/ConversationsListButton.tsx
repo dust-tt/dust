@@ -5,18 +5,21 @@ import {
   Button,
   ChatBubbleLeftRightIcon,
   classNames,
+  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  Icon,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
 import React, { useState } from "react";
-import { NavigateFunction, useNavigate, useParams } from "react-router-dom";
+import type { NavigateFunction } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 type GroupLabel =
   | "Today"
@@ -26,18 +29,29 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-function getDropdownMenuItem(
-  conversation: ConversationWithoutContentPublicType,
-  conversationId: string | undefined,
-  navigate: NavigateFunction
-) {
+function ConversationListMenuItem({
+  conversation,
+  selectedConversationId,
+  navigate,
+}: {
+  conversation: ConversationWithoutContentPublicType;
+  selectedConversationId: string;
+  navigate: NavigateFunction;
+}) {
+  const UnreadIcon = () => (
+    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
+  );
+
+  const conversationLabel = conversation.title || "Untitled Conversation";
   return (
     <DropdownMenuItem
       key={conversation.sId}
-      label={conversation.title || "Untitled Conversation"}
+      label={conversationLabel}
+      icon={conversation.unread ? UnreadIcon : undefined}
+      truncateText={true}
       className={classNames(
         "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
-        conversationId === conversation.sId
+        selectedConversationId === conversation.sId
           ? "bg-primary-50 dark:bg-primary-50-night"
           : ""
       )}
@@ -140,8 +154,13 @@ const Content = () => {
                 />
               )}
               {conversationsByDate[dateLabel as GroupLabel].map(
-                (conversation) =>
-                  getDropdownMenuItem(conversation, conversationId, navigate)
+                (conversation) => (
+                  <ConversationListMenuItem
+                    conversation={conversation}
+                    selectedConversationId={conversationId!}
+                    navigate={navigate}
+                  />
+                )
               )}
             </React.Fragment>
           ))}
