@@ -115,18 +115,18 @@
 @layer base {
   :root {
     /* Responsive typography and spacing */
-    --responsive-text-xs: clamp(0.5rem, 1.8vw, 1rem);
-    --responsive-text-sm: clamp(0.625rem, 2vw, 1.125rem);
-    --responsive-text-base: clamp(0.75rem, 2.2vw, 1.25rem);
-    --responsive-text-lg: clamp(0.875rem, 2.4vw, 1.5rem);
-    --responsive-text-xl: clamp(1rem, 2.8vw, 1.75rem);
-    --responsive-text-2xl: clamp(1.125rem, 3.2vw, 2rem);
-    --responsive-text-3xl: clamp(1.25rem, 3.6vw, 2.5rem);
-    --responsive-text-4xl: clamp(1.5rem, 4.2vw, 3rem);
-    --responsive-text-5xl: clamp(1.75rem, 5vw, 3.5rem);
-    --responsive-text-6xl: clamp(2rem, 6vw, 4.5rem);
-    --responsive-text-7xl: clamp(2.5rem, 7vw, 5.5rem);
-    --responsive-text-8xl: clamp(3rem, 8vw, 6.5rem);
+    --responsive-text-xs: clamp(0.5rem, 1.8vw, 0.75rem);
+    --responsive-text-sm: clamp(0.625rem, 2vw, 0.875rem);
+    --responsive-text-base: clamp(0.75rem, 2.2vw, 1rem);
+    --responsive-text-lg: clamp(0.875rem, 2.4vw, 1.125rem);
+    --responsive-text-xl: clamp(1rem, 2.8vw, 1.25rem);
+    --responsive-text-2xl: clamp(1.125rem, 3.2vw, 1.5rem);
+    --responsive-text-3xl: clamp(1.25rem, 3.6vw, 1.875rem);
+    --responsive-text-4xl: clamp(1.5rem, 4.2vw, 2.25rem);
+    --responsive-text-5xl: clamp(1.75rem, 5vw, 3rem);
+    --responsive-text-6xl: clamp(2rem, 6vw, 3.75rem);
+    --responsive-text-7xl: clamp(2.5rem, 7vw, 4.5rem);
+    --responsive-text-8xl: clamp(3rem, 8vw, 6rem);
     --responsive-text-9xl: clamp(3.5rem, 9vw, 8rem);
 
     --responsive-space-1: clamp(0.075rem, 0.25vw, 0.25rem);
@@ -140,8 +140,8 @@
     --responsive-space-20: clamp(2rem, 5vw, 5rem);
     --responsive-space-24: clamp(2.5rem, 6vw, 6rem);
 
-    --responsive-slide-text-title: clamp(3rem, 15vw, 190px);
-    --responsive-slide-text-heading1: clamp(2.5rem, 12vw, 140px);
+    --responsive-slide-text-title: clamp(3rem, 15vw, 11.875rem);
+    --responsive-slide-text-heading1: clamp(2.5rem, 12vw, 8.75rem);
 
     --slide-cover-foreground: 220 9% 7%; /* #111418 */
     --slide-content-text: 220 12% 37%; /* #545D6C */

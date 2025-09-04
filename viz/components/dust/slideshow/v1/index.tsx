@@ -17,7 +17,7 @@ import {
 } from "@viz/components/ui";
 import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigation";
 
-// Internal components.
+// Preview components.
 
 interface SlidePreviewProps {
   index: number;
@@ -109,7 +109,124 @@ export function SlideshowPreviewSidebar({
   );
 }
 
-// Exposed components.
+// Internal components.
+
+type ColProps = PropsWithChildren<{
+  className?: string;
+  offset?: number;
+  rowSpan?: number;
+  rowStart?: number;
+  span?: number;
+}>;
+
+/**
+ * Col - Grid positioning helper component
+ *
+ * Abstracts CSS Grid positioning into semantic props:
+ * - span: How many columns to occupy (1-6)
+ * - rowSpan: How many rows to occupy (1-4)
+ * - offset: Skip columns from the left (0-5)
+ * - rowStart: Start at specific row (1-4)
+ *
+ * Examples:
+ * - Title across full width: <Col span={6}>
+ * - Half-width content: <Col span={3}>
+ * - Chart in right half: <Col span={3} offset={3}>
+ */
+const Col = ({
+  children,
+  className,
+  offset = 0,
+  rowSpan = 1,
+  rowStart,
+  span = 1,
+}: ColProps) => (
+  <div
+    style={{
+      gridColumn: offset ? `${offset + 1} / span ${span}` : `span ${span}`,
+      gridRow: rowStart ? `${rowStart} / span ${rowSpan}` : `span ${rowSpan}`,
+    }}
+    className={className}
+  >
+    {children}
+  </div>
+);
+
+const BASE_COLS = 6;
+
+type ColumnsProps = PropsWithChildren<{
+  description?: string;
+  max?: 4 | 3 | 2; // Set by Columns3, Columns4 etc.
+  title?: string;
+}> &
+  BaseProps;
+
+export const Columns = ({
+  children,
+  className,
+  description,
+  isPreview = false,
+  max,
+  theme = "light",
+  title,
+}: ColumnsProps) => {
+  const items = React.Children.toArray(children).slice(0, max ?? 999);
+  const cols = Math.max(1, Math.min(max ?? items.length, 4)); // Clamp 1..4.
+
+  const hasTitle = Boolean(title);
+  const hasDesc = Boolean(description);
+  const startRow = 1 + (hasTitle ? 1 : 0) + (hasDesc ? 1 : 0); // Where cards begin.
+
+  return (
+    <Slide
+      variant="top"
+      className={cn(`slide-cover-${theme}`, className)}
+      isPreview={isPreview}
+    >
+      {hasTitle && (
+        <Col span={BASE_COLS}>
+          <Heading2>{title}</Heading2>
+        </Col>
+      )}
+
+      {hasDesc && (
+        <Col span={BASE_COLS}>
+          <TextBody2 className="slide-content">{description}</TextBody2>
+        </Col>
+      )}
+
+      {cols === 4
+        ? items.slice(0, 4).map((el, i) => {
+            // Two rows of two cards: offsets 0 or 3; rows startRow and startRow+1.
+            const rowStart = startRow + Math.floor(i / 2);
+            const offset = (i % 2) * 3;
+            return (
+              <Col
+                key={i}
+                span={3}
+                rowSpan={1}
+                rowStart={rowStart}
+                offset={offset}
+              >
+                {el}
+              </Col>
+            );
+          })
+        : items.map((el, i) => {
+            const span = cols === 3 ? 2 : 3; // 3→span2, 2→span3.
+            return (
+              <Col key={i} span={span} rowSpan={2} rowStart={startRow}>
+                {el}
+              </Col>
+            );
+          })}
+    </Slide>
+  );
+};
+Columns.displayName = "Slideshow.Slide.Columns";
+
+// Slide Component - Foundation of the slideshow system
+// Uses a 6-column × 4-row CSS grid to provide consistent, professional layouts
 
 type SlideProps = PropsWithChildren<{
   className?: string;
@@ -153,6 +270,7 @@ export function Slide({
     </div>
   );
 }
+Slide.displayName = "Slideshow.Slide.Base";
 
 const NAVIGATION_HIDE_DELAY = 3000; // Milliseconds before navigation auto-hides
 
@@ -171,15 +289,10 @@ function validateSlideChildren(
   const childArray = React.Children.toArray(children) as React.ReactElement[];
 
   const validSlideDisplayNames = new Set([
-    "Slideshow.Slide.Base",
     "Slideshow.Slide.Cover",
-    "Slideshow.Slide.Bullets",
-    "Slideshow.Slide.Split",
     "Slideshow.Slide.Full",
-    "Slideshow.Slide.TitleCentered",
     "Slideshow.Slide.TitleTop",
     "Slideshow.Slide.TitleTopH2",
-    "Slideshow.Slide.BulletsOnly",
     "Slideshow.Slide.Quote",
     "Slideshow.Slide.Columns",
     "Slideshow.Slide.Columns2",
@@ -187,7 +300,7 @@ function validateSlideChildren(
     "Slideshow.Slide.Columns4",
     "Slideshow.Slide.BulletList",
     "Slideshow.Slide.BulletItem",
-    "Slideshow.Slide.SlideWithChart",
+    "Slideshow.Slide.ChartSplit",
   ]);
 
   const invalidChildren = childArray.filter((child) => {
@@ -385,89 +498,37 @@ export const TextBody3 = ({
   </p>
 );
 
-// Slide-level layout components.
+// Preset slide components.
 
-interface CoverProps {
+interface BaseProps {
   className?: string;
   isPreview?: boolean;
-  title: string;
   theme?: "light" | "dark";
+}
+
+type BasePropsWithChildren = PropsWithChildren<BaseProps>;
+
+interface CoverProps extends BaseProps {
+  title: string;
 }
 
 export const Cover = ({
   className,
   isPreview = false,
-  title,
   theme = "dark",
+  title,
 }: CoverProps) => (
   <Slide
     variant="top"
     className={cn(`slide-cover-${theme}`, className)}
     isPreview={isPreview}
   >
-    <Slideshow.Title className="col-span-4 row-span-2">{title}</Slideshow.Title>
+    <Title className="col-span-4 row-span-2">{title}</Title>
   </Slide>
 );
 Cover.displayName = "Slideshow.Slide.Cover";
 
-interface BulletsProps {
-  className?: string;
-  isPreview?: boolean;
-  items: string[];
-  title: string;
-  titleClassName?: string;
-}
-
-export const Bullets = ({
-  title,
-  items,
-  className,
-  titleClassName,
-  isPreview = false,
-}: BulletsProps) => (
-  <Slide variant="top" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col space-y-6">
-      <Heading1 className={titleClassName}>{title}</Heading1>
-      <ul className="space-y-4">
-        {items.map((item, index) => (
-          <li key={index} className="flex items-start">
-            <span className="text-2xl mr-4 mt-1 opacity-60">•</span>
-            <TextBody1 className="flex-1">{item}</TextBody1>
-          </li>
-        ))}
-      </ul>
-    </div>
-  </Slide>
-);
-Bullets.displayName = "Slideshow.Slide.Bullets";
-
-type TwoChildren = [React.ReactNode, React.ReactNode];
-
-interface SplitProps {
-  children: TwoChildren;
-  className?: string;
-  isPreview?: boolean;
-}
-
-export const Split = ({
-  children,
-  className,
-  isPreview = false,
-}: SplitProps) => (
-  <Slide variant="top" className={className} isPreview={isPreview}>
-    <div className="h-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-      <div>{children[0]}</div>
-      <div>{children[1]}</div>
-    </div>
-  </Slide>
-);
-Split.displayName = "Slideshow.Slide.Split";
-
-type FullProps = PropsWithChildren<{
-  className?: string;
-  isPreview?: boolean;
-  theme?: "light" | "dark";
-}>;
+type FullProps = BasePropsWithChildren;
 
 export const Full = ({
   children,
@@ -487,34 +548,11 @@ export const Full = ({
 );
 Full.displayName = "Slideshow.Slide.Full";
 
-interface TitleCenteredProps {
-  className?: string;
-  isPreview?: boolean;
-  title: string;
-  titleClassName?: string;
-}
-
-export const TitleCentered = ({
-  className,
-  isPreview = false,
-  title,
-  titleClassName,
-}: TitleCenteredProps) => (
-  <Slide variant="centered" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col items-center justify-center text-center">
-      <Title className={titleClassName}>{title}</Title>
-    </div>
-  </Slide>
-);
-TitleCentered.displayName = "Slideshow.Slide.TitleCentered";
-
 type TitleTopProps = PropsWithChildren<{
-  className?: string;
-  isPreview?: boolean;
   title: string;
   titleClassName?: string;
-  theme?: "light" | "dark";
-}>;
+}> &
+  BaseProps;
 
 export const TitleTop = ({
   title,
@@ -530,7 +568,7 @@ export const TitleTop = ({
   >
     <Heading1 className="col-span-4 row-span-1">{title}</Heading1>
     {children && (
-      <div className="slide-content row-start-3 col-start-2 row-span-2 col-span-3">
+      <div className="slide-content row-start-3 col-start-2 row-span-2 col-span-4">
         {children}
       </div>
     )}
@@ -539,19 +577,17 @@ export const TitleTop = ({
 TitleTop.displayName = "Slideshow.Slide.TitleTop";
 
 type TitleTopH2Props = PropsWithChildren<{
-  className?: string;
-  isPreview?: boolean;
   title: string;
   titleClassName?: string;
-  theme?: "light" | "dark";
-}>;
+}> &
+  BaseProps;
 
 export const TitleTopH2 = ({
   title,
   children,
   className,
   isPreview = false,
-  theme = "dark",
+  theme = "light",
 }: TitleTopH2Props) => (
   <Slide
     variant="top"
@@ -560,7 +596,7 @@ export const TitleTopH2 = ({
   >
     <Heading2 className="col-span-4 row-span-1">{title}</Heading2>
     {children && (
-      <div className="slide-content row-start-3 col-start-2 row-span-2 col-span-3">
+      <div className="slide-content row-start-3 col-start-2 row-span-2 col-span-4">
         {children}
       </div>
     )}
@@ -568,82 +604,8 @@ export const TitleTopH2 = ({
 );
 TitleTopH2.displayName = "Slideshow.Slide.TitleTopH2";
 
-export const Col = ({
-  span = 1,
-  rowSpan = 1,
-  offset = 0,
-  children,
-  className,
-  rowStart,
-}: PropsWithChildren<{
-  span?: number;
-  rowSpan?: number;
-  offset?: number;
-  className?: string;
-  rowStart?: number;
-}>) => (
-  <div
-    style={{
-      gridColumn: offset ? `${offset + 1} / span ${span}` : `span ${span}`,
-      gridRow: rowStart ? `${rowStart} / span ${rowSpan}` : `span ${rowSpan}`,
-    }}
-    className={className}
-  >
-    {children}
-  </div>
-);
+// Column-based aliases.
 
-const BASE_COLS = 6;
-
-type ColumnsProps = PropsWithChildren<{
-  title?: string;
-  description?: string;
-  theme?: "light" | "dark";
-  className?: string;
-  max?: 4 | 3 | 2; // set by Columns3, Columns4 etc.
-  isPreview?: boolean;
-}>;
-
-export const Columns = ({
-  children,
-  className,
-  title,
-  description,
-  theme = "light",
-  max,
-  isPreview = false,
-}: ColumnsProps) => {
-  const items = React.Children.toArray(children).slice(0, max ?? 999);
-  const cols = max ?? items.length;
-
-  return (
-    <Slide
-      variant="top"
-      className={cn(`slide-cover-${theme}`, className)}
-      isPreview={isPreview}
-    >
-      {title && (
-        <Col span={4}>
-          <Heading2>{title}</Heading2>
-        </Col>
-      )}
-      {description && (
-        <Col span={5}>
-          <TextBody2 className="slide-content">{description}</TextBody2>
-        </Col>
-      )}
-
-      {items.map((el, i) => (
-        <Col key={i} span={Math.floor(BASE_COLS / cols)} rowSpan={2}>
-          {el}
-        </Col>
-      ))}
-    </Slide>
-  );
-};
-Columns.displayName = "Slideshow.Slide.Columns";
-
-/* Aliases ------------------------------------------------------ */
 const Columns2 = (props: ColumnsProps) => <Columns {...props} max={2} />;
 Columns2.displayName = "Slideshow.Slide.Columns2";
 const Columns3 = (props: ColumnsProps) => <Columns {...props} max={3} />;
@@ -655,14 +617,9 @@ type ItemProps = PropsWithChildren<{ heading: string; className?: string }>;
 
 export const Item = ({ heading, children, className }: ItemProps) => (
   <div className={cn("space-y-3", className)}>
-    <Col span={4}>
-      <Slideshow.TextBody1>{heading}</Slideshow.TextBody1>
-    </Col>
-    {/* leave children untouched so callers can pass ANY markup */}
+    <TextBody1>{heading}</TextBody1>
     {typeof children === "string" || typeof children === "number" ? (
-      <Slideshow.TextBody2 className="slide-content">
-        {children}
-      </Slideshow.TextBody2>
+      <TextBody2 className="slide-content">{children}</TextBody2>
     ) : (
       <div className="slide-content">{children}</div>
     )}
@@ -686,20 +643,20 @@ const BulletItem = ({ children }: PropsWithChildren) => (
 );
 BulletItem.displayName = "Slideshow.Slide.BulletItem";
 
-const SlideWithChart = ({
+type ChartSplitProps = PropsWithChildren<{
+  title: string;
+  description?: string;
+}> &
+  BaseProps;
+
+const ChartSplit = ({
   children,
   className,
+  description,
+  isPreview = false,
   theme = "light",
   title,
-  isPreview = false,
-  description,
-}: PropsWithChildren<{
-  className?: string;
-  title: string;
-  theme?: "light" | "dark";
-  isPreview?: boolean;
-  description?: string;
-}>) => (
+}: ChartSplitProps) => (
   <Slide
     variant="top"
     className={cn(`slide-cover-${theme}`, className)}
@@ -707,7 +664,7 @@ const SlideWithChart = ({
   >
     {/* Title – row 1, cols 1-2 */}
     <Col span={2} rowSpan={1} rowStart={1}>
-      <Heading2>{title}</Heading2>
+      <Heading2 className="break-words">{title}</Heading2>
     </Col>
 
     {/* Spacer – row 2, cols 1-2 (keeps blank line) */}
@@ -724,39 +681,11 @@ const SlideWithChart = ({
     </Col>
   </Slide>
 );
-SlideWithChart.displayName = "Slideshow.Slide.SlideWithChart";
+ChartSplit.displayName = "Slideshow.Slide.ChartSplit";
 
-interface BulletsOnlyProps {
-  className?: string;
-  isPreview?: boolean;
-  items: string[];
-}
-
-export const BulletsOnly = ({
-  className,
-  isPreview = false,
-  items,
-}: BulletsOnlyProps) => (
-  <Slide variant="top" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col">
-      <ul className="space-y-6">
-        {items.map((item, index) => (
-          <li key={index} className="flex items-start">
-            <span className="text-3xl mr-6 mt-1 opacity-60">•</span>
-            <TextBody1 className="flex-1">{item}</TextBody1>
-          </li>
-        ))}
-      </ul>
-    </div>
-  </Slide>
-);
-BulletsOnly.displayName = "Slideshow.Slide.BulletsOnly";
-
-interface QuoteProps {
+interface QuoteProps extends BaseProps {
   author: string;
   authorClassName?: string;
-  className?: string;
-  isPreview?: boolean;
   quote: string;
   quoteClassName?: string;
 }
@@ -768,54 +697,55 @@ export const Quote = ({
   isPreview = false,
   quote,
   quoteClassName,
+  theme = "light",
 }: QuoteProps) => (
-  <Slide variant="centered" className={className} isPreview={isPreview}>
-    <div className="h-full flex flex-col items-center justify-center text-center space-y-8">
-      <blockquote
-        className={cn(
-          "text-3xl font-light italic leading-relaxed max-w-4xl",
-          quoteClassName
-        )}
-      >
-        &quot;{quote}&quot;
-      </blockquote>
-      <cite className={cn("text-xl opacity-80 not-italic", authorClassName)}>
+  <Slide
+    variant="centered"
+    className={cn(`slide-cover-${theme}`, className)}
+    isPreview={isPreview}
+  >
+    <Col
+      span={6}
+      rowSpan={4}
+      className="flex flex-col items-center justify-center text-center space-y-8 slide-content"
+    >
+      <TextBody2 className={cn("font-light italic", quoteClassName)}>
+        “{quote}”
+      </TextBody2>
+
+      <TextBody3 className={cn("opacity-80 not-italic", authorClassName)}>
         — {author}
-      </cite>
-    </div>
+      </TextBody3>
+    </Col>
   </Slide>
 );
 Quote.displayName = "Slideshow.Slide.Quote";
 
-Slide.displayName = "Slideshow.Slide.Base";
-
 // Namespace export.
 export const Slideshow = {
-  Heading1,
-  Heading2,
-  Heading3,
   Root: SlideshowRoot,
   Slide: {
-    Base: Slide,
-    Bullets,
-    BulletsOnly,
-    Cover,
-    Full,
-    Quote,
-    Split,
-    TitleCentered,
-    TitleTop,
-    TitleTopH2,
+    BulletItem,
+    BulletList,
+    ChartSplit,
     Columns,
     Columns2,
     Columns3,
     Columns4,
+    Cover,
+    Full,
     Item,
-    BulletList,
-    BulletItem,
-    SlideWithChart,
+    Quote,
+    TitleTop,
+    TitleTopH2,
   },
-  TextBody1,
-  TextBody2,
-  Title,
+  Text: {
+    Body1: TextBody1,
+    Body2: TextBody2,
+    Body3: TextBody3,
+    Heading1,
+    Heading2,
+    Heading3,
+    Title,
+  },
 };
