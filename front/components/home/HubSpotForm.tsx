@@ -18,7 +18,7 @@ declare global {
 export default function HubSpotForm() {
   const region = "eu1";
   const portalId = "144442587";
-  const formId = "1200f010-eaeb-4237-897e-bc4126bed124";
+  const formId = "31e790e5-f4d5-4c79-acc5-acd770fe8f84";
 
   useEffect(() => {
     const existingScript = document.getElementById("hubspot-script");
