@@ -3,10 +3,12 @@ import { isValidPlatform } from "@app/shared/services/platform";
 import webpack from "webpack";
 
 import { getConfig as getChromeConfig } from "../platforms/chrome/webpack.config";
+import { getConfig as getExcelConfig } from "../platforms/excel/webpack.config";
 import { getConfig as getFrontConfig } from "../platforms/front/webpack.config";
 
 const configPerPlatform: Record<PlatformType, any> = {
   chrome: getChromeConfig,
+  excel: getExcelConfig,
   front: getFrontConfig,
 };
 

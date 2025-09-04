@@ -11,7 +11,7 @@ import type {
 } from "@dust-tt/client";
 import type { ComponentType } from "react";
 
-const PLATFORM_TYPES = ["chrome", "front"] as const;
+const PLATFORM_TYPES = ["chrome", "front", "excel"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
 
 interface ConversationContext {

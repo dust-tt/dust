@@ -1,0 +1,255 @@
+* {
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f8f9fa;
+}
+
+.container {
+    padding: 24px;
+    background-color: white;
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: 60px;
+}
+
+.logo {
+    display: flex;
+    justify-content: start;
+}
+
+.main-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.2;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.search-container {
+    position: relative;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    padding-right: 48px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    background-color: #f9fafb;
+}
+
+.search-icon {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+}
+
+.input-group {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.input-group input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 100px;
+}
+
+#headerRow {
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 100px;
+}
+
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+.btn-secondary:hover {
+    background-color: #e5e7eb;
+}
+
+.btn-primary {
+    background-color: #3b82f6;
+    color: white;
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    margin-top: 24px;
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
+}
+
+.btn-primary:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.btn-setup {
+    background-color: #10b981;
+    color: white;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+.btn-setup:hover {
+    background-color: #059669;
+}
+
+textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#status {
+    text-align: center;
+    margin: 16px 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.select2-container {
+    width: 100% !important;
+}
+
+.select2-selection {
+    height: 48px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 8px !important;
+    background-color: #f9fafb !important;
+}
+
+.select2-selection__rendered {
+    line-height: 46px !important;
+    padding-left: 16px !important;
+}
+
+.select2-selection__arrow {
+    height: 46px !important;
+}
+
+.error {
+    color: #dc2626;
+    font-size: 14px;
+    margin-top: 8px;
+    display: none;
+}
+
+.info-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.header-row-section {
+    display: none;
+}
+
+.version {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* Dialog styles */
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dialog-content {
+    background-color: white;
+    padding: 24px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+}
+
+.dialog-content h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #1f2937;
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.dialog-buttons .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    margin-top: 0;
+    width: auto;
+}
