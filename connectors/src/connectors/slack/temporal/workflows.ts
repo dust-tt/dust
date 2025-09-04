@@ -216,8 +216,10 @@ export async function syncOneThreadDebounced(
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
 
-  // If we hit max iterations, continue as new
+  // If we hit max iterations, unregister the signal handler first to prevent
+  // it from executing during continueAsNew.
   if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+    setHandler(newWebhookSignal, undefined);
     await continueAsNew(connectorId, channelId, threadTs);
   }
 
@@ -275,8 +277,10 @@ export async function syncOneMessageDebounced(
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
 
-  // If we hit max iterations, continue as new
+  // If we hit max iterations, unregister the signal handler first to prevent
+  // it from executing during continueAsNew.
   if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+    setHandler(newWebhookSignal, undefined);
     await continueAsNew(connectorId, channelId, threadTs);
   }
 
