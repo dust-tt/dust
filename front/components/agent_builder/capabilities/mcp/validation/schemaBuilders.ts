@@ -124,11 +124,15 @@ function createAdditionalConfigurationSchema(
         nestedStructure[rootKey] = buildNestedSchema(nestedKeys[rootKey], path);
       } else {
         // This is a leaf value - determine type based on requirements
-        if (requirements.requiredStrings.some(item => item.key === path)) {
+        if (requirements.requiredStrings.some((item) => item.key === path)) {
           nestedStructure[rootKey] = z.string().min(1);
-        } else if (requirements.requiredNumbers.some(item => item.key === path)) {
+        } else if (
+          requirements.requiredNumbers.some((item) => item.key === path)
+        ) {
           nestedStructure[rootKey] = z.coerce.number();
-        } else if (requirements.requiredBooleans.some(item => item.key === path)) {
+        } else if (
+          requirements.requiredBooleans.some((item) => item.key === path)
+        ) {
           nestedStructure[rootKey] = z.coerce.boolean();
         } else if (requirements.requiredEnums[path]) {
           nestedStructure[rootKey] = z.enum(
@@ -151,9 +155,9 @@ function createAdditionalConfigurationSchema(
   };
 
   return buildNestedSchema([
-    ...requirements.requiredStrings.map(item => item.key),
-    ...requirements.requiredNumbers.map(item => item.key),
-    ...requirements.requiredBooleans.map(item => item.key),
+    ...requirements.requiredStrings.map((item) => item.key),
+    ...requirements.requiredNumbers.map((item) => item.key),
+    ...requirements.requiredBooleans.map((item) => item.key),
     ...Object.keys(requirements.requiredEnums),
     ...Object.keys(requirements.requiredLists),
   ]);

@@ -27,8 +27,13 @@ function getKeyPrefix(key: string): string {
   return segments.length > 1 ? segments[0] : "";
 }
 
-function groupKeysByPrefix(items: Array<{ key: string; description?: string }>): Record<string, Array<{ key: string; description?: string }>> {
-  const groups: Record<string, Array<{ key: string; description?: string }>> = {};
+function groupKeysByPrefix(
+  items: Array<{ key: string; description?: string }>
+): Record<string, Array<{ key: string; description?: string }>> {
+  const groups: Record<
+    string,
+    Array<{ key: string; description?: string }>
+  > = {};
 
   items.forEach((item) => {
     const prefix = getKeyPrefix(item.key);
@@ -62,7 +67,7 @@ function BooleanConfigurationSection({
     const value = !!additionalConfiguration[key];
     return (
       <div key={key} className="mb-2 flex items-center gap-4">
-        <div className="flex items-center gap-2 w-1/5">
+        <div className="flex w-1/5 items-center gap-2">
           <Label htmlFor={`boolean-${key}`} className="text-sm font-medium">
             {formatKeyForDisplay(key)}
           </Label>
@@ -72,7 +77,7 @@ function BooleanConfigurationSection({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="text-gray-400 hover:text-gray-600 cursor-help"
+                  className="cursor-help text-gray-400 hover:text-gray-600"
                 />
               }
               label={description}
@@ -108,7 +113,7 @@ function NumberConfigurationSection({
     const value = additionalConfiguration[key] ?? null;
     return (
       <div key={key} className="mb-2 flex items-center gap-4">
-        <div className="flex items-center gap-2 w-1/5">
+        <div className="flex w-1/5 items-center gap-2">
           <Label htmlFor={`number-${key}`} className="text-sm font-medium">
             {formatKeyForDisplay(key)}
           </Label>
@@ -118,7 +123,7 @@ function NumberConfigurationSection({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="text-gray-400 hover:text-gray-600 cursor-help"
+                  className="cursor-help text-gray-400 hover:text-gray-600"
                 />
               }
               label={description}
@@ -163,7 +168,7 @@ function StringConfigurationSection({
     const value = additionalConfiguration[key] ?? "";
     return (
       <div key={key} className="mb-2 flex items-center gap-4">
-        <div className="flex items-center gap-2 w-1/5">
+        <div className="flex w-1/5 items-center gap-2">
           <Label htmlFor={`string-${key}`} className="text-sm font-medium">
             {formatKeyForDisplay(key)}
           </Label>
@@ -173,7 +178,7 @@ function StringConfigurationSection({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="text-gray-400 hover:text-gray-600 cursor-help"
+                  className="cursor-help text-gray-400 hover:text-gray-600"
                 />
               }
               label={description}
@@ -209,56 +214,63 @@ function EnumConfigurationSection({
     return null;
   }
 
-  return Object.entries(requiredEnums).map(([key, { options: enumValues, description }]) => {
-    const displayLabel = `Select ${formatKeyForDisplay(key)}`;
-    return (
-      <div key={key} className="mb-2 flex items-center gap-4">
-        <div className="flex items-center gap-2 w-1/5">
-          <Label className="text-sm font-medium">
-            {formatKeyForDisplay(key)}
-          </Label>
-          {description && (
-            <Tooltip
-              trigger={
-                <Icon
-                  visual={InformationCircleIcon}
-                  size="xs"
-                  className="text-gray-400 hover:text-gray-600 cursor-help"
-                />
-              }
-              label={description}
-            />
-          )}
-        </div>
-        <div className="flex-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                isSelect
-                label={additionalConfiguration[key]?.toString() ?? displayLabel}
-                size="sm"
-                tooltip={displayLabel}
-                variant="outline"
+  return Object.entries(requiredEnums).map(
+    ([key, { options: enumValues, description }]) => {
+      const displayLabel = `Select ${formatKeyForDisplay(key)}`;
+      return (
+        <div key={key} className="mb-2 flex items-center gap-4">
+          <div className="flex w-1/5 items-center gap-2">
+            <Label className="text-sm font-medium">
+              {formatKeyForDisplay(key)}
+            </Label>
+            {description && (
+              <Tooltip
+                trigger={
+                  <Icon
+                    visual={InformationCircleIcon}
+                    size="xs"
+                    className="cursor-help text-gray-400 hover:text-gray-600"
+                  />
+                }
+                label={description}
               />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {enumValues.map((enumValue) => (
-                <DropdownMenuItem
-                  key={enumValue}
-                  label={enumValue}
-                  onSelect={() => onConfigUpdate(key, enumValue)}
+            )}
+          </div>
+          <div className="flex-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  isSelect
+                  label={
+                    additionalConfiguration[key]?.toString() ?? displayLabel
+                  }
+                  size="sm"
+                  tooltip={displayLabel}
+                  variant="outline"
                 />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {enumValues.map((enumValue) => (
+                  <DropdownMenuItem
+                    key={enumValue}
+                    label={enumValue}
+                    onSelect={() => onConfigUpdate(key, enumValue)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
-    );
-  });
+      );
+    }
+  );
 }
 
 interface ListConfigurationSectionProps {
-  requiredLists: Record<string, { options: Record<string, string>; description?: string }>;
+  requiredLists: Record<
+    string,
+    { options: Record<string, string>; description?: string }
+  >;
   additionalConfiguration: AdditionalConfigurationType;
   onConfigUpdate: (key: string, value: string[]) => void;
 }
@@ -272,73 +284,76 @@ function ListConfigurationSection({
     return null;
   }
 
-  return Object.entries(requiredLists).map(([key, { options: listValues, description }]) => {
-    const rawValue = additionalConfiguration[key];
-    const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
-    let displayLabel =
-      currentValue.length > 0
-        ? currentValue.map((v) => listValues[v]).join(", ")
-        : `Select ${formatKeyForDisplay(key)}`;
-    if (displayLabel.length > 20) {
-      displayLabel = `${currentValue.length} selected`;
-    }
+  return Object.entries(requiredLists).map(
+    ([key, { options: listValues, description }]) => {
+      const rawValue = additionalConfiguration[key];
+      const currentValue: string[] = Array.isArray(rawValue) ? rawValue : [];
+      let displayLabel =
+        currentValue.length > 0
+          ? currentValue.map((v) => listValues[v]).join(", ")
+          : `Select ${formatKeyForDisplay(key)}`;
+      if (displayLabel.length > 20) {
+        displayLabel = `${currentValue.length} selected`;
+      }
 
-        return (
-      <div key={key} className="mb-2">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 w-1/5">
-            <Label className="text-sm font-medium">
-              {formatKeyForDisplay(key)}
-            </Label>
-            {description && (
-              <Tooltip
-                trigger={
-                  <Icon
-                    visual={InformationCircleIcon}
-                    size="xs"
-                    className="text-gray-400 hover:text-gray-600 cursor-help"
-                  />
-                }
-                label={description}
-              />
-            )}
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                isSelect
-                label={displayLabel}
-                size="sm"
-                tooltip={displayLabel}
-                variant="outline"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {Object.entries(listValues).map(([value, label]) => (
-                <DropdownMenuCheckboxItem
-                  key={value}
-                  label={label}
-                  checked={
-                    Array.isArray(currentValue) && currentValue.includes(value)
+      return (
+        <div key={key} className="mb-2">
+          <div className="flex items-center gap-4">
+            <div className="flex w-1/5 items-center gap-2">
+              <Label className="text-sm font-medium">
+                {formatKeyForDisplay(key)}
+              </Label>
+              {description && (
+                <Tooltip
+                  trigger={
+                    <Icon
+                      visual={InformationCircleIcon}
+                      size="xs"
+                      className="cursor-help text-gray-400 hover:text-gray-600"
+                    />
                   }
-                  onCheckedChange={(checked) => {
-                    const currentValue = additionalConfiguration[key] ?? [];
-                    if (Array.isArray(currentValue)) {
-                      const newValues = checked
-                        ? [...currentValue, value]
-                        : currentValue.filter((v) => v !== value);
-
-                      onConfigUpdate(key, newValues);
-                    }
-                  }}
+                  label={description}
                 />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              )}
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  isSelect
+                  label={displayLabel}
+                  size="sm"
+                  tooltip={displayLabel}
+                  variant="outline"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {Object.entries(listValues).map(([value, label]) => (
+                  <DropdownMenuCheckboxItem
+                    key={value}
+                    label={label}
+                    checked={
+                      Array.isArray(currentValue) &&
+                      currentValue.includes(value)
+                    }
+                    onCheckedChange={(checked) => {
+                      const currentValue = additionalConfiguration[key] ?? [];
+                      if (Array.isArray(currentValue)) {
+                        const newValues = checked
+                          ? [...currentValue, value]
+                          : currentValue.filter((v) => v !== value);
+
+                        onConfigUpdate(key, newValues);
+                      }
+                    }}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
-    );
-  });
+      );
+    }
+  );
 }
 
 interface GroupedConfigurationSectionProps {
@@ -347,7 +362,10 @@ interface GroupedConfigurationSectionProps {
   requiredNumbers: Array<{ key: string; description?: string }>;
   requiredBooleans: Array<{ key: string; description?: string }>;
   requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<string, { options: Record<string, string>; description?: string }>;
+  requiredLists: Record<
+    string,
+    { options: Record<string, string>; description?: string }
+  >;
   additionalConfiguration: AdditionalConfigurationType;
   onConfigUpdate: (
     key: string,
@@ -419,7 +437,10 @@ interface AdditionalConfigurationSectionProps {
   requiredNumbers: Array<{ key: string; description?: string }>;
   requiredBooleans: Array<{ key: string; description?: string }>;
   requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<string, { options: Record<string, string>; description?: string }>;
+  requiredLists: Record<
+    string,
+    { options: Record<string, string>; description?: string }
+  >;
   additionalConfiguration: AdditionalConfigurationType;
   onConfigUpdate: (
     key: string,
@@ -452,7 +473,10 @@ export const AdditionalConfigurationSection: React.FC<
     [requiredBooleans]
   );
   const groupedEnums = useMemo(() => {
-    const groups: Record<string, Record<string, { options: string[]; description?: string }>> = {};
+    const groups: Record<
+      string,
+      Record<string, { options: string[]; description?: string }>
+    > = {};
     Object.entries(requiredEnums).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
@@ -464,7 +488,10 @@ export const AdditionalConfigurationSection: React.FC<
   }, [requiredEnums]);
 
   const groupedLists = useMemo(() => {
-    const groups: Record<string, Record<string, { options: Record<string, string>; description?: string }>> = {};
+    const groups: Record<
+      string,
+      Record<string, { options: Record<string, string>; description?: string }>
+    > = {};
     Object.entries(requiredLists).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {

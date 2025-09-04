@@ -19,6 +19,8 @@ import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderForm
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { asDisplayName } from "@app/types";
 
+type OptionalDescribedKey = { key: string; description?: string };
+
 function formatKeyForDisplay(key: string): string {
   const segments = key.split(".");
   return asDisplayName(segments[segments.length - 1]);
@@ -29,8 +31,10 @@ function getKeyPrefix(key: string): string {
   return segments.length > 1 ? segments[0] : "";
 }
 
-function groupKeysByPrefix(items: Array<{ key: string; description?: string }>): Record<string, Array<{ key: string; description?: string }>> {
-  const groups: Record<string, Array<{ key: string; description?: string }>> = {};
+function groupKeysByPrefix(
+  items: OptionalDescribedKey[]
+): Record<string, OptionalDescribedKey[]> {
+  const groups: Record<string, OptionalDescribedKey[]> = {};
 
   items.forEach((item) => {
     const prefix = getKeyPrefix(item.key);
@@ -43,24 +47,21 @@ function groupKeysByPrefix(items: Array<{ key: string; description?: string }>):
   return groups;
 }
 
-function BooleanConfigurationInput({ 
-  configKey, 
-  description 
-}: { 
+function BooleanConfigurationInput({
+  configKey,
+  description,
+}: {
   configKey: string;
   description?: string;
-}) {  
+}) {
   const { field } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configKey}`,
   });
 
   return (
     <div key={configKey} className="mb-2 flex items-center gap-4">
-      <div className="flex items-center gap-2 w-1/5">
-        <Label
-          htmlFor={`boolean-${configKey}`}
-          className="text-sm font-medium"
-        >
+      <div className="flex w-1/5 items-center gap-2">
+        <Label htmlFor={`boolean-${configKey}`} className="text-sm font-medium">
           {formatKeyForDisplay(configKey)}
         </Label>
         {description && (
@@ -69,7 +70,7 @@ function BooleanConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="text-gray-400 hover:text-gray-600 cursor-help"
+                className="cursor-help text-gray-400 hover:text-gray-600"
               />
             }
             label={description}
@@ -88,21 +89,25 @@ function BooleanConfigurationInput({
 function BooleanConfigurationSection({
   requiredBooleans,
 }: {
-  requiredBooleans: Array<{ key: string; description?: string }>;
+  requiredBooleans: OptionalDescribedKey[];
 }) {
   if (requiredBooleans.length === 0) {
     return null;
   }
 
   return requiredBooleans.map(({ key, description }) => (
-    <BooleanConfigurationInput key={key} configKey={key} description={description} />
+    <BooleanConfigurationInput
+      key={key}
+      configKey={key}
+      description={description}
+    />
   ));
 }
 
-function NumberConfigurationInput({ 
-  configKey, 
-  description 
-}: { 
+function NumberConfigurationInput({
+  configKey,
+  description,
+}: {
   configKey: string;
   description?: string;
 }) {
@@ -112,11 +117,8 @@ function NumberConfigurationInput({
 
   return (
     <div key={configKey} className="mb-2 flex items-center gap-4">
-      <div className="flex items-center gap-2 w-1/5">
-        <Label
-          htmlFor={`number-${configKey}`}
-          className="text-sm font-medium"
-        >
+      <div className="flex w-1/5 items-center gap-2">
+        <Label htmlFor={`number-${configKey}`} className="text-sm font-medium">
           {formatKeyForDisplay(configKey)}
         </Label>
         {description && (
@@ -125,7 +127,7 @@ function NumberConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="text-gray-400 hover:text-gray-600 cursor-help"
+                className="cursor-help text-gray-400 hover:text-gray-600"
               />
             }
             label={description}
@@ -149,21 +151,25 @@ function NumberConfigurationInput({
 function NumberConfigurationSection({
   requiredNumbers,
 }: {
-  requiredNumbers: Array<{ key: string; description?: string }>;
+  requiredNumbers: OptionalDescribedKey[];
 }) {
   if (requiredNumbers.length === 0) {
     return null;
   }
 
   return requiredNumbers.map(({ key, description }) => (
-    <NumberConfigurationInput key={key} configKey={key} description={description} />
+    <NumberConfigurationInput
+      key={key}
+      configKey={key}
+      description={description}
+    />
   ));
 }
 
-function StringConfigurationInput({ 
-  configKey, 
-  description 
-}: { 
+function StringConfigurationInput({
+  configKey,
+  description,
+}: {
   configKey: string;
   description?: string;
 }) {
@@ -173,11 +179,8 @@ function StringConfigurationInput({
 
   return (
     <div key={configKey} className="mb-2 flex items-center gap-4">
-      <div className="flex items-center gap-2 w-1/5">
-        <Label
-          htmlFor={`string-${configKey}`}
-          className="text-sm font-medium"
-        >
+      <div className="flex w-1/5 items-center gap-2">
+        <Label htmlFor={`string-${configKey}`} className="text-sm font-medium">
           {formatKeyForDisplay(configKey)}
         </Label>
         {description && (
@@ -186,7 +189,7 @@ function StringConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="text-gray-400 hover:text-gray-600 cursor-help"
+                className="cursor-help text-gray-400 hover:text-gray-600"
               />
             }
             label={description}
@@ -210,14 +213,18 @@ function StringConfigurationInput({
 function StringConfigurationSection({
   requiredStrings,
 }: {
-  requiredStrings: Array<{ key: string; description?: string }>;
+  requiredStrings: OptionalDescribedKey[];
 }) {
   if (requiredStrings.length === 0) {
     return null;
   }
 
   return requiredStrings.map(({ key, description }) => (
-    <StringConfigurationInput key={key} configKey={key} description={description} />
+    <StringConfigurationInput
+      key={key}
+      configKey={key}
+      description={description}
+    />
   ));
 }
 
@@ -237,7 +244,7 @@ function EnumConfigurationInput({
   const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
   return (
     <div key={configKey} className="mb-2 flex items-center gap-4">
-      <div className="flex items-center gap-2 w-1/5">
+      <div className="flex w-1/5 items-center gap-2">
         <Label className="text-sm font-medium">
           {formatKeyForDisplay(configKey)}
         </Label>
@@ -247,7 +254,7 @@ function EnumConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="text-gray-400 hover:text-gray-600 cursor-help"
+                className="cursor-help text-gray-400 hover:text-gray-600"
               />
             }
             label={description}
@@ -294,9 +301,16 @@ function EnumConfigurationSection({
     return null;
   }
 
-  return Object.entries(requiredEnums).map(([key, { options, description }]) => (
-    <EnumConfigurationInput key={key} configKey={key} enumValues={options} description={description} />
-  ));
+  return Object.entries(requiredEnums).map(
+    ([key, { options, description }]) => (
+      <EnumConfigurationInput
+        key={key}
+        configKey={key}
+        enumValues={options}
+        description={description}
+      />
+    )
+  );
 }
 
 function ListConfigurationInput({
@@ -391,24 +405,37 @@ function ListConfigurationInput({
 function ListConfigurationSection({
   requiredLists,
 }: {
-  requiredLists: Record<string, { options: Record<string, string>; description?: string }>;
+  requiredLists: Record<
+    string,
+    { options: Record<string, string>; description?: string }
+  >;
 }) {
   if (Object.keys(requiredLists).length === 0) {
     return null;
   }
 
-  return Object.entries(requiredLists).map(([key, { options, description }]) => (
-    <ListConfigurationInput key={key} configKey={key} listValues={options} description={description} />
-  ));
+  return Object.entries(requiredLists).map(
+    ([key, { options, description }]) => (
+      <ListConfigurationInput
+        key={key}
+        configKey={key}
+        listValues={options}
+        description={description}
+      />
+    )
+  );
 }
 
 interface GroupedConfigurationSectionProps {
   prefix: string;
-  requiredStrings: Array<{ key: string; description?: string }>;
-  requiredNumbers: Array<{ key: string; description?: string }>;
-  requiredBooleans: Array<{ key: string; description?: string }>;
+  requiredStrings: OptionalDescribedKey[];
+  requiredNumbers: OptionalDescribedKey[];
+  requiredBooleans: OptionalDescribedKey[];
   requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<string, { options: Record<string, string>; description?: string }>;
+  requiredLists: Record<
+    string,
+    { options: Record<string, string>; description?: string }
+  >;
 }
 
 function GroupedConfigurationSection({
@@ -449,11 +476,14 @@ function GroupedConfigurationSection({
 }
 
 interface AdditionalConfigurationSectionProps {
-  requiredStrings: Array<{ key: string; description?: string }>;
-  requiredNumbers: Array<{ key: string; description?: string }>;
-  requiredBooleans: Array<{ key: string; description?: string }>;
+  requiredStrings: OptionalDescribedKey[];
+  requiredNumbers: OptionalDescribedKey[];
+  requiredBooleans: OptionalDescribedKey[];
   requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<string, { options: Record<string, string>; description?: string }>;
+  requiredLists: Record<
+    string,
+    { options: Record<string, string>; description?: string }
+  >;
 }
 
 export function AdditionalConfigurationSection({
@@ -477,7 +507,10 @@ export function AdditionalConfigurationSection({
     [requiredBooleans]
   );
   const groupedEnums = useMemo(() => {
-    const groups: Record<string, Record<string, { options: string[]; description?: string }>> = {};
+    const groups: Record<
+      string,
+      Record<string, { options: string[]; description?: string }>
+    > = {};
     Object.entries(requiredEnums).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
@@ -489,7 +522,10 @@ export function AdditionalConfigurationSection({
   }, [requiredEnums]);
 
   const groupedLists = useMemo(() => {
-    const groups: Record<string, Record<string, { options: Record<string, string>; description?: string }>> = {};
+    const groups: Record<
+      string,
+      Record<string, { options: Record<string, string>; description?: string }>
+    > = {};
     Object.entries(requiredLists).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {

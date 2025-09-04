@@ -395,7 +395,10 @@ export interface MCPServerRequirements {
   requiredNumbers: Array<{ key: string; description?: string }>;
   requiredBooleans: Array<{ key: string; description?: string }>;
   requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<string, { options: Record<string, string>; description?: string }>;
+  requiredLists: Record<
+    string,
+    { options: Record<string, string>; description?: string }
+  >;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
   requiredFlavors: InternalMCPServerFlavorType[];
@@ -424,7 +427,6 @@ export function getMCPServerRequirements(
     };
   }
   const { server } = mcpServerView;
-
 
   const requiresDataSourceConfiguration =
     Object.keys(
@@ -518,7 +520,10 @@ export function getMCPServerRequirements(
       return [
         key,
         {
-          options: valueProperty.enum?.filter((v): v is string => typeof v === "string") ?? [],
+          options:
+            valueProperty.enum?.filter(
+              (v): v is string => typeof v === "string"
+            ) ?? [],
           description: schema.description,
         },
       ];
@@ -558,8 +563,6 @@ export function getMCPServerRequirements(
           `Expected the same number of values and labels for key ${key}, got ${values.length} values and ${labels.length} labels`
         );
       }
-
-      
 
       // Create a record of values to labels
       const valueToLabel: Record<string, string> = Object.fromEntries(

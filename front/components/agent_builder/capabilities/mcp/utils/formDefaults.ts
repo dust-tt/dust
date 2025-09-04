@@ -44,7 +44,9 @@ export function getDefaultConfiguration(
     set(additionalConfig, key, false);
   }
 
-  for (const [key, { options: enumValues }] of Object.entries(requirements.requiredEnums)) {
+  for (const [key, { options: enumValues }] of Object.entries(
+    requirements.requiredEnums
+  )) {
     if (enumValues.length > 0) {
       set(additionalConfig, key, enumValues[0]);
     }
