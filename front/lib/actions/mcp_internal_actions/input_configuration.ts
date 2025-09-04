@@ -14,11 +14,7 @@ import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
-import type {
-  InternalMCPServerFlavorType,
-  MCPServerType,
-  MCPServerViewType,
-} from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
   findSchemaAtPath,
@@ -401,7 +397,6 @@ export interface MCPServerRequirements {
   >;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
-  requiredFlavors: InternalMCPServerFlavorType[];
 }
 
 export function getMCPServerRequirements(
@@ -423,7 +418,6 @@ export function getMCPServerRequirements(
       requiredLists: {},
       requiresDustAppConfiguration: false,
       noRequirement: false,
-      requiredFlavors: [],
     };
   }
   const { server } = mcpServerView;
@@ -573,8 +567,6 @@ export function getMCPServerRequirements(
     })
   );
 
-  const requiredFlavors = server.flavors ?? [];
-
   const requiredDustAppConfiguration =
     Object.keys(
       findPathsToConfiguration({
@@ -597,7 +589,6 @@ export function getMCPServerRequirements(
     requiredEnums,
     requiredLists,
     requiresDustAppConfiguration: requiredDustAppConfiguration,
-    requiredFlavors,
     noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresDataWarehouseConfiguration &&
@@ -609,7 +600,6 @@ export function getMCPServerRequirements(
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&
-      requiredFlavors.length === 0 &&
       Object.keys(requiredEnums).length === 0 &&
       Object.keys(requiredLists).length === 0,
   };
