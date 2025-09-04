@@ -15,9 +15,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import React from "react";
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useState } from "react";
+import { NavigateFunction, useNavigate, useParams } from "react-router-dom";
 
 type GroupLabel =
   | "Today"
@@ -26,6 +25,28 @@ type GroupLabel =
   | "Last Month"
   | "Last 12 Months"
   | "Older";
+
+function getDropdownMenuItem(
+  conversation: ConversationWithoutContentPublicType,
+  conversationId: string | undefined,
+  navigate: NavigateFunction
+) {
+  return (
+    <DropdownMenuItem
+      key={conversation.sId}
+      label={conversation.title || "Untitled Conversation"}
+      className={classNames(
+        "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
+        conversationId === conversation.sId
+          ? "bg-primary-50 dark:bg-primary-50-night"
+          : ""
+      )}
+      onClick={() => {
+        navigate(`/conversations/${conversation.sId}`);
+      }}
+    />
+  );
+}
 
 const Content = () => {
   const { conversations, isConversationsLoading } = useConversations();
@@ -119,21 +140,8 @@ const Content = () => {
                 />
               )}
               {conversationsByDate[dateLabel as GroupLabel].map(
-                (conversation) => (
-                  <DropdownMenuItem
-                    key={conversation.sId}
-                    label={conversation.title || "Untitled Conversation"}
-                    className={classNames(
-                      "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
-                      conversationId === conversation.sId
-                        ? "bg-primary-50 dark:bg-primary-50-night"
-                        : ""
-                    )}
-                    onClick={() => {
-                      navigate(`/conversations/${conversation.sId}`);
-                    }}
-                  />
-                )
+                (conversation) =>
+                  getDropdownMenuItem(conversation, conversationId, navigate)
               )}
             </React.Fragment>
           ))}
