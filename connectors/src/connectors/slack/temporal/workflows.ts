@@ -196,8 +196,10 @@ export async function syncOneThreadDebounced(
       connectorId,
       channelId
     );
-    if (!channel.name) {
-      throw new Error(`Could not find channel name for channel ${channelId}`);
+    if (!channel || !channel.name) {
+      throw new Error(
+        `Could not find channel or channel name for channel ${channelId}`
+      );
     }
 
     await getSlackActivities().syncChannelMetadata(
@@ -247,8 +249,10 @@ export async function syncOneMessageDebounced(
       connectorId,
       channelId
     );
-    if (!channel.name) {
-      throw new Error(`Could not find channel name for channel ${channelId}`);
+    if (!channel || !channel.name) {
+      throw new Error(
+        `Could not find channel or channel name for channel ${channelId}`
+      );
     }
     const messageTs = parseInt(threadTs, 10) * 1000;
     const startTsMs = getWeekStart(new Date(messageTs)).getTime();

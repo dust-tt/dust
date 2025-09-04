@@ -195,17 +195,12 @@ function makeQueryResource(
 }
 
 // Common Zod parameter schema parts shared by search tools.
-const buildCommonSearchParams = (
-  channelOptions?: ReadonlyArray<z.ZodType<{ value: string; label: string }>>
-) => ({
-  searchableChannels: z.object({
-    // "options" are optionals because we only need them for the UI but they won't be provided when the tool is called.
-    // Note: I don't know how to make this work without the any.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    options: z.union(channelOptions as any).optional(),
-    values: z.array(z.string()),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
-  }),
+const buildCommonSearchParams = () => ({
+  channels: z
+    .string()
+    .array()
+    .optional()
+    .describe("Narrow the search to specific channels (optional)"),
   usersFrom: z
     .string()
     .array()
@@ -261,13 +256,11 @@ function buildSlackSearchQuery(
     const date = new Date(timestampInMs);
     query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
   }
-  // When the user selects 'all channels', we end up with a channel named "*".
-  // In that case, we don't want to add any channel filter.
-  if (channels && channels.length > 0 && !channels.includes("*")) {
+  if (channels && channels.length > 0) {
     query = `${query} ${channels
       .map((channel) =>
-        // Because we use channel IDs and not names, we need to use the <#CHANNEL_ID> format instead of #CHANNEL.
-        channel.charAt(0) === "#" ? `in:<${channel}>` : `in:<#${channel}>`
+        // Because we use channel names and not IDs, we need to use the #CHANNEL format instead of <#CHANNEL_ID>.
+        channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
       )
       .join(" ")}`;
   }
@@ -357,33 +350,6 @@ const createServer = async (
     connectionType: "workspace", // Always get the admin token.
   });
 
-  let channels: ChannelWithIdAndName[] = [];
-  if (c) {
-    try {
-      const slackClient = await getSlackClient(c.access_token);
-      channels = await getCachedPublicChannels({
-        mcpServerId,
-        slackClient,
-      });
-    } catch (error) {
-      logger.warn({ error, mcpServerId }, "Error listing Slack channels");
-    }
-  }
-
-  // We always add the "all channels" option, even if we failed to list channels.
-  // This prevents the UI from being completely broken in that case.
-  channels.unshift({
-    id: "*",
-    name: "All public channels",
-  });
-
-  const channelOptions = channels.map((c) =>
-    z.object({
-      value: z.literal(c.id),
-      label: z.literal(c.id === "*" ? c.name : `#${c.name}`),
-    })
-  );
-
   const slackAIStatus: SlackAIStatus = c
     ? await getCachedSlackAIEnablementStatus({
         mcpServerId,
@@ -406,7 +372,7 @@ const createServer = async (
             "Between 1 and 3 keywords to retrieve relevant messages " +
               "based on the user request and conversation context."
           ),
-        ...buildCommonSearchParams(channelOptions),
+        ...buildCommonSearchParams(),
       },
       async (
         {
@@ -445,7 +411,7 @@ const createServer = async (
             async (keyword) => {
               const query = buildSlackSearchQuery(keyword, {
                 timeFrame,
-                channels: channels.values,
+                channels,
                 usersFrom,
                 usersTo,
                 usersMentioned,
@@ -481,7 +447,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     keywords,
                     timeFrame,
-                    channels.values,
+                    channels,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -528,7 +494,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     keywords,
                     timeFrame,
-                    channels.values,
+                    channels,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -557,7 +523,7 @@ const createServer = async (
           .describe(
             "A query to retrieve relevant messages based on the user request and conversation context. For it to be treated as semantic search, make sure it begins with a question word such as what, where, how, etc, and ends with a question mark. If the user asks to limit to certain channels, don't make them part of this query. Instead, use the `channels` parameter to limit the search to specific channels. But only do this if the user explicitly asks for it, otherwise, the search will be more effective if you don't limit it to specific channels."
           ),
-        ...buildCommonSearchParams(channelOptions),
+        ...buildCommonSearchParams(),
       },
       async (
         {
@@ -584,7 +550,7 @@ const createServer = async (
         try {
           const searchQuery = buildSlackSearchQuery(query, {
             timeFrame,
-            channels: channels.values,
+            channels,
             usersFrom,
             usersTo,
             usersMentioned,
@@ -602,7 +568,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     [query],
                     timeFrame,
-                    channels.values,
+                    channels,
                     usersFrom,
                     usersTo,
                     usersMentioned
@@ -665,7 +631,7 @@ const createServer = async (
                   resource: makeQueryResource(
                     [query],
                     timeFrame,
-                    channels.values,
+                    channels,
                     usersFrom,
                     usersTo,
                     usersMentioned
