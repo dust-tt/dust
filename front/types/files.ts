@@ -51,7 +51,6 @@ export interface FileType {
   uploadUrl?: string;
   publicUrl?: string;
   useCase: FileUseCase;
-  lastEditedByAgentConfigurationId?: string;
 }
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
