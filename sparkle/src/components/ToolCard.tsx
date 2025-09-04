@@ -17,6 +17,8 @@ export interface ToolCardProps {
   cantAddReason?: string;
   onClick?: () => void;
   className?: string;
+  mountPortal?: boolean;
+  mountPortalContainer?: HTMLElement;
 }
 
 export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
@@ -30,6 +32,8 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
       cantAddReason,
       onClick,
       className,
+      mountPortal,
+      mountPortalContainer,
     },
     ref
   ) => {
@@ -70,7 +74,11 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
               </div>
             )}
           </div>
-          <TruncatedText className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <TruncatedText 
+            className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night"
+            mountPortal={mountPortal}
+            mountPortalContainer={mountPortalContainer}
+          >
             {description}
           </TruncatedText>
         </div>
