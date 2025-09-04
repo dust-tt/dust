@@ -40,11 +40,13 @@ export function getDefaultConfiguration(
 
   // Set default values only for boolean and enums
   // Strings and numbers should be left empty to trigger validation
-  for (const key of requirements.requiredBooleans) {
+  for (const { key } of requirements.requiredBooleans) {
     set(additionalConfig, key, false);
   }
 
-  for (const [key, enumValues] of Object.entries(requirements.requiredEnums)) {
+  for (const [key, { options: enumValues }] of Object.entries(
+    requirements.requiredEnums
+  )) {
     if (enumValues.length > 0) {
       set(additionalConfig, key, enumValues[0]);
     }

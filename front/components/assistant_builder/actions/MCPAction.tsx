@@ -424,12 +424,14 @@ export function hasErrorActionMCP(
     }
 
     const missingFields = [];
-    for (const key of requirements.requiredStrings) {
+    for (const keyAndDescription of requirements.requiredStrings) {
+      const { key } = keyAndDescription;
       if (!(key in action.configuration.additionalConfiguration)) {
         missingFields.push(key);
       }
     }
-    for (const key of requirements.requiredNumbers) {
+    for (const keyAndDescription of requirements.requiredNumbers) {
+      const { key } = keyAndDescription;
       if (!(key in action.configuration.additionalConfiguration)) {
         missingFields.push(key);
       }
