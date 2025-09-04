@@ -349,11 +349,15 @@ export const countObjectsByProperties = async (
   const hubspotClient = new Client({ accessToken });
 
   // Fetch property types for enumeration detection
-  const properties = await hubspotClient.crm.properties.coreApi.getAll(objectType);
-  const propertyTypes = properties.results.reduce((acc, prop) => {
-    acc[prop.name] = prop.type;
-    return acc;
-  }, {} as Record<string, string>);
+  const properties =
+    await hubspotClient.crm.properties.coreApi.getAll(objectType);
+  const propertyTypes = properties.results.reduce(
+    (acc, prop) => {
+      acc[prop.name] = prop.type;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
   // First, get the total count with a minimal request
   const initialSearch = await hubspotClient.crm[objectType].searchApi.doSearch({
@@ -421,10 +425,13 @@ export const getLatestObjects = async (
   const availableProperties =
     await hubspotClient.crm.properties.coreApi.getAll(objectType);
   const propertyNames = availableProperties.results.map((p) => p.name);
-  const propertyTypes = availableProperties.results.reduce((acc, prop) => {
-    acc[prop.name] = prop.type;
-    return acc;
-  }, {} as Record<string, string>);
+  const propertyTypes = availableProperties.results.reduce(
+    (acc, prop) => {
+      acc[prop.name] = prop.type;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
 
   const allResults: SimplePublicObject[] = [];
   let after: string | undefined = undefined;
@@ -1229,15 +1236,18 @@ export const searchCrmObjects = async ({
   // Fetch property types for enumeration detection and propertiesToReturn if needed
   let propertyTypes: Record<string, string> = {};
   let finalPropertiesToReturn = propertiesToReturn;
-  
+
   try {
     const allProps =
       await hubspotClient.crm.properties.coreApi.getAll(objectType);
-    propertyTypes = allProps.results.reduce((acc, prop) => {
-      acc[prop.name] = prop.type;
-      return acc;
-    }, {} as Record<string, string>);
-    
+    propertyTypes = allProps.results.reduce(
+      (acc, prop) => {
+        acc[prop.name] = prop.type;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
     if (!finalPropertiesToReturn || finalPropertiesToReturn.length === 0) {
       finalPropertiesToReturn = allProps.results.map((p) => p.name);
     }
@@ -1253,7 +1263,9 @@ export const searchCrmObjects = async ({
   }
 
   const searchRequest: HubspotSearchRequest = {
-    filterGroups: filters ? [{ filters: buildHubspotFilters(filters, propertyTypes) }] : [],
+    filterGroups: filters
+      ? [{ filters: buildHubspotFilters(filters, propertyTypes) }]
+      : [],
     sorts: ["-createdate"], // Default sort order.
     properties: finalPropertiesToReturn,
     limit: Math.min(limit, MAX_LIMIT), // Ensure the limit doesn't exceed MAX_LIMIT.
