@@ -1621,14 +1621,13 @@ export function compareAgentsForSort(
   a: LightAgentConfigurationType,
   b: LightAgentConfigurationType
 ) {
-  // Place favorites first
   if (a.userFavorite && !b.userFavorite) {
     return -1;
   }
   if (b.userFavorite && !a.userFavorite) {
     return 1;
   }
-  // Check for 'dust'
+
   if (a.sId === GLOBAL_AGENTS_SID.DUST) {
     return -1;
   }
@@ -1636,7 +1635,6 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  // Check for 'dust-deep'
   if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
     return -1;
   }
@@ -1644,7 +1642,6 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  // Check for 'gpt5'
   if (a.sId === GLOBAL_AGENTS_SID.GPT5) {
     return -1;
   }
@@ -1652,7 +1649,6 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  // Check for 'gpt4'
   if (a.sId === GLOBAL_AGENTS_SID.GPT4) {
     return -1;
   }

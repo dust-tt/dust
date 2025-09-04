@@ -22,6 +22,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -199,15 +200,15 @@ function sortAgents(
     return 1;
   }
   // Dust always first
-  if (a.sId === "dust") {
+  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
     return -1;
-  } else if (b.sId === "dust") {
+  } else if (b.sId === GLOBAL_AGENTS_SID.DUST) {
     return 1;
   }
   // Dust-deep always second
-  if (a.sId === "dust-deep") {
+  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
     return -1;
-  } else if (b.sId === "dust-deep") {
+  } else if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
     return 1;
   }
   return (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0);
