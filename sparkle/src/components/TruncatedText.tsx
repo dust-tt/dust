@@ -4,7 +4,7 @@ import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
 
 interface TruncatedTextProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: string;
+  children: string | React.ReactNode;
   lineClamp?: number;
 }
 

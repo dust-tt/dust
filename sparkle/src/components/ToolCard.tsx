@@ -11,7 +11,7 @@ const FADE_TRANSITION_CLASSES =
 export interface ToolCardProps {
   icon: React.ComponentType;
   label: string;
-  description: string;
+  description: string | React.ReactNode;
   isSelected: boolean;
   canAdd: boolean;
   cantAddReason?: string;

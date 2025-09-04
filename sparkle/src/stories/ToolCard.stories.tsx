@@ -2,6 +2,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { ToolCard } from "@sparkle/components";
+import { Hoverable } from "@sparkle/components";
 import { BookOpenIcon, CommandLineIcon } from "@sparkle/icons/app";
 
 const meta: Meta<typeof ToolCard> = {
@@ -27,7 +28,24 @@ export const Examples = () => (
     <ToolCard
       icon={CommandLineIcon}
       label="Reasoning"
-      description="Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks."
+      description={
+        <>
+          Agent can decide to trigger a reasoning model for complex tasks. Agent
+          can decide to trigger a reasoning model for complex tasks. Agent can
+          decide to trigger a reasoning model for complex tasks. Agent can
+          decide to trigger a reasoning model for complex tasks. Agent can
+          decide to trigger a reasoning model for complex tasks. Agent can
+          decide to trigger a reasoning model for complex tasks.{" "}
+          <Hoverable
+            href="https://example.com/help"
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="primary"
+          >
+            the docs
+          </Hoverable>
+        </>
+      }
       isSelected={true}
       canAdd={false}
     />
