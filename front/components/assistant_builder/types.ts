@@ -22,7 +22,6 @@ import type {
   UserType,
   WhitelistableFeature,
 } from "@app/types";
-import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export type AssistantBuilderTriggerType = {
@@ -78,39 +77,9 @@ export type AssistantBuilderDataVisualizationConfigurationWithId =
     id: string;
   };
 
-export type AssistantBuilderActionAndDataVisualizationConfiguration =
-  | AssistantBuilderMCPConfiguration
-  | AssistantBuilderDataVisualizationConfiguration;
-
-export type AssistantBuilderMCPServerType =
-  AssistantBuilderMCPConfiguration["type"];
-
 export type AssistantBuilderMCPOrVizState =
   | AssistantBuilderMCPConfigurationWithId
   | AssistantBuilderDataVisualizationConfigurationWithId;
-
-export type AssistantBuilderSetActionType =
-  | {
-      action: AssistantBuilderMCPOrVizState;
-      type: "insert" | "edit" | "pending";
-    }
-  | {
-      action: AssistantBuilderMCPConfigurationWithId;
-      type: "pending";
-    }
-  | {
-      type: "clear_pending";
-    };
-
-export type AssistantBuilderPendingAction =
-  | {
-      action: AssistantBuilderMCPOrVizState;
-      previousActionName: string | null;
-    }
-  | {
-      action: null;
-      previousActionName: null;
-    };
 
 export type AssistantBuilderState = {
   handle: string | null;
@@ -132,62 +101,12 @@ export type AssistantBuilderState = {
   editors: UserType[];
 };
 
-export type AssistantBuilderInitialState = {
-  handle: string;
-  description: string;
-  scope: Exclude<AgentConfigurationScope, "global">;
-  instructions: string;
-  avatarUrl: string | null;
-  generationSettings: {
-    modelSettings: SupportedModel;
-    temperature: number;
-    reasoningEffort: AgentReasoningEffort;
-    responseFormat?: string;
-  } | null;
-  actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
-  triggers: AssistantBuilderTriggerType[];
-  visualizationEnabled: boolean;
-  templateId: string | null;
-  tags: TagType[];
-  editors: UserType[];
-};
-
 export interface ActionSpecification {
   label: string;
   description: string;
   dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
   cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
   flag: WhitelistableFeature | null;
-}
-
-export type ActionSpecificationWithType = ActionSpecification & {
-  type: AssistantBuilderMCPServerType | "DATA_VISUALIZATION";
-};
-
-// Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
-export function getDefaultAssistantState() {
-  return {
-    actions: [],
-    triggers: [],
-    handle: null,
-    scope: "hidden",
-    description: null,
-    instructions: null,
-    avatarUrl: null,
-    generationSettings: {
-      modelSettings: {
-        modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-        providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-      },
-      temperature: 0.7,
-      reasoningEffort:
-        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
-    },
-    visualizationEnabled: false,
-    templateId: null,
-    tags: [],
-    editors: [],
-  } satisfies AssistantBuilderState;
 }
 
 export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
