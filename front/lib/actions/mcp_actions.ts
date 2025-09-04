@@ -502,7 +502,7 @@ export async function* tryCallMCPTool(
         toolName: toolConfiguration.originalName,
         workspaceId: auth.getNonNullableWorkspace().sId,
       },
-      "Exception calling MCP tool in tryCallMCPTool()."
+      "Exception calling MCP tool in tryCallMCPTool()"
     );
 
     yield {
@@ -654,7 +654,7 @@ export async function tryListMCPTools(
       const { instructions, tools: rawToolsFromServer } =
         toolsAndInstructionsRes.value;
 
-      const processedTools = [];
+      const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
         // Fix the tool name to be valid for the model.
