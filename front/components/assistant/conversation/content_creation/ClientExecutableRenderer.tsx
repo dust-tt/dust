@@ -15,6 +15,7 @@ import {
 import React, { useEffect, useRef } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
 import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
 import { ShareContentCreationFilePopover } from "@app/components/assistant/conversation/content_creation/ShareContentCreationFilePopover";
@@ -88,7 +89,7 @@ export function ClientExecutableRenderer({
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
-  const prevPanelSizeRef = useRef(40);
+  const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
 
   const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
