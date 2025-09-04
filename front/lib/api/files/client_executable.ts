@@ -1,7 +1,7 @@
-import { UntrackedError } from "@app/lib/api/errors";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import type { ContentCreationFileContentType, Result } from "@app/types";
 import {
   clientExecutableContentType,
@@ -32,7 +32,7 @@ export async function createClientExecutableFile(
       );
 
       return new Err(
-        new UntrackedError(
+        new Error(
           `Unsupported MIME type: ${mimeType}. Supported types: ${supportedTypes}`
         )
       );
@@ -44,7 +44,7 @@ export async function createClientExecutableFile(
     if (fileNameParts.length < 2) {
       const supportedExts = fileFormat.exts.join(", ");
       return new Err(
-        new UntrackedError(
+        new Error(
           `File name must include a valid extension. Supported extensions for ` +
             `${mimeType}: ${supportedExts}.`
         )
@@ -55,7 +55,7 @@ export async function createClientExecutableFile(
     if (!(fileFormat.exts as string[]).includes(extension)) {
       const supportedExts = fileFormat.exts.join(", ");
       return new Err(
-        new UntrackedError(
+        new Error(
           `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
             `Supported extensions: ${supportedExts}.`
         )
@@ -80,6 +80,16 @@ export async function createClientExecutableFile(
 
     return new Ok(fileResource);
   } catch (error) {
+    const workspace = auth.getNonNullableWorkspace();
+    logger.error(
+      {
+        fileName,
+        conversationId,
+        workspaceId: workspace.id,
+      },
+      "Failed to create client executable file"
+    );
+
     return new Err(
       new Error(
         `Failed to create client executable file '${fileName}': ${normalizeError(error)}`

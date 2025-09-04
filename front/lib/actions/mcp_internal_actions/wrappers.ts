@@ -7,7 +7,6 @@ import type {
 
 import type { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { UntrackedError } from "@app/lib/api/errors";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -93,7 +92,7 @@ export function withToolLogging<T>(
         "Tool execution error"
       );
 
-      if (result.error.tracked && !(result.error instanceof UntrackedError)) {
+      if (result.error.tracked) {
         statsDClient.increment("use_tools_error.count", 1, [
           "error_type:run_error",
           ...tags,
