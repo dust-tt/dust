@@ -37,7 +37,6 @@ export function GlobalAgentAction({
   const isConfigurable = agent.sId === GLOBAL_AGENTS_SID.DUST;
   const canBeDisabled =
     agent.sId !== GLOBAL_AGENTS_SID.DUST &&
-    agent.sId !== GLOBAL_AGENTS_SID.DUST_DEEP &&
     agent.sId !== GLOBAL_AGENTS_SID.HELPER;
 
   if (isConfigurable) {

@@ -1,6 +1,7 @@
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import type { ContentCreationFileContentType, Result } from "@app/types";
 import {
   clientExecutableContentType,
@@ -79,6 +80,17 @@ export async function createClientExecutableFile(
 
     return new Ok(fileResource);
   } catch (error) {
+    const workspace = auth.getNonNullableWorkspace();
+    logger.error(
+      {
+        fileName,
+        conversationId,
+        workspaceId: workspace.id,
+        error,
+      },
+      "Failed to create client executable file"
+    );
+
     return new Err(
       new Error(
         `Failed to create client executable file '${fileName}': ${normalizeError(error)}`

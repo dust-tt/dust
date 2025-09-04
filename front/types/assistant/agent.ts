@@ -282,6 +282,14 @@ export type AgentErrorEvent = {
   error: GenericErrorContent;
 };
 
+// Generic event sent when an agent message is done (could be successful, failed, or cancelled).
+export type AgentMessageDoneEvent = {
+  type: "agent_message_done";
+  created: number;
+  configurationId: string;
+  messageId: string;
+};
+
 // Event sent when an error occurred during the tool call.
 export type ToolErrorEvent = {
   type: "tool_error";

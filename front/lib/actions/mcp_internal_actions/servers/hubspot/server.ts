@@ -823,6 +823,7 @@ const createServer = (): McpServer => {
     "Comprehensive search tool for ALL HubSpot object types including contacts, companies, deals, " +
       "and ALL engagement types (tasks, notes, meetings, calls, emails). Supports advanced filtering by properties, " +
       "date ranges, owners, and free-text queries. Enhanced to support owner filtering across all engagement types. " +
+      "IMPORTANT: For enumeration properties (like industry), always use get_object_properties first to discover the exact values. " +
       "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
     {
       objectType: searchableObjectTypes,

@@ -3,6 +3,7 @@ import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
+  AgentMessageDoneEvent,
   AgentMessageNewEvent,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
@@ -19,4 +20,7 @@ export type AgentMessageEvents =
   | GenerationTokensEvent
   | ToolErrorEvent;
 
-export type ConversationEvents = AgentMessageNewEvent | UserMessageNewEvent;
+export type ConversationEvents =
+  | AgentMessageNewEvent
+  | UserMessageNewEvent
+  | AgentMessageDoneEvent;

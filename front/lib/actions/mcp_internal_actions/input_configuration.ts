@@ -14,11 +14,7 @@ import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
-import type {
-  InternalMCPServerFlavorType,
-  MCPServerType,
-  MCPServerViewType,
-} from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
   findSchemaAtPath,
@@ -399,11 +395,14 @@ export interface MCPServerRequirements {
   requiresReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  requiredStrings: string[];
-  requiredNumbers: string[];
-  requiredBooleans: string[];
-  requiredEnums: Record<string, string[]>;
-  requiredLists: Record<string, Record<string, string>>;
+  requiredStrings: Array<{ key: string; description?: string }>;
+  requiredNumbers: Array<{ key: string; description?: string }>;
+  requiredBooleans: Array<{ key: string; description?: string }>;
+  requiredEnums: Record<string, { options: string[]; description?: string }>;
+  requiredLists: Record<
+    string,
+    { options: Record<string, string>; description?: string }
+  >;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
   requiredFlavors: InternalMCPServerFlavorType[];
@@ -430,7 +429,6 @@ export function getMCPServerRequirements(
       requiredLists: {},
       requiresDustAppConfiguration: false,
       noRequirement: false,
-      requiredFlavors: [],
       disabledTools: [],
     };
   }
@@ -488,29 +486,38 @@ export function getMCPServerRequirements(
     .filter((tool) => !disabledTools.includes(tool.name))
     .some((tool) => tool.inputSchema?.properties?.jsonSchema);
 
-  const requiredStrings = Object.keys(
+  const requiredStrings = Object.entries(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
       disabledTools,
     })
-  );
+  ).map(([key, schema]) => ({
+    key,
+    description: schema.description,
+  }));
 
-  const requiredNumbers = Object.keys(
+  const requiredNumbers = Object.entries(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
       disabledTools,
     })
-  );
+  ).map(([key, schema]) => ({
+    key,
+    description: schema.description,
+  }));
 
-  const requiredBooleans = Object.keys(
+  const requiredBooleans = Object.entries(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
       disabledTools,
     })
-  );
+  ).map(([key, schema]) => ({
+    key,
+    description: schema.description,
+  }));
 
   const requiredEnums = Object.fromEntries(
     Object.entries(
@@ -522,12 +529,17 @@ export function getMCPServerRequirements(
     ).map(([key, schema]) => {
       const valueProperty = schema.properties?.value;
       if (!valueProperty || !isJSONSchemaObject(valueProperty)) {
-        return [key, []];
+        return [key, { options: [], description: schema.description }];
       }
       return [
         key,
-        valueProperty.enum?.filter((v): v is string => typeof v === "string") ??
-          [],
+        {
+          options:
+            valueProperty.enum?.filter(
+              (v): v is string => typeof v === "string"
+            ) ?? [],
+          description: schema.description,
+        },
       ];
     })
   );
@@ -543,7 +555,7 @@ export function getMCPServerRequirements(
       const optionsProperty = schema.properties?.options;
 
       if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
-        return [key, []];
+        return [key, { options: {}, description: schema.description }];
       }
 
       const values =
@@ -572,11 +584,9 @@ export function getMCPServerRequirements(
         zip(labels, values).map(([label, value]) => [value, label])
       );
 
-      return [key, valueToLabel];
+      return [key, { options: valueToLabel, description: schema.description }];
     })
   );
-
-  const requiredFlavors = server.flavors ?? [];
 
   const requiredDustAppConfiguration =
     Object.keys(
@@ -601,7 +611,6 @@ export function getMCPServerRequirements(
     requiredEnums,
     requiredLists,
     requiresDustAppConfiguration: requiredDustAppConfiguration,
-    requiredFlavors,
     noRequirement:
       !requiresDataSourceConfiguration &&
       !requiresDataWarehouseConfiguration &&
@@ -613,7 +622,6 @@ export function getMCPServerRequirements(
       requiredStrings.length === 0 &&
       requiredNumbers.length === 0 &&
       requiredBooleans.length === 0 &&
-      requiredFlavors.length === 0 &&
       Object.keys(requiredEnums).length === 0 &&
       Object.keys(requiredLists).length === 0,
     disabledTools,

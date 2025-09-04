@@ -20,6 +20,7 @@ import {
 import {
   useConversation,
   useConversationFeedbacks,
+  useConversationMarkAsRead,
   useConversationMessages,
   useConversationParticipants,
   useConversations,
@@ -28,6 +29,7 @@ import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
   AgentMention,
+  AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentType,
   ConversationTitleEvent,
@@ -72,6 +74,11 @@ const ConversationViewer = React.forwardRef<
     mutateConversation,
   } = useConversation({
     conversationId,
+    workspaceId: owner.sId,
+  });
+
+  useConversationMarkAsRead({
+    conversation,
     workspaceId: owner.sId,
   });
 
@@ -243,6 +250,7 @@ const ConversationViewer = React.forwardRef<
     [conversationId, owner.sId]
   );
 
+  // Only conversation related events are handled here.
   const onEventCallback = useCallback(
     (eventStr: string) => {
       const eventPayload: {
@@ -250,6 +258,7 @@ const ConversationViewer = React.forwardRef<
         data:
           | UserMessageNewEvent
           | AgentMessageNewEvent
+          | AgentMessageDoneEvent
           | AgentGenerationCancelledEvent
           | ConversationTitleEvent;
       } = JSON.parse(eventStr);
@@ -275,11 +284,11 @@ const ConversationViewer = React.forwardRef<
             void mutateMessages();
             break;
 
-          case "conversation_title": {
+          case "conversation_title":
+          case "agent_message_done":
             void mutateConversation();
-            void mutateConversations(); // to refresh the list of convos in the sidebar
+            void mutateConversations(); // to refresh the list of convos in the sidebar (title, unread & actionRequired)
             break;
-          }
           default:
             ((t: never) => {
               console.error("Unknown event type", t);
