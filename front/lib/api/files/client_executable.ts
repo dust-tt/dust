@@ -2,7 +2,11 @@ import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { ContentCreationFileContentType, Result } from "@app/types";
+import type {
+  ContentCreationFileContentType,
+  FileUseCaseMetadata,
+  Result,
+} from "@app/types";
 import {
   clientExecutableContentType,
   CONTENT_CREATION_FILE_FORMATS,
@@ -69,6 +73,22 @@ export async function createClientExecutableFile(
       );
     }
 
+    const createUseCaseMetadata = (
+      conversationId: string,
+      createdByAgentConfigurationId?: string
+    ): FileUseCaseMetadata => {
+      const metadata: FileUseCaseMetadata = {
+        conversationId,
+      };
+
+      if (createdByAgentConfigurationId) {
+        metadata.lastEditedByAgentConfigurationId =
+          createdByAgentConfigurationId;
+      }
+
+      return metadata;
+    };
+
     // Create the file resource.
     const fileResource = await FileResource.makeNew({
       workspaceId: workspace.id,
@@ -77,12 +97,10 @@ export async function createClientExecutableFile(
       fileSize: 0, // Will be updated in uploadContent.
       // Attach the conversation id so we can use it to control access to the file.
       useCase: "conversation",
-      useCaseMetadata: {
+      useCaseMetadata: createUseCaseMetadata(
         conversationId,
-        ...(createdByAgentConfigurationId
-          ? { lastEditedByAgentConfigurationId: createdByAgentConfigurationId }
-          : {}),
-      },
+        createdByAgentConfigurationId
+      ),
     });
 
     // Upload content directly.
