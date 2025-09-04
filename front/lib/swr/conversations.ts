@@ -482,6 +482,10 @@ export function useConversationFiles({
   };
 }
 
+/**
+ * This hook can be used to automatically mark a conversation as read after a delay.
+ * It can also be used to manually mark a conversation as read.
+ */
 export function useConversationMarkAsRead({
   conversation,
   workspaceId,
@@ -495,53 +499,60 @@ export function useConversationMarkAsRead({
       disabled: true,
     },
   });
-  const { mutateConversation } = useConversation({
-    conversationId: conversation?.sId ?? null,
-    workspaceId,
-    options: {
-      disabled: true,
-    },
-  });
 
-  const markAsRead = useCallback(async (): Promise<void> => {
-    if (!conversation) {
-      return;
-    }
-    try {
-      const response = await fetch(
-        `/api/w/${workspaceId}/assistant/conversations/${conversation.sId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            read: true,
-          } as PatchConversationsRequestBody),
+  const markAsRead = useCallback(
+    /**
+     * @param conversationId - The ID of the conversation to mark as read.
+     * @param mutateList - Whether to mutate the list of conversations in the sidebar.
+     *
+     * If mutateList is true, the list of conversations in the sidebar will be mutated to update the unread status of the conversation.
+     * If mutateList is false, the list of conversations in the sidebar will not be mutated to update the unread status of the conversation.
+     *
+     * This is useful to avoid any network request when marking a conversation as read.
+     * @param conversationId
+     * @param mutateList
+     */
+    async (conversationId: string, mutateList: boolean): Promise<void> => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              read: true,
+            } as PatchConversationsRequestBody),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to mark conversation as read");
         }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to mark conversation as read");
+        if (mutateList) {
+          void mutateConversations((prevState) => ({
+            ...prevState,
+            conversations:
+              prevState?.conversations.map((c) =>
+                c.sId === conversationId ? { ...c, unread: false } : c
+              ) ?? [],
+          }));
+        }
+      } catch (error) {
+        console.error("Error marking conversation as read:", error);
       }
-      void mutateConversations((prevState) => {
-        return {
-          ...prevState,
-          conversations: prevState?.conversations.map((c) =>
-            c.sId === conversation.sId ? { ...c, unread: false } : c
-          ) ?? [{ ...conversation, unread: false }],
-        };
-      });
-      void mutateConversation();
-    } catch (error) {
-      console.error("Error marking conversation as read:", error);
-    }
-  }, [conversation, workspaceId, mutateConversation, mutateConversations]);
+    },
+    [workspaceId, mutateConversations]
+  );
 
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
     if (conversation?.sId && conversation.unread) {
-      timeout = setTimeout(markAsRead, DELAY_BEFORE_MARKING_AS_READ);
+      timeout = setTimeout(
+        () => markAsRead(conversation.sId, true),
+        DELAY_BEFORE_MARKING_AS_READ
+      );
     }
 
     return () => {
@@ -550,4 +561,8 @@ export function useConversationMarkAsRead({
       }
     };
   }, [conversation?.sId, conversation?.unread, markAsRead]);
+
+  return {
+    markAsRead,
+  };
 }

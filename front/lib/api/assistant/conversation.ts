@@ -9,7 +9,6 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
 import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
 import {
@@ -160,7 +159,7 @@ export async function updateConversationTitle(
     conversationId: string;
     title: string;
   }
-): Promise<Result<ConversationType, ConversationError>> {
+): Promise<Result<undefined, ConversationError>> {
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId
@@ -172,7 +171,7 @@ export async function updateConversationTitle(
 
   await conversation.updateTitle(title);
 
-  return getConversation(auth, conversationId);
+  return new Ok(undefined);
 }
 
 /**

@@ -1753,6 +1753,14 @@ export type PatchConversationRequestType = z.infer<
   typeof PatchConversationRequestSchema
 >;
 
+export const PatchConversationsResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type PatchConversationsResponseType = z.infer<
+  typeof PatchConversationsResponseSchema
+>;
+
 export const TokenizeResponseSchema = z.object({
   tokens: CoreAPITokenTypeSchema.array(),
 });
