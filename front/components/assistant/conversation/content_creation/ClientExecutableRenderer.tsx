@@ -12,7 +12,7 @@ import {
   FullscreenIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
@@ -113,25 +113,12 @@ export function ClientExecutableRenderer({
 
   const [showCode, setShowCode] = React.useState(false);
 
-  useEffect(() => {
-    if (!panel) {
-      return;
+  const restoreLayout = useCallback(() => {
+    if (panel) {
+      setIsNavigationBarOpen(isNavBarPrevOpenRef.current ?? true);
+      panel.resize(prevPanelSizeRef.current ?? DEFAULT_RIGHT_PANEL_SIZE);
     }
-
-    if (isFullScreen) {
-      panel.resize(100);
-      setIsNavigationBarOpen(false);
-    } else {
-      // Only exit fullscreen if we're currently at 100% & nav bar is closed (= full screen mode)
-      if (panel.getSize() === 100 && !isNavigationBarOpen) {
-        if (isNavBarPrevOpenRef.current) {
-          setIsNavigationBarOpen(true);
-        }
-        const targetSize = prevPanelSizeRef.current ?? 40;
-        panel.resize(targetSize);
-      }
-    }
-  }, [panel, isFullScreen, isNavigationBarOpen, setIsNavigationBarOpen]);
+  }, [panel, setIsNavigationBarOpen]);
 
   function exitFullScreen() {
     setFullScreenHash(undefined);
@@ -146,6 +133,37 @@ export function ClientExecutableRenderer({
 
     setFullScreenHash("true");
   }
+
+  function onClosePanel() {
+    if (panel && isFullScreen) {
+      setFullScreenHash(undefined);
+      restoreLayout();
+    }
+
+    closePanel();
+  }
+
+  useEffect(() => {
+    if (!panel) {
+      return;
+    }
+
+    if (isFullScreen) {
+      panel.resize(100);
+      setIsNavigationBarOpen(false);
+    } else {
+      // Only exit fullscreen if we're currently at 100% & nav bar is closed (= full screen mode)
+      if (panel.getSize() === 100 && !isNavigationBarOpen) {
+        restoreLayout();
+      }
+    }
+  }, [
+    panel,
+    isFullScreen,
+    isNavigationBarOpen,
+    setIsNavigationBarOpen,
+    restoreLayout,
+  ]);
 
   if (isFileContentLoading) {
     return (
@@ -169,16 +187,15 @@ export function ClientExecutableRenderer({
       <ContentCreationHeader
         title={fileName || "Client Executable"}
         subtitle={fileId}
-        onClose={isFullScreen ? exitFullScreen : closePanel}
+        onClose={onClosePanel}
       >
-        {!isFullScreen && (
-          <Button
-            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
-            variant="ghost"
-            onClick={goToFullScreen}
-            tooltip={"Go to full screen mode"}
-          />
-        )}
+        <Button
+          icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+          variant="ghost"
+          size="xs"
+          onClick={isFullScreen ? exitFullScreen : goToFullScreen}
+          tooltip={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
+        />
 
         <Button
           icon={showCode ? EyeIcon : CommandLineIcon}
