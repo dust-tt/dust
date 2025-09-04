@@ -208,12 +208,12 @@ makeScript(
       logger.info(
         `Updated agent configuration ${agentConfig.id} with channel restriction instructions`
       );
-      
+
       // Clear the additionalConfiguration field after processing
       await mcpServerConfig.update({
         additionalConfiguration: {},
       });
-      
+
       logger.info(
         `Cleared additionalConfiguration for MCP server configuration ${agentMcpServerConfigurationId}`
       );
