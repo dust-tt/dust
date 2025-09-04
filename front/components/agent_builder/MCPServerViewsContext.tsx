@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 import React, { createContext, useContext, useMemo } from "react";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES } from "@app/components/agent_builder/types";
 import {
   getMcpServerViewDisplayName,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -99,20 +99,12 @@ function getGroupedMCPServerViews({
     };
   });
 
+  // TODO (yuka): rename withKnowledge/withoutKnowledge naming since it's no longer accurate.
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const requirements = getMCPServerRequirements(view);
-
-      // Special handling for content_creation server:
-      // The content_creation server includes list and cat tools for convenience, but its primary purpose is
-      // not data source operations. We don't want it to be classified as requiring knowledge.
-      const isContentCreationServer = view.server.name === "content_creation";
-
-      const isWithKnowledge =
-        !isContentCreationServer &&
-        (requirements.requiresDataSourceConfiguration ||
-          requirements.requiresDataWarehouseConfiguration ||
-          requirements.requiresTableConfiguration);
+      const isWithKnowledge = INTERNAL_KNOWLEDGE_TOOL_SERVER_NAMES.includes(
+        view.server.name
+      );
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"
