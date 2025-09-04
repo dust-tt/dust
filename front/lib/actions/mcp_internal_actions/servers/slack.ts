@@ -195,19 +195,12 @@ function makeQueryResource(
 }
 
 // Common Zod parameter schema parts shared by search tools.
-const buildCommonSearchParams = (
-  channelOptions?: ReadonlyArray<z.ZodType<{ value: string; label: string }>>
-) => ({
+const buildCommonSearchParams = () => ({
   channels: z
-    .object({
-      // "options" are optionals because we only need them for the UI but they won't be provided when the tool is called.
-      // Note: I don't know how to make this work without the any.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      options: z.union(channelOptions as any).optional(),
-      values: z.array(z.string()),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
-    })
-    .describe("Indicate the channels the agent can search in"),
+    .string()
+    .array()
+    .optional()
+    .describe("Narrow the search to specific channels (optional)"),
   usersFrom: z
     .string()
     .array()
