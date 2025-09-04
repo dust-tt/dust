@@ -255,7 +255,7 @@ function buildHubspotFilters(
             propertyName === "hs_lastmodifieddate";
 
           // Check if this is an enumeration property that should preserve case
-          const isEnumerationPropertyValue = isEnumerationProperty(
+          const isEnumProperty = isEnumerationProperty(
             propertyName,
             propertyTypes
           );
@@ -265,7 +265,7 @@ function buildHubspotFilters(
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
           filter.values =
-            isDateProperty || isEnumerationPropertyValue
+            isDateProperty || isEnumProperty
               ? cleanValues
               : cleanValues.map((v) => v.toLowerCase());
         } else {
@@ -308,7 +308,7 @@ function buildHubspotFilters(
             propertyName === "hs_lastmodifieddate";
 
           // Check if this is an enumeration property that should preserve case
-          const isEnumerationPropertyValue = isEnumerationProperty(
+          const isEnumProperty = isEnumerationProperty(
             propertyName,
             propertyTypes
           );
@@ -317,7 +317,7 @@ function buildHubspotFilters(
           // For string comparison operators, lowercase non-date, non-enumeration values for consistency
           if (
             !isDateProperty &&
-            !isEnumerationPropertyValue &&
+            !isEnumProperty &&
             (operator === FilterOperatorEnum.Eq ||
               operator === FilterOperatorEnum.Neq ||
               operator === FilterOperatorEnum.ContainsToken ||
