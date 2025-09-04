@@ -120,9 +120,9 @@ export function ClientExecutableRenderer({
     }
   }, [panel, setIsNavigationBarOpen]);
 
-  function exitFullScreen() {
+  const exitFullScreen = useCallback(() => {
     setFullScreenHash(undefined);
-  }
+  }, [setFullScreenHash]);
 
   function goToFullScreen() {
     isNavBarPrevOpenRef.current = isNavigationBarOpen;
@@ -164,6 +164,20 @@ export function ClientExecutableRenderer({
     setIsNavigationBarOpen,
     restoreLayout,
   ]);
+
+  // ESC key event listener to exit full screen mode
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isFullScreen) {
+        exitFullScreen();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFullScreen, exitFullScreen]);
 
   if (isFileContentLoading) {
     return (
