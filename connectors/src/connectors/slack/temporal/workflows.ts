@@ -1,4 +1,6 @@
 import {
+  allHandlersFinished,
+  condition,
   continueAsNew,
   executeChild,
   proxyActivities,
@@ -216,10 +218,13 @@ export async function syncOneThreadDebounced(
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
 
-  // If we hit max iterations, unregister the signal handler first to prevent
-  // it from executing during continueAsNew.
+  // If we hit max iterations, ensure all handlers are finished before continuing as new.
   if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+    // Unregister the signal handler to prevent new signals from being accepted.
     setHandler(newWebhookSignal, undefined);
+    // Wait for any in-progress async handlers to complete.
+    await condition(allHandlersFinished);
+    // Now safe to continue as new without losing signals or corrupting state.
     await continueAsNew(connectorId, channelId, threadTs);
   }
 
@@ -277,10 +282,13 @@ export async function syncOneMessageDebounced(
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
 
-  // If we hit max iterations, unregister the signal handler first to prevent
-  // it from executing during continueAsNew.
+  // If we hit max iterations, ensure all handlers are finished before continuing as new.
   if (debounceCount >= MAX_DEBOUNCE_COUNT) {
+    // Unregister the signal handler to prevent new signals from being accepted.
     setHandler(newWebhookSignal, undefined);
+    // Wait for any in-progress async handlers to complete.
+    await condition(allHandlersFinished);
+    // Now safe to continue as new without losing signals or corrupting state.
     await continueAsNew(connectorId, channelId, threadTs);
   }
 
