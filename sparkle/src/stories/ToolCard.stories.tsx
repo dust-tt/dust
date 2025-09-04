@@ -27,7 +27,7 @@ export const Examples = () => (
     <ToolCard
       icon={CommandLineIcon}
       label="Reasoning"
-      description="Agent can decide to trigger a reasoning model for complex tasks."
+      description="Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks. Agent can decide to trigger a reasoning model for complex tasks."
       isSelected={true}
       canAdd={false}
     />

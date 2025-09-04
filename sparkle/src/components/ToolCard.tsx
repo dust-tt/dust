@@ -1,6 +1,7 @@
 import React from "react";
 
 import { Avatar, Button, Card, Chip } from "@sparkle/components/";
+import { TruncatedText } from "@sparkle/components/TruncatedText";
 import { PlusIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
 
@@ -69,9 +70,9 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
               </div>
             )}
           </div>
-          <div className="s-line-clamp-2 s-h-10 s-overflow-hidden s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <TruncatedText className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
             {description}
-          </div>
+          </TruncatedText>
         </div>
       </Card>
     );
