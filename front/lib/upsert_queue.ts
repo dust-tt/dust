@@ -5,7 +5,10 @@ import { v4 as uuidv4 } from "uuid";
 import config from "@app/lib/file_storage/config";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
+import {
+  launchUpsertAudioTranscriptionWorkflow,
+  launchUpsertDocumentWorkflow,
+} from "@app/temporal/upsert_queue/client";
 import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
 import type { Result } from "@app/types";
 import {
@@ -48,9 +51,26 @@ export const EnqueueUpsertTable = t.type({
   sourceUrl: t.union([t.string, t.undefined, t.null]),
 });
 
+export const EnqueueUpsertAudioTranscription = t.type({
+  dataSourceId: t.string,
+  documentId: t.string,
+  fileId: t.string,
+  parentId: t.union([t.string, t.null, t.undefined]),
+  parents: t.union([t.array(t.string), t.null]),
+  sourceUrl: t.union([t.string, t.null]),
+  tags: t.union([t.array(t.string), t.null]),
+  timestamp: t.union([t.number, t.null]),
+  title: t.string,
+  workspaceId: t.string,
+});
+
 type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;
 
 type EnqueueUpsertTableType = t.TypeOf<typeof EnqueueUpsertTable>;
+
+type EnqueueUpsertAudioTranscriptionType = t.TypeOf<
+  typeof EnqueueUpsertAudioTranscription
+>;
 
 export async function enqueueUpsertDocument({
   upsertDocument,
@@ -83,6 +103,40 @@ export async function enqueueUpsertDocument({
     upsertItem: upsertDocument,
     upsertQueueId,
     launchWorkflowFn: launchUpsertDocumentWorkflow,
+  });
+}
+
+export async function enqueueUpsertAudioTranscription({
+  upsertAudioTranscription,
+}: {
+  upsertAudioTranscription: EnqueueUpsertAudioTranscriptionType;
+}): Promise<Result<string, Error>> {
+  const upsertQueueId = uuidv4();
+
+  logger.info(
+    {
+      upsertQueueId,
+      workspaceId: upsertAudioTranscription.workspaceId,
+      dataSourceId: upsertAudioTranscription.dataSourceId,
+      documentId: upsertAudioTranscription.documentId,
+      enqueueTimestamp: Date.now(),
+    },
+    "[UpsertQueue] Enqueueing audio transcription"
+  );
+
+  if (
+    upsertAudioTranscription.parentId &&
+    upsertAudioTranscription.parents?.[1] !== upsertAudioTranscription.parentId
+  ) {
+    throw new Error(
+      "Invalid parent id: parents[1] and parentId should be equal"
+    );
+  }
+
+  return enqueueUpsert({
+    upsertItem: upsertAudioTranscription,
+    upsertQueueId,
+    launchWorkflowFn: launchUpsertAudioTranscriptionWorkflow,
   });
 }
 
@@ -134,6 +188,11 @@ async function enqueueUpsert({
       upsertItem: EnqueueUpsertTableType;
       upsertQueueId: string;
       launchWorkflowFn: typeof launchUpsertTableWorkflow;
+    }
+  | {
+      upsertItem: EnqueueUpsertAudioTranscriptionType;
+      upsertQueueId: string;
+      launchWorkflowFn: typeof launchUpsertAudioTranscriptionWorkflow;
     }): Promise<Result<string, Error>> {
   const now = Date.now();
 
