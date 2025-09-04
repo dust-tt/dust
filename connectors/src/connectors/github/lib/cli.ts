@@ -8,6 +8,7 @@ import {
   launchGithubFullSyncWorkflow,
   launchGithubIssueSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
+import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
 import {
   GithubCodeFile,
   GithubCodeRepository,
@@ -80,6 +81,18 @@ export const github = async ({
       });
 
       const repoId = data.id;
+      logger.info(
+        `[Admin] Successfully retrieved repo ${args.owner}/${args.repo} (ID: ${repoId})`
+      );
+
+      const workflowId = getCodeSyncWorkflowId(connector.id, repoId);
+      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
+      if (temporalNamespace) {
+        const workflowUrl = `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`;
+        logger.info(`[Admin] Started temporal workflow - ${workflowUrl}`);
+      } else {
+        logger.info(`[Admin] Started temporal workflow with id: ${workflowId}`);
+      }
 
       await launchGithubCodeSyncWorkflow(
         connector.id,
