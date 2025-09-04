@@ -16,7 +16,8 @@ import {
 } from "@dust-tt/sparkle";
 import moment from "moment";
 import React, { useState } from "react";
-import { NavigateFunction, useNavigate, useParams } from "react-router-dom";
+import type { NavigateFunction } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 type GroupLabel =
   | "Today"
@@ -31,10 +32,12 @@ function getDropdownMenuItem(
   conversationId: string | undefined,
   navigate: NavigateFunction
 ) {
+  const unreadIcon = conversation.unread ? "🔵 " : "";
+  const conversationLabel = conversation.title || "Untitled Conversation";
   return (
     <DropdownMenuItem
       key={conversation.sId}
-      label={conversation.title || "Untitled Conversation"}
+      label={unreadIcon + conversationLabel}
       className={classNames(
         "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
         conversationId === conversation.sId
