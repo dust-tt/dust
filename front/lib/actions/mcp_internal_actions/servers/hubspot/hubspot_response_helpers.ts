@@ -166,7 +166,7 @@ export function formatHubSpotPropertiesAsText(
         text += `\n   Required: Yes`;
       }
       if (summary.options && summary.options.length > 0) {
-        text += `\n   Options: ${summary.options.map((o) => o.label).join(", ")}`;
+        text += `\n   Options: ${summary.options.map((o) => `${o.label} (${o.value})`).join(", ")}`;
       }
       return text;
     })
@@ -199,7 +199,7 @@ export function formatTransformedPropertiesAsText(
         text += `\n   Description: ${property.description}`;
       }
       if (property.options && property.options.length > 0) {
-        text += `\n   Options: ${property.options.map((o) => o.label).join(", ")}`;
+        text += `\n   Options: ${property.options.map((o) => `${o.label} (${o.value})`).join(", ")}`;
       }
       return text;
     })

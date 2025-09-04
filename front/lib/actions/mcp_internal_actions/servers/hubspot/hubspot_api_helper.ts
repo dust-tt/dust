@@ -16,6 +16,11 @@ const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 200; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
 
+const isEnumerationProperty = (
+  propertyName: string,
+  propertyTypes?: Record<string, string>
+) => propertyTypes?.[propertyName] === "enumeration";
+
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
@@ -194,7 +199,10 @@ interface HubspotFilter {
   highValue?: string;
 }
 
-function buildHubspotFilters(filters: Array<HubspotFilter>) {
+function buildHubspotFilters(
+  filters: Array<HubspotFilter>,
+  propertyTypes?: Record<string, string>
+) {
   // Define supported operators for validation
   const supportedOperators = [
     FilterOperatorEnum.Eq,
@@ -235,7 +243,7 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
         operator === FilterOperatorEnum.In ||
         operator === FilterOperatorEnum.NotIn
       ) {
-        // For string properties, values must be lowercase, but not for date properties
+        // For string properties, values must be lowercase, but not for date or enumeration properties
         if (values?.length) {
           // Check if this is a date property to avoid lowercasing dates
           const isDateProperty =
@@ -246,13 +254,20 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
             propertyName === "lastmodifieddate" ||
             propertyName === "hs_lastmodifieddate";
 
+          // Check if this is an enumeration property that should preserve case
+          const isEnumProperty = isEnumerationProperty(
+            propertyName,
+            propertyTypes
+          );
+
           // Filter out any undefined/null values and ensure all values are strings
           const cleanValues = values
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
-          filter.values = isDateProperty
-            ? cleanValues
-            : cleanValues.map((v) => v.toLowerCase());
+          filter.values =
+            isDateProperty || isEnumProperty
+              ? cleanValues
+              : cleanValues.map((v) => v.toLowerCase());
         } else {
           throw new Error(`Values array is required for ${operator} operator`);
         }
@@ -292,10 +307,17 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
             propertyName === "lastmodifieddate" ||
             propertyName === "hs_lastmodifieddate";
 
+          // Check if this is an enumeration property that should preserve case
+          const isEnumProperty = isEnumerationProperty(
+            propertyName,
+            propertyTypes
+          );
+
           const stringValue = String(value);
-          // For string comparison operators, lowercase non-date values for consistency
+          // For string comparison operators, lowercase non-date, non-enumeration values for consistency
           if (
             !isDateProperty &&
+            !isEnumProperty &&
             (operator === FilterOperatorEnum.Eq ||
               operator === FilterOperatorEnum.Neq ||
               operator === FilterOperatorEnum.ContainsToken ||
