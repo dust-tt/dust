@@ -16,7 +16,7 @@ const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 200; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
 
-export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
+export const SIMPLE_OBJECTS = ["contacts", "companies", "deals", "invoices", "quotes", "leads", "marketing_events"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
 const SPECIAL_OBJECTS = ["owners"] as const;
@@ -85,11 +85,20 @@ export const getObjectByEmail = async (
     return null;
   }
 
-  const properties =
-    await hubspotClient.crm.properties.coreApi.getAll(objectType);
-  const propertyNames = properties.results.map((p) => p.name);
+  let propertyNames: string[] = [];
+  try {
+    const properties =
+      await hubspotClient.crm.properties.coreApi.getAll(objectType);
+    propertyNames = properties.results.map((p) => p.name);
+  } catch (error) {
+    // For custom objects, we may not be able to get properties directly
+    // Use a minimal set of properties
+    propertyNames = ["email"];
+  }
 
-  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
+  let objects;
+  // Use the generic search API for new object types
+  const searchRequest = {
     filterGroups: [
       {
         filters: [
@@ -103,7 +112,30 @@ export const getObjectByEmail = async (
     ],
     properties: propertyNames,
     limit: MAX_LIMIT,
-  });
+  };
+
+  if (objectType === "invoices" || objectType === "leads" || objectType === "marketing_events") {
+    // Use the generic objects API for custom object types
+    const response = await fetch(
+      `https://api.hubapi.com/crm/v3/objects/${objectType}/search`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(searchRequest),
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to search ${objectType}: ${response.status}`);
+    }
+    objects = await response.json();
+  } else if (objectType === "quotes") {
+    objects = await hubspotClient.crm.quotes.searchApi.doSearch(searchRequest);
+  } else {
+    objects = await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
+  }
 
   if (objects.results.length === 0) {
     return null;
@@ -327,7 +359,8 @@ export const countObjectsByProperties = async (
   const hubspotClient = new Client({ accessToken });
 
   // First, get the total count with a minimal request
-  const initialSearch = await hubspotClient.crm[objectType].searchApi.doSearch({
+  let initialSearch;
+  const searchRequest = {
     filterGroups: [
       {
         filters: buildHubspotFilters(filters),
@@ -335,7 +368,30 @@ export const countObjectsByProperties = async (
     ],
     limit: 1,
     properties: ["id"],
-  });
+  };
+
+  if (objectType === "invoices" || objectType === "leads" || objectType === "marketing_events") {
+    // Use the generic objects API for custom object types
+    const fetchResponse = await fetch(
+      `https://api.hubapi.com/crm/v3/objects/${objectType}/search`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(searchRequest),
+      }
+    );
+    if (!fetchResponse.ok) {
+      throw new Error(`Failed to search ${objectType}: ${fetchResponse.status}`);
+    }
+    initialSearch = await fetchResponse.json();
+  } else if (objectType === "quotes") {
+    initialSearch = await hubspotClient.crm.quotes.searchApi.doSearch(searchRequest);
+  } else {
+    initialSearch = await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
+  }
 
   // If the total is at the API limit, we need to paginate to get the actual count
   if (initialSearch.total === MAX_COUNT_LIMIT) {
@@ -359,8 +415,29 @@ export const countObjectsByProperties = async (
         searchRequest.after = after;
       }
 
-      const response =
-        await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
+      let response;
+      if (objectType === "invoices" || objectType === "leads" || objectType === "marketing_events") {
+        // Use the generic objects API for custom object types
+        const fetchResponse = await fetch(
+          `https://api.hubapi.com/crm/v3/objects/${objectType}/search`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(searchRequest),
+          }
+        );
+        if (!fetchResponse.ok) {
+          throw new Error(`Failed to search ${objectType}: ${fetchResponse.status}`);
+        }
+        response = await fetchResponse.json();
+      } else if (objectType === "quotes") {
+        response = await hubspotClient.crm.quotes.searchApi.doSearch(searchRequest);
+      } else {
+        response = await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
+      }
       actualCount += response.results.length;
 
       if (!response.paging?.next?.after) {
@@ -389,9 +466,16 @@ export const getLatestObjects = async (
 ): Promise<SimplePublicObject[]> => {
   const hubspotClient = new Client({ accessToken });
 
-  const availableProperties =
-    await hubspotClient.crm.properties.coreApi.getAll(objectType);
-  const propertyNames = availableProperties.results.map((p) => p.name);
+  let propertyNames: string[] = [];
+  try {
+    const availableProperties =
+      await hubspotClient.crm.properties.coreApi.getAll(objectType);
+    propertyNames = availableProperties.results.map((p) => p.name);
+  } catch (error) {
+    // For custom objects, we may not be able to get properties directly
+    // Use a minimal set of properties
+    propertyNames = ["id", "createdate", "hs_lastmodifieddate"];
+  }
 
   const allResults: SimplePublicObject[] = [];
   let after: string | undefined = undefined;
@@ -414,8 +498,29 @@ export const getLatestObjects = async (
       searchRequest.after = after;
     }
 
-    const response =
-      await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
+    let response;
+    if (objectType === "invoices" || objectType === "leads" || objectType === "marketing_events") {
+      // Use the generic objects API for custom object types
+      const fetchResponse = await fetch(
+        `https://api.hubapi.com/crm/v3/objects/${objectType}/search`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(searchRequest),
+        }
+      );
+      if (!fetchResponse.ok) {
+        throw new Error(`Failed to search ${objectType}: ${fetchResponse.status}`);
+      }
+      response = await fetchResponse.json();
+    } else if (objectType === "quotes") {
+      response = await hubspotClient.crm.quotes.searchApi.doSearch(searchRequest);
+    } else {
+      response = await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
+    }
     allResults.push(...response.results);
 
     // If we've retrieved enough results or there are no more pages, stop
@@ -1291,6 +1396,26 @@ export const searchCrmObjects = async ({
         searchResponse =
           await hubspotClient.crm.quotes.searchApi.doSearch(searchRequest);
         break;
+      case "invoices":
+      case "leads":
+      case "marketing_events":
+        // Use the generic objects API for custom object types
+        const fetchResponse = await fetch(
+          `https://api.hubapi.com/crm/v3/objects/${objectType}/search`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(searchRequest),
+          }
+        );
+        if (!fetchResponse.ok) {
+          throw new Error(`Failed to search ${objectType}: ${fetchResponse.status}`);
+        }
+        searchResponse = await fetchResponse.json();
+        break;
       case "feedback_submissions":
         searchResponse =
           await hubspotClient.crm.objects.feedbackSubmissions.searchApi.doSearch(
@@ -1521,6 +1646,363 @@ export const updateDeal = async ({
     localLogger.error(
       { error, dealId },
       `Error updating deal with ID ${dealId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const createInvoice = async ({
+  accessToken,
+  properties,
+  associations,
+}: {
+  accessToken: string;
+  properties: Record<string, string>;
+  associations?: Array<{
+    toObjectId: string;
+    toObjectType: string;
+  }>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
+    [];
+
+  if (associations && associations.length > 0) {
+    for (const assoc of associations) {
+      const associationTypeId = await getAssociationTypeId(
+        accessToken,
+        "invoices",
+        assoc.toObjectType
+      );
+      if (builtAssociations) {
+        builtAssociations.push({
+          to: { id: assoc.toObjectId },
+          types: [
+            {
+              associationCategory:
+                AssociationSpecAssociationCategoryEnum.HubspotDefined,
+              associationTypeId: associationTypeId,
+            },
+          ],
+        });
+      }
+    }
+  }
+
+  const invoiceData: SimplePublicObjectInputForCreate = {
+    properties,
+    associations: builtAssociations,
+  };
+
+  return hubspotClient.crm.objects.basicApi.create("invoices", invoiceData);
+};
+
+export const createQuote = async ({
+  accessToken,
+  properties,
+  associations,
+}: {
+  accessToken: string;
+  properties: Record<string, string>;
+  associations?: Array<{
+    toObjectId: string;
+    toObjectType: string;
+  }>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
+    [];
+
+  if (associations && associations.length > 0) {
+    for (const assoc of associations) {
+      const associationTypeId = await getAssociationTypeId(
+        accessToken,
+        "quotes",
+        assoc.toObjectType
+      );
+      if (builtAssociations) {
+        builtAssociations.push({
+          to: { id: assoc.toObjectId },
+          types: [
+            {
+              associationCategory:
+                AssociationSpecAssociationCategoryEnum.HubspotDefined,
+              associationTypeId: associationTypeId,
+            },
+          ],
+        });
+      }
+    }
+  }
+
+  const quoteData: SimplePublicObjectInputForCreate = {
+    properties,
+    associations: builtAssociations,
+  };
+
+  return hubspotClient.crm.quotes.basicApi.create(quoteData);
+};
+
+export const createMarketingEvent = async ({
+  accessToken,
+  properties,
+  associations,
+}: {
+  accessToken: string;
+  properties: Record<string, string>;
+  associations?: Array<{
+    toObjectId: string;
+    toObjectType: string;
+  }>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
+    [];
+
+  if (associations && associations.length > 0) {
+    for (const assoc of associations) {
+      const associationTypeId = await getAssociationTypeId(
+        accessToken,
+        "marketing_events",
+        assoc.toObjectType
+      );
+      if (builtAssociations) {
+        builtAssociations.push({
+          to: { id: assoc.toObjectId },
+          types: [
+            {
+              associationCategory:
+                AssociationSpecAssociationCategoryEnum.HubspotDefined,
+              associationTypeId: associationTypeId,
+            },
+          ],
+        });
+      }
+    }
+  }
+
+  const eventData: SimplePublicObjectInputForCreate = {
+    properties,
+    associations: builtAssociations,
+  };
+
+  return hubspotClient.crm.objects.basicApi.create("marketing_events", eventData);
+};
+
+export const getInvoice = async (
+  accessToken: string,
+  invoiceId: string
+): Promise<SimplePublicObject | null> => {
+  const hubspotClient = new Client({ accessToken });
+  try {
+    const invoice = await hubspotClient.crm.objects.basicApi.getById(
+      "invoices",
+      invoiceId
+    );
+    return invoice;
+  } catch (error: any) {
+    if (error.code === 404) {
+      return null;
+    }
+    localLogger.error(
+      { error, invoiceId },
+      `Error fetching invoice ${invoiceId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const getQuote = async (
+  accessToken: string,
+  quoteId: string
+): Promise<SimplePublicObject | null> => {
+  const hubspotClient = new Client({ accessToken });
+  try {
+    const quote = await hubspotClient.crm.quotes.basicApi.getById(quoteId);
+    return quote;
+  } catch (error: any) {
+    if (error.code === 404) {
+      return null;
+    }
+    localLogger.error(
+      { error, quoteId },
+      `Error fetching quote ${quoteId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const getLead = async (
+  accessToken: string,
+  leadId: string
+): Promise<SimplePublicObject | null> => {
+  const hubspotClient = new Client({ accessToken });
+  try {
+    const lead = await hubspotClient.crm.objects.basicApi.getById(
+      "leads",
+      leadId
+    );
+    return lead;
+  } catch (error: any) {
+    if (error.code === 404) {
+      return null;
+    }
+    localLogger.error(
+      { error, leadId },
+      `Error fetching lead ${leadId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const getMarketingEvent = async (
+  accessToken: string,
+  eventId: string
+): Promise<SimplePublicObject | null> => {
+  const hubspotClient = new Client({ accessToken });
+  try {
+    const event = await hubspotClient.crm.objects.basicApi.getById(
+      "marketing_events",
+      eventId
+    );
+    return event;
+  } catch (error: any) {
+    if (error.code === 404) {
+      return null;
+    }
+    localLogger.error(
+      { error, eventId },
+      `Error fetching marketing event ${eventId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const updateInvoice = async ({
+  accessToken,
+  invoiceId,
+  properties,
+}: {
+  accessToken: string;
+  invoiceId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const updateInput: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    const result = await hubspotClient.crm.objects.basicApi.update(
+      "invoices",
+      invoiceId,
+      updateInput
+    );
+
+    return result;
+  } catch (error) {
+    localLogger.error(
+      { error, invoiceId },
+      `Error updating invoice with ID ${invoiceId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const updateQuote = async ({
+  accessToken,
+  quoteId,
+  properties,
+}: {
+  accessToken: string;
+  quoteId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const updateInput: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    const result = await hubspotClient.crm.quotes.basicApi.update(
+      quoteId,
+      updateInput
+    );
+
+    return result;
+  } catch (error) {
+    localLogger.error(
+      { error, quoteId },
+      `Error updating quote with ID ${quoteId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const updateLead = async ({
+  accessToken,
+  leadId,
+  properties,
+}: {
+  accessToken: string;
+  leadId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const updateInput: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    const result = await hubspotClient.crm.objects.basicApi.update(
+      "leads",
+      leadId,
+      updateInput
+    );
+
+    return result;
+  } catch (error) {
+    localLogger.error(
+      { error, leadId },
+      `Error updating lead with ID ${leadId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const updateMarketingEvent = async ({
+  accessToken,
+  eventId,
+  properties,
+}: {
+  accessToken: string;
+  eventId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const updateInput: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    const result = await hubspotClient.crm.objects.basicApi.update(
+      "marketing_events",
+      eventId,
+      updateInput
+    );
+
+    return result;
+  } catch (error) {
+    localLogger.error(
+      { error, eventId },
+      `Error updating marketing event with ID ${eventId}:`
     );
     throw normalizeError(error);
   }
