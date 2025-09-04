@@ -16,6 +16,11 @@ const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 200; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
 
+const isEnumerationProperty = (
+  propertyName: string,
+  propertyTypes?: Record<string, string>
+) => propertyTypes?.[propertyName] === "enumeration";
+
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
@@ -250,20 +255,17 @@ function buildHubspotFilters(
             propertyName === "hs_lastmodifieddate";
 
           // Check if this is an enumeration property that should preserve case
-          const isEnumerationProperty =
-            propertyTypes?.[propertyName] === "enumeration" ||
-            propertyName === "industry" ||
-            propertyName === "lifecyclestage" ||
-            propertyName === "dealstage" ||
-            propertyName === "hs_lead_status" ||
-            propertyName === "type";
+          const isEnumerationPropertyValue = isEnumerationProperty(
+            propertyName,
+            propertyTypes
+          );
 
           // Filter out any undefined/null values and ensure all values are strings
           const cleanValues = values
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
           filter.values =
-            isDateProperty || isEnumerationProperty
+            isDateProperty || isEnumerationPropertyValue
               ? cleanValues
               : cleanValues.map((v) => v.toLowerCase());
         } else {
@@ -306,19 +308,16 @@ function buildHubspotFilters(
             propertyName === "hs_lastmodifieddate";
 
           // Check if this is an enumeration property that should preserve case
-          const isEnumerationProperty =
-            propertyTypes?.[propertyName] === "enumeration" ||
-            propertyName === "industry" ||
-            propertyName === "lifecyclestage" ||
-            propertyName === "dealstage" ||
-            propertyName === "hs_lead_status" ||
-            propertyName === "type";
+          const isEnumerationPropertyValue = isEnumerationProperty(
+            propertyName,
+            propertyTypes
+          );
 
           const stringValue = String(value);
           // For string comparison operators, lowercase non-date, non-enumeration values for consistency
           if (
             !isDateProperty &&
-            !isEnumerationProperty &&
+            !isEnumerationPropertyValue &&
             (operator === FilterOperatorEnum.Eq ||
               operator === FilterOperatorEnum.Neq ||
               operator === FilterOperatorEnum.ContainsToken ||
