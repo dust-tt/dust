@@ -737,27 +737,6 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
       instructions: CONTENT_CREATION_INSTRUCTIONS,
-      flavors: [
-        {
-          id: "dashboard",
-          name: "Dashboard",
-          description:
-            "Create interactive dashboards with charts, KPIs, and data visualizations",
-          icon: "ActionPieChartIcon",
-        },
-        {
-          id: "presentation",
-          name: "Presentation",
-          description: "Create presentations",
-          icon: "ActionSlideshowIcon",
-        },
-        {
-          id: "other",
-          name: "Others",
-          description: "Create any interactive content with full flexibility",
-          icon: "ActionDocumentTextIcon",
-        },
-      ],
     },
   },
   outlook: {

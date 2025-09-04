@@ -50,7 +50,6 @@ export type MCPServerType = {
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   documentationUrl: string | null;
-  flavors?: InternalMCPServerFlavorType[] | undefined;
 };
 
 export type RemoteMCPServerType = MCPServerType & {
@@ -85,21 +84,12 @@ export type MCPServerDefinitionType = Omit<
   "tools" | "sId" | "availability" | "allowMultipleInstances"
 >;
 
-export type InternalMCPServerFlavorType = {
-  description: string;
-  icon: InternalAllowedIconType;
-  id: string;
-  name: string;
-};
-
 type InternalMCPServerType = MCPServerType & {
   name: InternalMCPServerNameType;
   // We enforce that we pass an icon here.
   icon: InternalAllowedIconType;
   // Instructions that are appended to the overall prompt.
   instructions: string | null;
-
-  flavors?: InternalMCPServerFlavorType[] | undefined;
 };
 
 export type InternalMCPServerDefinitionType = Omit<
