@@ -86,6 +86,7 @@ export async function createClientExecutableFile(
         fileName,
         conversationId,
         workspaceId: workspace.id,
+        error,
       },
       "Failed to create client executable file"
     );
