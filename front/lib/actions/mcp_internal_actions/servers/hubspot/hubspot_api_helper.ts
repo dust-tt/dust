@@ -16,6 +16,21 @@ const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 200; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
 
+const getPropertyTypes = async (
+  hubspotClient: Client,
+  objectType: string
+): Promise<Record<string, string>> => {
+  const properties =
+    await hubspotClient.crm.properties.coreApi.getAll(objectType);
+  return properties.results.reduce(
+    (acc, prop) => {
+      acc[prop.name] = prop.type;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
+};
+
 const isEnumerationProperty = (
   propertyName: string,
   propertyTypes?: Record<string, string>
@@ -349,15 +364,7 @@ export const countObjectsByProperties = async (
   const hubspotClient = new Client({ accessToken });
 
   // Fetch property types for enumeration detection
-  const properties =
-    await hubspotClient.crm.properties.coreApi.getAll(objectType);
-  const propertyTypes = properties.results.reduce(
-    (acc, prop) => {
-      acc[prop.name] = prop.type;
-      return acc;
-    },
-    {} as Record<string, string>
-  );
+  const propertyTypes = await getPropertyTypes(hubspotClient, objectType);
 
   // First, get the total count with a minimal request
   const initialSearch = await hubspotClient.crm[objectType].searchApi.doSearch({
@@ -425,13 +432,7 @@ export const getLatestObjects = async (
   const availableProperties =
     await hubspotClient.crm.properties.coreApi.getAll(objectType);
   const propertyNames = availableProperties.results.map((p) => p.name);
-  const propertyTypes = availableProperties.results.reduce(
-    (acc, prop) => {
-      acc[prop.name] = prop.type;
-      return acc;
-    },
-    {} as Record<string, string>
-  );
+  const propertyTypes = await getPropertyTypes(hubspotClient, objectType);
 
   const allResults: SimplePublicObject[] = [];
   let after: string | undefined = undefined;
@@ -1240,13 +1241,7 @@ export const searchCrmObjects = async ({
   try {
     const allProps =
       await hubspotClient.crm.properties.coreApi.getAll(objectType);
-    propertyTypes = allProps.results.reduce(
-      (acc, prop) => {
-        acc[prop.name] = prop.type;
-        return acc;
-      },
-      {} as Record<string, string>
-    );
+    propertyTypes = await getPropertyTypes(hubspotClient, objectType);
 
     if (!finalPropertiesToReturn || finalPropertiesToReturn.length === 0) {
       finalPropertiesToReturn = allProps.results.map((p) => p.name);
