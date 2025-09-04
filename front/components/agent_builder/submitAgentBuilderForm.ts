@@ -169,7 +169,7 @@ export async function submitAgentBuilderForm({
         (action) => action.type === "DATA_VISUALIZATION"
       ),
       templateId: null,
-      tags: [],
+      tags: formData.agentSettings.tags,
       editors: formData.agentSettings.editors.map((editor) => ({
         sId: editor.sId,
       })),
