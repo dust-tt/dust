@@ -17,6 +17,9 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
   const [isTruncated, setIsTruncated] = React.useState(false);
   const textRef = React.useRef<HTMLDivElement>(null);
 
+  // Check if content is actually truncated by comparing scroll height to
+  // client height
+  // This ensures we only show the tooltip when text is cut off by line-clamp-
   React.useLayoutEffect(() => {
     const element = textRef.current;
     if (element) {
