@@ -7,7 +7,6 @@ import {
   deleteOrLeaveConversation,
   updateConversationTitle,
 } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -122,7 +121,11 @@ async function handler(
           await ConversationResource.markAsRead(auth, {
             conversation,
           });
-          const result = await getConversation(auth, cId);
+          const result =
+            await ConversationResource.fetchConversationWithoutContent(
+              auth,
+              cId
+            );
           if (result.isErr()) {
             return apiErrorForConversation(req, res, result.error);
           }
