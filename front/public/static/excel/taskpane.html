@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dust Excel Add-in</title>
+    
+    <!-- Office JavaScript API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    
+    <!-- jQuery and Select2 -->
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <!-- Custom styles -->
+    <link href="taskpane.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg width="96" height="24" viewBox="0 0 96 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M84 0H72V24H84V0Z" fill="#FE9C1A"/>
+                <path d="M12 24C18.6274 24 24 18.6274 24 12C24 5.37258 18.6274 0 12 0C5.37258 0 0 5.37258 0 12C0 18.6274 5.37258 24 12 24Z" fill="#E2F78C"/>
+                <path d="M36 24C42.6274 24 48 18.6274 48 12C48 5.37258 42.6274 0 36 0C29.3726 0 24 5.37258 24 12C24 18.6274 29.3726 24 36 24Z" fill="#FFC3DF"/>
+                <path d="M12 0H0V24H12V0Z" fill="#418B5C"/>
+                <path d="M48 0H24V12H48V0Z" fill="#E14322"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M60 12C56.6863 12 54 9.31371 54 6C54 2.68629 56.6863 0 60 0H96V12H60Z" fill="#3B82F6"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M48 24V12H60C63.3137 12 66 14.6863 66 18C66 21.3137 63.3137 24 60 24H48Z" fill="#9FDBFF"/>
+            </svg>
+        </div>
+        
+        <h2 class="main-title">Use AI Agents in your<br>spreadsheet</h2>
+        
+        <button id="setupBtn" class="btn btn-setup">Setup Dust Credentials</button>
+        
+        <form id="myForm">
+            <div class="form-group">
+                <label class="form-label">Select agent</label>
+                <div class="search-container">
+                    <select id="assistant" name="assistant" required disabled>
+                        <option value=""></option>
+                    </select>
+                    <div class="search-icon">🔍</div>
+                </div>
+                <div id="loadError" class="error">Failed to load agents</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Select input range</label>
+                <div class="input-group">
+                    <input type="text" id="cellRange" name="cellRange" required placeholder="A1:A10">
+                    <button type="button" class="btn btn-secondary" id="selectCellsBtn">Use selection</button>
+                </div>
+                <div id="rangeInfo" class="info-text"></div>
+            </div>
+            
+            <div id="headerRowSection" class="header-row-section form-group">
+                <label class="form-label">Header Row Number:</label>
+                <input type="number" id="headerRow" name="headerRow" value="1" min="1">
+                <div class="info-text">Row number containing column headers (default: 1)</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Select output column</label>
+                <div class="input-group">
+                    <input type="text" id="targetColumn" name="targetColumn" required placeholder="B">
+                    <button type="button" class="btn btn-secondary" id="selectTargetBtn">Use selection</button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Additional instructions (optional)</label>
+                <textarea id="instructions" name="instructions" placeholder="Summarize each row in 2 sentences max"></textarea>
+            </div>
+            
+            <div id="status"></div>
+            <button type="submit" class="btn btn-primary" id="submitBtn">Run</button>
+        </form>
+        
+        <div class="version">v0.1</div>
+    </div>
+    
+    <!-- Setup Dialog -->
+    <div id="setupDialog" class="dialog" style="display: none;">
+        <div class="dialog-content">
+            <h3>Setup Dust</h3>
+            <div class="form-group">
+                <label class="form-label">Workspace ID:</label>
+                <input type="text" id="workspaceId" placeholder="Enter your Dust Workspace ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">API Key:</label>
+                <input type="password" id="dustToken" placeholder="Enter your Dust API Key">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Region (optional):</label>
+                <input type="text" id="region" placeholder="Leave empty for US or enter 'eu' for EU">
+            </div>
+            <div class="dialog-buttons">
+                <button class="btn btn-secondary" id="cancelSetup">Cancel</button>
+                <button class="btn btn-primary" id="saveSetup">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="taskpane.js"></script>
+</body>
+</html>
