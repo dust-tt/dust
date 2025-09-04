@@ -27,6 +27,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getDisabledToolsFromSettings, useMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
 import type {
   LightWorkspaceType,
   Result,
@@ -163,11 +164,19 @@ export function MCPAction({
     ]
   );
 
+  const { toolsSettings } = useMCPServerToolsSettings({
+    owner,
+    serverId: selectedMCPServerView?.server.sId || "",
+  });
+  const disabledTools = selectedMCPServerView?.server.sId 
+    ? getDisabledToolsFromSettings(toolsSettings)
+    : [];
+
   if (action.type !== "MCP") {
     return null;
   }
 
-  const requirements = getMCPServerRequirements(selectedMCPServerView, owner);
+  const requirements = getMCPServerRequirements(selectedMCPServerView, disabledTools);
   const withDataSource =
     requirements.requiresDataSourceConfiguration ||
     requirements.requiresDataWarehouseConfiguration ||
@@ -370,18 +379,19 @@ export function MCPAction({
 export function hasErrorActionMCP(
   action: AssistantBuilderMCPConfiguration,
   mcpServerViews: MCPServerViewType[],
-  owner: WorkspaceType
+  disabledTools: string[]
 ): string | null {
   if (action.type === "MCP") {
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) =>
         mcpServerView.sId === action.configuration.mcpServerViewId
     );
+    
     if (!mcpServerView) {
       return "Please select a tool.";
     }
 
-    const requirements = getMCPServerRequirements(mcpServerView, owner);
+    const requirements = getMCPServerRequirements(mcpServerView, disabledTools);
     if (
       requirements.requiresDataSourceConfiguration &&
       !action.configuration.dataSourceConfigurations

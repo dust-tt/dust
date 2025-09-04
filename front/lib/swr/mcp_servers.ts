@@ -761,6 +761,10 @@ export function useMCPServerToolsSettings({
   };
 }
 
+export function getDisabledToolsFromSettings(toolsSettings: Record<string, { enabled: boolean }>) {
+  return Object.keys(toolsSettings).filter((tool) => !toolsSettings[tool].enabled);
+}
+
 export function useUpdateMCPServerToolsSettings({
   owner,
   serverId,

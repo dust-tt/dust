@@ -28,7 +28,6 @@ import {
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
-import { useMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -408,11 +407,12 @@ export interface MCPServerRequirements {
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
   requiredFlavors: InternalMCPServerFlavorType[];
+  disabledTools: string[];
 }
 
 export function getMCPServerRequirements(
   mcpServerView: MCPServerViewType | null | undefined, 
-  owner?: WorkspaceType
+  disabledTools: string[] = []
 ): MCPServerRequirements {
   if (!mcpServerView) {
     return {
@@ -431,28 +431,10 @@ export function getMCPServerRequirements(
       requiresDustAppConfiguration: false,
       noRequirement: false,
       requiredFlavors: [],
+      disabledTools: [],
     };
   }
   const { server } = mcpServerView;
-
-  // If owner is not provided, we can't determine disabled tools, so we don't filter any
-  let disabledTools: string[] = [];
-  
-  if (owner) {
-    const { toolsSettings } = useMCPServerToolsSettings({
-      owner,
-      serverId: server.sId,
-    });
-
-    disabledTools = Object.keys(toolsSettings).filter(
-      (tool) => !toolsSettings[tool].enabled
-    );
-
-    console.log(`Disabled tools: ${disabledTools}`);
-  } else {
-    console.log("No owner provided, so we don't filter disabled tools");
-  }
-
   const requiresDataSourceConfiguration =
     Object.keys(
       findPathsToConfiguration({
@@ -634,6 +616,7 @@ export function getMCPServerRequirements(
       requiredFlavors.length === 0 &&
       Object.keys(requiredEnums).length === 0 &&
       Object.keys(requiredLists).length === 0,
+    disabledTools,
   };
 }
 
