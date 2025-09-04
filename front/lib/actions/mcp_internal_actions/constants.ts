@@ -739,16 +739,16 @@ The directive should be used to display a clickable version of the agent name in
       instructions: CONTENT_CREATION_INSTRUCTIONS,
       flavors: [
         {
-          id: "dashboards",
+          id: "dashboard",
           name: "Dashboard",
           description:
             "Create interactive dashboards with charts, KPIs, and data visualizations",
           icon: "ActionPieChartIcon",
         },
         {
-          id: "slides",
-          name: "Slides",
-          description: "Build slide decks and presentations",
+          id: "presentation",
+          name: "Presentation",
+          description: "Create presentations",
           icon: "ActionSlideshowIcon",
         },
         {

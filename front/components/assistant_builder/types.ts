@@ -101,7 +101,7 @@ export type AssistantBuilderMCPConfigurationWithId =
 
 export interface AssistantBuilderDataVisualizationConfiguration {
   type: "DATA_VISUALIZATION";
-  configuration: Record<string, never>;
+  configuration: null;
   name: string;
   description: string;
   noConfigurationRequired: true;
@@ -243,7 +243,7 @@ export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIP
 export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
   return {
     type: "DATA_VISUALIZATION",
-    configuration: {},
+    configuration: null,
     name: DEFAULT_DATA_VISUALIZATION_NAME,
     description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
     noConfigurationRequired: true,
