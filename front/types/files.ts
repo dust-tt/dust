@@ -36,6 +36,7 @@ export const fileShareScopeSchema = z.enum([
   "workspace",
   "public",
 ]);
+
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 export interface FileType {
