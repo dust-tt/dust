@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
@@ -489,8 +489,14 @@ export function useConversationMarkAsRead({
   conversation: ConversationWithoutContentType | null;
   workspaceId: string;
 }) {
-  const [state, setState] = useState<"idle" | "marking" | "marked">("idle");
   const { mutateConversations } = useConversations({
+    workspaceId,
+    options: {
+      disabled: true,
+    },
+  });
+  const { mutateConversation } = useConversation({
+    conversationId: conversation?.sId ?? null,
     workspaceId,
     options: {
       disabled: true,
@@ -498,10 +504,13 @@ export function useConversationMarkAsRead({
   });
 
   const markAsRead = useCallback(async (): Promise<void> => {
-    setState("marking");
+    if (!conversation) {
+      return;
+    }
     try {
+      console.log("Marking conversation as read");
       const response = await fetch(
-        `/api/w/${workspaceId}/assistant/conversations/${conversation?.sId}`,
+        `/api/w/${workspaceId}/assistant/conversations/${conversation.sId}`,
         {
           method: "PATCH",
           headers: {
@@ -516,16 +525,25 @@ export function useConversationMarkAsRead({
       if (!response.ok) {
         throw new Error("Failed to mark conversation as read");
       }
-      void mutateConversations();
-      setState("marked");
+      void mutateConversations((prevState) => {
+        return {
+          ...prevState,
+          conversations: prevState?.conversations.map((c) =>
+            c.sId === conversation.sId ? { ...c, unread: false } : c
+          ) ?? [{ ...conversation, unread: false }],
+        };
+      });
+      void mutateConversation();
     } catch (error) {
       console.error("Error marking conversation as read:", error);
     }
-  }, [conversation?.sId, workspaceId, mutateConversations]);
+  }, [conversation, workspaceId, mutateConversation, mutateConversations]);
 
   useEffect(() => {
+    console.log("useEffect", conversation);
     let timeout: NodeJS.Timeout | null = null;
-    if (conversation?.sId && state === "idle" && conversation.unread) {
+    if (conversation?.sId && conversation.unread) {
+      console.log("Marking conversation as read with delay");
       timeout = setTimeout(markAsRead, DELAY_BEFORE_MARKING_AS_READ);
     }
 
@@ -534,5 +552,5 @@ export function useConversationMarkAsRead({
         clearTimeout(timeout);
       }
     };
-  }, [conversation?.sId, conversation?.unread, state, markAsRead]);
+  }, [conversation?.sId, conversation?.unread, markAsRead]);
 }
