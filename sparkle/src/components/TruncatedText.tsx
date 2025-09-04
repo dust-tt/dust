@@ -6,12 +6,16 @@ import { cn } from "@sparkle/lib/utils";
 interface TruncatedTextProps extends React.HTMLAttributes<HTMLDivElement> {
   children: string | React.ReactNode;
   lineClamp?: number;
+  mountPortal?: boolean;
+  mountPortalContainer?: HTMLElement;
 }
 
 export const TruncatedText: React.FC<TruncatedTextProps> = ({
   children,
   className,
   lineClamp = 2,
+  mountPortal,
+  mountPortalContainer,
   ...props
 }) => {
   const [isTruncated, setIsTruncated] = React.useState(false);
@@ -47,6 +51,8 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
         trigger={textElement}
         label={children}
         tooltipTriggerAsChild={true}
+        mountPortal={mountPortal}
+        mountPortalContainer={mountPortalContainer}
       />
     );
   }
