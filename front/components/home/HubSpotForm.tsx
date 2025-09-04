@@ -43,7 +43,7 @@ export default function HubSpotForm() {
     } else {
       createForm();
     }
-  }, [region, portalId, formId]);
+  }, []);
 
   return (
     <div
