@@ -80,7 +80,7 @@ export async function createClientExecutableFile(
       useCaseMetadata: {
         conversationId,
         ...(createdByAgentConfigurationId
-          ? { createdByAgentConfigurationId }
+          ? { lastEditedByAgentConfigurationId: createdByAgentConfigurationId }
           : {}),
       },
     });
@@ -158,12 +158,12 @@ export async function editClientExecutableFile(
 
   if (
     editedByAgentConfigurationId &&
-    fileResource.useCaseMetadata?.agentConfigurationId !==
+    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
       editedByAgentConfigurationId
   ) {
     await fileResource.setUseCaseMetadata({
       ...fileResource.useCaseMetadata,
-      agentConfigurationId: editedByAgentConfigurationId,
+      lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
     });
   }
 

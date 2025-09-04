@@ -105,7 +105,7 @@ const createServer = (
           conversationId: conversation.sId,
           fileName: file_name,
           mimeType: mime_type,
-          agentConfigurationId: agentConfiguration?.sId,
+          createdByAgentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {
@@ -217,7 +217,7 @@ const createServer = (
           oldString: old_string,
           newString: new_string,
           expectedReplacements: expected_replacements,
-          agentConfigurationId: agentConfiguration?.sId,
+          editedByAgentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {

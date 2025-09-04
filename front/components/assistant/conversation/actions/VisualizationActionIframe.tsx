@@ -320,8 +320,7 @@ export const VisualizationActionIframe = forwardRef<
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
 
   const markdownContentContext = useContext(MarkdownContentContext);
-  const canRetry =
-    !isPublic || (markdownContentContext?.isLastMessage ?? false);
+  const canRetry = !isPublic && markdownContentContext?.isLastMessage;
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>

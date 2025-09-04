@@ -568,8 +568,11 @@ export class FileResource extends BaseResource<FileModel> {
   // Serialization logic.
 
   toJSON(auth?: Authenticator): FileType {
-    const extraMetadata = this.useCaseMetadata?.agentConfigurationId
-      ? { agentConfigurationId: this.useCaseMetadata.agentConfigurationId }
+    const extraMetadata = this.useCaseMetadata?.lastEditedByAgentConfigurationId
+      ? {
+          lastEditedByAgentConfigurationId:
+            this.useCaseMetadata.lastEditedByAgentConfigurationId,
+        }
       : {};
 
     const blob: FileType = {
