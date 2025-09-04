@@ -8,7 +8,7 @@ fi
 
 cleanup() {
     echo "Cleaning up temporary files..."
-    rm -f main_output.txt current_output.txt
+    rm -f main_output.txt current_output.txt diff_output.txt temp_output.sql
     exit 0
 }
 
@@ -61,8 +61,31 @@ diff --unified=0 --color=always main_output.txt current_output.txt
 echo "Running diff and extracting SQL statements..."
 diff_output=$(diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}' | sed 's/;*$/;/')
 if [ -n "$diff_output" ]; then
-  echo "-- Migration created on $current_date" > diff_output.txt
-  echo "$diff_output" >> diff_output.txt
+  # Create migration wrapped in procedure that requires --apply flag
+  cat > diff_output.txt << EOF
+-- Migration created on $current_date
+\set QUIET ON
+CREATE OR REPLACE FUNCTION perform_migration()
+RETURNS VARCHAR AS \$\$
+BEGIN
+    $diff_output
+
+    RETURN 'success';
+END;
+\$\$ LANGUAGE plpgsql;
+\set QUIET OFF
+
+\\if :{?apply}
+   SELECT perform_migration();
+\\else
+    \\echo '!! Migration was NOT applied !!'
+    \\echo 'Use npm run migration:apply -- migration_xxx.sql to apply this migration.'
+\\endif
+
+\set QUIET ON
+DROP FUNCTION perform_migration();
+\set QUIET OFF
+EOF
 else
     echo "No migration necessary."
     exit 0
@@ -76,20 +99,26 @@ echo "Creating SQL migration $next_version."
 
 OUTPUT_FILE="./migrations/db/migration_${next_version}.sql"
 
-# Save the latest changes to a new migration file.
-mv diff_output.txt "$OUTPUT_FILE"
-
-# Ask for user Y/n input wether this migration is dependant on a backfill
+# Ask for user Y/n input whether this migration is dependant on a backfill
 read -p "Does this migration depends on a backfill script ? (y/n): " backfill_dependant
 if [ "$backfill_dependant" == "y" ]; then
   # Ask for user input for backfill script name
   read -p "Please enter the name of the backfill script: " backfill_script_name
   
-  TEMPLATE_FILE="./migration_with_backfill_template.sql"
-
-  # Create an sql command that will fail when executed and put it at the TOP of the migration file before the rest of the sql commands
-  sed -e "/MIGRATION_STATEMENTS/r $OUTPUT_FILE" \
-    -e "/MIGRATION_STATEMENTS/d" \
-    -e "s/BACKFILL_SCRIPT_NAME/$backfill_script_name/g" \
-    "$TEMPLATE_FILE" > temp_output.sql && mv temp_output.sql "$OUTPUT_FILE"
+  # Create a temporary file with the migration statements
+  echo "$diff_output" > temp_migration.sql
+  
+  # Use the template and replace placeholders
+  sed -e "s/BACKFILL_SCRIPT_NAME/$backfill_script_name/g" \
+      -e "/MIGRATION_STATEMENTS/r temp_migration.sql" \
+      -e "/MIGRATION_STATEMENTS/d" \
+      "./migration_with_backfill_template.sql" > "$OUTPUT_FILE"
+      
+  # Clean up temporary file
+  rm temp_migration.sql
+else
+  # Save the latest changes to a new migration file without backfill template
+  mv diff_output.txt "$OUTPUT_FILE"
 fi
+
+echo "Migration file created: $OUTPUT_FILE"
