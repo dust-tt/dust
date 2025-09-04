@@ -2,10 +2,7 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
-import {
-  MCPExternalActionIconSchema,
-  MCPInternalActionIconSchema,
-} from "./mcp_icon_types";
+import { MCPExternalActionIconSchema, MCPInternalActionIconSchema, } from "./mcp_icon_types";
 import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
@@ -938,6 +935,8 @@ const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
   updated: z.number().optional(),
+  unread: z.boolean(),
+  actionRequired: z.boolean(),
   owner: WorkspaceSchema,
   sId: z.string(),
   title: z.string().nullable(),
