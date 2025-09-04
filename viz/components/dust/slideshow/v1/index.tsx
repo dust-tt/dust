@@ -69,7 +69,6 @@ export function SlidePreview({
               isActive && "border-primary"
             )}
           >
-            {/*  ← Pick your real slide width */}
             <SlideMiniature slide={slide} />
 
             <span className="absolute bottom-1 right-1 text-xs opacity-70 bg-background/80 px-1 rounded z-10">
