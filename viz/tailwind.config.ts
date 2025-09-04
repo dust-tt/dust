@@ -7,10 +7,10 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    // fontFamily: {
-    //   sans: ["var(--font-geist)", "sans-serif"],
-    //   mono: ["var(--font-geist-mono)", "monospace"],
-    // },
+    fontFamily: {
+      sans: ["var(--font-geist)", "sans-serif"],
+      mono: ["var(--font-geist-mono)", "monospace"],
+    },
     extend: {
       colors: {
         background: "hsl(var(--background))",
