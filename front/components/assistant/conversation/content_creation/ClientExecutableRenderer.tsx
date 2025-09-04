@@ -108,7 +108,7 @@ export function ClientExecutableRenderer({
     setFullScreenHash(undefined);
   }, [setFullScreenHash]);
 
-  function goToFullScreen() {
+  const goToFullScreen = () => {
     isNavBarPrevOpenRef.current = isNavigationBarOpen;
 
     if (panel) {
@@ -116,16 +116,16 @@ export function ClientExecutableRenderer({
     }
 
     setFullScreenHash("true");
-  }
+  };
 
-  function onClosePanel() {
+  const onClosePanel = () => {
     if (panel && isFullScreen) {
       setFullScreenHash(undefined);
       restoreLayout();
     }
 
     closePanel();
-  }
+  };
 
   useEffect(() => {
     if (!panel) {
