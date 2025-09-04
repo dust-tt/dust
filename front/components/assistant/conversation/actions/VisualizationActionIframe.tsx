@@ -283,11 +283,6 @@ export const VisualizationActionIframe = forwardRef<
     visualization,
   } = props;
 
-  console.log("agentConfigurationId", agentConfigurationId);
-  console.log("conversationId", conversationId);
-  console.log("isPublic", isPublic);
-  console.log("workspace", props.workspace);
-
   useVisualizationDataHandler({
     visualization,
     workspaceId: isPublic ? null : props.workspace.sId,
