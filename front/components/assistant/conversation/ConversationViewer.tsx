@@ -77,7 +77,7 @@ const ConversationViewer = React.forwardRef<
     workspaceId: owner.sId,
   });
 
-  useConversationMarkAsRead({
+  const { markAsRead } = useConversationMarkAsRead({
     conversation,
     workspaceId: owner.sId,
   });
@@ -285,9 +285,12 @@ const ConversationViewer = React.forwardRef<
             break;
 
           case "conversation_title":
-          case "agent_message_done":
             void mutateConversation();
-            void mutateConversations(); // to refresh the list of convos in the sidebar (title, unread & actionRequired)
+            void mutateConversations(); // to refresh the list of convos in the sidebar (title)
+            break;
+          case "agent_message_done":
+            // Immediate mark as read and do not mutate the list of convos in the sidebar to avoid any network request.
+            void markAsRead(conversationId, false);
             break;
           default:
             ((t: never) => {
@@ -301,6 +304,8 @@ const ConversationViewer = React.forwardRef<
       mutateConversations,
       mutateMessages,
       mutateConversationParticipants,
+      markAsRead,
+      conversationId,
     ]
   );
 

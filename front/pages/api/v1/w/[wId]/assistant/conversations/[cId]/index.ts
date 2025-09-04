@@ -8,6 +8,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { PatchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
@@ -87,8 +88,8 @@ import type { WithAPIErrorResponse } from "@app/types";
  *             schema:
  *               type: object
  *               properties:
- *                 conversation:
- *                   $ref: '#/components/schemas/Conversation'
+ *                 success:
+ *                   type: boolean
  *       400:
  *         description: Bad Request. Invalid or missing parameters.
  *       401:
@@ -103,7 +104,11 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetConversationResponseType>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      GetConversationResponseType | PatchConversationsResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   const { cId } = req.query;
@@ -123,7 +128,7 @@ async function handler(
     return apiErrorForConversation(req, res, conversationRes.error);
   }
 
-  let conversation = conversationRes.value;
+  const conversation = conversationRes.value;
 
   switch (req.method) {
     case "GET": {
@@ -146,14 +151,8 @@ async function handler(
         await ConversationResource.markAsRead(auth, {
           conversation,
         });
-        // Get the updated conversation representation because the participant's unread status is updated.
-        const result = await getConversation(auth, cId);
-        if (result.isErr()) {
-          return apiErrorForConversation(req, res, result.error);
-        }
-        conversation = result.value;
       }
-      return res.status(200).json({ conversation });
+      return res.status(200).json({ success: true });
     }
 
     default:
