@@ -194,7 +194,6 @@ function makeQueryResource(
   };
 }
 
-
 // Common Zod parameter schema parts shared by search tools.
 const buildCommonSearchParams = () => ({
   channels: z
