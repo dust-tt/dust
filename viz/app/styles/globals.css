@@ -334,7 +334,7 @@
   /* Slide variant padding */
   .slide-top-padding {
     padding: var(--responsive-space-8);
-    padding-top: var(--responsive-space-24);
+    padding-top: var(--responsive-space-12);
   }
   .slide-centered-padding {
     padding: var(--responsive-space-8);
