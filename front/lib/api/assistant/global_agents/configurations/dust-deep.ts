@@ -296,8 +296,7 @@ export function _getDustDeepGlobalAgent(
   const description =
     "Deep research with company data, web search/browse, Content Creation, and data warehouses.";
 
-  const pictureUrl =
-    "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png";
+  const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
   const modelConfig = getModelConfig(owner, "anthropic");
 
