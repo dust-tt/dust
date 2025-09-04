@@ -200,6 +200,14 @@ export function compareAgentsForSort(
     return 1;
   }
 
+  // Check for 'dust-deep'
+  if (a.sId === "dust-deep") {
+    return -1;
+  }
+  if (b.sId === "dust-deep") {
+    return 1;
+  }
+
   // Check for 'claude-3'
   if (a.sId === "claude-3-sonnet") {
     return -1;

@@ -1592,6 +1592,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 
 const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.DUST_DEEP,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.O3_MINI,
@@ -1632,6 +1633,14 @@ export function compareAgentsForSort(
     return -1;
   }
   if (b.sId === GLOBAL_AGENTS_SID.DUST) {
+    return 1;
+  }
+
+  // Check for 'dust-deep'
+  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
     return 1;
   }
 
