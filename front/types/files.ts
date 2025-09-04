@@ -55,6 +55,10 @@ export interface FileType {
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
 
+export type FileTypeWithMetadata = FileType & {
+  useCaseMetadata: FileUseCaseMetadata;
+};
+
 export type FileFormatCategory = "image" | "data" | "code" | "delimited";
 
 // Define max sizes for each category.

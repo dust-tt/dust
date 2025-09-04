@@ -223,7 +223,10 @@ export function ClientExecutableRenderer({
         ) : (
           <div className="h-full">
             <VisualizationActionIframe
-              agentConfigurationId={fileMetadata?.agentConfigurationId ?? ""}
+              agentConfigurationId={
+                fileMetadata?.useCaseMetadata
+                  .lastEditedByAgentConfigurationId ?? ""
+              }
               workspace={owner}
               visualization={{
                 code: fileContent ?? "",

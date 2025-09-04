@@ -5,7 +5,6 @@ import {
   ContentMessage,
   ExclamationCircleIcon,
   Markdown,
-  MarkdownContentContext,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -17,7 +16,6 @@ import type { SetStateAction } from "react";
 import React, {
   forwardRef,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -285,6 +283,11 @@ export const VisualizationActionIframe = forwardRef<
     visualization,
   } = props;
 
+  console.log("agentConfigurationId", agentConfigurationId);
+  console.log("conversationId", conversationId);
+  console.log("isPublic", isPublic);
+  console.log("workspace", props.workspace);
+
   useVisualizationDataHandler({
     visualization,
     workspaceId: isPublic ? null : props.workspace.sId,
@@ -302,25 +305,25 @@ export const VisualizationActionIframe = forwardRef<
     [codeFullyGenerated, iframeLoaded, isErrored]
   );
 
-  const handleVisualizationRetry = useVisualizationRetry({
+  const { handleVisualizationRetry, canRetry } = useVisualizationRetry({
     workspaceId: isPublic ? null : props.workspace.sId,
     conversationId,
     agentConfigurationId,
+    isPublic,
   });
 
   const handleRetryClick = useCallback(async () => {
     if (retryClicked || !errorMessage) {
       return;
     }
+
     setRetryClicked(true);
+
     const success = await handleVisualizationRetry(errorMessage);
     if (!success) {
       setRetryClicked(false);
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
-
-  const markdownContentContext = useContext(MarkdownContentContext);
-  const canRetry = !isPublic && markdownContentContext?.isLastMessage;
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
@@ -396,7 +399,7 @@ export const VisualizationActionIframe = forwardRef<
                       </div>
                     )}
 
-                    {canRetry && !retryClicked && (
+                    {canRetry && (
                       <div className="flex justify-center">
                         <Button
                           variant="outline"
