@@ -63,7 +63,10 @@ import {
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getDisabledToolsFromSettings, useMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
+import {
+  getDisabledToolsFromSettings,
+  useMCPServerToolsSettings,
+} from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
@@ -153,7 +156,7 @@ export default function ActionsScreen({
   } = useAssistantBuilderContext();
   const { toolsSettings } = useMCPServerToolsSettings({
     owner,
-    serverId: "",
+    serverId: null,
   });
   const disabledTools = getDisabledToolsFromSettings(toolsSettings);
 
@@ -433,7 +436,7 @@ function NewActionModal({
 
   const { toolsSettings } = useMCPServerToolsSettings({
     owner,
-    serverId: "",
+    serverId: null,
   });
   const disabledTools = getDisabledToolsFromSettings(toolsSettings);
 

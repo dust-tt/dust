@@ -59,7 +59,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAssistantConfigurationActions } from "@app/lib/swr/actions";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useKillSwitches } from "@app/lib/swr/kill";
-import { getDisabledToolsFromSettings, useMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
+import {
+  getDisabledToolsFromSettings,
+  useMCPServerToolsSettings,
+} from "@app/lib/swr/mcp_servers";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
 import {
@@ -89,7 +92,7 @@ export default function AssistantBuilder({
 
   const { toolsSettings } = useMCPServerToolsSettings({
     owner,
-    serverId: "",
+    serverId: null,
   });
 
   const disabledTools = getDisabledToolsFromSettings(toolsSettings);

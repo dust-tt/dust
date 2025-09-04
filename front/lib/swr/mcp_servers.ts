@@ -743,13 +743,15 @@ export function useMCPServerToolsSettings({
   serverId,
 }: {
   owner: LightWorkspaceType;
-  serverId: string;
+  serverId: string | null | undefined;
 }) {
   const toolsFetcher: Fetcher<GetMCPServerToolsSettingsResponseBody> = fetcher;
 
-  const url = `/api/w/${owner.sId}/mcp/${serverId}/tools`;
+  const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}/tools` : null;
 
-  const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher, {
+    disabled: !url,
+  });
 
   const toolsSettings = useMemo(() => (data ? data.toolsSettings : {}), [data]);
 
@@ -761,8 +763,12 @@ export function useMCPServerToolsSettings({
   };
 }
 
-export function getDisabledToolsFromSettings(toolsSettings: Record<string, { enabled: boolean }>) {
-  return Object.keys(toolsSettings).filter((tool) => !toolsSettings[tool].enabled);
+export function getDisabledToolsFromSettings(
+  toolsSettings: Record<string, { enabled: boolean }>
+) {
+  return Object.keys(toolsSettings).filter(
+    (tool) => !toolsSettings[tool].enabled
+  );
 }
 
 export function useUpdateMCPServerToolsSettings({

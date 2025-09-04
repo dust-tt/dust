@@ -232,7 +232,7 @@ function findPathsToConfiguration({
       console.log(`Skipping tool ${tool.name} because it is disabled`);
       continue;
     }
-    
+
     if (tool.inputSchema) {
       matches = {
         ...matches,
@@ -411,7 +411,7 @@ export interface MCPServerRequirements {
 }
 
 export function getMCPServerRequirements(
-  mcpServerView: MCPServerViewType | null | undefined, 
+  mcpServerView: MCPServerViewType | null | undefined,
   disabledTools: string[] = []
 ): MCPServerRequirements {
   if (!mcpServerView) {

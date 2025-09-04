@@ -75,7 +75,10 @@ import {
 } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getDisabledToolsFromSettings, useMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
+import {
+  getDisabledToolsFromSettings,
+  useMCPServerToolsSettings,
+} from "@app/lib/swr/mcp_servers";
 import { useModels } from "@app/lib/swr/models";
 import { O4_MINI_MODEL_ID } from "@app/types";
 
@@ -477,12 +480,19 @@ export function MCPServerViewsSheet({
     owner,
     serverId: mcpServerView?.server.sId || "",
   });
-  const disabledTools = useMemo(() => mcpServerView?.server.sId 
-    ? getDisabledToolsFromSettings(toolsSettings)
-    : [], [mcpServerView, toolsSettings]);
+  const disabledTools = useMemo(
+    () =>
+      mcpServerView?.server.sId
+        ? getDisabledToolsFromSettings(toolsSettings)
+        : [],
+    [mcpServerView, toolsSettings]
+  );
 
   const requirements = useMemo(
-    () => (mcpServerView ? getMCPServerRequirements(mcpServerView, disabledTools) : null),
+    () =>
+      mcpServerView
+        ? getMCPServerRequirements(mcpServerView, disabledTools)
+        : null,
     [mcpServerView, disabledTools]
   );
 
