@@ -60,7 +60,7 @@ export function ConversationTitle({
   const titleInputFocused = useRef(false);
   const saveButtonFocused = useRef(false);
 
-  const handleClick = useCallback(async () => {
+  const copyConversationLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink || "");
     setCopyLinkSuccess(true);
     setTimeout(() => {
@@ -233,7 +233,7 @@ export function ConversationTitle({
                       size="sm"
                       label={copyLinkSuccess ? "Copied!" : "Copy the link"}
                       icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
-                      onClick={handleClick}
+                      onClick={copyConversationLink}
                     />
                   </div>
                 </div>
