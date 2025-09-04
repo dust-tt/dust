@@ -33,6 +33,7 @@ import {
   GetMCPServerViewsResponseSchema,
   HeartbeatMCPResponseType,
   LoggerInterface,
+  PatchConversationRequestType,
   PatchDataSourceViewRequestType,
   PostMCPResultsResponseType,
   PublicHeartbeatMCPRequestBody,
@@ -79,8 +80,8 @@ import {
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
   RegisterMCPResponseSchema,
-  RetryMessageResponseSchema,
   Result,
+  RetryMessageResponseSchema,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
   TokenizeResponseSchema,
@@ -980,6 +981,25 @@ export class DustAPI {
     }
   }
 
+  async markAsRead({ conversationId }: { conversationId: string }) {
+    const res = await this.request({
+      method: "PATCH",
+      path: `assistant/conversations/${conversationId}`,
+      body: {
+        read: true,
+      } as PatchConversationRequestType,
+    });
+
+    const r = await this._resultFromResponse(
+      GetConversationResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.conversation);
+  }
+
   async getConversations() {
     const res = await this.request({
       method: "GET",
@@ -1380,7 +1400,7 @@ export class DustAPI {
     messageId: string;
     blockedOnly?: boolean;
   }) {
-    const query = blockedOnly 
+    const query = blockedOnly
       ? new URLSearchParams({ blocked_only: "true" })
       : undefined;
 
@@ -1390,10 +1410,7 @@ export class DustAPI {
       query,
     });
 
-    const r = await this._resultFromResponse(
-      RetryMessageResponseSchema,
-      res
-    );
+    const r = await this._resultFromResponse(RetryMessageResponseSchema, res);
     if (r.isErr()) {
       return r;
     }

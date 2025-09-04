@@ -1010,6 +1010,9 @@ async function answerMessage(
     enabledMessageSplitting,
   });
 
+  // Immediately mark the conversation as read.
+  await dustAPI.markAsRead({ conversationId: conversation.sId });
+
   if (streamRes.isErr()) {
     return buildSlackMessageError(streamRes, "streamConversationToSlack");
   }
