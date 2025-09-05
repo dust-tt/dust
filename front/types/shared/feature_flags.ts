@@ -186,6 +186,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Use OpenAI EU API key instead of the default OpenAI API key",
     stage: "on_demand",
   },
+  slack_bot_mcp: {
+    description: "Slack bot MCP server for workspace-level Slack integration",
+    stage: "rolling_out",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
