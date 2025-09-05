@@ -76,7 +76,7 @@ async function handler(
     switch (result.error.code) {
       case "action_not_blocked":
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 400,
           api_error: {
             type: "action_not_blocked",
             message: "Action not blocked.",
