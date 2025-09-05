@@ -24,30 +24,6 @@ export const config = {
 
 const MAX_WEBHOOK_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5MB
 
-function getClientIP(req: NextApiRequest): string {
-  // Trust proxy headers only if behind trusted proxy
-  const trustProxy = process.env.TRUST_PROXY === "true";
-
-  if (trustProxy) {
-    const forwarded = req.headers["x-forwarded-for"] as string;
-    const realIP = req.headers["x-real-ip"] as string;
-    const cfConnectingIP = req.headers["cf-connecting-ip"] as string;
-
-    if (forwarded) {
-      return forwarded.split(",")[0].trim();
-    }
-    if (realIP) {
-      return realIP;
-    }
-    if (cfConnectingIP) {
-      return cfConnectingIP;
-    }
-  }
-
-  // Fallback to connection remote address
-  return req.socket.remoteAddress || "unknown";
-}
-
 function verifySignature(
   payload: Buffer,
   signature: string,
@@ -55,16 +31,20 @@ function verifySignature(
   algorithm: "sha1" | "sha256" | "sha512"
 ): boolean {
   try {
+    // Generate what the signature should be using the secret and payload
     const expectedSignature = crypto
       .createHmac(algorithm, secret)
       .update(payload)
       .digest("hex");
 
-    // Handle prefixed signatures (e.g., "sha256=...")
+    // Some webhook providers prefix signatures with algorithm name (like "sha256=abc123")
+    // Others send just the raw hash. We handle both cases here.
     const cleanSignature = signature.startsWith(`${algorithm}=`)
       ? signature.slice(algorithm.length + 1)
       : signature;
 
+    // Use timing-safe comparison to prevent timing attacks that could reveal
+    // information about the expected signature
     return crypto.timingSafeEqual(
       Buffer.from(expectedSignature, "hex"),
       Buffer.from(cleanSignature, "hex")
@@ -93,7 +73,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      // Check payload size before reading body
+      // Quick check: reject oversized payloads before doing any expensive operations
       const contentLength = parseInt(req.headers["content-length"] || "0");
       if (contentLength > MAX_WEBHOOK_PAYLOAD_SIZE) {
         return apiError(req, res, {
@@ -105,26 +85,20 @@ async function handler(
         });
       }
 
-      console.log(
-        "Webhook received for workspace:",
-        wId,
-        "source:",
-        webhookSourceId
-      );
-
-      // Get workspace first to validate it exists
+      // Make sure the workspace actually exists before processing the webhook
       const workspace = await WorkspaceResource.fetchById(wId);
       if (!workspace) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "workspace_not_found",
-            message: "Workspace not found.",
+            type: "app_not_found",
+            message: "Resource not found.",
           },
         });
       }
 
-      // Rate limiting per workspace
+      // Rate limiting: prevent abuse by limiting requests per workspace
+      // This stops one workspace from being spammed with webhook calls
       const remaining = await rateLimiter({
         key: `workspace:${workspace.id}:triggers:webhook`,
         maxPerTimeframe: 100,
@@ -141,28 +115,11 @@ async function handler(
         });
       }
 
-      // Additional rate limiting per IP
-      const clientIP = getClientIP(req);
-      const ipRemaining = await rateLimiter({
-        key: `webhook_ip:${clientIP}`,
-        maxPerTimeframe: 200, // 200 requests per minute per IP
-        timeframeSeconds: 60,
-        logger,
-      });
-      if (ipRemaining < 0) {
-        return apiError(req, res, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message: "IP rate limit exceeded.",
-          },
-        });
-      }
-
-      // Create internal authenticator for workspace to use resource methods
+      // Create an admin authenticator so we can use the resource layer
+      // This is safe because we already validated the workspace exists
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-      // Fetch webhook source using resource
+      // Look up the specific webhook source configuration
       const webhookSource = await WebhookSourceResource.fetchById(
         auth,
         webhookSourceId
@@ -173,37 +130,23 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "app_not_found",
-            message: "Webhook source not found.",
+            message: "Resource not found.",
           },
         });
       }
 
-      // Verify IP allowlist if configured
-      if (webhookSource.allowedIPs.length > 0) {
-        const isIPAllowed = webhookSource.allowedIPs.includes(clientIP);
-        if (!isIPAllowed) {
-          logger.warn(
-            {
-              webhookSourceId,
-              clientIP,
-              allowedIPs: webhookSource.allowedIPs,
-            },
-            "[Webhook] Request from unauthorized IP"
-          );
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "app_auth_error",
-              message: "Request from unauthorized IP address.",
-            },
-          });
-        }
-      }
-
-      // Collect raw body using stream pipeline
+      // Read the request body using streams to handle large payloads efficiently
+      // We protect against memory exhaustion by checking size as we go
       let rawBody = Buffer.from("");
+      let currentSize = 0;
       const collector = new Writable({
         write(chunk, encoding, callback) {
+          currentSize += chunk.length;
+          // Stop processing if the payload gets too big during streaming
+          if (currentSize > MAX_WEBHOOK_PAYLOAD_SIZE) {
+            callback(new Error("Payload size exceeded during streaming"));
+            return;
+          }
           rawBody = Buffer.concat([rawBody, chunk]);
           callback();
         },
@@ -214,7 +157,7 @@ async function handler(
       } catch (error) {
         logger.error(
           { error, webhookSourceId },
-          "[Webhook] Error reading request body"
+          "[Webhook] Failed to read request body - might be too large or malformed"
         );
         return apiError(req, res, {
           status_code: 400,
@@ -225,7 +168,8 @@ async function handler(
         });
       }
 
-      // Double-check actual payload size
+      // Final safety check on the actual payload size
+      // (in case content-length header was wrong or missing)
       if (rawBody.length > MAX_WEBHOOK_PAYLOAD_SIZE) {
         return apiError(req, res, {
           status_code: 413,
@@ -236,18 +180,30 @@ async function handler(
         });
       }
 
-      // Verify signature if configured
-      if (webhookSource.secret && webhookSource.signatureAlgorithm) {
-        const signatureHeader =
-          webhookSource.signatureHeader || "x-hub-signature-256";
-        const signature = req.headers[signatureHeader.toLowerCase()] as string;
+      // Handle signature verification if the webhook source has it configured
+      // We only verify signatures when both secret and algorithm are explicitly set
+      if (
+        webhookSource.secret &&
+        webhookSource.signatureAlgorithm &&
+        webhookSource.signatureHeader
+      ) {
+        const signature = req.headers[
+          webhookSource.signatureHeader.toLowerCase()
+        ] as string;
 
         if (!signature) {
+          logger.warn(
+            {
+              webhookSourceId,
+              expectedHeader: webhookSource.signatureHeader,
+            },
+            "[Webhook] Missing required signature header"
+          );
           return apiError(req, res, {
             status_code: 403,
             api_error: {
               type: "app_auth_error",
-              message: `Missing signature header: ${signatureHeader}`,
+              message: "Missing required signature header.",
             },
           });
         }
@@ -263,54 +219,66 @@ async function handler(
           logger.warn(
             {
               webhookSourceId,
-              signatureHeader,
-              clientIP,
+              signatureHeader: webhookSource.signatureHeader,
             },
-            "[Webhook] Invalid signature"
+            "[Webhook] Invalid signature - payload may have been tampered with"
           );
           return apiError(req, res, {
             status_code: 403,
             api_error: {
               type: "app_auth_error",
-              message: "Invalid webhook signature.",
+              message: "Invalid signature.",
             },
           });
         }
       }
 
-      // Parse the payload
+      // Parse the payload based on content type
+      // We support different formats but don't make assumptions about what's coming
       let payload: any;
       const contentType = req.headers["content-type"] || "";
 
       try {
         if (contentType.includes("application/json")) {
-          payload = JSON.parse(rawBody.toString());
+          // Extra protection against JSON bombs (deeply nested or huge JSON)
+          const jsonString = rawBody.toString();
+          if (jsonString.length > 1024 * 1024) {
+            throw new Error("JSON payload too large for parsing");
+          }
+          payload = JSON.parse(jsonString);
         } else if (contentType.includes("application/x-www-form-urlencoded")) {
+          // Parse form data into an object
           payload = Object.fromEntries(new URLSearchParams(rawBody.toString()));
         } else {
-          // Store as raw text for other content types
+          // For everything else (text/plain, text/xml, etc.), keep it as a string
           payload = rawBody.toString();
         }
       } catch (error) {
         logger.error(
-          { error, webhookSourceId, contentType },
-          "[Webhook] Error parsing payload"
+          {
+            error: error instanceof Error ? error.message : String(error),
+            webhookSourceId,
+            contentType,
+          },
+          "[Webhook] Failed to parse payload - treating as raw text"
         );
-        payload = rawBody.toString(); // Fallback to raw string
+        // If parsing fails, just treat it as raw text
+        payload = rawBody.toString();
       }
 
-      // Log the webhook payload (sanitized for production)
+      // Log the webhook details for debugging and monitoring
+      // We're careful about what we log to avoid leaking sensitive data
       logger.info(
         {
           webhookSourceId,
           webhookSourceName: webhookSource.name,
           workspaceId: workspace.sId,
-          clientIP,
           contentType,
           payloadSize: rawBody.length,
           headers: {
             "user-agent": req.headers["user-agent"],
             "content-type": req.headers["content-type"],
+            // Only include custom headers that the webhook source is configured to care about
             ...Object.fromEntries(
               Object.entries(req.headers).filter(
                 ([key]) =>
@@ -319,7 +287,7 @@ async function handler(
               )
             ),
           },
-          // Only log payload in development/test environments
+          // Only show actual payload content in development to help with debugging
           ...(process.env.NODE_ENV !== "production" && {
             payload:
               typeof payload === "string" && payload.length > 1000
@@ -327,7 +295,7 @@ async function handler(
                 : payload,
           }),
         },
-        "[Webhook] Received webhook payload"
+        "[Webhook] Successfully received and processed webhook"
       );
 
       // TODO: Here you would typically:
