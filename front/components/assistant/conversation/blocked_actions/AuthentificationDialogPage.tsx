@@ -10,13 +10,12 @@ type AuthenticationRequiredBlockedAction = BlockedToolExecution & {
   status: "blocked_authentication_required";
 };
 
+type ConnectionState = "connecting" | "connected" | "idle";
+
 interface AuthenticationDialogPageProps {
   authActions: AuthenticationRequiredBlockedAction[];
-  connectionStates: Record<string, "connecting" | "connected" | "idle">;
-  onConnectionStateChange: (
-    actionId: string,
-    status: "connecting" | "connected" | "idle"
-  ) => void;
+  connectionStates: Record<string, ConnectionState>;
+  onConnectionStateChange: (actionId: string, status: ConnectionState) => void;
   createPersonalConnection: (params: {
     mcpServerId: string;
     mcpServerDisplayName: string;
