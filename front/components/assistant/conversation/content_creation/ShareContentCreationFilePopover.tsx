@@ -160,30 +160,29 @@ export function ShareContentCreationFilePopover({
   };
 
   // Create the URL with fullscreen and side panel parameters for conversation participants
-  const shareUrlWithFullscreen = (() => {
-    if (
-      fileShare?.scope === "conversation_participants" &&
-      fileShare?.shareUrl
-    ) {
-      let url = appendHashParam(
-        fileShare.shareUrl,
-        FULL_SCREEN_HASH_PARAM,
-        "true"
-      );
-      url = appendHashParam(url, SIDE_PANEL_HASH_PARAM, fileId);
-      url = appendHashParam(
-        url,
-        SIDE_PANEL_TYPE_HASH_PARAM,
-        CONTENT_CREATION_SIDE_PANEL_TYPE
-      );
-      return url;
+  const buildShareURLForConversationParticipants = (url: string) => {
+    url = appendHashParam(url, FULL_SCREEN_HASH_PARAM, "true");
+    url = appendHashParam(url, SIDE_PANEL_HASH_PARAM, fileId);
+    url = appendHashParam(
+      url,
+      SIDE_PANEL_TYPE_HASH_PARAM,
+      CONTENT_CREATION_SIDE_PANEL_TYPE
+    );
+    return url;
+  };
+
+  const getShareURL = (scope: FileShareScope) => {
+    if (scope === "conversation_participants" && fileShare?.shareUrl) {
+      return buildShareURLForConversationParticipants(fileShare.shareUrl);
     }
 
     return fileShare?.shareUrl ?? "";
-  })();
+  };
+
+  const shareURL = getShareURL(selectedScope);
 
   const handleCopyLink = async () => {
-    await copyToClipboard(shareUrlWithFullscreen);
+    await copyToClipboard(shareURL);
   };
 
   return (
@@ -251,7 +250,7 @@ export function ShareContentCreationFilePopover({
                       disabled
                       onClick={(e) => e.currentTarget.select()}
                       readOnly
-                      value={shareUrlWithFullscreen}
+                      value={shareURL}
                     />
                   </div>
                   <IconButton
