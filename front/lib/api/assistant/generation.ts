@@ -26,6 +26,8 @@ import type {
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
+const SYSTEM_PROMPT_SEPARATOR = "\n---\n\n";
+
 /**
  * Generation of the prompt for agents with multiple actions.
  *
@@ -216,6 +218,9 @@ export async function constructPromptMultiActions(
     userMessage.context.fullName || "Unknown user"
   );
 
+  // Escape the system prompt separator so that it can't be used in the agent instructions.
+  instructions = instructions.replaceAll(SYSTEM_PROMPT_SEPARATOR, "\n----\n\n");
+
   // Replacement if instructions includes "{ASSISTANTS_LIST}"
   if (instructions.includes("{ASSISTANTS_LIST}") && agentsList) {
     instructions = instructions.replaceAll(
@@ -231,7 +236,6 @@ export async function constructPromptMultiActions(
     );
   }
 
-  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${guidelinesSection}\n${instructions}`;
-
+  const prompt = `${context}${SYSTEM_PROMPT_SEPARATOR}${toolsSection}\n${attachmentsSection}\n${guidelinesSection}\n${instructions}`;
   return prompt;
 }
