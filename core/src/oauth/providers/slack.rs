@@ -38,7 +38,7 @@ pub enum SlackUseCase {
     Connection,
     Bot,
     PersonalActions, // (personal tools setup)
-    PlatformActions, // (admin setup)
+    PlatformActions,
 }
 
 pub struct SlackConnectionProvider {}
@@ -54,16 +54,16 @@ impl SlackConnectionProvider {
                 "{}:{}",
                 *OAUTH_SLACK_CLIENT_ID, *OAUTH_SLACK_CLIENT_SECRET
             )),
-            SlackUseCase::Bot => general_purpose::STANDARD.encode(&format!(
-                "{}:{}",
-                *OAUTH_SLACK_BOT_CLIENT_ID, *OAUTH_SLACK_BOT_CLIENT_SECRET
-            )),
-            SlackUseCase::PlatformActions | SlackUseCase::PersonalActions => {
+            SlackUseCase::PlatformActions | SlackUseCase::Bot => {
                 general_purpose::STANDARD.encode(&format!(
                     "{}:{}",
-                    *OAUTH_SLACK_TOOLS_CLIENT_ID, *OAUTH_SLACK_TOOLS_CLIENT_SECRET
+                    *OAUTH_SLACK_BOT_CLIENT_ID, *OAUTH_SLACK_BOT_CLIENT_SECRET
                 ))
             }
+            SlackUseCase::PersonalActions => general_purpose::STANDARD.encode(&format!(
+                "{}:{}",
+                *OAUTH_SLACK_TOOLS_CLIENT_ID, *OAUTH_SLACK_TOOLS_CLIENT_SECRET
+            )),
         }
     }
 }
@@ -130,15 +130,15 @@ impl Provider for SlackConnectionProvider {
             }
         };
 
-        // For Bot and Connection we receive a bot token (acces_token). For platform_actions (admin
-        // setting up the MCP server) and personal_actions (personal tools setup) we receive a user
+        // For Bot, Connection, and PlatformActions we receive a bot token (acces_token). For personal_actions (personal tools setup) we receive a user
         // token (authed_user.access_token).
         let access_token = match app_type {
-            SlackUseCase::Connection | SlackUseCase::Bot => raw_json["access_token"]
-                .as_str()
-                .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
-            SlackUseCase::PersonalActions | SlackUseCase::PlatformActions => raw_json
-                ["authed_user"]["access_token"]
+            SlackUseCase::Connection | SlackUseCase::Bot | SlackUseCase::PlatformActions => {
+                raw_json["access_token"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?
+            }
+            SlackUseCase::PersonalActions => raw_json["authed_user"]["access_token"]
                 .as_str()
                 .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
         };
