@@ -89,7 +89,9 @@ const createServer = (
           );
         }
 
-        const { conversation } = agentLoopContext?.runContext ?? {};
+        const { conversation, agentConfiguration } =
+          agentLoopContext?.runContext ?? {};
+
         if (!conversation) {
           return new Err(
             new MCPError(
@@ -103,6 +105,7 @@ const createServer = (
           conversationId: conversation.sId,
           fileName: file_name,
           mimeType: mime_type,
+          createdByAgentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {
@@ -207,11 +210,14 @@ const createServer = (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
+        const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+
         const result = await editClientExecutableFile(auth, {
           fileId: file_id,
           oldString: old_string,
           newString: new_string,
           expectedReplacements: expected_replacements,
+          editedByAgentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {
