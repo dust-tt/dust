@@ -91,10 +91,15 @@ function useBlockedActionsQueue({
     );
   }, []);
 
+  const emptyBlockedActionsQueue = useCallback(() => {
+    setBlockedActionsQueue(EMPTY_BLOCKED_ACTIONS_QUEUE);
+  }, []);
+
   return {
     blockedActionsQueue,
     enqueueBlockedAction,
     removeCompletedAction,
+    emptyBlockedActionsQueue,
   };
 }
 
@@ -141,11 +146,14 @@ export function BlockedActionsProvider({
     workspaceId: owner.sId,
   });
 
-  const { blockedActionsQueue, enqueueBlockedAction, removeCompletedAction } =
-    useBlockedActionsQueue({
-      blockedActions,
-      conversationId,
-    });
+  const {
+    blockedActionsQueue,
+    enqueueBlockedAction,
+    emptyBlockedActionsQueue,
+  } = useBlockedActionsQueue({
+    blockedActions,
+    conversationId,
+  });
 
   const pendingValidations = useMemo(() => {
     return blockedActionsQueue.filter(
@@ -203,11 +211,9 @@ export function BlockedActionsProvider({
     if (currentValidationIndex + 1 < pendingValidations.length) {
       setCurrentValidationIndex(currentValidationIndex + 1);
     } else {
-      // Remove all completed validations at once from the queue once all validated
-      // to avoid re-rendering the dialog for each action.
-      pendingValidations.forEach((item) => {
-        removeCompletedAction(item.blockedAction.actionId);
-      });
+      // Wait until all validations are completed before clearing the queue.
+      // This avoids re-rendering the dialog for each action.
+      emptyBlockedActionsQueue();
 
       // Close dialog if no more blocked actions
       setIsDialogOpen(false);
