@@ -4,6 +4,7 @@ import { classNames } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
 import MessageGroup from "@app/ui/components/conversation/MessageGroup";
 import { useConversationFeedbacks } from "@app/ui/components/conversation/useConversationFeedbacks";
+import { useConversationMarkAsRead } from "@app/ui/components/conversation/useConversationMarkAsRead";
 import { usePublicConversation } from "@app/ui/components/conversation/usePublicConversation";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
 import type {
@@ -38,6 +39,8 @@ export function ConversationViewer({
       conversationId,
     });
 
+  const { markAsRead } = useConversationMarkAsRead({ conversation });
+
   // We only keep the last version of each message.
   const messages = (conversation?.content || []).map(
     (messages) => messages[messages.length - 1]
@@ -69,6 +72,10 @@ export function ConversationViewer({
       onStickyMentionsChange(agentMentions);
     }
   }, [agentMentions, onStickyMentionsChange]);
+
+  useEffect(() => {
+    void markAsRead(conversationId, false);
+  }, [markAsRead, conversationId]);
 
   const { feedbacks } = useConversationFeedbacks({ conversationId });
 
