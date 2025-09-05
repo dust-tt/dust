@@ -4,9 +4,10 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   SearchInput,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -60,12 +61,31 @@ export const DataSourceBuilderSelector = ({
     return spaces.filter((s) => spaceIds.has(s.sId));
   }, [spaces, dataSourceViews]);
 
-  // Get current space for search - extract from any navigation level
-  const currentSpace = findSpaceFromNavigationHistory(navigationHistory);
-  const currentNode = getLatestNodeFromNavigationHistory(navigationHistory);
+  // Get current space and node for search - memoized to prevent re-rendering issues
+  const currentSpace = useMemo(
+    () => findSpaceFromNavigationHistory(navigationHistory),
+    [navigationHistory]
+  );
+  const currentNode = useMemo(
+    () => getLatestNodeFromNavigationHistory(navigationHistory),
+    [navigationHistory]
+  );
 
-  const createSearchFilter = () => {
-    const searchFilter: {
+  const [searchScope, setSearchScope] = useState<"node" | "space">("node");
+
+  // Memoize the toggle handler to prevent re-renders
+  const handleToggleScope = useCallback(() => {
+    setSearchScope((prev) => (prev === "node" ? "space" : "node"));
+  }, []);
+
+  // Simple search scope label
+  const searchScopeLabel =
+    searchScope === "node" && currentNode
+      ? `Search within "${currentNode.title}"`
+      : `Search all of "${currentSpace?.name || "Space"}"`;
+
+  const searchFilter = useMemo(() => {
+    const filter: {
       dataSourceViewIdsBySpaceId?: Record<string, string[]>;
       parentId?: string;
     } = {
@@ -82,22 +102,28 @@ export const DataSourceBuilderSelector = ({
         findDataSourceViewFromNavigationHistory(navigationHistory);
 
       if (currentDataSourceView) {
-        searchFilter.dataSourceViewIdsBySpaceId = {
+        filter.dataSourceViewIdsBySpaceId = {
           [currentSpace.sId]: [currentDataSourceView.sId],
         };
       } else {
-        searchFilter.dataSourceViewIdsBySpaceId = {
+        filter.dataSourceViewIdsBySpaceId = {
           [currentSpace.sId]: dsv.map((dsv) => dsv.sId),
         };
       }
     }
 
-    if (currentNode && currentNode.internalId) {
-      searchFilter.parentId = currentNode.internalId;
+    if (searchScope === "node" && currentNode && currentNode.internalId) {
+      filter.parentId = currentNode.internalId;
     }
 
-    return searchFilter;
-  };
+    return filter;
+  }, [
+    currentNode,
+    currentSpace,
+    dataSourceViews,
+    navigationHistory,
+    searchScope,
+  ]);
 
   const {
     searchResultNodes,
@@ -113,7 +139,7 @@ export const DataSourceBuilderSelector = ({
           disabled: !debouncedSearch,
           includeDataSources: true,
           viewType,
-          ...createSearchFilter(),
+          ...searchFilter,
         }
       : {
           owner,
@@ -125,26 +151,11 @@ export const DataSourceBuilderSelector = ({
         }
   );
 
-  console.log(">>>>>>> searchResultNodes", searchResultNodes);
-  console.log(">>>>>>> currentNode.internalId", currentNode?.internalId);
-
   const isSearching = debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE;
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
   const hasError = isSearchError;
 
   const shouldShowSearch = isSearching && currentSpace;
-  const [showSearch, setShowSearch] = useState(shouldShowSearch);
-
-  // Handle transition when search state changes
-  useEffect(() => {
-    if (shouldShowSearch !== showSearch) {
-      const timer = setTimeout(() => {
-        setShowSearch(shouldShowSearch);
-      }, 150);
-
-      return () => clearTimeout(timer);
-    }
-  }, [shouldShowSearch, showSearch]);
 
   // Breadcrumbs with search context - defined after showSearch state
   const handleConnectDataClick = () => {
@@ -154,7 +165,7 @@ export const DataSourceBuilderSelector = ({
   };
 
   const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
-    if (showSearch && currentSpace) {
+    if (shouldShowSearch && currentSpace) {
       // When searching, only show path up to space level
       const spaceIndex = navigationHistory.findIndex(
         (entry) => entry.type === "space"
@@ -175,7 +186,7 @@ export const DataSourceBuilderSelector = ({
       href: undefined,
       onClick: () => navigateTo(index),
     }));
-  }, [navigationHistory, navigateTo, showSearch, currentSpace]);
+  }, [navigationHistory, navigateTo, shouldShowSearch, currentSpace]);
 
   if (filteredSpaces.length === 0) {
     return (
@@ -214,14 +225,25 @@ export const DataSourceBuilderSelector = ({
             value={searchTerm}
             onChange={setSearchTerm}
           />
+          {currentNode && isSearching && (
+            <div className="flex items-center justify-between px-1 py-1">
+              <span className="text-xs text-muted-foreground">
+                {searchScopeLabel}
+              </span>
+              <SliderToggle
+                selected={searchScope === "node"}
+                onClick={handleToggleScope}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      {showSearch ? (
+      {shouldShowSearch ? (
         <DataSourceSearchResults
           currentSpace={currentSpace}
           searchResultNodes={
-            currentNode?.internalId && debouncedSearch
+            searchScope === "node" && currentNode?.internalId && debouncedSearch
               ? searchResultNodes.filter(
                   (s) => s.internalId !== currentNode.internalId
                 )
