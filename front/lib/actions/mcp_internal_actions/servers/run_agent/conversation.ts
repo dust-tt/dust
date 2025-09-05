@@ -104,7 +104,7 @@ export async function getOrCreateConversation(
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
-        content: query,
+        content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
         mentions: [{ configurationId: childAgentId }],
         context: {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -143,7 +143,7 @@ export async function getOrCreateConversation(
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     message: {
-      content: query,
+      content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
       mentions: [{ configurationId: childAgentId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
