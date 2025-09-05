@@ -147,24 +147,17 @@ export const useHashParam = (
   return [innerValue.val || defaultValue, setValue];
 };
 
-export const setHashParam = (
-  url: string,
-  key: string,
-  value?: string
-): string => {
-  const urlObj = new URL(url, "https://example.com");
-  const hash = urlObj.hash.slice(1);
-  const [prefix, query] = hash.split("?");
-  const searchParams = new URLSearchParams(query);
+export function appendHashParam(url: string, key: string, value: string) {
+  const urlObj = new URL(url);
+  const additionalHash = `${key}=${value}`;
 
-  if (typeof value === "undefined" || value === "") {
-    searchParams.delete(key);
+  if (urlObj.hash) {
+    // Remove the # from existing hash and append
+    const existingHash = urlObj.hash.slice(1);
+    urlObj.hash = `#${existingHash}&${additionalHash}`;
   } else {
-    searchParams.set(key, value);
+    urlObj.hash = `#${additionalHash}`;
   }
 
-  const hashSearch = searchParams.toString();
-  urlObj.hash = hashSearch ? `${prefix}?${hashSearch}` : prefix;
-
   return urlObj.toString();
-};
+}
