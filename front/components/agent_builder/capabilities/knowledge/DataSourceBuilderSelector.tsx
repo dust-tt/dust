@@ -74,12 +74,6 @@ export const DataSourceBuilderSelector = ({
 
   const [searchScope, setSearchScope] = useState<"node" | "space">("node");
 
-  // Simple search scope label
-  const searchScopeLabel =
-    searchScope === "node" && currentNode
-      ? `Search within "${currentNode.title}"`
-      : `Search all of "${currentSpace?.name || "Space"}"`;
-
   const searchFilter = useMemo(() => {
     const filter: {
       dataSourceViewIdsBySpaceId?: Record<string, string[]>;
@@ -162,14 +156,23 @@ export const DataSourceBuilderSelector = ({
 
   const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
     if (shouldShowSearch && currentSpace) {
-      // When searching, only show path up to space level
-      const spaceIndex = navigationHistory.findIndex(
-        (entry) => entry.type === "space"
-      );
-      const spaceNavigation =
-        spaceIndex >= 0 ? navigationHistory.slice(0, spaceIndex + 1) : [];
+      // When searching in space scope, show only up to space level
+      if (searchScope === "space") {
+        const spaceIndex = navigationHistory.findIndex(
+          (entry) => entry.type === "space"
+        );
+        const spaceNavigation =
+          spaceIndex >= 0 ? navigationHistory.slice(0, spaceIndex + 1) : [];
 
-      return spaceNavigation.map((entry, index) => ({
+        return spaceNavigation.map((entry, index) => ({
+          ...getBreadcrumbConfig(entry),
+          href: undefined,
+          onClick: () => navigateTo(index),
+        }));
+      }
+
+      // When searching in node scope, show full path (current behavior for node search)
+      return navigationHistory.map((entry, index) => ({
         ...getBreadcrumbConfig(entry),
         href: undefined,
         onClick: () => navigateTo(index),
@@ -182,7 +185,13 @@ export const DataSourceBuilderSelector = ({
       href: undefined,
       onClick: () => navigateTo(index),
     }));
-  }, [navigationHistory, navigateTo, shouldShowSearch, currentSpace]);
+  }, [
+    navigationHistory,
+    navigateTo,
+    shouldShowSearch,
+    currentSpace,
+    searchScope,
+  ]);
 
   if (filteredSpaces.length === 0) {
     return (
@@ -223,7 +232,7 @@ export const DataSourceBuilderSelector = ({
           />
           {currentNode && isSearching && (
             <div className="flex items-center gap-1 px-1 py-1">
-              <span className="mr-2 text-xs text-muted-foreground">
+              <span className="mr-2 text-sm text-muted-foreground">
                 Searching in:
               </span>
               <div className="flex space-x-3 overflow-hidden rounded-md">
@@ -232,7 +241,7 @@ export const DataSourceBuilderSelector = ({
                   variant={searchScope === "node" ? "outline" : "ghost"}
                   label={currentNode.title}
                   className={cn(
-                    searchScope === "node" && "text-muted-foreground"
+                    searchScope !== "node" && "text-muted-foreground"
                   )}
                 />
                 <Separator orientation="vertical" />
@@ -241,7 +250,7 @@ export const DataSourceBuilderSelector = ({
                   variant={searchScope === "space" ? "outline" : "ghost"}
                   label={`All ${currentSpace?.name}`}
                   className={cn(
-                    searchScope === "space" && "text-muted-foreground"
+                    searchScope !== "space" && "text-muted-foreground"
                   )}
                 />
               </div>

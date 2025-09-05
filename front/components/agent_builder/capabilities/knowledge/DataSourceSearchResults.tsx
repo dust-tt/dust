@@ -376,25 +376,13 @@ export function DataSourceSearchResults({
           Error searching results.
         </div>
       ) : (
-        <>
-          <div className="flex w-full flex-col items-end text-sm text-muted-foreground dark:text-muted-foreground-night">
-            <div>
-              {isLoading
-                ? "Searching..."
-                : `${searchResults.length} results found`}
-            </div>
-          </div>
-          <ScrollableDataTable
-            data={searchTableRows}
-            columns={columns}
-            className={cn(
-              "pb-4",
-              isLoading && "pointer-events-none opacity-50"
-            )}
-            totalRowCount={searchResults.length}
-            maxHeight
-          />
-        </>
+        <ScrollableDataTable
+          data={searchTableRows}
+          columns={columns}
+          className={cn("pb-4", isLoading && "pointer-events-none opacity-50")}
+          totalRowCount={searchResults.length}
+          maxHeight
+        />
       )}
     </>
   );
