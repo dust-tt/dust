@@ -1,9 +1,12 @@
-import type {
-  ConversationType,
-  AgentMessageType,
-} from "@app/types/assistant/conversation";
-import { isAgentMessageType } from "@app/types";
 import assert from "assert";
+
+import type { ContentFragmentType } from "@app/types";
+import { isAgentMessageType } from "@app/types";
+import type {
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 
 // TODO(DURABLE-AGENTS 2025-07-25): Consider moving inside this function the "conversation has
 // already been prepared appropriately" part mentioned below, referring to
@@ -29,32 +32,59 @@ export function sliceConversationForAgentMessage(
   slicedConversation: ConversationType;
   slicedAgentMessage: AgentMessageType;
 } {
-  const slicedConversation = { ...conversation };
-  const slicedAgentMessage = slicedConversation.content.findLast(
-    (versions) =>
-      versions.length > agentMessageVersion &&
-      versions[agentMessageVersion].sId === agentMessageId
-  )?.[agentMessageVersion];
+  let slicedAgentMessage: AgentMessageType | undefined;
+  // Copy
+  const slicedConversation = {
+    ...conversation,
+    content: conversation.content
+      .map((versions) => {
+        if (versions.some((a) => a.sId === agentMessageId)) {
+          // This is the versions group containing the agent message we need
+          return versions.map((m) => {
+            if (m.version === agentMessageVersion && isAgentMessageType(m)) {
+              // Slice the agent message to the given step and keep it in local var
+              slicedAgentMessage = {
+                ...m,
+                contents: m.contents.filter((content) => content.step < step),
+                rawContents: m.rawContents.filter(
+                  (content) => content.step < step
+                ),
+                actions: m.actions.filter((action) => action.step < step),
+              };
+              return slicedAgentMessage;
+            } else {
+              return m as AgentMessageType;
+            }
+          });
+        } else {
+          // If the agent message has already been found, ignore all remaining messages - we are probably retrying a past message
+          if (slicedAgentMessage) {
+            return [];
+          }
+          // Also skip agent messages that are currently running (other agents might have been triggered in parallel)
+          return versions.filter(
+            (message) =>
+              !isAgentMessageType(message) || message.status !== "created"
+          ) as AgentMessageType[] | UserMessageType[] | ContentFragmentType[];
+        }
+      })
+      // Filter out removed versions group
+      .filter((versions) => versions.length > 0),
+  };
+
+  console.log(
+    "conversation",
+    step,
+    agentMessageId,
+    agentMessageVersion,
+    slicedConversation.content
+  );
 
   assert(
     slicedAgentMessage &&
       isAgentMessageType(slicedAgentMessage) &&
       slicedAgentMessage.version === agentMessageVersion,
     "Unreachable: Agent message not found or mismatched."
-  );
-
-  // Mutation remains local to this function since conversation was first copied
-  // into `slicedConversation`.
-  slicedAgentMessage.contents = slicedAgentMessage.contents.filter(
-    (content) => content.step < step
-  );
-
-  slicedAgentMessage.rawContents = slicedAgentMessage.rawContents.filter(
-    (content) => content.step < step
-  );
-
-  slicedAgentMessage.actions = slicedAgentMessage.actions.filter(
-    (action) => action.step < step
   );
 
   return {
