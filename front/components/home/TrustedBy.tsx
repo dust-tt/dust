@@ -20,6 +20,7 @@ const LOGO_SETS = {
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
     eu: [
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
@@ -34,6 +35,7 @@ const LOGO_SETS = {
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
   },
   landing: {
@@ -50,6 +52,7 @@ const LOGO_SETS = {
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
     eu: [
       { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
@@ -64,6 +67,7 @@ const LOGO_SETS = {
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
   },
   b2bSaas: {
@@ -146,6 +150,7 @@ const LOGO_SETS = {
       { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
     eu: [
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
@@ -153,6 +158,7 @@ const LOGO_SETS = {
       { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
   },
 } as const;
