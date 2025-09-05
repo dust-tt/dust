@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -21,21 +22,26 @@ export const config = {
   },
 };
 
-function getClientIP(req: NextApiRequest): string {
-  // Try to get the real IP from various headers
-  const forwarded = req.headers["x-forwarded-for"] as string;
-  const realIP = req.headers["x-real-ip"] as string;
-  const cfConnectingIP = req.headers["cf-connecting-ip"] as string;
+const MAX_WEBHOOK_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5MB
 
-  if (forwarded) {
-    // x-forwarded-for can contain multiple IPs, use the first one
-    return forwarded.split(",")[0].trim();
-  }
-  if (realIP) {
-    return realIP;
-  }
-  if (cfConnectingIP) {
-    return cfConnectingIP;
+function getClientIP(req: NextApiRequest): string {
+  // Trust proxy headers only if behind trusted proxy
+  const trustProxy = process.env.TRUST_PROXY === "true";
+
+  if (trustProxy) {
+    const forwarded = req.headers["x-forwarded-for"] as string;
+    const realIP = req.headers["x-real-ip"] as string;
+    const cfConnectingIP = req.headers["cf-connecting-ip"] as string;
+
+    if (forwarded) {
+      return forwarded.split(",")[0].trim();
+    }
+    if (realIP) {
+      return realIP;
+    }
+    if (cfConnectingIP) {
+      return cfConnectingIP;
+    }
   }
 
   // Fallback to connection remote address
@@ -87,6 +93,113 @@ async function handler(
 
   switch (req.method) {
     case "POST":
+      // Check payload size before reading body
+      const contentLength = parseInt(req.headers["content-length"] || "0");
+      if (contentLength > MAX_WEBHOOK_PAYLOAD_SIZE) {
+        return apiError(req, res, {
+          status_code: 413,
+          api_error: {
+            type: "content_too_large",
+            message: `Payload too large. Maximum size is ${MAX_WEBHOOK_PAYLOAD_SIZE / 1024 / 1024}MB.`,
+          },
+        });
+      }
+
+      console.log(
+        "Webhook received for workspace:",
+        wId,
+        "source:",
+        webhookSourceId
+      );
+
+      // Get workspace first to validate it exists
+      const workspace = await WorkspaceResource.fetchById(wId);
+      if (!workspace) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_not_found",
+            message: "Workspace not found.",
+          },
+        });
+      }
+
+      // Rate limiting per workspace
+      const remaining = await rateLimiter({
+        key: `workspace:${workspace.id}:triggers:webhook`,
+        maxPerTimeframe: 100,
+        timeframeSeconds: 60,
+        logger,
+      });
+      if (remaining < 0) {
+        return apiError(req, res, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message: "You have reached the rate limit for webhook calls.",
+          },
+        });
+      }
+
+      // Additional rate limiting per IP
+      const clientIP = getClientIP(req);
+      const ipRemaining = await rateLimiter({
+        key: `webhook_ip:${clientIP}`,
+        maxPerTimeframe: 200, // 200 requests per minute per IP
+        timeframeSeconds: 60,
+        logger,
+      });
+      if (ipRemaining < 0) {
+        return apiError(req, res, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message: "IP rate limit exceeded.",
+          },
+        });
+      }
+
+      // Create internal authenticator for workspace to use resource methods
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+      // Fetch webhook source using resource
+      const webhookSource = await WebhookSourceResource.fetchById(
+        auth,
+        webhookSourceId
+      );
+
+      if (!webhookSource) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "app_not_found",
+            message: "Webhook source not found.",
+          },
+        });
+      }
+
+      // Verify IP allowlist if configured
+      if (webhookSource.allowedIPs.length > 0) {
+        const isIPAllowed = webhookSource.allowedIPs.includes(clientIP);
+        if (!isIPAllowed) {
+          logger.warn(
+            {
+              webhookSourceId,
+              clientIP,
+              allowedIPs: webhookSource.allowedIPs,
+            },
+            "[Webhook] Request from unauthorized IP"
+          );
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "app_auth_error",
+              message: "Request from unauthorized IP address.",
+            },
+          });
+        }
+      }
+
       // Collect raw body using stream pipeline
       let rawBody = Buffer.from("");
       const collector = new Writable({
@@ -112,59 +225,15 @@ async function handler(
         });
       }
 
-      // Get workspace first to validate it exists
-      const workspace = await WorkspaceResource.fetchByModelId(wId);
-      if (!workspace) {
+      // Double-check actual payload size
+      if (rawBody.length > MAX_WEBHOOK_PAYLOAD_SIZE) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 413,
           api_error: {
-            type: "workspace_not_found",
-            message: "Workspace not found.",
+            type: "content_too_large",
+            message: `Payload too large. Maximum size is ${MAX_WEBHOOK_PAYLOAD_SIZE / 1024 / 1024}MB.`,
           },
         });
-      }
-
-      // Create internal authenticator for workspace to use resource methods
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-      // Fetch webhook source using resource
-      const webhookSource = await WebhookSourceResource.fetchById(
-        auth,
-        webhookSourceId
-      );
-
-      if (!webhookSource) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "app_not_found",
-            message: "Webhook source not found.",
-          },
-        });
-      }
-
-      const clientIP = getClientIP(req);
-
-      // Verify IP allowlist if configured
-      if (webhookSource.allowedIPs.length > 0) {
-        const isIPAllowed = webhookSource.allowedIPs.includes(clientIP);
-        if (!isIPAllowed) {
-          logger.warn(
-            {
-              webhookSourceId,
-              clientIP,
-              allowedIPs: webhookSource.allowedIPs,
-            },
-            "[Webhook] Request from unauthorized IP"
-          );
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "app_auth_error",
-              message: "Request from unauthorized IP address.",
-            },
-          });
-        }
       }
 
       // Verify signature if configured
@@ -230,7 +299,7 @@ async function handler(
         payload = rawBody.toString(); // Fallback to raw string
       }
 
-      // Log the webhook payload
+      // Log the webhook payload (sanitized for production)
       logger.info(
         {
           webhookSourceId,
@@ -250,10 +319,13 @@ async function handler(
               )
             ),
           },
-          payload:
-            typeof payload === "string" && payload.length > 1000
-              ? `${payload.substring(0, 1000)}...`
-              : payload,
+          // Only log payload in development/test environments
+          ...(process.env.NODE_ENV !== "production" && {
+            payload:
+              typeof payload === "string" && payload.length > 1000
+                ? `${payload.substring(0, 1000)}...`
+                : payload,
+          }),
         },
         "[Webhook] Received webhook payload"
       );
