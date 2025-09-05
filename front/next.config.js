@@ -35,8 +35,7 @@ module.exports = {
   experimental: {
     // Prevents minification of the temporalio client workflow ids.
     serverMinification: false,
-    // Speed up dev builds by limiting bundling external dependencies.
-    ...(isDev ? { esmExternals: "loose" } : { esmExternals: false }),
+    esmExternals: false,
   },
   async redirects() {
     return [
