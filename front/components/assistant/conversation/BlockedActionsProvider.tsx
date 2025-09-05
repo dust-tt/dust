@@ -301,31 +301,27 @@ export function BlockedActionsProvider({
             showNavigation={pages.length > 1}
             showHeaderNavigation={false}
             footerContent={(() => {
-              if (pages.length > 1) {
-                return (
-                  <div className="flex flex-row justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      label="Decline"
-                      onClick={() => submitValidation("rejected")}
-                      disabled={isValidating}
-                      isLoading={submitStatus === "rejected"}
-                    >
-                      Decline
-                    </Button>
-                    <Button
-                      variant="highlight"
-                      label="Allow"
-                      autoFocus
-                      onClick={() => submitValidation("approved")}
-                      disabled={isValidating}
-                      isLoading={submitStatus === "approved"}
-                    />
-                  </div>
-                );
-              }
-
-              return null;
+              return (
+                <div className="flex flex-row justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    label="Decline"
+                    onClick={() => submitValidation("rejected")}
+                    disabled={isValidating}
+                    isLoading={submitStatus === "rejected"}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    variant="highlight"
+                    label="Allow"
+                    autoFocus
+                    onClick={() => submitValidation("approved")}
+                    disabled={isValidating}
+                    isLoading={submitStatus === "approved"}
+                  />
+                </div>
+              );
             })()}
           />
         )}
