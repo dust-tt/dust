@@ -11,8 +11,8 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/trigger_subscriber";
-import { TriggerModel } from "@app/lib/models/assistant/triggers";
+import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
+import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";

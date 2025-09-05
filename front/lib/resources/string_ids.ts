@@ -31,12 +31,15 @@ const RESOURCES_PREFIX = {
   extension: "ext",
   mcp_server_connection: "msc",
   mcp_server_view: "msv",
-  trigger: "trg",
   remote_mcp_server: "rms",
   tag: "tag",
   transcripts_configuration: "tsc",
   agent_step_content: "asc",
   agent_memory: "amm",
+
+  // Resource relative to triggers.
+  trigger: "trg",
+  webhook_source: "whs",
 
   // Action (used for tool approval currently).
   mcp_action: "act",
