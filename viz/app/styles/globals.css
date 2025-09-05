@@ -92,6 +92,7 @@
     --font-serif: Arvo, ui-serif, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
       "Liberation Mono", "Courier New", monospace;
+    --font-inter: Inter, ui-sans-serif, sans-serif, system-ui;
     --radius: 0.575rem;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
@@ -143,6 +144,7 @@
     --font-serif: Arvo, ui-serif, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
       "Liberation Mono", "Courier New", monospace;
+    --font-inter: Inter, ui-sans-serif, sans-serif, system-ui;
     --radius: 0.575rem;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
@@ -194,7 +196,6 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
   }
