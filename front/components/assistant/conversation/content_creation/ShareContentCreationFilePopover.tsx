@@ -24,8 +24,10 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
+import { setHashParam } from "@app/hooks/useHashParams";
 import { useShareContentCreationFile } from "@app/lib/swr/files";
 import type { FileShareScope, LightWorkspaceType } from "@app/types";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface FileSharingDropdownProps {
   selectedScope: FileShareScope;
@@ -152,8 +154,20 @@ export function ShareContentCreationFilePopover({
     }
   };
 
+  // Create the URL with fullscreen parameter for conversation participants
+  const shareUrlWithFullscreen = React.useMemo(() => {
+    if (
+      fileShare?.scope === "conversation_participants" &&
+      fileShare?.shareUrl
+    ) {
+      return setHashParam(fileShare.shareUrl, FULL_SCREEN_HASH_PARAM, "true");
+    }
+
+    return fileShare?.shareUrl ?? "";
+  }, [fileShare?.scope, fileShare?.shareUrl]);
+
   const handleCopyLink = async () => {
-    await copyToClipboard(fileShare?.shareUrl ?? "");
+    await copyToClipboard(shareUrlWithFullscreen);
   };
 
   return (
@@ -221,7 +235,7 @@ export function ShareContentCreationFilePopover({
                       disabled
                       onClick={(e) => e.currentTarget.select()}
                       readOnly
-                      value={fileShare?.shareUrl ?? ""}
+                      value={shareUrlWithFullscreen}
                     />
                   </div>
                   <IconButton
