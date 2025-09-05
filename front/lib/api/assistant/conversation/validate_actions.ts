@@ -11,6 +11,7 @@ import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -18,7 +19,6 @@ import logger from "@app/logger/logger";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ConversationType, Result } from "@app/types";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-import { DustError } from "@app/lib/error";
 
 async function getUserMessageIdFromMessageId(
   auth: Authenticator,
