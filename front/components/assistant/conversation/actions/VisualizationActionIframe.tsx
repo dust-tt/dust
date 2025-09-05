@@ -223,7 +223,7 @@ interface PublicVisualizationActionIframeProps {
 }
 
 // This interface represents the props for the VisualizationActionIframe component when it is used
-// in a legacy context.
+// in a conversation context.
 interface ConversationVisualizationActionIframeProps {
   agentConfigurationId: string;
   conversationId: string;
