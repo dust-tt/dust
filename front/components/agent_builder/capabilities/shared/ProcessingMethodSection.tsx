@@ -147,7 +147,7 @@ export function ProcessingMethodSection() {
         }
       }
     }
-  }, [mcpServerView, serversToDisplay, setValue, sources.in]);
+  }, [hasFeature, mcpServerView, serversToDisplay, setValue, sources.in]);
 
   return (
     <div className="mt-2 flex flex-col space-y-4">

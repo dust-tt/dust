@@ -261,7 +261,6 @@ export const DataSourceBuilderSelector = ({
 
       {shouldShowSearch ? (
         <DataSourceSearchResults
-          currentSpace={currentSpace}
           searchResultNodes={
             searchScope === "node" && currentNode?.internalId && debouncedSearch
               ? searchResultNodes.filter(

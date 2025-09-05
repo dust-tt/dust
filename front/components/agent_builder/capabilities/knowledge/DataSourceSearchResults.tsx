@@ -20,11 +20,10 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { DataSourceViewContentNode, SpaceType } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types";
 
 interface DataSourceSearchResultsProps {
-  currentSpace: SpaceType | null;
   searchResultNodes: DataSourceContentNode[];
   isLoading: boolean;
   onClearSearch: () => void;
@@ -145,7 +144,6 @@ function makeSearchResultColumnsWithSelection(
 }
 
 export function DataSourceSearchResults({
-  currentSpace,
   searchResultNodes,
   isLoading,
   onClearSearch,
