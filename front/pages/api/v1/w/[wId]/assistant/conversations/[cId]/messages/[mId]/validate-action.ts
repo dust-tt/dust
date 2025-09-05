@@ -127,18 +127,32 @@ async function handler(
   });
 
   if (result.isErr()) {
-    return apiError(
-      req,
-      res,
-      {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to validate action",
-        },
-      },
-      result.error
-    );
+    switch (result.error.code) {
+      case "action_not_blocked":
+        // The action is already unblocked, so we return a success instead.
+        return res.status(200).json({ success: true });
+      case "action_not_found":
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "action_not_found",
+            message: "Action not found.",
+          },
+        });
+      default:
+        return apiError(
+          req,
+          res,
+          {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to validate action",
+            },
+          },
+          result.error
+        );
+    }
   }
 
   res.status(200).json({ success: true });
