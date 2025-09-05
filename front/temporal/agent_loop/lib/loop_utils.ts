@@ -40,22 +40,29 @@ export function sliceConversationForAgentMessage(
       .map((versions) => {
         if (versions.some((a) => a.sId === agentMessageId)) {
           // This is the versions group containing the agent message we need
-          return versions.map((m) => {
-            if (m.version === agentMessageVersion && isAgentMessageType(m)) {
-              // Slice the agent message to the given step and keep it in local var
-              slicedAgentMessage = {
-                ...m,
-                contents: m.contents.filter((content) => content.step < step),
-                rawContents: m.rawContents.filter(
-                  (content) => content.step < step
-                ),
-                actions: m.actions.filter((action) => action.step < step),
-              };
-              return slicedAgentMessage;
-            } else {
-              return m as AgentMessageType;
-            }
-          });
+          return (
+            versions
+              // Narrow down type, all elements are AgentMessageType as we are in the versions of the agent message
+              .filter((m) => isAgentMessageType(m))
+              .map((m) => {
+                if (m.version === agentMessageVersion) {
+                  // Slice the agent message to the given step and keep it in local var
+                  slicedAgentMessage = {
+                    ...m,
+                    contents: m.contents.filter(
+                      (content) => content.step < step
+                    ),
+                    rawContents: m.rawContents.filter(
+                      (content) => content.step < step
+                    ),
+                    actions: m.actions.filter((action) => action.step < step),
+                  };
+                  return slicedAgentMessage;
+                } else {
+                  return m;
+                }
+              })
+          );
         } else {
           // If the agent message has already been found, ignore all remaining messages - we are probably retrying a past message
           if (slicedAgentMessage) {
