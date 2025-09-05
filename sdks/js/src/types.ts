@@ -626,6 +626,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "toolsets_tool"
   | "usage_data_api"
   | "xai_feature"
+  | "simple_audio_transcription"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
