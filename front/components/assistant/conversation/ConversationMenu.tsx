@@ -65,7 +65,12 @@ export function ConversationMenu({
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="ghost" icon={MoreIcon} />
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={MoreIcon}
+            disabled={activeConversationId === null || conversation === null}
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuLabel>Conversation</DropdownMenuLabel>
