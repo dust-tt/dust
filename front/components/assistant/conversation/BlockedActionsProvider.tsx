@@ -153,9 +153,6 @@ export function BlockedActionsProvider({
     );
   }, [blockedActionsQueue]);
 
-  // TODO: support "auth" step
-  const [currentStep, setCurrentStep] = useState<"validation">("validation");
-
   const [currentValidationIndex, setCurrentValidationIndex] = useState(0);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -206,13 +203,14 @@ export function BlockedActionsProvider({
     if (currentValidationIndex + 1 < pendingValidations.length) {
       setCurrentValidationIndex(currentValidationIndex + 1);
     } else {
+      // Remove all completed validations at once from the queue once all validated
+      // to avoid re-rendering the dialog for each action.
       pendingValidations.forEach((item) => {
         removeCompletedAction(item.blockedAction.actionId);
       });
 
       // Close dialog if no more blocked actions
       setIsDialogOpen(false);
-      setCurrentStep("validation");
       setCurrentValidationIndex(0);
     }
   };
@@ -220,7 +218,6 @@ export function BlockedActionsProvider({
   // Opens the dialog when there are new pending validations
   useEffect(() => {
     if (pendingValidations.length > 0 && !isDialogOpen) {
-      setCurrentStep("validation");
       setCurrentValidationIndex(0);
       setIsDialogOpen(true);
     }
@@ -230,25 +227,22 @@ export function BlockedActionsProvider({
   useEffect(() => {
     if (blockedActionsQueue.length === 0 && isDialogOpen && !isValidating) {
       setIsDialogOpen(false);
-      setCurrentStep("validation");
       setCurrentValidationIndex(0);
     }
   }, [blockedActionsQueue.length, isDialogOpen, isValidating]);
 
   const showBlockedActionsDialog = useCallback(() => {
     if (blockedActionsQueue.length > 0 && pendingValidations.length > 0) {
-      setCurrentStep("validation");
       setCurrentValidationIndex(0);
       setIsDialogOpen(true);
     }
   }, [blockedActionsQueue.length, pendingValidations.length]);
 
-  const hasPendingValidations = pendingValidations.length > 0;
-  const hasBlockedActions = hasPendingValidations;
+  const hasBlockedActions = pendingValidations.length > 0;
   const totalBlockedActions = pendingValidations.length;
 
   const pages = useMemo(() => {
-    if (currentStep === "validation" && hasPendingValidations) {
+    if (pendingValidations.length > 0) {
       return pendingValidations.map((item) => {
         const { blockedAction } = item;
         return {
@@ -270,28 +264,19 @@ export function BlockedActionsProvider({
     }
 
     return [];
-  }, [
-    currentStep,
-    hasPendingValidations,
-    pendingValidations,
-    errorMessage,
-    neverAskAgain,
-  ]);
+  }, [pendingValidations, errorMessage, neverAskAgain]);
 
   const currentPageId = useMemo(() => {
     if (pages.length === 0) {
       return "";
     }
 
-    if (
-      currentStep === "validation" &&
-      pendingValidations[currentValidationIndex]
-    ) {
+    if (pendingValidations[currentValidationIndex]) {
       return `validation-${pendingValidations[currentValidationIndex].blockedAction.actionId}`;
     }
 
     return pages[0]?.id || "";
-  }, [pages, currentStep, currentValidationIndex, pendingValidations]);
+  }, [pages, currentValidationIndex, pendingValidations]);
 
   return (
     <ActionValidationContext.Provider
@@ -313,10 +298,10 @@ export function BlockedActionsProvider({
             hideCloseButton
             size="lg"
             isAlertDialog
-            showNavigation={currentStep === "validation" && pages.length > 1}
+            showNavigation={pages.length > 1}
             showHeaderNavigation={false}
             footerContent={(() => {
-              if (currentStep === "validation") {
+              if (pages.length > 1) {
                 return (
                   <div className="flex flex-row justify-end gap-2">
                     <Button
