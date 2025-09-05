@@ -1,7 +1,9 @@
-import { CollapsibleComponent } from "@dust-tt/sparkle";
-import { CodeBlock } from "@dust-tt/sparkle";
-import { Label } from "@dust-tt/sparkle";
-import { Checkbox } from "@dust-tt/sparkle";
+import {
+  Checkbox,
+  CodeBlock,
+  CollapsibleComponent,
+  Label,
+} from "@dust-tt/sparkle";
 
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { asDisplayName } from "@app/types";
