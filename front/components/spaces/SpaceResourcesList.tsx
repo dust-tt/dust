@@ -55,7 +55,10 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isWebsiteOrFolderCategory } from "@app/types";
+import {
+  ANONYMOUS_USER_IMAGE_URL,
+  isWebsiteOrFolderCategory,
+} from "@app/types";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
@@ -101,8 +104,9 @@ function getTableColumns(
     header: "Managed by",
     accessorFn: (row) =>
       isGlobalOrSystemSpace
-        ? row.dataSourceView.dataSource.editedByUser?.imageUrl ?? undefined
-        : row.dataSourceView.editedByUser?.imageUrl ?? undefined,
+        ? row.dataSourceView.dataSource.editedByUser?.imageUrl ??
+          ANONYMOUS_USER_IMAGE_URL
+        : row.dataSourceView.editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL,
     cell: (ctx) => {
       const { dataSourceView } = ctx.row.original;
       const editedByUser = isGlobalOrSystemSpace
@@ -122,14 +126,14 @@ function getTableColumns(
     header: "Used by",
     // Return a numeric count to allow numeric sorts if we want
     accessorFn: (row) => row.dataSourceView.usage?.count ?? 0,
-    cell: (ctx) => {
-      const usage = ctx.row.original.dataSourceView.usage;
-      return (
-        <DataTable.CellContent>
-          <UsedByButton usage={usage} onItemClick={setAssistantSId} />
-        </DataTable.CellContent>
-      );
-    },
+    cell: (info) => (
+      <DataTable.CellContent>
+        <UsedByButton
+          usage={info.row.original.dataSourceView.usage}
+          onItemClick={setAssistantSId}
+        />
+      </DataTable.CellContent>
+    ),
   };
   // For lastSynced, we store a number or undefined in accessorFn
   const lastSyncedColumn: ColumnDef<RowData, number | undefined> = {
