@@ -1,4 +1,10 @@
-import { cn } from "@dust-tt/sparkle";
+import {
+  Button,
+  cn,
+  FullscreenExitIcon,
+  FullscreenIcon,
+} from "@dust-tt/sparkle";
+import { useCallback, useEffect, useState } from "react";
 
 import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -15,6 +21,91 @@ interface PublicContentCreationHeaderProps {
 export function PublicContentCreationHeader({
   title,
 }: PublicContentCreationHeaderProps) {
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const enterFullScreen = useCallback(async () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if ((document.documentElement as any).webkitRequestFullscreen) {
+        // Safari
+        await (document.documentElement as any).webkitRequestFullscreen();
+      } else if ((document.documentElement as any).msRequestFullscreen) {
+        // IE/Edge
+        await (document.documentElement as any).msRequestFullscreen();
+      }
+    } catch (error) {
+      console.error("Error entering fullscreen:", error);
+    }
+  }, []);
+
+  const exitFullScreen = useCallback(async () => {
+    try {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        // Safari
+        await (document as any).webkitExitFullscreen();
+      } else if ((document as any).msExitFullscreen) {
+        // IE/Edge
+        await (document as any).msExitFullscreen();
+      }
+    } catch (error) {
+      console.error("Error exiting fullscreen:", error);
+    }
+  }, []);
+
+  const handleFullScreenToggle = useCallback(() => {
+    if (isFullScreen) {
+      void exitFullScreen();
+    } else {
+      void enterFullScreen();
+    }
+  }, [isFullScreen, enterFullScreen, exitFullScreen]);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      const isCurrentlyFullScreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullScreen(isCurrentlyFullScreen);
+    };
+
+    // Add event listeners for different browsers
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullScreenChange);
+    document.addEventListener("msfullscreenchange", handleFullScreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullScreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        handleFullScreenChange
+      );
+      document.removeEventListener(
+        "msfullscreenchange",
+        handleFullScreenChange
+      );
+    };
+  }, []);
+
+  // ESC key event listener to exit full screen mode
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isFullScreen) {
+        void exitFullScreen();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFullScreen, exitFullScreen]);
+
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">
@@ -33,7 +124,15 @@ export function PublicContentCreationHeader({
           </span>
         </div>
 
-        <div className="md:grow-1 md:basis-60"></div>
+        <div className="md:grow-1 flex shrink-0 items-center justify-end md:basis-60">
+          <Button
+            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+            variant="ghost"
+            size="xs"
+            onClick={handleFullScreenToggle}
+            tooltip={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
+          />
+        </div>
       </div>
     </AppLayoutTitle>
   );
