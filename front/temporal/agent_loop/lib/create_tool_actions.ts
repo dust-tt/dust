@@ -16,6 +16,7 @@ import type {
   AgentActionsEvent,
   AgentConfigurationType,
   AgentMessageType,
+  ConversationWithoutContentType,
   ModelId,
 } from "@app/types";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
@@ -48,7 +49,6 @@ export async function createToolActionsActivity(
 ): Promise<CreateToolActionsResult> {
   const { agentConfiguration, agentMessage, agentMessageRow, conversation } =
     runAgentData;
-  const conversationId = conversation.sId;
 
   const actionBlobs: ActionBlob[] = [];
   const approvalEvents: Array<
@@ -66,7 +66,7 @@ export async function createToolActionsActivity(
       agentConfiguration,
       agentMessage,
       agentMessageRow,
-      conversationId,
+      conversation,
       stepContentId,
       stepContext: stepContexts[index],
       step,
@@ -84,17 +84,15 @@ export async function createToolActionsActivity(
   for (const [idx, eventData] of approvalEvents.entries()) {
     const isLastApproval = idx === approvalEvents.length - 1;
 
-    await updateResourceAndPublishEvent(
-      {
+    await updateResourceAndPublishEvent(auth, {
+      event: {
         ...eventData,
         isLastBlockingEventForStep: isLastApproval,
       },
       agentMessageRow,
-      {
-        conversationId,
-        step,
-      }
-    );
+      conversation,
+      step,
+    });
   }
 
   return {
@@ -109,7 +107,7 @@ async function createActionForTool(
     agentConfiguration,
     agentMessage,
     agentMessageRow,
-    conversationId,
+    conversation,
     stepContentId,
     stepContext,
     step,
@@ -118,7 +116,7 @@ async function createActionForTool(
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;
-    conversationId: string;
+    conversation: ConversationWithoutContentType;
     stepContentId: ModelId;
     stepContext: StepContext;
     step: number;
@@ -148,13 +146,13 @@ async function createActionForTool(
 
   const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
   if (validateToolInputsResult.isErr()) {
-    return updateResourceAndPublishEvent(
-      {
+    return updateResourceAndPublishEvent(auth, {
+      event: {
         type: "tool_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        conversationId,
+        conversationId: conversation.sId,
         error: {
           code: "tool_error",
           message: validateToolInputsResult.error.message,
@@ -165,11 +163,9 @@ async function createActionForTool(
         isLastBlockingEventForStep: false,
       },
       agentMessageRow,
-      {
-        conversationId,
-        step,
-      }
-    );
+      conversation,
+      step,
+    });
   }
 
   // Compute augmented inputs with preconfigured data sources, etc.
@@ -190,8 +186,8 @@ async function createActionForTool(
   });
 
   // Publish the tool params event.
-  await updateResourceAndPublishEvent(
-    {
+  await updateResourceAndPublishEvent(auth, {
+    event: {
       type: "tool_params",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
@@ -201,11 +197,9 @@ async function createActionForTool(
       action: { ...action.toJSON(), output: null, generatedFiles: [] },
     },
     agentMessageRow,
-    {
-      conversationId,
-      step,
-    }
-  );
+    conversation,
+    step,
+  });
 
   return {
     actionBlob: {
@@ -220,7 +214,7 @@ async function createActionForTool(
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            conversationId,
+            conversationId: conversation.sId,
             actionId: action.sId,
             inputs: action.augmentedInputs,
             stake: actionConfiguration.permission,

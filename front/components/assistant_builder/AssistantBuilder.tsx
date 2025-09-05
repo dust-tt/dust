@@ -1,5 +1,6 @@
 import "react-image-crop/dist/ReactCrop.css";
 
+import { removeNulls } from "@dust-tt/client";
 import {
   Button,
   SidebarRightCloseIcon,
@@ -304,8 +305,8 @@ export default function AssistantBuilder({
 
   const { showDialog, ...dialogProps } = useAwaitableDialog({
     owner,
-    mcpServerViewToCheckIds: builderState.actions.map(
-      (a) => a.configuration.mcpServerViewId
+    mcpServerViewToCheckIds: removeNulls(
+      builderState.actions.map((a) => a.configuration?.mcpServerViewId)
     ),
     mcpServerViews,
   });

@@ -18,32 +18,64 @@ COMMON SLIDESHOW STRUCTURES:
 - **Comparison**: Options → Criteria → Analysis → Decision
 
 ### Technical Implementation:
-- Import: \`import { Slideshow } from "@dust/slideshow/v1"\`
-- Structure: \`<Slideshow.Root><Slideshow.Slide.Base>content</Slideshow.Slide.Base></Slideshow.Root>\`
 
-**Pre-built Slide Layouts:**
-- \`<Slideshow.Slide.Cover title="Title" subtitle="Subtitle" />\` - Title slide with centered title and subtitle
-- \`<Slideshow.Slide.TitleCentered title="Title" />\` - Title only, centered vertically and horizontally
-- \`<Slideshow.Slide.TitleTop title="Title">content</Slideshow.Slide.TitleTop>\` - Title at top, content below
-- \`<Slideshow.Slide.Bullets title="Title" items={["Item 1", "Item 2"]} />\` - Title with bulleted list
-- \`<Slideshow.Slide.BulletsOnly items={["Item 1", "Item 2"]} />\` - Bulleted list without title
-- \`<Slideshow.Slide.Quote quote="Quote text" author="Author Name" />\` - Centered quote with author
-- \`<Slideshow.Slide.Split>{[leftContent, rightContent]}</Slideshow.Slide.Split>\` - Two-column layout
-- \`<Slideshow.Slide.Full>content</Slideshow.Slide.Full>\` - Full-width custom content
+Import
+- import { Slideshow } from "@dust/slideshow/v1"
 
-**Typography Components (Automatically Responsive):**
-- \`<Slideshow.Title>\` - Main slide titles
-- \`<Slideshow.Heading>\` - Section headings
-- \`<Slideshow.Text>\` - Body content
+Core pattern
+- Always wrap slides with <Slideshow.Root>…</Slideshow.Root>.
+- Each Slideshow.Preset.* component creates one complete slide
+- Slideshow.Preset.* components are direct children of Slideshow.Root only
+- Never nest Slideshow.Preset.* components inside each other
+- Use content components (Slideshow.Content.*) inside slide presets
 
-**Responsive Design Built-In:**
+Choose the right preset:
+- Need 2-4 structured content cards? → Use Columns2/3/4
+- Need title + freeform content? → Use TitleTop/TitleTopH2
+- Need full-screen chart or media? → Use Full
+- Need chart with text explanation? → Use ChartSplit
+- Need cover slide? → Use Cover
+- Need quote slide? → Use Quote
+
+
+API Structure:
+- Slideshow.Preset.* = Complete slide layouts (direct children of Root)
+- Slideshow.Content.* = Components that go inside slide presets
+- Slideshow.Text.* = Typography components for any content
+
+Available slide presets (only these)
+- <Slideshow.Preset.Cover title="…" />
+- <Slideshow.Preset.TitleTop title="…">children</Slideshow.Preset.TitleTop>
+- <Slideshow.Preset.TitleTopH2 title="…">children</Slideshow.Preset.TitleTopH2>
+- <Slideshow.Preset.Columns2 title="…" description="…"> <Slideshow.Content.Item heading="…">children</Slideshow.Content.Item> … </Slideshow.Preset.Columns2>
+- <Slideshow.Preset.Columns3 title="…" description="…"> <Slideshow.Content.Item heading="…">children</Slideshow.Content.Item> … </Slideshow.Preset.Columns3>
+- <Slideshow.Preset.Columns4 title="…" description="…"> <Slideshow.Content.Item heading="…">children</Slideshow.Content.Item> … </Slideshow.Preset.Columns4>
+- <Slideshow.Preset.Full>media or chart</Slideshow.Preset.Full>
+- <Slideshow.Preset.ChartSplit title="…" description="…"> chart </Slideshow.Preset.ChartSplit>
+- <Slideshow.Preset.Quote quote="…" author="…" />
+
+All slide presets support theme="light" or theme="dark". Mix themes within the same slideshow as needed.
+
+Typography (responsive—no breakpoints needed)
+- <Slideshow.Text.Title>  // largest, used on covers
+- <Slideshow.Text.Heading1> / <Slideshow.Text.Heading2> / <Slideshow.Text.Heading3>
+- <Slideshow.Text.Body1> / <Slideshow.Text.Body2> / <Slideshow.Text.Body3>
+
+Responsive Design Built-In:
 All typography and spacing automatically scales smoothly across devices.
 No need for responsive classes like \`sm:text-4xl md:text-6xl\` - just use the components as-is for
 perfect mobile-to-desktop scaling.
 
-**Customization** - All components accept \`className\` for styling:
-- \`<Slideshow.Slide className="bg-blue-50">\` - Background colors and themes
-- \`<Slideshow.Title className="text-center text-red-600">\` - Alignment and colors (size is automatic)
+Helpers
+- <Slideshow.Content.Item heading="…">Body (any JSX or text)</Slideshow.Content.Item>   // use inside Columns*
+- <Slideshow.Content.BulletList><Slideshow.Content.BulletItem>Point</Slideshow.Content.BulletItem></Slideshow.Content.BulletList>
+
+Important rules:
+1) Each Slideshow.Preset.* creates a complete slide. Never put one Preset inside another.
+2) Columns presets (Columns2/3/4) are complete slides with built-in title and description props.
+3) Keep body text concise. Use BulletList for 3–5 bullets when appropriate.
+4) Always include className="h-full w-full" on ChartContainer for proper sizing.
+
 
 DESIGN PRINCIPLES:
 - Create visual hierarchy: Title → Visual → Supporting text
@@ -56,78 +88,57 @@ Focus on content quality, not navigation controls.
 
 Example using pre-built layouts:
 \`\`\`tsx
-<Slideshow.Root>
-  {/* Cover slide - title + subtitle */}
-  <Slideshow.Slide.Cover
-    title="Q4 Revenue Analysis"
-    subtitle="Key findings from our performance data"
-    className="bg-blue-50"
-  />
+import { Slideshow } from "@dust/slideshow/v1";
 
-  {/* Title centered - title only */}
-  <Slideshow.Slide.TitleCentered
-    title="Executive Summary"
-    className="bg-white"
-  />
+export default function Deck() {
+  return (
+    <Slideshow.Root>
+      <Slideshow.Preset.Cover title="Q4 Revenue Analysis" />
 
-  {/* Title at top with content below */}
-  <Slideshow.Slide.TitleTop title="Key Achievements">
-    <div className="text-center space-y-4">
-      <div className="text-4xl font-semibold text-green-600">25%</div>
-      <Slideshow.Text>Revenue Growth</Slideshow.Text>
-    </div>
-  </Slideshow.Slide.TitleTop>
+      <Slideshow.Preset.TitleTop title="Executive Summary">
+        <Slideshow.Text.Body2>
+          +25% YoY growth driven by retention and EU expansion.
+        </Slideshow.Text.Body2>
+      </Slideshow.Preset.TitleTop>
 
-  {/* Bullets with title */}
-  <Slideshow.Slide.Bullets
-    title="Growth Drivers"
-    items={[
-      "Product improvements",
-      "Market expansion",
-      "Customer retention"
-    ]}
-  />
+      <Slideshow.Preset.Columns3 title="Key Goals">
+        <Slideshow.Content.Item heading="Retention">
+          <Slideshow.Content.BulletList>
+            <Slideshow.Content.BulletItem>
+              Onboarding revamp
+            </Slideshow.Content.BulletItem>
+            <Slideshow.Content.BulletItem>
+              Proactive success
+            </Slideshow.Content.BulletItem>
+          </Slideshow.Content.BulletList>
+        </Slideshow.Content.Item>
+        <Slideshow.Content.Item heading="Expansion">
+          Enter EU markets
+        </Slideshow.Content.Item>
+        <Slideshow.Content.Item heading="Pricing">
+          Launch new tiers
+        </Slideshow.Content.Item>
+      </Slideshow.Preset.Columns3>
 
-  {/* Bullets only - no title */}
-  <Slideshow.Slide.BulletsOnly
-    items={[
-      "Launch product in European market",
-      "Hire additional engineering talent",
-      "Optimize customer acquisition cost"
-    ]}
-  />
+      <Slideshow.Preset.ChartSplit
+        title="Sign-ups vs. Revenue"
+        description="Sign-ups lead revenue by ~3 weeks."
+      >
+        <ChartContainer config={chartConfig} className="h-full w-full">
+          <LineChart data={roadmapData} />
+        </ChartContainer>
+      </Slideshow.Preset.ChartSplit>
 
-  {/* Quote slide */}
-  <Slideshow.Slide.Quote
-    quote="This quarter's results demonstrate our team's dedication to excellence and innovation."
-    author="CEO, Jane Smith"
-    className="bg-gray-50"
-  />
-</Slideshow.Root>
-\`\`\`
+      <Slideshow.Preset.Full>
+        <img src="/hero.png" className="w-full h-full object-cover" />
+      </Slideshow.Preset.Full>
 
-**Custom slide example:**
-\`\`\`tsx
-<Slideshow.Root>
-  <Slideshow.Slide.Base>
-    <Slideshow.Title>Custom Layout</Slideshow.Title>
-    <Slideshow.Text>Build any custom layout using typography components</Slideshow.Text>
-    <div className="grid grid-cols-2 gap-8 mt-8">
-      <div className="text-center">
-        <div className="text-4xl font-bold text-blue-600">87%</div>
-        <Slideshow.Text>Success Rate</Slideshow.Text>
-      </div>
-      <div className="text-center">
-        <div className="text-4xl font-bold text-green-600">$2.3M</div>
-        <Slideshow.Text>Revenue</Slideshow.Text>
-      </div>
-    </div>
-  </Slideshow.Slide.Base>
-</Slideshow.Root>
+      <Slideshow.Preset.Quote quote="This is a quote" author="John Doe" />
+    </Slideshow.Root>
+  );
+}
 \`\`\`
 
 AVOID: Long paragraphs, technical jargon, navigation controls, manual responsive classes
 FOCUS: Clear insights, visual data, brand consistency, story flow, using built-in components
-
-Pro Tip: Use \`text-4xl\`, \`text-2xl\`, etc. for custom elements - they automatically become responsive inside slides!
 `;

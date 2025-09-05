@@ -1847,21 +1847,37 @@ export async function processDeltaChangesFromGCS({
           skipped++;
         }
       } else {
-        const isSynced = await syncOneFile({
-          connectorId,
-          dataSourceConfig,
-          providerConfig,
-          file: driveItem,
-          parentInternalId: getParentReferenceInternalId(
-            driveItem.parentReference
-          ),
-          startSyncTs,
-          heartbeat,
-        });
-        if (isSynced) {
-          files++;
-        } else {
-          skipped++;
+        try {
+          const isSynced = await syncOneFile({
+            connectorId,
+            dataSourceConfig,
+            providerConfig,
+            file: driveItem,
+            parentInternalId: getParentReferenceInternalId(
+              driveItem.parentReference
+            ),
+            startSyncTs,
+            heartbeat,
+          });
+          if (isSynced) {
+            files++;
+          } else {
+            skipped++;
+          }
+        } catch (error) {
+          if (error instanceof GraphError && error.statusCode === 404) {
+            logger.error({ error }, "File not found, deleting");
+            const isDeleted = await deleteFile({
+              connectorId,
+              internalId,
+              dataSourceConfig,
+            });
+            if (isDeleted) {
+              deleted++;
+            } else {
+              skipped++;
+            }
+          }
         }
       }
     } else if (driveItem.folder) {

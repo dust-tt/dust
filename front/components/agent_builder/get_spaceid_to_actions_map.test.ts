@@ -13,7 +13,7 @@ const createMockAction = (
 ): AssistantBuilderMCPOrVizState => ({
   id,
   type: "DATA_VISUALIZATION",
-  configuration: {},
+  configuration: null,
   name,
   description: `Description for ${name}`,
   noConfigurationRequired: true,

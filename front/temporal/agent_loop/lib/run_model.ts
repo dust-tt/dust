@@ -146,8 +146,8 @@ export async function runModelActivity(
       logMessage
     );
 
-    await updateResourceAndPublishEvent(
-      {
+    await updateResourceAndPublishEvent(auth, {
+      event: {
         type: "agent_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
@@ -155,18 +155,18 @@ export async function runModelActivity(
         error,
       },
       agentMessageRow,
-      {
-        conversationId: conversation.sId,
-        step,
-      }
-    );
+      conversation,
+      step,
+    });
   }
 
   // Helper function to flush all pending tokens from the content parser
   async function flushParserTokens(): Promise<void> {
     for await (const tokenEvent of contentParser.flushTokens()) {
-      await updateResourceAndPublishEvent(tokenEvent, agentMessageRow, {
-        conversationId: conversation.sId,
+      await updateResourceAndPublishEvent(auth, {
+        event: tokenEvent,
+        agentMessageRow,
+        conversation,
         step,
       });
     }
@@ -505,19 +505,17 @@ export async function runModelActivity(
 
     if (shouldYieldCancel) {
       await flushParserTokens();
-      await updateResourceAndPublishEvent(
-        {
+      await updateResourceAndPublishEvent(auth, {
+        event: {
           type: "agent_generation_cancelled",
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
         },
         agentMessageRow,
-        {
-          conversationId: conversation.sId,
-          step,
-        }
-      );
+        conversation,
+        step,
+      });
       localLogger.error("Agent generation cancelled");
 
       return null;
@@ -527,16 +525,18 @@ export async function runModelActivity(
       for await (const tokenEvent of contentParser.emitTokens(
         event.content.tokens.text
       )) {
-        await updateResourceAndPublishEvent(tokenEvent, agentMessageRow, {
-          conversationId: conversation.sId,
+        await updateResourceAndPublishEvent(auth, {
+          event: tokenEvent,
+          agentMessageRow,
+          conversation,
           step,
         });
       }
     }
 
     if (event.type === "reasoning_tokens") {
-      await updateResourceAndPublishEvent(
-        {
+      await updateResourceAndPublishEvent(auth, {
+        event: {
           type: "generation_tokens",
           classification: "chain_of_thought",
           created: Date.now(),
@@ -545,17 +545,16 @@ export async function runModelActivity(
           text: event.content.tokens.text,
         },
         agentMessageRow,
-        {
-          conversationId: conversation.sId,
-          step,
-        }
-      );
+        conversation,
+        step,
+      });
+
       nativeChainOfThought += event.content.tokens.text;
     }
 
     if (event.type === "reasoning_item") {
-      await updateResourceAndPublishEvent(
-        {
+      await updateResourceAndPublishEvent(auth, {
+        event: {
           type: "generation_tokens",
           classification: "chain_of_thought",
           created: Date.now(),
@@ -564,11 +563,10 @@ export async function runModelActivity(
           text: "\n\n",
         },
         agentMessageRow,
-        {
-          conversationId: conversation.sId,
-          step,
-        }
-      );
+        conversation,
+        step,
+      });
+
       nativeChainOfThought += "\n\n";
     }
 
@@ -716,8 +714,8 @@ export async function runModelActivity(
     agentMessage.content = (agentMessage.content ?? "") + processedContent;
     agentMessage.status = "succeeded";
 
-    await updateResourceAndPublishEvent(
-      {
+    await updateResourceAndPublishEvent(auth, {
+      event: {
         type: "agent_message_success",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
@@ -726,11 +724,9 @@ export async function runModelActivity(
         runIds: [...runIds, await dustRunId],
       },
       agentMessageRow,
-      {
-        conversationId: conversation.sId,
-        step,
-      }
-    );
+      conversation,
+      step,
+    });
     localLogger.info("Agent message generation succeeded");
 
     return null;

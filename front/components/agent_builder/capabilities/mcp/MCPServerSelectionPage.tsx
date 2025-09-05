@@ -1,4 +1,9 @@
-import { ActionIcons, BookOpenIcon, ToolCard } from "@dust-tt/sparkle";
+import {
+  ActionIcons,
+  BookOpenIcon,
+  Hoverable,
+  ToolCard,
+} from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
@@ -49,15 +54,43 @@ function MCPServerCard({ view, isSelected, onClick }: MCPServerCardProps) {
     ? ActionIcons[view.server.icon]
     : InternalActionIcons[view.server.icon] || BookOpenIcon;
 
+  // Create a ref to use as portal container for tooltips to prevent click blocking
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  let description: React.ReactNode | null;
+  if (view.server.documentationUrl) {
+    description = (
+      <>
+        {getMcpServerViewDescription(view)} Find documentation{" "}
+        <Hoverable
+          href={view.server.documentationUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="primary"
+          onClick={(e) => e.stopPropagation()}
+        >
+          here
+        </Hoverable>
+        .
+      </>
+    );
+  } else {
+    description = <>{getMcpServerViewDescription(view)}</>;
+  }
+
   return (
-    <ToolCard
-      icon={icon}
-      label={view.label}
-      description={getMcpServerViewDescription(view)}
-      isSelected={isSelected}
-      canAdd={canAdd}
-      onClick={onClick}
-    />
+    <div ref={containerRef}>
+      <ToolCard
+        icon={icon}
+        label={view.label}
+        description={description}
+        isSelected={isSelected}
+        canAdd={canAdd}
+        onClick={onClick}
+        mountPortal
+        mountPortalContainer={containerRef.current || undefined}
+      />
+    </div>
   );
 }
 

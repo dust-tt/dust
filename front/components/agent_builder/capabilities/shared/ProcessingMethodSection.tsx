@@ -11,6 +11,7 @@ import { useEffect, useMemo } from "react";
 import React from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -26,10 +27,12 @@ import {
 } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
+  SEARCH_SERVER_NAME,
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isRemoteDatabase } from "@app/lib/data_sources";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const tablesServer = [TABLE_QUERY_SERVER_NAME, TABLE_QUERY_V2_SERVER_NAME];
 
@@ -70,7 +73,10 @@ export function ProcessingMethodSection() {
   } = useController<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
+  const { owner } = useAgentBuilderContext();
   const { setValue } = useFormContext<CapabilityFormData>();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
 
   const [serversToDisplay, warningContent] = useMemo((): [
@@ -118,14 +124,30 @@ export function ProcessingMethodSection() {
   }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
 
   useEffect(() => {
-    // Update mcpServerView only if it's null and we have servers to display
-    if (serversToDisplay && mcpServerView === null) {
-      const [defaultServer] = serversToDisplay;
-      if (defaultServer) {
-        setValue("mcpServerView", defaultServer, { shouldDirty: false });
+    if (serversToDisplay && sources.in.length > 0 && !mcpServerView) {
+      const allTablesOrDatabases = sources.in.every(
+        isRemoteDatabaseOrTableItem
+      );
+
+      if (allTablesOrDatabases) {
+        const tableQueryServer = serversToDisplay.find((server) =>
+          hasFeature("exploded_tables_query")
+            ? server.server.name === TABLE_QUERY_V2_SERVER_NAME
+            : server.server.name === TABLE_QUERY_SERVER_NAME
+        );
+        if (tableQueryServer) {
+          setValue("mcpServerView", tableQueryServer, { shouldDirty: false });
+        }
+      } else {
+        const searchServer = serversToDisplay.find(
+          (server) => server.server.name === SEARCH_SERVER_NAME
+        );
+        if (searchServer) {
+          setValue("mcpServerView", searchServer, { shouldDirty: false });
+        }
       }
     }
-  }, [serversToDisplay, setValue, mcpServerView]);
+  }, [mcpServerView, serversToDisplay, setValue, sources.in, hasFeature]);
 
   return (
     <div className="mt-2 flex flex-col space-y-4">

@@ -9,7 +9,6 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
 import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
 import {
@@ -144,6 +143,8 @@ export async function createConversation(
     depth: conversation.depth,
     triggerId: conversation.triggerSId(),
     content: [],
+    unread: false,
+    actionRequired: false,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
   };
@@ -158,7 +159,7 @@ export async function updateConversationTitle(
     conversationId: string;
     title: string;
   }
-): Promise<Result<ConversationType, ConversationError>> {
+): Promise<Result<undefined, ConversationError>> {
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId
@@ -170,7 +171,7 @@ export async function updateConversationTitle(
 
   await conversation.updateTitle(title);
 
-  return getConversation(auth, conversationId);
+  return new Ok(undefined);
 }
 
 /**
@@ -598,6 +599,12 @@ export async function postUserMessage(
         context,
         rank: m.rank,
       };
+
+      // Mark the conversation as unread for all participants except the user.
+      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
+        conversation,
+        excludedUser: user?.toJSON(),
+      });
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
         await Promise.all(
@@ -1038,6 +1045,12 @@ export async function editUserMessage(
         context: message.context,
         rank: m.rank,
       };
+
+      // Mark the conversation as unread for all participants except the user.
+      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
+        conversation,
+        excludedUser: user?.toJSON(),
+      });
 
       // For now agent messages are appended at the end of conversation
       // it is fine since for now editing with new mentions is only supported
