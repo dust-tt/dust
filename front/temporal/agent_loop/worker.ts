@@ -58,5 +58,18 @@ export async function runAgentLoopWorker() {
     },
   });
 
-  await worker.run();
+  const shutdown = async () => {
+    worker.shutdown();
+  };
+
+  process.on("SIGTERM", () => shutdown());
+
+  try {
+    await worker.run(); // this resolves after shutdown completes
+  } catch (error) {
+    console.error("Agent loop worker error:", error);
+  } finally {
+    await connection.close();
+    process.exit(0);
+  }
 }
