@@ -72,14 +72,6 @@ export function sliceConversationForAgentMessage(
       .filter((versions) => versions.length > 0),
   };
 
-  console.log(
-    "conversation",
-    step,
-    agentMessageId,
-    agentMessageVersion,
-    slicedConversation.content
-  );
-
   assert(
     slicedAgentMessage &&
       isAgentMessageType(slicedAgentMessage) &&
