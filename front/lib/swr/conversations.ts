@@ -21,10 +21,12 @@ import type {
   FetchConversationToolsResponse,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
 import type {
+  AgentParticipantType,
   ConversationError,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
   LightWorkspaceType,
+  UserParticipantType,
 } from "@app/types";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
@@ -567,3 +569,110 @@ export function useConversationMarkAsRead({
     markAsRead,
   };
 }
+
+type ConversationAction = "join" | "leave" | "delete";
+
+export const useConversationMenu = ({
+  ownerId,
+  conversationId,
+  userId,
+}: {
+  ownerId: string;
+  conversationId: string | null;
+  userId: string | null;
+}): {
+  joinConversation: () => Promise<boolean>;
+  action: ConversationAction;
+  users: UserParticipantType[];
+  agents: AgentParticipantType[];
+} => {
+  const sendNotification = useSendNotification();
+
+  const { mutateConversations } = useConversations({
+    workspaceId: ownerId,
+  });
+  const { mutateConversationParticipants, conversationParticipants } =
+    useConversationParticipants({
+      conversationId,
+      workspaceId: ownerId,
+      options: { disabled: conversationId === null },
+    });
+
+  const isUserParticipating =
+    userId !== null &&
+    conversationParticipants?.users.find(
+      (participant) => participant.sId === userId
+    );
+
+  const isLastParticipant =
+    isUserParticipating && conversationParticipants?.users.length === 1;
+
+  const joinConversation = useCallback(async (): Promise<boolean> => {
+    if (!conversationId) {
+      return false;
+    }
+    try {
+      const response = await fetch(
+        `/api/w/${ownerId}/assistant/conversations/${conversationId}/participants`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 400) {
+          const error = await response.json();
+          if (error.error?.message?.includes("already a participant")) {
+            sendNotification({
+              type: "error",
+              title: "Already subscribed",
+              description:
+                "You are already a participant in this conversation.",
+            });
+            return false;
+          }
+        }
+        throw new Error("Failed to subscribe to conversation");
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Subscribed!",
+        description: "You have been added to this conversation.",
+      });
+
+      void mutateConversations();
+      void mutateConversationParticipants();
+
+      return true;
+    } catch (error) {
+      console.error("Error subscribing to conversation:", error);
+      sendNotification({
+        type: "error",
+        title: "Error",
+        description: "Failed to subscribe to the conversation.",
+      });
+      return false;
+    }
+  }, [
+    ownerId,
+    sendNotification,
+    mutateConversations,
+    mutateConversationParticipants,
+    conversationId,
+  ]);
+
+  return {
+    joinConversation,
+    action: isLastParticipant
+      ? "delete"
+      : isUserParticipating
+        ? "leave"
+        : "join",
+    users: conversationParticipants?.users ?? [],
+    agents: conversationParticipants?.agents ?? [],
+  };
+};
