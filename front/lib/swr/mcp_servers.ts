@@ -1162,7 +1162,7 @@ function useMCPServerViewsFromSpacesBase(
 export function useMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  swrOptions?: SWRConfiguration
+  swrOptions?: SWRConfiguration & { disabled?: boolean }
 ) {
   return useMCPServerViewsFromSpacesBase(
     owner,
@@ -1176,7 +1176,7 @@ export function useMCPServerViewsFromSpaces(
 export function useRemoteMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  swrOptions?: SWRConfiguration
+  swrOptions?: SWRConfiguration & { disabled?: boolean }
 ) {
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"], swrOptions);
 }
@@ -1185,7 +1185,7 @@ export function useRemoteMCPServerViewsFromSpaces(
 export function useInternalMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  swrOptions?: SWRConfiguration
+  swrOptions?: SWRConfiguration & { disabled?: boolean }
 ) {
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"], swrOptions);
 }
