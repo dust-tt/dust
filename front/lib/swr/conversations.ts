@@ -366,14 +366,18 @@ export function useVisualizationRetry({
   workspaceId,
   conversationId,
   agentConfigurationId,
+  isPublic,
 }: {
   workspaceId: string | null;
   conversationId: string | null;
   agentConfigurationId: string | null;
+  isPublic: boolean;
 }) {
+  const canRetry = !isPublic && agentConfigurationId && conversationId;
+
   const handleVisualizationRetry = useCallback(
-    async (errorMessage: string) => {
-      if (!conversationId || !agentConfigurationId) {
+    async (errorMessage: string): Promise<boolean> => {
+      if (!canRetry) {
         return false;
       }
 
@@ -410,16 +414,13 @@ export function useVisualizationRetry({
         return false;
       }
     },
-    [workspaceId, conversationId, agentConfigurationId]
+    [workspaceId, conversationId, agentConfigurationId, canRetry]
   );
 
-  if (!agentConfigurationId) {
-    return () => {
-      return false;
-    };
-  }
-
-  return handleVisualizationRetry;
+  return {
+    handleVisualizationRetry,
+    canRetry,
+  };
 }
 
 export function useConversationMessage({

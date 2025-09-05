@@ -2,8 +2,9 @@ import {
   Button,
   cn,
   CodeBlock,
+  ContentMessage,
+  ExclamationCircleIcon,
   Markdown,
-  MarkdownContentContext,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -15,7 +16,6 @@ import type { SetStateAction } from "react";
 import React, {
   forwardRef,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -223,19 +223,8 @@ interface PublicVisualizationActionIframeProps {
 }
 
 // This interface represents the props for the VisualizationActionIframe component when it is used
-// in a private content creation context.
-interface ContentCreationVisualizationActionIframeProps {
-  // TODO(CONTENT_CREATION 2025-07-25): Add support to retry the visualization.
-  agentConfigurationId: string | null;
-  conversationId: string;
-  isInDrawer?: boolean;
-  visualization: Visualization;
-  workspace: LightWorkspaceType;
-}
-
-// This interface represents the props for the VisualizationActionIframe component when it is used
-// in a legacy context.
-interface LegacyVisualizationActionIframeProps {
+// in a conversation context.
+interface ConversationVisualizationActionIframeProps {
   agentConfigurationId: string;
   conversationId: string;
   isInDrawer?: boolean;
@@ -244,21 +233,24 @@ interface LegacyVisualizationActionIframeProps {
 }
 
 type VisualizationActionIframeProps =
-  | ContentCreationVisualizationActionIframeProps
-  | LegacyVisualizationActionIframeProps
+  | ConversationVisualizationActionIframeProps
   | PublicVisualizationActionIframeProps;
+
+function isPublicVisualization(
+  props: VisualizationActionIframeProps
+): props is PublicVisualizationActionIframeProps {
+  return (
+    props.agentConfigurationId === null &&
+    props.conversationId === null &&
+    props.workspace === null
+  );
+}
 
 export const VisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
   VisualizationActionIframeProps
 >(function VisualizationActionIframe(
-  {
-    agentConfigurationId,
-    conversationId,
-    isInDrawer = false,
-    visualization,
-    workspace,
-  }: VisualizationActionIframeProps,
+  props: VisualizationActionIframeProps,
   ref
 ) {
   const [contentHeight, setContentHeight] = useState<number>(0);
@@ -282,9 +274,18 @@ export const VisualizationActionIframe = forwardRef<
 
   const isErrored = !!errorMessage || retryClicked;
 
+  const isPublic = isPublicVisualization(props);
+
+  const {
+    agentConfigurationId,
+    conversationId,
+    isInDrawer = false,
+    visualization,
+  } = props;
+
   useVisualizationDataHandler({
     visualization,
-    workspaceId: workspace?.sId ?? null,
+    workspaceId: isPublic ? null : props.workspace.sId,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -299,24 +300,25 @@ export const VisualizationActionIframe = forwardRef<
     [codeFullyGenerated, iframeLoaded, isErrored]
   );
 
-  const handleVisualizationRetry = useVisualizationRetry({
-    workspaceId: workspace?.sId ?? null,
+  const { handleVisualizationRetry, canRetry } = useVisualizationRetry({
+    workspaceId: isPublic ? null : props.workspace.sId,
     conversationId,
     agentConfigurationId,
+    isPublic,
   });
 
   const handleRetryClick = useCallback(async () => {
     if (retryClicked || !errorMessage) {
       return;
     }
+
     setRetryClicked(true);
+
     const success = await handleVisualizationRetry(errorMessage);
     if (!success) {
       setRetryClicked(false);
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
-
-  const canRetry = useContext(MarkdownContentContext)?.isLastMessage ?? false;
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
@@ -375,22 +377,34 @@ export const VisualizationActionIframe = forwardRef<
                 </div>
               )}
               {isErrored && (
-                <div className="flex h-full w-full flex-col items-center gap-4 py-8">
-                  <div className="px-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    An error occured while rendering the visualization.
-                    <div className="pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {errorMessage}
+                <div className="flex h-full w-full items-center justify-center p-6">
+                  <ContentMessage
+                    title="Visualization Error"
+                    variant="warning"
+                    icon={ExclamationCircleIcon}
+                    className="max-w-md text-center"
+                  >
+                    <div className="mb-4 text-sm">
+                      An error occurred while rendering the visualization.
                     </div>
-                  </div>
 
-                  {canRetry && !retryClicked && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      label="Retry Visualization"
-                      onClick={handleRetryClick}
-                    />
-                  )}
+                    {errorMessage && (
+                      <div className="mb-4 rounded-md bg-warning-50 p-3 text-xs text-warning-900 dark:bg-warning-50-night dark:text-warning-900-night">
+                        {errorMessage}
+                      </div>
+                    )}
+
+                    {canRetry && (
+                      <div className="flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          label="Retry Visualization"
+                          onClick={handleRetryClick}
+                        />
+                      </div>
+                    )}
+                  </ContentMessage>
                 </div>
               )}
             </div>

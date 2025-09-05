@@ -28,6 +28,7 @@ export type FileUseCaseMetadata = {
   conversationId?: string;
   spaceId?: string;
   generatedTables?: string[];
+  lastEditedByAgentConfigurationId?: string;
 };
 
 export const fileShareScopeSchema = z.enum([
@@ -35,6 +36,7 @@ export const fileShareScopeSchema = z.enum([
   "workspace",
   "public",
 ]);
+
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 export interface FileType {
@@ -52,6 +54,10 @@ export interface FileType {
 }
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
+
+export type FileTypeWithMetadata = FileType & {
+  useCaseMetadata: FileUseCaseMetadata;
+};
 
 export type FileFormatCategory = "image" | "data" | "code" | "delimited";
 
