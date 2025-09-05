@@ -8,17 +8,21 @@ import {
   DropdownMenuTrigger,
   LinkIcon,
   MoreIcon,
+  PlusCircleIcon,
   TrashIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  useConversationParticipants,
+  useConversationMenu,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
+import { useUser } from "@app/lib/swr/user";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
@@ -33,20 +37,21 @@ export function ConversationMenu({
   baseUrl: string;
   owner: WorkspaceType;
 }) {
+  const { user } = useUser();
   const router = useRouter();
   const sendNotification = useSendNotification();
-  const doDelete = useDeleteConversation(owner);
-  const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
-
-  const { conversationParticipants } = useConversationParticipants({
+  const { joinConversation, action, users, agents } = useConversationMenu({
+    ownerId: owner.sId,
     conversationId: activeConversationId,
-    workspaceId: owner.sId,
-    options: { disabled: !activeConversationId },
+    userId: user?.sId || null,
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
 
   const shareLink = `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`;
 
-  const onDelete = useCallback(async () => {
+  const doDelete = useDeleteConversation(owner);
+  const leaveOrDelete = useCallback(async () => {
     const res = await doDelete(conversation);
     if (res) {
       void router.push(`/w/${owner.sId}/assistant/new`);
@@ -62,6 +67,35 @@ export function ConversationMenu({
     return null;
   }
 
+  const ConversationActionMenuItem = () => {
+    switch (action) {
+      case "delete":
+        return (
+          <DropdownMenuItem
+            label="Delete"
+            onClick={() => setShowDeleteDialog(true)}
+            icon={TrashIcon}
+          />
+        );
+      case "leave":
+        return (
+          <DropdownMenuItem
+            label="Leave"
+            onClick={() => setShowLeaveDialog(true)}
+            icon={XMarkIcon}
+          />
+        );
+      case "join":
+        return (
+          <DropdownMenuItem
+            label="Join"
+            onClick={joinConversation}
+            icon={PlusCircleIcon}
+          />
+        );
+    }
+  };
+
   return (
     <>
       <DeleteConversationsDialog
@@ -71,7 +105,15 @@ export function ConversationMenu({
         onClose={() => setShowDeleteDialog(false)}
         onDelete={() => {
           setShowDeleteDialog(false);
-          void onDelete();
+          void leaveOrDelete();
+        }}
+      />
+      <LeaveConversationDialog
+        isOpen={showLeaveDialog}
+        onClose={() => setShowLeaveDialog(false)}
+        onLeave={() => {
+          setShowLeaveDialog(false);
+          void leaveOrDelete();
         }}
       />
       <DropdownMenu>
@@ -80,27 +122,27 @@ export function ConversationMenu({
             size="sm"
             variant="ghost"
             icon={MoreIcon}
-            disabled={activeConversationId === null || conversation === null}
+            disabled={
+              activeConversationId === null ||
+              conversation === null ||
+              user === null
+            }
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuLabel>Conversation</DropdownMenuLabel>
-          <DropdownMenuItem
-            label="Delete"
-            onClick={() => setShowDeleteDialog(true)}
-            icon={TrashIcon}
-          />
+          <ConversationActionMenuItem />
           <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
           <DropdownMenuItem
             label="Copy the link"
             onClick={copyConversationLink}
             icon={LinkIcon}
           />
-          {conversationParticipants?.users !== undefined &&
-            conversationParticipants.users.length > 0 && (
+          <>
+            {users.length > 0 && (
               <>
                 <DropdownMenuLabel>Participants</DropdownMenuLabel>
-                {conversationParticipants.users.map((user) => (
+                {users.map((user) => (
                   <DropdownMenuItem
                     key={user.sId}
                     label={asDisplayName(user.username)}
@@ -117,12 +159,10 @@ export function ConversationMenu({
                 ))}
               </>
             )}
-
-          {conversationParticipants?.agents !== undefined &&
-            conversationParticipants.agents.length > 0 && (
+            {agents.length > 0 && (
               <>
                 <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                {conversationParticipants?.agents.map((agent) => (
+                {agents.map((agent) => (
                   <DropdownMenuItem
                     key={agent.configurationId}
                     label={agent.name}
@@ -139,6 +179,7 @@ export function ConversationMenu({
                 ))}
               </>
             )}
+          </>
         </DropdownMenuContent>
       </DropdownMenu>
     </>
