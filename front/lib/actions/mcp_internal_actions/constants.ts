@@ -732,7 +732,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "content_creation",
       version: "1.0.0",
       description:
-        "Create dashboards, presentations, or any interactive content with charts, KPIs, and data visualizations.",
+        "Create dashboards, presentations, or any interactive content.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,

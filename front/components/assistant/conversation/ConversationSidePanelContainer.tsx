@@ -2,6 +2,7 @@ import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type {
@@ -31,7 +32,7 @@ export default function ConversationSidePanelContainer({
       return;
     }
 
-    panelRef.current?.expand(40);
+    panelRef.current?.expand(DEFAULT_RIGHT_PANEL_SIZE);
   }, [currentPanel]);
 
   return (

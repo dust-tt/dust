@@ -4,6 +4,7 @@ import type { NextRouter } from "next/router";
 import React from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
@@ -65,8 +66,9 @@ export default function AppContentLayout({
   subNavigation,
   subscription,
 }: AppContentLayoutProps) {
+  useAppKeyboardShortcuts(owner);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
-    useAppKeyboardShortcuts(owner);
+    useDesktopNavigation();
 
   const [loaded, setLoaded] = React.useState(false);
 
