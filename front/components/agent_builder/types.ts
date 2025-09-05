@@ -188,7 +188,7 @@ export function getDefaultMCPAction(
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: requirements.noRequirement,
+    noConfigurationRequired: false,
   };
 }
 

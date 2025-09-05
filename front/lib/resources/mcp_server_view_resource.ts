@@ -30,6 +30,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -37,7 +38,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
-import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type { InferIncludeType, ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase, ModelId, Result } from "@app/types";
@@ -57,6 +58,8 @@ export interface MCPServerViewResource
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
   readonly editedByUser?: Attributes<UserModel>;
+  readonly internalToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
+  readonly remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteMCPServer?: RemoteMCPServerResource;
   private internalMCPServer?: InternalMCPServerInMemoryResource;
 
@@ -64,11 +67,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     model: ModelStatic<MCPServerViewModel>,
     blob: Attributes<MCPServerViewModel>,
     space: SpaceResource,
-    { editedByUser }: { editedByUser?: Attributes<UserModel> } = {}
+    includes?: Partial<InferIncludeType<MCPServerViewModel>>
   ) {
     super(MCPServerViewModel, blob, space);
 
-    this.editedByUser = editedByUser;
+    this.editedByUser = includes?.editedByUser;
+    this.internalToolsMetadata = includes?.internalToolsMetadata;
+    this.remoteToolsMetadata = includes?.remoteToolsMetadata;
   }
 
   private async init(auth: Authenticator): Promise<Result<void, DustError>> {
@@ -221,8 +226,20 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           model: UserModel,
           as: "editedByUser",
         },
+        {
+          model: RemoteMCPServerToolMetadataModel,
+          as: "internalToolsMetadata",
+          required: false,
+        },
+        {
+          model: RemoteMCPServerToolMetadataModel,
+          as: "remoteToolsMetadata",
+          required: false,
+        },
       ],
     });
+
+    console.log(views);
 
     const filteredViews: MCPServerViewResource[] = [];
 
