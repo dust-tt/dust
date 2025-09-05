@@ -236,7 +236,7 @@ export const Columns = ({
     </Slide>
   );
 };
-Columns.displayName = "Slideshow.Slide.Columns";
+Columns.displayName = "Slideshow.Preset.Columns";
 
 // Slide Component - Foundation of the slideshow system
 // Uses a 6-column × 4-row CSS grid to provide consistent, professional layouts
@@ -267,7 +267,7 @@ export function Slide({
     >
       <div
         className={cn(
-          "w-full flex-1 min-h-0",
+          "w-full h-dvh flex-1 min-h-0",
           "grid grid-cols-6 [grid-template-rows:repeat(4,_auto)] gap-y-16 gap-x-4 pb-4",
           variant === "top" ? "slide-top-padding" : "slide-centered-padding"
         )}
@@ -300,18 +300,16 @@ function validateSlideChildren(
   const childArray = React.Children.toArray(children) as React.ReactElement[];
 
   const validSlideDisplayNames = new Set([
-    "Slideshow.Slide.Cover",
-    "Slideshow.Slide.Full",
-    "Slideshow.Slide.TitleTop",
-    "Slideshow.Slide.TitleTopH2",
-    "Slideshow.Slide.Quote",
-    "Slideshow.Slide.Columns",
-    "Slideshow.Slide.Columns2",
-    "Slideshow.Slide.Columns3",
-    "Slideshow.Slide.Columns4",
-    "Slideshow.Slide.BulletList",
-    "Slideshow.Slide.BulletItem",
-    "Slideshow.Slide.ChartSplit",
+    "Slideshow.Preset.Cover",
+    "Slideshow.Preset.Full",
+    "Slideshow.Preset.TitleTop",
+    "Slideshow.Preset.TitleTopH2",
+    "Slideshow.Preset.Quote",
+    "Slideshow.Preset.Columns",
+    "Slideshow.Preset.Columns2",
+    "Slideshow.Preset.Columns3",
+    "Slideshow.Preset.Columns4",
+    "Slideshow.Preset.ChartSplit",
   ]);
 
   const invalidChildren = childArray.filter((child) => {
@@ -328,7 +326,7 @@ function validateSlideChildren(
 
   if (invalidChildren.length > 0) {
     throw new Error(
-      "Slideshow: All children must be Slideshow.Slide components. " +
+      "Slideshow: All children must be Slideshow.Preset components. " +
         `Found ${invalidChildren.length} invalid child(ren).`
     );
   }
@@ -537,7 +535,7 @@ export const Cover = ({
     <Title className="col-span-4 row-span-2">{title}</Title>
   </Slide>
 );
-Cover.displayName = "Slideshow.Slide.Cover";
+Cover.displayName = "Slideshow.Preset.Cover";
 
 type FullProps = BasePropsWithChildren;
 
@@ -557,7 +555,7 @@ export const Full = ({
     </Col>
   </Slide>
 );
-Full.displayName = "Slideshow.Slide.Full";
+Full.displayName = "Slideshow.Preset.Full";
 
 type TitleTopProps = PropsWithChildren<{
   title: string;
@@ -577,15 +575,15 @@ export const TitleTop = ({
     className={cn(`slide-cover-${theme}`, className)}
     isPreview={isPreview}
   >
-    <Heading1 className="col-span-4 row-span-1">{title}</Heading1>
+    <Heading1 className="col-span-5 row-span-1">{title}</Heading1>
     {children && (
-      <div className="slide-content row-start-3 col-start-2 row-span-2 col-span-4">
+      <div className="slide-content row-start-2 row-span-3 col-span-6 p-x-4">
         {children}
       </div>
     )}
   </Slide>
 );
-TitleTop.displayName = "Slideshow.Slide.TitleTop";
+TitleTop.displayName = "Slideshow.Preset.TitleTop";
 
 type TitleTopH2Props = PropsWithChildren<{
   title: string;
@@ -605,24 +603,24 @@ export const TitleTopH2 = ({
     className={cn(`slide-cover-${theme}`, className)}
     isPreview={isPreview}
   >
-    <Heading2 className="col-span-4 row-span-1">{title}</Heading2>
+    <Heading2 className="col-span-5 row-span-1">{title}</Heading2>
     {children && (
-      <div className="slide-content row-start-3 col-start-2 row-span-2 col-span-4">
+      <div className="slide-content row-start-2 row-span-3 col-span-6 p-x-4">
         {children}
       </div>
     )}
   </Slide>
 );
-TitleTopH2.displayName = "Slideshow.Slide.TitleTopH2";
+TitleTopH2.displayName = "Slideshow.Preset.TitleTopH2";
 
 // Column-based aliases.
 
 const Columns2 = (props: ColumnsProps) => <Columns {...props} max={2} />;
-Columns2.displayName = "Slideshow.Slide.Columns2";
+Columns2.displayName = "Slideshow.Preset.Columns2";
 const Columns3 = (props: ColumnsProps) => <Columns {...props} max={3} />;
-Columns3.displayName = "Slideshow.Slide.Columns3";
+Columns3.displayName = "Slideshow.Preset.Columns3";
 const Columns4 = (props: ColumnsProps) => <Columns {...props} max={4} />;
-Columns4.displayName = "Slideshow.Slide.Columns4";
+Columns4.displayName = "Slideshow.Preset.Columns4";
 
 type ItemProps = PropsWithChildren<{ heading: string; className?: string }>;
 
@@ -645,14 +643,14 @@ const BulletList = ({
     {children}
   </ul>
 );
-BulletList.displayName = "Slideshow.Slide.BulletList";
+BulletList.displayName = "Slideshow.Content.BulletList";
 
 const BulletItem = ({ children }: PropsWithChildren) => (
   <li>
     <TextBody3>{children}</TextBody3>
   </li>
 );
-BulletItem.displayName = "Slideshow.Slide.BulletItem";
+BulletItem.displayName = "Slideshow.Content.BulletItem";
 
 type ChartSplitProps = PropsWithChildren<{
   title: string;
@@ -692,7 +690,7 @@ const ChartSplit = ({
     </Col>
   </Slide>
 );
-ChartSplit.displayName = "Slideshow.Slide.ChartSplit";
+ChartSplit.displayName = "Slideshow.Preset.ChartSplit";
 
 interface QuoteProps extends BaseProps {
   author: string;
@@ -730,14 +728,12 @@ export const Quote = ({
     </Col>
   </Slide>
 );
-Quote.displayName = "Slideshow.Slide.Quote";
+Quote.displayName = "Slideshow.Preset.Quote";
 
 // Namespace export.
 export const Slideshow = {
   Root: SlideshowRoot,
-  Slide: {
-    BulletItem,
-    BulletList,
+  Preset: {
     ChartSplit,
     Columns,
     Columns2,
@@ -745,10 +741,14 @@ export const Slideshow = {
     Columns4,
     Cover,
     Full,
-    Item,
     Quote,
     TitleTop,
     TitleTopH2,
+  },
+  Content: {
+    BulletItem,
+    BulletList,
+    Item,
   },
   Text: {
     Body1: TextBody1,
