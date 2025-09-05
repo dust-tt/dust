@@ -8,7 +8,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { PatchConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
+import type { PatchConversationResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
@@ -106,7 +106,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      GetConversationResponseType | PatchConversationsResponseBody
+      GetConversationResponseType | PatchConversationResponseBody
     >
   >,
   auth: Authenticator

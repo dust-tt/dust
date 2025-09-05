@@ -34,6 +34,7 @@ import {
   HeartbeatMCPResponseType,
   LoggerInterface,
   PatchConversationRequestType,
+  PatchConversationResponseSchema,
   PatchDataSourceViewRequestType,
   PostMCPResultsResponseType,
   PublicHeartbeatMCPRequestBody,
@@ -991,13 +992,13 @@ export class DustAPI {
     });
 
     const r = await this._resultFromResponse(
-      GetConversationResponseSchema,
+      PatchConversationResponseSchema,
       res
     );
     if (r.isErr()) {
       return r;
     }
-    return new Ok(r.value.conversation);
+    return new Ok(r.value.success);
   }
 
   async getConversations() {

@@ -581,6 +581,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     { conversation }: { conversation: ConversationWithoutContentType }
   ) {
+    if (!auth.user()) {
+      return new Err(new Error("user_not_authenticated"));
+    }
+
     const updated = await ConversationParticipantModel.update(
       { unread: false },
       {
