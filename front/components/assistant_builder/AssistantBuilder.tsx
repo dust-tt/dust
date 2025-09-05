@@ -60,6 +60,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAssistantConfigurationActions } from "@app/lib/swr/actions";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useKillSwitches } from "@app/lib/swr/kill";
+import { getDisabledToolsFromSettings, useMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
 import { useModels } from "@app/lib/swr/models";
 import { useUser } from "@app/lib/swr/user";
 import {
@@ -87,6 +88,12 @@ export default function AssistantBuilder({
   const sendNotification = useSendNotification();
   const { user, isUserLoading, isUserError } = useUser();
 
+  const { toolsSettings } = useMCPServerToolsSettings({
+    owner,
+    serverId: "",
+  });
+
+  const disabledTools = getDisabledToolsFromSettings(toolsSettings);
   const { killSwitches } = useKillSwitches();
   const { models, reasoningModels } = useModels({ owner });
 
@@ -275,7 +282,7 @@ export default function AssistantBuilder({
     const anyActionError =
       mcpServerViews.length > 0 &&
       builderState.actions.some((action) =>
-        hasActionError(action, mcpServerViews)
+        hasActionError(action, mcpServerViews, disabledTools)
       );
 
     setHasAnyActionsError(anyActionError);
@@ -289,6 +296,7 @@ export default function AssistantBuilder({
     initialBuilderState?.handle,
     isInstructionDiffMode,
     mcpServerViews,
+    disabledTools,
   ]);
 
   useEffect(() => {

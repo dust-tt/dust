@@ -63,6 +63,7 @@ import {
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getDisabledToolsFromSettings, useMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
@@ -83,11 +84,12 @@ function ActionModeSection({
 
 export function hasActionError(
   action: AssistantBuilderActionAndDataVisualizationConfiguration,
-  mcpServerViews: MCPServerViewType[]
+  mcpServerViews: MCPServerViewType[],
+  disabledTools: string[]
 ): string | null {
   switch (action.type) {
     case "MCP":
-      return hasErrorActionMCP(action, mcpServerViews);
+      return hasErrorActionMCP(action, mcpServerViews, disabledTools);
     case "DATA_VISUALIZATION":
       return null;
     default:
@@ -149,6 +151,11 @@ export default function ActionsScreen({
     pendingAction,
     nonGlobalSpacesUsedInActions,
   } = useAssistantBuilderContext();
+  const { toolsSettings } = useMCPServerToolsSettings({
+    owner,
+    serverId: "",
+  });
+  const disabledTools = getDisabledToolsFromSettings(toolsSettings);
 
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
 
@@ -374,6 +381,7 @@ export default function ActionsScreen({
               <CardGrid>
                 {builderState.actions.map((action) => (
                   <ActionCard
+                    disabledTools={disabledTools}
                     action={action}
                     key={action.name}
                     editAction={() => {
@@ -422,6 +430,12 @@ function NewActionModal({
   hasFeature,
 }: NewActionModalProps) {
   const { builderState } = useAssistantBuilderContext();
+
+  const { toolsSettings } = useMCPServerToolsSettings({
+    owner,
+    serverId: "",
+  });
+  const disabledTools = getDisabledToolsFromSettings(toolsSettings);
 
   const [newActionConfig, setNewActionConfig] =
     useState<AssistantBuilderMCPOrVizState | null>(null);
@@ -486,7 +500,7 @@ function NewActionModal({
         newActionConfig &&
         !titleError &&
         descriptionValid &&
-        !hasActionError(newActionConfig, mcpServerViews)
+        !hasActionError(newActionConfig, mcpServerViews, disabledTools)
       ) {
         newActionConfig.name = newActionConfig.name.trim();
         newActionConfig.description = newActionConfig.description.trim();
@@ -501,7 +515,7 @@ function NewActionModal({
         }
         if (newActionConfig) {
           setShowInvalidActionError(
-            hasActionError(newActionConfig, mcpServerViews)
+            hasActionError(newActionConfig, mcpServerViews, disabledTools)
           );
         }
       }
@@ -603,11 +617,13 @@ function ActionCard({
   editAction,
   removeAction,
   isLegacyConfig,
+  disabledTools,
 }: {
   action: AssistantBuilderActionAndDataVisualizationConfiguration;
   editAction: () => void;
   removeAction: () => void;
   isLegacyConfig: boolean;
+  disabledTools: string[];
 }) {
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -631,7 +647,7 @@ function ActionCard({
       : null;
 
   const actionError = !isMCPServerViewsLoading
-    ? hasActionError(action, mcpServerViews)
+    ? hasActionError(action, mcpServerViews, disabledTools)
     : false;
 
   return (

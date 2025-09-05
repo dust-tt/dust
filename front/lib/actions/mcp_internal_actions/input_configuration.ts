@@ -215,12 +215,20 @@ function generateConfiguredInput({
 function findPathsToConfiguration({
   mcpServer,
   mimeType,
+  disabledTools = [],
 }: {
   mcpServer: MCPServerType;
   mimeType: InternalToolInputMimeType;
+  disabledTools?: string[];
 }): Record<string, JSONSchema> {
   let matches: Record<string, JSONSchema> = {};
   for (const tool of mcpServer.tools) {
+    // Skip disabled tools
+    if (disabledTools.includes(tool.name)) {
+      console.log(`Skipping tool ${tool.name} because it is disabled`);
+      continue;
+    }
+    
     if (tool.inputSchema) {
       matches = {
         ...matches,
@@ -397,10 +405,13 @@ export interface MCPServerRequirements {
   >;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
+  requiredFlavors: InternalMCPServerFlavorType[];
+  disabledTools: string[];
 }
 
 export function getMCPServerRequirements(
-  mcpServerView: MCPServerViewType | null | undefined
+  mcpServerView: MCPServerViewType | null | undefined, 
+  disabledTools: string[] = []
 ): MCPServerRequirements {
   if (!mcpServerView) {
     return {
@@ -418,15 +429,16 @@ export function getMCPServerRequirements(
       requiredLists: {},
       requiresDustAppConfiguration: false,
       noRequirement: false,
+      disabledTools: [],
     };
   }
   const { server } = mcpServerView;
-
   const requiresDataSourceConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+        disabledTools,
       })
     ).length > 0;
 
@@ -435,6 +447,7 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
+        disabledTools,
       })
     ).length > 0;
 
@@ -443,6 +456,7 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+        disabledTools,
       })
     ).length > 0;
 
@@ -451,6 +465,7 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
+        disabledTools,
       })
     ).length > 0;
 
@@ -459,21 +474,23 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+        disabledTools,
       })
     ).length > 0;
 
-  const mayRequireTimeFrameConfiguration = server.tools.some(
-    (tool) => tool.inputSchema?.properties?.timeFrame
-  );
+  const mayRequireTimeFrameConfiguration = server.tools
+    .filter((tool) => !disabledTools.includes(tool.name))
+    .some((tool) => tool.inputSchema?.properties?.timeFrame);
 
-  const mayRequireJsonSchemaConfiguration = server.tools.some(
-    (tool) => tool.inputSchema?.properties?.jsonSchema
-  );
+  const mayRequireJsonSchemaConfiguration = server.tools
+    .filter((tool) => !disabledTools.includes(tool.name))
+    .some((tool) => tool.inputSchema?.properties?.jsonSchema);
 
   const requiredStrings = Object.entries(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+      disabledTools,
     })
   ).map(([key, schema]) => ({
     key,
@@ -484,6 +501,7 @@ export function getMCPServerRequirements(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+      disabledTools,
     })
   ).map(([key, schema]) => ({
     key,
@@ -494,6 +512,7 @@ export function getMCPServerRequirements(
     findPathsToConfiguration({
       mcpServer: server,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+      disabledTools,
     })
   ).map(([key, schema]) => ({
     key,
@@ -505,6 +524,7 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+        disabledTools,
       })
     ).map(([key, schema]) => {
       const valueProperty = schema.properties?.value;
@@ -529,6 +549,7 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
+        disabledTools,
       })
     ).map(([key, schema]) => {
       const optionsProperty = schema.properties?.options;
@@ -572,6 +593,7 @@ export function getMCPServerRequirements(
       findPathsToConfiguration({
         mcpServer: server,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+        disabledTools,
       })
     ).length > 0;
 
@@ -602,6 +624,7 @@ export function getMCPServerRequirements(
       requiredBooleans.length === 0 &&
       Object.keys(requiredEnums).length === 0 &&
       Object.keys(requiredLists).length === 0,
+    disabledTools,
   };
 }
 
