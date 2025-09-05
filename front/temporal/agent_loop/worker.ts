@@ -58,11 +58,7 @@ export async function runAgentLoopWorker() {
     },
   });
 
-  const shutdown = async () => {
-    worker.shutdown();
-  };
-
-  process.on("SIGTERM", () => shutdown());
+  process.on("SIGTERM", () => worker.shutdown());
 
   try {
     await worker.run(); // this resolves after shutdown completes
