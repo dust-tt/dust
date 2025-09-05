@@ -186,6 +186,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
     stage: "dust_only",
   },
+  slack_bot_mcp: {
+    description: "Slack bot MCP server for workspace-level Slack integration",
+    stage: "rolling_out",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
