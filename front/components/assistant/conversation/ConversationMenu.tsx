@@ -89,7 +89,6 @@ export function ConversationMenu({
             label="Delete"
             onClick={() => setShowDeleteDialog(true)}
             icon={TrashIcon}
-            variant="warning"
           />
           <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
           <DropdownMenuItem
