@@ -15,6 +15,13 @@ import type { ModelId } from "@connectors/types";
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 
+const JOIN_CHANNEL_USE_CASES = [
+  "join-only",
+  "auto-read",
+  "set-permission",
+] as const;
+export type JoinChannelUseCaseType = (typeof JOIN_CHANNEL_USE_CASES)[number];
+
 // Dynamic activity creation with fresh routing evaluation (enables retry queue switching).
 function getSlackActivities() {
   const {
@@ -24,10 +31,19 @@ function getSlackActivities() {
     syncChannelMetadata,
     reportInitialSyncProgressActivity,
     getChannelsToGarbageCollect,
-    attemptChannelJoinActivity,
     deleteChannelsFromConnectorDb,
   } = proxyActivities<typeof activities>({
     startToCloseTimeout: "10 minutes",
+  });
+
+  const { attemptChannelJoinActivity } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
+    retry: {
+      initialInterval: "3s",
+      maximumInterval: "12s",
+      backoffCoefficient: 1.5,
+      maximumAttempts: 25,
+    },
   });
 
   const { deleteChannel, syncThread, syncChannel } = proxyActivities<
@@ -368,4 +384,39 @@ export function syncOneMessageDebouncedWorkflowId(
 
 export function slackGarbageCollectorWorkflowId(connectorId: ModelId) {
   return `slack-GarbageCollector-${connectorId}`;
+}
+
+export async function joinChannelWorkflow(
+  connectorId: ModelId,
+  channelId: string,
+  useCase: JoinChannelUseCaseType
+): Promise<{ success: boolean; error?: string }> {
+  if (useCase === "auto-read") {
+    throw new Error("auto-read use case not implemented");
+  }
+  if (useCase === "set-permission") {
+    throw new Error("set-permission use case not implemented");
+  }
+
+  // Handle join-only use case
+  try {
+    const success = await getSlackActivities().attemptChannelJoinActivity(
+      connectorId,
+      channelId
+    );
+    return { success };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
+}
+
+export function joinChannelWorkflowId(
+  connectorId: ModelId,
+  channelId: string,
+  useCase: JoinChannelUseCaseType
+) {
+  return `slack-joinChannel-${useCase}-${connectorId}-${channelId}`;
 }
