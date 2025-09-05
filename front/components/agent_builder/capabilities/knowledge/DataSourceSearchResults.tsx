@@ -377,15 +377,7 @@ export function DataSourceSearchResults({
         </div>
       ) : (
         <>
-          <div className="flex flex-row items-center justify-between text-end text-sm text-muted-foreground dark:text-muted-foreground-night">
-            <div>
-              {currentSpace !== null && (
-                <>
-                  Searching in{" "}
-                  <span className="font-medium">{currentSpace.name}</span>
-                </>
-              )}
-            </div>
+          <div className="flex w-full flex-col items-end text-sm text-muted-foreground dark:text-muted-foreground-night">
             <div>
               {isLoading
                 ? "Searching..."

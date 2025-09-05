@@ -4,10 +4,11 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   SearchInput,
-  SliderToggle,
 } from "@dust-tt/sparkle";
+import { Separator } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -72,11 +73,6 @@ export const DataSourceBuilderSelector = ({
   );
 
   const [searchScope, setSearchScope] = useState<"node" | "space">("node");
-
-  // Memoize the toggle handler to prevent re-renders
-  const handleToggleScope = useCallback(() => {
-    setSearchScope((prev) => (prev === "node" ? "space" : "node"));
-  }, []);
 
   // Simple search scope label
   const searchScopeLabel =
@@ -226,14 +222,29 @@ export const DataSourceBuilderSelector = ({
             onChange={setSearchTerm}
           />
           {currentNode && isSearching && (
-            <div className="flex items-center justify-between px-1 py-1">
-              <span className="text-xs text-muted-foreground">
-                {searchScopeLabel}
+            <div className="flex items-center gap-1 px-1 py-1">
+              <span className="mr-2 text-xs text-muted-foreground">
+                Searching in:
               </span>
-              <SliderToggle
-                selected={searchScope === "node"}
-                onClick={handleToggleScope}
-              />
+              <div className="flex space-x-3 overflow-hidden rounded-md">
+                <Button
+                  onClick={() => setSearchScope("node")}
+                  variant={searchScope === "node" ? "outline" : "ghost"}
+                  label={currentNode.title}
+                  className={cn(
+                    searchScope === "node" && "text-muted-foreground"
+                  )}
+                />
+                <Separator orientation="vertical" />
+                <Button
+                  onClick={() => setSearchScope("space")}
+                  variant={searchScope === "space" ? "outline" : "ghost"}
+                  label={`All ${currentSpace?.name}`}
+                  className={cn(
+                    searchScope === "space" && "text-muted-foreground"
+                  )}
+                />
+              </div>
             </div>
           )}
         </div>
