@@ -1,4 +1,5 @@
 import {
+  BellIcon,
   BoltIcon,
   Button,
   CloudArrowLeftRightIcon,
@@ -242,6 +243,12 @@ const SYSTEM_SPACE_ITEMS = [
     category: "actions" as DataSourceViewCategory,
     flag: null,
   },
+  {
+    label: "Triggers",
+    visual: BellIcon,
+    category: "triggers" as DataSourceViewCategory,
+    flag: "hootl_webhooks",
+  },
 ];
 
 const SystemSpaceMenu = ({
@@ -407,6 +414,15 @@ const SpaceMenuItem = ({
               } else if (c === "actions") {
                 return (
                   <SpaceActionsSubMenu
+                    key={c}
+                    category={c}
+                    owner={owner}
+                    space={space}
+                  />
+                );
+              } else if (c === "triggers") {
+                return (
+                  <SpaceTriggersSubMenu
                     key={c}
                     category={c}
                     owner={owner}
@@ -801,4 +817,16 @@ const SpaceActionsSubMenu = ({
       )}
     </Tree.Item>
   );
+};
+
+const SpaceTriggersSubMenu = ({
+  owner,
+  space,
+  category,
+}: {
+  owner: LightWorkspaceType;
+  space: SpaceType;
+  category: "triggers";
+}) => {
+  return <></>;
 };

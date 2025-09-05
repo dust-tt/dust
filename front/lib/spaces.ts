@@ -1,4 +1,5 @@
 import {
+  BellIcon,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   CompanyIcon,
@@ -130,6 +131,10 @@ export const CATEGORY_DETAILS: {
   actions: {
     label: "Tools",
     icon: MCP_SPECIFICATION.cardIcon,
+  },
+  triggers: {
+    label: "Triggers",
+    icon: BellIcon,
   },
 };
 

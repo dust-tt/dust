@@ -2,7 +2,10 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
-import { MCPExternalActionIconSchema, MCPInternalActionIconSchema, } from "./mcp_icon_types";
+import {
+  MCPExternalActionIconSchema,
+  MCPInternalActionIconSchema,
+} from "./mcp_icon_types";
 import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
@@ -450,7 +453,7 @@ export interface LoggerInterface {
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
-  "managed" | "folder" | "website" | "apps" | "actions"
+  "managed" | "folder" | "website" | "apps" | "actions" | "triggers"
 >();
 
 const BlockTypeSchema = FlexibleEnumSchema<
@@ -602,6 +605,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl"
+  | "hootl_webhooks"
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"

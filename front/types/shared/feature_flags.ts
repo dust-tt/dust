@@ -146,7 +146,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-
   research_agent: {
     description: "Activate @research agent.",
     stage: "dust_only",
@@ -158,6 +157,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   hootl: {
     description: "Human Out Of The Loop (aka Triggers)",
+    stage: "dust_only",
+  },
+  hootl_webhooks: {
+    description: "Webhook support for Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",
   },
   toolsets_tool: {

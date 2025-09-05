@@ -1,5 +1,6 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
+  BellIcon,
   BoltIcon,
   Breadcrumbs,
   CloudArrowLeftRightIcon,
@@ -84,6 +85,13 @@ export function SpaceBreadCrumbs({
           {
             icon: BoltIcon,
             label: "Tools",
+          },
+        ];
+      } else if (category === "triggers") {
+        return [
+          {
+            icon: BellIcon,
+            label: "Triggers",
           },
         ];
       }
