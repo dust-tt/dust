@@ -29,7 +29,17 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
+interface ConversationListMenuItemProps {
+  conversation: ConversationWithoutContentPublicType;
+  selectedConversationId: string;
+  navigate: NavigateFunction;
+}
+
 function ConversationListMenuItem({
+  conversation,
+  selectedConversationId,
+  navigate,
+}: ConversationListMenuItemProps) {
   conversation,
   selectedConversationId,
   navigate,
