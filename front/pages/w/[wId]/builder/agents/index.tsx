@@ -313,6 +313,7 @@ export default function WorkspaceAssistants({
             <div className="flex flex-row gap-2">
               <SearchInput
                 ref={searchBarRef}
+                className="flex-grow"
                 name="search"
                 placeholder="Search (Name)"
                 value={assistantSearch}

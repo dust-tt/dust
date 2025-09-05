@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   buildSelectedEmojiType,
   makeUrlForEmojiAndBackground,
-} from "@app/components/assistant_builder/avatar_picker/utils";
+} from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { createGenericAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
