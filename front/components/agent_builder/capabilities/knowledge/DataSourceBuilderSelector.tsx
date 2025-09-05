@@ -18,6 +18,8 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { findSpaceFromNavigationHistory } from "@app/components/data_source_view/context/utils";
+import { findDataSourceViewFromNavigationHistory } from "@app/components/data_source_view/context/utils";
+import { getLatestNodeFromNavigationHistory } from "@app/components/data_source_view/context/utils";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
@@ -60,6 +62,42 @@ export const DataSourceBuilderSelector = ({
 
   // Get current space for search - extract from any navigation level
   const currentSpace = findSpaceFromNavigationHistory(navigationHistory);
+  const currentNode = getLatestNodeFromNavigationHistory(navigationHistory);
+
+  const createSearchFilter = () => {
+    const searchFilter: {
+      dataSourceViewIdsBySpaceId?: Record<string, string[]>;
+      parentId?: string;
+    } = {
+      dataSourceViewIdsBySpaceId: undefined,
+      parentId: undefined,
+    };
+
+    if (currentSpace) {
+      const dsv = dataSourceViews.filter(
+        (dsv) => dsv.spaceId === currentSpace.sId
+      );
+
+      const currentDataSourceView =
+        findDataSourceViewFromNavigationHistory(navigationHistory);
+
+      if (currentDataSourceView) {
+        searchFilter.dataSourceViewIdsBySpaceId = {
+          [currentSpace.sId]: [currentDataSourceView.sId],
+        };
+      } else {
+        searchFilter.dataSourceViewIdsBySpaceId = {
+          [currentSpace.sId]: dsv.map((dsv) => dsv.sId),
+        };
+      }
+    }
+
+    if (currentNode && currentNode.internalId) {
+      searchFilter.parentId = currentNode.internalId;
+    }
+
+    return searchFilter;
+  };
 
   const {
     searchResultNodes,
@@ -75,11 +113,7 @@ export const DataSourceBuilderSelector = ({
           disabled: !debouncedSearch,
           includeDataSources: true,
           viewType,
-          dataSourceViewIdsBySpaceId: {
-            [currentSpace.sId]: dataSourceViews
-              .filter((dsv) => dsv.spaceId === currentSpace.sId)
-              .map((dsv) => dsv.sId),
-          },
+          ...createSearchFilter(),
         }
       : {
           owner,
@@ -90,6 +124,9 @@ export const DataSourceBuilderSelector = ({
           viewType,
         }
   );
+
+  console.log(">>>>>>> searchResultNodes", searchResultNodes);
+  console.log(">>>>>>> currentNode.internalId", currentNode?.internalId);
 
   const isSearching = debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE;
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
@@ -183,7 +220,13 @@ export const DataSourceBuilderSelector = ({
       {showSearch ? (
         <DataSourceSearchResults
           currentSpace={currentSpace}
-          searchResultNodes={searchResultNodes}
+          searchResultNodes={
+            currentNode?.internalId && debouncedSearch
+              ? searchResultNodes.filter(
+                  (s) => s.internalId !== currentNode.internalId
+                )
+              : searchResultNodes
+          }
           isLoading={isLoading}
           onClearSearch={() => setSearchTerm("")}
           error={hasError ? new Error("Search failed") : null}
