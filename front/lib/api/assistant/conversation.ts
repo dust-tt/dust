@@ -211,12 +211,8 @@ export async function deleteConversation(
 
 /**
  * Delete-or-Leave:
- * - If the user has access to the conversation: perform a soft-delete
- *   (update visibility to "deleted").
- * - If the user lacks access: perform a leave (remove participation) so the
- *   entry disappears from their history without returning 403. If the
- *   conversation becomes empty after the leave, soft-delete it for
- *   consistency with delete() when destroy=false.
+ * - If the user is the last participant: perform a soft-delete
+ * - Otherwise just remove the user from the participants
  */
 export async function deleteOrLeaveConversation(
   auth: Authenticator,
@@ -238,25 +234,9 @@ export async function deleteOrLeaveConversation(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  const hasAccess = ConversationResource.canAccessConversation(
-    auth,
-    conversation
-  );
-
-  if (hasAccess) {
-    const del = await deleteConversation(auth, { conversationId });
-    if (del.isErr()) {
-      return new Err(del.error);
-    }
-    return new Ok({ success: true });
-  }
-
-  // User does not have access to the conversation, so we need to leave it.
   const user = auth.user();
   if (!user) {
-    return new Err(
-      new Error("Cannot leave conversation: user not authenticated.")
-    );
+    return new Err(new Error("User not authenticated."));
   }
   const leaveRes = await conversation.leaveConversation(auth);
   if (leaveRes.isErr()) {

@@ -4,6 +4,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationParticipantModel } from "@app/lib/models/assistant/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -67,12 +68,66 @@ async function handler(
       res.status(200).json({ participants: participantsRes.value });
       break;
 
+    case "POST":
+      const user = auth.user();
+      if (!user) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "app_auth_error",
+            message: "User not authenticated",
+          },
+        });
+      }
+
+      const owner = auth.workspace();
+      if (!owner) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "app_auth_error",
+            message: "Workspace not found",
+          },
+        });
+      }
+
+      const existingParticipant = await ConversationParticipantModel.findOne({
+        where: {
+          conversationId: conversationWithoutContent.id,
+          workspaceId: owner.id,
+          userId: user.id,
+        },
+      });
+
+      if (existingParticipant) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "User is already a participant in this conversation",
+          },
+        });
+      }
+
+      await ConversationParticipantModel.create({
+        conversationId: conversationWithoutContent.id,
+        workspaceId: owner.id,
+        userId: user.id,
+        action: "subscribed",
+        unread: false,
+        actionRequired: false,
+      });
+
+      res.status(201).end();
+      break;
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }
