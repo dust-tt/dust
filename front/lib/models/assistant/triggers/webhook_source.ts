@@ -9,7 +9,6 @@ export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> 
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare url: string;
 
   declare secret: string | null;
   declare signatureHeader: string | null;
@@ -34,13 +33,6 @@ WebhookSourceModel.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    url: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      validate: {
-        isUrl: true,
-      },
     },
     secret: {
       type: DataTypes.TEXT,
