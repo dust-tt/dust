@@ -13,7 +13,7 @@ import { normalizeError } from "@connectors/types";
 import { getWeekStart } from "../lib/utils";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
-import type { JOIN_CHANNEL_USE_CASES } from "./workflows";
+import type { JoinChannelUseCaseType } from "./workflows";
 import {
   joinChannelWorkflow,
   joinChannelWorkflowId,
@@ -337,7 +337,7 @@ export async function launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
 export async function launchJoinChannelWorkflow(
   connectorId: ModelId,
   channelId: string,
-  useCase: JOIN_CHANNEL_USE_CASES
+  useCase: JoinChannelUseCaseType
 ) {
   const client = await getTemporalClient();
 

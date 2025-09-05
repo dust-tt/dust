@@ -13,10 +13,12 @@ import type { ModelId } from "@connectors/types";
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 
-export type JOIN_CHANNEL_USE_CASES =
-  | "join-only"
-  | "auto-read"
-  | "set-permission";
+const JOIN_CHANNEL_USE_CASES = [
+  "join-only",
+  "auto-read",
+  "set-permission",
+] as const;
+export type JoinChannelUseCaseType = (typeof JOIN_CHANNEL_USE_CASES)[number];
 
 // Dynamic activity creation with fresh routing evaluation (enables retry queue switching).
 function getSlackActivities() {
@@ -375,7 +377,7 @@ export function slackGarbageCollectorWorkflowId(connectorId: ModelId) {
 export async function joinChannelWorkflow(
   connectorId: ModelId,
   channelId: string,
-  useCase: JOIN_CHANNEL_USE_CASES
+  useCase: JoinChannelUseCaseType
 ): Promise<{ success: boolean; error?: string }> {
   if (useCase === "auto-read") {
     throw new Error("auto-read use case not implemented");
@@ -402,7 +404,7 @@ export async function joinChannelWorkflow(
 export function joinChannelWorkflowId(
   connectorId: ModelId,
   channelId: string,
-  useCase: JOIN_CHANNEL_USE_CASES
+  useCase: JoinChannelUseCaseType
 ) {
   return `slack-joinChannel-${useCase}-${connectorId}-${channelId}`;
 }
