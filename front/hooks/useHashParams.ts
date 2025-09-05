@@ -154,9 +154,9 @@ export function appendHashParam(url: string, key: string, value: string) {
   if (urlObj.hash) {
     // Remove the # from existing hash and append
     const existingHash = urlObj.hash.slice(1);
-    urlObj.hash = `#${existingHash}&${additionalHash}`;
+    urlObj.hash = `#?${existingHash}&${additionalHash}`;
   } else {
-    urlObj.hash = `#${additionalHash}`;
+    urlObj.hash = `#?${additionalHash}`;
   }
 
   return urlObj.toString();
