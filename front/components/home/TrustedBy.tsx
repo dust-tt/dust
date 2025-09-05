@@ -11,7 +11,6 @@ const LOGO_SETS = {
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
@@ -35,7 +34,6 @@ const LOGO_SETS = {
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
   },
   landing: {
@@ -43,7 +41,6 @@ const LOGO_SETS = {
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
@@ -67,7 +64,6 @@ const LOGO_SETS = {
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
     ],
   },
   b2bSaas: {
