@@ -16,6 +16,26 @@ const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 200; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
 
+const getPropertyTypes = async (
+  hubspotClient: Client,
+  objectType: string
+): Promise<Record<string, string>> => {
+  const properties =
+    await hubspotClient.crm.properties.coreApi.getAll(objectType);
+  return properties.results.reduce(
+    (acc, prop) => {
+      acc[prop.name] = prop.type;
+      return acc;
+    },
+    {} as Record<string, string>
+  );
+};
+
+const isEnumerationProperty = (
+  propertyName: string,
+  propertyTypes?: Record<string, string>
+) => propertyTypes?.[propertyName] === "enumeration";
+
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
@@ -194,7 +214,10 @@ interface HubspotFilter {
   highValue?: string;
 }
 
-function buildHubspotFilters(filters: Array<HubspotFilter>) {
+function buildHubspotFilters(
+  filters: Array<HubspotFilter>,
+  propertyTypes?: Record<string, string>
+) {
   // Define supported operators for validation
   const supportedOperators = [
     FilterOperatorEnum.Eq,
@@ -235,7 +258,7 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
         operator === FilterOperatorEnum.In ||
         operator === FilterOperatorEnum.NotIn
       ) {
-        // For string properties, values must be lowercase, but not for date properties
+        // For string properties, values must be lowercase, but not for date or enumeration properties
         if (values?.length) {
           // Check if this is a date property to avoid lowercasing dates
           const isDateProperty =
@@ -246,13 +269,20 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
             propertyName === "lastmodifieddate" ||
             propertyName === "hs_lastmodifieddate";
 
+          // Check if this is an enumeration property that should preserve case
+          const isEnumProperty = isEnumerationProperty(
+            propertyName,
+            propertyTypes
+          );
+
           // Filter out any undefined/null values and ensure all values are strings
           const cleanValues = values
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
-          filter.values = isDateProperty
-            ? cleanValues
-            : cleanValues.map((v) => v.toLowerCase());
+          filter.values =
+            isDateProperty || isEnumProperty
+              ? cleanValues
+              : cleanValues.map((v) => v.toLowerCase());
         } else {
           throw new Error(`Values array is required for ${operator} operator`);
         }
@@ -292,10 +322,17 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
             propertyName === "lastmodifieddate" ||
             propertyName === "hs_lastmodifieddate";
 
+          // Check if this is an enumeration property that should preserve case
+          const isEnumProperty = isEnumerationProperty(
+            propertyName,
+            propertyTypes
+          );
+
           const stringValue = String(value);
-          // For string comparison operators, lowercase non-date values for consistency
+          // For string comparison operators, lowercase non-date, non-enumeration values for consistency
           if (
             !isDateProperty &&
+            !isEnumProperty &&
             (operator === FilterOperatorEnum.Eq ||
               operator === FilterOperatorEnum.Neq ||
               operator === FilterOperatorEnum.ContainsToken ||
@@ -326,11 +363,14 @@ export const countObjectsByProperties = async (
 ): Promise<number> => {
   const hubspotClient = new Client({ accessToken });
 
+  // Fetch property types for enumeration detection
+  const propertyTypes = await getPropertyTypes(hubspotClient, objectType);
+
   // First, get the total count with a minimal request
   const initialSearch = await hubspotClient.crm[objectType].searchApi.doSearch({
     filterGroups: [
       {
-        filters: buildHubspotFilters(filters),
+        filters: buildHubspotFilters(filters, propertyTypes),
       },
     ],
     limit: 1,
@@ -348,7 +388,7 @@ export const countObjectsByProperties = async (
       const searchRequest: HubspotSearchRequest = {
         filterGroups: [
           {
-            filters: buildHubspotFilters(filters),
+            filters: buildHubspotFilters(filters, propertyTypes),
           },
         ],
         limit: MAX_LIMIT,
@@ -392,6 +432,7 @@ export const getLatestObjects = async (
   const availableProperties =
     await hubspotClient.crm.properties.coreApi.getAll(objectType);
   const propertyNames = availableProperties.results.map((p) => p.name);
+  const propertyTypes = await getPropertyTypes(hubspotClient, objectType);
 
   const allResults: SimplePublicObject[] = [];
   let after: string | undefined = undefined;
@@ -399,7 +440,7 @@ export const getLatestObjects = async (
   // Build filter groups if filters are provided
   const filterGroups =
     filters && filters.length > 0
-      ? [{ filters: buildHubspotFilters(filters) }]
+      ? [{ filters: buildHubspotFilters(filters, propertyTypes) }]
       : [];
 
   while (allResults.length < limit) {
@@ -1193,29 +1234,33 @@ export const searchCrmObjects = async ({
 }): Promise<{ results: SimplePublicObject[]; paging?: any } | null> => {
   const hubspotClient = new Client({ accessToken });
 
-  // Ensure propertiesToReturn is populated; otherwise, default properties are returned by the API.
-  // If an empty array is explicitly passed, it might fetch no properties or default properties, depending on the API.
-  // For robust control, fetching all available properties if `propertiesToReturn` is undefined or empty might be desired,
-  // similar to how getObjectsByProperties (now removed) behaved.
+  // Fetch property types for enumeration detection and propertiesToReturn if needed
+  let propertyTypes: Record<string, string> = {};
   let finalPropertiesToReturn = propertiesToReturn;
-  if (!finalPropertiesToReturn || finalPropertiesToReturn.length === 0) {
-    // Fetch all property names for the object type if not specified
-    try {
-      const allProps =
-        await hubspotClient.crm.properties.coreApi.getAll(objectType);
+
+  try {
+    const allProps =
+      await hubspotClient.crm.properties.coreApi.getAll(objectType);
+    propertyTypes = await getPropertyTypes(hubspotClient, objectType);
+
+    if (!finalPropertiesToReturn || finalPropertiesToReturn.length === 0) {
       finalPropertiesToReturn = allProps.results.map((p) => p.name);
-    } catch (propError) {
-      localLogger.error(
-        { propError },
-        `Error fetching all properties for ${objectType} to include in search:`
-      );
-      // Fallback to an empty array; the API will return default properties in this case.
+    }
+  } catch (propError) {
+    localLogger.error(
+      { propError },
+      `Error fetching properties for ${objectType}:`
+    );
+    // Fallback to an empty array; the API will return default properties in this case.
+    if (!finalPropertiesToReturn || finalPropertiesToReturn.length === 0) {
       finalPropertiesToReturn = [];
     }
   }
 
   const searchRequest: HubspotSearchRequest = {
-    filterGroups: filters ? [{ filters: buildHubspotFilters(filters) }] : [],
+    filterGroups: filters
+      ? [{ filters: buildHubspotFilters(filters, propertyTypes) }]
+      : [],
     sorts: ["-createdate"], // Default sort order.
     properties: finalPropertiesToReturn,
     limit: Math.min(limit, MAX_LIMIT), // Ensure the limit doesn't exceed MAX_LIMIT.

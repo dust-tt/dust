@@ -45,7 +45,7 @@ export function MCPActionHeader({
           <h2 className="heading-base line-clamp-1 text-foreground dark:text-foreground-night">
             {getMcpServerViewDisplayName(mcpServerView, newAction)}
           </h2>
-          <p className="line-clamp-2 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
             {mcpServerView.server.description}
           </p>
         </div>

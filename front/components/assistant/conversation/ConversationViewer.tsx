@@ -1,4 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
+import debounce from "lodash/debounce";
 import React, {
   useCallback,
   useEffect,
@@ -20,6 +21,7 @@ import {
 import {
   useConversation,
   useConversationFeedbacks,
+  useConversationMarkAsRead,
   useConversationMessages,
   useConversationParticipants,
   useConversations,
@@ -28,6 +30,7 @@ import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
   AgentMention,
+  AgentMessageDoneEvent,
   AgentMessageNewEvent,
   ContentFragmentType,
   ConversationTitleEvent,
@@ -72,6 +75,11 @@ const ConversationViewer = React.forwardRef<
     mutateConversation,
   } = useConversation({
     conversationId,
+    workspaceId: owner.sId,
+  });
+
+  const { markAsRead } = useConversationMarkAsRead({
+    conversation,
     workspaceId: owner.sId,
   });
 
@@ -243,6 +251,12 @@ const ConversationViewer = React.forwardRef<
     [conversationId, owner.sId]
   );
 
+  const debouncedMarkAsRead = useMemo(
+    () => debounce(markAsRead, 2000),
+    [markAsRead]
+  );
+
+  // Only conversation related events are handled here.
   const onEventCallback = useCallback(
     (eventStr: string) => {
       const eventPayload: {
@@ -250,10 +264,10 @@ const ConversationViewer = React.forwardRef<
         data:
           | UserMessageNewEvent
           | AgentMessageNewEvent
+          | AgentMessageDoneEvent
           | AgentGenerationCancelledEvent
           | ConversationTitleEvent;
       } = JSON.parse(eventStr);
-
       const event = eventPayload.data;
 
       if (!eventIds.current.includes(eventPayload.eventId)) {
@@ -275,11 +289,15 @@ const ConversationViewer = React.forwardRef<
             void mutateMessages();
             break;
 
-          case "conversation_title": {
+          case "conversation_title":
             void mutateConversation();
-            void mutateConversations(); // to refresh the list of convos in the sidebar
+            void mutateConversations(); // to refresh the list of convos in the sidebar (title)
             break;
-          }
+          case "agent_message_done":
+            // Mark as read and do not mutate the list of convos in the sidebar to avoid any network request.
+            // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
+            void debouncedMarkAsRead(event.conversationId, false);
+            break;
           default:
             ((t: never) => {
               console.error("Unknown event type", t);
@@ -292,6 +310,7 @@ const ConversationViewer = React.forwardRef<
       mutateConversations,
       mutateMessages,
       mutateConversationParticipants,
+      debouncedMarkAsRead,
     ]
   );
 

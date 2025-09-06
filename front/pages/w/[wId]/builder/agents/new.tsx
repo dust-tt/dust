@@ -3,8 +3,8 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
-import type { BuilderFlow } from "@app/components/assistant_builder/types";
-import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import type { BuilderFlow } from "@app/components/agent_builder/types";
+import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";

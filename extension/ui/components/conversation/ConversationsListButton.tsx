@@ -5,18 +5,20 @@ import {
   Button,
   ChatBubbleLeftRightIcon,
   classNames,
+  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  Icon,
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
+import type { NavigateFunction } from "react-router-dom";
 import { useNavigate, useParams } from "react-router-dom";
 
 type GroupLabel =
@@ -26,6 +28,41 @@ type GroupLabel =
   | "Last Month"
   | "Last 12 Months"
   | "Older";
+
+interface ConversationListMenuItemProps {
+  conversation: ConversationWithoutContentPublicType;
+  selectedConversationId: string;
+  navigate: NavigateFunction;
+}
+
+function ConversationListMenuItem({
+  conversation,
+  selectedConversationId,
+  navigate,
+}: ConversationListMenuItemProps) {
+  const UnreadIcon = () => (
+    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
+  );
+
+  const conversationLabel = conversation.title || "Untitled Conversation";
+  return (
+    <DropdownMenuItem
+      key={conversation.sId}
+      label={conversationLabel}
+      icon={conversation.unread ? UnreadIcon : undefined}
+      truncateText={true}
+      className={classNames(
+        "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
+        selectedConversationId === conversation.sId
+          ? "bg-primary-50 dark:bg-primary-50-night"
+          : ""
+      )}
+      onClick={() => {
+        navigate(`/conversations/${conversation.sId}`);
+      }}
+    />
+  );
+}
 
 const Content = () => {
   const { conversations, isConversationsLoading } = useConversations();
@@ -120,18 +157,11 @@ const Content = () => {
               )}
               {conversationsByDate[dateLabel as GroupLabel].map(
                 (conversation) => (
-                  <DropdownMenuItem
+                  <ConversationListMenuItem
                     key={conversation.sId}
-                    label={conversation.title || "Untitled Conversation"}
-                    className={classNames(
-                      "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
-                      conversationId === conversation.sId
-                        ? "bg-primary-50 dark:bg-primary-50-night"
-                        : ""
-                    )}
-                    onClick={() => {
-                      navigate(`/conversations/${conversation.sId}`);
-                    }}
+                    conversation={conversation}
+                    selectedConversationId={conversationId!}
+                    navigate={navigate}
                   />
                 )
               )}

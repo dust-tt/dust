@@ -24,16 +24,35 @@ Import
 
 Core pattern
 - Always wrap slides with <Slideshow.Root>…</Slideshow.Root>.
-- Use the provided slide presets.
+- Each Slideshow.Preset.* component creates one complete slide
+- Slideshow.Preset.* components are direct children of Slideshow.Root only
+- Never nest Slideshow.Preset.* components inside each other
+- Use content components (Slideshow.Content.*) inside slide presets
+
+Choose the right preset:
+- Need 2-4 structured content cards? → Use Columns2/3/4
+- Need title + freeform content? → Use TitleTop/TitleTopH2
+- Need full-screen chart or media? → Use Full
+- Need chart with text explanation? → Use ChartSplit
+- Need cover slide? → Use Cover
+- Need quote slide? → Use Quote
+
+
+API Structure:
+- Slideshow.Preset.* = Complete slide layouts (direct children of Root)
+- Slideshow.Content.* = Components that go inside slide presets
+- Slideshow.Text.* = Typography components for any content
 
 Available slide presets (only these)
-- <Slideshow.Slide.Cover title="…" />
-- <Slideshow.Slide.TitleTop title="…">children</Slideshow.Slide.TitleTop>
-- <Slideshow.Slide.TitleTopH2 title="…">children</Slideshow.Slide.TitleTopH2>
-- <Slideshow.Slide.Columns2|Columns3|Columns4> <Slideshow.Slide.Item heading="…">children</Slideshow.Slide.Item> … </Slideshow.Slide.ColumnsN>
-- <Slideshow.Slide.Full>media or chart</Slideshow.Slide.Full>
-- <Slideshow.Slide.ChartSplit title="…" description="…"> chart </Slideshow.Slide.ChartSplit>
-- <Slideshow.Slide.Quote quote="…" author="…" />
+- <Slideshow.Preset.Cover title="…" />
+- <Slideshow.Preset.TitleTop title="…">children</Slideshow.Preset.TitleTop>
+- <Slideshow.Preset.TitleTopH2 title="…">children</Slideshow.Preset.TitleTopH2>
+- <Slideshow.Preset.Columns2 title="…" description="…"> <Slideshow.Content.Item heading="…">children</Slideshow.Content.Item> … </Slideshow.Preset.Columns2>
+- <Slideshow.Preset.Columns3 title="…" description="…"> <Slideshow.Content.Item heading="…">children</Slideshow.Content.Item> … </Slideshow.Preset.Columns3>
+- <Slideshow.Preset.Columns4 title="…" description="…"> <Slideshow.Content.Item heading="…">children</Slideshow.Content.Item> … </Slideshow.Preset.Columns4>
+- <Slideshow.Preset.Full>media or chart</Slideshow.Preset.Full>
+- <Slideshow.Preset.ChartSplit title="…" description="…"> chart </Slideshow.Preset.ChartSplit>
+- <Slideshow.Preset.Quote quote="…" author="…" />
 
 All slide presets support theme="light" or theme="dark". Mix themes within the same slideshow as needed.
 
@@ -48,13 +67,15 @@ No need for responsive classes like \`sm:text-4xl md:text-6xl\` - just use the c
 perfect mobile-to-desktop scaling.
 
 Helpers
-- <Slideshow.Slide.Item heading="…">Body (any JSX or text)</Slideshow.Slide.Item>   // use inside Columns*
-- <Slideshow.Slide.BulletList><Slideshow.Slide.BulletItem>Point</Slideshow.Slide.BulletItem></Slideshow.Slide.BulletList>
+- <Slideshow.Content.Item heading="…">Body (any JSX or text)</Slideshow.Content.Item>   // use inside Columns*
+- <Slideshow.Content.BulletList><Slideshow.Content.BulletItem>Point</Slideshow.Content.BulletItem></Slideshow.Content.BulletList>
 
 Important rules:
-1) Prefer ColumnsN + Item for multi-card content (goals, metrics, features). Keep one main idea per slide.
-2) Keep body text concise. Use BulletList for 3–5 bullets when appropriate.
-3) Always include className="h-full w-full" on ChartContainer for proper sizing.
+1) Each Slideshow.Preset.* creates a complete slide. Never put one Preset inside another.
+2) Columns presets (Columns2/3/4) are complete slides with built-in title and description props.
+3) Keep body text concise. Use BulletList for 3–5 bullets when appropriate.
+4) Always include className="h-full w-full" on ChartContainer for proper sizing.
+
 
 DESIGN PRINCIPLES:
 - Create visual hierarchy: Title → Visual → Supporting text
@@ -72,47 +93,47 @@ import { Slideshow } from "@dust/slideshow/v1";
 export default function Deck() {
   return (
     <Slideshow.Root>
-      <Slideshow.Slide.Cover title="Q4 Revenue Analysis" />
+      <Slideshow.Preset.Cover title="Q4 Revenue Analysis" />
 
-      <Slideshow.Slide.TitleTop title="Executive Summary">
+      <Slideshow.Preset.TitleTop title="Executive Summary">
         <Slideshow.Text.Body2>
           +25% YoY growth driven by retention and EU expansion.
         </Slideshow.Text.Body2>
-      </Slideshow.Slide.TitleTop>
+      </Slideshow.Preset.TitleTop>
 
-      <Slideshow.Slide.Columns3 title="Key Goals">
-        <Slideshow.Slide.Item heading="Retention">
-          <Slideshow.Slide.BulletList>
-            <Slideshow.Slide.BulletItem>
+      <Slideshow.Preset.Columns3 title="Key Goals">
+        <Slideshow.Content.Item heading="Retention">
+          <Slideshow.Content.BulletList>
+            <Slideshow.Content.BulletItem>
               Onboarding revamp
-            </Slideshow.Slide.BulletItem>
-            <Slideshow.Slide.BulletItem>
+            </Slideshow.Content.BulletItem>
+            <Slideshow.Content.BulletItem>
               Proactive success
-            </Slideshow.Slide.BulletItem>
-          </Slideshow.Slide.BulletList>
-        </Slideshow.Slide.Item>
-        <Slideshow.Slide.Item heading="Expansion">
+            </Slideshow.Content.BulletItem>
+          </Slideshow.Content.BulletList>
+        </Slideshow.Content.Item>
+        <Slideshow.Content.Item heading="Expansion">
           Enter EU markets
-        </Slideshow.Slide.Item>
-        <Slideshow.Slide.Item heading="Pricing">
+        </Slideshow.Content.Item>
+        <Slideshow.Content.Item heading="Pricing">
           Launch new tiers
-        </Slideshow.Slide.Item>
-      </Slideshow.Slide.Columns3>
+        </Slideshow.Content.Item>
+      </Slideshow.Preset.Columns3>
 
-      <Slideshow.Slide.ChartSplit
+      <Slideshow.Preset.ChartSplit
         title="Sign-ups vs. Revenue"
         description="Sign-ups lead revenue by ~3 weeks."
       >
         <ChartContainer config={chartConfig} className="h-full w-full">
           <LineChart data={roadmapData} />
         </ChartContainer>
-      </Slideshow.Slide.ChartSplit>
+      </Slideshow.Preset.ChartSplit>
 
-      <Slideshow.Slide.Full>
+      <Slideshow.Preset.Full>
         <img src="/hero.png" className="w-full h-full object-cover" />
-      </Slideshow.Slide.Full>
+      </Slideshow.Preset.Full>
 
-      <Slideshow.Slide.Quote quote="This is a quote" author="John Doe" />
+      <Slideshow.Preset.Quote quote="This is a quote" author="John Doe" />
     </Slideshow.Root>
   );
 }

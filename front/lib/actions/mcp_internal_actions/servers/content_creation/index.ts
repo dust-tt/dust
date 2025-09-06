@@ -4,8 +4,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
-import { augmentContentCreationInstructions } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions/flavors";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
@@ -38,17 +36,7 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  // Get base instructions and augment with flavor-specific instructions.
-  const baseInstructions =
-    INTERNAL_MCP_SERVERS.content_creation.serverInfo.instructions || "";
-  const augmentedInstructions = augmentContentCreationInstructions(
-    baseInstructions,
-    agentLoopContext
-  );
-
-  const server = makeInternalMCPServer("content_creation", {
-    augmentedInstructions,
-  });
+  const server = makeInternalMCPServer("content_creation");
 
   server.tool(
     CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
@@ -96,10 +84,14 @@ const createServer = (
       ) => {
         const validationResult = validateTailwindCode(content);
         if (validationResult.isErr()) {
-          return new Err(new MCPError(validationResult.error.message));
+          return new Err(
+            new MCPError(validationResult.error.message, { tracked: false })
+          );
         }
 
-        const { conversation } = agentLoopContext?.runContext ?? {};
+        const { conversation, agentConfiguration } =
+          agentLoopContext?.runContext ?? {};
+
         if (!conversation) {
           return new Err(
             new MCPError(
@@ -113,6 +105,7 @@ const createServer = (
           conversationId: conversation.sId,
           fileName: file_name,
           mimeType: mime_type,
+          createdByAgentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {
@@ -217,11 +210,14 @@ const createServer = (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
+        const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+
         const result = await editClientExecutableFile(auth, {
           fileId: file_id,
           oldString: old_string,
           newString: new_string,
           expectedReplacements: expected_replacements,
+          editedByAgentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {

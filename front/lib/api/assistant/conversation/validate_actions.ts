@@ -11,6 +11,7 @@ import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -73,7 +74,7 @@ export async function validateAction(
     approvalState: ActionApprovalStateType;
     messageId: string;
   }
-): Promise<Result<void, Error>> {
+): Promise<Result<void, DustError>> {
   const { sId: conversationId, title: conversationTitle } = conversation;
 
   logger.info(
@@ -97,7 +98,9 @@ export async function validateAction(
 
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
   if (!action) {
-    return new Err(new Error(`Action not found: ${actionId}`));
+    return new Err(
+      new DustError("action_not_found", `Action not found: ${actionId}`)
+    );
   }
 
   const agentStepContent = await AgentStepContentResource.fetchByModelId(
@@ -105,12 +108,20 @@ export async function validateAction(
   );
   if (!agentStepContent) {
     return new Err(
-      new Error(`Agent step content not found: ${action.stepContentId}`)
+      new DustError(
+        "internal_error",
+        `Agent step content not found: ${action.stepContentId}`
+      )
     );
   }
 
   if (action.status !== "blocked_validation_required") {
-    return new Err(new Error(`Action is not blocked: ${action.status}`));
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        `Action is not blocked: ${action.status}`
+      )
+    );
   }
 
   const [updatedCount] = await action.updateStatus(
@@ -182,7 +193,9 @@ export async function validateAction(
       },
       "Error getting run agent data"
     );
-    return runAgentDataRes;
+    return new Err(
+      new DustError("internal_error", runAgentDataRes.error.message)
+    );
   }
 
   await runAgentLoop(

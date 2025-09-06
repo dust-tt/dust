@@ -1,6 +1,7 @@
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import type { ContentCreationFileContentType, Result } from "@app/types";
 import {
   clientExecutableContentType,
@@ -17,9 +18,16 @@ export async function createClientExecutableFile(
     conversationId: string;
     fileName: string;
     mimeType: ContentCreationFileContentType;
+    createdByAgentConfigurationId?: string;
   }
 ): Promise<Result<FileResource, Error>> {
-  const { content, conversationId, fileName, mimeType } = params;
+  const {
+    content,
+    conversationId,
+    fileName,
+    mimeType,
+    createdByAgentConfigurationId,
+  } = params;
 
   try {
     const workspace = auth.getNonNullableWorkspace();
@@ -71,6 +79,7 @@ export async function createClientExecutableFile(
       useCase: "conversation",
       useCaseMetadata: {
         conversationId,
+        lastEditedByAgentConfigurationId: createdByAgentConfigurationId,
       },
     });
 
@@ -79,6 +88,17 @@ export async function createClientExecutableFile(
 
     return new Ok(fileResource);
   } catch (error) {
+    const workspace = auth.getNonNullableWorkspace();
+    logger.error(
+      {
+        fileName,
+        conversationId,
+        workspaceId: workspace.id,
+        error,
+      },
+      "Failed to create client executable file"
+    );
+
     return new Err(
       new Error(
         `Failed to create client executable file '${fileName}': ${normalizeError(error)}`
@@ -94,11 +114,18 @@ export async function editClientExecutableFile(
     oldString: string;
     newString: string;
     expectedReplacements?: number;
+    editedByAgentConfigurationId?: string;
   }
 ): Promise<
   Result<{ fileResource: FileResource; replacementCount: number }, Error>
 > {
-  const { fileId, oldString, newString, expectedReplacements = 1 } = params;
+  const {
+    fileId,
+    oldString,
+    newString,
+    expectedReplacements = 1,
+    editedByAgentConfigurationId,
+  } = params;
 
   // Fetch the existing file.
   const fileContentResult = await getClientExecutableFileContent(auth, fileId);
@@ -125,6 +152,17 @@ export async function editClientExecutableFile(
         `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`
       )
     );
+  }
+
+  if (
+    editedByAgentConfigurationId &&
+    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+      editedByAgentConfigurationId
+  ) {
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+    });
   }
 
   // Perform the replacement.

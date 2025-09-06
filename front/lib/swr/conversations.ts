@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
@@ -12,6 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
@@ -25,6 +26,8 @@ import type {
   FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
+
+const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
 export function useConversation({
   conversationId,
@@ -363,14 +366,18 @@ export function useVisualizationRetry({
   workspaceId,
   conversationId,
   agentConfigurationId,
+  isPublic,
 }: {
   workspaceId: string | null;
   conversationId: string | null;
   agentConfigurationId: string | null;
+  isPublic: boolean;
 }) {
+  const canRetry = !isPublic && agentConfigurationId && conversationId;
+
   const handleVisualizationRetry = useCallback(
-    async (errorMessage: string) => {
-      if (!conversationId || !agentConfigurationId) {
+    async (errorMessage: string): Promise<boolean> => {
+      if (!canRetry) {
         return false;
       }
 
@@ -407,16 +414,13 @@ export function useVisualizationRetry({
         return false;
       }
     },
-    [workspaceId, conversationId, agentConfigurationId]
+    [workspaceId, conversationId, agentConfigurationId, canRetry]
   );
 
-  if (!agentConfigurationId) {
-    return () => {
-      return false;
-    };
-  }
-
-  return handleVisualizationRetry;
+  return {
+    handleVisualizationRetry,
+    canRetry,
+  };
 }
 
 export function useConversationMessage({
@@ -476,5 +480,90 @@ export function useConversationFiles({
     isConversationFilesLoading: !error && !data,
     isConversationFilesError: error,
     mutateConversationFiles: mutate,
+  };
+}
+
+/**
+ * This hook can be used to automatically mark a conversation as read after a delay.
+ * It can also be used to manually mark a conversation as read.
+ */
+export function useConversationMarkAsRead({
+  conversation,
+  workspaceId,
+}: {
+  conversation: ConversationWithoutContentType | null;
+  workspaceId: string;
+}) {
+  const { mutateConversations } = useConversations({
+    workspaceId,
+    options: {
+      disabled: true,
+    },
+  });
+
+  const markAsRead = useCallback(
+    /**
+     * @param conversationId - The ID of the conversation to mark as read.
+     * @param mutateList - Whether to mutate the list of conversations in the sidebar.
+     *
+     * If mutateList is true, the list of conversations in the sidebar will be mutated to update the unread status of the conversation.
+     * If mutateList is false, the list of conversations in the sidebar will not be mutated to update the unread status of the conversation.
+     *
+     * This is useful to avoid any network request when marking a conversation as read.
+     * @param conversationId
+     * @param mutateList
+     */
+    async (conversationId: string, mutateList: boolean): Promise<void> => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              read: true,
+            } as PatchConversationsRequestBody),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to mark conversation as read");
+        }
+        if (mutateList) {
+          void mutateConversations((prevState) => ({
+            ...prevState,
+            conversations:
+              prevState?.conversations.map((c) =>
+                c.sId === conversationId ? { ...c, unread: false } : c
+              ) ?? [],
+          }));
+        }
+      } catch (error) {
+        console.error("Error marking conversation as read:", error);
+      }
+    },
+    [workspaceId, mutateConversations]
+  );
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout | null = null;
+    if (conversation?.sId && conversation.unread) {
+      timeout = setTimeout(
+        () => markAsRead(conversation.sId, true),
+        DELAY_BEFORE_MARKING_AS_READ
+      );
+    }
+
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [conversation?.sId, conversation?.unread, markAsRead]);
+
+  return {
+    markAsRead,
   };
 }

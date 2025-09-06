@@ -7,22 +7,22 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 
-import type { DataSourceWithAgentsUsageType } from "@app/types";
+import type { AgentsUsageType } from "@app/types";
 
 export const UsedByButton = ({
   usage,
   onItemClick,
 }: {
-  usage: DataSourceWithAgentsUsageType;
+  usage: AgentsUsageType | null;
   onItemClick: (assistantSid: string) => void;
 }) => {
-  return usage.count === 0 ? (
+  return !usage || usage.count === 0 ? (
     <Button
       icon={RobotIcon}
       variant="ghost-secondary"
       isSelect={false}
       size="xs"
-      label={`${usage.count}`}
+      label="0"
       disabled
     />
   ) : (

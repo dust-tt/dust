@@ -40,6 +40,7 @@ import type {
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
+import type { GetMCPServersUsageResponseBody } from "@app/pages/api/w/[wId]/mcp/usage";
 import type { GetMCPServerViewsListResponseBody } from "@app/pages/api/w/[wId]/mcp/views";
 import type {
   PatchMCPServerViewBody,
@@ -998,6 +999,29 @@ const getOptimisticDataForRemove = (
   return data;
 };
 
+export function useMCPServersUsage({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const configFetcher: Fetcher<GetMCPServersUsageResponseBody> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/mcp/usage`,
+    configFetcher,
+    {
+      disabled,
+    }
+  );
+  return {
+    usage: data?.usage ?? null,
+    isLoading: !error && !data && !disabled,
+    isError: error,
+    mutate,
+  };
+}
+
 export function useMCPServerViewsNotActivated({
   owner,
   space,
@@ -1162,7 +1186,7 @@ function useMCPServerViewsFromSpacesBase(
 export function useMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  swrOptions?: SWRConfiguration
+  swrOptions?: SWRConfiguration & { disabled?: boolean }
 ) {
   return useMCPServerViewsFromSpacesBase(
     owner,
@@ -1176,7 +1200,7 @@ export function useMCPServerViewsFromSpaces(
 export function useRemoteMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  swrOptions?: SWRConfiguration
+  swrOptions?: SWRConfiguration & { disabled?: boolean }
 ) {
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"], swrOptions);
 }
@@ -1185,7 +1209,7 @@ export function useRemoteMCPServerViewsFromSpaces(
 export function useInternalMCPServerViewsFromSpaces(
   owner: LightWorkspaceType,
   spaces: SpaceType[],
-  swrOptions?: SWRConfiguration
+  swrOptions?: SWRConfiguration & { disabled?: boolean }
 ) {
   return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"], swrOptions);
 }

@@ -584,6 +584,7 @@ The directive should be used to display a clickable version of the agent name in
       add_worksheet: "low",
       delete_worksheet: "low",
       format_cells: "low",
+      copy_sheet: "low",
     },
     timeoutMs: undefined,
     serverInfo: {
@@ -732,32 +733,11 @@ The directive should be used to display a clickable version of the agent name in
       name: "content_creation",
       version: "1.0.0",
       description:
-        "Create dashboards, presentations, or any interactive content with charts, KPIs, and data visualizations.",
+        "Create dashboards, presentations, or any interactive content.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
       instructions: CONTENT_CREATION_INSTRUCTIONS,
-      flavors: [
-        {
-          id: "dashboard",
-          name: "Dashboard",
-          description:
-            "Create interactive dashboards with charts, KPIs, and data visualizations",
-          icon: "ActionPieChartIcon",
-        },
-        {
-          id: "presentation",
-          name: "Presentation",
-          description: "Create presentations",
-          icon: "ActionSlideshowIcon",
-        },
-        {
-          id: "other",
-          name: "Others",
-          description: "Create any interactive content with full flexibility",
-          icon: "ActionDocumentTextIcon",
-        },
-      ],
     },
   },
   outlook: {

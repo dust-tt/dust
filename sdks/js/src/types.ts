@@ -938,6 +938,8 @@ const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
   updated: z.number().optional(),
+  unread: z.boolean(),
+  actionRequired: z.boolean(),
   owner: WorkspaceSchema,
   sId: z.string(),
   title: z.string().nullable(),
@@ -1743,6 +1745,22 @@ export const GetConversationResponseSchema = z.object({
 
 export type GetConversationResponseType = z.infer<
   typeof GetConversationResponseSchema
+>;
+
+export const PatchConversationRequestSchema = z.object({
+  read: z.literal(true),
+});
+
+export type PatchConversationRequestType = z.infer<
+  typeof PatchConversationRequestSchema
+>;
+
+export const PatchConversationResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type PatchConversationResponseType = z.infer<
+  typeof PatchConversationResponseSchema
 >;
 
 export const TokenizeResponseSchema = z.object({
