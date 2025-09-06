@@ -50,6 +50,18 @@ export function useValidateAction({
         );
 
         if (!response.ok) {
+          try {
+            const errData = await response.json();
+            if (errData?.error.type === "action_not_blocked") {
+              // If the action is not blocked anymore, we consider the validation already
+              // successful.  This can happen if multiple clients validate the same action. We
+              // direct return a success in that case.
+              return { success: true };
+            }
+          } catch {
+            // ignore JSON parsing errors and fall through to generic error
+          }
+
           onError("Failed to assess action approval. Please try again.");
           return { success: false };
         }

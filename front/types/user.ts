@@ -13,6 +13,7 @@ export type WorkspaceSegmentationType = "interesting" | null;
 
 export const ROLES = ["admin", "builder", "user", "none"] as const;
 export const ACTIVE_ROLES = ["admin", "builder", "user"] as const;
+export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 function keyObject<T extends readonly string[]>(
   arr: T
