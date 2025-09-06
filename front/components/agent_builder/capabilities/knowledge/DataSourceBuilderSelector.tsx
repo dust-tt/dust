@@ -72,7 +72,7 @@ export const DataSourceBuilderSelector = ({
     [navigationHistory]
   );
 
-  const [searchScope, setSearchScope] = useState<"node" | "space">("node");
+  const [searchScope, setSearchScope] = useState<"node" | "space">("space");
 
   const searchFilter = useMemo(() => {
     const filter: {
@@ -83,7 +83,7 @@ export const DataSourceBuilderSelector = ({
       parentId: undefined,
     };
 
-    if (currentSpace) {
+    if (searchScope === "node" && currentSpace) {
       const dsv = dataSourceViews.filter(
         (dsv) => dsv.spaceId === currentSpace.sId
       );
