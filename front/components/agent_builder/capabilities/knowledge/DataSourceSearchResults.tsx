@@ -20,11 +20,10 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { DataSourceViewContentNode, SpaceType } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types";
 
 interface DataSourceSearchResultsProps {
-  currentSpace: SpaceType | null;
   searchResultNodes: DataSourceContentNode[];
   isLoading: boolean;
   onClearSearch: () => void;
@@ -145,7 +144,6 @@ function makeSearchResultColumnsWithSelection(
 }
 
 export function DataSourceSearchResults({
-  currentSpace,
   searchResultNodes,
   isLoading,
   onClearSearch,
@@ -376,33 +374,13 @@ export function DataSourceSearchResults({
           Error searching results.
         </div>
       ) : (
-        <>
-          <div className="flex flex-row items-center justify-between text-end text-sm text-muted-foreground dark:text-muted-foreground-night">
-            <div>
-              {currentSpace !== null && (
-                <>
-                  Searching in{" "}
-                  <span className="font-medium">{currentSpace.name}</span>
-                </>
-              )}
-            </div>
-            <div>
-              {isLoading
-                ? "Searching..."
-                : `${searchResults.length} results found`}
-            </div>
-          </div>
-          <ScrollableDataTable
-            data={searchTableRows}
-            columns={columns}
-            className={cn(
-              "pb-4",
-              isLoading && "pointer-events-none opacity-50"
-            )}
-            totalRowCount={searchResults.length}
-            maxHeight
-          />
-        </>
+        <ScrollableDataTable
+          data={searchTableRows}
+          columns={columns}
+          className={cn("pb-4", isLoading && "pointer-events-none opacity-50")}
+          totalRowCount={searchResults.length}
+          maxHeight
+        />
       )}
     </>
   );
