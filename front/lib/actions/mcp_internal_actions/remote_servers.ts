@@ -57,7 +57,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     id: 10001,
     name: "Linear",
     description: "Linear tools for project management and issue tracking.",
-    url: "https://mcp.linear.app/sse",
+    url: "https://mcp.linear.app/mcp",
     icon: "LinearLogo",
     documentationUrl: "https://linear.app/docs",
     authMethod: "oauth-dynamic",
