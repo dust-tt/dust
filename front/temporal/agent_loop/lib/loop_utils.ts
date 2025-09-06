@@ -14,6 +14,7 @@ import type {
  * actions, by removing future messages and messages sharing the same parent.
  * Cuts the agent message at the given step, exclusive, for the given agent
  * message.
+ * Mutates the conversation in place, return the same conversation and the agent message.
  */
 export function sliceConversationForAgentMessage(
   conversation: ConversationType,
@@ -55,6 +56,7 @@ export function sliceConversationForAgentMessage(
   conversation.content = conversation.content.filter(
     (versions, index) =>
       index === agentMessageIndex ||
+      // Only check the first version - all versions have the same parentMessageId
       !isAgentMessageType(versions[0]) ||
       versions[0].parentMessageId !== slicedAgentMessage.parentMessageId
   );
