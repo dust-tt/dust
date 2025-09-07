@@ -300,19 +300,6 @@ function validateSlideChildren(
 ): React.ReactElement[] {
   const childArray = React.Children.toArray(children) as React.ReactElement[];
 
-  const validSlideDisplayNames = new Set([
-    "Slideshow.Preset.Cover",
-    "Slideshow.Preset.Full",
-    "Slideshow.Preset.TitleTop",
-    "Slideshow.Preset.TitleTopH2",
-    "Slideshow.Preset.Quote",
-    "Slideshow.Preset.Columns",
-    "Slideshow.Preset.Columns2",
-    "Slideshow.Preset.Columns3",
-    "Slideshow.Preset.Columns4",
-    "Slideshow.Preset.ChartSplit",
-  ]);
-
   const invalidChildren = childArray.filter((child) => {
     if (!React.isValidElement(child)) {
       return true;
@@ -322,12 +309,12 @@ function validateSlideChildren(
       return true;
     }
 
-    return !validSlideDisplayNames.has(child.type.displayName);
+    return false;
   });
 
   if (invalidChildren.length > 0) {
     throw new Error(
-      "Slideshow: All children must be Slideshow.Preset components. " +
+      "Slideshow: All children must be valid React components with display name. " +
         `Found ${invalidChildren.length} invalid child(ren).`
     );
   }
