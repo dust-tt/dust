@@ -50,7 +50,7 @@ fn split_system_prompt(system: &str) -> Vec<Value> {
     let mut current_section = String::new();
 
     for line in system.lines() {
-        if line.eq("---") {
+        if line.eq("\x00\x00\x00") {
             // Save previous section if it exists
             if !current_section.trim().is_empty() {
                 sections.push(json!({
@@ -60,7 +60,7 @@ fn split_system_prompt(system: &str) -> Vec<Value> {
                 }));
             }
             // Start new section
-            current_section = line.to_string() + "\n";
+            current_section = "".to_string();
         } else {
             current_section.push_str(line);
             current_section.push('\n');
@@ -140,8 +140,8 @@ impl AnthropicLLM {
 
         if system.is_some() {
             if prompt_caching {
-                // For prompt caching, we split the system prompt into sections based on the --- separator.
-                // In order to be cached each section must be entirely identical, so we let the caller place the --- separator to isolate dynamic sections.
+                // For prompt caching, we split the system prompt into sections based on the \x00\x00\x00 separator.
+                // In order to be cached each section must be entirely identical, so we let the caller place the separator to isolate dynamic sections.
                 let system_str = system.as_ref().unwrap();
                 let sections = split_system_prompt(system_str);
                 body["system"] = json!(sections);

@@ -26,7 +26,7 @@ import type {
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
-const SYSTEM_PROMPT_SEPARATOR = "\n---\n\n";
+const SYSTEM_PROMPT_SEPARATOR = "\x00\x00\x00\n";
 
 /**
  * Generation of the prompt for agents with multiple actions.
@@ -235,7 +235,10 @@ export async function constructPromptMultiActions(
         .join("\n")
     );
   }
-
-  const prompt = `${context}${SYSTEM_PROMPT_SEPARATOR}${toolsSection}\n${attachmentsSection}\n${guidelinesSection}\n${instructions}`;
+  const separator = agentConfiguration.model.promptCaching
+    ? SYSTEM_PROMPT_SEPARATOR
+    : "";
+  const prompt = `${context}\n${separator}${toolsSection}\n${attachmentsSection}\n${guidelinesSection}\n${instructions}`;
+  console.log("prompt", prompt);
   return prompt;
 }
