@@ -344,8 +344,7 @@ const createServer = (
           topic,
           context,
           target_audience,
-          slides: slides.map((slide, index) => ({
-            slideNumber: index + 1,
+          slides: slides.map((slide) => ({
             title: slide.title,
             key_points: slide.key_points,
             notes: slide.notes,

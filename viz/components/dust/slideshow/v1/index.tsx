@@ -489,7 +489,7 @@ export const TextBody2 = ({
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <p
-    className={cn("font-normal text-4xl leading-123p m-0", className)}
+    className={cn("font-normal text-3xl leading-123p m-0", className)}
     style={{ fontFamily: "var(--font-inter)" }}
   >
     {children}
@@ -538,10 +538,10 @@ export const Cover = ({
   >
     {isPreview ? (
       <div className="p-4 w-full h-full">
-        <Title className={cn(titleClassName)}>{title}</Title>
+        <Title className={cn("text-center", titleClassName)}>{title}</Title>
       </div>
     ) : (
-      <Title className={cn(titleClassName)}>{title}</Title>
+      <Title className={cn("text-center", titleClassName)}>{title}</Title>
     )}
   </div>
 );
@@ -590,7 +590,7 @@ export const TitleTop = ({
       {title}
     </Heading1>
     {children && (
-      <div className="slide-content row-start-2 row-span-3 col-span-6 p-x-4">
+      <div className="slide-content row-start-2 row-span-3 col-span-6 p-x-4 flex flex-col gap-4">
         {children}
       </div>
     )}
@@ -641,7 +641,7 @@ Columns4.displayName = "Slideshow.Preset.Columns4";
 type ItemProps = PropsWithChildren<{ heading: string; className?: string }>;
 
 export const Item = ({ heading, children, className }: ItemProps) => (
-  <div className={cn(className)}>
+  <div className={cn("flex flex-col gap-4", className)}>
     <TextBody1>{heading}</TextBody1>
     {typeof children === "string" || typeof children === "number" ? (
       <TextBody2 className="slide-content">{children}</TextBody2>
@@ -659,8 +659,11 @@ const BulletList = ({
 );
 BulletList.displayName = "Slideshow.Content.BulletList";
 
-const BulletItem = ({ children }: PropsWithChildren) => (
-  <li>
+const BulletItem = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <li className={cn("mb-4 last:mb-0", className)}>
     <TextBody3>{children}</TextBody3>
   </li>
 );
