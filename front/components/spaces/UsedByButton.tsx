@@ -26,7 +26,8 @@ export const UsedByButton = ({
       disabled
     />
   ) : (
-    <DropdownMenu>
+    // 1. modal={false} to make the dropdown menu non-modal and avoid a timing issue when we open the Agent side-panel modal.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           icon={RobotIcon}
@@ -34,6 +35,10 @@ export const UsedByButton = ({
           isSelect={true}
           size="xs"
           label={`${usage.count}`}
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+            // 2. Avoid propagating the click to the parent element.
+            e.stopPropagation();
+          }}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-w-48">
