@@ -4,7 +4,7 @@ import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp"
 import {
   getPrefixedToolName,
   listToolsForServerSideMCPServer,
-  makeToolsWithStakesAndTimeout,
+  getToolExtraFields,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
@@ -277,7 +277,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
       workspaceId: 1,
       prefix: 0,
     });
-    const result = makeToolsWithStakesAndTimeout(sid, metadata);
+    const result = getToolExtraFields(sid, metadata);
     assert(result.isOk());
     expect(result.value).toEqual({
       toolsEnabled: {
@@ -319,7 +319,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
       },
     ];
 
-    const result = makeToolsWithStakesAndTimeout("rms_DzP3svIoVg", metadata);
+    const result = getToolExtraFields("rms_DzP3svIoVg", metadata);
     assert(result.isOk());
     expect(result.value).toEqual({
       toolsEnabled: {
@@ -341,7 +341,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
     const metadata: RemoteMCPServerToolMetadataResource[] = [];
 
     expect(() => {
-      makeToolsWithStakesAndTimeout("invalid_server_id", metadata);
+      getToolExtraFields("invalid_server_id", metadata);
     }).toThrow("Invalid MCP server ID: invalid_server_id");
   });
 });

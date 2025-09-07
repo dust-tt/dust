@@ -11,6 +11,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
+import { MCPToolRetryPolicyType } from "@app/lib/actions/mcp";
 
 export type MCPToolType = {
   name: string;
@@ -26,17 +27,18 @@ export type WithStakeLevelType<T> = T & {
   stakeLevel: MCPToolStakeLevelType;
 };
 
-export type ServerSideMCPToolTypeWithStakeLevel =
+export type ServerSideMCPToolTypeWithStakeAndRetryPolicy =
   WithStakeLevelType<MCPToolWithAvailabilityType> & {
     toolServerId: string;
     timeoutMs?: number;
+    retryPolicy: MCPToolRetryPolicyType;
   };
 
 export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType>;
 
 export type MCPToolWithStakeLevelType =
-  | ServerSideMCPToolTypeWithStakeLevel
+  | ServerSideMCPToolTypeWithStakeAndRetryPolicy
   | ClientSideMCPToolTypeWithStakeLevel;
 
 export type MCPServerType = {

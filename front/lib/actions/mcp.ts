@@ -47,6 +47,17 @@ import {
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
+export const MCP_TOOL_RETRY_POLICY_TYPES = [
+  "retryable_on_interrupt",
+  "always_retryable",
+  "never_retryable",
+] as const;
+export type MCPToolRetryPolicyType =
+  (typeof MCP_TOOL_RETRY_POLICY_TYPES)[number];
+
+// Default to never_retryable if the retry policy is not defined.
+export const DEFAULT_MCP_TOOL_RETRY_POLICY = "never_retryable";
+
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
 
@@ -95,6 +106,7 @@ export type ServerSideMCPToolType = Omit<
   permission: MCPToolStakeLevelType;
   toolServerId: string;
   timeoutMs?: number;
+  retryPolicy: MCPToolRetryPolicyType;
 };
 
 export type ClientSideMCPToolType = Omit<

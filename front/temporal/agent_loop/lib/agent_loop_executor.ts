@@ -66,7 +66,6 @@ async function executeStepIteration({
   // actions have been approved.
   const needsApproval = actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
-    // Break the loop - workflow will be restarted externally once approved.
     return {
       runId,
       shouldContinue: false,

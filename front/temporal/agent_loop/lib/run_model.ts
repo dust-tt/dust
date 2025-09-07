@@ -1,7 +1,10 @@
 import { removeNulls } from "@dust-tt/client";
 import assert from "assert";
 
-import { buildToolSpecification } from "@app/lib/actions/mcp";
+import {
+  buildToolSpecification,
+  DEFAULT_MCP_TOOL_RETRY_POLICY,
+} from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
@@ -831,6 +834,7 @@ export async function runModelActivity(
         permission: "never_ask",
         toolServerId: mcpServerView.internalMCPServerId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
+        retryPolicy: DEFAULT_MCP_TOOL_RETRY_POLICY,
       };
     }
 
