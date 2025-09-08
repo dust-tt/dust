@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
@@ -21,12 +21,10 @@ import type {
   FetchConversationToolsResponse,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
 import type {
-  AgentParticipantType,
   ConversationError,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
   LightWorkspaceType,
-  UserParticipantType,
 } from "@app/types";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
@@ -573,45 +571,68 @@ export function useConversationMarkAsRead({
   };
 }
 
-type ConversationAction = "join" | "leave" | "delete";
+type ConversationParticipationOption = "join" | "leave" | "delete";
 
-export const useConversationMenu = ({
+export const useConversationParticipationOption = ({
   ownerId,
   conversationId,
   userId,
-  isMenuOpen,
+  disabled,
 }: {
   ownerId: string;
   conversationId: string | null;
   userId: string | null;
-  isMenuOpen: boolean;
-}): {
-  joinConversation: () => Promise<boolean>;
-  action: ConversationAction;
-  users: UserParticipantType[];
-  agents: AgentParticipantType[];
-} => {
+  disabled: boolean;
+}) => {
+  const { conversationParticipants } = useConversationParticipants({
+    conversationId,
+    workspaceId: ownerId,
+    options: { disabled },
+  });
+  const [option, setOption] = useState<ConversationParticipationOption | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (conversationParticipants === undefined) {
+      setOption(null);
+      return;
+    }
+    const isUserParticipating =
+      userId !== null &&
+      conversationParticipants?.users.find(
+        (participant) => participant.sId === userId
+      );
+
+    const isLastParticipant =
+      isUserParticipating && conversationParticipants?.users.length === 1;
+
+    setOption(
+      isLastParticipant ? "delete" : isUserParticipating ? "leave" : "join"
+    );
+  }, [conversationParticipants, userId]);
+
+  return option;
+};
+
+export const useJoinConversation = ({
+  ownerId,
+  conversationId,
+}: {
+  ownerId: string;
+  conversationId: string | null;
+}): (() => Promise<boolean>) => {
   const sendNotification = useSendNotification();
 
   const { mutateConversations } = useConversations({
     workspaceId: ownerId,
     options: { disabled: true },
   });
-  const { mutateConversationParticipants, conversationParticipants } =
-    useConversationParticipants({
-      conversationId,
-      workspaceId: ownerId,
-      options: { disabled: conversationId === null || !isMenuOpen },
-    });
-
-  const isUserParticipating =
-    userId !== null &&
-    conversationParticipants?.users.find(
-      (participant) => participant.sId === userId
-    );
-
-  const isLastParticipant =
-    isUserParticipating && conversationParticipants?.users.length === 1;
+  const { mutateConversationParticipants } = useConversationParticipants({
+    conversationId,
+    workspaceId: ownerId,
+    options: { disabled: true },
+  });
 
   const joinConversation = useCallback(async (): Promise<boolean> => {
     if (!conversationId) {
@@ -667,14 +688,5 @@ export const useConversationMenu = ({
     conversationId,
   ]);
 
-  return {
-    joinConversation,
-    action: isLastParticipant
-      ? "delete"
-      : isUserParticipating
-        ? "leave"
-        : "join",
-    users: conversationParticipants?.users ?? [],
-    agents: conversationParticipants?.agents ?? [],
-  };
+  return joinConversation;
 };

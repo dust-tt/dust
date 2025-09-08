@@ -21,8 +21,10 @@ import { EditConversationTitleDialog } from "@app/components/assistant/conversat
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  useConversationMenu,
+  useConversationParticipants,
+  useConversationParticipationOption,
   useDeleteConversation,
+  useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
@@ -43,11 +45,24 @@ export function ConversationMenu({
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  const { joinConversation, action, users, agents } = useConversationMenu({
+  const shouldWaitBeforeFetching =
+    activeConversationId === null || user?.sId === undefined || !isMenuOpen;
+  const conversationParticipationOption = useConversationParticipationOption({
     ownerId: owner.sId,
     conversationId: activeConversationId,
     userId: user?.sId || null,
-    isMenuOpen,
+    disabled: shouldWaitBeforeFetching,
+  });
+  const { conversationParticipants } = useConversationParticipants({
+    conversationId: activeConversationId,
+    workspaceId: owner.sId,
+    options: {
+      disabled: shouldWaitBeforeFetching,
+    },
+  });
+  const joinConversation = useJoinConversation({
+    ownerId: owner.sId,
+    conversationId: activeConversationId,
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
@@ -58,9 +73,7 @@ export function ConversationMenu({
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(async () => {
     const res = await doDelete(conversation);
-    if (res) {
-      void router.push(`/w/${owner.sId}/assistant/new`);
-    }
+    res && void router.push(`/w/${owner.sId}/assistant/new`);
   }, [conversation, doDelete, owner.sId, router]);
 
   const copyConversationLink = useCallback(async () => {
@@ -73,7 +86,7 @@ export function ConversationMenu({
   }
 
   const ConversationActionMenuItem = () => {
-    switch (action) {
+    switch (conversationParticipationOption) {
       case "delete":
         return (
           <DropdownMenuItem
@@ -98,6 +111,8 @@ export function ConversationMenu({
             icon={PlusCircleIcon}
           />
         );
+      default:
+        return null;
     }
   };
 
@@ -128,7 +143,11 @@ export function ConversationMenu({
         conversationId={activeConversationId}
         currentTitle={conversation?.title || ""}
       />
-      <DropdownMenu modal={false} open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+      <DropdownMenu
+        modal={false}
+        open={isMenuOpen}
+        onOpenChange={setIsMenuOpen}
+      >
         <DropdownMenuTrigger asChild>
           <Button
             size="sm"
@@ -155,48 +174,50 @@ export function ConversationMenu({
             onClick={copyConversationLink}
             icon={LinkIcon}
           />
-          <>
-            {users.length > 0 && (
-              <>
-                <DropdownMenuLabel>Participants</DropdownMenuLabel>
-                {users.map((user) => (
-                  <DropdownMenuItem
-                    key={user.sId}
-                    label={asDisplayName(user.username)}
-                    icon={
-                      <Avatar
-                        size="xs"
-                        visual={user.pictureUrl}
-                        name={user.fullName || user.username}
-                      />
-                    }
-                    disabled
-                    className="!text-foreground"
-                  />
-                ))}
-              </>
-            )}
-            {agents.length > 0 && (
-              <>
-                <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                {agents.map((agent) => (
-                  <DropdownMenuItem
-                    key={agent.configurationId}
-                    label={agent.name}
-                    icon={
-                      <Avatar
-                        size="xs"
-                        visual={agent.pictureUrl}
-                        name={agent.name}
-                      />
-                    }
-                    disabled
-                    className="!text-foreground"
-                  />
-                ))}
-              </>
-            )}
-          </>
+          {conversationParticipants === undefined ? null : (
+            <>
+              {conversationParticipants?.users.length > 0 && (
+                <>
+                  <DropdownMenuLabel>Participants</DropdownMenuLabel>
+                  {conversationParticipants.users.map((user) => (
+                    <DropdownMenuItem
+                      key={user.sId}
+                      label={asDisplayName(user.username)}
+                      icon={
+                        <Avatar
+                          size="xs"
+                          visual={user.pictureUrl}
+                          name={user.fullName || user.username}
+                        />
+                      }
+                      disabled
+                      className="!text-foreground"
+                    />
+                  ))}
+                </>
+              )}
+              {conversationParticipants.agents.length > 0 && (
+                <>
+                  <DropdownMenuLabel>Agents</DropdownMenuLabel>
+                  {conversationParticipants.agents.map((agent) => (
+                    <DropdownMenuItem
+                      key={agent.configurationId}
+                      label={agent.name}
+                      icon={
+                        <Avatar
+                          size="xs"
+                          visual={agent.pictureUrl}
+                          name={agent.name}
+                        />
+                      }
+                      disabled
+                      className="!text-foreground"
+                    />
+                  ))}
+                </>
+              )}
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>
