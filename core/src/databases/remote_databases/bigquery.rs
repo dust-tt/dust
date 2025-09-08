@@ -331,7 +331,7 @@ impl BigQueryRemoteDatabase {
         forbidden_tables: &Vec<String>,
     ) -> Result<(), QueryDatabaseError> {
         // Check if all forbidden tables are accessible through allowed views (including view chains).
-        // This leverages BigQuery's native query planning to authoritatively determine 
+        // This leverages BigQuery's native query planning to authoritatively determine
         // which underlying tables each view can access, handling transitive dependencies correctly.
 
         let mut dataset_details = HashMap::<String, DatasetCheckDetails>::new();
@@ -373,7 +373,7 @@ impl BigQueryRemoteDatabase {
                 // Do a simple SELECT to check the query plan of the view and get the affected tables.
                 // Do not use the view definition as if the view is an authorized view, it might use tables unauthorized directly for the service account.
                 let query = format!("SELECT * FROM `{dataset_key}`.`{view_name}`");
-                
+
                 // Use dry-run to get the query plan - this will work for both tables and views
                 if let Ok(plan) = self.get_query_plan(query.as_str()).await {
                     // Remove all affected tables from the remaining forbidden tables.
