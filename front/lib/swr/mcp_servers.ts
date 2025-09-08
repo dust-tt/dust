@@ -40,7 +40,6 @@ import type {
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
-import type { GetMCPServersUsageResponseBody } from "@app/pages/api/w/[wId]/mcp/usage";
 import type { GetMCPServerViewsListResponseBody } from "@app/pages/api/w/[wId]/mcp/views";
 import type {
   PatchMCPServerViewBody,
@@ -744,15 +743,13 @@ export function useMCPServerToolsSettings({
   serverId,
 }: {
   owner: LightWorkspaceType;
-  serverId: string | null | undefined;
+  serverId: string;
 }) {
   const toolsFetcher: Fetcher<GetMCPServerToolsSettingsResponseBody> = fetcher;
 
-  const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}/tools` : null;
+  const url = `/api/w/${owner.sId}/mcp/${serverId}/tools`;
 
-  const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher, {
-    disabled: !url,
-  });
+  const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher);
 
   const toolsSettings = useMemo(() => (data ? data.toolsSettings : {}), [data]);
 
@@ -762,14 +759,6 @@ export function useMCPServerToolsSettings({
     isToolsSettingsError: error,
     mutateToolsSettings: mutate,
   };
-}
-
-export function getDisabledToolsFromSettings(
-  toolsSettings: Record<string, { enabled: boolean }>
-) {
-  return Object.keys(toolsSettings).filter(
-    (tool) => !toolsSettings[tool].enabled
-  );
 }
 
 export function useUpdateMCPServerToolsSettings({
@@ -1008,29 +997,6 @@ const getOptimisticDataForRemove = (
   }
   return data;
 };
-
-export function useMCPServersUsage({
-  owner,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const configFetcher: Fetcher<GetMCPServersUsageResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/mcp/usage`,
-    configFetcher,
-    {
-      disabled,
-    }
-  );
-  return {
-    usage: data?.usage ?? null,
-    isLoading: !error && !data && !disabled,
-    isError: error,
-    mutate,
-  };
-}
 
 export function useMCPServerViewsNotActivated({
   owner,
