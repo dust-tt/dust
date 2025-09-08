@@ -11,9 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   GlobeAltIcon,
-  Icon,
   PlusIcon,
-  RobotIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -22,23 +20,20 @@ import React from "react";
 
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  DataSourceWithAgentsUsageType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import type { AgentsUsageType, SpaceType, WorkspaceType } from "@app/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@app/types";
 
 type RowData = {
   category: string;
   name: string;
   icon: ComponentType;
-  usage: DataSourceWithAgentsUsageType;
+  usage: AgentsUsageType;
   count: number;
   onClick?: () => void;
 };
@@ -66,22 +61,12 @@ const getTableColumns = () => {
         className: "w-24",
       },
       cell: (info: Info) => (
-        <>
-          {info.row.original.usage ? (
-            <DataTable.CellContent
-              title={
-                info.row.original.usage.count === 0
-                  ? "Un-used"
-                  : `Used by ${info.row.original.usage.agents.map((a) => a.name).join(", ")}`
-              }
-            >
-              <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Icon visual={RobotIcon} size="xs" />
-                {info.row.original.usage.count}
-              </span>
-            </DataTable.CellContent>
-          ) : null}
-        </>
+        <DataTable.CellContent>
+          <UsedByButton
+            usage={info.row.original.usage}
+            onItemClick={() => {}}
+          />
+        </DataTable.CellContent>
       ),
     },
   ];

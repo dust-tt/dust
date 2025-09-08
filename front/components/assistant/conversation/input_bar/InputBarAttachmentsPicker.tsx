@@ -69,7 +69,10 @@ export const InputBarAttachmentsPicker = ({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const { spaces, isSpacesLoading } = useSpaces({
+    workspaceId: owner.sId,
+    disabled: !isOpen,
+  });
 
   const {
     searchResultNodes,

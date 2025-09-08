@@ -195,11 +195,24 @@ export default async function createServer(
         )
         .optional()
         .nullable(),
+      conversationId: z
+        .string()
+        .describe(
+          "The conversation id to run the agent in. Pass the main conversation id if user explicitly request to delegate the query in the same conversation."
+        )
+        .optional()
+        .nullable(),
       childAgent:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
     },
     async (
-      { query, childAgent: { uri }, toolsetsToAdd, fileOrContentFragmentIds },
+      {
+        query,
+        childAgent: { uri },
+        toolsetsToAdd,
+        fileOrContentFragmentIds,
+        conversationId,
+      },
       { sendNotification, _meta }
     ) => {
       assert(
@@ -245,11 +258,38 @@ export default async function createServer(
           query,
           toolsetsToAdd: toolsetsToAdd ?? null,
           fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
+          conversationId: conversationId ?? null,
         }
       );
 
       if (convRes.isErr()) {
         return makeMCPToolTextError(convRes.error.message);
+      }
+
+      if (convRes.value.conversation.sId === mainConversation.sId) {
+        return {
+          isError: false,
+          content: [
+            {
+              type: "resource",
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
+                conversationId: convRes.value.conversation.sId,
+                text: `Query delegated to ${childAgentBlob.name}.`,
+                uri: "",
+              },
+            },
+            {
+              type: "resource",
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+                text: query,
+                childAgentId: childAgentId,
+                uri: "",
+              },
+            },
+          ],
+        };
       }
 
       const { conversation, isNewConversation, userMessageId } = convRes.value;

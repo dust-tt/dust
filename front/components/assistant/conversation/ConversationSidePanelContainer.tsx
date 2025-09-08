@@ -38,7 +38,7 @@ export default function ConversationSidePanelContainer({
   return (
     <>
       {/* Resizable Handle for Panels */}
-      <ResizableHandle withHandle disabled={!currentPanel} className="z-50" />
+      {currentPanel && <ResizableHandle withHandle className="z-50" />}
       {/* Panel Container - either Content Creation or Actions */}
       <ResizablePanel
         ref={panelRef}
