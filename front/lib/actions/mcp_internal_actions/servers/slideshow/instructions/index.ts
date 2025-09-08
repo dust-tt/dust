@@ -155,6 +155,7 @@ Focus on content quality, not navigation controls.
 
 Example using pre-built layouts:
 \`\`\`tsx
+import React from "react";
 import { Slideshow } from "@dust/slideshow/v1";
 
 export default function Deck() {
