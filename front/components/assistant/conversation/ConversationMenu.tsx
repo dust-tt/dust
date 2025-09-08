@@ -126,7 +126,7 @@ export function ConversationMenu({
         conversationId={activeConversationId}
         currentTitle={conversation?.title || ""}
       />
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             size="sm"
