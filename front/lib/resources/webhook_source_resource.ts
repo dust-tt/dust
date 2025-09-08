@@ -110,25 +110,6 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
-  static async update(
-    auth: Authenticator,
-    sId: string,
-    blob: Partial<InferAttributes<WebhookSourceModel, { omit: "workspaceId" }>>,
-    transaction?: Transaction
-  ) {
-    const webhookSource = await this.fetchById(auth, sId);
-    if (!webhookSource) {
-      return new Err(new Error(`WebhookSource with sId ${sId} not found`));
-    }
-
-    try {
-      await webhookSource.update(blob, transaction);
-      return new Ok(webhookSource);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
-  }
-
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
