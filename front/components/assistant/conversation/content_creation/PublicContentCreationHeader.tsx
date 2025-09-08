@@ -1,8 +1,8 @@
 import {
+  ActionSlideshowIcon,
   Button,
   cn,
   FullscreenExitIcon,
-  FullscreenIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
@@ -11,6 +11,8 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 
 interface PublicContentCreationHeaderProps {
   title: string;
+  isFullScreen?: boolean;
+  onFullScreenToggle?: () => void;
 }
 
 // Applying flex & justify-center to the title won't make it centered in the header
@@ -20,8 +22,13 @@ interface PublicContentCreationHeaderProps {
 // TODO(CONTENT_CREATION 2025-08-27): optimize the header for mobile views once we have buttons.
 export function PublicContentCreationHeader({
   title,
+  isFullScreen: externalIsFullScreen,
+  onFullScreenToggle: externalOnFullScreenToggle,
 }: PublicContentCreationHeaderProps) {
-  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [internalIsFullScreen, setInternalIsFullScreen] = useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const isFullScreen = externalIsFullScreen ?? internalIsFullScreen;
 
   const enterFullScreen = useCallback(async () => {
     try {
@@ -56,22 +63,35 @@ export function PublicContentCreationHeader({
   }, []);
 
   const handleFullScreenToggle = useCallback(() => {
-    if (isFullScreen) {
-      void exitFullScreen();
+    if (externalOnFullScreenToggle) {
+      externalOnFullScreenToggle();
     } else {
-      void enterFullScreen();
+      if (isFullScreen) {
+        void exitFullScreen();
+      } else {
+        void enterFullScreen();
+      }
     }
-  }, [isFullScreen, enterFullScreen, exitFullScreen]);
+  }, [
+    isFullScreen,
+    enterFullScreen,
+    exitFullScreen,
+    externalOnFullScreenToggle,
+  ]);
 
-  // Listen for fullscreen changes
+  // Listen for fullscreen changes (only when using internal state)
   useEffect(() => {
+    if (externalIsFullScreen !== undefined) {
+      return; // Don't listen for changes when external state is provided
+    }
+
     const handleFullScreenChange = () => {
       const isCurrentlyFullScreen = !!(
         document.fullscreenElement ||
         (document as any).webkitFullscreenElement ||
         (document as any).msFullscreenElement
       );
-      setIsFullScreen(isCurrentlyFullScreen);
+      setInternalIsFullScreen(isCurrentlyFullScreen);
     };
 
     // Add event listeners for different browsers
@@ -90,7 +110,7 @@ export function PublicContentCreationHeader({
         handleFullScreenChange
       );
     };
-  }, []);
+  }, [externalIsFullScreen]);
 
   // ESC key event listener to exit full screen mode
   useEffect(() => {
@@ -126,11 +146,11 @@ export function PublicContentCreationHeader({
 
         <div className="md:grow-1 flex shrink-0 items-center justify-end md:basis-60">
           <Button
-            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+            icon={isFullScreen ? FullscreenExitIcon : ActionSlideshowIcon}
             variant="ghost"
             size="xs"
             onClick={handleFullScreenToggle}
-            tooltip={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
+            tooltip={`${isFullScreen ? "Exit" : "Start"} presentation mode`}
           />
         </div>
       </div>
