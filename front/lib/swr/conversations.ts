@@ -621,7 +621,6 @@ export const useConversationMenu = ({
           },
         }
       );
-
       if (!response.ok) {
         const { error } = await response.json();
         if (error.type === "user_already_participant") {
@@ -633,21 +632,9 @@ export const useConversationMenu = ({
           return false;
         }
 
-        throw new Error("Failed to subscribe to conversation");
+        throw new Error("Failed to subscribe to the conversation.");
       }
-
-      sendNotification({
-        type: "success",
-        title: "Subscribed!",
-        description: "You have been added to this conversation.",
-      });
-
-      void mutateConversations();
-      void mutateConversationParticipants();
-
-      return true;
     } catch (error) {
-      console.error("Error subscribing to conversation:", error);
       sendNotification({
         type: "error",
         title: "Error",
@@ -655,6 +642,17 @@ export const useConversationMenu = ({
       });
       return false;
     }
+
+    sendNotification({
+      type: "success",
+      title: "Subscribed!",
+      description: "You have been added to this conversation.",
+    });
+
+    void mutateConversations();
+    void mutateConversationParticipants();
+
+    return true;
   }, [
     ownerId,
     sendNotification,
