@@ -33,6 +33,31 @@ export function useValidateAction({
     }) => {
       setIsValidating(true);
 
+      const retryBlockedActions = async () => {
+        if (
+          conversation?.sId &&
+          message &&
+          conversation.sId !== validationRequest.conversationId
+        ) {
+          const response = await fetch(
+            `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/retry?blocked_only=true`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (!response.ok) {
+            onError("Failed to resume conversation. Please try again.");
+            return { success: false };
+          }
+
+          return { success: true };
+        }
+      };
+
       try {
         // Validate the action.
         const response = await fetch(
@@ -55,8 +80,8 @@ export function useValidateAction({
             if (errData?.error.type === "action_not_blocked") {
               // If the action is not blocked anymore, we consider the validation already
               // successful.  This can happen if multiple clients validate the same action. We
-              // direct return a success in that case.
-              return { success: true };
+              // retry the blocked actions and return a success in that case.
+              return await retryBlockedActions();
             }
           } catch {
             // ignore JSON parsing errors and fall through to generic error
@@ -67,27 +92,7 @@ export function useValidateAction({
         }
 
         // Retry on blocked tools on the main conversation if there is one that is != from the event's.
-        if (
-          conversation?.sId &&
-          message &&
-          conversation.sId !== validationRequest.conversationId
-        ) {
-          const response = await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/retry?blocked_only=true`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) {
-            onError("Failed to resume conversation. Please try again.");
-            return { success: false };
-          }
-        }
-        return { success: true };
+        return await retryBlockedActions();
       } catch (error) {
         onError("Failed to assess action approval. Please try again.");
         return { success: false };

@@ -160,10 +160,14 @@ export type ToolExecution = {
 export type BlockedToolExecution = ToolExecution &
   (
     | {
-        status:
-          | "blocked_validation_required"
-          | "blocked_child_action_input_required";
+        status: "blocked_validation_required";
         authorizationInfo: AuthorizationInfo | null;
+      }
+    | {
+        status: "blocked_child_action_input_required";
+        authorizationInfo: AuthorizationInfo | null;
+        resumeState: Record<string, unknown> | null;
+        childBlockedActionsList: BlockedToolExecution[];
       }
     | {
         status: "blocked_authentication_required";

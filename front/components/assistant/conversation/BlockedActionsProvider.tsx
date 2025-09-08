@@ -48,7 +48,15 @@ function useBlockedActionsQueue({
   useEffect(() => {
     if (conversationId) {
       setBlockedActionsQueue(
-        blockedActions.map((action) => ({ blockedAction: action }))
+        blockedActions.flatMap((action): BlockedActionQueueItem[] => {
+          if (action.status === "blocked_child_action_input_required") {
+            return action.childBlockedActionsList.map((childAction) => ({
+              blockedAction: childAction,
+            }));
+          } else {
+            return [{ blockedAction: action }];
+          }
+        })
       );
     } else {
       setBlockedActionsQueue(EMPTY_BLOCKED_ACTIONS_QUEUE);
@@ -63,11 +71,6 @@ function useBlockedActionsQueue({
       message: LightAgentMessageType;
       blockedAction: BlockedToolExecution;
     }) => {
-      // Only enqueue actions for the current conversation
-      if (blockedAction.conversationId !== conversationId) {
-        return;
-      }
-
       setBlockedActionsQueue((prevQueue) => {
         const existingIndex = prevQueue.findIndex(
           (v) => v.blockedAction.actionId === blockedAction.actionId
@@ -82,7 +85,7 @@ function useBlockedActionsQueue({
             );
       });
     },
-    [conversationId]
+    []
   );
 
   const removeCompletedAction = useCallback((actionId: string) => {
