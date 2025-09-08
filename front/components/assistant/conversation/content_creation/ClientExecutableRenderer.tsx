@@ -4,17 +4,23 @@ import {
   CodeBlock,
   CommandLineIcon,
   EyeIcon,
+  FullscreenExitIcon,
+  FullscreenIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
 import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
 import { ShareContentCreationFilePopover } from "@app/components/assistant/conversation/content_creation/ShareContentCreationFilePopover";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
+import { useFileMetadata } from "@app/lib/swr/files";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -57,19 +63,34 @@ interface ClientExecutableRendererProps {
   owner: LightWorkspaceType;
 }
 
+const FULL_SCREEN_HASH_PARAM = "fullScreen";
+
 export function ClientExecutableRenderer({
   conversation,
   fileId,
   fileName,
   owner,
 }: ClientExecutableRendererProps) {
-  const { closePanel } = useConversationSidePanelContext();
+  const { isNavigationBarOpen, setIsNavigationBarOpen } =
+    useDesktopNavigation();
+  const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
+  const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
+
+  const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  const panel = panelRef?.current;
+
+  const [fullScreenHash, setFullScreenHash] = useHashParam(
+    FULL_SCREEN_HASH_PARAM
+  );
+  const isFullScreen = fullScreenHash === "true";
 
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
     owner,
   });
+  const { fileMetadata } = useFileMetadata({ fileId, owner });
 
   const isUsingConversationFiles = React.useMemo(
     () => (fileContent ? isFileUsingConversationFiles(fileContent) : false),
@@ -77,6 +98,72 @@ export function ClientExecutableRenderer({
   );
 
   const [showCode, setShowCode] = React.useState(false);
+
+  const restoreLayout = useCallback(() => {
+    if (panel) {
+      setIsNavigationBarOpen(isNavBarPrevOpenRef.current ?? true);
+      panel.resize(prevPanelSizeRef.current ?? DEFAULT_RIGHT_PANEL_SIZE);
+    }
+  }, [panel, setIsNavigationBarOpen]);
+
+  const exitFullScreen = useCallback(() => {
+    setFullScreenHash(undefined);
+  }, [setFullScreenHash]);
+
+  const goToFullScreen = () => {
+    isNavBarPrevOpenRef.current = isNavigationBarOpen;
+
+    if (panel) {
+      prevPanelSizeRef.current = panel.getSize();
+    }
+
+    setFullScreenHash("true");
+  };
+
+  const onClosePanel = () => {
+    if (panel && isFullScreen) {
+      setFullScreenHash(undefined);
+      restoreLayout();
+    }
+
+    closePanel();
+  };
+
+  useEffect(() => {
+    if (!panel) {
+      return;
+    }
+
+    if (isFullScreen) {
+      panel.resize(100);
+      setIsNavigationBarOpen(false);
+    } else {
+      // Only exit fullscreen if we're currently at 100% & nav bar is closed (= full screen mode)
+      if (panel.getSize() === 100 && !isNavigationBarOpen) {
+        restoreLayout();
+      }
+    }
+  }, [
+    panel,
+    isFullScreen,
+    isNavigationBarOpen,
+    setIsNavigationBarOpen,
+    restoreLayout,
+  ]);
+
+  // ESC key event listener to exit full screen mode
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isFullScreen) {
+        exitFullScreen();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFullScreen, exitFullScreen]);
 
   if (isFileContentLoading) {
     return (
@@ -100,8 +187,16 @@ export function ClientExecutableRenderer({
       <ContentCreationHeader
         title={fileName || "Client Executable"}
         subtitle={fileId}
-        onClose={closePanel}
+        onClose={onClosePanel}
       >
+        <Button
+          icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+          variant="ghost"
+          size="xs"
+          onClick={isFullScreen ? exitFullScreen : goToFullScreen}
+          tooltip={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
+        />
+
         <Button
           icon={showCode ? EyeIcon : CommandLineIcon}
           onClick={() => setShowCode(!showCode)}
@@ -128,7 +223,10 @@ export function ClientExecutableRenderer({
         ) : (
           <div className="h-full">
             <VisualizationActionIframe
-              agentConfigurationId={null}
+              agentConfigurationId={
+                fileMetadata?.useCaseMetadata
+                  .lastEditedByAgentConfigurationId ?? ""
+              }
               workspace={owner}
               visualization={{
                 code: fileContent ?? "",

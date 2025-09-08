@@ -15,9 +15,9 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type {
+  AgentsUsageType,
   ConnectorProvider,
   DataSourceViewCategory,
-  DataSourceWithAgentsUsageType,
   ModelId,
   Result,
 } from "@app/types";
@@ -27,10 +27,7 @@ import { assertNever, CONNECTOR_PROVIDERS, Err, Ok } from "@app/types";
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 
-export type DataSourcesUsageByAgent = Record<
-  ModelId,
-  DataSourceWithAgentsUsageType | null
->;
+export type DataSourcesUsageByAgent = Record<ModelId, AgentsUsageType | null>;
 
 export async function getDataSourceViewsUsageByCategory({
   auth,
@@ -481,7 +478,7 @@ export async function getDataSourceUsage({
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
-}): Promise<Result<DataSourceWithAgentsUsageType, Error>> {
+}): Promise<Result<AgentsUsageType, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -626,7 +623,7 @@ export async function getDataSourceViewUsage({
 }: {
   auth: Authenticator;
   dataSourceView: DataSourceViewResource;
-}): Promise<Result<DataSourceWithAgentsUsageType, Error>> {
+}): Promise<Result<AgentsUsageType, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current

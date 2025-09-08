@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -52,13 +53,19 @@ export function ToolsPicker({
     () => spaces.filter((s) => s.kind === "global"),
     [spaces]
   );
-  const { serverViews: autoServerViews } = useInternalMCPServerViewsFromSpaces(
+  const { serverViews: autoServerViews, isLoading: isAutoServerViewsLoading } =
+    useInternalMCPServerViewsFromSpaces(
+      owner,
+      globalSpaces,
+      { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
+    );
+  const {
+    serverViews: manualServerViews,
+    isLoading: isManualServerViewsLoading,
+  } = useRemoteMCPServerViewsFromSpaces(
     owner,
-    globalSpaces
-  );
-  const { serverViews: manualServerViews } = useRemoteMCPServerViewsFromSpaces(
-    owner,
-    globalSpaces
+    globalSpaces,
+    { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
   );
 
   const {
@@ -205,7 +212,11 @@ export function ToolsPicker({
           </>
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-            No results found
+            {isAutoServerViewsLoading || isManualServerViewsLoading ? (
+              <Spinner size="sm" />
+            ) : (
+              "No results found"
+            )}
           </div>
         )}
       </DropdownMenuContent>

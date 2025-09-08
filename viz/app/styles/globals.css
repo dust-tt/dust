@@ -115,19 +115,22 @@
 @layer base {
   :root {
     /* Responsive typography and spacing */
-    --responsive-text-xs: clamp(0.5rem, 1.8vw, 0.75rem);
-    --responsive-text-sm: clamp(0.625rem, 2vw, 0.875rem);
-    --responsive-text-base: clamp(0.75rem, 2.2vw, 1rem);
-    --responsive-text-lg: clamp(0.875rem, 2.4vw, 1.125rem);
-    --responsive-text-xl: clamp(1rem, 2.8vw, 1.25rem);
-    --responsive-text-2xl: clamp(1.125rem, 3.2vw, 1.5rem);
-    --responsive-text-3xl: clamp(1.25rem, 3.6vw, 1.875rem);
-    --responsive-text-4xl: clamp(1.5rem, 4.2vw, 2.25rem);
-    --responsive-text-5xl: clamp(1.75rem, 5vw, 3rem);
-    --responsive-text-6xl: clamp(2rem, 6vw, 3.75rem);
-    --responsive-text-7xl: clamp(2.5rem, 7vw, 4.5rem);
-    --responsive-text-8xl: clamp(3rem, 8vw, 6rem);
-    --responsive-text-9xl: clamp(3.5rem, 9vw, 8rem);
+    --responsive-text-xs: clamp(0.45rem, 1.62vw, 0.675rem);
+    --responsive-text-sm: clamp(0.5625rem, 1.8vw, 0.7875rem);
+    --responsive-text-base: clamp(0.675rem, 1.98vw, 0.9rem);
+    --responsive-text-lg: clamp(0.7875rem, 2.16vw, 1.0125rem);
+    --responsive-text-xl: clamp(0.9rem, 2.52vw, 1.125rem);
+    --responsive-text-2xl: clamp(1.0125rem, 2.88vw, 1.35rem);
+    --responsive-text-3xl: clamp(1.125rem, 3.24vw, 1.6875rem);
+    --responsive-text-4xl: clamp(1.35rem, 3.78vw, 2.025rem);
+    --responsive-text-5xl: clamp(1.575rem, 4.5vw, 2.7rem);
+    --responsive-text-6xl: clamp(1.8rem, 5.4vw, 3.375rem);
+    --responsive-text-7xl: clamp(2.25rem, 6.3vw, 4.05rem);
+    --responsive-text-8xl: clamp(2.7rem, 7.2vw, 5.4rem);
+    --responsive-text-9xl: clamp(3.15rem, 8.1vw, 7.2rem);
+
+    --responsive-slide-text-title: clamp(2.1rem, 9vw, 7rem);
+    --responsive-slide-text-heading1: clamp(1.4rem, 6vw, 4.5rem);
 
     --responsive-space-1: clamp(0.075rem, 0.25vw, 0.25rem);
     --responsive-space-2: clamp(0.125rem, 0.5vw, 0.5rem);
@@ -139,9 +142,6 @@
     --responsive-space-16: clamp(1.5rem, 4vw, 4rem);
     --responsive-space-20: clamp(2rem, 5vw, 5rem);
     --responsive-space-24: clamp(2.5rem, 6vw, 6rem);
-
-    --responsive-slide-text-title: clamp(3rem, 15vw, 11.875rem);
-    --responsive-slide-text-heading1: clamp(2.5rem, 12vw, 8.75rem);
 
     --slide-cover-foreground: 220 9% 7%; /* #111418 */
     --slide-content-text: 220 12% 37%; /* #545D6C */
@@ -334,7 +334,7 @@
   /* Slide variant padding */
   .slide-top-padding {
     padding: var(--responsive-space-8);
-    padding-top: var(--responsive-space-24);
+    padding-top: var(--responsive-space-12);
   }
   .slide-centered-padding {
     padding: var(--responsive-space-8);
@@ -363,17 +363,23 @@
   }
 
   .slide-heading1 {
-    @apply leading-tight m-0 mb-6 break-normal hyphens-none leading-96p;
+    @apply leading-tight m-0 break-normal hyphens-none leading-96p;
     font-size: var(--responsive-slide-text-heading1);
     font-family: var(--font-inter);
   }
 
   .slide-heading2 {
-    @apply leading-tight m-0 mb-6 break-normal text-8xl hyphens-none leading-103p;
+    @apply leading-tight m-0 break-normal text-7xl hyphens-none leading-103p;
     font-family: var(--font-inter);
   }
 
   .slide-content {
     color: hsl(var(--slide-content-text));
+  }
+
+  /* Chart axis styling for better visibility in slideshows */
+  .responsive-text .recharts-cartesian-axis-tick text {
+    font-size: 14px;
+    font-weight: 600;
   }
 }

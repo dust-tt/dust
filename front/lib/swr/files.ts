@@ -1,4 +1,3 @@
-import type { FileType } from "@dust-tt/client";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -17,6 +16,7 @@ import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId
 import type {
   DataSourceViewType,
   FileShareScope,
+  FileTypeWithMetadata,
   LightWorkspaceType,
 } from "@app/types";
 
@@ -130,7 +130,7 @@ export function useFileMetadata({
   owner: LightWorkspaceType;
   cacheKey?: string | null;
 }) {
-  const fileMetadataFetcher: Fetcher<FileType> = fetcher;
+  const fileMetadataFetcher: Fetcher<FileTypeWithMetadata> = fetcher;
 
   // Include cacheKey in the SWR key if provided to force cache invalidation.
   const swrKey = fileId

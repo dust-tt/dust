@@ -2,7 +2,10 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
-import { MCPExternalActionIconSchema, MCPInternalActionIconSchema, } from "./mcp_icon_types";
+import {
+  MCPExternalActionIconSchema,
+  MCPInternalActionIconSchema,
+} from "./mcp_icon_types";
 import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
@@ -1750,6 +1753,14 @@ export const PatchConversationRequestSchema = z.object({
 
 export type PatchConversationRequestType = z.infer<
   typeof PatchConversationRequestSchema
+>;
+
+export const PatchConversationResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type PatchConversationResponseType = z.infer<
+  typeof PatchConversationResponseSchema
 >;
 
 export const TokenizeResponseSchema = z.object({

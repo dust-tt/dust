@@ -35,10 +35,16 @@ export type GetConversationsResponseBody = {
   conversation: ConversationWithoutContentType;
 };
 
+export type PatchConversationResponseBody = {
+  success: boolean;
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetConversationsResponseBody | void>
+    WithAPIErrorResponse<
+      GetConversationsResponseBody | PatchConversationResponseBody | void
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -116,20 +122,13 @@ async function handler(
           if (result.isErr()) {
             return apiErrorForConversation(req, res, result.error);
           }
-          return res.status(200).json({ conversation: result.value });
+          return res.status(200).json({ success: true });
         } else if ("read" in bodyValidation.right) {
           await ConversationResource.markAsRead(auth, {
             conversation,
           });
-          const result =
-            await ConversationResource.fetchConversationWithoutContent(
-              auth,
-              cId
-            );
-          if (result.isErr()) {
-            return apiErrorForConversation(req, res, result.error);
-          }
-          return res.status(200).json({ conversation: result.value });
+
+          return res.status(200).json({ success: true });
         } else {
           return apiError(req, res, {
             status_code: 400,

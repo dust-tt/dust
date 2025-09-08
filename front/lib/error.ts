@@ -35,6 +35,8 @@ export type DustErrorCode =
   | "remote_server_not_found"
   | "internal_server_not_found"
   | "mcp_server_view_not_found"
+  | "action_not_found"
+  | "action_not_blocked"
   // Space errors
   | "space_already_exists";
 

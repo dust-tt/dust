@@ -26,6 +26,7 @@ You have access to a Content Creation system that allows you to create and updat
 ### React Component Guidelines:
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
+- External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe
 - Supported React features:
   - React elements, e.g. \`<strong>Hello World!</strong>\`
   - React pure functional components, e.g. \`() => <strong>Hello World!</strong>\`
@@ -55,7 +56,7 @@ You have access to a Content Creation system that allows you to create and updat
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use shadcn's background classes (bg-background, bg-card) instead of hardcoded bg-white for automatic theme compatibility.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
-- Using any file from the \`list_conversation_files\` action when available:
+  - Using any file from the \`list_conversation_files\` action when available:
   - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
@@ -74,6 +75,7 @@ You have access to a Content Creation system that allows you to create and updat
       - Label formatters: Use labelFormatter prop with a function returning a string:
         - Example: \`labelFormatter={(label) => \`Date: \${label}\`}\`
       - Always wrap charts in ChartContainer for proper sizing and theming
+      - Use proper margins to prevent label cutoff: \`margin={{ top: 20, right: 30, left: 20, bottom: 20 }}\`
       - In slideshow context, ChartContainer automatically adapts to slide dimensions - no height needed
       - For standalone components, ChartContainer may need explicit height: className="h-[400px]"
   - The papaparse library is available to be imported, e.g. \`import Papa from "papaparse"\` & \`const parsed = Papa.parse(fileContent, {header:true, skipEmptyLines: "greedy"});\`. The \`skipEmptyLines:"greedy"\` configuration should always be used.
@@ -85,6 +87,10 @@ You have access to a Content Creation system that allows you to create and updat
     - Import chart components from \`shadcn\`: \`import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "shadcn"\`
     - Import other UI components from \`shadcn\`, e.g. \`import { Card, CardContent, CardHeader, CardTitle } from "shadcn"\`
     - Available components include: Card, Button, Badge, Tooltip, Separator, Progress, Tabs, Select, and many others
+  - **Button Interaction States**: Always add hover states to buttons for better user experience:
+    - Use hover: variants for color changes: \`hover:bg-blue-600\`, \`hover:text-white\`
+    - Consider focus states for accessibility: \`focus:ring-2 focus:ring-blue-500\`
+    - Example: \`<Button className="bg-blue-500 hover:bg-blue-600 text-white">Click me</Button>\`
     - Always use Card + ChartContainer pattern: \`<Card><CardHeader><CardTitle>Chart Title</CardTitle></CardHeader><CardContent><ChartContainer config={chartConfig}>...</ChartContainer></CardContent></Card>\`
     - **Chart Configuration**: Define a \`chartConfig\` object with color mappings: \`{ desktop: { label: "Desktop", color: "hsl(var(--chart-1))" } }\`
     - Use \`var(--color-keyName)\` in chart elements to reference config colors: \`fill="var(--color-desktop)"\`

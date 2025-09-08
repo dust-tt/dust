@@ -33,6 +33,7 @@ interface ConversationSidePanelContextType {
   closePanel: () => void;
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
+  panelRef: React.MutableRefObject<ImperativePanelHandle | null>;
   data: string | undefined;
 }
 
@@ -128,6 +129,7 @@ export function ConversationSidePanelProvider({
         closePanel,
         onPanelClosed,
         setPanelRef,
+        panelRef,
         data,
       }}
     >
