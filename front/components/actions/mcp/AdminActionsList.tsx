@@ -10,7 +10,9 @@ import { useMemo, useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import {
   getMcpServerDisplayName,
@@ -26,14 +28,22 @@ import {
   useCreateInternalMCPServer,
   useMCPServerConnections,
   useMCPServers,
+  useMCPServersUsage,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { EditedByUser, LightWorkspaceType, SpaceType } from "@app/types";
+import type {
+  AgentsUsageType,
+  LightWorkspaceType,
+  SpaceType,
+  UserType,
+} from "@app/types";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
 
 type RowData = {
   mcpServer: MCPServerType;
   mcpServerView?: MCPServerViewType;
+  usage: AgentsUsageType | null;
   isConnected: boolean;
   spaces: SpaceType[];
   onClick: () => void;
@@ -75,6 +85,7 @@ const NameCell = ({ row }: { row: RowData }) => {
 
 type AdminActionsListProps = {
   owner: LightWorkspaceType;
+  user: UserType;
   filter: string;
   systemSpace: SpaceType;
   setMcpServerToShow: (mcpServer: MCPServerType) => void;
@@ -82,6 +93,7 @@ type AdminActionsListProps = {
 
 export const AdminActionsList = ({
   owner,
+  user,
   filter,
   systemSpace,
   setMcpServerToShow,
@@ -99,6 +111,12 @@ export const AdminActionsList = ({
   });
 
   const { mcpServers, isMCPServersLoading } = useMCPServers({
+    owner,
+  });
+
+  const [assistantSId, setAssistantSId] = useState<string | null>(null);
+
+  const { usage } = useMCPServersUsage({
     owner,
   });
 
@@ -154,10 +172,14 @@ export const AdminActionsList = ({
           const spaceIds = mcpServerWithViews
             ? mcpServerWithViews.views.map((v) => v.spaceId)
             : [];
+          const agentsUsage =
+            usage && mcpServerView ? usage[mcpServerView.server.sId] : null;
+
           return {
             mcpServer,
             mcpServerView,
             spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
+            usage: agentsUsage,
             isConnected: !!connections.find(
               (c) =>
                 c.internalMCPServerId === mcpServer.sId ||
@@ -171,7 +193,14 @@ export const AdminActionsList = ({
           };
         })
         .sort(mcpServersSortingFn),
-    [connections, mcpServers, setMcpServerToShow, spaces, systemSpace?.sId]
+    [
+      connections,
+      mcpServers,
+      setMcpServerToShow,
+      spaces,
+      systemSpace?.sId,
+      usage,
+    ]
   );
   const columns = useMemo((): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -191,6 +220,21 @@ export const AdminActionsList = ({
             rowB.original.mcpServer.name
           );
         },
+      },
+      {
+        header: "Used by",
+        accessorFn: (row: RowData) => row.usage?.count ?? 0,
+        meta: {
+          className: "w-24",
+        },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <UsedByButton
+              usage={info.row.original.usage}
+              onItemClick={setAssistantSId}
+            />
+          </DataTable.CellContent>
+        ),
       },
       {
         id: "access",
@@ -225,11 +269,11 @@ export const AdminActionsList = ({
         id: "by",
         accessorKey: "mcpServerView.editedByUser",
         header: "By",
-        cell: (info: CellContext<RowData, EditedByUser>) => {
-          const editedByUser = info.getValue();
+        cell: (info) => {
+          const editedByUser = info.row.original.mcpServerView?.editedByUser;
           return (
             <DataTable.CellContent
-              avatarUrl={editedByUser?.imageUrl ?? undefined}
+              avatarUrl={editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
               avatarTooltipLabel={editedByUser?.fullName ?? undefined}
               roundedAvatar
             />
@@ -263,6 +307,12 @@ export const AdminActionsList = ({
 
   return (
     <>
+      <AssistantDetails
+        owner={owner}
+        user={user}
+        assistantId={assistantSId}
+        onClose={() => setAssistantSId(null)}
+      />
       <CreateMCPServerDialog
         isOpen={isCreateOpen}
         internalMCPServer={internalMCPServerToCreate}
