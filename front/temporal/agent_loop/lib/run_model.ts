@@ -1,10 +1,7 @@
 import { removeNulls } from "@dust-tt/client";
 import assert from "assert";
 
-import {
-  buildToolSpecification,
-  DEFAULT_MCP_TOOL_RETRY_POLICY,
-} from "@app/lib/actions/mcp";
+import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
@@ -51,6 +48,7 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
+import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
