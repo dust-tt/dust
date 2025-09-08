@@ -239,8 +239,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       ],
     });
 
-    
-
     const filteredViews: MCPServerViewResource[] = [];
 
     // If we are including deleted views, it's probably for the deletion activity.
