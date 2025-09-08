@@ -5,69 +5,15 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { convertUrlToPoke } from "@app/lib/utils/url-to-poke";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  initialUrl?: string;
-  initialError?: string;
-}>(async (context) => {
-  const { url } = context.query;
-
-  // If URL is provided as query parameter, try to convert it
-  if (url && typeof url === "string") {
-    let fullUrl = url;
-
-    // Add protocol if missing
-    if (!fullUrl.startsWith("http://") && !fullUrl.startsWith("https://")) {
-      if (fullUrl.startsWith("dust.tt/") || fullUrl.startsWith("eu.dust.tt/")) {
-        fullUrl = "https://" + fullUrl;
-      } else if (fullUrl.startsWith("w/")) {
-        const host = context.req.headers.host || "dust.tt";
-        fullUrl = `https://${host}/${fullUrl}`;
-      } else {
-        fullUrl = "https://" + fullUrl;
-      }
-    }
-
-    try {
-      const pokeUrl = convertUrlToPoke(fullUrl);
-
-      if (pokeUrl) {
-        const pokeUrlObj = new URL(pokeUrl);
-        // Redirect directly to the poke URL when provided via query parameter
-        return {
-          redirect: {
-            destination: pokeUrlObj.pathname + pokeUrlObj.search,
-            permanent: false,
-          },
-        };
-      } else {
-        return {
-          props: {
-            initialUrl: fullUrl,
-            initialError: "No poke page available for this URL",
-          },
-        };
-      }
-    } catch (error) {
-      return {
-        props: {
-          initialUrl: fullUrl,
-          initialError: "Invalid URL format",
-        },
-      };
-    }
+export const getServerSideProps = withSuperUserAuthRequirements<{}>(
+  async () => {
+    return { props: {} };
   }
+);
 
-  return { props: {} };
-});
-
-interface PokefyPageProps {
-  initialUrl?: string;
-  initialError?: string;
-}
-
-function PokefyPage({ initialUrl, initialError }: PokefyPageProps) {
-  const [url, setUrl] = useState(initialUrl || "");
-  const [error, setError] = useState(initialError || "");
+function PokefyPage() {
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,9 +41,8 @@ function PokefyPage({ initialUrl, initialError }: PokefyPageProps) {
       const pokeUrl = convertUrlToPoke(fullUrl);
 
       if (pokeUrl) {
-        const pokeUrlObj = new URL(pokeUrl);
-        // Redirect directly to the poke URL
-        window.location.href = pokeUrlObj.pathname;
+        // Redirect to the full poke URL, preserving the host
+        window.location.href = pokeUrl;
       } else {
         setError("No poke page available for this URL");
       }
