@@ -27,15 +27,8 @@ export function PublicClientExecutableRenderer({
 
   const enterFullScreen = useCallback(async () => {
     try {
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen();
-      } else if ((document.documentElement as any).webkitRequestFullscreen) {
-        // Safari
-        await (document.documentElement as any).webkitRequestFullscreen();
-      } else if ((document.documentElement as any).msRequestFullscreen) {
-        // IE/Edge
-        await (document.documentElement as any).msRequestFullscreen();
-      }
+      const element = document.documentElement;
+      await element.requestFullscreen();
     } catch (error) {
       console.error("Error entering fullscreen:", error);
     }
@@ -43,15 +36,7 @@ export function PublicClientExecutableRenderer({
 
   const exitFullScreen = useCallback(async () => {
     try {
-      if (document.exitFullscreen) {
-        await document.exitFullscreen();
-      } else if ((document as any).webkitExitFullscreen) {
-        // Safari
-        await (document as any).webkitExitFullscreen();
-      } else if ((document as any).msExitFullscreen) {
-        // IE/Edge
-        await (document as any).msExitFullscreen();
-      }
+      await document.exitFullscreen();
     } catch (error) {
       console.error("Error exiting fullscreen:", error);
     }
@@ -65,18 +50,12 @@ export function PublicClientExecutableRenderer({
     }
   }, [isFullScreen, enterFullScreen, exitFullScreen]);
 
-  // Listen for fullscreen changes
   useEffect(() => {
     const handleFullScreenChange = () => {
-      const isCurrentlyFullScreen = !!(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).msFullscreenElement
-      );
+      const isCurrentlyFullScreen = !!document.fullscreenElement;
       setIsFullScreen(isCurrentlyFullScreen);
     };
 
-    // Add event listeners for different browsers
     document.addEventListener("fullscreenchange", handleFullScreenChange);
     document.addEventListener("webkitfullscreenchange", handleFullScreenChange);
     document.addEventListener("msfullscreenchange", handleFullScreenChange);
@@ -94,18 +73,14 @@ export function PublicClientExecutableRenderer({
     };
   }, []);
 
-  // Global keyboard event listener for ESC and Cmd/Ctrl+F
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // ESC key to exit full screen mode
       if (event.key === "Escape" && isFullScreen) {
         void exitFullScreen();
         return;
       }
 
-      // Cmd+F (Mac) or Ctrl+F (Windows/Linux) to toggle fullscreen
       if (event.key === "f") {
-        event.preventDefault(); // Prevent browser's default find functionality
         handleFullScreenToggle();
       }
     };
