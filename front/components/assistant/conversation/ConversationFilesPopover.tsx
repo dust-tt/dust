@@ -176,6 +176,9 @@ export function ConversationFilesPopover({
     useConversationFiles({
       conversationId,
       owner,
+      options: {
+        disabled: !isOpen,
+      },
     });
 
   const fileGroups = React.useMemo(
@@ -184,13 +187,12 @@ export function ConversationFilesPopover({
   );
 
   const hasFiles = conversationFiles.length > 0;
-  const fileCount = conversationFiles.length;
 
   const handleFileClick = () => {
     setIsOpen(false);
   };
 
-  if (isConversationFilesLoading) {
+  if (isConversationFilesLoading && isOpen) {
     return (
       <Button
         size="sm"
@@ -207,7 +209,7 @@ export function ConversationFilesPopover({
       <PopoverTrigger asChild>
         <Button
           size="sm"
-          tooltip={`Generated content (${fileCount})`}
+          tooltip="See generated content"
           icon={isOpen ? FolderOpenIcon : FolderIcon}
           variant="ghost"
         />

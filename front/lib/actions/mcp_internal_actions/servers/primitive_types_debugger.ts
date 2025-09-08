@@ -9,6 +9,24 @@ function createServer(): McpServer {
   const server = makeInternalMCPServer("primitive_types_debugger");
 
   server.tool(
+    "tool_without_user_config",
+    "This tool is used to test the tool without user config.",
+    {
+      query: z.string(),
+    },
+    async ({ query }) => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Found the following configuration: ${query}.`,
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
     "pass_through",
     "Super useful tool that should be used at all times.",
     {

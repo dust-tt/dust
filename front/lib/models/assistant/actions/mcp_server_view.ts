@@ -2,6 +2,7 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -30,6 +31,10 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
   declare remoteMCPServer: NonAttribute<RemoteMCPServerModel>;
+  declare internalToolsMetadata: NonAttribute<
+    RemoteMCPServerToolMetadataModel[]
+  >;
+  declare remoteToolsMetadata: NonAttribute<RemoteMCPServerToolMetadataModel[]>;
 
   declare oAuthUseCase: MCPOAuthUseCase | null;
 }
@@ -177,4 +182,32 @@ MCPServerViewModel.belongsTo(RemoteMCPServerModel, {
 MCPServerViewModel.belongsTo(UserModel, {
   as: "editedByUser",
   foreignKey: { name: "editedByUserId", allowNull: true },
+});
+
+MCPServerViewModel.hasMany(RemoteMCPServerToolMetadataModel, {
+  as: "internalToolsMetadata",
+  foreignKey: { name: "internalMCPServerId", allowNull: true },
+  sourceKey: "internalMCPServerId",
+  constraints: false,
+});
+
+MCPServerViewModel.hasMany(RemoteMCPServerToolMetadataModel, {
+  as: "remoteToolsMetadata",
+  foreignKey: { name: "remoteMCPServerId", allowNull: true },
+  sourceKey: "remoteMCPServerId",
+  constraints: false,
+});
+
+RemoteMCPServerToolMetadataModel.belongsTo(MCPServerViewModel, {
+  as: "internalToolsMetadata",
+  foreignKey: { name: "internalMCPServerId", allowNull: true },
+  targetKey: "internalMCPServerId",
+  constraints: false,
+});
+
+RemoteMCPServerToolMetadataModel.belongsTo(MCPServerViewModel, {
+  as: "remoteToolsMetadata",
+  foreignKey: { name: "remoteMCPServerId", allowNull: true },
+  targetKey: "remoteMCPServerId",
+  constraints: false,
 });
