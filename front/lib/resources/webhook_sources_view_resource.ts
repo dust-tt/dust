@@ -286,17 +286,13 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     });
   }
 
-  public async updateNameAndDescription(
+  public async updateName(
     auth: Authenticator,
-    name?: string,
-    description?: string
+    name?: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
-        new DustError(
-          "unauthorized",
-          "Not allowed to update name and description."
-        )
+        new DustError("unauthorized", "Not allowed to update name.")
       );
     }
 
