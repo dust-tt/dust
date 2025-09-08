@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
   LinkIcon,
   MoreIcon,
+  PencilSquareIcon,
   PlusCircleIcon,
   TrashIcon,
   XMarkIcon,
@@ -16,6 +17,7 @@ import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -47,6 +49,7 @@ export function ConversationMenu({
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
+  const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
   const shareLink = `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`;
 
@@ -116,6 +119,13 @@ export function ConversationMenu({
           void leaveOrDelete();
         }}
       />
+      <EditConversationTitleDialog
+        isOpen={showRenameDialog}
+        onClose={() => setShowRenameDialog(false)}
+        ownerId={owner.sId}
+        conversationId={activeConversationId}
+        currentTitle={conversation?.title || ""}
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -131,6 +141,11 @@ export function ConversationMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuLabel>Conversation</DropdownMenuLabel>
+          <DropdownMenuItem
+            label="Rename"
+            onClick={() => setShowRenameDialog(true)}
+            icon={PencilSquareIcon}
+          />
           <ConversationActionMenuItem />
           <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
           <DropdownMenuItem
