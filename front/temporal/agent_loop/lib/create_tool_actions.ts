@@ -7,6 +7,8 @@ import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
+import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -25,6 +27,7 @@ export interface ActionBlob {
   actionId: ModelId;
   actionStatus: ToolExecutionStatus;
   needsApproval: boolean;
+  retryPolicy: MCPToolRetryPolicyType;
 }
 
 type CreateToolActionsResult = {
@@ -206,6 +209,7 @@ async function createActionForTool(
       actionId: action.id,
       actionStatus: status,
       needsApproval: status === "blocked_validation_required",
+      retryPolicy: getRetryPolicyFromToolConfiguration(actionConfiguration),
     },
     approvalEventData:
       status === "blocked_validation_required"

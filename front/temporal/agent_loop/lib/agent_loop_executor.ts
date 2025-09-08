@@ -66,7 +66,6 @@ async function executeStepIteration({
   // actions have been approved.
   const needsApproval = actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
-    // Break the loop - workflow will be restarted externally once approved.
     return {
       runId,
       shouldContinue: false,
@@ -75,12 +74,18 @@ async function executeStepIteration({
 
   // Execute tools and collect any deferred events.
   const toolResults = await Promise.all(
-    actionBlobs.map(({ actionId }) =>
-      activities.runToolActivity(authType, {
-        actionId,
-        runAgentArgs,
-        step: currentStep,
-      })
+    actionBlobs.map(({ actionId, retryPolicy }) =>
+      retryPolicy === "no_retry"
+        ? activities.runToolActivity(authType, {
+            actionId,
+            runAgentArgs,
+            step: currentStep,
+          })
+        : activities.runRetryableToolActivity(authType, {
+            actionId,
+            runAgentArgs,
+            step: currentStep,
+          })
     )
   );
 

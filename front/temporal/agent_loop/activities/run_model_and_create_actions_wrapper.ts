@@ -1,6 +1,7 @@
 import assert from "assert";
 
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
@@ -174,6 +175,9 @@ async function getExistingActionsAndBlobs(
           actionId: mcpAction.id,
           actionStatus: mcpAction.status,
           needsApproval: mcpAction.status === "blocked_validation_required",
+          retryPolicy: getRetryPolicyFromToolConfiguration(
+            mcpAction.toolConfiguration
+          ),
         });
       }
     }
