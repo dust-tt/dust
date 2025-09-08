@@ -77,6 +77,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "openai_usage",
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
@@ -878,6 +879,33 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "DriveLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-drive",
+      instructions: null,
+    },
+  },
+  openai_usage: {
+    id: 28,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("openai_usage_mcp");
+    },
+    tools_stakes: {
+      get_completions_usage: "low",
+      get_organization_costs: "low",
+    },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "openai_usage",
+      version: "1.0.0",
+      description:
+        "Direct access to OpenAI Usage and Costs APIs for tracking API consumption and costs.",
+      authorization: {
+        provider: "openai" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "OpenaiLogo",
+      documentationUrl: null,
       instructions: null,
     },
   },

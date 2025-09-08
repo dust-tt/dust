@@ -41,6 +41,7 @@ export const OAUTH_PROVIDERS = [
   "hubspot",
   "mcp", // MCP is a special provider for MCP servers.
   "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
+  "openai",
 ] as const;
 
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
@@ -62,6 +63,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   hubspot: "Hubspot",
   mcp: "MCP",
   mcp_static: "MCP",
+  openai: "OpenAI",
 };
 
 const SUPPORTED_OAUTH_CREDENTIALS = [
@@ -190,6 +192,17 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "jira":
     case "mcp":
       return null;
+    case "openai":
+      const result: OAuthCredentialInputs = {
+        client_id: {
+          label: "OpenAI Admin API Key",
+          value: undefined,
+          helpMessage:
+            "Your OpenAI Admin API key. This is used as the bearer token for API requests.",
+          validator: isValidClientIdOrSecret,
+        },
+      };
+      return result;
     case "mcp_static":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
         const result: OAuthCredentialInputs = {
