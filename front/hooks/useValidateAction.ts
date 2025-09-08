@@ -53,9 +53,8 @@ export function useValidateAction({
             onError("Failed to resume conversation. Please try again.");
             return { success: false };
           }
-
-          return { success: true };
         }
+        return { success: true };
       };
 
       try {
