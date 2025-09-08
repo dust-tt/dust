@@ -204,7 +204,7 @@ export async function submitAgentBuilderForm({
             httpStatus: response.status,
             errorMessage: error.error?.message,
           },
-          "Agent builder form submission failed"
+          "[Agent builder] - Form submission failed"
         );
         return new Err(
           new Error(error.error?.message || "Failed to save agent")
@@ -218,7 +218,7 @@ export async function submitAgentBuilderForm({
             endpoint,
             httpStatus: response.status,
           },
-          "Agent builder form submission failed with unparseable error response"
+          "[Agent builder] - Form submission failed with unparseable error response"
         );
         return new Err(new Error("An error occurred while saving the agent."));
       }
@@ -268,7 +268,7 @@ export async function submitAgentBuilderForm({
             body: slackRequestBody,
             slackChannelsCount: slackChannels.length,
           },
-          "Failed to link Slack channels to agent"
+          "[Agent builder] - Failed to link Slack channels to agent"
         );
         return new Err(
           new Error("An error occurred while linking Slack channels.")
@@ -299,7 +299,7 @@ export async function submitAgentBuilderForm({
             errorMessage: error?.api_error?.message || error?.error?.message,
             triggersCount: formData.triggers.length,
           },
-          "Failed to sync triggers for agent"
+          "[Agent builder] - Failed to sync triggers for agent"
         );
         return new Err(
           new Error(
@@ -315,7 +315,7 @@ export async function submitAgentBuilderForm({
             agentConfigurationId: agentConfiguration.sId,
             triggersCount: formData.triggers.length,
           },
-          "Failed to sync triggers for agent with unparseable error response"
+          "[Agent builder] - Failed to sync triggers for agent with unparseable error response"
         );
         return new Err(new Error("An error occurred while syncing triggers."));
       }
