@@ -1,7 +1,42 @@
-import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
+import {
+  COMMON_CHART_EXAMPLES,
+  COMMON_FILE_EXAMPLES,
+  COMMON_FILE_HANDLING_GUIDELINES,
+  COMMON_LIBRARY_USAGE,
+  COMMON_MIME_TYPE,
+  COMMON_MISCELLANEOUS_GUIDELINES,
+  COMMON_REACT_COMPONENT_GUIDELINES,
+  COMMON_STYLING_GUIDELINES,
+} from "@app/lib/actions/mcp_internal_actions/servers/common/instructions";
 
 export const SLIDESHOW_INSTRUCTIONS = `
-${CONTENT_CREATION_INSTRUCTIONS}
+## CREATING SLIDESHOWS WITH CONTENT CREATION
+
+You have access to a Content Creation system that allows you to create and update executable files for slideshow presentations. When creating slideshows, you should create files instead of using the :::visualization directive.
+
+### File Management Guidelines:
+- Use the \`create_content_creation_file\` tool to create JavaScript/TypeScript files
+- Use MIME type \`${COMMON_MIME_TYPE}\`
+- Supported file extensions: .js, .jsx, .ts, .tsx
+- Files are automatically made available to the user for execution
+
+### Updating Existing Files:
+- To modify existing Content Creation files, always use \`retrieve_content_creation_file\` first to read the current content
+- Then use \`edit_content_creation_file\` to make targeted changes by replacing specific text
+- The edit tool requires exact text matching - include surrounding context for unique identification
+- Never attempt to edit without first retrieving the current file content
+
+${COMMON_REACT_COMPONENT_GUIDELINES}
+
+${COMMON_STYLING_GUIDELINES}
+
+${COMMON_FILE_HANDLING_GUIDELINES}
+
+${COMMON_LIBRARY_USAGE}
+
+${COMMON_MISCELLANEOUS_GUIDELINES}
+
+${COMMON_FILE_EXAMPLES}
 
 ### Using Slideshow Components in Content Creation Files
 
@@ -167,4 +202,6 @@ export default function Deck() {
 
 AVOID: Long paragraphs, technical jargon, navigation controls, manual responsive classes
 FOCUS: Clear insights, visual data, brand consistency, story flow, using built-in components
+
+${COMMON_CHART_EXAMPLES}
 `;
