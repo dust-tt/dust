@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
@@ -21,10 +21,12 @@ import type {
   FetchConversationToolsResponse,
 } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/tools";
 import type {
+  AgentParticipantType,
   ConversationError,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
   LightWorkspaceType,
+  UserParticipantType,
 } from "@app/types";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
@@ -571,68 +573,42 @@ export function useConversationMarkAsRead({
   };
 }
 
-type ConversationParticipationOption = "join" | "leave" | "delete";
+type ConversationAction = "join" | "leave" | "delete";
 
-export const useConversationParticipationOption = ({
+export const useConversationMenu = ({
   ownerId,
   conversationId,
   userId,
-  disabled,
 }: {
   ownerId: string;
   conversationId: string | null;
   userId: string | null;
-  disabled: boolean;
-}) => {
-  const { conversationParticipants } = useConversationParticipants({
-    conversationId,
-    workspaceId: ownerId,
-    options: { disabled },
-  });
-  const [option, setOption] = useState<ConversationParticipationOption | null>(
-    null
-  );
-
-  useEffect(() => {
-    if (conversationParticipants === undefined) {
-      setOption(null);
-      return;
-    }
-    const isUserParticipating =
-      userId !== null &&
-      conversationParticipants?.users.find(
-        (participant) => participant.sId === userId
-      );
-
-    const isLastParticipant =
-      isUserParticipating && conversationParticipants?.users.length === 1;
-
-    setOption(
-      isLastParticipant ? "delete" : isUserParticipating ? "leave" : "join"
-    );
-  }, [conversationParticipants, userId]);
-
-  return option;
-};
-
-export const useJoinConversation = ({
-  ownerId,
-  conversationId,
-}: {
-  ownerId: string;
-  conversationId: string | null;
-}): (() => Promise<boolean>) => {
+}): {
+  joinConversation: () => Promise<boolean>;
+  action: ConversationAction;
+  users: UserParticipantType[];
+  agents: AgentParticipantType[];
+} => {
   const sendNotification = useSendNotification();
 
   const { mutateConversations } = useConversations({
     workspaceId: ownerId,
-    options: { disabled: true },
   });
-  const { mutateConversationParticipants } = useConversationParticipants({
-    conversationId,
-    workspaceId: ownerId,
-    options: { disabled: true },
-  });
+  const { mutateConversationParticipants, conversationParticipants } =
+    useConversationParticipants({
+      conversationId,
+      workspaceId: ownerId,
+      options: { disabled: conversationId === null },
+    });
+
+  const isUserParticipating =
+    userId !== null &&
+    conversationParticipants?.users.find(
+      (participant) => participant.sId === userId
+    );
+
+  const isLastParticipant =
+    isUserParticipating && conversationParticipants?.users.length === 1;
 
   const joinConversation = useCallback(async (): Promise<boolean> => {
     if (!conversationId) {
@@ -688,5 +664,14 @@ export const useJoinConversation = ({
     conversationId,
   ]);
 
-  return joinConversation;
+  return {
+    joinConversation,
+    action: isLastParticipant
+      ? "delete"
+      : isUserParticipating
+        ? "leave"
+        : "join",
+    users: conversationParticipants?.users ?? [],
+    agents: conversationParticipants?.agents ?? [],
+  };
 };
