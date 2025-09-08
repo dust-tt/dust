@@ -83,7 +83,7 @@ export function useDraftAgent() {
       setStickyMentions([{ configurationId: newDraft.sId }]);
       setIsSavingDraftAgent(false);
       return newDraft;
-    }, [owner, sendNotification, getValues]);
+    }, [owner, sendNotification, getValues]); // ✅ Include getValues
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -98,7 +98,7 @@ export function useDraftAgent() {
         return draftAgent;
       }
       return createDraftAgent();
-    }, [draftAgent, createDraftAgent, getValues]);
+    }, [getValues, draftAgent, createDraftAgent]); // ✅ Include getValues
 
   return {
     draftAgent,

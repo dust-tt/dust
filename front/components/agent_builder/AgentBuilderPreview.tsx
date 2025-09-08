@@ -1,5 +1,5 @@
 import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -151,19 +151,22 @@ function PreviewContent({
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
-  const { getValues, control } = useFormContext<AgentBuilderFormData>();
+  const { control } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
   const { currentPanel } = useConversationSidePanelContext();
 
-  const hasContent =
-    !!getValues("instructions").trim() || getValues("actions").length > 0;
-
-  const currentAgentName = useWatch({
+  const watchedFields = useWatch({
     control,
-    name: "agentSettings.name",
+    name: ["instructions", "actions", "agentSettings.name"],
   });
+
+  const [instructions, actions, agentName] = watchedFields;
+
+  const hasContent = useMemo(() => {
+    return !!instructions?.trim() || (actions?.length ?? 0) > 0;
+  }, [instructions, actions]);
 
   const {
     draftAgent,
@@ -182,53 +185,71 @@ export function AgentBuilderPreview() {
       getDraftAgent,
     });
 
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
+  const isUpdatingDraftRef = useRef(false);
 
   useEffect(() => {
+    let isCancelled = false;
+
     const handleDraftUpdate = async () => {
-      // Don't do anything if preview panel is not open
-      if (!isPreviewPanelOpen || isMCPServerViewsLoading) {
+      if (
+        !isPreviewPanelOpen ||
+        isMCPServerViewsLoading ||
+        isCancelled ||
+        isUpdatingDraftRef.current
+      ) {
         return;
       }
 
+      // Create an initial draft if none exists and we have content
       if (!draftAgent && hasContent) {
+        isUpdatingDraftRef.current = true;
         const newDraft = await createDraftAgent();
-        if (newDraft) {
+        if (newDraft && !isCancelled) {
           setDraftAgent(newDraft);
         }
+        isUpdatingDraftRef.current = false;
         return;
       }
 
-      // Debounce name change updates to avoid creating draft on every keystroke
-      if (draftAgent && currentAgentName !== draftAgent.name) {
-        if (debounceTimeoutRef.current) {
-          clearTimeout(debounceTimeoutRef.current);
+      // Update existing draft if agent name changed (with debouncing)
+      // Normalize names for comparison (empty string becomes "Preview")
+      const normalizedCurrentName = agentName?.trim() || "Preview";
+      const normalizedDraftName = draftAgent?.name?.trim() || "Preview";
+
+      if (draftAgent && normalizedCurrentName !== normalizedDraftName) {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
         }
 
-        // Set new timeout for debounced update
-        debounceTimeoutRef.current = setTimeout(async () => {
-          const newDraft = await createDraftAgent();
-          if (newDraft) {
-            setDraftAgent(newDraft);
-            setStickyMentions([{ configurationId: newDraft.sId }]);
+        debounceTimerRef.current = setTimeout(async () => {
+          if (!isCancelled) {
+            isUpdatingDraftRef.current = true;
+            const newDraft = await createDraftAgent();
+            if (newDraft && !isCancelled) {
+              setDraftAgent(newDraft);
+              setStickyMentions([{ configurationId: newDraft.sId }]);
+            }
+            isUpdatingDraftRef.current = false;
           }
-        }, 500); // 500ms debounce
+        }, 500);
       }
     };
 
     void handleDraftUpdate();
 
     return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
+      isCancelled = true;
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
   }, [
     isPreviewPanelOpen,
+    isMCPServerViewsLoading,
     draftAgent,
     hasContent,
-    currentAgentName,
-    isMCPServerViewsLoading,
+    agentName,
     createDraftAgent,
     setDraftAgent,
     setStickyMentions,
