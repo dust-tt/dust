@@ -49,7 +49,7 @@ const activities: AgentLoopActivities = {
       MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
     } minutes`,
     retry: {
-      maximumAttempts: 10,
+      maximumAttempts: 5,
     },
   }).runToolActivity,
   publishDeferredEventsActivity: proxyActivities<

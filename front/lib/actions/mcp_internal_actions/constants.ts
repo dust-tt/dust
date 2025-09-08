@@ -182,7 +182,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry" },
     timeoutMs: undefined,
     serverInfo: {
       name: TABLE_QUERY_SERVER_NAME,
@@ -202,7 +202,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry" },
     timeoutMs: undefined,
     serverInfo: {
       name: DEFAULT_WEBSEARCH_ACTION_NAME,
@@ -223,7 +223,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: true,
     tools_stakes: undefined,
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry" },
     timeoutMs: undefined,
     serverInfo: {
       name: "think",
@@ -327,7 +327,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry" },
     timeoutMs: undefined,
     serverInfo: {
       name: "include_data",
@@ -409,7 +409,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry" },
     timeoutMs: undefined,
     serverInfo: {
       name: "extract_data",
@@ -892,7 +892,7 @@ The directive should be used to display a clickable version of the agent name in
       search_files: "never_ask",
       get_file_content: "never_ask",
     },
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry" },
     timeoutMs: undefined,
     serverInfo: {
       name: "google_drive",
@@ -916,7 +916,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry" },
     timeoutMs: undefined,
     serverInfo: {
       name: SEARCH_SERVER_NAME,
@@ -935,7 +935,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_retry_policies: { default: "retry" },
+    tools_retry_policies: undefined,
     timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
