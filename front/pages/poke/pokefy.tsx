@@ -7,7 +7,6 @@ import { convertUrlToPoke } from "@app/lib/utils/url-to-poke";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   initialUrl?: string;
-  initialPokeUrl?: string;
   initialError?: string;
 }>(async (context) => {
   const { url } = context.query;
@@ -33,10 +32,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
       if (pokeUrl) {
         const pokeUrlObj = new URL(pokeUrl);
+        // Redirect directly to the poke URL when provided via query parameter
         return {
-          props: {
-            initialUrl: fullUrl,
-            initialPokeUrl: pokeUrlObj.pathname + pokeUrlObj.search,
+          redirect: {
+            destination: pokeUrlObj.pathname + pokeUrlObj.search,
+            permanent: false,
           },
         };
       } else {
@@ -62,23 +62,19 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
 interface PokefyPageProps {
   initialUrl?: string;
-  initialPokeUrl?: string;
   initialError?: string;
 }
 
 function PokefyPage({
   initialUrl,
-  initialPokeUrl,
   initialError,
 }: PokefyPageProps) {
   const [url, setUrl] = useState(initialUrl || "");
   const [error, setError] = useState(initialError || "");
-  const [result, setResult] = useState<string | null>(initialPokeUrl || null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setResult(null);
 
     if (!url) {
       setError("Please enter a URL");
@@ -103,8 +99,8 @@ function PokefyPage({
 
       if (pokeUrl) {
         const pokeUrlObj = new URL(pokeUrl);
-        // Show the poke URL instead of redirecting
-        setResult(pokeUrlObj.pathname);
+        // Redirect directly to the poke URL
+        window.location.href = pokeUrlObj.pathname;
       } else {
         setError("No poke page available for this URL");
       }
@@ -116,6 +112,7 @@ function PokefyPage({
   return (
     <div className="mx-auto max-w-4xl">
       <h1 className="mb-4 text-2xl font-bold">Convert webapp URLs to Poke</h1>
+      <p className="text-sm text-gray-600 mb-4">Enter a Dust URL below and you'll be redirected to the poke equivalent page.</p>
 
       <form onSubmit={handleSubmit} className="mt-6">
         <div>
@@ -143,22 +140,6 @@ function PokefyPage({
       {error && (
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
           ❌ {error}
-        </div>
-      )}
-
-      {result && (
-        <div className="mt-4 rounded-md border border-green-200 bg-green-50 p-4">
-          <p className="mb-2 text-green-700">
-            ✅ <strong>Poke URL available:</strong>
-          </p>
-          <p className="text-lg">
-            <a
-              href={result}
-              className="font-bold text-blue-600 hover:text-blue-800"
-            >
-              {result}
-            </a>
-          </p>
         </div>
       )}
 
