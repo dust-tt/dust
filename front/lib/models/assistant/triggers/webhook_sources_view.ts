@@ -17,7 +17,7 @@ export class WebhookSourcesViewModel extends SoftDeletableWorkspaceAwareModel<We
 
   declare webhookSourceId: ForeignKey<WebhookSourceModel["id"]>;
 
-  // Can be null if the user did not set a custom name or description.
+  // Can be null if the user did not set a custom name.
   declare name: string | null;
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
