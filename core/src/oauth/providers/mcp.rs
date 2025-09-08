@@ -24,6 +24,7 @@ pub struct MCPConnectionMetadata {
     pub authorization_endpoint: String,
     pub code_verifier: String,
     pub code_challenge: String,
+    pub scope: Option<String>,
 }
 
 pub struct MCPConnectionProvider {}
@@ -199,9 +200,16 @@ impl Provider for MCPConnectionProvider {
             _ => Err(anyhow!("Missing `expires_in` in response from MCP"))?,
         };
 
-        match raw_json["scope"].as_str() {
-            Some(_) => (),
-            None => Err(anyhow!("Missing `scope` in response from MCP"))?,
+        // In case of static MCP connections, the scope is not returned in the response.
+        // However, it should be available in the connection metadata.
+        let scope = match raw_json["scope"].as_str() {
+            Some(_) => raw_json["scope"].clone(),
+            None => match metadata.scope {
+                Some(scope) => serde_json::Value::String(scope),
+                None => Err(anyhow!(
+                    "Missing `scope` in response from MCP and connection metadata"
+                ))?,
+            },
         };
 
         match raw_json["token_type"].as_str() {
@@ -227,11 +235,11 @@ impl Provider for MCPConnectionProvider {
             None => (),
         };
 
-        // We checked above the presence of each of these fields in raw_json.
+        // We checked above the presence of each of these fields in raw_json or the metadata.
         merged_raw_json["access_token"] = raw_json["access_token"].clone();
         merged_raw_json["expires_in"] = raw_json["expires_in"].clone();
         merged_raw_json["token_type"] = raw_json["token_type"].clone();
-        merged_raw_json["scope"] = raw_json["scope"].clone();
+        merged_raw_json["scope"] = scope;
 
         Ok(RefreshResult {
             access_token: access_token.to_string(),
