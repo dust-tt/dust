@@ -42,10 +42,12 @@ export function ConversationMenu({
   const { user } = useUser();
   const router = useRouter();
   const sendNotification = useSendNotification();
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const { joinConversation, action, users, agents } = useConversationMenu({
     ownerId: owner.sId,
     conversationId: activeConversationId,
     userId: user?.sId || null,
+    isMenuOpen,
   });
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
@@ -126,7 +128,7 @@ export function ConversationMenu({
         conversationId={activeConversationId}
         currentTitle={conversation?.title || ""}
       />
-      <DropdownMenu modal={false}>
+      <DropdownMenu modal={false} open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             size="sm"

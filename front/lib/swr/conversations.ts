@@ -579,10 +579,12 @@ export const useConversationMenu = ({
   ownerId,
   conversationId,
   userId,
+  isMenuOpen,
 }: {
   ownerId: string;
   conversationId: string | null;
   userId: string | null;
+  isMenuOpen: boolean;
 }): {
   joinConversation: () => Promise<boolean>;
   action: ConversationAction;
@@ -593,12 +595,13 @@ export const useConversationMenu = ({
 
   const { mutateConversations } = useConversations({
     workspaceId: ownerId,
+    options: { disabled: true },
   });
   const { mutateConversationParticipants, conversationParticipants } =
     useConversationParticipants({
       conversationId,
       workspaceId: ownerId,
-      options: { disabled: conversationId === null },
+      options: { disabled: conversationId === null || !isMenuOpen },
     });
 
   const isUserParticipating =
