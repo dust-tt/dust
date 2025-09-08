@@ -189,13 +189,10 @@ export function AgentBuilderPreview() {
   const isUpdatingDraftRef = useRef(false);
 
   useEffect(() => {
-    let isCancelled = false;
-
     const handleDraftUpdate = async () => {
       if (
         !isPreviewPanelOpen ||
         isMCPServerViewsLoading ||
-        isCancelled ||
         isUpdatingDraftRef.current
       ) {
         return;
@@ -205,7 +202,7 @@ export function AgentBuilderPreview() {
       if (!draftAgent && hasContent) {
         isUpdatingDraftRef.current = true;
         const newDraft = await createDraftAgent();
-        if (newDraft && !isCancelled) {
+        if (newDraft) {
           setDraftAgent(newDraft);
         }
         isUpdatingDraftRef.current = false;
@@ -223,15 +220,13 @@ export function AgentBuilderPreview() {
         }
 
         debounceTimerRef.current = setTimeout(async () => {
-          if (!isCancelled) {
-            isUpdatingDraftRef.current = true;
-            const newDraft = await createDraftAgent();
-            if (newDraft && !isCancelled) {
-              setDraftAgent(newDraft);
-              setStickyMentions([{ configurationId: newDraft.sId }]);
-            }
-            isUpdatingDraftRef.current = false;
+          isUpdatingDraftRef.current = true;
+          const newDraft = await createDraftAgent();
+          if (newDraft) {
+            setDraftAgent(newDraft);
+            setStickyMentions([{ configurationId: newDraft.sId }]);
           }
+          isUpdatingDraftRef.current = false;
         }, 500);
       }
     };
@@ -239,7 +234,6 @@ export function AgentBuilderPreview() {
     void handleDraftUpdate();
 
     return () => {
-      isCancelled = true;
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
