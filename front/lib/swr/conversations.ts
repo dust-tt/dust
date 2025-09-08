@@ -623,18 +623,16 @@ export const useConversationMenu = ({
       );
 
       if (!response.ok) {
-        if (response.status === 400) {
-          const error = await response.json();
-          if (error.error?.message?.includes("already a participant")) {
-            sendNotification({
-              type: "error",
-              title: "Already subscribed",
-              description:
-                "You are already a participant in this conversation.",
-            });
-            return false;
-          }
+        const { error } = await response.json();
+        if (error.type === "user_already_participant") {
+          sendNotification({
+            type: "error",
+            title: "Already subscribed",
+            description: "You are already a participant in this conversation.",
+          });
+          return false;
         }
+
         throw new Error("Failed to subscribe to conversation");
       }
 

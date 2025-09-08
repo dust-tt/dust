@@ -12,6 +12,7 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { ConversationError } from "@app/types";
 
 export type FetchConversationParticipantsResponse = {
   participants: ConversationParticipantsType;
@@ -99,14 +100,12 @@ async function handler(
         },
       });
 
-      if (existingParticipant) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "User is already a participant in this conversation",
-          },
-        });
+      if (existingParticipant !== null) {
+        return apiErrorForConversation(
+          req,
+          res,
+          new ConversationError("user_already_participant")
+        );
       }
 
       await ConversationParticipantModel.create({
