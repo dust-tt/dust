@@ -65,10 +65,7 @@ interface PokefyPageProps {
   initialError?: string;
 }
 
-function PokefyPage({
-  initialUrl,
-  initialError,
-}: PokefyPageProps) {
+function PokefyPage({ initialUrl, initialError }: PokefyPageProps) {
   const [url, setUrl] = useState(initialUrl || "");
   const [error, setError] = useState(initialError || "");
 
@@ -112,7 +109,10 @@ function PokefyPage({
   return (
     <div className="mx-auto max-w-4xl">
       <h1 className="mb-4 text-2xl font-bold">Convert webapp URLs to Poke</h1>
-      <p className="text-sm text-gray-600 mb-4">Enter a Dust URL below and you'll be redirected to the poke equivalent page.</p>
+      <p className="mb-4 text-sm text-gray-600">
+        Enter a Dust URL below and you'll be redirected to the poke equivalent
+        page.
+      </p>
 
       <form onSubmit={handleSubmit} className="mt-6">
         <div>
