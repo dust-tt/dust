@@ -24,15 +24,8 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { appendHashParam } from "@app/hooks/useHashParams";
 import { useShareContentCreationFile } from "@app/lib/swr/files";
 import type { FileShareScope, LightWorkspaceType } from "@app/types";
-import {
-  CONTENT_CREATION_SIDE_PANEL_TYPE,
-  FULL_SCREEN_HASH_PARAM,
-  SIDE_PANEL_HASH_PARAM,
-  SIDE_PANEL_TYPE_HASH_PARAM,
-} from "@app/types/conversation_side_panel";
 
 interface FileSharingDropdownProps {
   selectedScope: FileShareScope;
@@ -159,28 +152,7 @@ export function ShareContentCreationFilePopover({
     }
   };
 
-  // Create the URL with fullscreen and side panel parameters for conversation participants
-  const buildShareURLForConversationParticipants = (url: string) => {
-    url = appendHashParam(url, FULL_SCREEN_HASH_PARAM, "true");
-    url = appendHashParam(url, SIDE_PANEL_HASH_PARAM, fileId);
-    url = appendHashParam(
-      url,
-      SIDE_PANEL_TYPE_HASH_PARAM,
-      CONTENT_CREATION_SIDE_PANEL_TYPE
-    );
-    return url;
-  };
-
-  const getShareURL = (scope: FileShareScope) => {
-    if (scope === "conversation_participants" && fileShare?.shareUrl) {
-      return buildShareURLForConversationParticipants(fileShare.shareUrl);
-    }
-
-    return fileShare?.shareUrl ?? "";
-  };
-
-  const shareURL = getShareURL(selectedScope);
-
+  const shareURL = fileShare?.shareUrl ?? "";
   const handleCopyLink = async () => {
     await copyToClipboard(shareURL);
   };
