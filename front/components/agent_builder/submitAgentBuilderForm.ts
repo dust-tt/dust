@@ -5,6 +5,7 @@ import type {
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   DataSourcesConfigurationsCodecType,
@@ -194,10 +195,31 @@ export async function submitAgentBuilderForm({
     if (!response.ok) {
       try {
         const error = await response.json();
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId,
+            endpoint,
+            body: JSON.stringify(requestBody),
+            httpStatus: response.status,
+            errorMessage: error.error?.message,
+          },
+          "Agent builder form submission failed"
+        );
         return new Err(
           new Error(error.error?.message || "Failed to save agent")
         );
       } catch {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId,
+            body: JSON.stringify(requestBody),
+            endpoint,
+            httpStatus: response.status,
+          },
+          "Agent builder form submission failed with unparseable error response"
+        );
         return new Err(new Error("An error occurred while saving the agent."));
       }
     }
@@ -219,6 +241,13 @@ export async function submitAgentBuilderForm({
     if (slackProvider && slackChannels.length > 0) {
       const autoRespondWithoutMention =
         slackChannels[0].autoRespondWithoutMention;
+      const slackRequestBody = JSON.stringify({
+        provider: slackProvider,
+        slack_channel_internal_ids: slackChannels.map(
+          ({ slackChannelId }) => slackChannelId
+        ),
+        auto_respond_without_mention: autoRespondWithoutMention,
+      });
       const slackLinkRes = await fetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
         {
@@ -226,17 +255,21 @@ export async function submitAgentBuilderForm({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            provider: slackProvider,
-            slack_channel_internal_ids: slackChannels.map(
-              ({ slackChannelId }) => slackChannelId
-            ),
-            auto_respond_without_mention: autoRespondWithoutMention,
-          }),
+          body: slackRequestBody,
         }
       );
 
       if (!slackLinkRes.ok) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: agentConfiguration.sId,
+            httpStatus: slackLinkRes.status,
+            body: slackRequestBody,
+            slackChannelsCount: slackChannels.length,
+          },
+          "Failed to link Slack channels to agent"
+        );
         return new Err(
           new Error("An error occurred while linking Slack channels.")
         );
@@ -259,6 +292,15 @@ export async function submitAgentBuilderForm({
     if (!triggerSyncRes.ok) {
       try {
         const error = await triggerSyncRes.json();
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: agentConfiguration.sId,
+            errorMessage: error?.api_error?.message || error?.error?.message,
+            triggersCount: formData.triggers.length,
+          },
+          "Failed to sync triggers for agent"
+        );
         return new Err(
           new Error(
             error?.api_error?.message ||
@@ -267,12 +309,30 @@ export async function submitAgentBuilderForm({
           )
         );
       } catch {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: agentConfiguration.sId,
+            triggersCount: formData.triggers.length,
+          },
+          "Failed to sync triggers for agent with unparseable error response"
+        );
         return new Err(new Error("An error occurred while syncing triggers."));
       }
     }
 
     return new Ok(agentConfiguration);
   } catch (error) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        agentConfigurationId,
+        isDraft,
+
+        error: normalizeError(error),
+      },
+      "Unexpected error during agent builder form submission"
+    );
     return new Err(normalizeError(error));
   }
 }
