@@ -442,6 +442,10 @@ async function streamAgentAnswerToSlack(
         return new Ok(undefined);
       }
 
+      case "agent_message_done":
+        // No-op, we handle completion in "agent_message_success"
+        break;
+
       default:
         assertNever(event);
     }
