@@ -1,12 +1,13 @@
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 
-import type {
-  ActionBaseParams,
-  MCPApproveExecutionEvent,
-  MCPErrorEvent,
-  MCPParamsEvent,
-  MCPSuccessEvent,
-  ToolNotificationEvent,
+import {
+  getRetryPolicyFromToolConfiguration,
+  type ActionBaseParams,
+  type MCPApproveExecutionEvent,
+  type MCPErrorEvent,
+  type MCPParamsEvent,
+  type MCPSuccessEvent,
+  type ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import {
@@ -164,6 +165,16 @@ export async function* runToolWithStreaming(
     } else {
       errorMessage = `The tool ${actionBaseParams.functionCallName} returned an error. `;
     }
+
+    // If the tool is retryable, we throw an error so the workflow retries the
+    // `runTool` activity. If the tool isn't retryable, we return the error to
+    // the model, to let it decide what to do.
+    const retryPolicy = getRetryPolicyFromToolConfiguration(toolConfiguration);
+    if (retryPolicy === "retry") {
+      errorMessage += "Error: " + JSON.stringify(toolErr);
+      throw new Error(errorMessage);
+    }
+
     errorMessage +=
       "An error occurred while executing the tool. You can inform the user of this issue.";
 

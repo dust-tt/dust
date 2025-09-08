@@ -44,6 +44,14 @@ const activities: AgentLoopActivities = {
       maximumAttempts: 1,
     },
   }).runToolActivity,
+  runRetryableToolActivity: proxyActivities<typeof runToolActivities>({
+    startToCloseTimeout: `${
+      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
+    } minutes`,
+    retry: {
+      maximumAttempts: 10,
+    },
+  }).runToolActivity,
   publishDeferredEventsActivity: proxyActivities<
     typeof publishDeferredEventsActivities
   >({
