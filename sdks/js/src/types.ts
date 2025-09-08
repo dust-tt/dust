@@ -1756,12 +1756,12 @@ export type PatchConversationRequestType = z.infer<
   typeof PatchConversationRequestSchema
 >;
 
-export const PatchConversationsResponseSchema = z.object({
+export const PatchConversationResponseSchema = z.object({
   success: z.boolean(),
 });
 
-export type PatchConversationsResponseType = z.infer<
-  typeof PatchConversationsResponseSchema
+export type PatchConversationResponseType = z.infer<
+  typeof PatchConversationResponseSchema
 >;
 
 export const TokenizeResponseSchema = z.object({

@@ -17,7 +17,7 @@ import type {
 } from "@app/types";
 import { assertNever } from "@app/types";
 
-async function publishConversationEvent(
+export async function publishConversationEvent(
   event: ConversationEvents,
   {
     conversationId,
@@ -32,7 +32,10 @@ async function publishConversationEvent(
   await redisHybridManager.publish(
     conversationChannel,
     JSON.stringify(event),
-    "user_message_events"
+    "user_message_events",
+    // Conversation & message initial states are setup before starting to listen to events so we really care about getting new events.
+    // We are setting a low value to accomodate for reconnections to the event stream.
+    5
   );
 }
 
@@ -96,6 +99,7 @@ function isMessageEventParams(
     case "user_message_new":
     case "agent_message_new":
     case "agent_message_done":
+    case "conversation_title":
       return false;
     default:
       assertNever(eventType);

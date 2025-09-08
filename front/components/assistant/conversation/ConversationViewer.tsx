@@ -1,4 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
+import debounce from "lodash/debounce";
 import React, {
   useCallback,
   useEffect,
@@ -250,6 +251,11 @@ const ConversationViewer = React.forwardRef<
     [conversationId, owner.sId]
   );
 
+  const debouncedMarkAsRead = useMemo(
+    () => debounce(markAsRead, 2000),
+    [markAsRead]
+  );
+
   // Only conversation related events are handled here.
   const onEventCallback = useCallback(
     (eventStr: string) => {
@@ -262,7 +268,6 @@ const ConversationViewer = React.forwardRef<
           | AgentGenerationCancelledEvent
           | ConversationTitleEvent;
       } = JSON.parse(eventStr);
-
       const event = eventPayload.data;
 
       if (!eventIds.current.includes(eventPayload.eventId)) {
@@ -289,8 +294,13 @@ const ConversationViewer = React.forwardRef<
             void mutateConversations(); // to refresh the list of convos in the sidebar (title)
             break;
           case "agent_message_done":
-            // Immediate mark as read and do not mutate the list of convos in the sidebar to avoid any network request.
-            void markAsRead(conversationId, false);
+            // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
+            // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
+            void debouncedMarkAsRead(event.conversationId, false);
+
+            // Mutate the messages to be sure that the swr cache is updated.
+            // Fixes an issue where the last message of a conversation is "thinking" and not "done" the first time you switch back and forth to a conversation.
+            void mutateMessages();
             break;
           default:
             ((t: never) => {
@@ -304,8 +314,7 @@ const ConversationViewer = React.forwardRef<
       mutateConversations,
       mutateMessages,
       mutateConversationParticipants,
-      markAsRead,
-      conversationId,
+      debouncedMarkAsRead,
     ]
   );
 

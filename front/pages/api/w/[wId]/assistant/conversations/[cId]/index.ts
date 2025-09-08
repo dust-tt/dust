@@ -35,7 +35,7 @@ export type GetConversationsResponseBody = {
   conversation: ConversationWithoutContentType;
 };
 
-export type PatchConversationsResponseBody = {
+export type PatchConversationResponseBody = {
   success: boolean;
 };
 
@@ -43,7 +43,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      GetConversationsResponseBody | PatchConversationsResponseBody | void
+      GetConversationsResponseBody | PatchConversationResponseBody | void
     >
   >,
   auth: Authenticator

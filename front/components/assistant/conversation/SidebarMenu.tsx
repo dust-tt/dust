@@ -294,7 +294,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   tooltip="Create a new conversation"
                   onClick={handleNewClick}
                 />
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>

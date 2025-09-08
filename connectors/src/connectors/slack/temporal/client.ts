@@ -13,7 +13,10 @@ import { normalizeError } from "@connectors/types";
 import { getWeekStart } from "../lib/utils";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
+import type { JoinChannelUseCaseType } from "./workflows";
 import {
+  joinChannelWorkflow,
+  joinChannelWorkflowId,
   migrateChannelsFromLegacyBotToNewBotWorkflow,
   migrateChannelsFromLegacyBotToNewBotWorkflowId,
   slackGarbageCollectorWorkflow,
@@ -326,6 +329,51 @@ export async function launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
         error: e,
       },
       "Failed starting migrateChannelsFromLegacyBotToNewBot workflow."
+    );
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchJoinChannelWorkflow(
+  connectorId: ModelId,
+  channelId: string,
+  useCase: JoinChannelUseCaseType
+) {
+  const client = await getTemporalClient();
+
+  const workflowId = joinChannelWorkflowId(connectorId, channelId, useCase);
+
+  try {
+    await client.workflow.start(joinChannelWorkflow, {
+      args: [connectorId, channelId, useCase],
+      taskQueue: QUEUE_NAME,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+
+    logger.info(
+      {
+        workflowId,
+        channelId,
+        useCase,
+      },
+      "Started joinChannel workflow."
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        channelId,
+        useCase,
+        error: e,
+      },
+      "Failed starting joinChannel workflow."
     );
     return new Err(normalizeError(e));
   }

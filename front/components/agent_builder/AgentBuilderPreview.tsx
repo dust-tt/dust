@@ -1,6 +1,6 @@
 import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
-import { useContext } from "react";
-import { useFormContext } from "react-hook-form";
+import { useContext, useEffect, useMemo, useRef } from "react";
+import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
@@ -8,6 +8,7 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -30,8 +31,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
-
-import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
 
 interface EmptyStateProps {
   message: string;
@@ -150,16 +149,25 @@ function PreviewContent({
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
-  const { getValues } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+  const { isPreviewPanelOpen } = usePreviewPanelContext();
 
   const { currentPanel } = useConversationSidePanelContext();
 
-  const hasContent =
-    !!getValues("instructions").trim() || getValues("actions").length > 0;
+  const watchedFields = useWatch({
+    name: ["instructions", "actions", "agentSettings.name"],
+  });
+
+  const [instructions, actions, agentName] = watchedFields;
+
+  const hasContent = useMemo(() => {
+    return !!instructions?.trim() || (actions?.length ?? 0) > 0;
+  }, [instructions, actions]);
 
   const {
     draftAgent,
+    setDraftAgent,
+    createDraftAgent,
     getDraftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
@@ -172,6 +180,70 @@ export function AgentBuilderPreview() {
       draftAgent,
       getDraftAgent,
     });
+
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
+  const isUpdatingDraftRef = useRef(false);
+
+  useEffect(() => {
+    const handleDraftUpdate = async () => {
+      if (
+        !isPreviewPanelOpen ||
+        isMCPServerViewsLoading ||
+        isUpdatingDraftRef.current
+      ) {
+        return;
+      }
+
+      // Create an initial draft if none exists and we have content
+      if (!draftAgent && hasContent) {
+        isUpdatingDraftRef.current = true;
+        const newDraft = await createDraftAgent();
+        if (newDraft) {
+          setDraftAgent(newDraft);
+        }
+        isUpdatingDraftRef.current = false;
+        return;
+      }
+
+      // Update existing draft if agent name changed (with debouncing)
+      // Normalize names for comparison (empty string becomes "Preview")
+      const normalizedCurrentName = agentName?.trim() || "Preview";
+      const normalizedDraftName = draftAgent?.name?.trim() || "Preview";
+
+      if (draftAgent && normalizedCurrentName !== normalizedDraftName) {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+
+        debounceTimerRef.current = setTimeout(async () => {
+          isUpdatingDraftRef.current = true;
+          const newDraft = await createDraftAgent();
+          if (newDraft) {
+            setDraftAgent(newDraft);
+            setStickyMentions([{ configurationId: newDraft.sId }]);
+          }
+          isUpdatingDraftRef.current = false;
+        }, 500);
+      }
+    };
+
+    void handleDraftUpdate();
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [
+    isPreviewPanelOpen,
+    isMCPServerViewsLoading,
+    draftAgent,
+    hasContent,
+    agentName,
+    createDraftAgent,
+    setDraftAgent,
+    setStickyMentions,
+  ]);
 
   // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
   // inside the button in the input bar. This way we don't have to unmount the conversation viewer every time.

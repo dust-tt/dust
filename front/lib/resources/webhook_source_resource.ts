@@ -3,7 +3,10 @@ import { Err, Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
+<<<<<<< HEAD
   InferAttributes,
+=======
+>>>>>>> origin/main
   ModelStatic,
   Transaction,
 } from "sequelize";
@@ -108,25 +111,6 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     return this.baseFetch(auth, {
       order: [["createdAt", "DESC"]],
     });
-  }
-
-  static async update(
-    auth: Authenticator,
-    sId: string,
-    blob: Partial<InferAttributes<WebhookSourceModel, { omit: "workspaceId" }>>,
-    transaction?: Transaction
-  ) {
-    const webhookSource = await this.fetchById(auth, sId);
-    if (!webhookSource) {
-      return new Err(new Error(`WebhookSource with sId ${sId} not found`));
-    }
-
-    try {
-      await webhookSource.update(blob, transaction);
-      return new Ok(webhookSource);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
   }
 
   async delete(

@@ -25,6 +25,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   FileShareScope,
   FileType,
+  FileTypeWithMetadata,
   FileTypeWithUploadUrl,
   FileUseCaseMetadata,
   LightWorkspaceType,
@@ -596,6 +597,15 @@ export class FileResource extends BaseResource<FileModel> {
     return {
       ...blob,
       uploadUrl: this.getPrivateUrl(auth),
+    };
+  }
+
+  toJSONWithMetadata(auth: Authenticator): FileTypeWithMetadata {
+    const blob = this.toJSON(auth);
+
+    return {
+      ...blob,
+      useCaseMetadata: this.useCaseMetadata ?? {},
     };
   }
 

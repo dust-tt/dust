@@ -82,7 +82,7 @@ async function handler(
     }
   }
 
-  return res.status(200).json(fileResource.toJSON(auth));
+  return res.status(200).json(fileResource.toJSONWithMetadata(auth));
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

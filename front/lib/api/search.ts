@@ -72,6 +72,7 @@ const BaseSearchBody = t.refinement(
        * Used to allow admins to useSpaces on global
        */
       allowAdminSearch: t.boolean,
+      parentId: t.string,
     }),
   ]),
   ({ spaceIds, dataSourceViewIdsBySpaceId }) => {
@@ -125,6 +126,7 @@ export async function handleSearch(
     searchSourceUrls,
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
+    parentId,
   } = searchParams;
 
   const spaces = allowAdminSearch
@@ -189,8 +191,10 @@ export async function handleSearch(
       includeDataSources,
       viewType,
       nodeIds,
+      parentId,
     }
   );
+
   if (searchFilterRes.isErr()) {
     return new Err({
       status: 400,

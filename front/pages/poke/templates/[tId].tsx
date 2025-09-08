@@ -25,7 +25,7 @@ import type { Control } from "react-hook-form";
 import { useFieldArray, useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
 
-import { makeUrlForEmojiAndBackground } from "@app/components/assistant_builder/avatar_picker/utils";
+import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import {
   PokeForm,

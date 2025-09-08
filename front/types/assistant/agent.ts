@@ -286,6 +286,7 @@ export type AgentErrorEvent = {
 export type AgentMessageDoneEvent = {
   type: "agent_message_done";
   created: number;
+  conversationId: string;
   configurationId: string;
   messageId: string;
 };

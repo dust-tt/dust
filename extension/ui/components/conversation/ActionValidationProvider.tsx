@@ -111,7 +111,7 @@ export function ActionValidationProvider({
         title: "Tool Validation Required",
         icon: ActionPieChartIcon,
         content: (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 text-muted-foreground dark:text-muted-foreground-night">
             <div>
               Allow{" "}
               <span className="font-semibold">
@@ -129,11 +129,7 @@ export function ActionValidationProvider({
             </div>
             {hasDetails && (
               <CollapsibleComponent
-                triggerChildren={
-                  <span className="font-medium text-muted-foreground dark:text-muted-foreground-night">
-                    Details
-                  </span>
-                }
+                triggerChildren={<span className="font-medium">Details</span>}
                 contentChildren={
                   <div>
                     <div className="max-h-80 overflow-auto rounded-lg bg-muted dark:bg-muted-night">

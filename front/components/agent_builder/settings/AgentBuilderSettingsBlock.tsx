@@ -22,6 +22,10 @@ import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/agent_builder/settings/avatar_picker/types";
+import {
+  buildSelectedEmojiType,
+  makeUrlForEmojiAndBackground,
+} from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   fetchWithErr,
@@ -29,10 +33,6 @@ import {
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
-import {
-  buildSelectedEmojiType,
-  makeUrlForEmojiAndBackground,
-} from "@app/components/assistant_builder/avatar_picker/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   APIError,

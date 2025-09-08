@@ -912,7 +912,7 @@ export const ActionValidation: Story = {
         content: (
           <div className="s-space-y-6 s-pt-4">
             <div>
-              <p className="s-mb-6 s-text-sm s-text-muted-foreground">
+              <p className="s-mb-6 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
                 Allow{" "}
                 <span className="s-font-semibold">@Marketing Assistant</span> to
                 use the tool <span className="s-font-semibold">Send Email</span>{" "}
