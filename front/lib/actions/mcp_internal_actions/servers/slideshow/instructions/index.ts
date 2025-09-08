@@ -30,7 +30,6 @@ COMMON SLIDESHOW STRUCTURES:
 ### Technical Implementation:
 
 **REQUIRED IMPORTS** (must be at the top of every slideshow file):
-- import React from "react";
 - import { Slideshow } from "@dust/slideshow/v1"
 
 Core pattern
@@ -115,7 +114,6 @@ Focus on content quality, not navigation controls.
 
 Example using pre-built layouts:
 \`\`\`tsx
-import React from "react";
 import { Slideshow } from "@dust/slideshow/v1";
 
 export default function Deck() {
