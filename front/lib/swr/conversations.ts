@@ -99,7 +99,10 @@ export function useConversationFeedbacks({
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations/${conversationId}/feedbacks`,
-    conversationFeedbacksFetcher
+    conversationFeedbacksFetcher,
+    {
+      focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
+    }
   );
 
   return {
@@ -211,7 +214,7 @@ export function useConversationTools({
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`
       : null,
     conversationToolsFetcher,
-    options
+    { ...options, focusThrottleInterval: 30 * 60 * 1000 } // 30 minutes
   );
 
   return {
