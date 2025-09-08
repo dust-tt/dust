@@ -8,7 +8,7 @@ export function getWorkOS() {
   if (!workos) {
     workos = new WorkOS(config.getWorkOSApiKey(), {
       clientId: config.getWorkOSClientId(),
-      apiHostname: config.getWorkOSApiHostname(),
+      apiHostname: "auth-api.dust.tt",
     });
   }
 

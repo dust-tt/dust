@@ -222,9 +222,6 @@ const config = {
   getWorkOSApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_API_KEY");
   },
-  getWorkOSApiHostname: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("WORKOS_API_HOSTNAME");
-  },
   getWorkOSClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_CLIENT_ID");
   },
