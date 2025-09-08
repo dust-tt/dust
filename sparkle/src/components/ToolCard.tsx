@@ -54,7 +54,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
       >
         <div className="s-flex s-h-full s-w-full s-flex-col s-justify-between">
           <div className="s-flex s-flex-col">
-            <div className="s-mb-2 s-flex s-items-start s-justify-between s-gap-2">
+            <div className="s-mb-2 s-flex s-items-center s-justify-between s-gap-2">
               <div className="s-flex s-items-center s-gap-2">
                 <Avatar icon={icon} size="sm" />
                 <span className="s-text-sm s-font-medium">{label}</span>
