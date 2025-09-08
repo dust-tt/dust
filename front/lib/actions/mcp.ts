@@ -27,6 +27,7 @@ import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
+import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type {
@@ -46,7 +47,6 @@ import {
   removeNulls,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;

@@ -17,6 +17,7 @@ import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_interna
 import { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -28,7 +29,6 @@ import type {
   ConversationType,
 } from "@app/types";
 import { removeNulls } from "@app/types";
-import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.

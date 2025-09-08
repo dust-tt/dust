@@ -2,6 +2,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
+  LightMCPToolConfigurationType,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
+import type {
   CustomServerIconType,
   InternalAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
@@ -10,16 +14,12 @@ import type {
   MCPServerAvailability,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
 import {
-  MCPToolConfigurationType,
-  LightMCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
-import {
-  isLightServerSideMCPToolConfiguration,
   isLightClientSideMCPToolConfiguration,
+  isLightServerSideMCPToolConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
 
 const MCP_TOOL_RETRY_POLICY_TYPES = ["retry", "no_retry"] as const;
 export type MCPToolRetryPolicyType =
