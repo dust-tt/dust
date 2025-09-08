@@ -18,6 +18,11 @@ import type {
   RunAgentExecutionData,
 } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import {
+  DEFAULT_MCP_TOOL_RETRY_POLICY,
+  getRetryPolicyFromToolConfiguration,
+} from "@app/lib/actions/mcp";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -174,6 +179,9 @@ async function getExistingActionsAndBlobs(
           actionId: mcpAction.id,
           actionStatus: mcpAction.status,
           needsApproval: mcpAction.status === "blocked_validation_required",
+          retryPolicy: getRetryPolicyFromToolConfiguration(
+            mcpAction.toolConfiguration
+          ),
         });
       }
     }

@@ -1,11 +1,15 @@
-import type {
-  MCPApproveExecutionEvent,
-  MCPToolConfigurationType,
+import {
+  DEFAULT_MCP_TOOL_RETRY_POLICY,
+  getRetryPolicyFromToolConfiguration,
+  type MCPApproveExecutionEvent,
+  type MCPToolConfigurationType,
+  type MCPToolRetryPolicyType,
 } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -25,6 +29,7 @@ export interface ActionBlob {
   actionId: ModelId;
   actionStatus: ToolExecutionStatus;
   needsApproval: boolean;
+  retryPolicy: MCPToolRetryPolicyType;
 }
 
 type CreateToolActionsResult = {
@@ -206,6 +211,7 @@ async function createActionForTool(
       actionId: action.id,
       actionStatus: status,
       needsApproval: status === "blocked_validation_required",
+      retryPolicy: getRetryPolicyFromToolConfiguration(actionConfiguration),
     },
     approvalEventData:
       status === "blocked_validation_required"
