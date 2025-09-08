@@ -268,7 +268,7 @@ export function Slide({
     >
       <div
         className={cn(
-          "w-full h-dvh flex-1 min-h-0",
+          "w-full h-full flex-1 min-h-0",
           "grid grid-cols-6 [grid-template-rows:repeat(4,_auto)] gap-y-8 gap-x-4 pb-4",
           variant === "top" ? "slide-top-padding" : "slide-centered-padding"
         )}
