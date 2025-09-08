@@ -120,7 +120,9 @@ export abstract class ResourceWithSpace<
                   if (includedModel instanceof Model) {
                     acc[key] = includedModel.get();
                   } else if (Array.isArray(includedModel)) {
-                    acc[key] = includedModel.map((m) => m.get()) as IncludeType[keyof IncludeType];
+                    acc[key] = includedModel.map((m) =>
+                      m.get()
+                    ) as IncludeType[keyof IncludeType];
                   }
                 }
               }

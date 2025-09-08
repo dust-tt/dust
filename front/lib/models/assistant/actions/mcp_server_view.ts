@@ -31,7 +31,9 @@ export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServ
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
   declare remoteMCPServer: NonAttribute<RemoteMCPServerModel>;
-  declare internalToolsMetadata: NonAttribute<RemoteMCPServerToolMetadataModel[]>;
+  declare internalToolsMetadata: NonAttribute<
+    RemoteMCPServerToolMetadataModel[]
+  >;
   declare remoteToolsMetadata: NonAttribute<RemoteMCPServerToolMetadataModel[]>;
 
   declare oAuthUseCase: MCPOAuthUseCase | null;

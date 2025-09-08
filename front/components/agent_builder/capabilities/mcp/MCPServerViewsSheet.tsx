@@ -472,10 +472,7 @@ export function MCPServerViewsSheet({
   });
 
   const requirements = useMemo(
-    () =>
-      mcpServerView
-        ? getMCPServerRequirements(mcpServerView)
-        : null,
+    () => (mcpServerView ? getMCPServerRequirements(mcpServerView) : null),
     [mcpServerView]
   );
 

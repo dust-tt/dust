@@ -219,7 +219,10 @@ function findPathsToConfiguration({
   mcpServerView: MCPServerViewType;
   mimeType: InternalToolInputMimeType;
 }): Record<string, JSONSchema> {
-  const disabledTools = mcpServerView.toolsMetadata?.filter((tool) => !tool.enabled).map((tool) => tool.toolName) ?? [];
+  const disabledTools =
+    mcpServerView.toolsMetadata
+      ?.filter((tool) => !tool.enabled)
+      .map((tool) => tool.toolName) ?? [];
   const mcpServer = mcpServerView.server;
   let matches: Record<string, JSONSchema> = {};
   for (const tool of mcpServer.tools) {
@@ -469,7 +472,10 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const disabledTools = mcpServerView.toolsMetadata?.filter((tool) => !tool.enabled).map((tool) => tool.toolName) ?? [];
+  const disabledTools =
+    mcpServerView.toolsMetadata
+      ?.filter((tool) => !tool.enabled)
+      .map((tool) => tool.toolName) ?? [];
 
   const mayRequireTimeFrameConfiguration = server.tools
     .filter((tool) => !disabledTools.includes(tool.name))
@@ -490,7 +496,7 @@ export function getMCPServerRequirements(
   }));
 
   const requiredNumbers = Object.entries(
-    findPathsToConfiguration({  
+    findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
     })

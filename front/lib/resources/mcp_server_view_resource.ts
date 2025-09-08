@@ -38,7 +38,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
-import type { InferIncludeType, ResourceFindOptions } from "@app/lib/resources/types";
+import type {
+  InferIncludeType,
+  ResourceFindOptions,
+} from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase, ModelId, Result } from "@app/types";
@@ -336,6 +339,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
+      order: [["id", "ASC"]],
     });
   }
 
@@ -775,7 +779,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.editedByUser,
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
       ),
-      toolsMetadata: this.internalToolsMetadata || this.remoteToolsMetadata || [],
+      toolsMetadata:
+        this.internalToolsMetadata || this.remoteToolsMetadata || [],
     };
   }
 }
