@@ -332,6 +332,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
         another_tool: "high",
         yet_another_tool: "low",
       },
+      toolsRetryPolicies: undefined,
       serverTimeoutMs: undefined,
     });
   });

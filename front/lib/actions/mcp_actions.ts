@@ -138,8 +138,7 @@ export function getToolExtraFields(
     }
     const serverName = r.value.name;
     toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
-    toolsRetryPolicies =
-      INTERNAL_MCP_SERVERS[serverName].tools_retry_policies || {};
+    toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
   } else {
     metadata.forEach(
