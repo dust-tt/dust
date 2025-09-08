@@ -1,13 +1,8 @@
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 
+import type {ActionBaseParams, MCPApproveExecutionEvent, MCPErrorEvent, MCPParamsEvent, MCPSuccessEvent, ToolNotificationEvent} from "@app/lib/actions/mcp";
 import {
-  getRetryPolicyFromToolConfiguration,
-  type ActionBaseParams,
-  type MCPApproveExecutionEvent,
-  type MCPErrorEvent,
-  type MCPParamsEvent,
-  type MCPSuccessEvent,
-  type ToolNotificationEvent,
+  getRetryPolicyFromToolConfiguration
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import {

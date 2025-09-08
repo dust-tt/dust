@@ -8,7 +8,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { MCPToolRetryPolicyType } from "@app/lib/actions/mcp";
+import type { MCPToolRetryPolicyType } from "@app/lib/actions/mcp";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,

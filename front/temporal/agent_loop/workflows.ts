@@ -6,6 +6,7 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as logAgentLoopMetricsActivities from "@app/temporal/agent_loop/activities/instrumentation";
@@ -19,7 +20,6 @@ import type {
   RunAgentArgs,
   RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
-import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
 
 const logMetricsActivities = proxyActivities<
   typeof logAgentLoopMetricsActivities
@@ -31,7 +31,7 @@ const activities: AgentLoopActivities = {
   runModelAndCreateActionsActivity: proxyActivities<
     typeof runModelAndCreateWrapperActivities
   >({
-    startToCloseTimeout: "7 minutes",
+    startToCloseTimeout: "1 minute",
   }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
     // The activity timeout should be slightly longer than the max timeout of

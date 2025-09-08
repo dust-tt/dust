@@ -3,8 +3,8 @@ import { assert, describe, expect, it } from "vitest";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
-  listToolsForServerSideMCPServer,
   getToolExtraFields,
+  listToolsForServerSideMCPServer,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";

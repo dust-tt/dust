@@ -23,6 +23,11 @@ import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import {
+  isLightClientSideMCPToolConfiguration,
+  isLightServerSideMCPToolConfiguration,
+  isServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -46,11 +51,6 @@ import {
   removeNulls,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import {
-  isLightClientSideMCPToolConfiguration,
-  isLightServerSideMCPToolConfiguration,
-  isServerSideMCPToolConfiguration,
-} from "@app/lib/actions/types/guards";
 
 export const MCP_TOOL_RETRY_POLICY_TYPES = ["retry", "no_retry"] as const;
 export type MCPToolRetryPolicyType =

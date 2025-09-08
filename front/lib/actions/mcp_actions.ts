@@ -24,15 +24,9 @@ import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
+import type {ClientSideMCPServerConfigurationType, ClientSideMCPToolConfigurationType, MCPServerConfigurationType, MCPToolConfigurationType, MCPToolRetryPolicyType, ServerSideMCPServerConfigurationType, ServerSideMCPToolConfigurationType} from "@app/lib/actions/mcp";
 import {
-  DEFAULT_MCP_TOOL_RETRY_POLICY,
-  type ClientSideMCPServerConfigurationType,
-  type ClientSideMCPToolConfigurationType,
-  type MCPServerConfigurationType,
-  type MCPToolConfigurationType,
-  type MCPToolRetryPolicyType,
-  type ServerSideMCPServerConfigurationType,
-  type ServerSideMCPToolConfigurationType,
+  DEFAULT_MCP_TOOL_RETRY_POLICY
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";

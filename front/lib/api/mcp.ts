@@ -1,6 +1,7 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { MCPToolRetryPolicyType } from "@app/lib/actions/mcp";
 import type {
   CustomServerIconType,
   InternalAllowedIconType,
@@ -11,7 +12,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
-import { MCPToolRetryPolicyType } from "@app/lib/actions/mcp";
 
 export type MCPToolType = {
   name: string;
