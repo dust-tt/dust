@@ -1,5 +1,5 @@
 import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -8,6 +8,7 @@ import {
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -152,6 +153,7 @@ export function AgentBuilderPreview() {
   const { user } = useUser();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+  const { isPreviewPanelOpen } = usePreviewPanelContext();
 
   const { currentPanel } = useConversationSidePanelContext();
 
@@ -160,6 +162,8 @@ export function AgentBuilderPreview() {
 
   const {
     draftAgent,
+    setDraftAgent,
+    createDraftAgent,
     getDraftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
@@ -172,6 +176,32 @@ export function AgentBuilderPreview() {
       draftAgent,
       getDraftAgent,
     });
+
+  // Create draft only when preview panel opens and has content
+  useEffect(() => {
+    const createDraft = async () => {
+      if (
+        isPreviewPanelOpen &&
+        !draftAgent &&
+        hasContent &&
+        !isMCPServerViewsLoading
+      ) {
+        const newDraft = await createDraftAgent();
+        if (newDraft) {
+          setDraftAgent(newDraft);
+        }
+      }
+    };
+
+    void createDraft();
+  }, [
+    isPreviewPanelOpen,
+    draftAgent,
+    hasContent,
+    isMCPServerViewsLoading,
+    createDraftAgent,
+    setDraftAgent,
+  ]);
 
   // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
   // inside the button in the input bar. This way we don't have to unmount the conversation viewer every time.
