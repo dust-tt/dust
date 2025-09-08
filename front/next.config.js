@@ -27,11 +27,6 @@ module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,
-  onDemandEntries: {
-    // Keep dev-compiled pages around longer to avoid re-compiles on nav
-    maxInactiveAge: 1000 * 60 * 60, // 1 hour
-    pagesBufferLength: 200, // number of pages to keep "hot"
-  },
   experimental: {
     // Prevents minification of the temporalio client workflow ids.
     serverMinification: false,
@@ -157,25 +152,12 @@ module.exports = {
       },
     ];
   },
-  webpack(config, { dev }) {
-    if (process.env.BUILD_WITH_SOURCE_MAPS === "true" && !dev) {
+  webpack(config) {
+    if (process.env.BUILD_WITH_SOURCE_MAPS === "true") {
       // Force webpack to generate source maps for both client and server code
       // This is used in production builds to upload source maps to Datadog for error tracking
       // Note: Next.js normally only generates source maps for client code in development
       config.devtool = "source-map";
-    }
-
-    // Trim noisy watches in dev (don’t ignore node_modules)
-    if (dev) {
-      config.watchOptions = {
-        ignored: [
-          "**/.git/**",
-          "**/.next/**",
-          "**/logs/**",
-          "**/*.log",
-          "**/tmp/**",
-        ],
-      };
     }
     // For `types` package import (which includes some dependence to server code).
     // Otherwise client-side code will throw an error when importing the packaged file.
@@ -186,17 +168,13 @@ module.exports = {
       tls: false,
       dgram: false,
     };
-
     // Use source-map-loader for transitively include source maps of dependencies.
-    // Only run source-map-loader when you really need it (prod or explicit debugging).
-    if (!dev || process.env.WITH_DEP_SOURCEMAPS === "true") {
-      config.module.rules.push({
-        test: /\.js$/,
-        use: ["source-map-loader"],
-        enforce: "pre",
-        include: [path.resolve(__dirname, "node_modules/@dust-tt/sparkle")],
-      });
-    }
+    config.module.rules.push({
+      test: /\.js$/,
+      use: ["source-map-loader"],
+      enforce: "pre",
+      include: [path.resolve(__dirname, "node_modules/@dust-tt/sparkle")],
+    });
     return config;
   },
 };

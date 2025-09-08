@@ -8,10 +8,7 @@ export function useAppStatus() {
 
   const { data, error } = useSWRWithDefaults(
     "/api/app-status",
-    appStatusFetcher,
-    {
-      focusThrottleInterval: 10 * 60 * 1000, // 10 minutes
-    }
+    appStatusFetcher
   );
 
   return {

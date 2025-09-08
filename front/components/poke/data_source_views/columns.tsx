@@ -3,7 +3,7 @@ import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { AgentsUsageType } from "@app/types";
+import type { DataSourceWithAgentsUsageType } from "@app/types";
 
 interface DataSourceView {
   dataSourceLink: string;
@@ -13,7 +13,7 @@ interface DataSourceView {
   editedBy: string | undefined;
   name: string;
   sId: string;
-  usage: AgentsUsageType | null;
+  usage: DataSourceWithAgentsUsageType | null;
 }
 
 export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {

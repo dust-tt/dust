@@ -127,9 +127,7 @@ export default function LandingLayout({
               size="sm"
               label="Sign in"
               icon={LoginIcon}
-              onClick={() => {
-                window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
-              }}
+              href={`/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`}
             />
           </div>
         </div>

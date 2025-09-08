@@ -126,7 +126,6 @@ export function useFeatureFlags({
     featureFlagsFetcher,
     {
       disabled,
-      focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
     }
   );
 

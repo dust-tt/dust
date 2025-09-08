@@ -129,8 +129,8 @@
     --responsive-text-8xl: clamp(2.7rem, 7.2vw, 5.4rem);
     --responsive-text-9xl: clamp(3.15rem, 8.1vw, 7.2rem);
 
-    --responsive-slide-text-title: clamp(2.1rem, 9vw, 7rem);
-    --responsive-slide-text-heading1: clamp(1.4rem, 6vw, 4.5rem);
+    --responsive-slide-text-title: clamp(2.4rem, 12vw, 9.5rem);
+    --responsive-slide-text-heading1: clamp(2rem, 9.6vw, 7rem);
 
     --responsive-space-1: clamp(0.075rem, 0.25vw, 0.25rem);
     --responsive-space-2: clamp(0.125rem, 0.5vw, 0.5rem);
@@ -369,7 +369,7 @@
   }
 
   .slide-heading2 {
-    @apply leading-tight m-0 break-normal text-7xl hyphens-none leading-103p;
+    @apply leading-tight m-0 break-normal text-8xl hyphens-none leading-103p;
     font-family: var(--font-inter);
   }
 

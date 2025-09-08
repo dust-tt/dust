@@ -12,12 +12,14 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationTool,
   useConversation,
   useConversationTools,
 } from "@app/lib/swr/conversations";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -28,7 +30,11 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { compareAgentsForSort, isEqualNode } from "@app/types";
+import {
+  compareAgentsForSort,
+  GLOBAL_SPACE_NAME,
+  isEqualNode,
+} from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -74,6 +80,21 @@ export function AssistantInputBar({
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
   >([]);
+
+  const { spaces } = useSpaces({ workspaceId: owner.sId });
+  const spacesMap = useMemo(
+    () =>
+      Object.fromEntries(
+        spaces?.map((space) => [
+          space.sId,
+          {
+            name: space.kind === "global" ? GLOBAL_SPACE_NAME : space.name,
+            icon: getSpaceIcon(space),
+          },
+        ]) || []
+      ),
+    [spaces]
+  );
 
   useEffect(() => {
     const container = rainbowEffectRef.current;
@@ -376,10 +397,10 @@ export function AssistantInputBar({
           >
             <div className="relative flex w-full flex-1 flex-col">
               <InputBarAttachments
-                owner={owner}
                 files={{ service: fileUploaderService }}
                 nodes={{
                   items: attachedNodes,
+                  spacesMap,
                   onRemove: handleNodesAttachmentRemove,
                 }}
               />

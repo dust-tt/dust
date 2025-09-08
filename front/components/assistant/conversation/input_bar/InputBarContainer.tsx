@@ -135,11 +135,7 @@ const InputBarContainer = ({
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
-  const { spaces, isSpacesLoading } = useSpaces({
-    workspaceId: owner.sId,
-    disabled: !nodeOrUrlCandidate,
-  });
-
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
     [spaces]

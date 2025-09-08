@@ -28,7 +28,6 @@ export async function getOrCreateConversation(
     query,
     toolsetsToAdd,
     fileOrContentFragmentIds,
-    conversationId,
   }: {
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
@@ -37,7 +36,6 @@ export async function getOrCreateConversation(
     query: string;
     toolsetsToAdd: string[] | null;
     fileOrContentFragmentIds: string[] | null;
-    conversationId: string | null;
   }
 ): Promise<
   Result<
@@ -100,50 +98,12 @@ export async function getOrCreateConversation(
     }
   }
 
-  if (conversationId) {
-    const messageRes = await api.postUserMessage({
-      conversationId,
-      message: {
-        content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
-        mentions: [{ configurationId: childAgentId }],
-        context: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          username: mainAgent.name,
-          fullName: `@${mainAgent.name}`,
-          email: null,
-          profilePictureUrl: mainAgent.pictureUrl,
-          // `run_agent` origin will skip adding the conversation to the user history.
-          origin: "run_agent",
-          selectedMCPServerViewIds: toolsetsToAdd,
-        },
-      },
-    });
-
-    if (messageRes.isErr()) {
-      return new Err(new Error("Failed to create message"));
-    }
-
-    const convRes = await api.getConversation({
-      conversationId,
-    });
-
-    if (convRes.isErr()) {
-      return new Err(new Error("Failed to get conversation"));
-    }
-
-    return new Ok({
-      conversation: convRes.value,
-      userMessageId: messageRes.value.sId,
-      isNewConversation: true,
-    });
-  }
-
   const convRes = await api.createConversation({
     title: `run_agent ${mainAgent.name} > ${childAgentBlob.name}`,
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     message: {
-      content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
+      content: query,
       mentions: [{ configurationId: childAgentId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,

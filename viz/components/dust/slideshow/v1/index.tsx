@@ -188,7 +188,7 @@ export const Columns = ({
 
   const hasTitle = Boolean(title);
   const hasDesc = Boolean(description);
-  const startRow = 1 + (hasTitle ? 1 : 0); // Where cards begin.
+  const startRow = 1 + (hasTitle ? 1 : 0) + (hasDesc ? 1 : 0); // Where cards begin.
 
   return (
     <Slide
@@ -199,11 +199,12 @@ export const Columns = ({
       {hasTitle && (
         <Col span={BASE_COLS}>
           <Heading2>{title}</Heading2>
-          {hasDesc && (
-            <TextBody2 className="slide-content mt-4 ml-1">
-              {description}
-            </TextBody2>
-          )}
+        </Col>
+      )}
+
+      {hasDesc && (
+        <Col span={BASE_COLS}>
+          <TextBody2 className="slide-content">{description}</TextBody2>
         </Col>
       )}
 
@@ -262,14 +263,12 @@ export function Slide({
         variant === "centered" ? "items-center" : "items-start",
         className
       )}
-      style={{
-        fontFamily: "var(--font-inter)",
-      }}
+      style={{ fontFamily: "var(--font-inter)" }}
     >
       <div
         className={cn(
-          "w-full h-full flex-1 min-h-0",
-          "grid grid-cols-6 [grid-template-rows:repeat(4,_auto)] gap-y-8 gap-x-4 pb-4",
+          "w-full h-dvh flex-1 min-h-0",
+          "grid grid-cols-6 [grid-template-rows:repeat(4,_auto)] gap-y-16 gap-x-4 pb-4",
           variant === "top" ? "slide-top-padding" : "slide-centered-padding"
         )}
       >
@@ -300,6 +299,19 @@ function validateSlideChildren(
 ): React.ReactElement[] {
   const childArray = React.Children.toArray(children) as React.ReactElement[];
 
+  const validSlideDisplayNames = new Set([
+    "Slideshow.Preset.Cover",
+    "Slideshow.Preset.Full",
+    "Slideshow.Preset.TitleTop",
+    "Slideshow.Preset.TitleTopH2",
+    "Slideshow.Preset.Quote",
+    "Slideshow.Preset.Columns",
+    "Slideshow.Preset.Columns2",
+    "Slideshow.Preset.Columns3",
+    "Slideshow.Preset.Columns4",
+    "Slideshow.Preset.ChartSplit",
+  ]);
+
   const invalidChildren = childArray.filter((child) => {
     if (!React.isValidElement(child)) {
       return true;
@@ -309,12 +321,12 @@ function validateSlideChildren(
       return true;
     }
 
-    return false;
+    return !validSlideDisplayNames.has(child.type.displayName);
   });
 
   if (invalidChildren.length > 0) {
     throw new Error(
-      "Slideshow: All children must be valid React components with display name. " +
+      "Slideshow: All children must be Slideshow.Preset components. " +
         `Found ${invalidChildren.length} invalid child(ren).`
     );
   }
@@ -476,7 +488,7 @@ export const TextBody2 = ({
   className,
 }: PropsWithChildren<{ className?: string }>) => (
   <p
-    className={cn("font-normal text-3xl leading-123p m-0", className)}
+    className={cn("font-normal text-4xl leading-123p m-0", className)}
     style={{ fontFamily: "var(--font-inter)" }}
   >
     {children}
@@ -507,30 +519,21 @@ type BasePropsWithChildren = PropsWithChildren<BaseProps>;
 
 interface CoverProps extends BaseProps {
   title: string;
-  titleClassName?: string;
 }
 
 export const Cover = ({
   className,
   isPreview = false,
-  theme = "light",
+  theme = "dark",
   title,
-  titleClassName,
 }: CoverProps) => (
-  <div
-    className={cn(
-      `slide-cover-${theme} flex justify-center items-center h-full w-full`,
-      className
-    )}
+  <Slide
+    variant="top"
+    className={cn(`slide-cover-${theme}`, className)}
+    isPreview={isPreview}
   >
-    {isPreview ? (
-      <div className="p-4 w-full h-full">
-        <Title className={cn("text-center", titleClassName)}>{title}</Title>
-      </div>
-    ) : (
-      <Title className={cn("text-center", titleClassName)}>{title}</Title>
-    )}
-  </div>
+    <Title className="col-span-4 row-span-2">{title}</Title>
+  </Slide>
 );
 Cover.displayName = "Slideshow.Preset.Cover";
 
@@ -564,20 +567,17 @@ export const TitleTop = ({
   title,
   children,
   className,
-  titleClassName,
   isPreview = false,
-  theme = "light",
+  theme = "dark",
 }: TitleTopProps) => (
   <Slide
     variant="top"
     className={cn(`slide-cover-${theme}`, className)}
     isPreview={isPreview}
   >
-    <Heading1 className={cn(`col-span-5 row-span-1`, titleClassName)}>
-      {title}
-    </Heading1>
+    <Heading1 className="col-span-5 row-span-1">{title}</Heading1>
     {children && (
-      <div className="slide-content row-start-2 row-span-3 col-span-6 p-x-4 flex flex-col gap-4">
+      <div className="slide-content row-start-2 row-span-3 col-span-6 p-x-4">
         {children}
       </div>
     )}
@@ -593,7 +593,6 @@ type TitleTopH2Props = PropsWithChildren<{
 
 export const TitleTopH2 = ({
   title,
-  titleClassName,
   children,
   className,
   isPreview = false,
@@ -604,9 +603,7 @@ export const TitleTopH2 = ({
     className={cn(`slide-cover-${theme}`, className)}
     isPreview={isPreview}
   >
-    <Heading2 className={cn(`col-span-5 row-span-1`, titleClassName)}>
-      {title}
-    </Heading2>
+    <Heading2 className="col-span-5 row-span-1">{title}</Heading2>
     {children && (
       <div className="slide-content row-start-2 row-span-3 col-span-6 p-x-4">
         {children}
@@ -628,12 +625,12 @@ Columns4.displayName = "Slideshow.Preset.Columns4";
 type ItemProps = PropsWithChildren<{ heading: string; className?: string }>;
 
 export const Item = ({ heading, children, className }: ItemProps) => (
-  <div className={cn("flex flex-col gap-4", className)}>
+  <div className={cn("space-y-3", className)}>
     <TextBody1>{heading}</TextBody1>
     {typeof children === "string" || typeof children === "number" ? (
       <TextBody2 className="slide-content">{children}</TextBody2>
     ) : (
-      <div className="slide-content flex flex-col gap-4">{children}</div>
+      <div className="slide-content">{children}</div>
     )}
   </div>
 );
@@ -642,15 +639,14 @@ const BulletList = ({
   children,
   className,
 }: PropsWithChildren<{ className?: string }>) => (
-  <ul className={cn("list-disc ml-4 slide-content", className)}>{children}</ul>
+  <ul className={cn("list-disc pl-4 ml-4 space-y-1 slide-content", className)}>
+    {children}
+  </ul>
 );
 BulletList.displayName = "Slideshow.Content.BulletList";
 
-const BulletItem = ({
-  children,
-  className,
-}: PropsWithChildren<{ className?: string }>) => (
-  <li className={cn("mb-4 last:mb-0", className)}>
+const BulletItem = ({ children }: PropsWithChildren) => (
+  <li>
     <TextBody3>{children}</TextBody3>
   </li>
 );
@@ -659,7 +655,6 @@ BulletItem.displayName = "Slideshow.Content.BulletItem";
 type ChartSplitProps = PropsWithChildren<{
   title: string;
   description?: string;
-  titleClassName?: string;
 }> &
   BaseProps;
 
@@ -670,7 +665,6 @@ const ChartSplit = ({
   isPreview = false,
   theme = "light",
   title,
-  titleClassName,
 }: ChartSplitProps) => (
   <Slide
     variant="top"
@@ -679,7 +673,7 @@ const ChartSplit = ({
   >
     {/* Title – row 1, cols 1-2 */}
     <Col span={2} rowSpan={1} rowStart={1}>
-      <Heading2 className={titleClassName}>{title}</Heading2>
+      <Heading2 className="break-words">{title}</Heading2>
     </Col>
 
     {/* Spacer – row 2, cols 1-2 (keeps blank line) */}

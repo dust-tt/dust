@@ -16,7 +16,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
-  AgentsUsageType,
+  DataSourceWithAgentsUsageType,
   SpaceType,
   UserType,
   WithAPIErrorResponse,
@@ -28,7 +28,7 @@ import {
 } from "@app/types";
 
 export type SpaceCategoryInfo = {
-  usage: AgentsUsageType;
+  usage: DataSourceWithAgentsUsageType;
   count: number;
 };
 

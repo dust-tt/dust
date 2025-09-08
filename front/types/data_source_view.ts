@@ -1,9 +1,9 @@
 import type { DataSourceViewCategory } from "./api/public/spaces";
 import type { ContentNodeWithParent } from "./connectors/connectors_api";
 import type {
-  AgentsUsageType,
   ConnectorStatusDetails,
   DataSourceType,
+  DataSourceWithAgentsUsageType,
 } from "./data_source";
 import type { ModelId } from "./shared/model_id";
 import type { EditedByUser } from "./user";
@@ -23,7 +23,7 @@ export interface DataSourceViewType {
 
 export type DataSourceViewsWithDetails = DataSourceViewType & {
   dataSource: DataSourceType & ConnectorStatusDetails;
-  usage: AgentsUsageType;
+  usage: DataSourceWithAgentsUsageType;
 };
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
