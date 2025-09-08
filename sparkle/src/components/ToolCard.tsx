@@ -19,6 +19,7 @@ export interface ToolCardProps {
   className?: string;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  descriptionLineClamp?: number;
 }
 
 export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
@@ -34,6 +35,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
       className,
       mountPortal,
       mountPortalContainer,
+      descriptionLineClamp = 3,
     },
     ref
   ) => {
@@ -43,7 +45,8 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
         variant={isSelected ? "secondary" : "primary"}
         onClick={onClick}
         disabled={!canAdd}
-        className={cn("s-h-24 s-p-3", className)}
+        containerClassName="s-h-24 s-p-3"
+        className={className}
       >
         <div className="s-flex s-w-full s-flex-col">
           <div className="s-mb-2 s-flex s-items-start s-justify-between s-gap-2">
@@ -74,10 +77,11 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
               </div>
             )}
           </div>
-          <TruncatedText 
+          <TruncatedText
             className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night"
             mountPortal={mountPortal}
             mountPortalContainer={mountPortalContainer}
+            lineClamp={descriptionLineClamp}
           >
             {description}
           </TruncatedText>
