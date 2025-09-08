@@ -64,9 +64,9 @@ export function SlidePreview({
         <div className="w-full cursor-pointer">
           <div
             className={cn(
-              "relative w-full aspect-video rounded-xl overflow-hidden hover:border-muted",
+              "relative w-full aspect-video rounded-xl overflow-hidden hover:border-accent",
               "border-2 border-box",
-              isActive && "border-primary"
+              isActive && "border-accent-foreground"
             )}
           >
             <SlideMiniature slide={slide} />
