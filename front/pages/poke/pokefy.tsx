@@ -5,11 +5,9 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { convertUrlToPoke } from "@app/lib/utils/url-to-poke";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{}>(
-  async () => {
-    return { props: {} };
-  }
-);
+export const getServerSideProps = withSuperUserAuthRequirements(async () => {
+  return { props: {} };
+});
 
 function PokefyPage() {
   const [url, setUrl] = useState("");
