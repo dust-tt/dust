@@ -18,7 +18,6 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
-import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { UserMenu } from "@app/components/UserMenu";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -65,13 +64,6 @@ export const NavigationSidebar = React.forwardRef<
   });
 
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
-  const { showNavigationLoader } = useNavigationLoading();
-
-  const handleTabClick = (href?: string) => {
-    if (href && href !== router.asPath) {
-      showNavigationLoader();
-    }
-  };
 
   // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pagesg
   const navs = useMemo(
@@ -113,7 +105,6 @@ export const NavigationSidebar = React.forwardRef<
                     tooltip={tab.hideLabel ? tab.label : undefined}
                     icon={tab.icon}
                     href={tab.href}
-                    onClick={() => handleTabClick(tab.href)}
                   />
                 </div>
               ))}
@@ -145,7 +136,6 @@ export const NavigationSidebar = React.forwardRef<
                                   icon={menu.icon}
                                   href={menu.href}
                                   target={menu.target}
-                                  onClick={() => handleTabClick(menu.href)}
                                 />
                                 {menu.subMenuLabel && (
                                   <div
@@ -167,7 +157,6 @@ export const NavigationSidebar = React.forwardRef<
                                         icon={nav.icon}
                                         className="grow pl-14 pr-4"
                                         href={nav.href ? nav.href : undefined}
-                                        onClick={() => handleTabClick(nav.href)}
                                       />
                                     ))}
                                   </div>

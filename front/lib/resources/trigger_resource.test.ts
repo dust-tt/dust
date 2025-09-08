@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
+import { TriggerSubscriberModel } from "@app/lib/models/assistant/trigger_subscriber";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";

@@ -6,18 +6,16 @@ import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, SpaceType, UserType } from "@app/types";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 interface SpaceActionsListProps {
   isAdmin: boolean;
   owner: LightWorkspaceType;
-  user: UserType;
   space: SpaceType;
 }
 
 export const SystemSpaceActionsList = ({
   owner,
-  user,
   isAdmin,
   space,
 }: SpaceActionsListProps) => {
@@ -57,7 +55,6 @@ export const SystemSpaceActionsList = ({
       )}
       <AdminActionsList
         owner={owner}
-        user={user}
         filter={searchTerm}
         systemSpace={space}
         setMcpServerToShow={setMcpServerToShow}

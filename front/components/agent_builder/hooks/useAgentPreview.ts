@@ -1,6 +1,6 @@
 import isEqual from "lodash/isEqual";
-import { useCallback, useRef, useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -9,6 +9,7 @@ import {
   createConversationWithMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -36,21 +37,48 @@ export function useDraftAgent() {
   const [draftCreationFailed, setDraftCreationFailed] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
+  // We don't need to watch actions and instructions once we create the first version of draft agent,
+  // since we will create a new version only when a user sends a chat.
+  const actions = useWatch<AgentBuilderFormData, "actions">({
+    name: "actions",
+    disabled: !!draftAgent,
+  });
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+    disabled: !!draftAgent,
+  });
+  // We need to keep watching this since we will auto update the draft when name changes.
+  const agentName = useWatch<AgentBuilderFormData, "agentSettings.name">({
+    name: "agentSettings.name",
+  });
+
+  const {
+    debouncedValue: debouncedInstructions,
+    setValue: setDebouncedInstructions,
+  } = useDebounce(instructions, {
+    delay: 500,
+  });
+  const {
+    debouncedValue: debouncedAgentName,
+    setValue: setDebouncedAgentName,
+  } = useDebounce(agentName, { delay: 300 });
+
+  useEffect(() => {
+    // show spinner already when a user starts typing
+    setIsSavingDraftAgent(true);
+    setDebouncedInstructions(instructions);
+  }, [instructions, setDebouncedInstructions]);
+
+  useEffect(() => {
+    setDebouncedAgentName(agentName);
+  }, [agentName, setDebouncedAgentName]);
+
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
-      const formData = getValues();
-
-      const hasContent =
-        formData.instructions.trim() || formData.actions.length > 0;
-
-      if (!hasContent) {
-        setDraftCreationFailed(false);
-        return null;
-      }
-
       setIsSavingDraftAgent(true);
       setDraftCreationFailed(false);
 
+      const formData = getValues();
       lastFormDataRef.current = structuredClone(formData);
 
       const aRes = await submitAgentBuilderForm({
@@ -77,32 +105,60 @@ export function useDraftAgent() {
         return null;
       }
 
-      const newDraft = aRes.value;
-
-      setDraftAgent(newDraft);
-      setStickyMentions([{ configurationId: newDraft.sId }]);
+      setDraftAgent(aRes.value);
+      setStickyMentions([{ configurationId: aRes.value.sId }]);
       setIsSavingDraftAgent(false);
-      return newDraft;
+      return aRes.value;
     }, [owner, sendNotification, getValues]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
       const formData = getValues();
-
       if (
         lastFormDataRef.current &&
-        isEqual(lastFormDataRef.current, formData) &&
-        draftAgent
+        isEqual(lastFormDataRef.current, formData)
       ) {
         return draftAgent;
       }
+
       return createDraftAgent();
-    }, [getValues, draftAgent, createDraftAgent]);
+    }, [draftAgent, createDraftAgent, getValues]);
+
+  useEffect(() => {
+    // Create the first version here, after that we will update the draft agent on form submission or name changes.
+    if (!draftAgent) {
+      const hasContent =
+        (actions && actions.length > 0) || debouncedInstructions?.trim();
+
+      if (hasContent) {
+        void createDraftAgent();
+      }
+
+      return;
+    }
+
+    // If agent name is updated, we need to update the @mention in the input box,
+    // so we will update the draft agent.
+    if (
+      lastFormDataRef.current &&
+      lastFormDataRef.current?.agentSettings.name !== debouncedAgentName
+    ) {
+      void createDraftAgent();
+    }
+
+    setDraftCreationFailed(false);
+  }, [
+    actions,
+    debouncedInstructions,
+    debouncedAgentName,
+    draftAgent,
+    createDraftAgent,
+    isSavingDraftAgent,
+    getValues,
+  ]);
 
   return {
     draftAgent,
-    setDraftAgent,
-    createDraftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
     getDraftAgent,
@@ -124,13 +180,15 @@ export function useDraftConversation({
 
   const [conversationId, setConversationId] = useState<string | null>(null);
 
-  const { conversation } = useConversation({
+  const { conversation: swrConversation } = useConversation({
     conversationId: conversationId || "",
     workspaceId: owner.sId,
     options: {
       disabled: !conversationId,
     },
   });
+
+  const conversation = swrConversation || null;
 
   const handleSubmit = async (
     input: string,
@@ -146,7 +204,6 @@ export function useDraftConversation({
     }
 
     try {
-      // Ensure we have a current draft agent before submitting
       const currentAgent = await getDraftAgent();
       if (!currentAgent) {
         return new Err({
@@ -156,7 +213,7 @@ export function useDraftConversation({
         });
       }
 
-      // Update mentions in the message data to use the current draft agent
+      // Update mentions in the message data to use the newly created draft agent
       mentions = mentions.map((mention) =>
         mention.configurationId === draftAgent?.sId && currentAgent?.sId
           ? { ...mention, configurationId: currentAgent.sId }

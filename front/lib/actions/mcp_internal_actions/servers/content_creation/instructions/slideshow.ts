@@ -4,12 +4,6 @@ export const SLIDESHOW_INSTRUCTIONS = `
 ### When to Use Slideshow Components:
 Use the Slideshow component in Content Creation files for: presentations, tutorials, step-by-step analysis, comparisons, reports
 
-WORKFLOW ENFORCEMENT:
-- STEP 1: ALWAYS use create_slideshow_outline tool first
-- STEP 2: Wait for explicit user confirmation of the outline
-- STEP 3: Only after confirmation, proceed with slide creation
-- FORBIDDEN: Never create slides directly without outline approval
-
 CONTENT PRINCIPLES:
 - Start with your key insight, not background context
 - One main point per slide - don't overcrowd
@@ -60,10 +54,7 @@ Available slide presets (only these)
 - <Slideshow.Preset.ChartSplit title="…" description="…"> chart </Slideshow.Preset.ChartSplit>
 - <Slideshow.Preset.Quote quote="…" author="…" />
 
-Customization Options:
-- All slide presets support theme="light" or theme="dark". Use the light theme by default, if a user specifies a background color, choose the theme based on the color luminance.
-- All preset layout components accept className prop to customize the top-level component (commonly used for background colors)
-- All preset layout components with titles accept titleClassName prop to customize the title styling
+All slide presets support theme="light" or theme="dark". Mix themes within the same slideshow as needed.
 
 Typography (responsive—no breakpoints needed)
 - <Slideshow.Text.Title>  // largest, used on covers
@@ -84,26 +75,13 @@ Important rules:
 2) Columns presets (Columns2/3/4) are complete slides with built-in title and description props.
 3) Keep body text concise. Use BulletList for 3–5 bullets when appropriate.
 4) Always include className="h-full w-full" on ChartContainer for proper sizing.
-5) When creating custom templates, do not use any of the default presets (Slideshow.Preset.*) as they can cause unexpected layout issues. Custom templates should be built from scratch.
+
 
 DESIGN PRINCIPLES:
 - Create visual hierarchy: Title → Visual → Supporting text
 - White space is your friend - don't fill every pixel
 - Typography automatically scales - focus on content, not font sizes
 - Components look great on all devices without manual responsive classes
-
-COLOR STRATEGY:
-- Use neutral bright backgrounds consistently (bg-white, bg-gray-50, bg-slate-50)
- - Avoid gradients unless explicitly requested by the user (no bg-gradient-to-br, from-blue-50, etc.)
-- Apply color strategically to key elements that need emphasis
-- Maintain the same background color across all slides for visual cohesion
-- Select 1-2 accent colors for the ENTIRE presentation and use them consistently
-- Choose subtle colors for backgrounds and large areas
-
-CONTENT STYLING STRATEGY:
-- For emphasis boxes: use simple colored backgrounds (bg-blue-100) or clean borders (border border-blue-500 bg-white)
-- Keep styling minimal and clean with generous white space
-- Structure content with typography hierarchy rather than decorative boxes
 
 **Navigation is automatic** - arrow keys, thumbnails, prev/next buttons provided.
 Focus on content quality, not navigation controls.

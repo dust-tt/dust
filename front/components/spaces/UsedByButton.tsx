@@ -7,27 +7,26 @@ import {
   RobotIcon,
 } from "@dust-tt/sparkle";
 
-import type { AgentsUsageType } from "@app/types";
+import type { DataSourceWithAgentsUsageType } from "@app/types";
 
 export const UsedByButton = ({
   usage,
   onItemClick,
 }: {
-  usage: AgentsUsageType | null;
+  usage: DataSourceWithAgentsUsageType;
   onItemClick: (assistantSid: string) => void;
 }) => {
-  return !usage || usage.count === 0 ? (
+  return usage.count === 0 ? (
     <Button
       icon={RobotIcon}
       variant="ghost-secondary"
       isSelect={false}
       size="xs"
-      label="0"
+      label={`${usage.count}`}
       disabled
     />
   ) : (
-    // 1. modal={false} to make the dropdown menu non-modal and avoid a timing issue when we open the Agent side-panel modal.
-    <DropdownMenu modal={false}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           icon={RobotIcon}
@@ -35,10 +34,6 @@ export const UsedByButton = ({
           isSelect={true}
           size="xs"
           label={`${usage.count}`}
-          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-            // 2. Avoid propagating the click to the parent element.
-            e.stopPropagation();
-          }}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-w-48">

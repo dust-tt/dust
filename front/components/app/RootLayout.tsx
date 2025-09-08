@@ -7,7 +7,6 @@ import { SWRConfig } from "swr";
 import type { UrlObject } from "url";
 
 import { ConfirmPopupArea } from "@app/components/Confirm";
-import { NavigationLoadingProvider } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 import { isAPIErrorResponse } from "@app/types";
 
@@ -88,11 +87,9 @@ export default function RootLayout({
         }}
       >
         <SidebarProvider>
-          <NavigationLoadingProvider>
-            <ConfirmPopupArea>
-              <Notification.Area>{children}</Notification.Area>
-            </ConfirmPopupArea>
-          </NavigationLoadingProvider>
+          <ConfirmPopupArea>
+            <Notification.Area>{children}</Notification.Area>
+          </ConfirmPopupArea>
         </SidebarProvider>
       </SWRConfig>
     </SparkleContext.Provider>

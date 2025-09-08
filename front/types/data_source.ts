@@ -62,7 +62,7 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
   WithConnector &
   ConnectorStatusDetails;
 
-export type AgentsUsageType = {
+export type DataSourceWithAgentsUsageType = {
   count: number;
   agents: Array<{ sId: string; name: string }>;
 };

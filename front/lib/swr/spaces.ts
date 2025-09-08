@@ -663,7 +663,6 @@ type BaseSearchParams = {
   pagination?: CursorPaginationParams;
   allowAdminSearch?: boolean;
   dataSourceViewIdsBySpaceId?: Record<string, string[]>;
-  parentId?: string;
 };
 
 // Text search variant
@@ -694,7 +693,6 @@ export function useSpacesSearch({
   searchSourceUrls = false,
   allowAdminSearch = false,
   dataSourceViewIdsBySpaceId,
-  parentId,
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -722,7 +720,6 @@ export function useSpacesSearch({
     viewType,
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
-    parentId,
   };
 
   // Only perform a query if we have a valid search
@@ -770,7 +767,6 @@ export function useSpacesSearchWithInfiniteScroll({
   viewType,
   pageSize = 25,
   allowAdminSearch = false,
-  parentId,
 }: SpacesSearchParams & { pageSize?: number }): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -787,7 +783,6 @@ export function useSpacesSearchWithInfiniteScroll({
     includeDataSources,
     limit: pageSize,
     allowAdminSearch,
-    parentId,
   };
 
   // Only perform a query if we have a valid search
