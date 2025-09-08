@@ -146,22 +146,3 @@ export const useHashParam = (
 
   return [innerValue.val || defaultValue, setValue];
 };
-
-export function appendHashParam(url: string, key: string, value: string) {
-  const urlObj = new URL(url);
-  const newParam = `${key}=${value}`;
-
-  // Get existing hash parameters (without the #)
-  const existingHash = urlObj.hash.slice(1);
-
-  if (existingHash) {
-    // If hash already exists, append with appropriate separator
-    const separator = existingHash.startsWith("?") ? "&" : "?";
-    urlObj.hash = `#${existingHash}${separator}${newParam}`;
-  } else {
-    // If no hash exists, create new one with ? prefix
-    urlObj.hash = `#?${newParam}`;
-  }
-
-  return urlObj.toString();
-}
