@@ -247,7 +247,7 @@ const SYSTEM_SPACE_ITEMS = [
     label: "Triggers",
     visual: BellIcon,
     category: "triggers" as DataSourceViewCategory,
-    flag: "hootl_webhooks",
+    flag: "hootl_webhooks" as const,
   },
 ];
 
