@@ -23,11 +23,6 @@ import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import {
-  isLightClientSideMCPToolConfiguration,
-  isLightServerSideMCPToolConfiguration,
-  isServerSideMCPToolConfiguration,
-} from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -51,25 +46,7 @@ import {
   removeNulls,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-
-export const MCP_TOOL_RETRY_POLICY_TYPES = ["retry", "no_retry"] as const;
-export type MCPToolRetryPolicyType =
-  (typeof MCP_TOOL_RETRY_POLICY_TYPES)[number];
-
-// Default to never_retryable if the retry policy is not defined.
-export const DEFAULT_MCP_TOOL_RETRY_POLICY =
-  "no_retry" satisfies MCPToolRetryPolicyType;
-
-export function getRetryPolicyFromToolConfiguration(
-  toolConfiguration: MCPToolConfigurationType | LightMCPToolConfigurationType
-): MCPToolRetryPolicyType {
-  return isLightServerSideMCPToolConfiguration(toolConfiguration) ||
-    (!isLightClientSideMCPToolConfiguration(toolConfiguration) &&
-      isServerSideMCPToolConfiguration(toolConfiguration))
-    ? toolConfiguration.retryPolicy
-    : // Client-side MCP tool retry policy is not supported yet.
-      DEFAULT_MCP_TOOL_RETRY_POLICY;
-}
+import { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;

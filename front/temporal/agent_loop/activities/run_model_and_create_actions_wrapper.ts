@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { getRetryPolicyFromToolConfiguration } from "@app/lib/actions/mcp";
+import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { Authenticator } from "@app/lib/auth";

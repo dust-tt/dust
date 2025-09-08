@@ -1,12 +1,11 @@
 import type {
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
-  MCPToolRetryPolicyType,
 } from "@app/lib/actions/mcp";
 import {
-  DEFAULT_MCP_TOOL_RETRY_POLICY,
   getRetryPolicyFromToolConfiguration,
-} from "@app/lib/actions/mcp";
+  MCPToolRetryPolicyType,
+} from "@app/lib/api/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";

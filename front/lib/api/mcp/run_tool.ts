@@ -1,8 +1,12 @@
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 
-import type {ActionBaseParams, MCPApproveExecutionEvent, MCPErrorEvent, MCPParamsEvent, MCPSuccessEvent, ToolNotificationEvent} from "@app/lib/actions/mcp";
-import {
-  getRetryPolicyFromToolConfiguration
+import type {
+  ActionBaseParams,
+  MCPApproveExecutionEvent,
+  MCPErrorEvent,
+  MCPParamsEvent,
+  MCPSuccessEvent,
+  ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import {
@@ -24,6 +28,7 @@ import type {
   ConversationType,
 } from "@app/types";
 import { removeNulls } from "@app/types";
+import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.

@@ -1,7 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import type { MCPToolRetryPolicyType } from "@app/lib/actions/mcp";
 import type {
   CustomServerIconType,
   InternalAllowedIconType,
@@ -12,6 +11,34 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
+import {
+  MCPToolConfigurationType,
+  LightMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
+import {
+  isLightServerSideMCPToolConfiguration,
+  isLightClientSideMCPToolConfiguration,
+  isServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
+
+const MCP_TOOL_RETRY_POLICY_TYPES = ["retry", "no_retry"] as const;
+export type MCPToolRetryPolicyType =
+  (typeof MCP_TOOL_RETRY_POLICY_TYPES)[number];
+
+// Default to never_retryable if the retry policy is not defined.
+export const DEFAULT_MCP_TOOL_RETRY_POLICY =
+  "no_retry" satisfies MCPToolRetryPolicyType;
+
+export function getRetryPolicyFromToolConfiguration(
+  toolConfiguration: MCPToolConfigurationType | LightMCPToolConfigurationType
+): MCPToolRetryPolicyType {
+  return isLightServerSideMCPToolConfiguration(toolConfiguration) ||
+    (!isLightClientSideMCPToolConfiguration(toolConfiguration) &&
+      isServerSideMCPToolConfiguration(toolConfiguration))
+    ? toolConfiguration.retryPolicy
+    : // Client-side MCP tool retry policy is not supported yet.
+      DEFAULT_MCP_TOOL_RETRY_POLICY;
+}
 
 export type MCPToolType = {
   name: string;
