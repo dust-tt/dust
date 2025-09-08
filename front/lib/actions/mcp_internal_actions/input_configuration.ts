@@ -405,13 +405,11 @@ export interface MCPServerRequirements {
   >;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
-  requiredFlavors: InternalMCPServerFlavorType[];
   disabledTools: string[];
 }
 
 export function getMCPServerRequirements(
   mcpServerView: MCPServerViewType | null | undefined,
-  disabledTools: string[] = []
 ): MCPServerRequirements {
   if (!mcpServerView) {
     return {
@@ -433,6 +431,8 @@ export function getMCPServerRequirements(
     };
   }
   const { server } = mcpServerView;
+
+  const disabledTools = mcpServerView.toolsMetadata?.filter((tool) => !tool.enabled).map((tool) => tool.toolName) ?? [];
   const requiresDataSourceConfiguration =
     Object.keys(
       findPathsToConfiguration({

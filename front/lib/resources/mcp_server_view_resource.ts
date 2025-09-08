@@ -239,7 +239,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       ],
     });
 
-    console.log(views);
+    
 
     const filteredViews: MCPServerViewResource[] = [];
 
@@ -259,6 +259,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         { concurrency: 10 }
       );
     }
+
+    console.log(
+      JSON.stringify(
+        views.filter((v) => !!v.internalToolsMetadata || !!v.remoteToolsMetadata),
+        null,
+        2
+      )
+    );
 
     return filteredViews;
   }
@@ -777,6 +785,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.editedByUser,
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
       ),
+      toolsMetadata: this.internalToolsMetadata || this.remoteToolsMetadata || [],
     };
   }
 }

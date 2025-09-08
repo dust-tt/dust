@@ -119,6 +119,8 @@ export abstract class ResourceWithSpace<
                   const includedModel = b[key as keyof typeof b];
                   if (includedModel instanceof Model) {
                     acc[key] = includedModel.get();
+                  } else if (Array.isArray(includedModel)) {
+                    acc[key] = includedModel.map((m) => m.get()) as IncludeType[keyof IncludeType];
                   }
                 }
               }
