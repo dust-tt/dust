@@ -103,6 +103,16 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     return res.length > 0 ? res[0] : null;
   }
 
+  static async findByPk(auth: Authenticator, id: ModelId) {
+    const res = await this.baseFetch(auth, {
+      where: {
+        id,
+      },
+      limit: 1,
+    });
+    return res.length > 0 ? res[0] : null;
+  }
+
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth, {
       order: [["createdAt", "DESC"]],

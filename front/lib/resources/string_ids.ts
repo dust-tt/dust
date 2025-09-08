@@ -40,6 +40,7 @@ const RESOURCES_PREFIX = {
   // Resource relative to triggers.
   trigger: "trg",
   webhook_source: "whs",
+  webhook_sources_view: "wsv",
 
   // Action (used for tool approval currently).
   mcp_action: "act",
