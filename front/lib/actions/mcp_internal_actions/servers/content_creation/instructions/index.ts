@@ -1,12 +1,12 @@
 import {
   COMMON_CHART_EXAMPLES,
-  COMMON_FILE_EXAMPLES,
   COMMON_FILE_HANDLING_GUIDELINES,
   COMMON_LIBRARY_USAGE,
   COMMON_MIME_TYPE,
   COMMON_MISCELLANEOUS_GUIDELINES,
   COMMON_REACT_COMPONENT_GUIDELINES,
   COMMON_STYLING_GUIDELINES,
+  COMMON_USE_FILE_EXAMPLES,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/instructions";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
@@ -45,7 +45,7 @@ ${COMMON_MISCELLANEOUS_GUIDELINES}
   - Create files for interactive React components that require user interaction
   - Create files for complex visualizations that benefit from being standalone components
 
-${COMMON_FILE_EXAMPLES}
+${COMMON_USE_FILE_EXAMPLES}
 
 Example File Creation:
 

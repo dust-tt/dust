@@ -92,7 +92,7 @@ export const COMMON_MISCELLANEOUS_GUIDELINES = `
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
 `;
 
-export const COMMON_FILE_EXAMPLES = `
+export const COMMON_USE_FILE_EXAMPLES = `
 Example using the \`useFile\` hook:
 
 \`\`\`
