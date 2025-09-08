@@ -1,6 +1,6 @@
 import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
-import { useContext, useEffect } from "react";
-import { useFormContext } from "react-hook-form";
+import { useContext, useEffect, useRef } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
@@ -151,7 +151,7 @@ function PreviewContent({
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
-  const { getValues } = useFormContext<AgentBuilderFormData>();
+  const { getValues, control } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
@@ -159,6 +159,11 @@ export function AgentBuilderPreview() {
 
   const hasContent =
     !!getValues("instructions").trim() || getValues("actions").length > 0;
+
+  const currentAgentName = useWatch({
+    control,
+    name: "agentSettings.name",
+  });
 
   const {
     draftAgent,
@@ -177,30 +182,56 @@ export function AgentBuilderPreview() {
       getDraftAgent,
     });
 
-  // Create draft only when preview panel opens and has content
+  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+
   useEffect(() => {
-    const createDraft = async () => {
-      if (
-        isPreviewPanelOpen &&
-        !draftAgent &&
-        hasContent &&
-        !isMCPServerViewsLoading
-      ) {
+    const handleDraftUpdate = async () => {
+      // Don't do anything if preview panel is not open
+      if (!isPreviewPanelOpen || isMCPServerViewsLoading) {
+        return;
+      }
+
+      if (!draftAgent && hasContent) {
         const newDraft = await createDraftAgent();
         if (newDraft) {
           setDraftAgent(newDraft);
         }
+        return;
+      }
+
+      // Debounce name change updates to avoid creating draft on every keystroke
+      if (draftAgent && currentAgentName !== draftAgent.name) {
+        if (debounceTimeoutRef.current) {
+          clearTimeout(debounceTimeoutRef.current);
+        }
+
+        // Set new timeout for debounced update
+        debounceTimeoutRef.current = setTimeout(async () => {
+          const newDraft = await createDraftAgent();
+          if (newDraft) {
+            setDraftAgent(newDraft);
+            setStickyMentions([{ configurationId: newDraft.sId }]);
+          }
+        }, 500); // 500ms debounce
       }
     };
 
-    void createDraft();
+    void handleDraftUpdate();
+
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
   }, [
     isPreviewPanelOpen,
     draftAgent,
     hasContent,
+    currentAgentName,
     isMCPServerViewsLoading,
     createDraftAgent,
     setDraftAgent,
+    setStickyMentions,
   ]);
 
   // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
