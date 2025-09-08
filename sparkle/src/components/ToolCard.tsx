@@ -50,7 +50,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
         onClick={onClick}
         disabled={!canAdd}
         containerClassName={cardContainerClassName}
-        className={cn("s-px-3 s-pb-1 s-pt-3", className)}
+        className={cn("s-p-3", className)}
       >
         <div className="s-flex s-h-full s-w-full s-flex-col s-justify-between">
           <div className="s-flex s-flex-col">
@@ -100,7 +100,7 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
                   e.stopPropagation();
                   toolInfo.onClick();
                 }}
-                className="hover:s-underline-offset-2dark:s-text-muted-foreground-night s-cursor-pointer s-text-sm s-text-muted-foreground hover:s-text-highlight-light hover:s-underline dark:hover:s-text-highlight-light-night"
+                className="hover:s-underline-offset-2 dark:s-text-muted-foreground-night s-cursor-pointer s-text-sm s-font-semibold s-text-muted-foreground hover:s-text-highlight-light hover:s-underline dark:hover:s-text-highlight-light-night"
               >
                 {toolInfo.label}
               </a>
