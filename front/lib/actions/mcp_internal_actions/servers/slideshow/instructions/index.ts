@@ -1,4 +1,8 @@
+import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
+
 export const SLIDESHOW_INSTRUCTIONS = `
+${CONTENT_CREATION_INSTRUCTIONS}
+
 ### Using Slideshow Components in Content Creation Files
 
 ### When to Use Slideshow Components:
@@ -25,7 +29,8 @@ COMMON SLIDESHOW STRUCTURES:
 
 ### Technical Implementation:
 
-Import
+**REQUIRED IMPORTS** (must be at the top of every slideshow file):
+- import React from "react";
 - import { Slideshow } from "@dust/slideshow/v1"
 
 Core pattern
@@ -110,6 +115,7 @@ Focus on content quality, not navigation controls.
 
 Example using pre-built layouts:
 \`\`\`tsx
+import React from "react";
 import { Slideshow } from "@dust/slideshow/v1";
 
 export default function Deck() {
