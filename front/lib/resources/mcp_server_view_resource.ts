@@ -260,14 +260,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       );
     }
 
-    console.log(
-      JSON.stringify(
-        views.filter((v) => !!v.internalToolsMetadata || !!v.remoteToolsMetadata),
-        null,
-        2
-      )
-    );
-
     return filteredViews;
   }
 
