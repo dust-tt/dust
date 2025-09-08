@@ -881,7 +881,9 @@ export async function listToolsForServerSideMCPServer(
       toolServerId: connectionParams.mcpServerId,
       ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
       retryPolicy:
-        toolsRetryPolicies?.[tool.name] || DEFAULT_MCP_TOOL_RETRY_POLICY,
+        toolsRetryPolicies?.[tool.name] ||
+        toolsRetryPolicies?.["default"] ||
+        DEFAULT_MCP_TOOL_RETRY_POLICY,
     }));
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
