@@ -25,18 +25,6 @@ export type InferIncludeType<M> = {
   [K in NonAttributeKeys<M>]: M[K] extends NonAttribute<infer T>
     ? T extends Array<infer U>
       ? U extends BaseModel<any>
-        ? Array<U>
-        : never
-      : T extends BaseModel<any>
-        ? T
-        : never
-    : never;
-};
-
-type InferIncludeTypeForInclude<M> = {
-  [K in NonAttributeKeys<M>]: M[K] extends NonAttribute<infer T>
-    ? T extends Array<infer U>
-      ? U extends BaseModel<any>
         ? U
         : never
       : T extends BaseModel<any>
@@ -47,10 +35,10 @@ type InferIncludeTypeForInclude<M> = {
 
 export type TypedIncludeable<M> = {
   [K in NonAttributeKeys<M>]: {
-    model: ModelStatic<InferIncludeTypeForInclude<M>[K]>;
+    model: ModelStatic<InferIncludeType<M>[K]>;
     as: K;
     required?: boolean;
-    where?: WhereOptions<InferIncludeTypeForInclude<M>[K]>;
+    where?: WhereOptions<InferIncludeType<M>[K]>;
     include?: Includeable[];
   };
 }[NonAttributeKeys<M>];

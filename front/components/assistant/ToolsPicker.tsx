@@ -48,7 +48,7 @@ export function ToolsPicker({
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const { spaces } = useSpaces({ workspaceId: owner.sId });
+  const { spaces } = useSpaces({ workspaceId: owner.sId, disabled: !isOpen });
   const globalSpaces = useMemo(
     () => spaces.filter((s) => s.kind === "global"),
     [spaces]

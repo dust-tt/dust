@@ -584,6 +584,7 @@ The directive should be used to display a clickable version of the agent name in
       add_worksheet: "low",
       delete_worksheet: "low",
       format_cells: "low",
+      copy_sheet: "low",
     },
     timeoutMs: undefined,
     serverInfo: {

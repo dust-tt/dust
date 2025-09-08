@@ -17,7 +17,10 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import type { DataSourceViewContentNode } from "@app/types";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
+import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
+import { GLOBAL_SPACE_NAME } from "@app/types";
 
 interface FileAttachmentsProps {
   service: FileUploaderService;
@@ -25,24 +28,38 @@ interface FileAttachmentsProps {
 
 interface NodeAttachmentsProps {
   items: DataSourceViewContentNode[];
-  spacesMap: {
-    [k: string]: {
-      name: string;
-      icon: React.ComponentType;
-    };
-  };
   onRemove: (node: DataSourceViewContentNode) => void;
 }
 
 interface InputBarAttachmentsProps {
+  owner: LightWorkspaceType;
   files?: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
 }
 
 export function InputBarAttachments({
+  owner,
   files,
   nodes,
 }: InputBarAttachmentsProps) {
+  const { spaces } = useSpaces({
+    workspaceId: owner.sId,
+    disabled: !nodes?.items.length,
+  });
+  const spacesMap = useMemo(
+    () =>
+      Object.fromEntries(
+        spaces?.map((space) => [
+          space.sId,
+          {
+            name: space.kind === "global" ? GLOBAL_SPACE_NAME : space.name,
+            icon: getSpaceIcon(space),
+          },
+        ]) || []
+      ),
+    [spaces]
+  );
+
   // Convert file blobs to FileAttachment objects
   const fileAttachments: FileAttachment[] = useMemo(() => {
     return (
@@ -66,7 +83,7 @@ export function InputBarAttachments({
         });
 
         const spaceName =
-          nodes.spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
+          spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
 
         const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
@@ -86,14 +103,14 @@ export function InputBarAttachments({
           title: node.title,
           url: node.sourceUrl,
           spaceName,
-          spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
+          spaceIcon: spacesMap[node.dataSourceView.spaceId].icon,
           path: getLocationForDataSourceViewContentNode(node),
           visual,
           onRemove: () => nodes.onRemove(node),
         };
       }) || []
     );
-  }, [nodes]);
+  }, [nodes, spacesMap]);
 
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
