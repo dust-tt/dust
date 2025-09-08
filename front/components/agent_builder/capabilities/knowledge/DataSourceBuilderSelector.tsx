@@ -244,7 +244,10 @@ export const DataSourceBuilderSelector = ({
                   label={
                     currentNode
                       ? currentNode.title
-                      : getDataSourceNameFromView(currentDataSourceView)
+                      : currentDataSourceView
+                        ? getDataSourceNameFromView(currentDataSourceView)
+                        : // should never happen
+                          ""
                   }
                   className={cn(
                     searchScope !== "node" && "text-muted-foreground"
