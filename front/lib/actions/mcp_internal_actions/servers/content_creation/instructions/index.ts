@@ -1,4 +1,3 @@
-import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions/slideshow";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
@@ -76,7 +75,6 @@ You have access to a Content Creation system that allows you to create and updat
         - Example: \`labelFormatter={(label) => \`Date: \${label}\`}\`
       - Always wrap charts in ChartContainer for proper sizing and theming
       - Use proper margins to prevent label cutoff: \`margin={{ top: 20, right: 30, left: 20, bottom: 20 }}\`
-      - In slideshow context, ChartContainer automatically adapts to slide dimensions - no height needed
       - For standalone components, ChartContainer may need explicit height: className="h-[400px]"
   - The papaparse library is available to be imported, e.g. \`import Papa from "papaparse"\` & \`const parsed = Papa.parse(fileContent, {header:true, skipEmptyLines: "greedy"});\`. The \`skipEmptyLines:"greedy"\` configuration should always be used.
   - shadcn/ui components are available and SHOULD BE USED for consistent, professional styling:
@@ -317,6 +315,4 @@ const CHART_COLORS = [
     ))}
   </Pie>
 </PieChart>
-
-${SLIDESHOW_INSTRUCTIONS}
 `;

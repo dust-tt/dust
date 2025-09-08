@@ -173,6 +173,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Simple Audio transcription feature",
     stage: "dust_only",
   },
+  slideshow: {
+    description: "Slideshow MCP tool",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
