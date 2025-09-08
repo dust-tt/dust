@@ -24,10 +24,15 @@ import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
-import type {ClientSideMCPServerConfigurationType, ClientSideMCPToolConfigurationType, MCPServerConfigurationType, MCPToolConfigurationType, MCPToolRetryPolicyType, ServerSideMCPServerConfigurationType, ServerSideMCPToolConfigurationType} from "@app/lib/actions/mcp";
-import {
-  DEFAULT_MCP_TOOL_RETRY_POLICY
+import type {
+  ClientSideMCPServerConfigurationType,
+  ClientSideMCPToolConfigurationType,
+  MCPServerConfigurationType,
+  MCPToolConfigurationType,
+  ServerSideMCPServerConfigurationType,
+  ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -67,6 +72,7 @@ import {
 import { getBaseServerId } from "@app/lib/api/actions/mcp/client_side_registry";
 import type {
   ClientSideMCPToolTypeWithStakeLevel,
+  MCPToolRetryPolicyType,
   MCPToolType,
   ServerSideMCPToolTypeWithStakeAndRetryPolicy,
 } from "@app/lib/api/mcp";
@@ -833,15 +839,13 @@ export async function listToolsForServerSideMCPServer(
       stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
       availability: "manual" as const,
       toolServerId: "",
+      retryPolicy: DEFAULT_MCP_TOOL_RETRY_POLICY,
     }));
 
     // Create configurations and add required properties.
     const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
       config,
-      rawTools.map((tool) => ({
-        ...tool,
-        retryPolicy: DEFAULT_MCP_TOOL_RETRY_POLICY,
-      }))
+      rawTools
     );
     return new Ok(serverSideToolConfigs);
   }

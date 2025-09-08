@@ -27,7 +27,7 @@ export type MCPToolRetryPolicyType =
 
 // Default to never_retryable if the retry policy is not defined.
 export const DEFAULT_MCP_TOOL_RETRY_POLICY =
-  "no_retry" satisfies MCPToolRetryPolicyType;
+  "no_retry" as const satisfies MCPToolRetryPolicyType;
 
 export function getRetryPolicyFromToolConfiguration(
   toolConfiguration: MCPToolConfigurationType | LightMCPToolConfigurationType
