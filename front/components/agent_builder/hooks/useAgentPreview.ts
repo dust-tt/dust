@@ -83,13 +83,12 @@ export function useDraftAgent() {
       setStickyMentions([{ configurationId: newDraft.sId }]);
       setIsSavingDraftAgent(false);
       return newDraft;
-    }, [owner, sendNotification, getValues]); // ✅ Include getValues
+    }, [owner, sendNotification, getValues]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
       const formData = getValues();
 
-      // Check if we need to create a new draft (data changed)
       if (
         lastFormDataRef.current &&
         isEqual(lastFormDataRef.current, formData) &&
@@ -98,7 +97,7 @@ export function useDraftAgent() {
         return draftAgent;
       }
       return createDraftAgent();
-    }, [getValues, draftAgent, createDraftAgent]); // ✅ Include getValues
+    }, [getValues, draftAgent, createDraftAgent]);
 
   return {
     draftAgent,
@@ -125,15 +124,13 @@ export function useDraftConversation({
 
   const [conversationId, setConversationId] = useState<string | null>(null);
 
-  const { conversation: swrConversation } = useConversation({
+  const { conversation } = useConversation({
     conversationId: conversationId || "",
     workspaceId: owner.sId,
     options: {
       disabled: !conversationId,
     },
   });
-
-  const conversation = swrConversation || null;
 
   const handleSubmit = async (
     input: string,

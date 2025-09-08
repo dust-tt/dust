@@ -1,6 +1,6 @@
 import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
 import { useContext, useEffect, useMemo, useRef } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
@@ -31,8 +31,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
-
-import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
 
 interface EmptyStateProps {
   message: string;
@@ -151,14 +149,12 @@ function PreviewContent({
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
-  const { control } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
   const { currentPanel } = useConversationSidePanelContext();
 
   const watchedFields = useWatch({
-    control,
     name: ["instructions", "actions", "agentSettings.name"],
   });
 
