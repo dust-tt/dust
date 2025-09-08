@@ -310,17 +310,19 @@ const createServer = (
     "Create a structured outline for a slideshow presentation. This tool must be used before " +
       "creating any slideshow content. Returns a formatted outline showing slide titles and key points that must be presented directly to the user for approval.",
     {
-      topic: z
-        .string()
-        .describe("The main topic or title of the slideshow"),
+      topic: z.string().describe("The main topic or title of the slideshow"),
       context: z
         .string()
         .optional()
-        .describe("Additional context, requirements, or background information"),
+        .describe(
+          "Additional context, requirements, or background information"
+        ),
       target_audience: z
         .string()
         .optional()
-        .describe("Intended audience (e.g., executives, technical team, clients)"),
+        .describe(
+          "Intended audience (e.g., executives, technical team, clients)"
+        ),
       slides: z
         .array(
           z.object({
@@ -331,10 +333,10 @@ const createServer = (
             notes: z
               .string()
               .optional()
-              .describe("Additional notes or requirements for this slide")
+              .describe("Additional notes or requirements for this slide"),
           })
         )
-        .describe("Array of slides in the presentation")
+        .describe("Array of slides in the presentation"),
     },
     withToolLogging(
       auth,
@@ -348,16 +350,19 @@ const createServer = (
             title: slide.title,
             key_points: slide.key_points,
             notes: slide.notes,
-            detailedContent: slide.key_points.join('. ') + (slide.notes ? ` ${slide.notes}` : '')
-          }))
+            detailedContent:
+              slide.key_points.join(". ") +
+              (slide.notes ? ` ${slide.notes}` : ""),
+          })),
         };
-        
+
         return new Ok([
           {
-            type: "text", 
-            text: `IMPORTANT: Present this outline to the user for review and confirmation before proceeding with slide creation.\n\n` + 
-                  `${structuredOutline}`
-          }
+            type: "text",
+            text:
+              `IMPORTANT: Present this outline to the user for review and confirmation before proceeding with slide creation.\n\n` +
+              `${structuredOutline}`,
+          },
         ]);
       }
     )
