@@ -167,7 +167,10 @@ const userSchema = z.object({
 });
 
 const agentSettingsSchema = z.object({
-  name: z.string().min(1, "Agent name is required"),
+  name: z
+    .string()
+    .min(1, "Agent name is required")
+    .refine((value) => !/\s/.test(value), "Agent name cannot contain space"),
   description: z.string().min(1, "Agent description is required"),
   pictureUrl: z.string().optional(),
   scope: z.enum(["hidden", "visible"]),
