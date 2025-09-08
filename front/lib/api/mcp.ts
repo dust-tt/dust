@@ -21,7 +21,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import type { EditedByUser, MCPOAuthUseCase, ModelId } from "@app/types";
 
-const MCP_TOOL_RETRY_POLICY_TYPES = ["retry", "no_retry"] as const;
+const MCP_TOOL_RETRY_POLICY_TYPES = ["retry_on_interrupt", "no_retry"] as const;
 export type MCPToolRetryPolicyType =
   (typeof MCP_TOOL_RETRY_POLICY_TYPES)[number];
 

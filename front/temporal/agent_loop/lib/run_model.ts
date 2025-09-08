@@ -30,6 +30,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
+import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -48,7 +49,6 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
-import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;

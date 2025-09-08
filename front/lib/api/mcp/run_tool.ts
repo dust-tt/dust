@@ -162,17 +162,18 @@ export async function* runToolWithStreaming(
     if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
       // MCP Error -32001: Request timed out.
       errorMessage = `The tool ${actionBaseParams.functionCallName} timed out. `;
+
+      // If the tool should be retried on interrupt, we throw an error so the workflow retries the
+      // `runTool` activity. If the tool should not be retried on interrupt, the error is returned to
+      // the model, to let it decide what to do.
+      const retryPolicy =
+        getRetryPolicyFromToolConfiguration(toolConfiguration);
+      if (retryPolicy === "retry_on_interrupt") {
+        errorMessage += "Error: " + JSON.stringify(toolErr);
+        throw new Error(errorMessage);
+      }
     } else {
       errorMessage = `The tool ${actionBaseParams.functionCallName} returned an error. `;
-    }
-
-    // If the tool is retryable, we throw an error so the workflow retries the
-    // `runTool` activity. If the tool isn't retryable, we return the error to
-    // the model, to let it decide what to do.
-    const retryPolicy = getRetryPolicyFromToolConfiguration(toolConfiguration);
-    if (retryPolicy === "retry") {
-      errorMessage += "Error: " + JSON.stringify(toolErr);
-      throw new Error(errorMessage);
     }
 
     errorMessage +=
