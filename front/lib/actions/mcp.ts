@@ -52,17 +52,13 @@ import {
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 
-export const MCP_TOOL_RETRY_POLICY_TYPES = [
-  "retry_on_interrupt",
-  "always_retry",
-  "never_retry",
-] as const;
+export const MCP_TOOL_RETRY_POLICY_TYPES = ["retry", "no_retry"] as const;
 export type MCPToolRetryPolicyType =
   (typeof MCP_TOOL_RETRY_POLICY_TYPES)[number];
 
 // Default to never_retryable if the retry policy is not defined.
 export const DEFAULT_MCP_TOOL_RETRY_POLICY =
-  "never_retry" satisfies MCPToolRetryPolicyType;
+  "no_retry" satisfies MCPToolRetryPolicyType;
 
 export function getRetryPolicyFromToolConfiguration(
   toolConfiguration: MCPToolConfigurationType | LightMCPToolConfigurationType

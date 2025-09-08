@@ -935,9 +935,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_retry_policies: {
-      default: "retry_on_interrupt",
-    },
+    tools_retry_policies: { default: "retry" },
     timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
