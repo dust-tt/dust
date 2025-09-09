@@ -1,6 +1,6 @@
 import { clientExecutableContentType } from "@app/types";
 
-export const COMMON_REACT_COMPONENT_GUIDELINES = `
+export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
@@ -23,7 +23,7 @@ export const COMMON_REACT_COMPONENT_GUIDELINES = `
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 `;
 
-export const COMMON_STYLING_GUIDELINES = `
+export const VIZ_STYLING_GUIDELINES = `
 - Styling:
   - **ALWAYS USE shadcn/ui components** - Wrap visualizations in Card components for professional appearance
   - **Chart Colors**: Use shadcn's chart color variables instead of hardcoded colors:
@@ -39,7 +39,7 @@ export const COMMON_STYLING_GUIDELINES = `
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
 `;
 
-export const COMMON_FILE_HANDLING_GUIDELINES = `
+export const VIZ_FILE_HANDLING_GUIDELINES = `
 - Using any file from the \`list_conversation_files\` action when available:
   - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
@@ -51,7 +51,7 @@ export const COMMON_FILE_HANDLING_GUIDELINES = `
   - Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
 `;
 
-export const COMMON_LIBRARY_USAGE = `
+export const VIZ_LIBRARY_USAGE = `
 - Available third-party libraries:
   - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
   - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
@@ -85,14 +85,14 @@ export const COMMON_LIBRARY_USAGE = `
   - No other third-party libraries are installed or available to be imported. They cannot be used, imported, or installed.
 `;
 
-export const COMMON_MISCELLANEOUS_GUIDELINES = `
+export const VIZ_MISCELLANEOUS_GUIDELINES = `
 - Miscellaneous:
   - Images from the web cannot be rendered or used in the visualization (no internet access).
   - When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
 `;
 
-export const COMMON_USE_FILE_EXAMPLES = `
+export const VIZ_USE_FILE_EXAMPLES = `
 Example using the \`useFile\` hook:
 
 \`\`\`
@@ -126,7 +126,7 @@ import { triggerUserFileDownload } from "@dust/react-hooks";
 \`\`\`
 `;
 
-export const COMMON_CHART_EXAMPLES = `
+export const VIZ_CHART_EXAMPLES = `
 General example of a React component with shadcn/ui ChartContainer:
 
 import React from "react";
@@ -276,4 +276,4 @@ const CHART_COLORS = [
 </PieChart>
 `;
 
-export const COMMON_MIME_TYPE = clientExecutableContentType;
+export const VIZ_MIME_TYPE = clientExecutableContentType;

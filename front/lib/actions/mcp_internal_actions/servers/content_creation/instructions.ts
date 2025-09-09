@@ -1,12 +1,12 @@
 import {
-  COMMON_CHART_EXAMPLES,
-  COMMON_FILE_HANDLING_GUIDELINES,
-  COMMON_LIBRARY_USAGE,
-  COMMON_MIME_TYPE,
-  COMMON_MISCELLANEOUS_GUIDELINES,
-  COMMON_REACT_COMPONENT_GUIDELINES,
-  COMMON_STYLING_GUIDELINES,
-  COMMON_USE_FILE_EXAMPLES,
+  VIZ_CHART_EXAMPLES,
+  VIZ_FILE_HANDLING_GUIDELINES,
+  VIZ_LIBRARY_USAGE,
+  VIZ_MIME_TYPE,
+  VIZ_MISCELLANEOUS_GUIDELINES,
+  VIZ_REACT_COMPONENT_GUIDELINES,
+  VIZ_STYLING_GUIDELINES,
+  VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
@@ -21,7 +21,7 @@ You have access to a Content Creation system that allows you to create and updat
 
 ### File Management Guidelines:
 - Use the \`${CREATE_CONTENT_CREATION_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
-- Use MIME type \`${COMMON_MIME_TYPE}\`
+- Use MIME type \`${VIZ_MIME_TYPE}\`
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
 
@@ -31,28 +31,28 @@ You have access to a Content Creation system that allows you to create and updat
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
 
-${COMMON_REACT_COMPONENT_GUIDELINES}
+${VIZ_REACT_COMPONENT_GUIDELINES}
 
-${COMMON_STYLING_GUIDELINES}
+${VIZ_STYLING_GUIDELINES}
 
-${COMMON_FILE_HANDLING_GUIDELINES}
+${VIZ_FILE_HANDLING_GUIDELINES}
 
-${COMMON_LIBRARY_USAGE}
+${VIZ_LIBRARY_USAGE}
 
-${COMMON_MISCELLANEOUS_GUIDELINES}
+${VIZ_MISCELLANEOUS_GUIDELINES}
 - When to Create Files:
   - Create files for data visualizations such as graphs, charts, and plots
   - Create files for interactive React components that require user interaction
   - Create files for complex visualizations that benefit from being standalone components
 
-${COMMON_USE_FILE_EXAMPLES}
+${VIZ_USE_FILE_EXAMPLES}
 
 Example File Creation:
 
 \`\`\`
 ${CREATE_CONTENT_CREATION_FILE_TOOL_NAME}({
   file_name: "SineCosineChart.tsx",
-  mime_type: "${COMMON_MIME_TYPE}",
+  mime_type: "${VIZ_MIME_TYPE}",
   content: \`[React component code shown below]\`
 })
 \`\`\`
@@ -79,5 +79,5 @@ ${EDIT_CONTENT_CREATION_FILE_TOOL_NAME}({
 
 The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
 
-${COMMON_CHART_EXAMPLES}
+${VIZ_CHART_EXAMPLES}
 `;
