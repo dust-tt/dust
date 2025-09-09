@@ -37,7 +37,7 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     id: "trackers",
     label: "Document Tracker",
     featureFlag: "labs_trackers",
-    visibleWithoutAccess: true,
+    visibleWithoutAccess: false,
     icon: BookOpenIcon,
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
