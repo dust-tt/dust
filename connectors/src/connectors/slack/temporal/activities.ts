@@ -1147,6 +1147,13 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
       },
       limit: maxMessages,
     });
+    logger.info(
+      {
+        nbMessages: slackMessages.length,
+        ...loggerArgs,
+      },
+      `Deleting ${slackMessages.length} messages from channel ${channelId}.`
+    );
     for (const slackMessage of slackMessages) {
       // We delete from the remote datasource first because we would rather double delete remotely
       // than miss one.
