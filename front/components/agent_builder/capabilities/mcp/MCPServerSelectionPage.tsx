@@ -36,6 +36,7 @@ function DataVisualizationCard({
       isSelected={isSelected}
       canAdd={!isSelected}
       onClick={onClick}
+      cardContainerClassName="h-32"
     />
   );
 }
@@ -44,9 +45,15 @@ interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;
+  onToolInfoClick: () => void;
 }
 
-function MCPServerCard({ view, isSelected, onClick }: MCPServerCardProps) {
+function MCPServerCard({
+  view,
+  isSelected,
+  onClick,
+  onToolInfoClick,
+}: MCPServerCardProps) {
   const requirement = getMCPServerRequirements(view);
   const canAdd = requirement.noRequirement ? !isSelected : true;
 
@@ -87,8 +94,13 @@ function MCPServerCard({ view, isSelected, onClick }: MCPServerCardProps) {
         isSelected={isSelected}
         canAdd={canAdd}
         onClick={onClick}
+        cardContainerClassName="h-32"
         mountPortal
         mountPortalContainer={containerRef.current || undefined}
+        toolInfo={{
+          label: "Tools details",
+          onClick: onToolInfoClick,
+        }}
       />
     </div>
   );
@@ -101,6 +113,7 @@ interface MCPServerSelectionPageProps {
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
   selectedToolsInSheet?: SelectedTool[];
+  onToolDetailsClick?: (tool: SelectedTool) => void;
 }
 
 export function MCPServerSelectionPage({
@@ -110,6 +123,7 @@ export function MCPServerSelectionPage({
   dataVisualization,
   onDataVisualizationClick,
   selectedToolsInSheet = [],
+  onToolDetailsClick,
 }: MCPServerSelectionPageProps) {
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
@@ -169,6 +183,11 @@ export function MCPServerSelectionPage({
               view={view}
               isSelected={selectedMCPIds.has(view.sId)}
               onClick={() => onItemClick(view)}
+              onToolInfoClick={() => {
+                if (onToolDetailsClick) {
+                  onToolDetailsClick({ type: "MCP", view });
+                }
+              }}
             />
           ))}
         </div>
@@ -182,6 +201,11 @@ export function MCPServerSelectionPage({
               view={view}
               isSelected={selectedMCPIds.has(view.sId)}
               onClick={() => onItemClick(view)}
+              onToolInfoClick={() => {
+                if (onToolDetailsClick) {
+                  onToolDetailsClick({ type: "MCP", view });
+                }
+              }}
             />
           ))}
         </div>

@@ -95,7 +95,11 @@ export type SheetMode =
       mcpServerView: MCPServerViewType;
     }
   | { type: "edit"; action: AgentBuilderAction; index: number }
-  | { type: "info"; action: AgentBuilderAction };
+  | {
+      type: "info";
+      action: AgentBuilderAction;
+      source: "toolDetails" | "addedTool";
+    };
 
 type MCPActionWithConfiguration = AgentBuilderAction & {
   type: "MCP";
@@ -401,6 +405,18 @@ export function MCPServerViewsSheet({
     toggleToolSelection(tool);
   }
 
+  const handleToolInfoClick = useCallback(
+    (mcpServerView: MCPServerViewType) => {
+      const action = getDefaultMCPAction(mcpServerView);
+      onModeChange({
+        type: "info",
+        action,
+        source: "toolDetails",
+      });
+    },
+    [onModeChange]
+  );
+
   const handleAddSelectedTools = useCallback(() => {
     // Validate any configured tools before adding
     for (const tool of selectedToolsInSheet) {
@@ -527,6 +543,11 @@ export function MCPServerViewsSheet({
             dataVisualization={showDataVisualization ? dataVisualization : null}
             onDataVisualizationClick={onClickDataVisualization}
             selectedToolsInSheet={selectedToolsInSheet}
+            onToolDetailsClick={(tool) => {
+              if (tool.type === "MCP") {
+                handleToolInfoClick(tool.view);
+              }
+            }}
           />
         </>
       ),
@@ -696,7 +717,7 @@ export function MCPServerViewsSheet({
 
   const footerButtons = getFooterButtons({
     currentPageId,
-    modeType: currentMode,
+    mode,
     selectedToolsInSheet,
     form,
     onCancel: handleCancel,
