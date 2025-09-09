@@ -537,10 +537,7 @@ async function tokenize(text: string, ds: DataSourceConfig) {
   if (tokensRes.isErr()) {
     logger.error(
       {
-        error: tokensRes.error,
-        textLength: sanitizedText.length,
-        sanitizedTextLength: sanitizedText.length,
-        textPreview: sanitizedText.substring(0, 200),
+        error: tokensRes.error.message,
         dataSourceId: ds.dataSourceId,
         workspaceId: ds.workspaceId,
       },
