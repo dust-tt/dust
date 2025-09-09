@@ -432,61 +432,10 @@ export type ConnectionCredentials =
   | LinearCredentials
   | NotionCredentials;
 
-export function isSnowflakeCredentials(
-  credentials: ConnectionCredentials
-): credentials is SnowflakeCredentials {
-  return (
-    "username" in credentials &&
-    "account" in credentials &&
-    "role" in credentials &&
-    "warehouse" in credentials &&
-    (("password" in credentials &&
-      (!("auth_type" in credentials) ||
-        credentials.auth_type === "password")) ||
-      ("auth_type" in credentials &&
-        credentials.auth_type === "keypair" &&
-        "private_key" in credentials))
-  );
-}
-
 export function isModjoCredentials(
   credentials: ConnectionCredentials
 ): credentials is ModjoCredentials {
   return "api_key" in credentials;
-}
-
-export function isHubspotCredentials(
-  credentials: ConnectionCredentials
-): credentials is HubspotCredentials {
-  return "accessToken" in credentials && "portalId" in credentials;
-}
-
-export function isLinearCredentials(
-  credentials: ConnectionCredentials
-): credentials is LinearCredentials {
-  return "api_key" in credentials;
-}
-
-export function isBigQueryWithLocationCredentials(
-  credentials: ConnectionCredentials
-): credentials is BigQueryCredentialsWithLocation {
-  return (
-    "type" in credentials &&
-    "project_id" in credentials &&
-    "location" in credentials
-  );
-}
-
-export function isSalesforceCredentials(
-  credentials: ConnectionCredentials
-): credentials is SalesforceCredentials {
-  return "client_id" in credentials && "client_secret" in credentials;
-}
-
-export function isNotionCredentials(
-  credentials: ConnectionCredentials
-): credentials is NotionCredentials {
-  return "integration_token" in credentials;
 }
 
 export type OauthAPIPostCredentialsResponse = {
