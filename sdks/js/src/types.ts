@@ -481,7 +481,7 @@ export interface LoggerInterface {
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
-  "managed" | "folder" | "website" | "apps" | "actions"
+  "managed" | "folder" | "website" | "apps" | "actions" | "triggers"
 >();
 
 const BlockTypeSchema = FlexibleEnumSchema<
