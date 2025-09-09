@@ -3,7 +3,6 @@ import { useCallback, useState } from "react";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type {
   ConversationWithoutContentType,
-  LightAgentMessageType,
   LightWorkspaceType,
   MCPActionValidationRequest,
 } from "@app/types";
@@ -71,7 +70,6 @@ export function useValidateAction({
           messageId &&
           conversation.sId !== validationRequest.conversationId
         ) {
-          console.log("retry");
           const response = await fetch(
             `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${messageId}/retry?blocked_only=true`,
             {
