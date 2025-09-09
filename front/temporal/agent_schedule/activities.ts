@@ -16,7 +16,6 @@ import logger from "@app/logger/logger";
 import { makeScheduleId } from "@app/temporal/agent_schedule/client";
 import type { AgentConfigurationType } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import { ScheduleExecutionResult } from "@temporalio/client";
 
 /**
  * We want to create individual conversations if the agent outcome will vary from user to user.
