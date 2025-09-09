@@ -154,6 +154,7 @@ async function runAgentSynchronousWithStreaming(
             publishDeferredEventsActivity,
             runModelAndCreateActionsActivity,
             runToolActivity,
+            runRetryableToolActivity: runToolActivity,
           },
           {
             startStep,

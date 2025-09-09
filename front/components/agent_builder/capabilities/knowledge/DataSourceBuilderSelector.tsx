@@ -72,6 +72,11 @@ export const DataSourceBuilderSelector = ({
     [navigationHistory]
   );
 
+  const currentDataSourceView = useMemo(
+    () => findDataSourceViewFromNavigationHistory(navigationHistory),
+    [navigationHistory]
+  );
+
   const [searchScope, setSearchScope] = useState<"node" | "space">("space");
 
   const searchFilter = useMemo(() => {
@@ -87,9 +92,6 @@ export const DataSourceBuilderSelector = ({
       const dsv = dataSourceViews.filter(
         (dsv) => dsv.spaceId === currentSpace.sId
       );
-
-      const currentDataSourceView =
-        findDataSourceViewFromNavigationHistory(navigationHistory);
 
       if (currentDataSourceView) {
         filter.dataSourceViewIdsBySpaceId = {
@@ -108,10 +110,10 @@ export const DataSourceBuilderSelector = ({
 
     return filter;
   }, [
+    currentDataSourceView,
     currentNode,
     currentSpace,
     dataSourceViews,
-    navigationHistory,
     searchScope,
   ]);
 
@@ -230,7 +232,7 @@ export const DataSourceBuilderSelector = ({
             value={searchTerm}
             onChange={setSearchTerm}
           />
-          {currentNode && isSearching && (
+          {(currentNode || currentDataSourceView) && isSearching && (
             <div className="flex items-center gap-1 px-1 py-1">
               <span className="mr-2 text-sm text-muted-foreground">
                 Searching in:
@@ -239,7 +241,14 @@ export const DataSourceBuilderSelector = ({
                 <Button
                   onClick={() => setSearchScope("node")}
                   variant={searchScope === "node" ? "outline" : "ghost"}
-                  label={currentNode.title}
+                  label={
+                    currentNode
+                      ? currentNode.title
+                      : currentDataSourceView
+                        ? getDataSourceNameFromView(currentDataSourceView)
+                        : // should never happen
+                          ""
+                  }
                   className={cn(
                     searchScope !== "node" && "text-muted-foreground"
                   )}

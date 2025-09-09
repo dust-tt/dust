@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
@@ -99,7 +99,10 @@ export function useConversationFeedbacks({
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations/${conversationId}/feedbacks`,
-    conversationFeedbacksFetcher
+    conversationFeedbacksFetcher,
+    {
+      focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
+    }
   );
 
   return {
@@ -211,7 +214,7 @@ export function useConversationTools({
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`
       : null,
     conversationToolsFetcher,
-    options
+    { ...options, focusThrottleInterval: 30 * 60 * 1000 } // 30 minutes
   );
 
   return {
@@ -567,3 +570,123 @@ export function useConversationMarkAsRead({
     markAsRead,
   };
 }
+
+type ConversationParticipationOption = "join" | "leave" | "delete";
+
+export const useConversationParticipationOption = ({
+  ownerId,
+  conversationId,
+  userId,
+  disabled,
+}: {
+  ownerId: string;
+  conversationId: string | null;
+  userId: string | null;
+  disabled: boolean;
+}) => {
+  const { conversationParticipants } = useConversationParticipants({
+    conversationId,
+    workspaceId: ownerId,
+    options: { disabled },
+  });
+  const [option, setOption] = useState<ConversationParticipationOption | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (conversationParticipants === undefined) {
+      setOption(null);
+      return;
+    }
+    const isUserParticipating =
+      userId !== null &&
+      conversationParticipants?.users.find(
+        (participant) => participant.sId === userId
+      );
+
+    const isLastParticipant =
+      isUserParticipating && conversationParticipants?.users.length === 1;
+
+    setOption(
+      isLastParticipant ? "delete" : isUserParticipating ? "leave" : "join"
+    );
+  }, [conversationParticipants, userId]);
+
+  return option;
+};
+
+export const useJoinConversation = ({
+  ownerId,
+  conversationId,
+}: {
+  ownerId: string;
+  conversationId: string | null;
+}): (() => Promise<boolean>) => {
+  const sendNotification = useSendNotification();
+
+  const { mutateConversations } = useConversations({
+    workspaceId: ownerId,
+    options: { disabled: true },
+  });
+  const { mutateConversationParticipants } = useConversationParticipants({
+    conversationId,
+    workspaceId: ownerId,
+    options: { disabled: true },
+  });
+
+  const joinConversation = useCallback(async (): Promise<boolean> => {
+    if (!conversationId) {
+      return false;
+    }
+    try {
+      const response = await fetch(
+        `/api/w/${ownerId}/assistant/conversations/${conversationId}/participants`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        const { error } = await response.json();
+        if (error.type === "user_already_participant") {
+          sendNotification({
+            type: "error",
+            title: "Already subscribed",
+            description: "You are already a participant in this conversation.",
+          });
+          return false;
+        }
+
+        throw new Error("Failed to subscribe to the conversation.");
+      }
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Error",
+        description: "Failed to subscribe to the conversation.",
+      });
+      return false;
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Subscribed!",
+      description: "You have been added to this conversation.",
+    });
+
+    void mutateConversations();
+    void mutateConversationParticipants();
+
+    return true;
+  }, [
+    ownerId,
+    sendNotification,
+    mutateConversations,
+    mutateConversationParticipants,
+    conversationId,
+  ]);
+
+  return joinConversation;
+};

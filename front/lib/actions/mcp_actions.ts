@@ -71,9 +71,11 @@ import {
 import { getBaseServerId } from "@app/lib/api/actions/mcp/client_side_registry";
 import type {
   ClientSideMCPToolTypeWithStakeLevel,
+  MCPToolRetryPolicyType,
   MCPToolType,
-  ServerSideMCPToolTypeWithStakeLevel,
+  ServerSideMCPToolTypeWithStakeAndRetryPolicy,
 } from "@app/lib/api/mcp";
+import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -116,7 +118,7 @@ export interface ServerToolsAndInstructions {
   tools: MCPToolConfigurationType[];
 }
 
-export function makeToolsWithStakesAndTimeout(
+export function getToolExtraFields(
   mcpServerId: string,
   metadata: {
     toolName: string;
@@ -126,6 +128,7 @@ export function makeToolsWithStakesAndTimeout(
 ) {
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
   let serverTimeoutMs: number | undefined;
+  let toolsRetryPolicies: Record<string, MCPToolRetryPolicyType> | undefined;
 
   const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
   if (serverType === "internal") {
@@ -135,6 +138,7 @@ export function makeToolsWithStakesAndTimeout(
     }
     const serverName = r.value.name;
     toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
+    toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
   } else {
     metadata.forEach(
@@ -154,13 +158,14 @@ export function makeToolsWithStakesAndTimeout(
   return new Ok({
     toolsEnabled,
     toolsStakes,
+    toolsRetryPolicies,
     serverTimeoutMs,
   });
 }
 
 function makeServerSideMCPToolConfigurations(
   config: ServerSideMCPServerConfigurationType,
-  tools: ServerSideMCPToolTypeWithStakeLevel[]
+  tools: ServerSideMCPToolTypeWithStakeAndRetryPolicy[]
 ): ServerSideMCPToolConfigurationType[] {
   return tools.map((tool) => ({
     sId: generateRandomModelSId(),
@@ -173,6 +178,7 @@ function makeServerSideMCPToolConfigurations(
         ? EMPTY_INPUT_SCHEMA
         : tool.inputSchema,
     id: config.id,
+    retryPolicy: tool.retryPolicy,
     mcpServerViewId: config.mcpServerViewId,
     internalMCPServerId: config.internalMCPServerId,
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
@@ -832,6 +838,7 @@ export async function listToolsForServerSideMCPServer(
       stakeLevel: FALLBACK_MCP_TOOL_STAKE_LEVEL,
       availability: "manual" as const,
       toolServerId: "",
+      retryPolicy: DEFAULT_MCP_TOOL_RETRY_POLICY,
     }));
 
     // Create configurations and add required properties.
@@ -847,20 +854,18 @@ export async function listToolsForServerSideMCPServer(
     connectionParams.mcpServerId
   );
 
-  const r = makeToolsWithStakesAndTimeout(
-    connectionParams.mcpServerId,
-    metadata
-  );
+  const r = getToolExtraFields(connectionParams.mcpServerId, metadata);
   if (r.isErr()) {
     return r;
   }
-  const { toolsEnabled, toolsStakes, serverTimeoutMs } = r.value;
+  const { toolsEnabled, toolsStakes, serverTimeoutMs, toolsRetryPolicies } =
+    r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(
     connectionParams.mcpServerId
   );
 
-  const toolsWithStakesAndTimeout = allToolsRaw
+  const toolsWithStakesRetryPoliciesAndTimeout = allToolsRaw
     .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
     .map((tool) => ({
       ...tool,
@@ -872,11 +877,15 @@ export async function listToolsForServerSideMCPServer(
       availability,
       toolServerId: connectionParams.mcpServerId,
       ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
+      retryPolicy:
+        toolsRetryPolicies?.[tool.name] ||
+        toolsRetryPolicies?.["default"] ||
+        DEFAULT_MCP_TOOL_RETRY_POLICY,
     }));
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,
-    toolsWithStakesAndTimeout
+    toolsWithStakesRetryPoliciesAndTimeout
   );
   return new Ok(serverSideToolConfigs);
 }

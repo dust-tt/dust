@@ -27,6 +27,7 @@ import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
+import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type {
@@ -95,6 +96,7 @@ export type ServerSideMCPToolType = Omit<
   permission: MCPToolStakeLevelType;
   toolServerId: string;
   timeoutMs?: number;
+  retryPolicy: MCPToolRetryPolicyType;
 };
 
 export type ClientSideMCPToolType = Omit<

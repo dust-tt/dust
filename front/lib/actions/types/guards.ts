@@ -1,5 +1,6 @@
 import type {
   ClientSideMCPToolConfigurationType,
+  LightClientSideMCPToolConfigurationType,
   LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
   MCPActionType,
@@ -218,6 +219,25 @@ export function isLightServerSideMCPToolConfiguration(
     isMCPToolConfiguration(arg) &&
     "mcpServerViewId" in arg &&
     !("inputSchema" in arg)
+  );
+}
+
+export function isLightClientSideMCPToolConfiguration(
+  arg: unknown
+): arg is LightClientSideMCPToolConfigurationType {
+  return (
+    isMCPToolConfiguration(arg) &&
+    "clientSideMcpServerId" in arg &&
+    !("inputSchema" in arg)
+  );
+}
+
+export function isLightMCPToolConfiguration(
+  arg: unknown
+): arg is LightMCPToolConfigurationType {
+  return (
+    isLightServerSideMCPToolConfiguration(arg) ||
+    isLightClientSideMCPToolConfiguration(arg)
   );
 }
 

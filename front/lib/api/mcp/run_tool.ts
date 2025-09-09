@@ -17,6 +17,7 @@ import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_interna
 import { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -161,9 +162,20 @@ export async function* runToolWithStreaming(
     if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
       // MCP Error -32001: Request timed out.
       errorMessage = `The tool ${actionBaseParams.functionCallName} timed out. `;
+
+      // If the tool should be retried on interrupt, we throw an error so the workflow retries the
+      // `runTool` activity. If the tool should not be retried on interrupt, the error is returned to
+      // the model, to let it decide what to do.
+      const retryPolicy =
+        getRetryPolicyFromToolConfiguration(toolConfiguration);
+      if (retryPolicy === "retry_on_interrupt") {
+        errorMessage += "Error: " + JSON.stringify(toolErr);
+        throw new Error(errorMessage);
+      }
     } else {
       errorMessage = `The tool ${actionBaseParams.functionCallName} returned an error. `;
     }
+
     errorMessage +=
       "An error occurred while executing the tool. You can inform the user of this issue.";
 

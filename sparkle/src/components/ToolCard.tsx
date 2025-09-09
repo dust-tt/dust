@@ -15,10 +15,13 @@ export interface ToolCardProps {
   isSelected: boolean;
   canAdd: boolean;
   cantAddReason?: string;
+  toolInfo?: { label: string; onClick: () => void };
   onClick?: () => void;
   className?: string;
+  cardContainerClassName?: string;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  descriptionLineClamp?: number;
 }
 
 export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
@@ -30,10 +33,13 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
       isSelected,
       canAdd,
       cantAddReason,
+      toolInfo,
       onClick,
       className,
+      cardContainerClassName,
       mountPortal,
       mountPortalContainer,
+      descriptionLineClamp = 2,
     },
     ref
   ) => {
@@ -43,44 +49,63 @@ export const ToolCard = React.forwardRef<HTMLDivElement, ToolCardProps>(
         variant={isSelected ? "secondary" : "primary"}
         onClick={onClick}
         disabled={!canAdd}
-        className={cn("s-h-24 s-p-3", className)}
+        containerClassName={cardContainerClassName}
+        className={cn("s-p-3", className)}
       >
-        <div className="s-flex s-w-full s-flex-col">
-          <div className="s-mb-2 s-flex s-items-start s-justify-between s-gap-2">
-            <div className="s-flex s-items-center s-gap-2">
-              <Avatar icon={icon} size="sm" />
-              <span className="s-text-sm s-font-medium">{label}</span>
-              {isSelected && (
-                <Chip
-                  size="xs"
-                  color="green"
-                  label="ADDED"
-                  className={cn(FADE_TRANSITION_CLASSES, "s-opacity-100")}
-                />
-              )}
-            </div>
-            {canAdd && (
-              <Button
-                size="xs"
-                variant="outline"
-                icon={PlusIcon}
-                label="Add"
-                className={cn(FADE_TRANSITION_CLASSES, "s-flex-shrink-0")}
-              />
-            )}
-            {cantAddReason && (
-              <div className="s-flex-shrink-0 s-text-xs s-italic s-text-muted-foreground dark:s-text-muted-foreground-night">
-                {cantAddReason}
+        <div className="s-flex s-h-full s-w-full s-flex-col s-justify-between">
+          <div className="s-flex s-flex-col">
+            <div className="s-mb-2 s-flex s-items-center s-justify-between s-gap-2">
+              <div className="s-flex s-items-center s-gap-2">
+                <Avatar icon={icon} size="sm" />
+                <span className="s-text-sm s-font-medium">{label}</span>
+                {isSelected && (
+                  <Chip
+                    size="xs"
+                    color="green"
+                    label="ADDED"
+                    className={cn(FADE_TRANSITION_CLASSES, "s-opacity-100")}
+                  />
+                )}
               </div>
-            )}
+              <div className="s-flex s-flex-shrink-0 s-items-center s-gap-2">
+                {canAdd && (
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    icon={PlusIcon}
+                    label="Add"
+                    className={cn(FADE_TRANSITION_CLASSES, "s-flex-shrink-0")}
+                  />
+                )}
+                {cantAddReason && (
+                  <div className="s-flex-shrink-0 s-text-xs s-italic s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {cantAddReason}
+                  </div>
+                )}
+              </div>
+            </div>
+            <TruncatedText
+              className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night"
+              mountPortal={mountPortal}
+              mountPortalContainer={mountPortalContainer}
+              lineClamp={descriptionLineClamp}
+            >
+              {description}
+            </TruncatedText>
           </div>
-          <TruncatedText 
-            className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night"
-            mountPortal={mountPortal}
-            mountPortalContainer={mountPortalContainer}
-          >
-            {description}
-          </TruncatedText>
+          {toolInfo && (
+            <div>
+              <a
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toolInfo.onClick();
+                }}
+                className="hover:s-underline-offset-2 dark:s-text-muted-foreground-night s-cursor-pointer s-text-sm s-font-semibold s-text-muted-foreground hover:s-text-highlight-light hover:s-underline dark:hover:s-text-highlight-light-night"
+              >
+                {toolInfo.label}
+              </a>
+            </div>
+          )}
         </div>
       </Card>
     );
