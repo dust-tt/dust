@@ -6,7 +6,6 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
-import axios from "axios";
 import type { Activity, TurnContext } from "botbuilder";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
@@ -28,43 +27,25 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
 
-type TeamsAnswerParams = {
-  tenantId: string;
-  conversationId: string;
-  userId: string;
-  userAadObjectId?: string;
-  activityId: string;
-  channelId: string;
-  replyToId?: string;
-};
-
 export async function botAnswerTeamsMessage(
+  context: TurnContext,
   message: string,
-  params: TeamsAnswerParams,
   connector: ConnectorResource,
-  responseCallback: {
-    serviceUrl: string;
-    conversationId: string;
-    activityId: string;
-    userId?: string;
-    botContext?: TurnContext; // Direct Bot Framework context
-    streamingMessages?: Map<string, string>;
-  }
+  streamingMessages: Map<string, string>
 ): Promise<Result<undefined, Error>> {
-  const { tenantId } = params;
-
   try {
     const res = await answerTeamsMessage(
+      context,
       message,
-      params,
       connector,
-      responseCallback
+      streamingMessages
     );
 
     if (res.isErr()) {
       await sendTeamsResponse(
-        responseCallback,
+        context,
         false,
+        streamingMessages,
         createErrorAdaptiveCard({
           error: res.error.message,
           workspaceId: connector.workspaceId,
@@ -78,14 +59,14 @@ export async function botAnswerTeamsMessage(
       {
         error: e,
         connectorId: connector.id,
-        tenantId,
       },
       "Unexpected exception answering to Teams message"
     );
 
     await sendTeamsResponse(
-      responseCallback,
+      context,
       false,
+      streamingMessages,
       createErrorAdaptiveCard({
         error: "An unexpected error occurred. Our team has been notified",
         workspaceId: connector.workspaceId,
@@ -96,23 +77,18 @@ export async function botAnswerTeamsMessage(
 }
 
 async function answerTeamsMessage(
+  context: TurnContext,
   message: string,
-  {
-    conversationId,
-    userId,
-    userAadObjectId,
-    activityId,
+  connector: ConnectorResource,
+  streamingMessages: Map<string, string>
+): Promise<Result<undefined, Error>> {
+  const {
+    conversation: { id: conversationId },
+    from: { id: userId, aadObjectId: userAadObjectId },
+    id: activityId,
     channelId,
     replyToId,
-  }: TeamsAnswerParams,
-  connector: ConnectorResource,
-  responseCallback: {
-    serviceUrl: string;
-    conversationId: string;
-    activityId: string;
-    userId?: string;
-  }
-): Promise<Result<undefined, Error>> {
+  } = context.activity;
   // Check for existing Dust conversation for this Teams conversation
   let lastTeamsMessage: TeamsMessage | null = null;
 
@@ -177,7 +153,7 @@ async function answerTeamsMessage(
     email: email,
     userName: displayName,
     conversationId: conversationId,
-    activityId: activityId,
+    activityId: activityId || "",
     channelId: channelId,
     replyToId: replyToId,
     dustConversationId: lastTeamsMessage?.dustConversationId,
@@ -458,7 +434,12 @@ async function answerTeamsMessage(
             });
 
             // Send streaming update to Teams app webhook endpoint
-            await sendTeamsResponse(responseCallback, true, streamingCard);
+            await sendTeamsResponse(
+              context,
+              true,
+              streamingMessages,
+              streamingCard
+            );
           }
         }
         break;
@@ -472,7 +453,12 @@ async function answerTeamsMessage(
           workspaceId: connector.workspaceId,
         });
         agentState = "acting";
-        await sendTeamsResponse(responseCallback, true, streamingCard);
+        await sendTeamsResponse(
+          context,
+          true,
+          streamingMessages,
+          streamingCard
+        );
 
         break;
       }
@@ -484,7 +470,7 @@ async function answerTeamsMessage(
 
   if (agentMessageSuccess) {
     // Send final clean message if streaming was used
-    if (streamingUsed && responseCallback) {
+    if (streamingUsed) {
       try {
         const finalCard = createResponseAdaptiveCard({
           response: finalResponse,
@@ -498,7 +484,7 @@ async function answerTeamsMessage(
           originalMessage: message,
         });
 
-        await sendTeamsResponse(responseCallback, false, finalCard);
+        await sendTeamsResponse(context, false, streamingMessages, finalCard);
       } catch (finalError) {
         logger.warn(
           { error: finalError },
@@ -515,74 +501,44 @@ async function answerTeamsMessage(
 }
 
 const sendTeamsResponse = async (
-  responseCallback: {
-    serviceUrl: string;
-    conversationId: string;
-    activityId: string;
-    userId?: string;
-    botContext?: TurnContext;
-    streamingMessages?: Map<string, string>;
-  },
+  context: TurnContext,
   isStreaming: boolean,
+  streamingMessages: Map<string, string>,
   adaptiveCard: Partial<Activity>
 ) => {
   try {
     // If we have direct Bot Framework context, use it directly
-    if (responseCallback.botContext && responseCallback.streamingMessages) {
-      const context = responseCallback.botContext;
-      const streamingMessages = responseCallback.streamingMessages;
-      const conversationId = responseCallback.conversationId;
+    const conversationId = context.activity.conversation?.id;
 
-      if (isStreaming) {
-        // Update existing message for streaming
-        const existingActivityId = streamingMessages.get(conversationId);
-        if (existingActivityId) {
-          try {
-            await updateActivity(context, {
-              ...adaptiveCard,
-              id: existingActivityId,
-            });
-            return;
-          } catch (updateError) {
-            logger.warn(
-              { error: updateError },
-              "Failed to update streaming message, sending new one"
-            );
-          }
+    if (isStreaming && conversationId) {
+      // Update existing message for streaming
+      const existingActivityId = streamingMessages.get(conversationId);
+      if (existingActivityId) {
+        try {
+          await updateActivity(context, {
+            ...adaptiveCard,
+            id: existingActivityId,
+          });
+          return;
+        } catch (updateError) {
+          logger.warn(
+            { error: updateError },
+            "Failed to update streaming message, sending new one"
+          );
         }
-
-        // Send new streaming message
-        const sentActivity = await sendActivity(context, adaptiveCard);
-        if (sentActivity?.id) {
-          streamingMessages.set(conversationId, sentActivity.id);
-        }
-      } else {
-        // Final message - send and clean up
-        await sendActivity(context, adaptiveCard);
-        streamingMessages.delete(conversationId);
       }
-      return;
+
+      // Send new streaming message
+      const sentActivity = await sendActivity(context, adaptiveCard);
+      if (sentActivity?.id) {
+        streamingMessages.set(conversationId, sentActivity.id);
+      }
+    } else {
+      // Final message - send and clean up
+      await sendActivity(context, adaptiveCard);
+      streamingMessages.delete(conversationId);
     }
-
-    // Fallback to webhook approach (for backward compatibility) -- to remove in the future
-    const teamsAppUrl = process.env.TEAMS_APP_URL || "http://localhost:3978";
-    const teamsUrl = `${teamsAppUrl}/api/webhook-response`;
-
-    await axios.post(
-      teamsUrl,
-      {
-        serviceUrl: responseCallback.serviceUrl,
-        conversationId: responseCallback.conversationId,
-        activityId: responseCallback.activityId,
-        userId: responseCallback.userId,
-        isStreaming,
-        adaptiveCard,
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: 5000,
-      }
-    );
+    return;
   } catch (updateError) {
     logger.warn(
       { error: updateError },

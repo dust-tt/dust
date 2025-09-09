@@ -1,3 +1,4 @@
+import { DustAPI } from "@dust-tt/client";
 import type { TurnContext } from "botbuilder";
 import {
   CloudAdapter,
@@ -5,14 +6,16 @@ import {
 } from "botbuilder";
 import type { Request, Response } from "express";
 
+import { getConnector } from "@connectors/api/webhooks/teams/utils";
 import {
   createErrorAdaptiveCard,
   createThinkingAdaptiveCard,
 } from "@connectors/connectors/teams/adaptive_cards";
 import { botAnswerTeamsMessage } from "@connectors/connectors/teams/bot";
 import { sendActivity } from "@connectors/connectors/teams/bot_messaging_utils";
+import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 // Store message references for streaming updates
 const streamingMessages = new Map<string, string>(); // conversationId -> activityId
@@ -54,7 +57,7 @@ adapter.onTurnError = async (context, error) => {
  * Direct Teams Bot Framework endpoint in connectors
  * Handles all Teams messages, adaptive cards, and message extensions
  */
-export async function teamsMessagesWebhook(req: Request, res: Response) {
+export async function webhookTeamsAPIHandler(req: Request, res: Response) {
   logger.info(
     {
       headers: {
@@ -81,14 +84,19 @@ export async function teamsMessagesWebhook(req: Request, res: Response) {
         "Received Teams activity"
       );
 
+      const connector = await getConnector(context);
+      if (!connector) {
+        return;
+      }
+
       // Handle different activity types
       switch (context.activity.type) {
         case "message":
-          await handleMessage(context);
+          await handleMessage(context, connector);
           break;
 
         case "invoke":
-          await handleInvoke(context);
+          await handleInvoke(context, connector);
           break;
 
         default:
@@ -105,27 +113,36 @@ export async function teamsMessagesWebhook(req: Request, res: Response) {
   }
 }
 
-async function handleMessage(context: TurnContext) {
+async function handleMessage(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
   // Check if it's an adaptive card submit
   if (context.activity.value?.action === "ask_agent") {
-    await handleAgentSelection(context);
+    await handleAgentSelection(context, connector);
     return;
   }
 
   // Handle regular text messages
   if (context.activity.text?.trim()) {
-    await handleTextMessage(context);
+    await handleTextMessage(context, connector);
   }
 }
 
-async function handleInvoke(context: TurnContext) {
+async function handleInvoke(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
   // Handle message extensions (compose extensions)
   if (context.activity.name === "composeExtension/query") {
-    await handleMessageExtension(context);
+    await handleMessageExtension(context, connector);
   }
 }
 
-async function handleAgentSelection(context: TurnContext) {
+async function handleAgentSelection(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
   const { agentId, agentName, originalMessage } = context.activity.value;
 
   logger.info(
@@ -150,10 +167,13 @@ async function handleAgentSelection(context: TurnContext) {
     .trim();
   const agentMessage = `@${agentName} ${cleanMessage}`;
 
-  await processTeamsMessage(context, agentMessage);
+  await processTeamsMessage(context, agentMessage, connector);
 }
 
-async function handleTextMessage(context: TurnContext) {
+async function handleTextMessage(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
   logger.info({ text: context.activity.text }, "Handling regular text message");
 
   // Send thinking message
@@ -183,15 +203,7 @@ async function handleTextMessage(context: TurnContext) {
   } catch (error) {
     logger.error(
       {
-        error: error.message,
-        stack: error.stack,
-        statusCode: error.statusCode,
-        code: error.code,
-        errorType: error.constructor.name,
-        response: error.response?.data,
-        body: error.body,
-        serviceUrl: context.activity.serviceUrl,
-        conversationId: context.activity.conversation?.id,
+        error,
       },
       "Failed to send thinking card - detailed error"
     );
@@ -204,31 +216,59 @@ async function handleTextMessage(context: TurnContext) {
     );
   }
 
-  await processTeamsMessage(context, context.activity.text);
+  await processTeamsMessage(context, context.activity.text, connector);
 }
 
-async function handleMessageExtension(context: TurnContext) {
+async function handleMessageExtension(
+  context: TurnContext,
+  connector: ConnectorResource
+) {
   try {
     const query = context.activity.value;
     logger.info({ query }, "Handling message extension query");
 
-    // Get agents from the teams_agents endpoint
-    const agentsUrl = `${process.env.PUBLIC_API_URL || "http://localhost:3002"}/webhooks/${process.env.WEBHOOK_SECRET || "mywebhooksecret"}/teams_agents`;
+    const dustAPI = new DustAPI(
+      { url: apiConfig.getDustFrontAPIUrl() },
+      {
+        workspaceId: connector.workspaceId,
+        apiKey: connector.workspaceAPIKey,
+      },
+      logger
+    );
 
-    const axios = (await import("axios")).default;
-    const response = await axios.get(agentsUrl, { timeout: 5000 });
-    const agents = response.data.agents || [];
+    const agentConfigurationsRes = await dustAPI.getAgentConfigurations({});
+
+    if (agentConfigurationsRes.isErr()) {
+      logger.error(
+        { error: agentConfigurationsRes.error },
+        "Failed to get agent configurations"
+      );
+      return;
+    }
+
+    const agents = agentConfigurationsRes.value
+      .filter((ac) => ac.status === "active")
+      .map((ac) => ({
+        sId: ac.sId,
+        name: ac.name,
+        description: ac.description,
+        usage: ac.usage,
+      }))
+      // Sort by usage (most popular first)
+      .sort(
+        (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
+      );
 
     // Filter agents based on search query
     const searchTerm = query.parameters?.searchQuery?.toLowerCase() || "";
     const filteredAgents = agents.filter(
-      (agent: any) =>
+      (agent) =>
         agent.name.toLowerCase().includes(searchTerm) ||
         agent.description?.toLowerCase().includes(searchTerm)
     );
 
     // Return agent results
-    const results = filteredAgents.slice(0, 10).map((agent: any) => ({
+    const results = filteredAgents.slice(0, 10).map((agent) => ({
       contentType: "application/vnd.microsoft.card.hero",
       content: {
         title: agent.name,
@@ -272,52 +312,18 @@ async function handleMessageExtension(context: TurnContext) {
   }
 }
 
-async function processTeamsMessage(context: TurnContext, message: string) {
+async function processTeamsMessage(
+  context: TurnContext,
+  message: string,
+  connector: ConnectorResource
+) {
   try {
-    // Find the connector for this Teams conversation
-    // For now, use the first Microsoft connector - in production you'd want to identify the specific one
-    const connectors = await ConnectorResource.listByType("microsoft", {});
-
-    if (connectors.length === 0) {
-      logger.error("No Microsoft connector found for Teams message");
-      await sendActivity(
-        context,
-        createErrorAdaptiveCard({
-          error: "No Microsoft connector configured",
-          workspaceId: "unknown",
-        })
-      );
-      return;
-    }
-
-    const connector = connectors[0];
-
-    // Prepare response callback for streaming
-    const responseCallback = {
-      serviceUrl: context.activity.serviceUrl,
-      conversationId: context.activity.conversation.id,
-      activityId: context.activity.id,
-      userId: context.activity.from.id,
-      streamingMessages, // Pass the streaming messages map
-    };
-
-    // Process the message through the existing bot logic
-    const params = {
-      tenantId: context.activity.conversation?.tenantId || "unknown-tenant",
-      conversationId: context.activity.conversation.id,
-      userId: context.activity.from.id,
-      userAadObjectId: context.activity.from.aadObjectId,
-      activityId: context.activity.id,
-      channelId: context.activity.channelId,
-      replyToId: context.activity.replyToId,
-    };
-
-    const result = await botAnswerTeamsMessage(message, params, connector!, {
-      ...responseCallback,
-      // Add Bot Framework context for direct responses
-      botContext: context,
-      streamingMessages,
-    });
+    const result = await botAnswerTeamsMessage(
+      context,
+      message,
+      connector,
+      streamingMessages
+    );
 
     if (result.isErr()) {
       logger.error({ error: result.error }, "Error processing Teams message");
@@ -340,6 +346,3 @@ async function processTeamsMessage(context: TurnContext, message: string) {
     );
   }
 }
-
-// Export the streaming messages map for use in bot logic
-export { streamingMessages };
