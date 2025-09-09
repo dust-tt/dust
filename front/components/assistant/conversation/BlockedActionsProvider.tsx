@@ -23,12 +23,11 @@ import { getIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import type {
   ConversationWithoutContentType,
-  LightAgentMessageType,
   LightWorkspaceType,
 } from "@app/types";
 
 type BlockedActionQueueItem = {
-  message?: LightAgentMessageType;
+  messageId: string;
   blockedAction: BlockedToolExecution;
 };
 
@@ -48,7 +47,16 @@ function useBlockedActionsQueue({
   useEffect(() => {
     if (conversationId) {
       setBlockedActionsQueue(
-        blockedActions.map((action) => ({ blockedAction: action }))
+        blockedActions.flatMap((action): BlockedActionQueueItem[] => {
+          if (action.status === "blocked_child_action_input_required") {
+            return action.childBlockedActionsList.map((childAction) => ({
+              blockedAction: childAction,
+              messageId: action.messageId,
+            }));
+          } else {
+            return [{ blockedAction: action, messageId: action.messageId }];
+          }
+        })
       );
     } else {
       setBlockedActionsQueue(EMPTY_BLOCKED_ACTIONS_QUEUE);
@@ -57,17 +65,12 @@ function useBlockedActionsQueue({
 
   const enqueueBlockedAction = useCallback(
     ({
-      message,
+      messageId,
       blockedAction,
     }: {
-      message: LightAgentMessageType;
+      messageId: string;
       blockedAction: BlockedToolExecution;
     }) => {
-      // Only enqueue actions for the current conversation
-      if (blockedAction.conversationId !== conversationId) {
-        return;
-      }
-
       setBlockedActionsQueue((prevQueue) => {
         const existingIndex = prevQueue.findIndex(
           (v) => v.blockedAction.actionId === blockedAction.actionId
@@ -76,13 +79,13 @@ function useBlockedActionsQueue({
         // If the action is not in the queue, add it.
         // If the action is in the queue, replace it with the new one.
         return existingIndex === -1
-          ? [...prevQueue, { blockedAction, message }]
+          ? [...prevQueue, { blockedAction, messageId }]
           : prevQueue.map((item, index) =>
-              index === existingIndex ? { blockedAction, message } : item
+              index === existingIndex ? { blockedAction, messageId } : item
             );
       });
     },
-    [conversationId]
+    []
   );
 
   const removeCompletedAction = useCallback((actionId: string) => {
@@ -105,7 +108,7 @@ function useBlockedActionsQueue({
 
 type ActionValidationContextType = {
   enqueueBlockedAction: (params: {
-    message: LightAgentMessageType;
+    messageId: string;
     blockedAction: BlockedToolExecution;
   }) => void;
   showBlockedActionsDialog: () => void;
@@ -189,11 +192,11 @@ export function BlockedActionsProvider({
       return;
     }
 
-    const { blockedAction, message } = currentBlockedAction;
+    const { blockedAction, messageId } = currentBlockedAction;
 
     const result = await validateAction({
       validationRequest: blockedAction,
-      message,
+      messageId,
       approved:
         status === "approved" && neverAskAgain ? "always_approved" : status,
     });

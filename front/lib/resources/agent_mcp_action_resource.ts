@@ -32,7 +32,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
-import { removeNulls } from "@app/types";
+import { isString, removeNulls } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 
@@ -340,6 +340,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             mcpServerId,
             mcpServerDisplayName,
           },
+        });
+      } else if (action.status === "blocked_child_action_input_required") {
+        const conversationId = action.stepContext.resumeState?.conversationId;
+        const childBlockedActionsList = isString(conversationId)
+          ? await this.listBlockedActionsForConversation(auth, conversationId)
+          : [];
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          resumeState: action.stepContext.resumeState,
+          childBlockedActionsList,
+          metadata: {
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
+          },
+          authorizationInfo: null,
         });
       } else {
         blockedActionsList.push({
