@@ -1,4 +1,5 @@
 import {
+  BellIcon,
   BoltIcon,
   Button,
   CloudArrowLeftRightIcon,
@@ -247,6 +248,12 @@ const SYSTEM_SPACE_ITEMS: {
     visual: BoltIcon,
     category: "actions",
     flag: null,
+  },
+  {
+    label: "Triggers",
+    visual: BellIcon,
+    category: "triggers",
+    flag: "hootl_webhooks",
   },
 ];
 
