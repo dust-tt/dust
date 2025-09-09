@@ -23,7 +23,6 @@ import { getIcon } from "@app/lib/actions/mcp_icons";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import type {
   ConversationWithoutContentType,
-  LightAgentMessageType,
   LightWorkspaceType,
 } from "@app/types";
 
