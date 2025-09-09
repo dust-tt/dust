@@ -27,7 +27,7 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { ProviderVisibility } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { isValidDate, safeSubstring } from "@connectors/types";
+import { isValidDate, safeSubstring, stripNullBytes } from "@connectors/types";
 import { withRetries } from "@connectors/types";
 
 const MAX_CSV_SIZE = 50 * 1024 * 1024;
@@ -521,10 +521,29 @@ export async function renderPrefixSection({
 }
 
 async function tokenize(text: string, ds: DataSourceConfig) {
-  const tokensRes = await getDustAPI(ds).tokenize(text, ds.dataSourceId);
+  if (!text) {
+    return [];
+  }
+
+  const sanitizedText = stripNullBytes(text);
+  if (!sanitizedText || sanitizedText.length === 0) {
+    return [];
+  }
+
+  const tokensRes = await getDustAPI(ds).tokenize(
+    sanitizedText,
+    ds.dataSourceId
+  );
   if (tokensRes.isErr()) {
     logger.error(
-      { error: tokensRes.error },
+      {
+        error: tokensRes.error,
+        textLength: sanitizedText.length,
+        sanitizedTextLength: sanitizedText.length,
+        textPreview: sanitizedText.substring(0, 200),
+        dataSourceId: ds.dataSourceId,
+        workspaceId: ds.workspaceId,
+      },
       `Error tokenizing text for ${ds.dataSourceId}`
     );
     throw new DustConnectorWorkflowError(
