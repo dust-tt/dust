@@ -7,11 +7,12 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/trigger_subscriber";
-import { TriggerModel } from "@app/lib/models/assistant/triggers";
+import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
+import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -110,6 +111,42 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
+  }
+
+  static async listByUserEditor(auth: Authenticator) {
+    const user = auth.getNonNullableUser();
+
+    return this.baseFetch(auth, {
+      where: {
+        editor: user.id,
+      },
+    });
+  }
+
+  static async listByUserSubscriber(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const res = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        // Exclude triggers where user is also editor to avoid duplicates
+        editor: { [Op.ne]: user.id },
+      },
+      include: [
+        {
+          model: TriggerSubscriberModel,
+          as: "trigger_subscribers",
+          required: true,
+          attributes: [],
+          where: {
+            userId: user.id,
+          },
+        },
+      ],
+    });
+
+    return res.map((c) => new this(this.model, c.get()));
   }
 
   static async update(

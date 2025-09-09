@@ -1,9 +1,14 @@
 import isEqual from "lodash/isEqual";
 
 import type { LightAgentConfigurationType } from "@app/types";
+import { isDevelopment } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
+
+export function getFaviconPath(): string {
+  return isDevelopment() ? "/static/local_favicon.png" : "/static/favicon.png";
+}
 
 export function classNames(...classes: (string | null | boolean)[]) {
   return classes.filter(Boolean).join(" ");

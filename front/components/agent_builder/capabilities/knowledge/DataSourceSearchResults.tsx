@@ -1,11 +1,5 @@
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
-import {
-  Checkbox,
-  cn,
-  DataTable,
-  ScrollableDataTable,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Checkbox, cn, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
@@ -26,11 +20,10 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { DataSourceViewContentNode, SpaceType } from "@app/types";
+import type { DataSourceViewContentNode } from "@app/types";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types";
 
 interface DataSourceSearchResultsProps {
-  currentSpace: SpaceType | null;
   searchResultNodes: DataSourceContentNode[];
   isLoading: boolean;
   onClearSearch: () => void;
@@ -91,14 +84,15 @@ function makeSearchResultColumnsWithSelection(
       enableSorting: false,
       cell: ({ row }) => (
         <DataTable.CellContent icon={row.original.icon}>
-          <Tooltip
+          <DataTable.BasicCellContent
             label={row.original.title}
-            trigger={<span>{row.original.title}</span>}
+            tooltip={row.original.title}
+            className="p-0"
           />
         </DataTable.CellContent>
       ),
       meta: {
-        sizeRatio: 40,
+        sizeRatio: 50,
       },
     },
     {
@@ -106,18 +100,22 @@ function makeSearchResultColumnsWithSelection(
       accessorKey: "location",
       id: "location",
       enableSorting: false,
-      cell: ({ row }) => (
-        <DataTable.BasicCellContent
-          label={
-            row.original.dataSourceView.category === "folder"
-              ? row.original.dataSourceView.dataSource.name
-              : row.original.location
-          }
-          className="pr-2"
-        />
-      ),
+      cell: ({ row }) => {
+        const locationText =
+          row.original.dataSourceView.category === "folder"
+            ? row.original.dataSourceView.dataSource.name
+            : row.original.location;
+
+        return (
+          <DataTable.BasicCellContent
+            label={locationText}
+            tooltip={locationText}
+            className="pr-2"
+          />
+        );
+      },
       meta: {
-        sizeRatio: 40,
+        sizeRatio: 35,
       },
     },
     {
@@ -132,21 +130,20 @@ function makeSearchResultColumnsWithSelection(
             row.original.lastUpdatedAt
               ? formatTimestampToFriendlyDate(
                   row.original.lastUpdatedAt,
-                  "short"
+                  "compact"
                 )
               : "-"
           }
         />
       ),
       meta: {
-        sizeRatio: 20,
+        sizeRatio: 15,
       },
     },
   ];
 }
 
 export function DataSourceSearchResults({
-  currentSpace,
   searchResultNodes,
   isLoading,
   onClearSearch,
@@ -377,33 +374,13 @@ export function DataSourceSearchResults({
           Error searching results.
         </div>
       ) : (
-        <>
-          <div className="flex flex-row items-center justify-between text-end text-sm text-muted-foreground dark:text-muted-foreground-night">
-            <div>
-              {currentSpace !== null && (
-                <>
-                  Searching in{" "}
-                  <span className="font-medium">{currentSpace.name}</span>
-                </>
-              )}
-            </div>
-            <div>
-              {isLoading
-                ? "Searching..."
-                : `${searchResults.length} results found`}
-            </div>
-          </div>
-          <ScrollableDataTable
-            data={searchTableRows}
-            columns={columns}
-            className={cn(
-              "pb-4",
-              isLoading && "pointer-events-none opacity-50"
-            )}
-            totalRowCount={searchResults.length}
-            maxHeight
-          />
-        </>
+        <ScrollableDataTable
+          data={searchTableRows}
+          columns={columns}
+          className={cn("pb-4", isLoading && "pointer-events-none opacity-50")}
+          totalRowCount={searchResults.length}
+          maxHeight
+        />
       )}
     </>
   );

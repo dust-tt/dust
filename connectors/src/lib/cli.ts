@@ -361,6 +361,7 @@ export const batch = async ({
         "intercom",
         "confluence",
         "github",
+        "microsoft",
         "google_drive",
         "snowflake",
         "zendesk",

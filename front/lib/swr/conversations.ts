@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
@@ -12,6 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
@@ -25,6 +26,8 @@ import type {
   FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
+
+const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
 export function useConversation({
   conversationId,
@@ -96,7 +99,10 @@ export function useConversationFeedbacks({
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/assistant/conversations/${conversationId}/feedbacks`,
-    conversationFeedbacksFetcher
+    conversationFeedbacksFetcher,
+    {
+      focusThrottleInterval: 30 * 60 * 1000, // 30 minutes
+    }
   );
 
   return {
@@ -208,7 +214,7 @@ export function useConversationTools({
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`
       : null,
     conversationToolsFetcher,
-    options
+    { ...options, focusThrottleInterval: 30 * 60 * 1000 } // 30 minutes
   );
 
   return {
@@ -363,14 +369,18 @@ export function useVisualizationRetry({
   workspaceId,
   conversationId,
   agentConfigurationId,
+  isPublic,
 }: {
   workspaceId: string | null;
   conversationId: string | null;
   agentConfigurationId: string | null;
+  isPublic: boolean;
 }) {
+  const canRetry = !isPublic && agentConfigurationId && conversationId;
+
   const handleVisualizationRetry = useCallback(
-    async (errorMessage: string) => {
-      if (!conversationId || !agentConfigurationId) {
+    async (errorMessage: string): Promise<boolean> => {
+      if (!canRetry) {
         return false;
       }
 
@@ -407,16 +417,13 @@ export function useVisualizationRetry({
         return false;
       }
     },
-    [workspaceId, conversationId, agentConfigurationId]
+    [workspaceId, conversationId, agentConfigurationId, canRetry]
   );
 
-  if (!agentConfigurationId) {
-    return () => {
-      return false;
-    };
-  }
-
-  return handleVisualizationRetry;
+  return {
+    handleVisualizationRetry,
+    canRetry,
+  };
 }
 
 export function useConversationMessage({
@@ -478,3 +485,208 @@ export function useConversationFiles({
     mutateConversationFiles: mutate,
   };
 }
+
+/**
+ * This hook can be used to automatically mark a conversation as read after a delay.
+ * It can also be used to manually mark a conversation as read.
+ */
+export function useConversationMarkAsRead({
+  conversation,
+  workspaceId,
+}: {
+  conversation: ConversationWithoutContentType | null;
+  workspaceId: string;
+}) {
+  const { mutateConversations } = useConversations({
+    workspaceId,
+    options: {
+      disabled: true,
+    },
+  });
+
+  const markAsRead = useCallback(
+    /**
+     * @param conversationId - The ID of the conversation to mark as read.
+     * @param mutateList - Whether to mutate the list of conversations in the sidebar.
+     *
+     * If mutateList is true, the list of conversations in the sidebar will be mutated to update the unread status of the conversation.
+     * If mutateList is false, the list of conversations in the sidebar will not be mutated to update the unread status of the conversation.
+     *
+     * This is useful to avoid any network request when marking a conversation as read.
+     * @param conversationId
+     * @param mutateList
+     */
+    async (conversationId: string, mutateList: boolean): Promise<void> => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              read: true,
+            } as PatchConversationsRequestBody),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to mark conversation as read");
+        }
+        if (mutateList) {
+          void mutateConversations((prevState) => ({
+            ...prevState,
+            conversations:
+              prevState?.conversations.map((c) =>
+                c.sId === conversationId ? { ...c, unread: false } : c
+              ) ?? [],
+          }));
+        }
+      } catch (error) {
+        console.error("Error marking conversation as read:", error);
+      }
+    },
+    [workspaceId, mutateConversations]
+  );
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout | null = null;
+    if (conversation?.sId && conversation.unread) {
+      timeout = setTimeout(
+        () => markAsRead(conversation.sId, true),
+        DELAY_BEFORE_MARKING_AS_READ
+      );
+    }
+
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [conversation?.sId, conversation?.unread, markAsRead]);
+
+  return {
+    markAsRead,
+  };
+}
+
+type ConversationParticipationOption = "join" | "leave" | "delete";
+
+export const useConversationParticipationOption = ({
+  ownerId,
+  conversationId,
+  userId,
+  disabled,
+}: {
+  ownerId: string;
+  conversationId: string | null;
+  userId: string | null;
+  disabled: boolean;
+}) => {
+  const { conversationParticipants } = useConversationParticipants({
+    conversationId,
+    workspaceId: ownerId,
+    options: { disabled },
+  });
+  const [option, setOption] = useState<ConversationParticipationOption | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (conversationParticipants === undefined) {
+      setOption(null);
+      return;
+    }
+    const isUserParticipating =
+      userId !== null &&
+      conversationParticipants?.users.find(
+        (participant) => participant.sId === userId
+      );
+
+    const isLastParticipant =
+      isUserParticipating && conversationParticipants?.users.length === 1;
+
+    setOption(
+      isLastParticipant ? "delete" : isUserParticipating ? "leave" : "join"
+    );
+  }, [conversationParticipants, userId]);
+
+  return option;
+};
+
+export const useJoinConversation = ({
+  ownerId,
+  conversationId,
+}: {
+  ownerId: string;
+  conversationId: string | null;
+}): (() => Promise<boolean>) => {
+  const sendNotification = useSendNotification();
+
+  const { mutateConversations } = useConversations({
+    workspaceId: ownerId,
+    options: { disabled: true },
+  });
+  const { mutateConversationParticipants } = useConversationParticipants({
+    conversationId,
+    workspaceId: ownerId,
+    options: { disabled: true },
+  });
+
+  const joinConversation = useCallback(async (): Promise<boolean> => {
+    if (!conversationId) {
+      return false;
+    }
+    try {
+      const response = await fetch(
+        `/api/w/${ownerId}/assistant/conversations/${conversationId}/participants`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        const { error } = await response.json();
+        if (error.type === "user_already_participant") {
+          sendNotification({
+            type: "error",
+            title: "Already subscribed",
+            description: "You are already a participant in this conversation.",
+          });
+          return false;
+        }
+
+        throw new Error("Failed to subscribe to the conversation.");
+      }
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Error",
+        description: "Failed to subscribe to the conversation.",
+      });
+      return false;
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Subscribed!",
+      description: "You have been added to this conversation.",
+    });
+
+    void mutateConversations();
+    void mutateConversationParticipants();
+
+    return true;
+  }, [
+    ownerId,
+    sendNotification,
+    mutateConversations,
+    mutateConversationParticipants,
+    conversationId,
+  ]);
+
+  return joinConversation;
+};

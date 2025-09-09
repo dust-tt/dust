@@ -3,7 +3,6 @@ import { useCallback, useState } from "react";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type {
   ConversationWithoutContentType,
-  LightAgentMessageType,
   LightWorkspaceType,
   MCPActionValidationRequest,
 } from "@app/types";
@@ -24,11 +23,11 @@ export function useValidateAction({
   const validateAction = useCallback(
     async ({
       validationRequest,
-      message,
+      messageId,
       approved,
     }: {
       validationRequest: MCPActionValidationRequest;
-      message?: LightAgentMessageType;
+      messageId: string;
       approved: MCPValidationOutputType;
     }) => {
       setIsValidating(true);
@@ -50,6 +49,17 @@ export function useValidateAction({
         );
 
         if (!response.ok) {
+          try {
+            const errData = await response.json();
+            if (errData?.error.type === "action_not_blocked") {
+              // If the action is not blocked anymore, we consider the validation already
+              // successful.  This can happen if multiple clients validate the same action. We
+              // directly return a success in that case.
+              return { success: true };
+            }
+          } catch {
+            // ignore JSON parsing errors and fall through to generic error
+          }
           onError("Failed to assess action approval. Please try again.");
           return { success: false };
         }
@@ -57,11 +67,11 @@ export function useValidateAction({
         // Retry on blocked tools on the main conversation if there is one that is != from the event's.
         if (
           conversation?.sId &&
-          message &&
+          messageId &&
           conversation.sId !== validationRequest.conversationId
         ) {
           const response = await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/retry?blocked_only=true`,
+            `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${messageId}/retry?blocked_only=true`,
             {
               method: "POST",
               headers: {

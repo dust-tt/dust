@@ -2,16 +2,16 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
-  ClockIcon,
   DocumentIcon,
+  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  ExclamationCircleIcon,
   FolderOpenIcon,
   Icon,
-  InformationCircleIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -77,7 +77,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     workspaceId: owner.sId,
   });
 
-  const hasAgentBuilderV2 = featureFlags.includes("agent_builder_v2");
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
@@ -295,7 +294,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   tooltip="Create a new conversation"
                   onClick={handleNewClick}
                 />
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
@@ -304,24 +303,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <>
                         <DropdownMenuLabel>Agent</DropdownMenuLabel>
                         <DropdownMenuItem
-                          href={getAgentBuilderRoute(
-                            owner.sId,
-                            "new",
-                            hasAgentBuilderV2,
-                            "flow=personal_assistants"
-                          )}
+                          href={getAgentBuilderRoute(owner.sId, "new")}
                           icon={DocumentIcon}
                           label="New agent from scratch"
                           data-gtm-label="assistantCreationButton"
                           data-gtm-location="sidebarMenu"
                         />
                         <DropdownMenuItem
-                          href={getAgentBuilderRoute(
-                            owner.sId,
-                            "create",
-                            hasAgentBuilderV2,
-                            "flow=personal_assistants"
-                          )}
+                          href={getAgentBuilderRoute(owner.sId, "create")}
                           icon={MagicIcon}
                           label="New agent from template"
                           data-gtm-label="assistantCreationButton"
@@ -351,11 +340,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
-                        href={getAgentBuilderRoute(
-                          owner.sId,
-                          "manage",
-                          hasAgentBuilderV2
-                        )}
+                        href={getAgentBuilderRoute(owner.sId, "manage")}
                         icon={RobotIcon}
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
@@ -465,8 +450,8 @@ const RenderConversation = ({
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const ActionRequiredIcon = () => (
-    <Icon visual={InformationCircleIcon} className="text-golden-700" />
+  const UnreadIcon = () => (
+    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
   );
 
   return (
@@ -491,12 +476,13 @@ const RenderConversation = ({
           selected={router.query.cId === conversation.sId}
           icon={
             conversation.actionRequired
-              ? ActionRequiredIcon
-              : conversation.triggerId
-                ? ClockIcon
+              ? ExclamationCircleIcon
+              : conversation.unread
+                ? UnreadIcon
                 : undefined
           }
           label={conversationLabel}
+          className={conversation.unread ? "font-medium" : undefined}
           href={`/w/${owner.sId}/assistant/${conversation.sId}`}
           shallow
         />

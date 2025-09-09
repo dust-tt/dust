@@ -6,6 +6,7 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as logAgentLoopMetricsActivities from "@app/temporal/agent_loop/activities/instrumentation";
@@ -33,10 +34,22 @@ const activities: AgentLoopActivities = {
     startToCloseTimeout: "7 minutes",
   }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
-    startToCloseTimeout: "10 minutes",
+    // The activity timeout should be slightly longer than the max timeout of
+    // the tool, to avoid the activity being killed before the tool timeout.
+    startToCloseTimeout: `${
+      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
+    } minutes`,
     retry: {
       // Do not retry tool activities. Those are not idempotent.
       maximumAttempts: 1,
+    },
+  }).runToolActivity,
+  runRetryableToolActivity: proxyActivities<typeof runToolActivities>({
+    startToCloseTimeout: `${
+      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
+    } minutes`,
+    retry: {
+      maximumAttempts: 5,
     },
   }).runToolActivity,
   publishDeferredEventsActivity: proxyActivities<

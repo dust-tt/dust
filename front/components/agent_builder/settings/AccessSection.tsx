@@ -9,6 +9,7 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
+import React from "react";
 import { useController } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -43,9 +44,11 @@ export function AccessSection() {
     return scope.value === "visible" ? EyeIcon : EyeSlashIcon;
   };
 
-  const slackDataSource = supportedDataSourceViews.find(
-    (dsv) => dsv.dataSource.connectorProvider === slackProvider
-  )?.dataSource;
+  const slackDataSource = slackProvider
+    ? supportedDataSourceViews.find(
+        (dsv) => dsv.dataSource.connectorProvider === slackProvider
+      )?.dataSource
+    : null;
 
   return (
     <SettingSectionContainer title="Access">

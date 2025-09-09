@@ -77,16 +77,27 @@ export default function WorkOSSSOConnection({
         {isLoadingSSO ? (
           <Spinner size="lg" />
         ) : (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             {isSSOConfigured ? (
-              <Button
-                label="De-activate SSO"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setShowDisableWorkOSSSOConnectionModal(true);
-                }}
-              />
+              <>
+                <Button
+                  label="Configure SSO"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    window.open(ssoStatus?.setupLink, "_blank");
+                  }}
+                />
+
+                <Button
+                  label="De-activate SSO"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowDisableWorkOSSSOConnectionModal(true);
+                  }}
+                />
+              </>
             ) : (
               <Button
                 label="Activate SSO"

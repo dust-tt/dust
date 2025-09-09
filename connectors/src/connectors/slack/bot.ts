@@ -84,6 +84,7 @@ type BotAnswerParams = {
   slackBotId?: string;
   slackMessageTs: string;
   slackThreadTs?: string;
+  enabledMessageSplitting?: boolean;
 };
 
 export async function getSlackConnector(params: BotAnswerParams) {
@@ -124,7 +125,8 @@ export async function botAnswerMessage(
       undefined,
       params,
       connector,
-      slackConfig
+      slackConfig,
+      params.enabledMessageSplitting ?? false
     );
 
     await processErrorResult(res, params, connector);
@@ -203,7 +205,8 @@ export async function botReplaceMention(
       mentionOverride,
       params,
       connector,
-      slackConfig
+      slackConfig,
+      false
     );
 
     await processErrorResult(res, params, connector);
@@ -483,7 +486,8 @@ async function answerMessage(
     slackThreadTs,
   }: BotAnswerParams,
   connector: ConnectorResource,
-  slackConfig: SlackConfigurationResource
+  slackConfig: SlackConfigurationResource,
+  enabledMessageSplitting: boolean = false
 ): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -1003,7 +1007,11 @@ async function answerMessage(
     userMessage,
     slackChatBotMessage,
     agentConfigurations: mostPopularAgentConfigurations,
+    enabledMessageSplitting,
   });
+
+  // Immediately mark the conversation as read.
+  await dustAPI.markAsRead({ conversationId: conversation.sId });
 
   if (streamRes.isErr()) {
     return buildSlackMessageError(streamRes, "streamConversationToSlack");

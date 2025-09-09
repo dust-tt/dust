@@ -1,5 +1,6 @@
 import type {
   ClientSideMCPToolConfigurationType,
+  LightClientSideMCPToolConfigurationType,
   LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
   MCPActionType,
@@ -54,12 +55,12 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
-export function isMCPConfigurationForInternalCanvas(
+export function isMCPConfigurationForInternalContentCreation(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "canvas")
+    isInternalMCPServerOfName(arg.internalMCPServerId, "content_creation")
   );
 }
 
@@ -218,6 +219,25 @@ export function isLightServerSideMCPToolConfiguration(
     isMCPToolConfiguration(arg) &&
     "mcpServerViewId" in arg &&
     !("inputSchema" in arg)
+  );
+}
+
+export function isLightClientSideMCPToolConfiguration(
+  arg: unknown
+): arg is LightClientSideMCPToolConfigurationType {
+  return (
+    isMCPToolConfiguration(arg) &&
+    "clientSideMcpServerId" in arg &&
+    !("inputSchema" in arg)
+  );
+}
+
+export function isLightMCPToolConfiguration(
+  arg: unknown
+): arg is LightMCPToolConfigurationType {
+  return (
+    isLightServerSideMCPToolConfiguration(arg) ||
+    isLightClientSideMCPToolConfiguration(arg)
   );
 }
 

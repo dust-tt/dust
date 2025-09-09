@@ -479,6 +479,7 @@ export async function createAgentConfiguration(
             agentConfigurationInstance,
             { transaction: t }
           );
+          await auth.refresh({ transaction: t });
           await group.setMembers(auth, editors, { transaction: t });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
@@ -505,7 +506,19 @@ export async function createAgentConfiguration(
             );
             throw result.error;
           }
-          await group.setMembers(auth, editors, { transaction: t });
+          const setMembersRes = await group.setMembers(auth, editors, {
+            transaction: t,
+          });
+          if (setMembersRes.isErr()) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error setting members to agent ${existingAgent.sId}: ${setMembersRes.error}`
+            );
+            throw setMembersRes.error;
+          }
         }
       }
 

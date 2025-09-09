@@ -12,7 +12,7 @@ import {
 import React from "react";
 
 import {
-  AgentMessageCanvasGeneratedFiles,
+  AgentMessageContentCreationGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
@@ -32,7 +32,7 @@ interface FileGroup {
 
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
-  [clientExecutableContentType]: "Canvas",
+  [clientExecutableContentType]: "Content Creation",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
@@ -125,7 +125,7 @@ function FileGroupSection({
   onFileClick,
   owner,
 }: FileGroupSectionProps) {
-  const isCanvas = group.contentType === clientExecutableContentType;
+  const isContentCreation = group.contentType === clientExecutableContentType;
 
   return (
     <div className="space-y-2">
@@ -133,8 +133,8 @@ function FileGroupSection({
         {group.title}
       </div>
       <div>
-        {isCanvas ? (
-          <AgentMessageCanvasGeneratedFiles
+        {isContentCreation ? (
+          <AgentMessageContentCreationGeneratedFiles
             files={group.files}
             variant="grid"
             onClick={onFileClick}
@@ -154,7 +154,8 @@ function EmptyFilesState() {
         Nothing generated yet
       </div>
       <div className="text-sm text-muted-foreground">
-        Files and Canvases generated in this conversation will appear here.
+        Files and Content Creations generated in this conversation will appear
+        here.
       </div>
     </div>
   );
@@ -175,6 +176,9 @@ export function ConversationFilesPopover({
     useConversationFiles({
       conversationId,
       owner,
+      options: {
+        disabled: !isOpen,
+      },
     });
 
   const fileGroups = React.useMemo(
@@ -183,13 +187,12 @@ export function ConversationFilesPopover({
   );
 
   const hasFiles = conversationFiles.length > 0;
-  const fileCount = conversationFiles.length;
 
   const handleFileClick = () => {
     setIsOpen(false);
   };
 
-  if (isConversationFilesLoading) {
+  if (isConversationFilesLoading && isOpen) {
     return (
       <Button
         size="sm"
@@ -206,7 +209,7 @@ export function ConversationFilesPopover({
       <PopoverTrigger asChild>
         <Button
           size="sm"
-          tooltip={`Generated content (${fileCount})`}
+          tooltip="See generated content"
           icon={isOpen ? FolderOpenIcon : FolderIcon}
           variant="ghost"
         />

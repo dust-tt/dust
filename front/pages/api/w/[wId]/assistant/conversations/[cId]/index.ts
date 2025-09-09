@@ -18,18 +18,33 @@ import type {
 } from "@app/types";
 import { isString } from "@app/types";
 
-export const PatchConversationsRequestBodySchema = t.type({
-  title: t.string,
-});
+const PatchConversationsRequestBodySchema = t.union([
+  t.type({
+    title: t.string,
+  }),
+  t.type({
+    read: t.literal(true),
+  }),
+]);
+
+export type PatchConversationsRequestBody = t.TypeOf<
+  typeof PatchConversationsRequestBodySchema
+>;
 
 export type GetConversationsResponseBody = {
   conversation: ConversationWithoutContentType;
 };
 
+export type PatchConversationResponseBody = {
+  success: boolean;
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetConversationsResponseBody | void>
+    WithAPIErrorResponse<
+      GetConversationsResponseBody | PatchConversationResponseBody | void
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -70,45 +85,61 @@ async function handler(
       return;
     }
 
-    case "PATCH": {
-      const conversationRes =
-        await ConversationResource.fetchConversationWithoutContent(auth, cId);
+    case "PATCH":
+      {
+        const conversationRes =
+          await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
-      if (conversationRes.isErr()) {
-        return apiErrorForConversation(req, res, conversationRes.error);
+        if (conversationRes.isErr()) {
+          return apiErrorForConversation(req, res, conversationRes.error);
+        }
+
+        const conversation = conversationRes.value;
+        const bodyValidation = PatchConversationsRequestBodySchema.decode(
+          req.body
+        );
+
+        if (isLeft(bodyValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            bodyValidation.left
+          );
+
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body: ${pathError}`,
+            },
+          });
+        }
+
+        if ("title" in bodyValidation.right) {
+          const result = await updateConversationTitle(auth, {
+            conversationId: conversation.sId,
+            title: bodyValidation.right.title,
+          });
+
+          if (result.isErr()) {
+            return apiErrorForConversation(req, res, result.error);
+          }
+          return res.status(200).json({ success: true });
+        } else if ("read" in bodyValidation.right) {
+          await ConversationResource.markAsRead(auth, {
+            conversation,
+          });
+
+          return res.status(200).json({ success: true });
+        } else {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid request body",
+            },
+          });
+        }
       }
-
-      const conversation = conversationRes.value;
-      const bodyValidation = PatchConversationsRequestBodySchema.decode(
-        req.body
-      );
-
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
-        });
-      }
-
-      const { title } = bodyValidation.right;
-
-      const result = await updateConversationTitle(auth, {
-        conversationId: conversation.sId,
-        title,
-      });
-
-      if (result.isErr()) {
-        return apiErrorForConversation(req, res, result.error);
-      }
-
-      res.status(200).json({ conversation: result.value });
-      return;
-    }
+      break;
 
     default:
       return apiError(req, res, {

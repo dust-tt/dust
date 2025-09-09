@@ -2,12 +2,14 @@ import type {
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import { createMCPAction } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
+import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
+import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -16,6 +18,7 @@ import type {
   AgentActionsEvent,
   AgentConfigurationType,
   AgentMessageType,
+  ConversationWithoutContentType,
   ModelId,
 } from "@app/types";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
@@ -24,6 +27,7 @@ export interface ActionBlob {
   actionId: ModelId;
   actionStatus: ToolExecutionStatus;
   needsApproval: boolean;
+  retryPolicy: MCPToolRetryPolicyType;
 }
 
 type CreateToolActionsResult = {
@@ -48,7 +52,6 @@ export async function createToolActionsActivity(
 ): Promise<CreateToolActionsResult> {
   const { agentConfiguration, agentMessage, agentMessageRow, conversation } =
     runAgentData;
-  const conversationId = conversation.sId;
 
   const actionBlobs: ActionBlob[] = [];
   const approvalEvents: Array<
@@ -66,7 +69,7 @@ export async function createToolActionsActivity(
       agentConfiguration,
       agentMessage,
       agentMessageRow,
-      conversationId,
+      conversation,
       stepContentId,
       stepContext: stepContexts[index],
       step,
@@ -84,17 +87,15 @@ export async function createToolActionsActivity(
   for (const [idx, eventData] of approvalEvents.entries()) {
     const isLastApproval = idx === approvalEvents.length - 1;
 
-    await updateResourceAndPublishEvent(
-      {
+    await updateResourceAndPublishEvent(auth, {
+      event: {
         ...eventData,
         isLastBlockingEventForStep: isLastApproval,
       },
       agentMessageRow,
-      {
-        conversationId,
-        step,
-      }
-    );
+      conversation,
+      step,
+    });
   }
 
   return {
@@ -109,7 +110,7 @@ async function createActionForTool(
     agentConfiguration,
     agentMessage,
     agentMessageRow,
-    conversationId,
+    conversation,
     stepContentId,
     stepContext,
     step,
@@ -118,7 +119,7 @@ async function createActionForTool(
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;
-    conversationId: string;
+    conversation: ConversationWithoutContentType;
     stepContentId: ModelId;
     stepContext: StepContext;
     step: number;
@@ -148,13 +149,13 @@ async function createActionForTool(
 
   const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
   if (validateToolInputsResult.isErr()) {
-    return updateResourceAndPublishEvent(
-      {
+    return updateResourceAndPublishEvent(auth, {
+      event: {
         type: "tool_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        conversationId,
+        conversationId: conversation.sId,
         error: {
           code: "tool_error",
           message: validateToolInputsResult.error.message,
@@ -165,11 +166,9 @@ async function createActionForTool(
         isLastBlockingEventForStep: false,
       },
       agentMessageRow,
-      {
-        conversationId,
-        step,
-      }
-    );
+      conversation,
+      step,
+    });
   }
 
   // Compute augmented inputs with preconfigured data sources, etc.
@@ -190,8 +189,8 @@ async function createActionForTool(
   });
 
   // Publish the tool params event.
-  await updateResourceAndPublishEvent(
-    {
+  await updateResourceAndPublishEvent(auth, {
+    event: {
       type: "tool_params",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
@@ -201,17 +200,16 @@ async function createActionForTool(
       action: { ...action.toJSON(), output: null, generatedFiles: [] },
     },
     agentMessageRow,
-    {
-      conversationId,
-      step,
-    }
-  );
+    conversation,
+    step,
+  });
 
   return {
     actionBlob: {
       actionId: action.id,
       actionStatus: status,
       needsApproval: status === "blocked_validation_required",
+      retryPolicy: getRetryPolicyFromToolConfiguration(actionConfiguration),
     },
     approvalEventData:
       status === "blocked_validation_required"
@@ -220,7 +218,7 @@ async function createActionForTool(
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            conversationId,
+            conversationId: conversation.sId,
             actionId: action.sId,
             inputs: action.augmentedInputs,
             stake: actionConfiguration.permission,

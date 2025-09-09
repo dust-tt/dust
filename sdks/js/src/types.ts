@@ -6,7 +6,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationCanvasFileContentSchema } from "./output_schemas";
+import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
@@ -60,16 +60,18 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "mistral-medium"
   | "mistral-small-latest"
   | "codestral-latest"
-  | "gemini-1.5-pro-latest"
-  | "gemini-1.5-flash-latest"
-  | "gemini-2.0-flash"
-  | "gemini-2.0-flash-lite"
-  | "gemini-2.5-pro-preview-03-25"
-  | "gemini-2.5-pro"
+  | "gemini-1.5-pro-latest" // DEPRECATED
+  | "gemini-1.5-flash-latest" // DEPRECATED
+  | "gemini-2.0-flash" // DEPRECATED
+  | "gemini-2.0-flash-lite" // DEPRECATED
+  | "gemini-2.5-pro-preview-03-25" // DEPRECATED
   | "gemini-2.0-flash-exp" // DEPRECATED
   | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
   | "gemini-2.0-pro-exp-02-05" // DEPRECATED
   | "gemini-2.0-flash-thinking-exp-01-21" // DEPRECATED
+  | "gemini-2.5-pro"
+  | "gemini-2.5-flash"
+  | "gemini-2.5-flash-lite"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
@@ -84,6 +86,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-3-mini-latest" // xAI
   | "grok-3-fast-latest" // xAI
   | "grok-3-mini-fast-latest" // xAI
+  | "grok-4-latest" // xAI
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -588,7 +591,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
-  | "agent_builder_v2"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "anthropic_vertex_fallback"
@@ -603,6 +605,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
+  | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl"
   | "index_private_slack_channel"
@@ -626,6 +629,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "toolsets_tool"
   | "usage_data_api"
   | "xai_feature"
+  | "simple_audio_transcription"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -938,6 +942,8 @@ const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
   updated: z.number().optional(),
+  unread: z.boolean(),
+  actionRequired: z.boolean(),
   owner: WorkspaceSchema,
   sId: z.string(),
   title: z.string().nullable(),
@@ -1046,7 +1052,7 @@ const NotificationRunAgentGenerationTokensSchema = z.object({
 });
 
 const NotificationContentSchema = z.union([
-  NotificationCanvasFileContentSchema,
+  NotificationContentCreationFileContentSchema,
   NotificationImageContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,
@@ -1191,6 +1197,15 @@ const AgentMessageSuccessEventSchema = z.object({
 export type AgentMessageSuccessEvent = z.infer<
   typeof AgentMessageSuccessEventSchema
 >;
+
+const AgentMessageDoneEventSchema = z.object({
+  type: z.literal("agent_message_done"),
+  created: z.number(),
+  conversationId: z.string(),
+  configurationId: z.string(),
+  messageId: z.string(),
+});
+export type AgentMessageDoneEvent = z.infer<typeof AgentMessageDoneEventSchema>;
 
 const AgentGenerationCancelledEventSchema = z.object({
   type: z.literal("agent_generation_cancelled"),
@@ -1743,6 +1758,22 @@ export const GetConversationResponseSchema = z.object({
 
 export type GetConversationResponseType = z.infer<
   typeof GetConversationResponseSchema
+>;
+
+export const PatchConversationRequestSchema = z.object({
+  read: z.literal(true),
+});
+
+export type PatchConversationRequestType = z.infer<
+  typeof PatchConversationRequestSchema
+>;
+
+export const PatchConversationResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type PatchConversationResponseType = z.infer<
+  typeof PatchConversationResponseSchema
 >;
 
 export const TokenizeResponseSchema = z.object({
@@ -2609,7 +2640,9 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionScanIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
+  | "AsanaLogo"
   | "CommandLineIcon"
+  | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GmailLogo"

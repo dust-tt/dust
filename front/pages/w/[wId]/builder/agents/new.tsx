@@ -3,13 +3,13 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
-import type { BuilderFlow } from "@app/components/assistant_builder/types";
-import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import type { BuilderFlow } from "@app/components/agent_builder/types";
+import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
-import { getFeatureFlags, isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
@@ -49,13 +49,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const plan = auth.plan();
   const subscription = auth.subscription();
   if (!owner || !plan || !auth.isUser() || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("agent_builder_v2")) {
     return {
       notFound: true,
     };

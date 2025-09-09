@@ -302,31 +302,6 @@ export function SlackSettingsSheet({
               owner={owner}
               slackDataSource={slackDataSource}
             />
-            {hasFeature("slack_enhanced_default_agent") && (
-              <div className="flex flex-col gap-2 border-t pt-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                      Enhanced Default Agent
-                    </span>
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      Agent will automatically respond to all messages and
-                      thread replies in selected channels (not just @mentions)
-                    </span>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <SliderToggle
-                      selected={autoRespondWithoutMentionEnabled}
-                      onClick={() =>
-                        setAutoRespondWithoutMentionEnabled(
-                          !autoRespondWithoutMentionEnabled
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </SheetContainer>
         <SheetFooter
@@ -341,7 +316,33 @@ export function SlackSettingsSheet({
             onClick: onSave,
             disabled: !hasUnsavedChanges,
           }}
-        />
+        >
+          {hasFeature("slack_enhanced_default_agent") && (
+            <div className="flex flex-col border-t p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                    Enhanced Default Agent
+                  </span>
+                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    Agent will automatically respond to all messages and thread
+                    replies in selected channels (not just @mentions)
+                  </span>
+                </div>
+                <div className="flex-shrink-0">
+                  <SliderToggle
+                    selected={autoRespondWithoutMentionEnabled}
+                    onClick={() =>
+                      setAutoRespondWithoutMentionEnabled(
+                        !autoRespondWithoutMentionEnabled
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

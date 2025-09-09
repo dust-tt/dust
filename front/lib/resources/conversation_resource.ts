@@ -3,7 +3,7 @@ import type {
   InferAttributes,
   Transaction,
 } from "sequelize";
-import { col, fn, literal, Op, Sequelize, where } from "sequelize";
+import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/assistant/actions/conversation_mcp_server_view";
@@ -17,7 +17,9 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
@@ -28,6 +30,7 @@ import type {
   LightAgentConfigurationType,
   ParticipantActionType,
   Result,
+  UserType,
 } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
@@ -349,6 +352,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_access_restricted"));
     }
 
+    const { actionRequired, unread } =
+      await ConversationResource.getActionRequiredAndUnreadForUser(
+        auth,
+        conversation.id
+      );
+
     return new Ok({
       id: conversation.id,
       created: conversation.createdAt.getTime(),
@@ -358,6 +367,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       visibility: conversation.visibility,
       depth: conversation.depth,
       triggerId: conversation.triggerSId(),
+      actionRequired,
+      unread,
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
     });
@@ -447,13 +458,180 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }, [] as ConversationWithoutContentType[]);
   }
 
+  static async listConversationsForTrigger(
+    auth: Authenticator,
+    triggerId: string,
+    options?: FetchConversationOptions
+  ): Promise<ConversationWithoutContentType[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const triggerModelId = getResourceIdFromSId(triggerId);
+    if (triggerModelId === null) {
+      return [];
+    }
+
+    const conversations = await this.baseFetch(auth, options, {
+      where: {
+        workspaceId: owner.id,
+        triggerId: triggerModelId,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return Promise.all(
+      conversations.map(async (c) => {
+        const { actionRequired, unread } =
+          await ConversationResource.getActionRequiredAndUnreadForUser(
+            auth,
+            c.id
+          );
+
+        return {
+          id: c.id,
+          created: c.createdAt.getTime(),
+          sId: c.sId,
+          owner,
+          title: c.title,
+          visibility: c.visibility,
+          depth: c.depth,
+          triggerId: triggerId,
+          actionRequired,
+          unread,
+          requestedGroupIds: new this(
+            this.model,
+            c
+          ).getConversationRequestedGroupIdsFromModel(auth),
+        };
+      })
+    );
+  }
+
+  static async markAsActionRequired(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationWithoutContentType }
+  ) {
+    // Update the conversation participant to set actionRequired to true
+    const updated = await ConversationParticipantModel.update(
+      { actionRequired: true },
+      {
+        // We do not have a workspaceId here because we do not have an Authenticator in the caller.
+        // It's fine because we are only updating the actionRequired flag.
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+
+    return new Ok(updated);
+  }
+
+  static async clearActionRequired(
+    auth: Authenticator,
+    conversationId: string
+  ) {
+    const conversation = await ConversationModel.findOne({
+      where: {
+        sId: conversationId,
+      },
+    });
+    if (conversation === null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    const updated = await ConversationParticipantModel.update(
+      { actionRequired: false },
+      {
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        // Do not update `updatedAt.
+        silent: true,
+      }
+    );
+
+    return new Ok(updated);
+  }
+
+  static async markAsUnreadForOtherParticipants(
+    auth: Authenticator,
+    {
+      conversation,
+      excludedUser,
+    }: {
+      conversation: ConversationWithoutContentType;
+      excludedUser?: UserType;
+    }
+  ) {
+    const updated = await ConversationParticipantModel.update(
+      { unread: true },
+      {
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
+        },
+      }
+    );
+    return new Ok(updated);
+  }
+
+  static async markAsRead(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationWithoutContentType }
+  ) {
+    if (!auth.user()) {
+      return new Err(new Error("user_not_authenticated"));
+    }
+
+    const updated = await ConversationParticipantModel.update(
+      { unread: false },
+      {
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+        // Do not update `updatedAt.
+        silent: true,
+      }
+    );
+    return new Ok(updated);
+  }
+
+  static async getActionRequiredAndUnreadForUser(
+    auth: Authenticator,
+    id: number
+  ) {
+    if (!auth.user()) {
+      return {
+        actionRequired: false,
+        unread: false,
+      };
+    }
+
+    const participant = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
+    return {
+      actionRequired: participant?.actionRequired ?? false,
+      unread: participant?.unread ?? false,
+    };
+  }
+
   static async upsertParticipation(
     auth: Authenticator,
     {
       conversation,
       action,
     }: {
-      conversation: ConversationType;
+      conversation: ConversationWithoutContentType;
       action: ParticipantActionType;
     }
   ) {
@@ -495,6 +673,56 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         );
       }
     });
+  }
+
+  /**
+   * Get the latest agent message id by rank for a given conversation.
+   * @returns The latest agent message id, version and rank.
+   */
+  async getLatestAgentMessageIdByRank(auth: Authenticator): Promise<
+    {
+      rank: number;
+      agentMessageId: number;
+      version: number;
+    }[]
+  > {
+    const query = `
+        SELECT 
+        rank,
+        "agentMessageId",
+        version
+      FROM (
+        SELECT 
+          rank,
+          "agentMessageId",
+          version,
+          ROW_NUMBER() OVER (
+            PARTITION BY rank 
+            ORDER BY version DESC
+          ) as rn
+        FROM messages
+        WHERE 
+          "workspaceId" = :workspaceId
+          AND "conversationId" = :conversationId
+          AND "agentMessageId" IS NOT NULL
+      ) ranked_messages
+      WHERE rn = 1
+  `;
+
+    // eslint-disable-next-line dust/no-raw-sql
+    const results = await frontSequelize.query<{
+      rank: number;
+      agentMessageId: number;
+      version: number;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+      },
+    });
+
+    return results;
   }
 
   static async updateRequestedGroupIds(

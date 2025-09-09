@@ -791,24 +791,24 @@ export function isImageProgressOutput(
   return output !== undefined && output.type === "image";
 }
 
-// Canvas file.
+// Content creation file.
 
-const NotificationCanvasFileContentSchema = z.object({
-  type: z.literal("canvas_file"),
+const NotificationContentCreationFileContentSchema = z.object({
+  type: z.literal("content_creation_file"),
   fileId: z.string(),
   mimeType: z.string(),
   title: z.string(),
   updatedAt: z.string(),
 });
 
-type CanvasFileContentProgressOutput = z.infer<
-  typeof NotificationCanvasFileContentSchema
+type ContentCreationFileContentProgressOutput = z.infer<
+  typeof NotificationContentCreationFileContentSchema
 >;
 
-export function isCanvasFileContentOutput(
+export function isContentCreationFileContentOutput(
   output: ProgressNotificationOutput
-): output is CanvasFileContentProgressOutput {
-  return output !== undefined && output.type === "canvas_file";
+): output is ContentCreationFileContentProgressOutput {
+  return output !== undefined && output.type === "content_creation_file";
 }
 
 const InternalAllowedIconSchema = z.enum(
@@ -927,7 +927,7 @@ export function isRunAgentProgressOutput(
 
 export const ProgressNotificationOutputSchema = z
   .union([
-    NotificationCanvasFileContentSchema,
+    NotificationContentCreationFileContentSchema,
     NotificationImageContentSchema,
     NotificationRunAgentChainOfThoughtSchema,
     NotificationRunAgentContentSchema,

@@ -51,7 +51,7 @@ export function getInitialConfigurationTool(
 
 export interface FooterButtonOptions {
   currentPageId: ConfigurationPagePageId;
-  modeType: SheetMode["type"];
+  mode: SheetMode | null;
   selectedToolsInSheet: SelectedTool[];
   form: UseFormReturn<MCPFormData>;
   onCancel: () => void;
@@ -63,7 +63,7 @@ export interface FooterButtonOptions {
 
 export function getFooterButtons({
   currentPageId,
-  modeType,
+  mode,
   selectedToolsInSheet,
   form,
   onCancel,
@@ -98,7 +98,7 @@ export function getFooterButtons({
   }
 
   if (isConfigurationPage) {
-    if (modeType === "edit") {
+    if (mode?.type === "edit") {
       return {
         leftButton: {
           label: "Cancel",
@@ -113,7 +113,7 @@ export function getFooterButtons({
       };
     }
 
-    if (modeType === "configure") {
+    if (mode?.type === "configure") {
       return {
         leftButton: {
           label: "Back",
@@ -143,13 +143,23 @@ export function getFooterButtons({
   }
 
   if (isInfoPage) {
-    return {
-      leftButton: {
-        label: "Close",
-        variant: "primary",
-        onClick: onCancel,
-      },
-    };
+    if (mode?.type === "info" && mode.source === "toolDetails") {
+      return {
+        leftButton: {
+          label: "Back",
+          variant: "outline",
+          onClick: () => onModeChange({ type: "add" }),
+        },
+      };
+    } else {
+      return {
+        leftButton: {
+          label: "Close",
+          variant: "primary",
+          onClick: onCancel,
+        },
+      };
+    }
   }
 
   return {};

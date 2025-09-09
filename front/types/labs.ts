@@ -10,7 +10,12 @@ export const labsTranscriptsProviders = [
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
-export const labsFeatures = ["transcripts", "trackers", "mcp_actions"] as const;
+export const labsFeatures = [
+  "transcripts",
+  "trackers",
+  "mcp_actions",
+  "transcription",
+] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
 // Types

@@ -221,7 +221,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
               </Chip>
             </div>
           ) : (
-            <div className="mt-0.5">
+            <div className="mt-0.5 w-full">
               <NodeViewContent
                 className={instructionBlockContentStyles}
                 as="div"
@@ -594,7 +594,7 @@ export const InstructionBlockExtension =
         return { firstPara, lastPara, firstParaIndex, lastParaIndex };
       };
 
-      // Helper function to check if a paragraph contains a valid XML tag
+      // Helper function that returns tag name when paragraph is an exact tag line; otherwise null
       const getTagFromParagraph = (
         para: ProseMirrorNode | null,
         isClosing: boolean
@@ -605,7 +605,13 @@ export const InstructionBlockExtension =
         const text = para.textContent.trim();
         const regex = isClosing ? CLOSING_TAG_REGEX : OPENING_TAG_REGEX;
         const match = text.match(regex);
-        return match ? match[1] || "" : null;
+        if (!match) {
+          return null;
+        }
+        const tag = match[1] || "";
+        // Enforce exact-line match to avoid partial matches (e.g., prefixes)
+        const expected = isClosing ? `</${tag}>` : `<${tag}>`;
+        return text === expected ? tag : null;
       };
 
       return [
@@ -618,29 +624,47 @@ export const InstructionBlockExtension =
 
               state.doc.descendants((node, pos) => {
                 if (node.type.name === "instructionBlock") {
-                  let childPos = pos + 1;
+                  // Use helper to find first and last paragraph tags
+                  const { firstPara, lastPara, firstParaIndex, lastParaIndex } =
+                    findFirstLastParagraphs(node);
 
-                  node.forEach((child) => {
-                    if (child.type.name === "paragraph") {
-                      const text = child.textContent.trim();
-                      const isOpeningTag = text.match(OPENING_TAG_REGEX);
-                      const isClosingTag = text.match(CLOSING_TAG_REGEX);
+                  if (!firstPara || !lastPara) {
+                    return;
+                  }
 
-                      if (isOpeningTag || isClosingTag) {
-                        const marginClass = isOpeningTag
-                          ? "mb-2"
-                          : isClosingTag
-                            ? "mt-2"
-                            : "";
-                        decorations.push(
-                          Decoration.node(childPos, childPos + child.nodeSize, {
-                            class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase ${marginClass}`,
-                          })
-                        );
-                      }
+                  const openingTag = getTagFromParagraph(firstPara, false);
+                  const closingTag = getTagFromParagraph(lastPara, true);
+
+                  // Only decorate if both tags exist and match (case-insensitive)
+                  if (
+                    openingTag !== null &&
+                    closingTag !== null &&
+                    openingTag.toLowerCase() === closingTag.toLowerCase()
+                  ) {
+                    // Calculate positions
+                    let firstPos = pos + 1;
+                    for (let i = 0; i < firstParaIndex; i++) {
+                      firstPos += node.child(i).nodeSize;
                     }
-                    childPos += child.nodeSize;
-                  });
+
+                    let lastPos = pos + 1;
+                    for (let i = 0; i < lastParaIndex; i++) {
+                      lastPos += node.child(i).nodeSize;
+                    }
+
+                    // Decorate opening tag
+                    decorations.push(
+                      Decoration.node(firstPos, firstPos + firstPara.nodeSize, {
+                        class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase mb-2`,
+                      })
+                    );
+                    // Decorate closing tag
+                    decorations.push(
+                      Decoration.node(lastPos, lastPos + lastPara.nodeSize, {
+                        class: `block w-fit px-1.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium uppercase mt-2`,
+                      })
+                    );
+                  }
                 }
               });
 

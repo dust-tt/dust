@@ -28,6 +28,7 @@ export type FileUseCaseMetadata = {
   conversationId?: string;
   spaceId?: string;
   generatedTables?: string[];
+  lastEditedByAgentConfigurationId?: string;
 };
 
 export const fileShareScopeSchema = z.enum([
@@ -35,6 +36,7 @@ export const fileShareScopeSchema = z.enum([
   "workspace",
   "public",
 ]);
+
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 export interface FileType {
@@ -52,6 +54,10 @@ export interface FileType {
 }
 
 export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
+
+export type FileTypeWithMetadata = FileType & {
+  useCaseMetadata: FileUseCaseMetadata;
+};
 
 export type FileFormatCategory = "image" | "data" | "code" | "delimited";
 
@@ -317,9 +323,9 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 export const clientExecutableContentType =
   "application/vnd.dust.client-executable";
 
-// Canvas MIME types for specialized use cases (not exposed via APIs).
-export const CANVAS_FILE_FORMATS = {
-  // Custom for client-executable code files managed by canvas MCP server.
+// Content Creation MIME types for specialized use cases (not exposed via APIs).
+export const CONTENT_CREATION_FILE_FORMATS = {
+  // Custom for client-executable code files managed by content_creation MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
   [clientExecutableContentType]: {
@@ -329,21 +335,22 @@ export const CANVAS_FILE_FORMATS = {
   },
 } as const satisfies Record<string, FileFormat>;
 
-export function isCanvasContentType(contentType: string): boolean {
-  return Object.keys(CANVAS_FILE_FORMATS).includes(contentType);
+export function isContentCreationContentType(contentType: string): boolean {
+  return Object.keys(CONTENT_CREATION_FILE_FORMATS).includes(contentType);
 }
 
-// Define a type for canvas file content types.
-export type CanvasFileContentType = keyof typeof CANVAS_FILE_FORMATS;
+// Define a type for Content Creation file content types.
+export type ContentCreationFileContentType =
+  keyof typeof CONTENT_CREATION_FILE_FORMATS;
 
 export const ALL_FILE_FORMATS = {
-  ...CANVAS_FILE_FORMATS,
+  ...CONTENT_CREATION_FILE_FORMATS,
   ...FILE_FORMATS,
 };
 
-// Union type for all supported content types (public + canvas).
+// Union type for all supported content types (public + Content Creation).
 export type AllSupportedFileContentType =
-  | CanvasFileContentType
+  | ContentCreationFileContentType
   | SupportedFileContentType;
 
 export type SupportedImageContentType = {
@@ -382,17 +389,19 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isCanvasFileContentType(
+export function isContentCreationFileContentType(
   contentType: string
-): contentType is CanvasFileContentType {
-  return !!CANVAS_FILE_FORMATS[contentType as CanvasFileContentType];
+): contentType is ContentCreationFileContentType {
+  return !!CONTENT_CREATION_FILE_FORMATS[
+    contentType as ContentCreationFileContentType
+  ];
 }
 
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isCanvasFileContentType(contentType) ||
+    isContentCreationFileContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }

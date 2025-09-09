@@ -21,12 +21,13 @@
     "create-db-migration": "./create_db_migration_file.sh",
     "prepare": "cd .. && husky .husky",
     "debug:profiler": "tsx ./scripts/debug/run_profiler.ts",
-    "sitemap": "next-sitemap"
+    "sitemap": "next-sitemap",
+    "sparkle:dev": "./admin/sparkle_dev.sh"
   },
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/sparkle": "^0.2.596",
+    "@dust-tt/sparkle": "^0.2.612",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
     "@heroicons/react": "^2.0.11",
@@ -206,7 +207,8 @@
     "typescript": "5.4.5",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.0.8",
-    "vitest-canvas-mock": "^0.3.3"
+    "vitest-canvas-mock": "^0.3.3",
+    "yalc": "^1.0.0-pre.53"
   },
   "peerDependencies": {
     "typescript": "5.4.5"

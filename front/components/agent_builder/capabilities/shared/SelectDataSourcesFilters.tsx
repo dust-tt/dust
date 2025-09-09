@@ -10,6 +10,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceViewType } from "@app/types";
+import { pluralize } from "@app/types";
 
 type DataSourceFilterItem = {
   dataSourceView: DataSourceViewType;
@@ -68,7 +69,9 @@ export function SelectDataSourcesFilters() {
   return (
     <div className="space-y-4">
       <div className="align-center flex flex-row justify-between">
-        <h3 className="mb-2 text-lg font-semibold">Selected data source</h3>
+        <h3 className="mb-2 text-lg font-semibold">
+          Selected data source{pluralize(Object.values(dataSourceViews).length)}
+        </h3>
 
         <div className="flex flex-row items-center space-x-2">
           <Button

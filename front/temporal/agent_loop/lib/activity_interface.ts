@@ -14,4 +14,5 @@ export interface AgentLoopActivities {
   publishDeferredEventsActivity: typeof publishDeferredEventsActivity;
   runModelAndCreateActionsActivity: typeof runModelAndCreateActionsActivity;
   runToolActivity: typeof runToolActivity;
+  runRetryableToolActivity: typeof runToolActivity;
 }

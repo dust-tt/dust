@@ -7,7 +7,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
-  isMCPConfigurationForInternalCanvas,
+  isMCPConfigurationForInternalContentCreation,
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
@@ -178,14 +178,14 @@ export async function constructPromptMultiActions(
   }
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasCanvasServer =
+  const hasContentCreationServer =
     featureFlags.includes("interactive_content_server") &&
     agentConfiguration.actions.some((action) =>
-      isMCPConfigurationForInternalCanvas(action)
+      isMCPConfigurationForInternalContentCreation(action)
     );
 
-  // Only inject the visualization system prompt if the canvas server is not enabled.
-  if (agentConfiguration.visualizationEnabled && !hasCanvasServer) {
+  // Only inject the visualization system prompt if the Content Creation server is not enabled.
+  if (agentConfiguration.visualizationEnabled && !hasContentCreationServer) {
     guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 

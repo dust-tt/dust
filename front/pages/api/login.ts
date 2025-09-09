@@ -11,7 +11,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { getSignUpUrl } from "@app/lib/signup";
+import { getSignInUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -116,9 +116,10 @@ async function handler(
       const pendingInvitation =
         await MembershipInvitationResource.getPendingForEmail(user.email);
       if (pendingInvitation) {
-        const signUpUrl = getSignUpUrl({
+        const signUpUrl = await getSignInUrl({
           signupCallbackUrl: `/api/login?inviteToken=${getMembershipInvitationToken(pendingInvitation.id)}`,
           invitationEmail: pendingInvitation.inviteEmail,
+          userExists: true,
         });
         res.redirect(signUpUrl);
         return;

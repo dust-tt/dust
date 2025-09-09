@@ -105,7 +105,7 @@ export function UserMenu({
             >
               {user.firstName}
             </span>
-            <span className="w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
               {owner.name}
             </span>
           </div>
@@ -179,8 +179,9 @@ export function UserMenu({
                       const regexp = new RegExp(`/w/([^/]+)/assistant/([^/]+)`);
                       const match = window.location.href.match(regexp);
                       if (match) {
-                        void router.push(
-                          `/poke/${match[1]}/conversations/${match[2]}`
+                        window.open(
+                          `/poke/${match[1]}/conversations/${match[2]}`,
+                          "_blank"
                         );
                       }
                     }}

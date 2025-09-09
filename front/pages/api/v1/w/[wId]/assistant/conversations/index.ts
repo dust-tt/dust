@@ -87,7 +87,7 @@ const MAX_CONVERSATION_DEPTH = 4;
  *                 example: false
  *               blocking:
  *                 type: boolean
- *                 description: Whether to wait for the agent to generate the initial message (if false, you will need to use streaming events to get the messages, defaults to false).
+ *                 description: Whether to wait for the agent to generate the initial message. If true the query will wait for the agent's answer. If false (default), the API will return a conversation ID directly and you will need to use streaming events to get the messages.
  *                 example: true
  *     responses:
  *       200:

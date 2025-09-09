@@ -6,6 +6,7 @@ import type {
   NextApiRequest,
   NextApiResponse,
 } from "next";
+import type { Transaction } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
@@ -206,6 +207,18 @@ export class Authenticator {
         subscription,
       });
     });
+  }
+
+  async refresh({ transaction }: { transaction?: Transaction } = {}) {
+    if (this._user && this._workspace) {
+      this._groups = await GroupResource.listUserGroupsInWorkspace({
+        user: this._user,
+        workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+        transaction,
+      });
+    } else {
+      return;
+    }
   }
 
   /**

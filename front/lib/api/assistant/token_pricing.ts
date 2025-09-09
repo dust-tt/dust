@@ -13,6 +13,10 @@ export const MODEL_PRICING: Record<
     output: number;
   }
 > = {
+  "gpt-5": {
+    input: 1.25,
+    output: 10.0,
+  },
   "gpt-4-32k": {
     input: 60.0,
     output: 120.0,

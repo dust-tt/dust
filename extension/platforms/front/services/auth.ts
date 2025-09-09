@@ -256,12 +256,11 @@ export class FrontAuthService extends AuthService {
       const refreshRes = await this.refreshToken();
       if (refreshRes.isOk()) {
         tokens = refreshRes.value;
+      } else {
+        tokens = null;
       }
     }
-    // We wanted a refreshed token, don't return the one we have which is invalid.
-    if (forceRefresh) {
-      return null;
-    }
+
     return tokens?.accessToken ?? null;
   }
 

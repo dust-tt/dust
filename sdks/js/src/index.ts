@@ -7,15 +7,24 @@ import {
   AgentConfigurationViewType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
+  AgentMessageDoneEvent,
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   APIError,
+  APIErrorSchema,
   AppsCheckRequestType,
+  AppsCheckResponseSchema,
+  BlockedActionsResponseSchema,
   BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
+  CancelMessageGenerationResponseSchema,
   ConversationPublicType,
+  CreateConversationResponseSchema,
   CreateConversationResponseType,
+  CreateGenericAgentConfigurationResponseSchema,
+  DataSourceViewResponseSchema,
   DataSourceViewType,
+  DeleteFolderResponseSchema,
   DustAPICredentials,
   DustAppConfigType,
   DustAppRunBlockExecutionEvent,
@@ -28,38 +37,10 @@ import {
   DustAppRunReasoningTokensEvent,
   DustAppRunRunStatusEvent,
   DustAppRunTokensEvent,
-  FileUploadUrlRequestType,
-  GenerationTokensEvent,
-  GetMCPServerViewsResponseSchema,
-  HeartbeatMCPResponseType,
-  LoggerInterface,
-  PatchDataSourceViewRequestType,
-  PostMCPResultsResponseType,
-  PublicHeartbeatMCPRequestBody,
-  PublicPostContentFragmentRequestBody,
-  PublicPostConversationsRequestBody,
-  PublicPostMCPResultsRequestBody,
-  PublicPostMessageFeedbackRequestBody,
-  PublicPostMessagesRequestBody,
-  PublicRegisterMCPRequestBody,
-  RegisterMCPResponseType,
-  SearchRequestBodyType,
-  ToolErrorEvent,
-  UserMessageErrorEvent,
-  ValidateActionRequestBodyType,
-  ValidateActionResponseType,
-} from "./types";
-import {
-  APIErrorSchema,
-  AppsCheckResponseSchema,
-  BlockedActionsResponseSchema,
-  CancelMessageGenerationResponseSchema,
-  CreateConversationResponseSchema,
-  CreateGenericAgentConfigurationResponseSchema,
-  DataSourceViewResponseSchema,
-  DeleteFolderResponseSchema,
   Err,
   FileUploadRequestResponseSchema,
+  FileUploadUrlRequestType,
+  GenerationTokensEvent,
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetAppsResponseSchema,
@@ -67,25 +48,45 @@ import {
   GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
   GetFeedbacksResponseSchema,
+  GetMCPServerViewsResponseSchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
   HeartbeatMCPResponseSchema,
+  HeartbeatMCPResponseType,
+  LoggerInterface,
   MeResponseSchema,
   Ok,
+  PatchConversationRequestType,
+  PatchConversationResponseSchema,
+  PatchDataSourceViewRequestType,
   PostContentFragmentResponseSchema,
   PostMCPResultsResponseSchema,
+  PostMCPResultsResponseType,
   PostMessageFeedbackResponseSchema,
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
+  PublicHeartbeatMCPRequestBody,
+  PublicPostContentFragmentRequestBody,
+  PublicPostConversationsRequestBody,
+  PublicPostMCPResultsRequestBody,
+  PublicPostMessageFeedbackRequestBody,
+  PublicPostMessagesRequestBody,
+  PublicRegisterMCPRequestBody,
   RegisterMCPResponseSchema,
-  RetryMessageResponseSchema,
+  RegisterMCPResponseType,
   Result,
+  RetryMessageResponseSchema,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
+  SearchRequestBodyType,
   TokenizeResponseSchema,
+  ToolErrorEvent,
   UpsertFolderResponseSchema,
+  UserMessageErrorEvent,
+  ValidateActionRequestBodyType,
   ValidateActionResponseSchema,
+  ValidateActionResponseType,
 } from "./types";
 
 export * from "./internal_mime_types";
@@ -110,6 +111,7 @@ type AgentEvent =
   | AgentErrorEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
+  | AgentMessageDoneEvent
   | GenerationTokensEvent
   | UserMessageErrorEvent
   | ToolErrorEvent;
@@ -980,6 +982,25 @@ export class DustAPI {
     }
   }
 
+  async markAsRead({ conversationId }: { conversationId: string }) {
+    const res = await this.request({
+      method: "PATCH",
+      path: `assistant/conversations/${conversationId}`,
+      body: {
+        read: true,
+      } as PatchConversationRequestType,
+    });
+
+    const r = await this._resultFromResponse(
+      PatchConversationResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.success);
+  }
+
   async getConversations() {
     const res = await this.request({
       method: "GET",
@@ -1380,7 +1401,7 @@ export class DustAPI {
     messageId: string;
     blockedOnly?: boolean;
   }) {
-    const query = blockedOnly 
+    const query = blockedOnly
       ? new URLSearchParams({ blocked_only: "true" })
       : undefined;
 
@@ -1390,69 +1411,11 @@ export class DustAPI {
       query,
     });
 
-    const r = await this._resultFromResponse(
-      RetryMessageResponseSchema,
-      res
-    );
+    const r = await this._resultFromResponse(RetryMessageResponseSchema, res);
     if (r.isErr()) {
       return r;
     }
     return new Ok(r.value.message);
-  }
-
-  private async _fetchWithError(
-    url: string,
-    {
-      method = "GET",
-      headers = {},
-      body,
-      signal,
-      stream = false,
-    }: {
-      method?: RequestMethod;
-      headers?: HeadersInit;
-      body?: string;
-      signal?: AbortSignal;
-      stream?: boolean;
-    } = {}
-  ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
-    const now = Date.now();
-    try {
-      const res = await fetch(url, {
-        method,
-        headers,
-        body,
-        signal,
-      });
-
-      const responseBody = stream && res.body ? res.body : await res.text();
-
-      const response: DustResponse = {
-        status: res.status,
-        url: res.url,
-        body: responseBody,
-        ok: res.ok,
-      };
-
-      return new Ok({ response, duration: Date.now() - now });
-    } catch (e) {
-      const duration = Date.now() - now;
-      const err: APIError = {
-        type: "unexpected_network_error",
-        message: `Unexpected network error from DustAPI: ${e}`,
-      };
-      this._logger.error(
-        {
-          dustError: err,
-          url,
-          duration,
-          connectorsError: err,
-          error: e,
-        },
-        "DustAPI error"
-      );
-      return new Err(err);
-    }
   }
 
   // MCP Related.
@@ -1568,6 +1531,61 @@ export class DustAPI {
       url: `${url}?${params.toString()}`,
       headers,
     });
+  }
+
+  private async _fetchWithError(
+    url: string,
+    {
+      method = "GET",
+      headers = {},
+      body,
+      signal,
+      stream = false,
+    }: {
+      method?: RequestMethod;
+      headers?: HeadersInit;
+      body?: string;
+      signal?: AbortSignal;
+      stream?: boolean;
+    } = {}
+  ): Promise<Result<{ response: DustResponse; duration: number }, APIError>> {
+    const now = Date.now();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers,
+        body,
+        signal,
+      });
+
+      const responseBody = stream && res.body ? res.body : await res.text();
+
+      const response: DustResponse = {
+        status: res.status,
+        url: res.url,
+        body: responseBody,
+        ok: res.ok,
+      };
+
+      return new Ok({ response, duration: Date.now() - now });
+    } catch (e) {
+      const duration = Date.now() - now;
+      const err: APIError = {
+        type: "unexpected_network_error",
+        message: `Unexpected network error from DustAPI: ${e}`,
+      };
+      this._logger.error(
+        {
+          dustError: err,
+          url,
+          duration,
+          connectorsError: err,
+          error: e,
+        },
+        "DustAPI error"
+      );
+      return new Err(err);
+    }
   }
 
   private async _resultFromResponse<T extends z.ZodTypeAny>(

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -euo pipefail
 
 # Compute the list from the registry.
@@ -11,6 +11,8 @@ NODE_ENV=development npx concurrently \
   "nodemon --exec 'tsx ./start_worker.ts --workers agent_loop' \
     --watch 'temporal/agent_loop' \
     --watch 'lib/api/assistant' \
+    --watch 'lib/actions' \
+    --watch 'lib/api/mcp' \
     --ext 'ts,js' \
     --signal 'SIGTERM' \
     --delay 5" # 5 seconds delay to avoid restarting the agent loop worker too often.

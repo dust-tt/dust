@@ -1,7 +1,6 @@
 import { runActionStreamed } from "@app/lib/actions/server";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
-import { getConversationChannelId } from "@app/lib/api/assistant/streaming/helpers";
-import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { getDustProdAction } from "@app/lib/registry";
@@ -53,16 +52,15 @@ export async function ensureConversationTitle(
   await ConversationResource.updateTitle(auth, conversation.sId, title);
 
   // Enqueue the conversation_title event in Redis.
-  // TODO(DURABLE-AGENTS 2025-07-15): Move this to a common place.
-  const redisHybridManager = getRedisHybridManager();
-  await redisHybridManager.publish(
-    getConversationChannelId({ conversationId: conversation.sId }),
-    JSON.stringify({
+  await publishConversationEvent(
+    {
       type: "conversation_title",
       created: Date.now(),
       title,
-    }),
-    "user_message_events"
+    },
+    {
+      conversationId: conversation.sId,
+    }
   );
 
   return title;

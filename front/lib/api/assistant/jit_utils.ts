@@ -11,7 +11,7 @@ import {
 import type { ConversationType } from "@app/types";
 import {
   isAgentMessageType,
-  isCanvasFileContentType,
+  isContentCreationFileContentType,
   isContentFragmentType,
   isSupportedImageContentType,
 } from "@app/types";
@@ -42,8 +42,8 @@ export function listAttachments(
       const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
 
       for (const f of generatedFiles) {
-        // Canvas files should not be shown in the JIT.
-        if (isCanvasFileContentType(f.contentType)) {
+        // Content Creation files should not be shown in the JIT.
+        if (isContentCreationFileContentType(f.contentType)) {
           continue;
         }
 

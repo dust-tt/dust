@@ -78,24 +78,6 @@ export function TagsSection() {
     );
   }, [isSuggestLoading, instructions, availableTagsCount]);
 
-  const buttonTooltip = useMemo(() => {
-    if (isSuggestLoading) {
-      return "Generating suggestions...";
-    }
-    if (
-      !instructions ||
-      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
-    ) {
-      return `Add at least ${MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS} characters to instructions to get suggestions`;
-    }
-    if (availableTagsCount === 0) {
-      return allTags.length === 0
-        ? "Create tags to start using suggestions"
-        : "All available tags are already selected";
-    }
-    return "Generate tag suggestions";
-  }, [isSuggestLoading, instructions, availableTagsCount, allTags.length]);
-
   const getSuggestedTags = async (): Promise<TagType[]> => {
     if (
       !instructions ||
@@ -143,9 +125,9 @@ export function TagsSection() {
     return [];
   };
 
-  const handleSuggestTags = async () => {
+  const handleSuggestTags = async (): Promise<TagType[]> => {
     if (isSuggestLoading) {
-      return;
+      return [];
     }
 
     setIsSuggestLoading(true);
@@ -160,16 +142,10 @@ export function TagsSection() {
           description:
             "We couldn't find any relevant tags to suggest for this agent.",
         });
-        return;
+        return [];
       }
 
-      suggestedTags.forEach((tag) => append(tag));
-
-      sendNotification({
-        title: `Added ${suggestedTags.length} suggested tag${suggestedTags.length > 1 ? "s" : ""}`,
-        type: "success",
-        description: `Added: ${suggestedTags.map((t) => t.name).join(", ")}`,
-      });
+      return suggestedTags;
     } finally {
       setIsSuggestLoading(false);
     }
@@ -196,7 +172,7 @@ export function TagsSection() {
         onSuggestTags={handleSuggestTags}
         isSuggestLoading={isSuggestLoading}
         isSuggestDisabled={isButtonDisabled}
-        suggestTooltip={buttonTooltip}
+        instructions={instructions}
       />
     </SettingSectionContainer>
   );

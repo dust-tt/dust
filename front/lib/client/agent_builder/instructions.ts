@@ -3,14 +3,10 @@ import type { JSONContent } from "@tiptap/react";
 import {
   createInstructionBlockNode,
   splitTextAroundBlocks,
+  textToBlockNodes,
 } from "@app/lib/client/agent_builder/instructionBlockUtils";
 
 function serializeNodeToText(node: JSONContent): string {
-  if (node.type === "instructionBlock") {
-    const content = node.content?.map(serializeNodeToText).join("") || "";
-    return content;
-  }
-
   if (node.type === "heading") {
     // Preserve the original heading level in markdown (support H1–H6)
     const level = node.attrs?.level || 1;
@@ -21,16 +17,8 @@ function serializeNodeToText(node: JSONContent): string {
   }
 
   if (node.type === "paragraph") {
-    if (!node.content || !node.content.length) {
-      return "\n";
-    }
-
-    if (node.content.length === 1 && node.content[0].type === "text") {
-      return `${node.content[0].text}\n`;
-    }
-
-    const text = node.content.map(serializeNodeToText).join("");
-    return text ? `${text}\n` : "\n";
+    const text = node.content?.map(serializeNodeToText).join("") || "";
+    return `${text}\n`;
   }
 
   if (node.type === "text") {
@@ -41,7 +29,8 @@ function serializeNodeToText(node: JSONContent): string {
     // Convert code blocks to markdown format with triple backticks
     const language = node.attrs?.language || "";
     const code = node.content?.map(serializeNodeToText).join("") || "";
-    return `\`\`\`${language}\n${code}\`\`\`\n`;
+    // Code blocks should have exactly one newline before the closing backticks
+    return `\`\`\`${language}\n${code}\n\`\`\`\n`;
   }
 
   if (node.content) {
@@ -65,33 +54,8 @@ function parseInstructionBlocks(text: string): JSONContent[] {
 
   segments.forEach((segment) => {
     if (segment.type === "text") {
-      // Parse code blocks from the text
-      const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
-      let lastIndex = 0;
-      let match;
-
-      while ((match = codeBlockRegex.exec(segment.content)) !== null) {
-        if (match.index > lastIndex) {
-          const textBefore = segment.content.slice(lastIndex, match.index);
-          const nodes = parseTextWithHeadings(textBefore);
-          content.push(...nodes);
-        }
-        const language = match[1] || "";
-        const code = match[2];
-        content.push({
-          type: "codeBlock",
-          attrs: { language },
-          content: code ? [{ type: "text", text: code }] : [],
-        });
-
-        lastIndex = match.index + match[0].length;
-      }
-
-      if (lastIndex < segment.content.length) {
-        const remainingText = segment.content.slice(lastIndex);
-        const nodes = parseTextWithHeadings(remainingText);
-        content.push(...nodes);
-      }
+      const nodes = textToBlockNodes(segment.content);
+      content.push(...nodes);
     } else if (segment.type === "block" && segment.blockType) {
       const blockNode = createInstructionBlockNode(
         segment.blockType,
@@ -102,31 +66,6 @@ function parseInstructionBlocks(text: string): JSONContent[] {
   });
 
   return content;
-}
-
-function parseTextWithHeadings(text: string): JSONContent[] {
-  const nodes: JSONContent[] = [];
-  const lines = text.split("\n");
-
-  for (const line of lines) {
-    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
-    if (headingMatch) {
-      const level = headingMatch[1].length; // Preserve original level (1–6)
-      const content = headingMatch[2].trim();
-      nodes.push({
-        type: "heading",
-        attrs: { level }, // Keep the original heading level
-        content: content ? [{ type: "text", text: content }] : [],
-      });
-    } else {
-      nodes.push({
-        type: "paragraph",
-        content: line.trim() ? [{ type: "text", text: line.trim() }] : [],
-      });
-    }
-  }
-
-  return nodes;
 }
 
 export function tipTapContentFromPlainText(text: string): JSONContent {

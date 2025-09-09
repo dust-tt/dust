@@ -223,8 +223,8 @@ export type ConversationWithoutContentType = {
   id: ModelId;
   created: number;
   updated?: number;
-  unread?: boolean;
-  actionRequired?: boolean;
+  unread: boolean;
+  actionRequired: boolean;
   owner: WorkspaceType;
   sId: string;
   title: string | null;
@@ -271,6 +271,7 @@ export const CONVERSATION_ERROR_TYPES = [
   "conversation_not_found",
   "conversation_access_restricted",
   "conversation_with_unavailable_agent",
+  "user_already_participant",
 ] as const;
 
 export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];

@@ -206,7 +206,7 @@ export function AgentBuilderCapabilitiesBlock({
     } else {
       setDialogMode(
         action.noConfigurationRequired
-          ? { type: "info", action }
+          ? { type: "info", action, source: "addedTool" }
           : { type: "edit", action, index }
       );
     }

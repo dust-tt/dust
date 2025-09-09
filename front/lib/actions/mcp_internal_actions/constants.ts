@@ -2,6 +2,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
+  MAX_MCP_REQUEST_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -12,8 +13,11 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
-import { CANVAS_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/canvas/instructions";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
+import type {
+  InternalMCPServerDefinitionType,
+  MCPToolRetryPolicyType,
+} from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   ModelId,
@@ -66,11 +70,12 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "github",
   "gmail",
   "google_calendar",
+  "google_drive",
   "google_sheets",
   "hubspot",
   "image_generation",
   "include_data",
-  "canvas",
+  "content_creation",
   "jira",
   "missing_action_catcher",
   "monday",
@@ -116,8 +121,10 @@ export const INTERNAL_MCP_SERVERS = {
       get_pull_request: "never_ask",
       list_organization_projects: "never_ask",
       list_issues: "never_ask",
+      list_pull_requests: "never_ask",
       get_issue: "never_ask",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "github",
@@ -139,6 +146,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "image_generation",
@@ -157,6 +165,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "file_generation",
@@ -175,11 +184,13 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
       name: TABLE_QUERY_SERVER_NAME,
       version: "1.0.0",
-      description: "Tables, Spreadsheets, Notion DBs (quantitative).",
+      description:
+        "TablesQuery structured data like a spreadsheet or database for data analyses.",
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,
@@ -193,6 +204,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
       name: DEFAULT_WEBSEARCH_ACTION_NAME,
@@ -213,6 +225,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: true,
     tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
       name: "think",
@@ -270,6 +283,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_deal: "high",
       remove_association: "high",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "hubspot",
@@ -294,6 +308,7 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: DEFAULT_AGENT_ROUTER_ACTION_NAME,
@@ -314,12 +329,13 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
       name: "include_data",
       version: "1.0.0",
       description:
-        "Always includes specific documents in full for every conversation with this agent.",
+        "Load complete content for full context up to memory limits.",
       icon: "ActionTimeIcon",
       authorization: null,
       documentationUrl: null,
@@ -333,6 +349,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "run_dust_app",
@@ -372,6 +389,7 @@ The directive should be used to display a clickable version of the agent name in
       update_row_database: "low",
       update_schema_database: "low",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "notion",
@@ -393,12 +411,12 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
       name: "extract_data",
       version: "1.0.0",
-      description:
-        "Extracts structured information from unstructured data using your defined schema.",
+      description: "Parse documents to create structured datasets.",
       icon: "ActionScanIcon",
       authorization: null,
       documentationUrl: null,
@@ -412,6 +430,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "missing_action_catcher",
@@ -439,6 +458,7 @@ The directive should be used to display a clickable version of the agent name in
       list_objects: "never_ask",
       describe_object: "never_ask",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "salesforce",
@@ -465,6 +485,7 @@ The directive should be used to display a clickable version of the agent name in
       get_messages: "low",
       create_reply_draft: "low",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "gmail",
@@ -496,6 +517,7 @@ The directive should be used to display a clickable version of the agent name in
       delete_event: "low",
       check_availability: "never_ask",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "google_calendar",
@@ -519,6 +541,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "conversation_files",
@@ -545,6 +568,7 @@ The directive should be used to display a clickable version of the agent name in
       post_message: "low",
       get_user: "never_ask",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "slack",
@@ -581,7 +605,9 @@ The directive should be used to display a clickable version of the agent name in
       add_worksheet: "low",
       delete_worksheet: "low",
       format_cells: "low",
+      copy_sheet: "low",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "google_sheets",
@@ -636,6 +662,7 @@ The directive should be used to display a clickable version of the agent name in
       delete_item: "high",
       delete_group: "high",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "monday",
@@ -659,6 +686,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "agent_memory",
@@ -700,6 +728,7 @@ The directive should be used to display a clickable version of the agent name in
       create_issue_link: "low",
       delete_issue_link: "low",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "jira",
@@ -715,7 +744,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: JIRA_SERVER_INSTRUCTIONS,
     },
   },
-  canvas: {
+  content_creation: {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
@@ -724,16 +753,17 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: true,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "canvas",
+      name: "content_creation",
       version: "1.0.0",
       description:
-        "Create and update canvas files that users can execute and interact with. Currently supports client-executable code.",
+        "Create dashboards, presentations, or any interactive content.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
-      instructions: CANVAS_INSTRUCTIONS,
+      instructions: CONTENT_CREATION_INSTRUCTIONS,
     },
   },
   outlook: {
@@ -752,6 +782,7 @@ The directive should be used to display a clickable version of the agent name in
       create_contact: "high",
       update_contact: "high",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "outlook",
@@ -784,6 +815,7 @@ The directive should be used to display a clickable version of the agent name in
       delete_event: "low",
       check_availability: "never_ask",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "outlook_calendar",
@@ -832,6 +864,7 @@ The directive should be used to display a clickable version of the agent name in
       add_ticket_reply: "low",
       create_solution_article: "high",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "freshservice",
@@ -849,6 +882,36 @@ The directive should be used to display a clickable version of the agent name in
       instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
     },
   },
+  google_drive: {
+    id: 27,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("google_drive_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_drives: "never_ask",
+      search_files: "never_ask",
+      get_file_content: "never_ask",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "google_drive",
+      version: "1.0.0",
+      description:
+        "Tools for searching and reading content from Google Drive files (Docs, Sheets, Presentations, text files).",
+      authorization: {
+        provider: "google_drive" as const,
+        supported_use_cases: ["personal_actions"] as const,
+        scope: "https://www.googleapis.com/auth/drive.readonly" as const,
+      },
+      icon: "DriveLogo",
+      documentationUrl: "https://docs.dust.tt/docs/google-drive",
+      instructions: null,
+    },
+  },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
@@ -856,12 +919,12 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     serverInfo: {
       name: SEARCH_SERVER_NAME,
       version: "1.0.0",
-      description:
-        "Searches through selected data sources to surface the best content for answering user queries.",
+      description: "Search content to find the most relevant information.",
       icon: "ActionMagnifyingGlassIcon",
       authorization: null,
       documentationUrl: null,
@@ -875,7 +938,8 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    timeoutMs: 10 * 60 * 1000, // 10 minutes
+    tools_retry_policies: undefined,
+    timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",
@@ -895,6 +959,7 @@ The directive should be used to display a clickable version of the agent name in
       return !featureFlags.includes("dev_mcp_actions");
     },
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "primitive_types_debugger",
@@ -914,6 +979,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "reasoning",
@@ -936,12 +1002,13 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: true,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "query_tables_v2",
       version: "1.0.0",
       description:
-        "Transforms your questions into SQL queries for analyzing data. (quantitative) (mcp, exploded).",
+        "Query structured data like a spreadsheet or database for data analyses.",
       icon: "ActionTableIcon",
       authorization: null,
       documentationUrl: null,
@@ -957,6 +1024,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "data_sources_file_system",
@@ -984,6 +1052,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       create_agent: "high",
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "agent_management",
@@ -1004,6 +1073,7 @@ The directive should be used to display a clickable version of the agent name in
       return !featureFlags.includes("data_warehouses_tool");
     },
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: DATA_WAREHOUSE_SERVER_NAME,
@@ -1027,6 +1097,7 @@ The directive should be used to display a clickable version of the agent name in
       return !featureFlags.includes("toolsets_tool");
     },
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "toolsets",
@@ -1054,6 +1125,7 @@ The directive should be used to display a clickable version of the agent name in
       | undefined;
     isPreview: boolean;
     tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
+    tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
     timeoutMs: number | undefined;
     serverInfo: InternalMCPServerDefinitionType & { name: K };
   };

@@ -68,7 +68,7 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
-  canvasMCPServerView,
+  contentCreationMCPServerView,
   runAgentMCPServerView,
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
@@ -82,7 +82,7 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-  canvasMCPServerView: MCPServerViewResource | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
   runAgentMCPServerView: MCPServerViewResource | null;
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
@@ -286,7 +286,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
-        canvasMCPServerView,
+        contentCreationMCPServerView,
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
         toolsetsMCPServerView,
@@ -358,7 +358,7 @@ export async function getGlobalAgents(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    canvasMCPServerView,
+    contentCreationMCPServerView,
     runAgentMCPServerView,
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
@@ -397,7 +397,7 @@ export async function getGlobalAgents(
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "canvas"
+          "content_creation"
         )
       : null,
     variant === "full"
@@ -469,7 +469,7 @@ export async function getGlobalAgents(
       webSearchBrowseMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
-      canvasMCPServerView,
+      contentCreationMCPServerView,
       runAgentMCPServerView,
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,

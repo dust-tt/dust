@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Check if the current branch is 'main'
-current_branch=$(git symbolic-ref --short HEAD)
+current_branch=$(git rev-parse --abbrev-ref HEAD)
 if [ "$current_branch" = "main" ]; then
     # Check if the flag is set
     if [ -z "$ALLOW_MAIN_COMMIT" ]; then

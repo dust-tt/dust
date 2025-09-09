@@ -11,6 +11,7 @@ import {
   LONG_RUNNING_TOOL_THRESHOLD_MS,
   SYNC_TO_ASYNC_TIMEOUT_MS,
 } from "@app/lib/constants/timeouts";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { wakeLock } from "@app/lib/wake_lock";
 import {
   logAgentLoopPhaseCompletionActivity,
@@ -153,6 +154,7 @@ async function runAgentSynchronousWithStreaming(
             publishDeferredEventsActivity,
             runModelAndCreateActionsActivity,
             runToolActivity,
+            runRetryableToolActivity: runToolActivity,
           },
           {
             startStep,
@@ -238,6 +240,9 @@ export async function runAgentLoop(
     executionMode: runAgentArgs.sync ? "sync" : "async",
     startStep,
   });
+
+  // Clear action required in conversation - the loop will put them back if needed.
+  await ConversationResource.clearActionRequired(auth, conversationId);
 
   // Thread initial start time through execution
   const runAgentArgsWithTiming = {

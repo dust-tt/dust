@@ -112,6 +112,22 @@ async function handler(
       const { triggers: requestTriggers } = req.body;
       const workspace = auth.getNonNullableWorkspace();
 
+      if (requestTriggers.length > 0) {
+        const triggerNames = requestTriggers.map(
+          (t: { name: string }) => t.name
+        );
+        const uniqueTriggerNames = new Set(triggerNames);
+        if (uniqueTriggerNames.size !== triggerNames.length) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Trigger names must be unique for a given agent.",
+            },
+          });
+        }
+      }
+
       const currentTriggersMap = new Map(triggers.map((t) => [t.sId(), t]));
       const resultTriggers: TriggerType[] = [];
       const errors: Error[] = [];

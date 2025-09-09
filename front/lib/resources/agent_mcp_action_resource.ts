@@ -28,11 +28,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
-import { removeNulls } from "@app/types";
+import { isString, removeNulls } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 
@@ -152,6 +152,22 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return action;
   }
 
+  static async fetchById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<AgentMCPActionResource | null> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return null;
+    }
+
+    const [action] = await AgentMCPActionResource.fetchByModelIds(auth, [
+      modelId,
+    ]);
+
+    return action;
+  }
+
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[]
@@ -178,6 +194,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     if (!conversation) {
       return [];
     }
+
+    const latestAgentMessages =
+      await conversation.getLatestAgentMessageIdByRank(auth);
 
     const blockedActions = await AgentMCPActionModel.findAll({
       include: [
@@ -245,6 +264,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     for (const action of blockedActions) {
       const agentMessage = action.agentMessage;
       assert(agentMessage?.message, "No message for agent message.");
+
+      // Ignore actions that are not the latest version of the agent message.
+      if (
+        !latestAgentMessages.some((m) => m.agentMessageId === agentMessage.id)
+      ) {
+        continue;
+      }
+
       const agentConfiguration = agentConfigurations.find(
         (a) => a.sId === agentMessage.agentConfigurationId
       );
@@ -313,6 +340,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             mcpServerId,
             mcpServerDisplayName,
           },
+        });
+      } else if (action.status === "blocked_child_action_input_required") {
+        const conversationId = action.stepContext.resumeState?.conversationId;
+        const childBlockedActionsList = isString(conversationId)
+          ? await this.listBlockedActionsForConversation(auth, conversationId)
+          : [];
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          resumeState: action.stepContext.resumeState,
+          childBlockedActionsList,
+          metadata: {
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
+          },
+          authorizationInfo: null,
         });
       } else {
         blockedActionsList.push({

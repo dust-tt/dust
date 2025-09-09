@@ -277,6 +277,7 @@ export class RunResource extends BaseResource<RunModel> {
       modelId: usage.modelId as ModelIdType,
       promptTokens: usage.promptTokens,
       providerId: usage.providerId as ModelProviderIdType,
+      cachedTokens: usage.cachedTokens,
     }));
   }
 }
@@ -295,4 +296,5 @@ export interface RunUsageType {
   modelId: ModelIdType;
   promptTokens: number;
   providerId: ModelProviderIdType;
+  cachedTokens: number | null;
 }

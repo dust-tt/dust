@@ -19,11 +19,12 @@ const checkboxSizeVariant: Record<CheckboxSizeType, string> = {
 
 const checkboxStyles = cva(
   cn(
-    "s-shrink-0 s-peer s-border",
-    "s-s-border-border-dark dark:s-s-border-border-dark-night",
+    "s-shrink-0 s-peer s-border s-transition s-duration-200 s-ease-in-out",
+    "s-border-border-dark dark:s-border-border-dark-night s-bg-background dark:s-bg-background-night",
     "s-text-foreground dark:s-text-foreground-night",
     "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
-    "disabled:s-cursor-not-allowed disabled:s-opacity-50"
+    "hover:s-border-highlight hover:s-bg-highlight-50 dark:hover:s-bg-highlight-100-night hover:dark:s-border-highlight",
+    "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-border-border-dark disabled:dark:s-border-border-dark-night disabled:s-bg-background dark:disabled:s-bg-background-night"
   ),
   {
     variants: {

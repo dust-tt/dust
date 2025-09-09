@@ -15,9 +15,9 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
+  AgentsUsageType,
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
-  DataSourceWithAgentsUsageType,
   SpaceType,
   WhitelistableFeature,
 } from "@app/types";
@@ -141,7 +141,7 @@ export function DataSourceCategoryBrowser({
 
 type SpaceCategory = {
   [p: string]: {
-    usage: DataSourceWithAgentsUsageType;
+    usage: AgentsUsageType;
     count: number;
   };
 };

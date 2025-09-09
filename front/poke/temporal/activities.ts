@@ -26,6 +26,7 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Subscription } from "@app/lib/models/plan";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -40,6 +41,7 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import {
   LabsTranscriptsConfigurationModel,
@@ -266,6 +268,13 @@ export async function deleteAgentsActivity({
       },
     });
 
+    await AgentMemoryModel.destroy({
+      where: {
+        agentConfigurationId: agent.sId,
+        workspaceId: workspace.id,
+      },
+    });
+
     const group = await GroupResource.fetchByAgentConfiguration({
       auth,
       agentConfiguration: agent,
@@ -454,6 +463,13 @@ export async function deleteMembersActivity({
         await FileResource.deleteAllForUser(auth, user.toJSON());
         await membership.delete(auth, {});
 
+        // Delete the user's agent memories.
+        await AgentMemoryModel.destroy({
+          where: {
+            userId: user.id,
+          },
+        });
+
         await user.delete(auth, {});
       }
     } else {
@@ -588,6 +604,7 @@ export async function deleteWorkspaceActivity({
       workspaceId: workspace.id,
     },
   });
+  await AgentMemoryResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

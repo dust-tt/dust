@@ -3,6 +3,9 @@ import type {
   InternalAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 
+export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
+export const MAX_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
+
 // Stored in a separate file to prevent a circular dependency issue.
 
 // Use top_k of 768 as 512 worked really smoothly during initial tests. Might update to 1024 in the

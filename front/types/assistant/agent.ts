@@ -99,6 +99,7 @@ export type AgentModelConfigurationType = {
   temperature: number;
   reasoningEffort?: AgentReasoningEffort;
   responseFormat?: string;
+  promptCaching?: boolean;
 };
 
 export type AgentFetchVariant = "light" | "full" | "extra_light";
@@ -279,6 +280,15 @@ export type AgentErrorEvent = {
   configurationId: string;
   messageId: string;
   error: GenericErrorContent;
+};
+
+// Generic event sent when an agent message is done (could be successful, failed, or cancelled).
+export type AgentMessageDoneEvent = {
+  type: "agent_message_done";
+  created: number;
+  conversationId: string;
+  configurationId: string;
+  messageId: string;
 };
 
 // Event sent when an error occurred during the tool call.

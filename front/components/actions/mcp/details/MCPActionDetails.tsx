@@ -8,6 +8,7 @@ import {
   MagnifyingGlassIcon,
   Markdown,
 } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
@@ -75,7 +76,32 @@ export function MCPActionDetails({
   lastNotification,
   messageStatus,
 }: MCPActionDetailsProps) {
-  const { functionCallName, internalMCPServerName, params, output } = action;
+  const {
+    functionCallName,
+    internalMCPServerName,
+    params,
+    status,
+    output: baseOutput,
+  } = action;
+
+  const [output, setOutput] = useState(baseOutput);
+
+  useEffect(() => {
+    if (status === "denied") {
+      const deniedMessage = {
+        type: "text" as const,
+        text: "Tool execution rejected by the user.",
+      };
+
+      if (baseOutput === null) {
+        setOutput([deniedMessage]);
+      } else {
+        setOutput([...baseOutput, deniedMessage]);
+      }
+    } else {
+      setOutput(baseOutput);
+    }
+  }, [status, baseOutput]);
 
   const parts = functionCallName ? functionCallName.split("__") : [];
   const toolName = parts[parts.length - 1];
