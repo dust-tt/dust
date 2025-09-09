@@ -106,7 +106,7 @@ export async function* executeMCPTool({
         // Specific handling for run_agent notifications indicating the tool has
         // started and can be resumed: the action is updated to save the resumeState.
         if (isRunAgentQueryProgressOutput(notification.params.data.output)) {
-          action.updateStepContext({
+          await action.updateStepContext({
             ...action.stepContext,
             resumeState: {
               userMessageId: notification.params.data.output.userMessageId,
