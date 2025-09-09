@@ -172,21 +172,14 @@ export async function runScheduledAgentsActivity(
 
   let lastRunAt: Date | null = null;
   try {
-    const schedule = client.schedule.getHandle(scheduleId);
-    console.log("Describing schedule with ID:", scheduleId);
-    const result = await schedule.describe();
-    console.log(
-      "Schedule description:",
-      result,
-      result.info,
-      result.info.recentActions
-    );
-    // Get the last recent action (if any)
-    const lastRecentAction =
-      result.info.recentActions.length > 0
-        ? result.info.recentActions[result.info.recentActions.length - 1]
+    const handle = client.schedule.getHandle(scheduleId);
+    const schedule = await handle.describe();
+
+    const recentActions = schedule.info.recentActions;
+    lastRunAt =
+      recentActions.length > 0
+        ? recentActions[recentActions.length - 2].takenAt // -2 to get the last completed action, -1 is the current running action
         : null;
-    lastRunAt = result.info.recentActions[-1].takenAt;
   } catch (error) {
     // We can ignore this error, schedule might not have run yet.
   }
