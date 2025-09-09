@@ -25,7 +25,7 @@ import { CONTENT_CREATION_FILE_FORMATS } from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
-/**
+/**        if (_meta?.progressToken) {
  * Slideshow Server - Allows the model to create and update slideshow files.
  * Slideshow files are interactive presentations that users can view and navigate.
  * Files are rendered in a content creation viewer where users can interact with them.
