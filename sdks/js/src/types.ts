@@ -274,6 +274,8 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "zapier"
   | "zendesk"
   | "run_agent"
+  | "excel"
+  | "powerpoint"
 >()
   .or(z.null())
   .or(z.undefined());
