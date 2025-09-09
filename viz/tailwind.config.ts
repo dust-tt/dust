@@ -93,7 +93,11 @@ export const SAFELIST_CLASSES = [
   ...rowSpans,
   ...display,
   ...sizing,
+  ...spacing,
+  ...flexbox,
+  ...typography
 ];
+
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -180,13 +184,7 @@ const config: Config = {
     {
      pattern: /^(sm:|md:|lg:|xl:|2xl:)./
     },
-    ...gridCols,
-    ...colSpans,
-    ...display,
-    ...spacing,
-    ...flexbox,
-    ...typography,
-
+    ...SAFELIST_CLASSES,
   ],
 };
 export default config;
