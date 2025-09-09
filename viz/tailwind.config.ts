@@ -181,9 +181,6 @@ const config: Config = {
     {
       pattern: /./, // This matches all class names.
     },
-    {
-     pattern: /^(sm:|md:|lg:|xl:|2xl:)./
-    },
     ...SAFELIST_CLASSES,
   ],
 };
