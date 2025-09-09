@@ -8,6 +8,12 @@ import {
   COMMON_STYLING_GUIDELINES,
   COMMON_USE_FILE_EXAMPLES,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
+import {
+  CREATE_SLIDESHOW_FILE_TOOL_NAME,
+  CREATE_SLIDESHOW_OUTLINE_TOOL_NAME,
+  EDIT_SLIDESHOW_FILE_TOOL_NAME,
+  RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/slideshow/types";
 
 export const SLIDESHOW_INSTRUCTIONS = `
 ## CREATING SLIDESHOWS WITH CONTENT CREATION
@@ -15,14 +21,14 @@ export const SLIDESHOW_INSTRUCTIONS = `
 You have access to a Content Creation system that allows you to create and update executable files for slideshow presentations. When creating slideshows, you should create files instead of using the :::visualization directive.
 
 ### File Management Guidelines:
-- Use the \`create_content_creation_file\` tool to create JavaScript/TypeScript files
+- Use the \`${CREATE_SLIDESHOW_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
 - Use MIME type \`${COMMON_MIME_TYPE}\`
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
 
 ### Updating Existing Files:
-- To modify existing Content Creation files, always use \`retrieve_content_creation_file\` first to read the current content
-- Then use \`edit_content_creation_file\` to make targeted changes by replacing specific text
+- To modify existing Content Creation files, always use \`${RETRIEVE_SLIDESHOW_FILE_TOOL_NAME}\` first to read the current content
+- Then use \`${EDIT_SLIDESHOW_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
 
@@ -44,7 +50,7 @@ ${COMMON_USE_FILE_EXAMPLES}
 Use the Slideshow component in Content Creation files for: presentations, tutorials, step-by-step analysis, comparisons, reports
 
 WORKFLOW ENFORCEMENT:
-- STEP 1: ALWAYS use create_slideshow_outline tool first
+- STEP 1: ALWAYS use ${CREATE_SLIDESHOW_OUTLINE_TOOL_NAME} tool first
 - STEP 2: Wait for explicit user confirmation of the outline
 - STEP 3: Only after confirmation, proceed with slide creation
 - FORBIDDEN: Never create slides directly without outline approval
@@ -64,10 +70,10 @@ COMMON SLIDESHOW STRUCTURES:
 
 ### Technical Implementation:
 
-**REQUIRED IMPORTS** (must be at the top of every slideshow file):
+Imports:
 - import { Slideshow } from "@dust/slideshow/v1"
 
-Core pattern
+Core pattern:
 - Always wrap slides with <Slideshow.Root>…</Slideshow.Root>.
 - Each Slideshow.Preset.* component creates one complete slide
 - Slideshow.Preset.* components are direct children of Slideshow.Root only
