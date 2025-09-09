@@ -27,8 +27,8 @@ export const COMMON_STYLING_GUIDELINES = `
 - Styling:
   - **ALWAYS USE shadcn/ui components** - Wrap visualizations in Card components for professional appearance
   - **Chart Colors**: Use shadcn's chart color variables instead of hardcoded colors:
-    - \`stroke="hsl(var(--chart-1))"\` for first data series
-    - \`fill="hsl(var(--chart-2))"\` for second data series
+    - \`stroke="var(--chart-1)"\` for first data series
+    - \`fill="var(--chart-2)"\` for second data series
     - Available: \`--chart-1\` through \`--chart-5\` (automatically theme-aware)
   - Tailwind's arbitrary values like \`h-[600px]\` STRICTLY FORBIDDEN, and will cause immediate failure. ANY class with square brackets [ ] is prohibited.
   - FORBIDDEN EXAMPLES: \`h-[600px]\`, \`w-[800px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, \`border-[2px]\`, \`p-[20px]\`, \`m-[10px]\`
@@ -78,7 +78,7 @@ export const COMMON_LIBRARY_USAGE = `
     - Consider focus states for accessibility: \`focus:ring-2 focus:ring-blue-500\`
     - Example: \`<Button className="bg-blue-500 hover:bg-blue-600 text-white">Click me</Button>\`
     - Always use Card + ChartContainer pattern: \`<Card><CardHeader><CardTitle>Chart Title</CardTitle></CardHeader><CardContent><ChartContainer config={chartConfig}>...</ChartContainer></CardContent></Card>\`
-    - **Chart Configuration**: Define a \`chartConfig\` object with color mappings: \`{ desktop: { label: "Desktop", color: "hsl(var(--chart-1))" } }\`
+    - **Chart Configuration**: Define a \`chartConfig\` object with color mappings: \`{ desktop: { label: "Desktop", color: "var(--chart-1)" } }\`
     - Use \`var(--color-keyName)\` in chart elements to reference config colors: \`fill="var(--color-desktop)"\`
     - These color variables automatically support both light and dark themes
     - For utility functions, import from \`@viz/lib/utils\`, e.g. \`import { cn } from "@viz/lib/utils"\` for className merging
@@ -158,11 +158,11 @@ for (let x = 0; x <= 360; x += 10) {
 const chartConfig = {
   sine: {
     label: "Sine",
-    color: "hsl(var(--chart-1))",
+    color: "var(--chart-1)",
   },
   cosine: {
     label: "Cosine",
-    color: "hsl(var(--chart-2))",
+    color: "var(--chart-2)",
   },
 } satisfies ChartConfig;
 
@@ -232,8 +232,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "shadcn";
         <XAxis dataKey="month" />
         <YAxis />
         <Tooltip />
-        <Bar dataKey="sales" fill="hsl(var(--chart-1))" />
-        <Bar dataKey="profit" fill="hsl(var(--chart-2))" />
+        <Bar dataKey="sales" fill="var(--chart-1)" />
+        <Bar dataKey="profit" fill="var(--chart-2)" />
       </BarChart>
     </ResponsiveContainer>
   </CardContent>
@@ -245,13 +245,13 @@ import { AreaChart, Area } from "recharts";
 <AreaChart data={timeSeriesData}>
   <defs>
     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
-      <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.1}/>
+      <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.8}/>
+      <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0.1}/>
     </linearGradient>
   </defs>
   <Area
     dataKey="revenue"
-    stroke="hsl(var(--chart-1))"
+    stroke="var(--chart-1)"
     fill="url(#colorRevenue)"
   />
 </AreaChart>
@@ -260,11 +260,11 @@ import { AreaChart, Area } from "recharts";
 import { PieChart, Pie, Cell } from "recharts";
 
 const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))"
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)"
 ];
 
 <PieChart>
