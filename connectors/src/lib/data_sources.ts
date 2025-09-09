@@ -521,11 +521,14 @@ export async function renderPrefixSection({
 }
 
 async function tokenize(text: string, ds: DataSourceConfig) {
-  if (!text || text.length === 0) {
+  if (!text) {
     return [];
   }
 
   const sanitizedText = stripNullBytes(text);
+  if (!sanitizedText || sanitizedText.length === 0) {
+    return [];
+  }
 
   const tokensRes = await getDustAPI(ds).tokenize(
     sanitizedText,
@@ -535,9 +538,9 @@ async function tokenize(text: string, ds: DataSourceConfig) {
     logger.error(
       {
         error: tokensRes.error,
-        textLength: text.length,
+        textLength: sanitizedText.length,
         sanitizedTextLength: sanitizedText.length,
-        textPreview: text.substring(0, 100),
+        textPreview: sanitizedText.substring(0, 200),
         dataSourceId: ds.dataSourceId,
         workspaceId: ds.workspaceId,
       },
