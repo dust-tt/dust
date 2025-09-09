@@ -20,7 +20,7 @@ import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
