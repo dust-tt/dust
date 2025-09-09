@@ -45,5 +45,6 @@ export function validateTailwindCode(code: string): Result<undefined, Error> {
       )
     );
   }
+
   return new Ok(undefined);
 }
