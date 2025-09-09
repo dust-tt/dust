@@ -17,8 +17,7 @@ export class WebhookSourcesViewModel extends SoftDeletableWorkspaceAwareModel<We
 
   declare webhookSourceId: ForeignKey<WebhookSourceModel["id"]>;
 
-  // Can be null if the user did not set a custom name.
-  declare name: string | null;
+  declare customName: string | null;
 
   declare vaultId: ForeignKey<SpaceModel["id"]>;
 
@@ -46,7 +45,7 @@ WebhookSourcesViewModel.init(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    name: {
+    customName: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -63,23 +62,14 @@ WebhookSourcesViewModel.init(
     modelName: "webhook_sources_view",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "vaultId"] },
       {
-        fields: ["workspaceId", "webhookSourceId", "vaultId"],
+        fields: ["workspaceId", "vaultId", "webhookSourceId"],
         where: {
           deletedAt: null,
         },
         unique: true,
         name: "webhook_sources_views_workspace_webhook_source_vault_active",
-      },
-      {
-        fields: ["workspaceId", "name", "vaultId"],
-        where: {
-          deletedAt: null,
-        },
-        unique: true,
-        name: "webhook_sources_views_workspace_name_vault_active",
       },
     ],
   }

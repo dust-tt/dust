@@ -80,7 +80,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     editedByUser?: UserResource,
     transaction?: Transaction
   ) {
-    assert(auth.isAdmin(), "Only the admin can create a webhook sources view");
+    assert(auth.isAdmin(), "Only admins can create a webhook sources view");
 
     const view = await WebhookSourcesViewModel.create(
       {
@@ -127,7 +127,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       auth,
       {
         webhookSourceId: systemView.webhookSourceId,
-        name: systemView.name,
+        customName: systemView.customName,
       },
       space,
       auth.user() ?? undefined
@@ -297,7 +297,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     }
 
     const [affectedCount] = await this.update({
-      name,
+      customName: name ?? null,
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
@@ -409,7 +409,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return {
       id: this.id,
       sId: this.sId,
-      name: this.name,
+      customName: this.customName,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

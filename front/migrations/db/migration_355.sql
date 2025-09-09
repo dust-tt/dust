@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS "webhook_sources_views" (
     "updatedAt" timestamp WITH time zone NOT NULL,
     "deletedAt" timestamp WITH time zone,
     "editedAt" timestamp WITH time zone NOT NULL,
-    "name" varchar(255),
+    "customName" varchar(255),
     "webhookSourceId" bigint NOT NULL REFERENCES "webhook_sources" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "workspaceId" bigint NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "id" bigserial,
@@ -13,15 +13,8 @@ CREATE TABLE IF NOT EXISTS "webhook_sources_views" (
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "webhook_sources_views_workspace_id_id" ON "webhook_sources_views" ("workspaceId", "id");
-
 CREATE INDEX "webhook_sources_views_workspace_id_vault_id" ON "webhook_sources_views" ("workspaceId", "vaultId");
 
-CREATE UNIQUE INDEX "webhook_sources_views_workspace_webhook_source_vault_active" ON "webhook_sources_views" ("workspaceId", "webhookSourceId", "vaultId")
+CREATE UNIQUE INDEX "webhook_sources_views_workspace_vault_webhook_source_active" ON "webhook_sources_views" ("workspaceId", "vaultId", "webhookSourceId")
 WHERE
     "deletedAt" IS NULL;
-
-CREATE UNIQUE INDEX "webhook_sources_views_workspace_name_vault_active" ON "webhook_sources_views" ("workspaceId", "name", "vaultId")
-WHERE
-    "deletedAt" IS NULL;
-

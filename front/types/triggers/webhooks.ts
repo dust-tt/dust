@@ -18,7 +18,7 @@ export type WebhookSourceType = {
 export type WebhookSourcesViewType = {
   id: ModelId;
   sId: string;
-  name: string | null;
+  customName: string | null;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
