@@ -923,6 +923,7 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: true,
     tools_stakes: undefined,
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "slideshow",
