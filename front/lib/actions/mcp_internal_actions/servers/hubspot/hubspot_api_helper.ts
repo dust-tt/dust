@@ -89,11 +89,6 @@ export const getObjectProperties = async ({
   });
 };
 
-/**
- * Fetches all owners from HubSpot with pagination
- * @param accessToken - HubSpot API access token
- * @returns Array of all owners
- */
 const getAllOwners = async (accessToken: string): Promise<PublicOwner[]> => {
   const hubspotClient = new Client({ accessToken });
   const allOwners: PublicOwner[] = [];
@@ -107,9 +102,9 @@ const getAllOwners = async (accessToken: string): Promise<PublicOwner[]> => {
       100, // limit (max 100 per page)
       undefined // archived
     );
-    
+
     allOwners.push(...owners.results);
-    
+
     if (owners.paging?.next?.after) {
       after = owners.paging.next.after;
     } else {
