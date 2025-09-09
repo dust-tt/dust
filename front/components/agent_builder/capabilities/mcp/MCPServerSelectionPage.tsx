@@ -36,7 +36,7 @@ function DataVisualizationCard({
       isSelected={isSelected}
       canAdd={!isSelected}
       onClick={onClick}
-      cardContainerClassName="h-32"
+      cardContainerClassName="h-36"
     />
   );
 }
@@ -94,7 +94,7 @@ function MCPServerCard({
         isSelected={isSelected}
         canAdd={canAdd}
         onClick={onClick}
-        cardContainerClassName="h-32"
+        cardContainerClassName="h-36"
         mountPortal
         mountPortalContainer={containerRef.current || undefined}
         toolInfo={{
