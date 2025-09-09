@@ -33,8 +33,6 @@ import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { webhookSlackBotAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot";
 import { webhookSlackBotInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
-import { teamsAgentsWebhook } from "@connectors/api/webhooks/webhook_teams_agents";
-import { webhookTeamsBotAPIHandler } from "@connectors/api/webhooks/webhook_teams_bot";
 import { teamsMessagesWebhook } from "@connectors/api/webhooks/webhook_teams_messages";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
@@ -164,8 +162,9 @@ export function startServer(port: number) {
     bodyParser.raw({ type: "application/json" }),
     webhookFirecrawlAPIHandler
   );
-  app.post("/webhooks/:webhook_secret/teams_bot", webhookTeamsBotAPIHandler);
-  app.get("/webhooks/:webhook_secret/teams_agents", teamsAgentsWebhook);
+
+  // app.post("/webhooks/:webhook_secret/teams_bot", webhookTeamsBotAPIHandler);
+  // app.get("/webhooks/:webhook_secret/teams_agents", teamsAgentsWebhook);
   app.post("/webhooks/:webhook_secret/teams_messages", teamsMessagesWebhook);
 
   // /configuration/ is the new configration method, replacing the old /config/ method

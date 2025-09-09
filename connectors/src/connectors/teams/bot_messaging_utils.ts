@@ -1,0 +1,187 @@
+import axios from "axios";
+import type { Activity, TurnContext } from "botbuilder";
+
+import logger from "@connectors/logger/logger";
+import { cacheWithRedis } from "@connectors/types/shared/cache";
+
+/**
+ * Utility functions to handle Teams bot messaging with reliable authentication
+ * Replaces context.sendActivity and context.updateActivity with tenant-specific token approach
+ */
+
+/**
+ * Raw token acquisition function (for caching)
+ */
+async function acquireTenantSpecificToken(): Promise<string> {
+  const tokenResponse = await axios.post(
+    `https://login.microsoftonline.com/${process.env.BOT_TENANT_ID}/oauth2/v2.0/token`,
+    new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: process.env.BOT_ID!,
+      client_secret: process.env.BOT_PASSWORD!,
+      scope: "https://api.botframework.com/.default",
+    }),
+    {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    }
+  );
+
+  logger.debug({
+    tokenType: tokenResponse.data.token_type,
+    expiresIn: tokenResponse.data.expires_in,
+  }, "Tenant-specific token acquired");
+
+  return tokenResponse.data.access_token;
+}
+
+/**
+ * Cached version of token acquisition using Redis
+ * Cache for 50 minutes (tokens expire in 1 hour, 10-minute buffer)
+ */
+const getCachedTenantToken = cacheWithRedis(
+  acquireTenantSpecificToken,
+  () => `teams-bot-token-${process.env.BOT_ID}-${process.env.BOT_TENANT_ID}`,
+  {
+    ttlMs: 50 * 60 * 1000, // 50 minutes
+  }
+);
+
+/**
+ * Acquire tenant-specific token for Bot Framework API calls
+ */
+async function getTenantSpecificToken(): Promise<string | null> {
+  try {
+    return await getCachedTenantToken();
+  } catch (error) {
+    logger.error(
+      { error: error.response?.data || error.message },
+      "Failed to acquire tenant-specific token"
+    );
+    return null;
+  }
+}
+
+/**
+ * Reliable replacement for context.sendActivity()
+ * Uses tenant-specific token for authentication
+ */
+export async function sendActivity(
+  context: TurnContext,
+  activity: Partial<Activity>
+): Promise<{ id?: string } | undefined> {
+  const token = await getTenantSpecificToken();
+  if (!token) {
+    logger.error("Cannot send activity - no valid token");
+    return undefined;
+  }
+
+  try {
+    const response = await axios.post(
+      `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities`,
+      activity,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
+      }
+    );
+
+    logger.debug({
+      activityId: response.data?.id,
+      statusCode: response.status,
+    }, "Activity sent successfully");
+
+    return { id: response.data?.id };
+  } catch (error) {
+    logger.error({
+      error: error.response?.data || error.message,
+      statusCode: error.response?.status,
+      serviceUrl: context.activity.serviceUrl,
+      conversationId: context.activity.conversation?.id,
+    }, "Failed to send activity");
+    throw error;
+  }
+}
+
+/**
+ * Reliable replacement for context.updateActivity()
+ * Uses tenant-specific token for authentication
+ */
+export async function updateActivity(
+  context: TurnContext,
+  activity: Partial<Activity>
+): Promise<void> {
+  const token = await getTenantSpecificToken();
+  if (!token) {
+    logger.error("Cannot update activity - no valid token");
+    return;
+  }
+
+  if (!activity.id) {
+    logger.error("Cannot update activity - no activity ID provided");
+    return;
+  }
+
+  try {
+    const response = await axios.put(
+      `${context.activity.serviceUrl}/v3/conversations/${context.activity.conversation.id}/activities/${activity.id}`,
+      activity,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
+      }
+    );
+
+    logger.debug({
+      activityId: activity.id,
+      statusCode: response.status,
+    }, "Activity updated successfully");
+  } catch (error) {
+    logger.error({
+      error: error.response?.data || error.message,
+      statusCode: error.response?.status,
+      serviceUrl: context.activity.serviceUrl,
+      conversationId: context.activity.conversation?.id,
+      activityId: activity.id,
+    }, "Failed to update activity");
+    throw error;
+  }
+}
+
+/**
+ * Helper function to send a text message
+ */
+export async function sendTextMessage(
+  context: TurnContext,
+  text: string
+): Promise<{ id?: string } | undefined> {
+  return sendActivity(context, {
+    type: "message",
+    text,
+  });
+}
+
+/**
+ * Helper function to send an adaptive card
+ */
+export async function sendAdaptiveCard(
+  context: TurnContext,
+  card: any
+): Promise<{ id?: string } | undefined> {
+  return sendActivity(context, {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: card,
+      },
+    ],
+  });
+}

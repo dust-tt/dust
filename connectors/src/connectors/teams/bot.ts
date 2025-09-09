@@ -18,6 +18,10 @@ import {
   createStreamingAdaptiveCard,
   makeConversationUrl,
 } from "@connectors/connectors/teams/adaptive_cards";
+import {
+  sendActivity,
+  updateActivity,
+} from "@connectors/connectors/teams/bot_messaging_utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import { TeamsMessage } from "@connectors/lib/models/teams";
 import logger from "@connectors/logger/logger";
@@ -534,11 +538,10 @@ const sendTeamsResponse = async (
         const existingActivityId = streamingMessages.get(conversationId);
         if (existingActivityId) {
           try {
-            const updateActivity = {
+            await updateActivity(context, {
               ...adaptiveCard,
               id: existingActivityId,
-            };
-            await context.updateActivity(updateActivity);
+            });
             return;
           } catch (updateError) {
             logger.warn(
@@ -549,13 +552,13 @@ const sendTeamsResponse = async (
         }
 
         // Send new streaming message
-        const sentActivity = await context.sendActivity(adaptiveCard);
+        const sentActivity = await sendActivity(context, adaptiveCard);
         if (sentActivity?.id) {
           streamingMessages.set(conversationId, sentActivity.id);
         }
       } else {
         // Final message - send and clean up
-        await context.sendActivity(adaptiveCard);
+        await sendActivity(context, adaptiveCard);
         streamingMessages.delete(conversationId);
       }
       return;
