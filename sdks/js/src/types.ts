@@ -86,6 +86,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-3-mini-latest" // xAI
   | "grok-3-fast-latest" // xAI
   | "grok-3-mini-fast-latest" // xAI
+  | "grok-4-latest" // xAI
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
