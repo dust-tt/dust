@@ -127,6 +127,9 @@ pub struct AnthropicContent {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_control: Option<AnthropicCacheControl>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -138,6 +141,17 @@ pub enum AnthropicContentType {
     ToolResult,
     Thinking,
     RedactedThinking,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AnthropicCacheControl {
+    pub r#type: AnthropicCacheControlType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnthropicCacheControlType {
+    Ephemeral,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

@@ -4,8 +4,8 @@ use crate::providers::anthropic::backend::{
 use crate::providers::anthropic::helpers::get_anthropic_chat_messages;
 use crate::providers::anthropic::streaming::handle_streaming_response;
 use crate::providers::anthropic::types::{
-    AnthropicChatMessage, AnthropicError, AnthropicTool, AnthropicToolChoice,
-    AnthropicToolChoiceType, ChatResponse,
+    AnthropicCacheControl, AnthropicCacheControlType, AnthropicChatMessage, AnthropicError,
+    AnthropicTool, AnthropicToolChoice, AnthropicToolChoiceType, ChatResponse,
 };
 use crate::providers::chat_messages::{AssistantChatMessage, ChatMessage};
 use crate::providers::embedder::{Embedder, EmbedderVector};
@@ -399,8 +399,29 @@ impl LLM for AnthropicLLM {
             None => (None, 0),
         };
 
-        let anthropic_messages =
+        let prompt_caching = match &extras {
+            None => false,
+            Some(v) => match v.get("prompt_caching") {
+                Some(Value::Bool(b)) => *b,
+                _ => false,
+            },
+        };
+
+        let mut anthropic_messages =
             get_anthropic_chat_messages(messages[slice_from..].to_vec()).await?;
+
+        if prompt_caching {
+            anthropic_messages
+                .last_mut()
+                .map(|last| match last.content.last_mut() {
+                    Some(last_content) => {
+                        last_content.cache_control = Some(AnthropicCacheControl {
+                            r#type: AnthropicCacheControlType::Ephemeral,
+                        })
+                    }
+                    _ => {}
+                });
+        }
 
         let tools = functions
             .iter()
@@ -429,14 +450,6 @@ impl LLM for AnthropicLLM {
                     })
                     .collect::<Result<Vec<&str>>>()?,
                 _ => vec![],
-            },
-        };
-
-        let prompt_caching = match &extras {
-            None => false,
-            Some(v) => match v.get("prompt_caching") {
-                Some(Value::Bool(b)) => *b,
-                _ => false,
             },
         };
 
