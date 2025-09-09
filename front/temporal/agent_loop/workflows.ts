@@ -1,6 +1,7 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
+  CancellationScope,
   proxyActivities,
   startChild,
   workflowInfo,
@@ -8,6 +9,7 @@ import {
 
 import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
+import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as logAgentLoopMetricsActivities from "@app/temporal/agent_loop/activities/instrumentation";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
@@ -71,6 +73,13 @@ const { ensureConversationTitleActivity } = proxyActivities<
   startToCloseTimeout: "5 minutes",
 });
 
+const { notifyWorkflowError } = proxyActivities<typeof commonActivities>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 5,
+  },
+});
+
 export async function agentLoopConversationTitleWorkflow({
   authType,
   runAsynchronousAgentArgs,
@@ -109,38 +118,58 @@ export async function agentLoopWorkflow({
   let childWorkflowHandle: ChildWorkflowHandle<
     typeof agentLoopConversationTitleWorkflow
   > | null = null;
+  let workflowFailed = false;
+  let workflowError: Error | undefined;
 
-  // If conversation title is not set, launch a child workflow to generate the conversation title in
-  // the background. If a workflow with the same ID is already running, ignore the error and
-  // continue. Do not wait for the child workflow to complete at this point.
-  // This is to avoid blocking the main workflow.
-  if (!runAsynchronousAgentArgs.conversationTitle) {
-    try {
-      childWorkflowHandle = await startChild(
-        agentLoopConversationTitleWorkflow,
-        {
-          workflowId: makeAgentLoopConversationTitleWorkflowId(
-            authType,
-            runAsynchronousAgentArgs
-          ),
-          searchAttributes: parentSearchAttributes,
-          args: [{ authType, runAsynchronousAgentArgs }],
-          memo,
+  try {
+    // If conversation title is not set, launch a child workflow to generate the conversation title in
+    // the background. If a workflow with the same ID is already running, ignore the error and
+    // continue. Do not wait for the child workflow to complete at this point.
+    // This is to avoid blocking the main workflow.
+    if (!runAsynchronousAgentArgs.conversationTitle) {
+      try {
+        childWorkflowHandle = await startChild(
+          agentLoopConversationTitleWorkflow,
+          {
+            workflowId: makeAgentLoopConversationTitleWorkflowId(
+              authType,
+              runAsynchronousAgentArgs
+            ),
+            searchAttributes: parentSearchAttributes,
+            args: [{ authType, runAsynchronousAgentArgs }],
+            memo,
+          }
+        );
+      } catch (err) {
+        if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
+          throw err;
         }
-      );
-    } catch (err) {
-      if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
-        throw err;
       }
     }
-  }
 
-  // In Temporal workflows, we don't pass syncStartTime since async execution doesn't need timeout.
-  await executeAgentLoop(authType, runAgentArgs, activities, {
-    startStep,
-  });
+    // In Temporal workflows, we don't pass syncStartTime since async execution doesn't need timeout.
+    await executeAgentLoop(authType, runAgentArgs, activities, {
+      startStep,
+    });
 
-  if (childWorkflowHandle) {
-    await childWorkflowHandle.result();
+    if (childWorkflowHandle) {
+      await childWorkflowHandle.result();
+    }
+  } catch (err) {
+    workflowFailed = true;
+    workflowError = err instanceof Error ? err : new Error(String(err));
+    throw err;
+  } finally {
+    // Only notify error if the workflow actually failed
+    if (workflowFailed && workflowError) {
+      await CancellationScope.nonCancellable(async () => {
+        await notifyWorkflowError(authType, {
+          conversationId: runAsynchronousAgentArgs.conversationId,
+          agentMessageId: runAsynchronousAgentArgs.agentMessageId,
+          agentMessageVersion: runAsynchronousAgentArgs.agentMessageVersion,
+          error: workflowError as Error, // We know it's defined here due to the conditional check
+        });
+      });
+    }
   }
 }

@@ -1,7 +1,13 @@
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type { Authenticator } from "@app/lib/auth";
+import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage as AgentMessageModel,
+  Message,
+} from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ConversationWithoutContentType } from "@app/types";
@@ -124,5 +130,71 @@ export async function updateResourceAndPublishEvent(
     conversationId: conversation.sId,
     event,
     step,
+  });
+}
+
+export async function notifyWorkflowError(
+  authType: AuthenticatorType,
+  {
+    conversationId,
+    agentMessageId,
+    agentMessageVersion,
+    error,
+  }: {
+    conversationId: string;
+    agentMessageId: string;
+    agentMessageVersion: number;
+    error: Error;
+  }
+): Promise<void> {
+  const auth = await AuthenticatorClass.fromJSON(authType);
+
+  // Fetch the agent message row
+  const messageRow = await Message.findOne({
+    where: {
+      sId: agentMessageId,
+      conversationId,
+      version: agentMessageVersion,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+      },
+    ],
+  });
+
+  if (!messageRow?.agentMessage) {
+    throw new Error(`Agent message not found: ${agentMessageId}`);
+  }
+
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    throw new Error(`Conversation not found: ${conversationId}`);
+  }
+  const conversation = conversationRes.value;
+
+  const errorEvent: AgentMessageEvents = {
+    type: "agent_error",
+    created: Date.now(),
+    configurationId: messageRow.agentMessage.agentConfigurationId || "",
+    messageId: agentMessageId,
+    error: {
+      code: "workflow_error",
+      message: error.message || "Workflow execution failed",
+      metadata: {
+        category: "critical_failure",
+        errorName: error.name,
+      },
+    },
+  };
+
+  await updateResourceAndPublishEvent(auth, {
+    event: errorEvent,
+    agentMessageRow: messageRow.agentMessage,
+    conversation,
+    step: 0, // Workflow-level error, not tied to a specific step
   });
 }
