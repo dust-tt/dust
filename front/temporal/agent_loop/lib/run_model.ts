@@ -43,6 +43,7 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -115,6 +116,44 @@ export async function runModelActivity(
   if (isLegacyAgent && step !== 0) {
     localLogger.warn("Legacy agent only supports step 0.");
     // legacy agents stop after one step
+    return null;
+  }
+
+  // Fast path: Noop assistant returns immediately without calling core.
+  if (agentConfiguration.sId === GLOBAL_AGENTS_SID.NOOP) {
+    agentMessage.content = "soupinou";
+    agentMessage.status = "succeeded";
+
+    await AgentStepContentResource.createNewVersion({
+      workspaceId: conversation.owner.id,
+      agentMessageId: agentMessage.agentMessageId,
+      step: 0,
+      index: 0,
+      type: "text_content",
+      value: {
+        type: "text_content",
+        value: "soupinou",
+      },
+    });
+
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "agent_message_success",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        message: agentMessage,
+        runIds, // No core run involved for the Noop assistant
+      },
+      agentMessageRow,
+      conversation,
+      step,
+    });
+
+    localLogger.info(
+      "Noop assistant fast path: returned soupinou without core call"
+    );
+
     return null;
   }
 
