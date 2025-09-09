@@ -476,14 +476,18 @@ export function getMCPServerRequirements(
     mcpServerView.toolsMetadata
       ?.filter((tool) => tool.enabled)
       .map((tool) => tool.toolName) ?? [];
-  
-  const enabledTools = server.tools.filter((tool) => enabledToolNames.includes(tool.name));
 
-  const mayRequireTimeFrameConfiguration = enabledTools
-    .some((tool) => tool.inputSchema?.properties?.timeFrame);
+  const enabledTools = server.tools.filter((tool) =>
+    enabledToolNames.includes(tool.name)
+  );
 
-  const mayRequireJsonSchemaConfiguration = enabledTools
-    .some((tool) => tool.inputSchema?.properties?.jsonSchema);
+  const mayRequireTimeFrameConfiguration = enabledTools.some(
+    (tool) => tool.inputSchema?.properties?.timeFrame
+  );
+
+  const mayRequireJsonSchemaConfiguration = enabledTools.some(
+    (tool) => tool.inputSchema?.properties?.jsonSchema
+  );
 
   const requiredStrings = Object.entries(
     findPathsToConfiguration({
