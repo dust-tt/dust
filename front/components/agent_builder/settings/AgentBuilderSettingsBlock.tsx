@@ -392,19 +392,9 @@ function AgentPictureInput() {
   );
 }
 
-interface AgentBuilderSettingsBlockProps {
-  isSettingBlocksOpen: boolean;
-}
-
-export function AgentBuilderSettingsBlock({
-  isSettingBlocksOpen,
-}: AgentBuilderSettingsBlockProps) {
+export function AgentBuilderSettingsBlock() {
   return (
-    <AgentBuilderSectionContainer
-      title="Settings"
-      collapsible
-      defaultOpen={isSettingBlocksOpen}
-    >
+    <AgentBuilderSectionContainer title="Settings">
       <div className="space-y-5">
         <div className="flex items-start gap-8">
           <div className="flex-grow">
