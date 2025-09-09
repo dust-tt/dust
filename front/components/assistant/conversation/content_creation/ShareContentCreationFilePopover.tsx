@@ -27,6 +27,7 @@ import React from "react";
 
 import { useShareContentCreationFile } from "@app/lib/swr/files";
 import type { FileShareScope, LightWorkspaceType } from "@app/types";
+import { fileShareScopeSchema } from "@app/types";
 
 interface FileSharingDropdownProps {
   selectedScope: FileShareScope;
@@ -37,6 +38,38 @@ interface FileSharingDropdownProps {
   isUsingConversationFiles: boolean;
 }
 
+const getScopeDisplayInfo = (
+  scope: FileShareScope,
+  owner: LightWorkspaceType
+): {
+  label: string;
+  icon: React.ComponentType;
+  value: FileShareScope;
+} => {
+  switch (scope) {
+    case "conversation_participants":
+      return {
+        label: "Conversation participants",
+        icon: LockIcon,
+        value: scope,
+      };
+    case "workspace":
+      return {
+        label: `${owner.name} workspace`,
+        icon: UserGroupIcon,
+        value: scope,
+      };
+    case "public":
+      return {
+        label: "Anyone with the link",
+        icon: GlobeAltIcon,
+        value: scope,
+      };
+    default:
+      return { label: "Not shared", icon: LockIcon, value: scope };
+  }
+};
+
 function FileSharingDropdown({
   selectedScope,
   onScopeChange,
@@ -44,27 +77,9 @@ function FileSharingDropdown({
   disabled = false,
   isUsingConversationFiles,
 }: FileSharingDropdownProps) {
-  const scopeOptions: {
-    icon: React.ComponentType;
-    label: string;
-    value: FileShareScope;
-  }[] = [
-    {
-      icon: LockIcon,
-      label: "Only conversation participants",
-      value: "conversation_participants",
-    },
-    {
-      icon: UserGroupIcon,
-      label: `Anyone in ${owner.name} workspace`,
-      value: "workspace",
-    },
-    {
-      icon: GlobeAltIcon,
-      label: "Anyone with the link",
-      value: "public",
-    },
-  ];
+  const scopeOptions = fileShareScopeSchema.options.map((scope) =>
+    getScopeDisplayInfo(scope, owner)
+  );
 
   const selectedOption = scopeOptions.find(
     (opt) => opt.value === selectedScope
@@ -166,14 +181,35 @@ export function ShareContentCreationFilePopover({
     await copyToClipboard(shareURL);
   };
 
+  const currentShareScope = fileShare?.scope;
+
+  const currentScopeInfo = currentShareScope
+    ? getScopeDisplayInfo(currentShareScope, owner)
+    : null;
+
+  const getShareButtonIcon = () => {
+    if (currentScopeInfo) {
+      return currentScopeInfo.icon;
+    }
+
+    return LinkIcon;
+  };
+
+  const getShareButtonTooltip = () => {
+    if (currentScopeInfo) {
+      return `Shared with: ${currentScopeInfo.label}`;
+    }
+    return "Share public link";
+  };
+
   return (
     <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
-          icon={LinkIcon}
+          icon={getShareButtonIcon()}
           size="xs"
           variant="ghost"
-          tooltip="Share public link"
+          tooltip={getShareButtonTooltip()}
         />
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col" align="end">
