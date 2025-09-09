@@ -127,7 +127,7 @@ export function AgentMessage({
         if (eventType === "tool_approve_execution") {
           showBlockedActionsDialog();
           enqueueBlockedAction({
-            message,
+            messageId: message.sId,
             blockedAction: {
               status: "blocked_validation_required",
               authorizationInfo: null,

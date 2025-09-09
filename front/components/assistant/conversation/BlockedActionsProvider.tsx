@@ -28,7 +28,7 @@ import type {
 } from "@app/types";
 
 type BlockedActionQueueItem = {
-  message?: LightAgentMessageType;
+  messageId: string;
   blockedAction: BlockedToolExecution;
 };
 
@@ -52,9 +52,10 @@ function useBlockedActionsQueue({
           if (action.status === "blocked_child_action_input_required") {
             return action.childBlockedActionsList.map((childAction) => ({
               blockedAction: childAction,
+              messageId: action.messageId,
             }));
           } else {
-            return [{ blockedAction: action }];
+            return [{ blockedAction: action, messageId: action.messageId }];
           }
         })
       );
@@ -65,10 +66,10 @@ function useBlockedActionsQueue({
 
   const enqueueBlockedAction = useCallback(
     ({
-      message,
+      messageId,
       blockedAction,
     }: {
-      message: LightAgentMessageType;
+      messageId: string;
       blockedAction: BlockedToolExecution;
     }) => {
       setBlockedActionsQueue((prevQueue) => {
@@ -79,9 +80,9 @@ function useBlockedActionsQueue({
         // If the action is not in the queue, add it.
         // If the action is in the queue, replace it with the new one.
         return existingIndex === -1
-          ? [...prevQueue, { blockedAction, message }]
+          ? [...prevQueue, { blockedAction, messageId }]
           : prevQueue.map((item, index) =>
-              index === existingIndex ? { blockedAction, message } : item
+              index === existingIndex ? { blockedAction, messageId } : item
             );
       });
     },
@@ -108,7 +109,7 @@ function useBlockedActionsQueue({
 
 type ActionValidationContextType = {
   enqueueBlockedAction: (params: {
-    message: LightAgentMessageType;
+    messageId: string;
     blockedAction: BlockedToolExecution;
   }) => void;
   showBlockedActionsDialog: () => void;
@@ -192,11 +193,11 @@ export function BlockedActionsProvider({
       return;
     }
 
-    const { blockedAction, message } = currentBlockedAction;
+    const { blockedAction, messageId } = currentBlockedAction;
 
     const result = await validateAction({
       validationRequest: blockedAction,
-      message,
+      messageId,
       approved:
         status === "approved" && neverAskAgain ? "always_approved" : status,
     });

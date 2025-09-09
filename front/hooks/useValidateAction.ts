@@ -24,38 +24,14 @@ export function useValidateAction({
   const validateAction = useCallback(
     async ({
       validationRequest,
-      message,
+      messageId,
       approved,
     }: {
       validationRequest: MCPActionValidationRequest;
-      message?: LightAgentMessageType;
+      messageId: string;
       approved: MCPValidationOutputType;
     }) => {
       setIsValidating(true);
-
-      const retryBlockedActions = async () => {
-        if (
-          conversation?.sId &&
-          message &&
-          conversation.sId !== validationRequest.conversationId
-        ) {
-          const response = await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/retry?blocked_only=true`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) {
-            onError("Failed to resume conversation. Please try again.");
-            return { success: false };
-          }
-        }
-        return { success: true };
-      };
 
       try {
         // Validate the action.
@@ -79,19 +55,39 @@ export function useValidateAction({
             if (errData?.error.type === "action_not_blocked") {
               // If the action is not blocked anymore, we consider the validation already
               // successful.  This can happen if multiple clients validate the same action. We
-              // retry the blocked actions and return a success in that case.
-              return await retryBlockedActions();
+              // directly return a success in that case.
+              return { success: true };
             }
           } catch {
             // ignore JSON parsing errors and fall through to generic error
           }
-
           onError("Failed to assess action approval. Please try again.");
           return { success: false };
         }
 
         // Retry on blocked tools on the main conversation if there is one that is != from the event's.
-        return await retryBlockedActions();
+        if (
+          conversation?.sId &&
+          messageId &&
+          conversation.sId !== validationRequest.conversationId
+        ) {
+          console.log("retry");
+          const response = await fetch(
+            `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${messageId}/retry?blocked_only=true`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (!response.ok) {
+            onError("Failed to resume conversation. Please try again.");
+            return { success: false };
+          }
+        }
+        return { success: true };
       } catch (error) {
         onError("Failed to assess action approval. Please try again.");
         return { success: false };
