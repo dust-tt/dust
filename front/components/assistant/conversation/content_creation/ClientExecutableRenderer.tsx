@@ -25,6 +25,7 @@ import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -62,8 +63,6 @@ interface ClientExecutableRendererProps {
   fileName?: string;
   owner: LightWorkspaceType;
 }
-
-const FULL_SCREEN_HASH_PARAM = "fullScreen";
 
 export function ClientExecutableRenderer({
   conversation,

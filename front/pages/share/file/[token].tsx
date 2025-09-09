@@ -9,6 +9,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getFaviconPath } from "@app/lib/utils";
 import {
   CONTENT_CREATION_SIDE_PANEL_TYPE,
+  FULL_SCREEN_HASH_PARAM,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
@@ -54,12 +55,13 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   // If the file is shared with conversation participants, redirect to the conversation.
   if (shareScope === "conversation_participants") {
+    const pathname = `/w/${workspace.sId}/assistant/${file.useCaseMetadata?.conversationId}`;
+    const hash = `#?${FULL_SCREEN_HASH_PARAM}=true&${SIDE_PANEL_TYPE_HASH_PARAM}=${CONTENT_CREATION_SIDE_PANEL_TYPE}&${SIDE_PANEL_HASH_PARAM}=${file.sId}`;
+    const destination = pathname + hash;
+
     return {
       redirect: {
-        destination:
-          `/w/${workspace.sId}/assistant/${file.useCaseMetadata?.conversationId}#?` +
-          `${SIDE_PANEL_TYPE_HASH_PARAM}=${CONTENT_CREATION_SIDE_PANEL_TYPE}&` +
-          `${SIDE_PANEL_HASH_PARAM}=${file.sId}`,
+        destination,
         permanent: false,
       },
     };
