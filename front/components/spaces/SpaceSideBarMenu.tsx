@@ -49,6 +49,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
+  WhitelistableFeature,
 } from "@app/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
 
@@ -229,17 +230,22 @@ const getSpaceSectionDetails = (
 
 // System space.
 
-const SYSTEM_SPACE_ITEMS = [
+const SYSTEM_SPACE_ITEMS: {
+  label: string;
+  visual: IconType;
+  category: DataSourceViewCategory;
+  flag: WhitelistableFeature | null;
+}[] = [
   {
     label: "Connections",
     visual: CloudArrowLeftRightIcon,
-    category: "managed" as DataSourceViewCategory,
+    category: "managed",
     flag: null,
   },
   {
     label: "Tools",
     visual: BoltIcon,
-    category: "actions" as DataSourceViewCategory,
+    category: "actions",
     flag: null,
   },
 ];
