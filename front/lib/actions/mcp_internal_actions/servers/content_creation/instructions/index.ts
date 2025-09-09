@@ -7,7 +7,7 @@ import {
   COMMON_REACT_COMPONENT_GUIDELINES,
   COMMON_STYLING_GUIDELINES,
   COMMON_USE_FILE_EXAMPLES,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/instructions";
+} from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,

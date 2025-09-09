@@ -7,7 +7,7 @@ import {
   COMMON_REACT_COMPONENT_GUIDELINES,
   COMMON_STYLING_GUIDELINES,
   COMMON_USE_FILE_EXAMPLES,
-} from "@app/lib/actions/mcp_internal_actions/servers/common/instructions";
+} from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
 
 export const SLIDESHOW_INSTRUCTIONS = `
 ## CREATING SLIDESHOWS WITH CONTENT CREATION

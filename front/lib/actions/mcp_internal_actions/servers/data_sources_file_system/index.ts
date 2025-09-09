@@ -23,7 +23,7 @@ import {
   makeQueryResource,
   renderSearchResults,
 } from "@app/lib/actions/mcp_internal_actions/rendering";
-import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/find_tags_tool";
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/cat_tool";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system/list_tool";
 import {

@@ -4,7 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { validateContent } from "@app/lib/actions/mcp_internal_actions/servers/common/validation";
+import { validateContent } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/validation";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
