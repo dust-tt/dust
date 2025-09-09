@@ -1,5 +1,55 @@
 import type { Config } from "tailwindcss";
 
+// Since we don't build css files from generated files, we need to include all the possible classnames.
+// Default tailwind classes don't contain classes with responsive prefix, we need to add them manually.
+const gridCols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].flatMap(i => [
+  `sm:grid-cols-${i}`,
+  `md:grid-cols-${i}`,
+  `lg:grid-cols-${i}`,
+  `xl:grid-cols-${i}`,
+  `2xl:grid-cols-${i}`,
+]);
+
+const colSpans = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 'full'].flatMap(i => [
+  `sm:col-span-${i}`,
+  `md:col-span-${i}`,
+  `lg:col-span-${i}`,
+  `xl:col-span-${i}`,
+  `2xl:col-span-${i}`,
+]);
+
+const rowSpans = [1, 2, 3, 4, 5, 6, 'full'].flatMap(i => [
+  `sm:row-span-${i}`,
+  `md:row-span-${i}`,
+  `lg:row-span-${i}`,
+  `xl:row-span-${i}`,
+  `2xl:row-span-${i}`,
+]);
+
+const display = [
+  'sm:flex', 'sm:block', 'sm:inline', 'sm:inline-block', 'sm:grid', 'sm:hidden',
+  'md:flex', 'md:block', 'md:inline', 'md:inline-block', 'md:grid', 'md:hidden', 
+  'lg:flex', 'lg:block', 'lg:inline', 'lg:inline-block', 'lg:grid', 'lg:hidden',
+  'xl:flex', 'xl:block', 'xl:inline', 'xl:inline-block', 'xl:grid', 'xl:hidden',
+  '2xl:flex', '2xl:block', '2xl:inline', '2xl:inline-block', '2xl:grid', '2xl:hidden',
+];
+
+const sizing = [
+  'sm:w-full', 'sm:w-auto', 'sm:w-screen', 'sm:h-full', 'sm:h-auto', 'sm:h-screen',
+  'md:w-full', 'md:w-auto', 'md:w-screen', 'md:h-full', 'md:h-auto', 'md:h-screen',
+  'lg:w-full', 'lg:w-auto', 'lg:w-screen', 'lg:h-full', 'lg:h-auto', 'lg:h-screen',
+  'xl:w-full', 'xl:w-auto', 'xl:w-screen', 'xl:h-full', 'xl:h-auto', 'xl:h-screen',
+  '2xl:w-full', '2xl:w-auto', '2xl:w-screen', '2xl:h-full', '2xl:h-auto', '2xl:h-screen',
+];
+
+// Combine all classes
+export const SAFELIST_CLASSES = [
+  ...gridCols,
+  ...colSpans,
+  ...rowSpans,
+  ...display,
+  ...sizing,
+];
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -83,6 +133,9 @@ const config: Config = {
     {
       pattern: /./, // This matches all class names.
     },
+    ...gridCols,
+    ...colSpans,
+    ...display,
   ],
 };
 export default config;
