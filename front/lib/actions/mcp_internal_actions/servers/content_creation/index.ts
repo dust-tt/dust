@@ -4,12 +4,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { validateContent } from "@app/lib/actions/mcp_internal_actions/servers/common/validation";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
-import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/validation";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -82,7 +82,7 @@ const createServer = (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
       ) => {
-        const validationResult = validateTailwindCode(content);
+        const validationResult = validateContent(content);
         if (validationResult.isErr()) {
           return new Err(
             new MCPError(validationResult.error.message, { tracked: false })
