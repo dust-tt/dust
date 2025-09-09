@@ -7,7 +7,6 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -115,10 +114,14 @@ const createConversationForAgentConfiguration = async (
 };
 
 export async function runScheduledAgentsActivity(
-  authType: AuthenticatorType,
+  userId: string,
+  workspaceId: string,
   trigger: TriggerType
 ) {
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    userId,
+    workspaceId
+  );
 
   if (!auth.workspace() || !auth.user()) {
     throw new Error("Invalid authentication. Missing workspaceId or userId.");
