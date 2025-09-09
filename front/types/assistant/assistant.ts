@@ -194,6 +194,8 @@ export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
 export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
+export const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
+export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 
 // These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
@@ -264,6 +266,8 @@ export const MODEL_IDS = [
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
   GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
   GEMINI_2_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_FLASH_MODEL_ID,
+  GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
   GEMINI_2_FLASH_PREVIEW_MODEL_ID,
@@ -497,7 +501,7 @@ const OPENAI_TOOL_USE_META_PROMPT =
   `never use Unicode escape sequences like \\u00XX.
 CORRECT examples (what you SHOULD do):
 - Use: {"query": "Žižek philosophy"}
-- Use: {"query": "café français"}  
+- Use: {"query": "café français"}
 - Use: {"query": "naïveté übermensch"}
 - Use: {"query": "Søren Kierkegaard"}
 INCORRECT examples (what you must NEVER do):
@@ -906,6 +910,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
 };
+
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
   modelId: MISTRAL_SMALL_MODEL_ID,
@@ -945,6 +950,7 @@ export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
+// DEPRECATED -- Replaced by 2.5 family
 export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_1_5_PRO_LATEST_MODEL_ID,
@@ -956,7 +962,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Google's best model for scaling across a wide range of tasks (1m context).",
   shortDescription: "Google's large model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
@@ -965,6 +971,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
+// DEPRECATED -- Replaced by 2.5 family
 export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_1_5_FLASH_LATEST_MODEL_ID,
@@ -976,7 +983,7 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Google's lightweight, fast and cost-efficient model (1m context).",
   shortDescription: "Google's cost-effective model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
@@ -985,6 +992,7 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
+// DEPRECATED -- Replaced by 2.5 family
 export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_FLASH_MODEL_ID,
@@ -995,7 +1003,7 @@ export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Google's fast large context model (1m context).",
   shortDescription: "Google's fast model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: true,
@@ -1004,6 +1012,7 @@ export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
+// DEPRECATED -- Replaced by 2.5 family
 export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_FLASH_LITE_MODEL_ID,
@@ -1011,10 +1020,10 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   contextSize: 1_000_000,
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 64,
-  largeModel: true,
+  largeModel: false,
   description: "Google's lightweight large context model (1m context).",
   shortDescription: "Google's lightweight model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: true,
@@ -1023,7 +1032,7 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
-// DEPRECATED - Gemini 2.5 pro preview
+// DEPRECATED -- Replaced by Gemini 2.5 Pro
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
@@ -1034,27 +1043,8 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
-  isLegacy: false,
-  isLatest: true,
-  generationTokensCount: 64_000,
-  supportsVision: true,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "light",
-  defaultReasoningEffort: "light",
-};
-
-export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "google_ai_studio",
-  modelId: GEMINI_2_5_PRO_MODEL_ID,
-  displayName: "Gemini 2.5 Pro",
-  contextSize: 1_000_000,
-  recommendedTopK: 64,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description: "Google's powerful large context model (1m context).",
-  shortDescription: "Google's powerful model.",
-  isLegacy: false,
-  isLatest: true,
+  isLegacy: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   minimumReasoningEffort: "none",
@@ -1074,8 +1064,8 @@ export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
     largeModel: true,
     description: "Google's lightweight large context model (1m context).",
     shortDescription: "Google's lightweight model (preview).",
-    isLegacy: false,
-    isLatest: true,
+    isLegacy: true,
+    isLatest: false,
     generationTokensCount: 2048,
     supportsVision: true,
     minimumReasoningEffort: "none",
@@ -1149,6 +1139,63 @@ export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     defaultReasoningEffort: "none",
     featureFlag: "google_ai_studio_experimental_models_feature",
   };
+
+export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_5_FLASH_LITE_MODEL_ID,
+  displayName: "Gemini 2.5 Flash Lite",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: false,
+  description: "Google's lightweight large context model (1m context).",
+  shortDescription: "Google's lightweight model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+};
+
+export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_5_FLASH_MODEL_ID,
+  displayName: "Gemini 2.5 Flash",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "Google's fast large context model (1m context).",
+  shortDescription: "Google's fast model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+};
+
+export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_5_PRO_MODEL_ID,
+  displayName: "Gemini 2.5 Pro",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "Google's powerful large context model (1m context).",
+  shortDescription: "Google's powerful model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+};
 
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -1466,6 +1513,8 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GEMINI_2_FLASH_MODEL_CONFIG,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG,
   GEMINI_2_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_2_5_FLASH_LITE_MODEL_CONFIG,
   GEMINI_2_5_PRO_MODEL_CONFIG,
   GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
