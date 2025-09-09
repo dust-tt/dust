@@ -628,6 +628,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "slack_semantic_search"
   | "slack_enhanced_default_agent"
+  | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
   | "xai_feature"

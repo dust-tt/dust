@@ -9,8 +9,7 @@ import type {
   SlackWebhookResBody,
 } from "@connectors/api/webhooks/slack/utils";
 import {
-  handleChatBotWithMessageSplitting,
-  handleChatBotWithMessageTruncation,
+  handleChatBot,
   isAppMentionMessage,
   isSlackWebhookEventReqBody,
   withTrace,
@@ -94,7 +93,7 @@ const _webhookSlackBotAPIHandler = async (
           await withTrace({
             "slack.team_id": teamId,
             "slack.app": "slack_bot",
-          })(handleChatBotWithMessageTruncation)(req, res, logger);
+          })(handleChatBot)(req, res, logger);
           break;
         }
         /**
@@ -148,7 +147,7 @@ const _webhookSlackBotAPIHandler = async (
             await withTrace({
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
-            })(handleChatBotWithMessageTruncation)(req, res, logger);
+            })(handleChatBot)(req, res, logger);
           } else if (event.channel_type === "channel") {
             if (
               !event.bot_id &&
@@ -190,7 +189,7 @@ const _webhookSlackBotAPIHandler = async (
                   await withTrace({
                     "slack.team_id": teamId,
                     "slack.app": "slack_bot",
-                  })(handleChatBotWithMessageSplitting)(req, res, logger);
+                  })(handleChatBot)(req, res, logger);
                 }
               }
             }
