@@ -9,7 +9,7 @@ export function getReposSyncWorkflowId(connectorId: ModelId) {
 }
 
 export function getRepoSyncWorkflowId(connectorId: ModelId, repoId: number) {
-  return `workflow-github-${connectorId}-repo-sync-${repoId}`;
+  return `workflow-github-${connectorId}-repos-sync-repo-${repoId}`;
 }
 
 export function getCodeSyncWorkflowId(connectorId: ModelId, repoId: number) {
