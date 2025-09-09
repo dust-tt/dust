@@ -26,20 +26,12 @@ export function PublicClientExecutableRenderer({
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const enterFullScreen = useCallback(async () => {
-    try {
-      const element = document.documentElement;
-      await element.requestFullscreen();
-    } catch (error) {
-      console.error("Error entering fullscreen:", error);
-    }
+    const element = document.documentElement;
+    await element.requestFullscreen();
   }, []);
 
   const exitFullScreen = useCallback(async () => {
-    try {
-      await document.exitFullscreen();
-    } catch (error) {
-      console.error("Error exiting fullscreen:", error);
-    }
+    await document.exitFullscreen();
   }, []);
 
   const handleFullScreenToggle = useCallback(() => {
