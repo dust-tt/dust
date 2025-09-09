@@ -134,51 +134,6 @@ export function validateJSXSyntax(content: string): Result<void, Error> {
 }
 
 /**
- * Validates that Tailwind classes are properly used
- */
-export function validateTailwindUsage(content: string): Result<void, Error> {
-  const tailwindPatterns = [
-    /className\s*=\s*["'][^"']*["']/g,
-    /bg-\w+/g,
-    /text-\w+/g,
-    /p-\w+/g,
-    /m-\w+/g,
-    /flex/g,
-    /grid/g,
-  ];
-
-  const hasTailwindClasses = tailwindPatterns.some((pattern) =>
-    pattern.test(content)
-  );
-
-  if (!hasTailwindClasses && content.includes("className")) {
-    // Find the line with className that has no valid Tailwind classes
-    const lines = content.split("\n");
-    const classNameLines = lines
-      .map((line, index) => ({ line: line.trim(), lineNumber: index + 1 }))
-      .filter(
-        ({ line }) =>
-          line.includes("className") &&
-          !tailwindPatterns.some((pattern) => pattern.test(line))
-      );
-
-    const errorDetails = classNameLines
-      .slice(0, 3)
-      .map(({ line, lineNumber }) => `Line ${lineNumber}: ${line}`)
-      .join("\n  - ");
-
-    return new Err(
-      new Error(
-        `Content appears to use className but no valid Tailwind classes detected:\n  - ${errorDetails}\n\n` +
-          `Please use proper Tailwind CSS classes. Examples: bg-blue-500, text-white, p-4, m-2, flex, grid`
-      )
-    );
-  }
-
-  return new Ok(undefined);
-}
-
-/**
  * Validates security by checking for dangerous patterns
  */
 export function validateSecurity(content: string): Result<void, Error> {
@@ -229,70 +184,6 @@ export function validateSecurity(content: string): Result<void, Error> {
 }
 
 /**
- * Validates specific import requirements for different contexts
- */
-export function validateImports(
-  content: string,
-  requiredImports: Array<{
-    import: string;
-    usage: string;
-    message: string;
-  }>
-): Result<void, Error> {
-  const errors: Array<{
-    import: string;
-    usage: string;
-    message: string;
-    line: number;
-    context: string;
-  }> = [];
-  const lines = content.split("\n");
-
-  requiredImports.forEach(({ import: importPattern, usage, message }) => {
-    const usageRegex = new RegExp(
-      usage.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      "g"
-    );
-
-    if (usageRegex.test(content) && !content.includes(importPattern)) {
-      // Find the line where the usage occurs
-      let match: RegExpExecArray | null = null;
-      while ((match = usageRegex.exec(content)) !== null) {
-        const lineNumber = content.substring(0, match.index).split("\n").length;
-        const lineContent = lines[lineNumber - 1] || "";
-
-        errors.push({
-          import: importPattern,
-          usage,
-          message,
-          line: lineNumber,
-          context: lineContent.trim(),
-        });
-      }
-    }
-  });
-
-  if (errors.length > 0) {
-    const errorDetails = errors
-      .slice(0, 3)
-      .map(
-        (error) =>
-          `Line ${error.line}: Using "${error.usage}" but missing import\n  Context: ${error.context}\n  Required: ${error.import}`
-      )
-      .join("\n\n");
-
-    return new Err(
-      new Error(
-        `Missing required imports:\n\n${errorDetails}\n\n` +
-          `Please add the required import statements at the top of the file.`
-      )
-    );
-  }
-
-  return new Ok(undefined);
-}
-
-/**
  * Comprehensive validation function that combines all validations
  */
 export function validateContent(
@@ -300,17 +191,13 @@ export function validateContent(
   options: {
     validateTailwindArbitrary?: boolean;
     validateJSX?: boolean;
-    validateTailwindUsage?: boolean;
     validateSecurity?: boolean;
-    requiredImports?: Array<{ import: string; usage: string; message: string }>;
   } = {}
 ): Result<void, Error> {
   const {
     validateTailwindArbitrary: shouldValidateTailwindArbitrary = true,
     validateJSX: shouldValidateJSX = true,
-    validateTailwindUsage: shouldValidateTailwindUsage = true,
     validateSecurity: shouldValidateSecurity = true,
-    requiredImports = [],
   } = options;
 
   // Validate Tailwind arbitrary values
@@ -329,27 +216,11 @@ export function validateContent(
     }
   }
 
-  // Validate Tailwind usage
-  if (shouldValidateTailwindUsage) {
-    const tailwindUsageValidation = validateTailwindUsage(content);
-    if (tailwindUsageValidation.isErr()) {
-      return tailwindUsageValidation;
-    }
-  }
-
   // Validate security
   if (shouldValidateSecurity) {
     const securityValidation = validateSecurity(content);
     if (securityValidation.isErr()) {
       return securityValidation;
-    }
-  }
-
-  // Validate required imports
-  if (requiredImports.length > 0) {
-    const importsValidation = validateImports(content, requiredImports);
-    if (importsValidation.isErr()) {
-      return importsValidation;
     }
   }
 
