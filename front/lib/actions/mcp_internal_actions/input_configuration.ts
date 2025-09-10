@@ -472,14 +472,16 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const enabledToolNames =
+  // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
+  const disabledToolNames =
     mcpServerView.toolsMetadata
-      ?.filter((tool) => tool.enabled)
+      ?.filter((tool) => tool.enabled === false)
       .map((tool) => tool.toolName) ?? [];
 
-  const enabledTools = server.tools.filter((tool) =>
-    enabledToolNames.includes(tool.name)
-  );
+  const enabledTools =
+    disabledToolNames.length > 0
+      ? server.tools.filter((tool) => !disabledToolNames.includes(tool.name))
+      : server.tools;
 
   const mayRequireTimeFrameConfiguration = enabledTools.some(
     (tool) => tool.inputSchema?.properties?.timeFrame
