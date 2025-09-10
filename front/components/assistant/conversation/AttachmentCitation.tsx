@@ -1,4 +1,5 @@
 import {
+  ActionVolumeUpIcon,
   Citation,
   CitationClose,
   CitationDescription,
@@ -189,14 +190,18 @@ export function contentFragmentToAttachmentCitation(
     };
   } else if (isFileContentFragment(contentFragment)) {
     const isImageType = contentFragment.contentType.startsWith("image/");
+    const isAudioType = contentFragment.contentType.startsWith("audio/");
+    const visual = isImageType
+      ? ImageIcon
+      : isAudioType
+        ? ActionVolumeUpIcon
+        : DocumentIcon;
     return {
       type: "file",
       id: contentFragment.sId,
       title: contentFragment.title,
       sourceUrl: contentFragment.sourceUrl,
-      visual: (
-        <Icon visual={isImageType ? ImageIcon : DocumentIcon} size="md" />
-      ),
+      visual: <Icon visual={visual} size="md" />,
     };
   } else {
     assertNever(contentFragment);
