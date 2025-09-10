@@ -2,9 +2,11 @@ import type { Result } from "@app/types";
 import { Err } from "@app/types";
 import { Ok } from "@app/types";
 
-// Regular expression to capture the value inside a className attribute. This pattern assumes
-// double quotes for simplicity.
-const classNameRegex = /className\s*=\s*"([^"]*)"/g;
+// Regular expressions to capture className attributes with different quote styles
+// matches with className="..."
+const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
+// matches with className='...'
+const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
 
 // Regular expression to capture Tailwind arbitrary values:
 // Matches a word boundary, then one or more lowercase letters or hyphens,
@@ -21,16 +23,23 @@ const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
  */
 export function validateTailwindCode(code: string): Result<undefined, Error> {
   const matches: string[] = [];
-  let classMatch: RegExpExecArray | null = null;
 
-  // Iterate through all occurrences of the className attribute in the code.
-  while ((classMatch = classNameRegex.exec(code)) !== null) {
-    const classContent = classMatch[1];
+  const checkClassNameContent = (classContent: string) => {
     if (classContent) {
-      // Find all matching arbitrary values within the class attribute's value.
       const arbitraryMatches = classContent.match(arbitraryRegex) || [];
       matches.push(...arbitraryMatches);
     }
+  };
+
+  let classMatch: RegExpExecArray | null = null;
+  classNameDoubleQuoteRegex.lastIndex = 0; // Reset regex state
+  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
+    checkClassNameContent(classMatch[1]);
+  }
+
+  classNameSingleQuoteRegex.lastIndex = 0; // Reset regex state
+  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
+    checkClassNameContent(classMatch[1]);
   }
 
   // If we found any, remove duplicates and throw an error with up to three examples.
