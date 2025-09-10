@@ -156,6 +156,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Activate second version of @research agent (dust only for evals).",
     stage: "dust_only",
   },
+  deep_research_as_a_tool: {
+    description: "Activate deep research as a tool",
+    stage: "dust_only",
+  },
   hootl: {
     description: "Display Triggers section in the Agent Builder",
     stage: "rolling_out",
