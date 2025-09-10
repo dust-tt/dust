@@ -1,3 +1,5 @@
+// Okay to use public API types as it's about internal types between connector and front that public API users do not care about.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DATA_SOURCE_MIME_TYPE, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   ChatBubbleLeftRightIcon,

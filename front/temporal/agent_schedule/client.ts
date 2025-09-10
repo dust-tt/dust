@@ -40,7 +40,7 @@ function getScheduleOptions(
   };
 }
 
-function makeScheduleId(workspaceId: string, triggerId: string): string {
+export function makeScheduleId(workspaceId: string, triggerId: string): string {
   return `agent-schedule-${workspaceId}-${triggerId}`;
 }
 

@@ -1,28 +1,6 @@
-import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions/slideshow";
-import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { clientExecutableContentType } from "@app/types";
 
-export const CONTENT_CREATION_INSTRUCTIONS = `\
-## CREATING VISUALIZATIONS WITH CONTENT CREATION
-
-You have access to a Content Creation system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
-
-### File Management Guidelines:
-- Use the \`${CREATE_CONTENT_CREATION_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
-- Use MIME type \`${clientExecutableContentType}\`
-- Supported file extensions: .js, .jsx, .ts, .tsx
-- Files are automatically made available to the user for execution
-
-### Updating Existing Files:
-- To modify existing Content Creation files, always use \`${RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME}\` first to read the current content
-- Then use \`${EDIT_CONTENT_CREATION_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
-- The edit tool requires exact text matching - include surrounding context for unique identification
-- Never attempt to edit without first retrieving the current file content
-
+export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
@@ -43,6 +21,9 @@ You have access to a Content Creation system that allows you to create and updat
   - For multi-chart layouts, use flex or grid to maintain spacing
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
+`;
+
+export const VIZ_STYLING_GUIDELINES = `
 - Styling:
   - **ALWAYS USE shadcn/ui components** - Wrap visualizations in Card components for professional appearance
   - **Chart Colors**: Use shadcn's chart color variables instead of hardcoded colors:
@@ -56,7 +37,10 @@ You have access to a Content Creation system that allows you to create and updat
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use shadcn's background classes (bg-background, bg-card) instead of hardcoded bg-white for automatic theme compatibility.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
-  - Using any file from the \`list_conversation_files\` action when available:
+`;
+
+export const VIZ_FILE_HANDLING_GUIDELINES = `
+- Using any file from the \`list_conversation_files\` action when available:
   - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
@@ -65,6 +49,9 @@ You have access to a Content Creation system that allows you to create and updat
   - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
   - \`triggerUserFileDownload\` has to be imported from \`"@dust/react-hooks"\`.
   - Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
+`;
+
+export const VIZ_LIBRARY_USAGE = `
 - Available third-party libraries:
   - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
   - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
@@ -76,7 +63,6 @@ You have access to a Content Creation system that allows you to create and updat
         - Example: \`labelFormatter={(label) => \`Date: \${label}\`}\`
       - Always wrap charts in ChartContainer for proper sizing and theming
       - Use proper margins to prevent label cutoff: \`margin={{ top: 20, right: 30, left: 20, bottom: 20 }}\`
-      - In slideshow context, ChartContainer automatically adapts to slide dimensions - no height needed
       - For standalone components, ChartContainer may need explicit height: className="h-[400px]"
   - The papaparse library is available to be imported, e.g. \`import Papa from "papaparse"\` & \`const parsed = Papa.parse(fileContent, {header:true, skipEmptyLines: "greedy"});\`. The \`skipEmptyLines:"greedy"\` configuration should always be used.
   - shadcn/ui components are available and SHOULD BE USED for consistent, professional styling:
@@ -97,15 +83,16 @@ You have access to a Content Creation system that allows you to create and updat
     - These color variables automatically support both light and dark themes
     - For utility functions, import from \`@viz/lib/utils\`, e.g. \`import { cn } from "@viz/lib/utils"\` for className merging
   - No other third-party libraries are installed or available to be imported. They cannot be used, imported, or installed.
+`;
+
+export const VIZ_MISCELLANEOUS_GUIDELINES = `
 - Miscellaneous:
   - Images from the web cannot be rendered or used in the visualization (no internet access).
   - When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
-- When to Create Files:
-  - Create files for data visualizations such as graphs, charts, and plots
-  - Create files for interactive React components that require user interaction
-  - Create files for complex visualizations that benefit from being standalone components
+`;
 
+export const VIZ_USE_FILE_EXAMPLES = `
 Example using the \`useFile\` hook:
 
 \`\`\`
@@ -137,39 +124,9 @@ import { triggerUserFileDownload } from "@dust/react-hooks";
   Download Data
 </button>
 \`\`\`
+`;
 
-Example File Creation:
-
-\`\`\`
-${CREATE_CONTENT_CREATION_FILE_TOOL_NAME}({
-  file_name: "SineCosineChart.tsx",
-  mime_type: "${clientExecutableContentType}",
-  content: \`[React component code shown below]\`
-})
-\`\`\`
-
-Example File Editing Workflow:
-
-**Step 1: Retrieve the current file content first**
-\`\`\`
-${RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME}({
-  file_id: "fil_abc123"
-})
-// This returns the current file content - examine it carefully to identify the exact text to replace
-\`\`\`
-
-**Step 2: Make targeted edits using the retrieved content**
-\`\`\`
-${EDIT_CONTENT_CREATION_FILE_TOOL_NAME}({
-  file_id: "fil_abc123",
-  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
-  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
-  expected_replacements: 1,
-})
-\`\`\`
-
-The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
-
+export const VIZ_CHART_EXAMPLES = `
 General example of a React component with shadcn/ui ChartContainer:
 
 import React from "react";
@@ -317,6 +274,6 @@ const CHART_COLORS = [
     ))}
   </Pie>
 </PieChart>
-
-${SLIDESHOW_INSTRUCTIONS}
 `;
+
+export const VIZ_MIME_TYPE = clientExecutableContentType;

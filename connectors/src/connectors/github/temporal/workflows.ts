@@ -18,6 +18,7 @@ import {
   getCodeSyncStatelessWorkflowId,
   getFullSyncWorkflowId,
   getReposSyncWorkflowId,
+  getRepoSyncWorkflowId,
 } from "./utils";
 
 const {
@@ -151,8 +152,7 @@ export async function githubReposSyncWorkflow(
   const promises: Promise<void>[] = [];
 
   for (const repo of repos) {
-    const reposSyncWorkflowId = getReposSyncWorkflowId(connectorId);
-    const childWorkflowId = `${reposSyncWorkflowId}-repo-${repo.id}`;
+    const childWorkflowId = getRepoSyncWorkflowId(connectorId, repo.id);
     promises.push(
       queue.add(() =>
         executeChild(githubRepoSyncWorkflow, {

@@ -1,4 +1,6 @@
-import { Err, isSupportedImageContentType } from "@dust-tt/client";
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { isSupportedImageContentType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
@@ -28,6 +30,7 @@ import type {
   SupportedImageContentType,
 } from "@app/types";
 import {
+  Err,
   hasNullUnicodeCharacter,
   isSupportedFileContentType,
   Ok,

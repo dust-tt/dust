@@ -89,8 +89,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   labs_trackers: {
-    description: "Tracker feature (Labs)",
-    stage: "on_demand",
+    description:
+      "Tracker feature. Check with Henry or eng oncall before activating to a new workspace.",
+    stage: "rolling_out",
   },
   labs_transcripts: {
     description: "Transcript feature (Labs)",
@@ -146,31 +147,30 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-
   research_agent: {
     description: "Activate @research agent.",
     stage: "dust_only",
   },
-  data_warehouses_tool: {
+  research_agent_2: {
     description:
-      "Data warehouses file system navigation with hierarchical warehouse structure",
+      "Activate second version of @research agent (dust only for evals).",
     stage: "dust_only",
   },
   hootl: {
     description: "Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",
   },
-  toolsets_tool: {
-    description: "Toolsets MCP tool",
-    stage: "dust_only",
-  },
   slack_enhanced_default_agent: {
     description:
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   simple_audio_transcription: {
     description: "Simple Audio transcription feature",
+    stage: "dust_only",
+  },
+  slideshow: {
+    description: "Slideshow MCP tool",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

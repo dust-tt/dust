@@ -329,6 +329,7 @@ export default async function createServer(
                 query,
                 childAgentId: childAgentId,
                 conversationId: conversation.sId,
+                userMessageId,
               },
             },
           },

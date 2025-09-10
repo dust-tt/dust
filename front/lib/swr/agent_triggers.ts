@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -16,6 +15,7 @@ import type {
   PostTextAsCronRuleResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
+import type { LightWorkspaceType } from "@app/types";
 
 export function useAgentTriggers({
   workspaceId,

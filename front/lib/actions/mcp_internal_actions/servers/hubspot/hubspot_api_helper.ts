@@ -89,6 +89,49 @@ export const getObjectProperties = async ({
   });
 };
 
+const getAllOwners = async (accessToken: string): Promise<PublicOwner[]> => {
+  const hubspotClient = new Client({ accessToken });
+  const allOwners: PublicOwner[] = [];
+  let after: string | undefined = undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const owners = await hubspotClient.crm.owners.ownersApi.getPage(
+      undefined, // email
+      after, // after for pagination
+      100, // limit (max 100 per page)
+      undefined // archived
+    );
+
+    allOwners.push(...owners.results);
+
+    if (owners.paging?.next?.after) {
+      after = owners.paging.next.after;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allOwners;
+};
+
+const getOwnerByEmail = async (
+  accessToken: string,
+  email: string
+): Promise<PublicOwner | null> => {
+  const hubspotClient = new Client({ accessToken });
+
+  // The getPage method can filter by email directly
+  const owners = await hubspotClient.crm.owners.ownersApi.getPage(
+    email, // email filter
+    undefined, // after
+    1, // limit - we only need one
+    undefined // archived
+  );
+
+  return owners.results.length > 0 ? owners.results[0] : null;
+};
+
 export const getObjectByEmail = async (
   accessToken: string,
   objectType: SimpleObjectType | SpecialObjectType,
@@ -97,12 +140,7 @@ export const getObjectByEmail = async (
   const hubspotClient = new Client({ accessToken });
 
   if (objectType === "owners") {
-    const owners = await hubspotClient.crm.owners.ownersApi.getPage();
-    const owner = owners.results.find((owner) => owner.email === email);
-    if (owner) {
-      return owner;
-    }
-    return null;
+    return getOwnerByEmail(accessToken, email);
   }
 
   const properties =
@@ -144,9 +182,9 @@ export const listOwners = async (
     archived: boolean;
   }[]
 > => {
-  const hubspotClient = new Client({ accessToken });
-  const owners = await hubspotClient.crm.owners.ownersApi.getPage();
-  return owners.results.map((owner) => ({
+  const allOwners = await getAllOwners(accessToken);
+
+  return allOwners.map((owner) => ({
     id: owner.id,
     email: owner.email ?? null,
     firstName: owner.firstName ?? null,
@@ -169,12 +207,10 @@ export const searchOwners = async (
     archived: boolean;
   }[]
 > => {
-  const hubspotClient = new Client({ accessToken });
-  const owners = await hubspotClient.crm.owners.ownersApi.getPage();
-
+  const allOwners = await getAllOwners(accessToken);
   const query = searchQuery.toLowerCase();
 
-  const filteredOwners = owners.results.filter((owner) => {
+  const filteredOwners = allOwners.filter((owner) => {
     const emailMatch = owner.email?.toLowerCase().includes(query) || false;
     const firstNameMatch =
       owner.firstName?.toLowerCase().includes(query) || false;

@@ -1,4 +1,3 @@
-import { removeNulls } from "@dust-tt/client";
 import {
   Button,
   ChevronLeftIcon,
@@ -29,6 +28,7 @@ import type {
   LightWorkspaceType,
   UserType,
 } from "@app/types";
+import { removeNulls } from "@app/types";
 
 interface CoEditionContainerProps {
   conversation: ConversationType | null;

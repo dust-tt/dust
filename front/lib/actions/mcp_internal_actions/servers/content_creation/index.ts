@@ -4,13 +4,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/validation";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  CREATE_SLIDESHOW_OUTLINE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
-import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/validation";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -299,69 +298,6 @@ const createServer = (
             text:
               `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
               `successfully. Content:\n\n${content}`,
-          },
-        ]);
-      }
-    )
-  );
-
-  server.tool(
-    CREATE_SLIDESHOW_OUTLINE_TOOL_NAME,
-    "Create a structured outline for a slideshow presentation. This tool must be used before " +
-      "creating any slideshow content. Returns a formatted outline showing slide titles and key points that must be presented directly to the user for approval.",
-    {
-      topic: z.string().describe("The main topic or title of the slideshow"),
-      context: z
-        .string()
-        .optional()
-        .describe(
-          "Additional context, requirements, or background information"
-        ),
-      target_audience: z
-        .string()
-        .optional()
-        .describe(
-          "Intended audience (e.g., executives, technical team, clients)"
-        ),
-      slides: z
-        .array(
-          z.object({
-            title: z.string().describe("The title of the slide"),
-            key_points: z
-              .array(z.string())
-              .describe("Main points or content for this slide"),
-            notes: z
-              .string()
-              .optional()
-              .describe("Additional notes or requirements for this slide"),
-          })
-        )
-        .describe("Array of slides in the presentation"),
-    },
-    withToolLogging(
-      auth,
-      { toolName: CREATE_SLIDESHOW_OUTLINE_TOOL_NAME, agentLoopContext },
-      async ({ topic, context, target_audience, slides }) => {
-        const structuredOutline = {
-          topic,
-          context,
-          target_audience,
-          slides: slides.map((slide) => ({
-            title: slide.title,
-            key_points: slide.key_points,
-            notes: slide.notes,
-            detailedContent:
-              slide.key_points.join(". ") +
-              (slide.notes ? ` ${slide.notes}` : ""),
-          })),
-        };
-
-        return new Ok([
-          {
-            type: "text",
-            text:
-              `IMPORTANT: Present this outline to the user for review and confirmation before proceeding with slide creation.\n\n` +
-              `${structuredOutline}`,
           },
         ]);
       }

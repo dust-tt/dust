@@ -1,5 +1,3 @@
-import type { DataSourceViewType } from "@dust-tt/client";
-
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
@@ -11,6 +9,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { DataSourceViewType } from "@app/types";
 import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export type PrefetchedDataSourcesType = {

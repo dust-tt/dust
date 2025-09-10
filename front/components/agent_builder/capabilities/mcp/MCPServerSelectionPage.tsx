@@ -98,7 +98,7 @@ function MCPServerCard({
         mountPortal
         mountPortalContainer={containerRef.current || undefined}
         toolInfo={{
-          label: "Tool details",
+          label: "More info",
           onClick: onToolInfoClick,
         }}
       />

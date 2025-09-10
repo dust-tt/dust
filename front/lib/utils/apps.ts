@@ -1,4 +1,7 @@
+// We use the public API to call the Dust Apps, it's okay here.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { ApiAppImportType, ApiAppType } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DustAPI } from "@dust-tt/client";
 import _ from "lodash";
 

@@ -1,7 +1,6 @@
-import type { ActionApprovalStateType } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
 
+import type { ActionApprovalStateType } from "@app/lib/actions/mcp";
 import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
@@ -18,6 +17,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import logger from "@app/logger/logger";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ConversationType, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 async function getUserMessageIdFromMessageId(

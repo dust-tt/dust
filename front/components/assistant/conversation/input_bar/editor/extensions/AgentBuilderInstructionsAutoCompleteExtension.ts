@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
 import { Extension } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -7,6 +6,7 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import debounce from "lodash/debounce";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type { LightWorkspaceType } from "@app/types";
 
 export const AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME =
   "agentBuilderInstructionsAutoComplete";

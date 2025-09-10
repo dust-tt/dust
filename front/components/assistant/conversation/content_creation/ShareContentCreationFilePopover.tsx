@@ -152,8 +152,9 @@ export function ShareContentCreationFilePopover({
     }
   };
 
+  const shareURL = fileShare?.shareUrl ?? "";
   const handleCopyLink = async () => {
-    await copyToClipboard(fileShare?.shareUrl ?? "");
+    await copyToClipboard(shareURL);
   };
 
   return (
@@ -221,7 +222,7 @@ export function ShareContentCreationFilePopover({
                       disabled
                       onClick={(e) => e.currentTarget.select()}
                       readOnly
-                      value={fileShare?.shareUrl ?? ""}
+                      value={shareURL}
                     />
                   </div>
                   <IconButton

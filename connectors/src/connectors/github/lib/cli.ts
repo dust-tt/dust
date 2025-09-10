@@ -7,8 +7,12 @@ import {
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
   launchGithubIssueSyncWorkflow,
+  launchGithubRepoSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
-import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
+import {
+  getCodeSyncWorkflowId,
+  getRepoSyncWorkflowId,
+} from "@connectors/connectors/github/temporal/utils";
 import {
   GithubCodeFile,
   GithubCodeRepository,
@@ -72,6 +76,49 @@ export const github = async ({
       }
 
       logger.info("[Admin] Resyncing repo " + args.owner + "/" + args.repo);
+
+      const octokit = await getOctokit(connector);
+
+      const { data } = await octokit.rest.repos.get({
+        owner: args.owner,
+        repo: args.repo,
+      });
+
+      const repoId = data.id;
+      logger.info(
+        `[Admin] Successfully retrieved repo ${args.owner}/${args.repo} (ID: ${repoId})`
+      );
+
+      const workflowId = getRepoSyncWorkflowId(connector.id, repoId);
+      const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
+      if (temporalNamespace) {
+        const workflowUrl = `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`;
+        logger.info(`[Admin] Started temporal workflow - ${workflowUrl}`);
+      } else {
+        logger.info(`[Admin] Started temporal workflow with id: ${workflowId}`);
+      }
+
+      await launchGithubRepoSyncWorkflow(
+        connector.id,
+        args.owner,
+        args.repo,
+        repoId
+      );
+
+      return { success: true };
+    }
+
+    case "resync-repo-code": {
+      if (!args.owner) {
+        throw new Error("Missing --owner argument");
+      }
+      if (!args.repo) {
+        throw new Error("Missing --repo argument");
+      }
+
+      logger.info(
+        "[Admin] Resyncing repo code " + args.owner + "/" + args.repo
+      );
 
       const octokit = await getOctokit(connector);
 

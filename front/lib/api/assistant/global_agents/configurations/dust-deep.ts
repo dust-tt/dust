@@ -271,6 +271,7 @@ function getCompanyDataWarehousesAction(
 export function _getDustDeepGlobalAgent(
   auth: Authenticator,
   {
+    sId,
     settings,
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
@@ -279,7 +280,9 @@ export function _getDustDeepGlobalAgent(
     runAgentMCPServerView,
     dataWarehousesMCPServerView,
     toolsetsMCPServerView,
+    slideshowMCPServerView,
   }: {
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP | GLOBAL_AGENTS_SID.DUST_DEEP_2;
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -288,24 +291,28 @@ export function _getDustDeepGlobalAgent(
     runAgentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
+    slideshowMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
-  const name = "dust-deep";
+  const name =
+    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2 ? "dust-deep-2" : "dust-deep";
   const description =
-    "Deep research with company data, web search/browse, Content Creation, and data warehouses.";
+    "Deep research with company data, web search/browse, Content Creation, slideshow presentations, and data warehouses.";
 
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfig = getModelConfig(owner, "anthropic");
+  const preferredModel =
+    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2 ? "openai" : "anthropic";
+  const modelConfig = getModelConfig(owner, preferredModel);
 
   const deepAgent: Omit<
     AgentConfigurationType,
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST_DEEP,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -407,6 +414,27 @@ export function _getDustDeepGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
+  }
+
+  // Add Slideshow tool.
+  if (slideshowMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-slideshow",
+      type: "mcp_server_configuration",
+      name: "slideshow" satisfies InternalMCPServerNameType,
+      description: "Create & update interactive slideshow presentations.",
+      mcpServerViewId: slideshowMCPServerView.sId,
+      internalMCPServerId: slideshowMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
       reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,

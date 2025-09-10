@@ -85,6 +85,8 @@ export type UserMessageOrigin =
   | "web"
   | "zapier"
   | "zendesk"
+  | "excel"
+  | "powerpoint"
   | "run_agent";
 
 export type UserMessageContext = {

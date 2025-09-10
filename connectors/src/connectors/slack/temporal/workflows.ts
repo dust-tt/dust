@@ -46,6 +46,10 @@ function getSlackActivities() {
     },
   });
 
+  const { autoReadChannelActivity } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
+  });
+
   const { deleteChannel, syncThread, syncChannel } = proxyActivities<
     typeof activities
   >({
@@ -61,6 +65,7 @@ function getSlackActivities() {
 
   return {
     attemptChannelJoinActivity,
+    autoReadChannelActivity,
     deleteChannel,
     deleteChannelsFromConnectorDb,
     fetchUsers,
@@ -391,20 +396,31 @@ export async function joinChannelWorkflow(
   channelId: string,
   useCase: JoinChannelUseCaseType
 ): Promise<{ success: boolean; error?: string }> {
-  if (useCase === "auto-read") {
-    throw new Error("auto-read use case not implemented");
-  }
   if (useCase === "set-permission") {
     throw new Error("set-permission use case not implemented");
   }
 
-  // Handle join-only use case
   try {
-    const success = await getSlackActivities().attemptChannelJoinActivity(
+    const joinSuccess = await getSlackActivities().attemptChannelJoinActivity(
       connectorId,
       channelId
     );
-    return { success };
+
+    if (!joinSuccess) {
+      return {
+        success: false,
+        error: "Channel is archived or could not be joined",
+      };
+    }
+
+    if (useCase === "auto-read") {
+      await getSlackActivities().autoReadChannelActivity(
+        connectorId,
+        channelId
+      );
+    }
+
+    return { success: true };
   } catch (error) {
     return {
       success: false,

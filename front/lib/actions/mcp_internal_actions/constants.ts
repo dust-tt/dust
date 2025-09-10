@@ -14,6 +14,7 @@ import {
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
+import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -76,6 +77,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "image_generation",
   "include_data",
   "content_creation",
+  "slideshow",
   "jira",
   "missing_action_catcher",
   "monday",
@@ -132,7 +134,7 @@ export const INTERNAL_MCP_SERVERS = {
       description: "GitHub tools to manage issues and pull requests.",
       authorization: {
         provider: "github" as const,
-        supported_use_cases: ["platform_actions"] as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
       icon: "GithubLogo",
       documentationUrl: null,
@@ -912,6 +914,27 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
+  slideshow: {
+    id: 28,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slideshow");
+    },
+    isPreview: true,
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slideshow",
+      version: "0.1.0",
+      description: "Create interactive slideshows.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: SLIDESHOW_INSTRUCTIONS,
+    },
+  },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
@@ -938,7 +961,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
-    tools_retry_policies: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
@@ -1066,12 +1089,10 @@ The directive should be used to display a clickable version of the agent name in
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isPreview: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("data_warehouses_tool");
-    },
+    isPreview: false,
+    isRestricted: undefined,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1090,12 +1111,10 @@ The directive should be used to display a clickable version of the agent name in
   },
   toolsets: {
     id: 1013,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("toolsets_tool");
-    },
+    isRestricted: undefined,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,

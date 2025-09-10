@@ -72,6 +72,7 @@ function getGlobalAgent({
   runAgentMCPServerView,
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
+  slideshowMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -86,6 +87,7 @@ function getGlobalAgent({
   runAgentMCPServerView: MCPServerViewResource | null;
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
+  slideshowMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -281,7 +283,9 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_DEEP:
+    case GLOBAL_AGENTS_SID.DUST_DEEP_2:
       agentConfiguration = _getDustDeepGlobalAgent(auth, {
+        sId: sId as GLOBAL_AGENTS_SID.DUST_DEEP | GLOBAL_AGENTS_SID.DUST_DEEP_2,
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
@@ -290,6 +294,7 @@ function getGlobalAgent({
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
         toolsetsMCPServerView,
+        slideshowMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -362,6 +367,7 @@ export async function getGlobalAgents(
     runAgentMCPServerView,
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
+    slideshowMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -418,6 +424,12 @@ export async function getGlobalAgents(
           "data_warehouses"
         )
       : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "slideshow"
+        )
+      : null,
   ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
@@ -452,7 +464,14 @@ export async function getGlobalAgents(
 
   if (!flags.includes("research_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP
+      (sId) =>
+        sId !== GLOBAL_AGENTS_SID.DUST_DEEP &&
+        sId !== GLOBAL_AGENTS_SID.DUST_DEEP_2
+    );
+  }
+  if (!flags.includes("research_agent_2")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP_2
     );
   }
 
@@ -473,6 +492,7 @@ export async function getGlobalAgents(
       runAgentMCPServerView,
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,
+      slideshowMCPServerView,
     })
   );
 

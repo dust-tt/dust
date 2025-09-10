@@ -1,6 +1,8 @@
+import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type { Authenticator } from "@app/lib/auth";
+import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -124,5 +126,67 @@ export async function updateResourceAndPublishEvent(
     conversationId: conversation.sId,
     event,
     step,
+  });
+}
+
+export async function notifyWorkflowError(
+  authType: AuthenticatorType,
+  {
+    conversationId,
+    agentMessageId,
+    agentMessageVersion,
+    error,
+  }: {
+    conversationId: string;
+    agentMessageId: string;
+    agentMessageVersion: number;
+    error: Error;
+  }
+): Promise<void> {
+  const auth = await AuthenticatorClass.fromJSON(authType);
+
+  // Use lighter fetchConversationWithoutContent
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId
+    );
+  if (conversationRes.isErr()) {
+    throw new Error(`Conversation not found: ${conversationId}`);
+  }
+  const conversation = conversationRes.value;
+
+  // Fetch the agent message using the proper API function
+  const messageRow = await fetchMessageInConversation(
+    auth,
+    conversation,
+    agentMessageId
+  );
+
+  if (!messageRow?.agentMessage) {
+    throw new Error(`Agent message not found: ${agentMessageId}`);
+  }
+
+  const errorEvent: AgentMessageEvents = {
+    type: "agent_error",
+    created: Date.now(),
+    configurationId: messageRow.agentMessage.agentConfigurationId || "",
+    messageId: agentMessageId,
+    error: {
+      code: "workflow_error",
+      message: error.message || "Workflow execution failed",
+      metadata: {
+        category: "critical_failure",
+        // Ensure errorName is a string (not an Error object or undefined)
+        errorName: error.name || "UnknownError",
+      },
+    },
+  };
+
+  await updateResourceAndPublishEvent(auth, {
+    event: errorEvent,
+    agentMessageRow: messageRow.agentMessage,
+    conversation,
+    step: 0, // Workflow-level error, not tied to a specific step
   });
 }

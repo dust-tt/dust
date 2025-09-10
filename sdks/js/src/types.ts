@@ -274,6 +274,8 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "zapier"
   | "zendesk"
   | "run_agent"
+  | "excel"
+  | "powerpoint"
 >()
   .or(z.null())
   .or(z.undefined());
@@ -596,7 +598,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
-  | "data_warehouses_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
@@ -621,12 +622,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "research_agent"
+  | "research_agent_2"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
   | "slack_semantic_search"
   | "slack_enhanced_default_agent"
-  | "toolsets_tool"
+  | "slideshow"
   | "usage_data_api"
   | "xai_feature"
   | "simple_audio_transcription"
@@ -1737,6 +1739,10 @@ export const PostMessageFeedbackResponseSchema = z.object({
   success: z.literal(true),
 });
 
+export type PostMessageFeedbackResponseType = z.infer<
+  typeof PostMessageFeedbackResponseSchema
+>;
+
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,
 });
@@ -2432,6 +2438,14 @@ export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
 >;
 
+const GetWorkspaceUsageResponseSchema = z
+  .string()
+  .or(z.undefined())
+  .or(z.instanceof(Buffer));
+export type GetWorkspaceUsageResponseType = z.infer<
+  typeof GetWorkspaceUsageResponseSchema
+>;
+
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(4096, "File name must be less than 4096 characters"),
@@ -2491,6 +2505,15 @@ export const FileUploadedRequestResponseSchema = z.object({
 });
 export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
+>;
+
+export const PublicFileResponseBodySchema = z.object({
+  content: z.string().optional(),
+  file: FileTypeSchema,
+});
+
+export type PublicFileResponseBodyType = z.infer<
+  typeof PublicFileResponseBodySchema
 >;
 
 export const MeResponseSchema = z.object({
