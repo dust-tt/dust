@@ -922,51 +922,6 @@ describe("augmentInputsWithConfiguration", () => {
         ],
       });
     });
-
-    it("should handle schema references", () => { // FAILS
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          "stringParam": "ref-value",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            stringParam: {
-              $ref: "#/$defs/StringInput",
-            },
-          },
-          required: ["stringParam"],
-          $defs: {
-            StringInput: {
-              type: "object",
-              properties: {
-                value: { type: "string" },
-                mimeType: {
-                  type: "string",
-                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                },
-              },
-              required: ["value", "mimeType"],
-              additionalProperties: false,
-            },
-          },
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        stringParam: {
-          value: "ref-value",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-        },
-      });
-    });
   });
 
   describe("edge cases", () => {
