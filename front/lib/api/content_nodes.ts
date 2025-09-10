@@ -1,3 +1,5 @@
+// Public Api types are okay to use here as it's about internal types between connector and front.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes";

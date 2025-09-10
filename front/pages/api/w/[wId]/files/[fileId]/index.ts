@@ -1,4 +1,3 @@
-import type { FileType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -15,7 +14,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { FileType, WithAPIErrorResponse } from "@app/types";
 
 export interface FileUploadedRequestResponseBody {
   file: FileType;

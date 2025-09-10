@@ -1740,6 +1740,10 @@ export const PostMessageFeedbackResponseSchema = z.object({
   success: z.literal(true),
 });
 
+export type PostMessageFeedbackResponseType = z.infer<
+  typeof PostMessageFeedbackResponseSchema
+>;
+
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,
 });
@@ -2435,6 +2439,14 @@ export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
 >;
 
+const GetWorkspaceUsageResponseSchema = z
+  .string()
+  .or(z.undefined())
+  .or(z.instanceof(Buffer));
+export type GetWorkspaceUsageResponseType = z.infer<
+  typeof GetWorkspaceUsageResponseSchema
+>;
+
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(4096, "File name must be less than 4096 characters"),
@@ -2494,6 +2506,15 @@ export const FileUploadedRequestResponseSchema = z.object({
 });
 export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
+>;
+
+export const PublicFileResponseBodySchema = z.object({
+  content: z.string().optional(),
+  file: FileTypeSchema,
+});
+
+export type PublicFileResponseBodyType = z.infer<
+  typeof PublicFileResponseBodySchema
 >;
 
 export const MeResponseSchema = z.object({

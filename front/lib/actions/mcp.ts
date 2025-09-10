@@ -1,4 +1,3 @@
-import type { ActionApprovalStateType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -47,6 +46,11 @@ import {
   removeNulls,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+
+export type ActionApprovalStateType =
+  | "approved"
+  | "rejected"
+  | "always_approved";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;

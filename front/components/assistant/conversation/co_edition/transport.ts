@@ -1,10 +1,9 @@
-import type {
-  HeartbeatMCPResponseType,
-  LightWorkspaceType,
-} from "@dust-tt/client";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+
+import type { HeartbeatMCPResponseType } from "@app/pages/api/w/[wId]/mcp/heartbeat";
+import type { LightWorkspaceType } from "@app/types";
 
 const logger = console;
 

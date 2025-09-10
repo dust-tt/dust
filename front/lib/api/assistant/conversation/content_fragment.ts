@@ -1,4 +1,7 @@
+// All mime types are okay to use from the public API.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { DustMimeType } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import {
   DATA_SOURCE_MIME_TYPE,
   isSupportedFileContentType,

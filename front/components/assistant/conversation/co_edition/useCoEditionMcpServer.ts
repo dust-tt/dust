@@ -1,8 +1,8 @@
-import type { LightWorkspaceType } from "@dust-tt/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CoEditionServer } from "@app/components/assistant/conversation/co_edition/server";
 import { CoEditionTransport } from "@app/components/assistant/conversation/co_edition/transport";
+import type { LightWorkspaceType } from "@app/types";
 
 interface UseCoEditionServerProps {
   hasCoEditionFeatureFlag?: boolean;

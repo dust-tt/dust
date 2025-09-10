@@ -1,5 +1,6 @@
 import type {
   GetWorkspaceUsageRequestType,
+  GetWorkspaceUsageResponseType,
   UsageTableType,
 } from "@dust-tt/client";
 import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
@@ -20,7 +21,7 @@ import {
   getUserUsageData,
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
-import type { WorkspaceType } from "@app/types";
+import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 /**
@@ -107,7 +108,7 @@ import { assertNever } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse<WithAPIErrorResponse<GetWorkspaceUsageResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -207,7 +208,8 @@ async function handler(
           "Content-Disposition",
           `attachment; filename="${query.table}.csv"`
         );
-        res.status(200).send(data[query.table]);
+        const csvData = data[query.table];
+        res.status(200).send(csvData);
       }
       return;
 

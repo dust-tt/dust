@@ -1,4 +1,7 @@
+// We are using the public API types here because it's internal MCP servers.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { DustAppConfigType } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DustAPI } from "@dust-tt/client";
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";

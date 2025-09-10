@@ -1,3 +1,5 @@
+// It's okay here as we are hardcoding the input schemas and testing agains't the public ones.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";

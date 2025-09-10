@@ -1,3 +1,5 @@
+/* eslint-disable dust/enforce-client-types-in-public-api */
+// Disabling because POKE but should probably be refactored to use internal types.
 import type { DataSourceSearchResponseType } from "@dust-tt/client";
 import { DataSourceSearchQuerySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";

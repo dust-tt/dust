@@ -61,6 +61,7 @@ module.exports = {
     "dust/too-long-index-name": "error",
     "dust/no-direct-sparkle-notification": "warn",
     "dust/no-bulk-lodash": "error",
+    "dust/enforce-client-types-in-public-api": "error",
   },
   overrides: [
     {

@@ -5,6 +5,7 @@ const noUnverifiedWorkspaceBypass = require("./rules/no-unverified-workspace-byp
 const tooLongIndexName = require("./rules/too-long-index-name");
 const noDirectSparkleNotification = require("./rules/no-direct-sparkle-notification");
 const noBulkLodash = require("./rules/no-bulk-lodash.js");
+const enforceClientTypesInPublicApi = require("./rules/enforce-client-types-in-public-api");
 
 module.exports = {
   meta: {
@@ -17,5 +18,6 @@ module.exports = {
     "too-long-index-name": tooLongIndexName,
     "no-direct-sparkle-notification": noDirectSparkleNotification,
     "no-bulk-lodash": noBulkLodash,
+    "enforce-client-types-in-public-api": enforceClientTypesInPublicApi,
   },
 };
