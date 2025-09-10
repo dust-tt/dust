@@ -93,6 +93,52 @@ describe("augmentInputsWithConfiguration", () => {
 
       expect(result).toEqual(rawInputs);
     });
+
+    it("should preserve existing inputs and only add missing ones", () => {
+      const rawInputs = {
+        existingParam: "existing-value",
+        partiallyProvided: "user-provided",
+      };
+      const config = createBasicMCPConfiguration({
+        additionalConfiguration: {
+          stringParam: "config-value",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            existingParam: { type: "string" },
+            partiallyProvided: { type: "string" },
+            stringParam: {
+              type: "object",
+              properties: {
+                value: { type: "string" },
+                mimeType: {
+                  type: "string",
+                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+                },
+              },
+              required: ["value", "mimeType"],
+            },
+          },
+          required: ["existingParam", "partiallyProvided", "stringParam"],
+        },
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual({
+        existingParam: "existing-value",
+        partiallyProvided: "user-provided",
+        stringParam: {
+          value: "config-value",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      });
+    });
   });
 
   describe("DATA_SOURCE mime type", () => {
@@ -1029,33 +1075,26 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
-    it("should preserve existing inputs and only add missing ones", () => {
-      const rawInputs = {
-        existingParam: "existing-value",
-        partiallyProvided: "user-provided",
-      };
+    // moved: "should preserve existing inputs and only add missing ones" now under basic functionality
+
+    it("should ignore legacy additionalConfiguration keys not in inputSchema", () => {
+      const rawInputs = { existingParam: "keep-me", numberParam: 42 };
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          stringParam: "config-value",
+          stringParam: "from-config",
+          otherStringParam: "legacy-ignored", // legacy key not present anymore in the current schema
         },
         inputSchema: {
           type: "object",
           properties: {
             existingParam: { type: "string" },
-            partiallyProvided: { type: "string" },
-            stringParam: {
-              type: "object",
-              properties: {
-                value: { type: "string" },
-                mimeType: {
-                  type: "string",
-                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                },
-              },
-              required: ["value", "mimeType"],
-            },
+            numberParam: { type: "number" },
+            stringParam:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+              ],
           },
-          required: ["existingParam", "partiallyProvided", "stringParam"],
+          required: ["existingParam", "numberParam", "stringParam"],
         },
       });
 
@@ -1066,10 +1105,10 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        existingParam: "existing-value",
-        partiallyProvided: "user-provided",
+        existingParam: "keep-me",
+        numberParam: 42,
         stringParam: {
-          value: "config-value",
+          value: "from-config",
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
         },
       });
