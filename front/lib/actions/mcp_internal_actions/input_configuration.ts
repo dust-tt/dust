@@ -345,7 +345,6 @@ export function augmentInputsWithConfiguration({
   // of startsWith() to avoid "Invalid escape" errors. This is important because our Zod schemas are
   // converted to JSON Schema for AJV validation, and AJV requires regex patterns for string
   // validation.
-
   const validate = ajv.compile(inputSchema);
   const isValid = validate(inputs);
 
@@ -354,6 +353,7 @@ export function augmentInputsWithConfiguration({
       if (error.keyword !== "required" || !error.params.missingProperty) {
         continue;
       }
+
       const missingProp = error.params.missingProperty;
 
       const parentPath = error.instancePath
