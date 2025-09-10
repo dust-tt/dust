@@ -957,7 +957,7 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionBrainIcon",
       documentationUrl: null,
-      instructions: null, // @todo: daph.
+      instructions: null, // TODO(daph): Add proper instructions.
     },
   },
   [SEARCH_SERVER_NAME]: {
