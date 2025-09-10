@@ -142,7 +142,21 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
-      const value = actionConfiguration.additionalConfiguration[keyPath];
+      let value = actionConfiguration.additionalConfiguration[keyPath];
+      
+      // If value is missing and schema has a default, use it
+      if (value === undefined || value === null || value === "") {
+        const propSchema = findSchemaAtPath(actionConfiguration.inputSchema, keyPath.split('.'));
+        if (propSchema?.default) {
+          // Handle both object-level default {value, mimeType} and property-level default
+          if (typeof propSchema.default === 'object' && propSchema.default !== null && 'value' in propSchema.default) {
+            value = propSchema.default.value as string;
+          } else if (propSchema.properties?.value && isJSONSchemaObject(propSchema.properties.value) && propSchema.properties.value.default !== undefined) {
+            value = propSchema.properties.value.default as string;
+          }
+        }
+      }
+      
       if (typeof value !== "string") {
         throw new Error(
           `Expected string value for key ${keyPath}, got ${typeof value}`
@@ -152,7 +166,21 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
-      const value = actionConfiguration.additionalConfiguration[keyPath];
+      let value = actionConfiguration.additionalConfiguration[keyPath];
+      
+      // If value is missing and schema has a default, use it
+      if (value === undefined || value === null) {
+        const propSchema = findSchemaAtPath(actionConfiguration.inputSchema, keyPath.split('.'));
+        if (propSchema?.default) {
+          // Handle both object-level default {value, mimeType} and property-level default
+          if (typeof propSchema.default === 'object' && propSchema.default !== null && 'value' in propSchema.default) {
+            value = propSchema.default.value as number;
+          } else if (propSchema.properties?.value && isJSONSchemaObject(propSchema.properties.value) && propSchema.properties.value.default !== undefined) {
+            value = propSchema.properties.value.default as number;
+          }
+        }
+      }
+      
       if (typeof value !== "number") {
         throw new Error(
           `Expected number value for key ${keyPath}, got ${typeof value}`
@@ -162,7 +190,21 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
-      const value = actionConfiguration.additionalConfiguration[keyPath];
+      let value = actionConfiguration.additionalConfiguration[keyPath];
+      
+      // If value is missing and schema has a default, use it
+      if (value === undefined || value === null) {
+        const propSchema = findSchemaAtPath(actionConfiguration.inputSchema, keyPath.split('.'));
+        if (propSchema?.default) {
+          // Handle both object-level default {value, mimeType} and property-level default
+          if (typeof propSchema.default === 'object' && propSchema.default !== null && 'value' in propSchema.default) {
+            value = propSchema.default.value as boolean;
+          } else if (propSchema.properties?.value && isJSONSchemaObject(propSchema.properties.value) && propSchema.properties.value.default !== undefined) {
+            value = propSchema.properties.value.default as boolean;
+          }
+        }
+      }
+      
       if (typeof value !== "boolean") {
         throw new Error(
           `Expected boolean value for key ${keyPath}, got ${typeof value}`
@@ -172,7 +214,21 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
-      const value = actionConfiguration.additionalConfiguration[keyPath];
+      let value = actionConfiguration.additionalConfiguration[keyPath];
+      
+      // If value is missing and schema has a default, use it
+      if (value === undefined || value === null || value === "") {
+        const propSchema = findSchemaAtPath(actionConfiguration.inputSchema, keyPath.split('.'));
+        if (propSchema?.default) {
+          // Handle both object-level default {value, mimeType} and property-level default
+          if (typeof propSchema.default === 'object' && propSchema.default !== null && 'value' in propSchema.default) {
+            value = propSchema.default.value as string;
+          } else if (propSchema.properties?.value && isJSONSchemaObject(propSchema.properties.value) && propSchema.properties.value.default !== undefined) {
+            value = propSchema.properties.value.default as string;
+          }
+        }
+      }
+      
       if (typeof value !== "string") {
         throw new Error(
           `Expected string value for key ${keyPath}, got ${typeof value}`
@@ -182,7 +238,21 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.LIST: {
-      const value = actionConfiguration.additionalConfiguration[keyPath];
+      let value = actionConfiguration.additionalConfiguration[keyPath];
+      
+      // If value is missing and schema has a default, use it
+      if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) {
+        const propSchema = findSchemaAtPath(actionConfiguration.inputSchema, keyPath.split('.'));
+        if (propSchema?.default) {
+          // Handle both object-level default {values, mimeType} and property-level default
+          if (typeof propSchema.default === 'object' && propSchema.default !== null && 'values' in propSchema.default && Array.isArray(propSchema.default.values)) {
+            value = propSchema.default.values as string[];
+          } else if (propSchema.properties?.values && isJSONSchemaObject(propSchema.properties.values) && Array.isArray(propSchema.properties.values.default)) {
+            value = propSchema.properties.values.default as string[];
+          }
+        }
+      }
+      
       if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
         throw new Error(
           `Expected array of string values for key ${keyPath}, got ${typeof value} for mime type ${mimeType}`
@@ -232,12 +302,18 @@ function findPathsToConfiguration({
     }
 
     if (tool.inputSchema) {
+      const match = findMatchingSubSchemas(tool.inputSchema, mimeType)
       matches = {
         ...matches,
-        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
+        ...match,
       };
+      if (!match) {
+        console.log("no match for tool:", tool)
+      }
     }
   }
+
+  
   return matches;
 }
 
@@ -389,7 +465,7 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-export interface MCPServerRequirements {
+export interface MCPServerToolsConfigurations {
   requiresDataSourceConfiguration: boolean;
   requiresDataWarehouseConfiguration: boolean;
   requiresTableConfiguration: boolean;
@@ -397,21 +473,23 @@ export interface MCPServerRequirements {
   requiresReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  requiredStrings: Array<{ key: string; description?: string }>;
-  requiredNumbers: Array<{ key: string; description?: string }>;
-  requiredBooleans: Array<{ key: string; description?: string }>;
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
+  requiredStrings: { key: string; description?: string; default?: string }[];
+  requiredNumbers: { key: string; description?: string; default?: number }[];
+  requiredBooleans: { key: string; description?: string; default?: boolean }[];
+  requiredEnums: Record<string, { options: string[]; description?: string; default?: string }>;
   requiredLists: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    { options: Record<string, string>; description?: string; default?: string[] }
   >;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
 }
 
-export function getMCPServerRequirements(
+
+
+export function getMCPServerToolsConfigurations(
   mcpServerView: MCPServerViewType | null | undefined
-): MCPServerRequirements {
+): MCPServerToolsConfigurations {
   if (!mcpServerView) {
     return {
       requiresDataSourceConfiguration: false,
@@ -489,7 +567,7 @@ export function getMCPServerRequirements(
     (tool) => tool.inputSchema?.properties?.jsonSchema
   );
 
-  const requiredStrings = Object.entries(
+  const stringConfigurations = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
@@ -499,7 +577,7 @@ export function getMCPServerRequirements(
     description: schema.description,
   }));
 
-  const requiredNumbers = Object.entries(
+  const numberConfigurations = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
@@ -509,7 +587,7 @@ export function getMCPServerRequirements(
     description: schema.description,
   }));
 
-  const requiredBooleans = Object.entries(
+  const booleanConfigurations = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
@@ -519,7 +597,7 @@ export function getMCPServerRequirements(
     description: schema.description,
   }));
 
-  const requiredEnums = Object.fromEntries(
+  const enumConfigurations = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -543,7 +621,7 @@ export function getMCPServerRequirements(
     })
   );
 
-  const requiredLists = Object.fromEntries(
+  const listConfigurations = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -602,11 +680,11 @@ export function getMCPServerRequirements(
     requiresReasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
-    requiredStrings,
-    requiredNumbers,
-    requiredBooleans,
-    requiredEnums,
-    requiredLists,
+    requiredStrings: stringConfigurations,
+    requiredNumbers: numberConfigurations,
+    requiredBooleans: booleanConfigurations,
+    requiredEnums: enumConfigurations,
+    requiredLists: listConfigurations,
     requiresDustAppConfiguration: requiredDustAppConfiguration,
     noRequirement:
       !requiresDataSourceConfiguration &&
@@ -616,11 +694,11 @@ export function getMCPServerRequirements(
       !requiresReasoningConfiguration &&
       !requiredDustAppConfiguration &&
       !mayRequireTimeFrameConfiguration &&
-      requiredStrings.length === 0 &&
-      requiredNumbers.length === 0 &&
-      requiredBooleans.length === 0 &&
-      Object.keys(requiredEnums).length === 0 &&
-      Object.keys(requiredLists).length === 0,
+      stringConfigurations.length <=  0 &&
+      numberConfigurations.length <= 0 &&
+      booleanConfigurations.length <= 0 &&
+      Object.keys(enumConfigurations).length <= 0 &&
+      Object.keys(listConfigurations).length <= 0,
   };
 }
 
