@@ -19,6 +19,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -363,18 +364,10 @@ const SpaceMenuItem = ({
 }) => {
   const router = useRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
-
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(spacePath + "/") || router.asPath === spacePath;
-
-  // Unfold the space if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spacePath,
+  });
 
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -394,8 +387,8 @@ const SpaceMenuItem = ({
         });
         void router.push(spacePath);
       }}
-      isSelected={router.asPath === spacePath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
       visual={getSpaceIcon(space)}
       tailwindIconTextColor={isMember ? undefined : "text-warning-400"}
       areActionsFading={false}
@@ -576,17 +569,9 @@ const SpaceDataSourceViewSubMenu = ({
   const router = useRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(spaceCategoryPath + "/") ||
-    router.asPath === spaceCategoryPath;
-
-  // Unfold the space's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spaceCategoryPath,
+  });
 
   const categoryDetails = CATEGORY_DETAILS[category];
   const { isSpaceDataSourceViewsLoading, spaceDataSourceViews } =
@@ -613,8 +598,8 @@ const SpaceDataSourceViewSubMenu = ({
         });
         void router.push(spaceCategoryPath);
       }}
-      isSelected={router.asPath === spaceCategoryPath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
       visual={categoryDetails.icon}
       areActionsFading={false}
       type={
@@ -701,19 +686,10 @@ const SpaceAppSubMenu = ({
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
-
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(spaceCategoryPath + "/") ||
-    router.asPath === spaceCategoryPath;
-
-  // Unfold the space's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spaceCategoryPath,
+  });
 
   const categoryDetails = CATEGORY_DETAILS[category];
 
@@ -734,8 +710,8 @@ const SpaceAppSubMenu = ({
         });
         void router.push(spaceCategoryPath);
       }}
-      isSelected={router.asPath === spaceCategoryPath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
       visual={categoryDetails.icon}
       areActionsFading={false}
       type={isAppsLoading || apps.length > 0 ? "node" : "leaf"}
@@ -762,19 +738,10 @@ const SpaceActionsSubMenu = ({
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
-
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
-  const isAncestorToCurrentPage =
-    router.asPath.startsWith(spaceCategoryPath + "/") ||
-    router.asPath === spaceCategoryPath;
-
-  // Unfold the space's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
-  useEffect(() => {
-    if (isAncestorToCurrentPage) {
-      setIsExpanded(isAncestorToCurrentPage);
-    }
-  }, [isAncestorToCurrentPage]);
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spaceCategoryPath,
+  });
 
   const categoryDetails = CATEGORY_DETAILS[category];
 
@@ -795,8 +762,8 @@ const SpaceActionsSubMenu = ({
         });
         void router.push(spaceCategoryPath);
       }}
-      isSelected={router.asPath === spaceCategoryPath}
-      onChevronClick={() => setIsExpanded(!isExpanded)}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
       visual={categoryDetails.icon}
       areActionsFading={false}
       type={isMCPServerViewsLoading || serverViews.length > 0 ? "node" : "leaf"}
