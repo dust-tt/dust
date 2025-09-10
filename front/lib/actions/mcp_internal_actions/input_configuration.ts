@@ -144,7 +144,6 @@ function generateConfiguredInput({
       // For primitive types, we have rendered the key from the path and use it to look up the value.
       let value = actionConfiguration.additionalConfiguration[keyPath];
 
-      // If value is missing and schema has a default, use it
       if (value === undefined || value === null || value === "") {
         const propSchema = findSchemaAtPath(
           actionConfiguration.inputSchema,
@@ -179,7 +178,6 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
       let value = actionConfiguration.additionalConfiguration[keyPath];
 
-      // If value is missing and schema has a default, use it
       if (value === undefined || value === null) {
         const propSchema = findSchemaAtPath(
           actionConfiguration.inputSchema,
@@ -214,7 +212,6 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
       let value = actionConfiguration.additionalConfiguration[keyPath];
 
-      // If value is missing and schema has a default, use it
       if (value === undefined || value === null) {
         const propSchema = findSchemaAtPath(
           actionConfiguration.inputSchema,
@@ -249,7 +246,6 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
       let value = actionConfiguration.additionalConfiguration[keyPath];
 
-      // If value is missing and schema has a default, use it
       if (value === undefined || value === null || value === "") {
         const propSchema = findSchemaAtPath(
           actionConfiguration.inputSchema,
@@ -284,7 +280,6 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.LIST: {
       let value = actionConfiguration.additionalConfiguration[keyPath];
 
-      // If value is missing and schema has a default, use it
       if (
         value === undefined ||
         value === null ||
