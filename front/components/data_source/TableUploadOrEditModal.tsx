@@ -34,6 +34,7 @@ import {
   isBigFileSize,
   isSlugified,
   MAX_FILE_SIZES,
+  truncate,
 } from "@app/types";
 
 interface Table {
@@ -411,7 +412,7 @@ export const TableUploadOrEditModal = ({
                         label: fileUploaderService.isProcessingFiles
                           ? "Uploading..."
                           : tableState.file
-                            ? tableState.file.name
+                            ? truncate(tableState.file.name, 24)
                             : initialId
                               ? "Replace file"
                               : "Upload file",
