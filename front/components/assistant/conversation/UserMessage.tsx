@@ -17,6 +17,10 @@ import {
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import type { UserMessageType, WorkspaceType } from "@app/types";
+import {
+  USER_MESSAGE_SYSTEM_CONTENT_CLOSING_DELIMITER,
+  USER_MESSAGE_SYSTEM_CONTENT_OPENING_DELIMITER,
+} from "@app/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -46,6 +50,14 @@ export function UserMessage({
     () => [getCiteDirective(), mentionDirective, contentNodeMentionDirective],
     []
   );
+  // Remove everything between the delimiters, including the delimiters themselves and any whitespace/newlines around them.
+  const messageContent = message.content.replace(
+    new RegExp(
+      `\\s*${USER_MESSAGE_SYSTEM_CONTENT_OPENING_DELIMITER}[\\s\\S]*?${USER_MESSAGE_SYSTEM_CONTENT_CLOSING_DELIMITER}\\s*`,
+      "g"
+    ),
+    ""
+  );
 
   return (
     <div className="flex flex-grow flex-col">
@@ -58,7 +70,7 @@ export function UserMessage({
           citations={citations}
         >
           <Markdown
-            content={message.content}
+            content={messageContent}
             isStreaming={false}
             isLastMessage={isLastMessage}
             additionalMarkdownComponents={additionalMarkdownComponents}

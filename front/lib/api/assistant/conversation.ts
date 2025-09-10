@@ -82,6 +82,8 @@ import {
   md5,
   Ok,
   removeNulls,
+  USER_MESSAGE_SYSTEM_CONTENT_CLOSING_DELIMITER,
+  USER_MESSAGE_SYSTEM_CONTENT_OPENING_DELIMITER,
 } from "@app/types";
 import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
@@ -386,6 +388,7 @@ export async function postUserMessage(
     context,
     skipToolsValidation,
     executionMode,
+    systemContent,
   }: {
     conversation: ConversationType;
     content: string;
@@ -393,6 +396,7 @@ export async function postUserMessage(
     context: UserMessageContext;
     skipToolsValidation: boolean;
     executionMode?: ExecutionMode;
+    systemContent?: string;
   }
 ): Promise<
   Result<
@@ -509,6 +513,16 @@ export async function postUserMessage(
     }
   }
 
+  let messageContent = systemContent
+    ? USER_MESSAGE_SYSTEM_CONTENT_OPENING_DELIMITER +
+      "\n" +
+      systemContent +
+      "\n" +
+      USER_MESSAGE_SYSTEM_CONTENT_CLOSING_DELIMITER +
+      "\n\n"
+    : "";
+  messageContent += content;
+
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await withTransaction(async (t) => {
@@ -535,7 +549,7 @@ export async function postUserMessage(
             userMessageId: (
               await UserMessage.create(
                 {
-                  content,
+                  content: messageContent,
                   // TODO(MCP Clean-up): Rename field in DB.
                   clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
                   userContextUsername: context.username,
@@ -575,7 +589,7 @@ export async function postUserMessage(
         version: 0,
         user: user?.toJSON() ?? null,
         mentions,
-        content,
+        content: messageContent,
         context,
         rank: m.rank,
       };

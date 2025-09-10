@@ -100,6 +100,9 @@ export type UserMessageContext = {
   selectedMCPServerViewIds?: string[];
 };
 
+export const USER_MESSAGE_SYSTEM_CONTENT_OPENING_DELIMITER = "<dust_system>";
+export const USER_MESSAGE_SYSTEM_CONTENT_CLOSING_DELIMITER = "</dust_system>";
+
 export type UserMessageType = {
   id: ModelId;
   created: number;

@@ -92,23 +92,21 @@ const createConversationForAgentConfiguration = async (
 
   // Build schedule context information
   const currentDate = new Date();
-  let triggerContext = "<trigger>\n";
-  triggerContext += `- cron : ${trigger.configuration.cron}\n`;
+  let triggerContext = `- cron : ${trigger.configuration.cron}\n`;
   triggerContext += `- current execution : ${currentDate.toISOString()}\n`;
   triggerContext += lastRunAt
     ? `- last run : ${lastRunAt.toISOString()}\n`
     : `- last run : none, this is the first run\n`;
-  triggerContext += "</trigger>\n\n";
 
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
     content:
-      triggerContext +
       `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}` +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,
     skipToolsValidation: false,
+    systemContent: triggerContext,
   });
 
   if (messageRes.isErr()) {
