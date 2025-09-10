@@ -114,7 +114,7 @@ const createServer = (
     async () => {
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called"
+        "agentLoopContext is required to run the memory retrieve tool"
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
@@ -139,7 +139,7 @@ const createServer = (
     async ({ entries }) => {
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called"
+        "agentLoopContext is required to run the memory record_entries tool"
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
@@ -165,7 +165,7 @@ const createServer = (
     async ({ indexes }) => {
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called"
+        "agentLoopContext is required to run the memory erase_entries tool"
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
@@ -200,7 +200,7 @@ const createServer = (
     async ({ edits }) => {
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called"
+        "agentLoopContext is required to run the memory edit_entries tool"
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 

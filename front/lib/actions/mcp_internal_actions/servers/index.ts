@@ -9,6 +9,7 @@ import { default as contentCreationServer } from "@app/lib/actions/mcp_internal_
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/server";
+import { default as deepResearchServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_research";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice/server";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
@@ -159,6 +160,8 @@ export async function getInternalMCPServer(
       return dataWarehousesServer(auth, agentLoopContext);
     case "toolsets":
       return toolsetsServer(auth, agentLoopContext);
+    case "deep_research":
+      return deepResearchServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
