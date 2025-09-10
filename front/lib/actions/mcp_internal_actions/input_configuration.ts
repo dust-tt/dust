@@ -154,15 +154,17 @@ function generateConfiguredInput({
           if (
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
-            "value" in propSchema.default
+            "value" in propSchema.default &&
+            typeof propSchema.default.value === "string"
           ) {
-            value = propSchema.default.value as string;
+            value = propSchema.default.value;
           } else if (
             propSchema.properties?.value &&
             isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined
+            propSchema.properties.value.default !== undefined &&
+            typeof propSchema.properties.value.default === "string"
           ) {
-            value = propSchema.properties.value.default as string;
+            value = propSchema.properties.value.default;
           }
         }
       }
@@ -188,15 +190,17 @@ function generateConfiguredInput({
           if (
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
-            "value" in propSchema.default
+            "value" in propSchema.default &&
+            typeof propSchema.default.value === "number"
           ) {
-            value = propSchema.default.value as number;
+            value = propSchema.default.value;
           } else if (
             propSchema.properties?.value &&
             isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined
+            propSchema.properties.value.default !== undefined &&
+            typeof propSchema.properties.value.default === "number"
           ) {
-            value = propSchema.properties.value.default as number;
+            value = propSchema.properties.value.default;
           }
         }
       }
@@ -222,15 +226,17 @@ function generateConfiguredInput({
           if (
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
-            "value" in propSchema.default
+            "value" in propSchema.default &&
+            typeof propSchema.default.value === "boolean"
           ) {
-            value = propSchema.default.value as boolean;
+            value = propSchema.default.value;
           } else if (
             propSchema.properties?.value &&
             isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined
+            propSchema.properties.value.default !== undefined &&
+            typeof propSchema.properties.value.default === "boolean"
           ) {
-            value = propSchema.properties.value.default as boolean;
+            value = propSchema.properties.value.default;
           }
         }
       }
@@ -256,15 +262,17 @@ function generateConfiguredInput({
           if (
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
-            "value" in propSchema.default
+            "value" in propSchema.default &&
+            typeof propSchema.default.value === "string"
           ) {
-            value = propSchema.default.value as string;
+            value = propSchema.default.value;
           } else if (
             propSchema.properties?.value &&
             isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined
+            propSchema.properties.value.default !== undefined &&
+            typeof propSchema.properties.value.default === "string"
           ) {
-            value = propSchema.properties.value.default as string;
+            value = propSchema.properties.value.default;
           }
         }
       }
@@ -295,15 +303,17 @@ function generateConfiguredInput({
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
             "values" in propSchema.default &&
-            Array.isArray(propSchema.default.values)
+            Array.isArray(propSchema.default.values) &&
+            propSchema.default.values.every((v) => typeof v === "string")
           ) {
-            value = propSchema.default.values as string[];
+            value = propSchema.default.values;
           } else if (
             propSchema.properties?.values &&
             isJSONSchemaObject(propSchema.properties.values) &&
-            Array.isArray(propSchema.properties.values.default)
+            Array.isArray(propSchema.properties.values.default) &&
+            propSchema.properties.values.default.every((v) => typeof v === "string")
           ) {
-            value = propSchema.properties.values.default as string[];
+            value = propSchema.properties.values.default;
           }
         }
       }
