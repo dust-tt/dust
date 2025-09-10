@@ -34,6 +34,7 @@ type CodeBlockProps = {
   inline?: boolean;
   variant?: "surface";
   wrapLongLines?: boolean;
+  showLineNumber?: boolean;
 };
 
 export function CodeBlock({
@@ -42,6 +43,7 @@ export function CodeBlock({
   inline,
   variant = "surface",
   wrapLongLines = false,
+  showLineNumber = false,
 }: CodeBlockProps): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "text";
@@ -62,6 +64,13 @@ export function CodeBlock({
       color: "var(--s-foreground)",
       backgroundColor: "transparent",
       fontSize: "0.875rem",
+    },
+    "hljs-ln": {
+      color: "var(--s-muted-foreground)",
+      fontSize: "0.75rem",
+      paddingRight: "1em",
+      textAlign: "right",
+      userSelect: "none",
     },
     "hljs-keyword": {
       // function, const, let, if, return
@@ -148,6 +157,7 @@ export function CodeBlock({
       <div className="s-text-foreground dark:s-text-foreground-night">
         <SyntaxHighlighter
           wrapLongLines={wrapLongLines}
+          showLineNumbers={showLineNumber}
           style={codeStyle}
           language={languageToUse}
           PreTag="div"

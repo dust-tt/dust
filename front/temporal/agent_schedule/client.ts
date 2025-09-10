@@ -22,7 +22,11 @@ function getScheduleOptions(
     action: {
       type: "startWorkflow",
       workflowType: agentScheduleWorkflow,
-      args: [auth.toJSON(), trigger.toJSON()],
+      args: [
+        auth.getNonNullableUser().sId,
+        auth.getNonNullableWorkspace().sId,
+        trigger.toJSON(),
+      ],
       taskQueue: QUEUE_NAME,
     },
     scheduleId,
@@ -36,7 +40,7 @@ function getScheduleOptions(
   };
 }
 
-function makeScheduleId(workspaceId: string, triggerId: string): string {
+export function makeScheduleId(workspaceId: string, triggerId: string): string {
   return `agent-schedule-${workspaceId}-${triggerId}`;
 }
 

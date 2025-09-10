@@ -32,6 +32,8 @@ lazy_static! {
         let key = std::fs::read_to_string(path).unwrap();
         EncodingKey::from_rsa_pem(key.as_bytes()).unwrap()
     };
+    static ref OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET: String =
+        std::env::var("OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET").unwrap();
 }
 
 /// We support two Github apps. Our default `connection` app (for data source connection) and a
@@ -40,6 +42,7 @@ lazy_static! {
 pub enum GithubUseCase {
     Connection,
     PlatformActions,
+    PersonalActions,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,10 +92,13 @@ impl GithubConnectionProvider {
 
                 Ok(token)
             }
+            GithubUseCase::PersonalActions => {
+                Err(anyhow!("JWT not required for personal OAuth flow"))?
+            }
         }
     }
 
-    async fn refresh_token(
+    async fn refresh_installation_token(
         &self,
         app_type: GithubUseCase,
         code: &str,
@@ -136,6 +142,104 @@ impl GithubConnectionProvider {
 
         Ok((token.to_string(), expiry as u64, raw_json))
     }
+
+    async fn refresh_oauth_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<RefreshResult, ProviderError> {
+        let req = self
+            .reqwest_client()
+            .post("https://github.com/login/oauth/access_token")
+            .header("Accept", "application/json")
+            .header("User-Agent", "dust/oauth")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .form(&[
+                (
+                    "client_id",
+                    OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID.as_str(),
+                ),
+                (
+                    "client_secret",
+                    OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET.as_str(),
+                ),
+                ("grant_type", "refresh_token"),
+                ("refresh_token", refresh_token),
+            ]);
+
+        let raw_json = execute_request(ConnectionProvider::Github, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
+
+        let access_token = match raw_json["access_token"].as_str() {
+            Some(token) => token,
+            None => Err(anyhow!("Missing `access_token` in response from Github"))?,
+        };
+        let refresh_token = match raw_json["refresh_token"].as_str() {
+            Some(token) => token,
+            None => Err(anyhow!("Missing `refresh_token` in response from Github"))?,
+        };
+
+        let expires_in = raw_json["expires_in"].as_u64().unwrap_or(28800); // Default 8 hours
+        let expiry_timestamp = (utils::now_secs() + expires_in) * 1000;
+
+        Ok(RefreshResult {
+            access_token: access_token.to_string(),
+            access_token_expiry: Some(expiry_timestamp),
+            refresh_token: Some(refresh_token.to_string()),
+            raw_json,
+        })
+    }
+
+    async fn finalize_oauth_flow(
+        &self,
+        code: &str,
+        redirect_uri: &str,
+    ) -> Result<FinalizeResult, ProviderError> {
+        let req = self
+            .reqwest_client()
+            .post("https://github.com/login/oauth/access_token")
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "dust/oauth")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .form(&[
+                (
+                    "client_id",
+                    OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID.as_str(),
+                ),
+                (
+                    "client_secret",
+                    OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET.as_str(),
+                ),
+                ("code", code),
+                ("redirect_uri", redirect_uri),
+            ]);
+
+        let raw_json = execute_request(ConnectionProvider::Github, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
+
+        let access_token = match raw_json["access_token"].as_str() {
+            Some(token) => token,
+            None => Err(anyhow!("Missing `access_token` in response from Github"))?,
+        };
+        let refresh_token = match raw_json["refresh_token"].as_str() {
+            Some(token) => token,
+            None => Err(anyhow!("Missing `refresh_token` in response from Github"))?,
+        };
+
+        let expires_in = raw_json["expires_in"].as_u64().unwrap_or(28800); // Default 8 hours
+        let expiry_timestamp = (utils::now_secs() + expires_in) * 1000;
+
+        Ok(FinalizeResult {
+            redirect_uri: redirect_uri.to_string(),
+            code: access_token.to_string(),
+            access_token: access_token.to_string(),
+            access_token_expiry: Some(expiry_timestamp),
+            refresh_token: Some(refresh_token.to_string()),
+            raw_json,
+            extra_metadata: None,
+        })
+    }
 }
 
 #[async_trait]
@@ -155,13 +259,18 @@ impl Provider for GithubConnectionProvider {
             Some(use_case) => match use_case {
                 "connection" => GithubUseCase::Connection,
                 "platform_actions" => GithubUseCase::PlatformActions,
+                "personal_actions" => GithubUseCase::PersonalActions,
                 _ => Err(anyhow!("Github use_case format invalid"))?,
             },
             None => Err(anyhow!("Github use_case missing"))?,
         };
 
+        if app_type == GithubUseCase::PersonalActions {
+            return self.finalize_oauth_flow(code, redirect_uri).await;
+        }
+
         // `code` is the installation_id returned by Github.
-        let (token, expiry, raw_json) = self.refresh_token(app_type, code).await?;
+        let (token, expiry, raw_json) = self.refresh_installation_token(app_type, code).await?;
 
         // We store the installation_id as `code` which will be used to refresh tokens.
         Ok(FinalizeResult {
@@ -184,18 +293,26 @@ impl Provider for GithubConnectionProvider {
             Some(use_case) => match use_case {
                 "connection" => GithubUseCase::Connection,
                 "platform_actions" => GithubUseCase::PlatformActions,
+                "personal_actions" => GithubUseCase::PersonalActions,
                 _ => Err(anyhow!("Github use_case format invalid"))?,
             },
             None => Err(anyhow!("Github use_case missing"))?,
         };
 
-        // `code` is the installation_id returned by Github.
+        if app_type == GithubUseCase::PersonalActions {
+            let refresh_token = connection
+                .unseal_refresh_token()?
+                .ok_or(ProviderError::TokenRevokedError)?;
+
+            return self.refresh_oauth_token(&refresh_token).await;
+        }
+
         let code = match connection.unseal_authorization_code()? {
             Some(code) => code,
             None => Err(anyhow!("Missing installation_id in connection"))?,
         };
 
-        let (token, expiry, raw_json) = self.refresh_token(app_type, &code).await?;
+        let (token, expiry, raw_json) = self.refresh_installation_token(app_type, &code).await?;
 
         Ok(RefreshResult {
             access_token: token.to_string(),

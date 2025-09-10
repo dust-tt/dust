@@ -7,12 +7,13 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import { makeScheduleId } from "@app/temporal/agent_schedule/client";
 import type { AgentConfigurationType } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
@@ -71,7 +72,8 @@ async function shouldCreateIndividualConversations(
 const createConversationForAgentConfiguration = async (
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType,
-  trigger: TriggerType
+  trigger: TriggerType,
+  lastRunAt: Date | null = null
 ) => {
   const newConversation = await createConversation(auth, {
     title: `@${agentConfiguration.name} scheduled call - ${new Date().toLocaleDateString()}`,
@@ -88,9 +90,16 @@ const createConversationForAgentConfiguration = async (
     origin: null,
   };
 
+  // Build schedule context information
+  const currentDate = new Date();
+  const scheduleContext = lastRunAt
+    ? `**Schedule Context:**\n- Current execution: ${currentDate.toISOString()}\n- Last scheduled run: ${lastRunAt.toISOString()}\n\n`
+    : `**Schedule Context:**\n- Current execution: ${currentDate.toISOString()}\n- This is the first scheduled run for this agent\n\n`;
+
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
     content:
+      scheduleContext +
       `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}` +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
     mentions: [{ configurationId: agentConfiguration.sId }],
@@ -115,10 +124,14 @@ const createConversationForAgentConfiguration = async (
 };
 
 export async function runScheduledAgentsActivity(
-  authType: AuthenticatorType,
+  userId: string,
+  workspaceId: string,
   trigger: TriggerType
 ) {
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    userId,
+    workspaceId
+  );
 
   if (!auth.workspace() || !auth.user()) {
     throw new Error("Invalid authentication. Missing workspaceId or userId.");
@@ -139,14 +152,37 @@ export async function runScheduledAgentsActivity(
     auth,
     agentConfiguration
   );
+
   const triggerResource = await TriggerResource.fetchById(auth, trigger.sId);
   if (!triggerResource) {
     throw new Error(`Trigger with ID ${trigger.sId} not found.`);
   }
+
   const subscribers = await triggerResource.getSubscribers(auth);
   if (subscribers.isErr()) {
     throw new Error("Error getting trigger subscribers.");
   }
+
+  const client = await getTemporalClientForAgentNamespace();
+  const scheduleId = makeScheduleId(
+    auth.getNonNullableWorkspace().sId,
+    trigger.sId
+  );
+
+  let lastRunAt: Date | null = null;
+  try {
+    const handle = client.schedule.getHandle(scheduleId);
+    const schedule = await handle.describe();
+
+    const recentActions = schedule.info.recentActions;
+    lastRunAt =
+      recentActions.length > 0
+        ? recentActions[recentActions.length - 2].takenAt // -2 to get the last completed action, -1 is the current running action
+        : null;
+  } catch (error) {
+    // We can ignore this error, schedule might not have run yet.
+  }
+
   const subscribersAuths = await Promise.all(
     subscribers.value.map((s) =>
       Authenticator.fromUserIdAndWorkspaceId(
@@ -155,6 +191,7 @@ export async function runScheduledAgentsActivity(
       )
     )
   );
+
   if (useIndividualConversations) {
     // Create conversations for the editor and all the subscribers
     for (const tempAuth of [auth, ...subscribersAuths]) {
@@ -162,7 +199,8 @@ export async function runScheduledAgentsActivity(
         await createConversationForAgentConfiguration(
           tempAuth,
           agentConfiguration,
-          trigger
+          trigger,
+          lastRunAt
         );
       } catch (error) {
         // Might happen if a subscriber do not have the right permissions to use the agent
@@ -182,7 +220,8 @@ export async function runScheduledAgentsActivity(
     const conversation = await createConversationForAgentConfiguration(
       auth,
       agentConfiguration,
-      trigger
+      trigger,
+      lastRunAt
     );
     if (!conversation) {
       throw new Error("Error creating conversation.");

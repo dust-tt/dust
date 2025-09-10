@@ -177,7 +177,13 @@ export default function AgentBuilder({
     return {
       ...baseValues,
       actions: processedActions,
-      triggers: triggers ?? emptyArray(),
+      triggers: duplicateAgentId
+        ? triggers.map((trigger) => ({
+            ...trigger,
+            editor: user.id,
+          }))
+        : triggers ?? emptyArray(),
+
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,

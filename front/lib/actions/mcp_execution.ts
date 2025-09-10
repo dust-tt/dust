@@ -25,6 +25,7 @@ import {
   isBlobResource,
   isMCPProgressNotificationType,
   isResourceWithName,
+  isRunAgentQueryProgressOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
@@ -102,6 +103,17 @@ export async function* executeMCPTool({
     } else if (event.type === "notification") {
       const { notification } = event;
       if (isMCPProgressNotificationType(notification)) {
+        // Specific handling for run_agent notifications indicating the tool has
+        // started and can be resumed: the action is updated to save the resumeState.
+        if (isRunAgentQueryProgressOutput(notification.params.data.output)) {
+          await action.updateStepContext({
+            ...action.stepContext,
+            resumeState: {
+              userMessageId: notification.params.data.output.userMessageId,
+              conversationId: notification.params.data.output.conversationId,
+            },
+          });
+        }
         // Regular notifications, we yield them as is with the type "tool_notification".
         yield {
           type: "tool_notification",

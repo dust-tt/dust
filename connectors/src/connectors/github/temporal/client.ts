@@ -16,6 +16,7 @@ import {
   getIssueSyncWorkflowId,
   getRepoGarbageCollectWorkflowId,
   getReposSyncWorkflowId,
+  getRepoSyncWorkflowId,
 } from "@connectors/connectors/github/temporal/utils";
 import {
   githubCodeSyncDailyCronWorkflow,
@@ -27,6 +28,7 @@ import {
   githubIssueSyncWorkflow,
   githubRepoGarbageCollectWorkflow,
   githubReposSyncWorkflow,
+  githubRepoSyncWorkflow,
 } from "@connectors/connectors/github/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -120,6 +122,44 @@ export async function launchGithubReposSyncWorkflow(
     args: [dataSourceConfig, connectorId, orgLogin, repos],
     taskQueue: QUEUE_NAME,
     workflowId: getReposSyncWorkflowId(connectorId),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    memo: {
+      connectorId: connectorId,
+    },
+  });
+}
+
+export async function launchGithubRepoSyncWorkflow(
+  connectorId: ModelId,
+  repoLogin: string,
+  repoName: string,
+  repoId: number
+) {
+  const client = await getTemporalClient();
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
+  }
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  await client.workflow.start(githubRepoSyncWorkflow, {
+    args: [
+      {
+        dataSourceConfig,
+        connectorId,
+        repoName,
+        repoId,
+        repoLogin,
+        syncCodeOnly: false,
+        isFullSync: false,
+        forceCodeResync: false,
+      },
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId: getRepoSyncWorkflowId(connectorId, repoId),
     searchAttributes: {
       connectorId: [connectorId],
     },

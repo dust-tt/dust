@@ -106,6 +106,9 @@ export function getSmallWhitelistedModel(
   if (isProviderWhitelisted(owner, "mistral")) {
     return MISTRAL_SMALL_MODEL_CONFIG;
   }
+  if (isProviderWhitelisted(owner, "xai")) {
+    return GROK_3_MINI_MODEL_CONFIG;
+  }
   return null;
 }
 
@@ -122,7 +125,7 @@ export function getLargeNonAnthropicWhitelistedModel(
     return MISTRAL_LARGE_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "xai")) {
-    return GROK_3_MODEL_CONFIG;
+    return GROK_4_MODEL_CONFIG;
   }
   return null;
 }
@@ -143,7 +146,7 @@ export function getLargeWhitelistedModel(
     return MISTRAL_LARGE_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "xai")) {
-    return GROK_3_MODEL_CONFIG;
+    return GROK_4_MODEL_CONFIG;
   }
   return null;
 }
@@ -230,6 +233,7 @@ export const GROK_3_MODEL_ID = "grok-3-latest" as const;
 export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
 export const GROK_3_FAST_MODEL_ID = "grok-3-fast-latest" as const;
 export const GROK_3_MINI_FAST_MODEL_ID = "grok-3-mini-fast-latest" as const;
+export const GROK_4_MODEL_ID = "grok-4-latest" as const;
 
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
@@ -285,6 +289,7 @@ export const MODEL_IDS = [
   GROK_3_MINI_MODEL_ID,
   GROK_3_FAST_MODEL_ID,
   GROK_3_MINI_FAST_MODEL_ID,
+  GROK_4_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -796,6 +801,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
+
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
@@ -816,6 +822,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
+
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_HAIKU_20240307_MODEL_ID,
@@ -836,6 +843,8 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
+
+// Deprecated
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_2_1_MODEL_ID,
@@ -1436,6 +1445,7 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "xai_feature",
 };
 
+// Deprecated
 export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_3_FAST_MODEL_ID,
@@ -1446,7 +1456,7 @@ export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "xAI's Grok 3 flagship model (131k context, fast infra).",
   shortDescription: "xAI's fast flagship model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 8_192,
   supportsVision: false,
@@ -1457,6 +1467,7 @@ export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "xai_feature",
 };
 
+// Deprecated
 export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_3_MINI_FAST_MODEL_ID,
@@ -1467,8 +1478,29 @@ export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description: "xAI's Grok 3 Mini model (131k context, reasoning, fast infra).",
   shortDescription: "xAI's reasoning model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
+  generationTokensCount: 8_192,
+  supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+  supportsResponseFormat: false,
+  featureFlag: "xai_feature",
+};
+
+export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_4_MODEL_ID,
+  displayName: "Grok 4",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "xAI's Grok 4 flagship model (131k context).",
+  shortDescription: "xAI's flagship model.",
+  isLegacy: false,
+  isLatest: true,
   generationTokensCount: 8_192,
   supportsVision: false,
   minimumReasoningEffort: "none",
@@ -1531,6 +1563,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_3_MINI_MODEL_CONFIG,
   GROK_3_FAST_MODEL_CONFIG,
   GROK_3_MINI_FAST_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
