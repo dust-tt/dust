@@ -207,7 +207,7 @@ function AgentActionsPanelContent({
                 reasoningContent={
                   lastChainOfThoughtRef.current.step === currentStreamingStep
                     ? lastChainOfThoughtRef.current.content
-                    : ""
+                    : "Thinking..."
                 }
                 isStreaming={messageStreamState.agentState === "thinking"}
                 streamingActions={

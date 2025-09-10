@@ -285,8 +285,8 @@ export default async function createServer(
 
       const { conversation, isNewConversation, userMessageId } = convRes.value;
 
-      // Store the query resource immediately so it's available in the UI while the action is running
-      if (_meta?.progressToken && sendNotification) {
+      if (_meta?.progressToken && sendNotification && isNewConversation) {
+        // Store the query resource immediately so it's available in the UI while the action is running.
         const storeResourceNotification: MCPProgressNotificationType = {
           method: "notifications/progress",
           params: {
@@ -311,11 +311,8 @@ export default async function createServer(
           },
         };
         await sendNotification(storeResourceNotification);
-      }
 
-      // Send notification indicating that a run_agent started and a new conversation was created if
-      // it is the first time the conversation is created.
-      if (_meta?.progressToken && sendNotification && isNewConversation) {
+        // Send notification indicating that a run_agent started to store resume state.
         const notification: MCPProgressNotificationType = {
           method: "notifications/progress",
           params: {
