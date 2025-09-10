@@ -205,47 +205,61 @@ export async function submitAgentBuilderForm({
   // Process actions asynchronously to handle folder-to-table expansion
   const mcpActions = formData.actions.filter((action) => action.type === "MCP");
 
-  const processedActions = await concurrentExecutor(
-    mcpActions,
-    async (action) => {
-      if (!action.configuration) {
-        throw new Error(`MCP action ${action.name} has no configuration`);
-      }
+  let processedActions;
+  try {
+    processedActions = await concurrentExecutor(
+      mcpActions,
+      async (action) => {
+        if (!action.configuration) {
+          throw new Error(`MCP action ${action.name} has no configuration`);
+        }
 
-      return {
-        type: "mcp_server_configuration" as const,
-        mcpServerViewId: action.configuration.mcpServerViewId,
-        name: action.name,
-        description: action.description,
-        dataSources:
-          action.configuration.dataSourceConfigurations !== null
-            ? processDataSourceConfigurations(
-                action.configuration.dataSourceConfigurations,
-                owner
-              )
-            : null,
-        tables:
-          action.configuration.tablesConfigurations !== null
-            ? await processTableSelection(
-                action.configuration.tablesConfigurations,
-                owner
-              )
-            : null,
-        childAgentId: action.configuration.childAgentId,
-        reasoningModel: action.configuration.reasoningModel,
-        timeFrame: action.configuration.timeFrame,
-        jsonSchema: action.configuration.jsonSchema,
-        additionalConfiguration:
-          action.configuration.additionalConfiguration !== null
-            ? processAdditionalConfiguration(
-                action.configuration.additionalConfiguration
-              )
-            : {},
-        dustAppConfiguration: action.configuration.dustAppConfiguration,
-      };
-    },
-    { concurrency: 3 }
-  );
+        return {
+          type: "mcp_server_configuration" as const,
+          mcpServerViewId: action.configuration.mcpServerViewId,
+          name: action.name,
+          description: action.description,
+          dataSources:
+            action.configuration.dataSourceConfigurations !== null
+              ? processDataSourceConfigurations(
+                  action.configuration.dataSourceConfigurations,
+                  owner
+                )
+              : null,
+          tables:
+            action.configuration.tablesConfigurations !== null
+              ? await processTableSelection(
+                  action.configuration.tablesConfigurations,
+                  owner
+                )
+              : null,
+          childAgentId: action.configuration.childAgentId,
+          reasoningModel: action.configuration.reasoningModel,
+          timeFrame: action.configuration.timeFrame,
+          jsonSchema: action.configuration.jsonSchema,
+          additionalConfiguration:
+            action.configuration.additionalConfiguration !== null
+              ? processAdditionalConfiguration(
+                  action.configuration.additionalConfiguration
+                )
+              : {},
+          dustAppConfiguration: action.configuration.dustAppConfiguration,
+        };
+      },
+      { concurrency: 3 }
+    );
+  } catch (error) {
+    logger.error(
+      {
+        workspaceId: owner.sId,
+        agentConfigurationId,
+        actionsCount: mcpActions.length,
+        error: normalizeError(error),
+      },
+      "Failed to process agent actions during form submission"
+    );
+    return new Err(normalizeError(error));
+  }
 
   const requestBody: PostOrPatchAgentConfigurationRequestBody = {
     assistant: {

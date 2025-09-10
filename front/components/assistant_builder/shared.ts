@@ -70,7 +70,7 @@ async function expandFolderToTables(
       "POST",
     ]);
 
-    return result.nodes;
+    return result.nodes.filter((child) => child.type === "table");
   } catch (error) {
     logger.error(
       {
