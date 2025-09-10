@@ -279,6 +279,7 @@ export function _getDustDeepGlobalAgent(
     runAgentMCPServerView,
     dataWarehousesMCPServerView,
     toolsetsMCPServerView,
+    slideshowMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
@@ -288,13 +289,14 @@ export function _getDustDeepGlobalAgent(
     runAgentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
+    slideshowMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
   const name = "dust-deep";
   const description =
-    "Deep research with company data, web search/browse, Content Creation, and data warehouses.";
+    "Deep research with company data, web search/browse, Content Creation, slideshow presentations, and data warehouses.";
 
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
@@ -407,6 +409,27 @@ export function _getDustDeepGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
+  }
+
+  // Add Slideshow tool.
+  if (slideshowMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-slideshow",
+      type: "mcp_server_configuration",
+      name: "slideshow" satisfies InternalMCPServerNameType,
+      description: "Create & update interactive slideshow presentations.",
+      mcpServerViewId: slideshowMCPServerView.sId,
+      internalMCPServerId: slideshowMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
       reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,

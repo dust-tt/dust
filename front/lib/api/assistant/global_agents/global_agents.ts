@@ -72,6 +72,7 @@ function getGlobalAgent({
   runAgentMCPServerView,
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
+  slideshowMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -86,6 +87,7 @@ function getGlobalAgent({
   runAgentMCPServerView: MCPServerViewResource | null;
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
+  slideshowMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -290,6 +292,7 @@ function getGlobalAgent({
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
         toolsetsMCPServerView,
+        slideshowMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -362,6 +365,7 @@ export async function getGlobalAgents(
     runAgentMCPServerView,
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
+    slideshowMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -416,6 +420,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "data_warehouses"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "slideshow"
         )
       : null,
   ]);
@@ -473,6 +483,7 @@ export async function getGlobalAgents(
       runAgentMCPServerView,
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,
+      slideshowMCPServerView,
     })
   );
 
