@@ -103,6 +103,10 @@ export function ProcessingMethodSection() {
               <strong>{getMcpServerViewDisplayName(mcpServerView)}</strong> will
               ignore text documents and files in your selection. Create a
               separated knowledge tools if you need both.
+              <br />
+              <strong>Note:</strong> When you select a folder, only tables
+              directly inside it will be included. Tables in nested subfolders
+              won't be automatically added.
             </>
           );
         }
