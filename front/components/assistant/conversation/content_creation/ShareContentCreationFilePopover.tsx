@@ -33,15 +33,14 @@ interface FileSharingDropdownProps {
   owner: LightWorkspaceType;
   disabled?: boolean;
   isLoading?: boolean;
+  isUsingConversationFiles: boolean;
 }
 
-function FileSharingDropdown({
-  selectedScope,
-  onScopeChange,
-  owner,
-  disabled = false,
-}: FileSharingDropdownProps) {
-  const scopeOptions: {
+const getScopeOptions = (
+  owner: LightWorkspaceType,
+  isUsingConversationFiles: boolean
+) => {
+  const options: {
     icon: React.ComponentType;
     label: string;
     value: FileShareScope;
@@ -49,19 +48,35 @@ function FileSharingDropdown({
     {
       icon: LockIcon,
       label: "Only conversation participants",
-      value: "conversation_participants",
+      value: "conversation_participants" as const,
     },
     {
       icon: UserGroupIcon,
       label: `Anyone in ${owner.name} workspace`,
-      value: "workspace",
-    },
-    {
-      icon: GlobeAltIcon,
-      label: "Anyone with the link",
-      value: "public",
+      value: "workspace" as const,
     },
   ];
+
+  if (!isUsingConversationFiles) {
+    options.push({
+      icon: GlobeAltIcon,
+      label: "Anyone with the link",
+      value: "public" as const,
+    });
+  }
+
+  return options;
+};
+
+function FileSharingDropdown({
+  selectedScope,
+  onScopeChange,
+  owner,
+  disabled = false,
+  isUsingConversationFiles,
+}: FileSharingDropdownProps) {
+  console.log("FileSharingDropdown");
+  const scopeOptions = getScopeOptions(owner, isUsingConversationFiles);
 
   const selectedOption = scopeOptions.find(
     (opt) => opt.value === selectedScope
@@ -187,14 +202,14 @@ export function ShareContentCreationFilePopover({
                   title={
                     isSharingForbidden
                       ? "Sharing disabled by admin"
-                      : "This Content Creation contains company data"
+                      : "This file contains company data"
                   }
                   variant="golden"
                   icon={InformationCircleIcon}
                 >
                   {isSharingForbidden
                     ? "Your workspace administrator has turned off sharing of Content Creation files."
-                    : "The Content Creation relies on conversation files, sharing is therefore" +
+                    : "This Content Creation relies on conversation files. The sharing to public option is " +
                       "disabled to protect company information."}
                 </ContentMessage>
               )}
@@ -205,11 +220,8 @@ export function ShareContentCreationFilePopover({
                   selectedScope={selectedScope}
                   onScopeChange={handleScopeChange}
                   owner={owner}
-                  disabled={
-                    isSharingForbidden ||
-                    isUsingConversationFiles ||
-                    isUpdatingShare
-                  }
+                  isUsingConversationFiles={isUsingConversationFiles}
+                  disabled={isSharingForbidden || isUpdatingShare}
                   isLoading={isUpdatingShare}
                 />
 
