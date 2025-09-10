@@ -26,6 +26,10 @@ export type WebhookSourceViewType = {
   editedByUser: EditedByUser | null;
 };
 
+export type WebhookSourceWithViews = WebhookSourceType & {
+  views: WebhookSourceViewType[];
+};
+
 export const WebhookSourceSchema = t.type({
   name: t.string,
   secret: t.string,
