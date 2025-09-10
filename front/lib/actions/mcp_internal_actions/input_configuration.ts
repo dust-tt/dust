@@ -149,22 +149,35 @@ function generateConfiguredInput({
           actionConfiguration.inputSchema,
           keyPath.split(".")
         );
-        if (propSchema?.default) {
+        if (propSchema) {
           // Handle both object-level default {value, mimeType} and property-level default
           if (
+            propSchema.default &&
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
-            "value" in propSchema.default &&
-            typeof propSchema.default.value === "string"
+            "value" in propSchema.default
           ) {
-            value = propSchema.default.value;
+            if (typeof propSchema.default.value === "string") {
+              value = propSchema.default.value;
+            } else {
+              // Invalid object-level default type - throw specific error
+              throw new Error(
+                `Expected string value for key ${keyPath}, got ${typeof propSchema.default.value}`
+              );
+            }
           } else if (
             propSchema.properties?.value &&
             isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined &&
-            typeof propSchema.properties.value.default === "string"
+            propSchema.properties.value.default !== undefined
           ) {
-            value = propSchema.properties.value.default;
+            if (typeof propSchema.properties.value.default === "string") {
+              value = propSchema.properties.value.default;
+            } else {
+              // Invalid property-level default type - throw specific error
+              throw new Error(
+                `Expected string value for key ${keyPath}, got ${typeof propSchema.properties.value.default}`
+              );
+            }
           }
         }
       }
@@ -185,9 +198,10 @@ function generateConfiguredInput({
           actionConfiguration.inputSchema,
           keyPath.split(".")
         );
-        if (propSchema?.default) {
+        if (propSchema) {
           // Handle both object-level default {value, mimeType} and property-level default
           if (
+            propSchema.default &&
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
             "value" in propSchema.default &&
@@ -221,9 +235,10 @@ function generateConfiguredInput({
           actionConfiguration.inputSchema,
           keyPath.split(".")
         );
-        if (propSchema?.default) {
+        if (propSchema) {
           // Handle both object-level default {value, mimeType} and property-level default
           if (
+            propSchema.default &&
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
             "value" in propSchema.default &&
@@ -257,9 +272,10 @@ function generateConfiguredInput({
           actionConfiguration.inputSchema,
           keyPath.split(".")
         );
-        if (propSchema?.default) {
+        if (propSchema) {
           // Handle both object-level default {value, mimeType} and property-level default
           if (
+            propSchema.default &&
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
             "value" in propSchema.default &&
@@ -297,9 +313,10 @@ function generateConfiguredInput({
           actionConfiguration.inputSchema,
           keyPath.split(".")
         );
-        if (propSchema?.default) {
+        if (propSchema) {
           // Handle both object-level default {values, mimeType} and property-level default
           if (
+            propSchema.default &&
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
             "values" in propSchema.default &&
