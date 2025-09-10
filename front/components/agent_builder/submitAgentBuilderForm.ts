@@ -2,10 +2,7 @@ import type {
   AdditionalConfigurationInBuilderType,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  expandFoldersToTables,
-  getTableIdForContentNode,
-} from "@app/components/assistant_builder/shared";
+import { expandFoldersToTables, getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
@@ -61,7 +58,6 @@ async function processTableSelection(
     return null;
   }
 
-  console.log(">>>>> tablesConfigurations", tablesConfigurations);
   const allTables: TableDataSourceConfiguration[] = [];
 
   for (const {
@@ -70,9 +66,6 @@ async function processTableSelection(
     isSelectAll,
     excludedResources,
   } of Object.values(tablesConfigurations)) {
-    console.log(">>>>> dataSourceView", dataSourceView);
-    console.log(">>>>> selectedResources", selectedResources);
-    console.log(">>>>> isSelectAll", isSelectAll);
 
     let resourcesToProcess = selectedResources;
 
@@ -82,8 +75,8 @@ async function processTableSelection(
         const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
         const body: GetContentNodesOrChildrenRequestBodyType = {
           internalIds: undefined,
-          parentId: undefined, // Get root level resources
-          viewType: "table", // We want tables and folders that might contain tables
+          parentId: undefined,
+          viewType: "table",
           sorting: undefined,
         };
 
@@ -118,9 +111,8 @@ async function processTableSelection(
     const tableResources = resourcesToProcess.filter(
       (resource) => resource.type === "table"
     );
-    console.log(">>>>> folderResources", folderResources);
-    console.log(">>>>> tableResources", tableResources);
 
+    // Process direct table selections
     for (const resource of tableResources) {
       allTables.push({
         dataSourceViewId: dataSourceView.sId,
@@ -128,23 +120,38 @@ async function processTableSelection(
         tableId: getTableIdForContentNode(dataSourceView.dataSource, resource),
       });
     }
-    console.log(">>>>> allTables", allTables);
 
+    // Expand folders to tables
     if (folderResources.length > 0) {
-      const expandedTables = await expandFoldersToTables(
-        owner,
-        dataSourceView,
-        folderResources
-      );
-      for (const tableNode of expandedTables) {
-        allTables.push({
-          dataSourceViewId: dataSourceView.sId,
-          workspaceId: owner.sId,
-          tableId: getTableIdForContentNode(
-            dataSourceView.dataSource,
-            tableNode
-          ),
-        });
+      try {
+        const expandedTables = await expandFoldersToTables(
+          owner,
+          dataSourceView,
+          folderResources
+        );
+        for (const tableNode of expandedTables) {
+          allTables.push({
+            dataSourceViewId: dataSourceView.sId,
+            workspaceId: owner.sId,
+            tableId: getTableIdForContentNode(
+              dataSourceView.dataSource,
+              tableNode
+            ),
+          });
+        }
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            dataSourceViewId: dataSourceView.sId,
+            folderCount: folderResources.length,
+            error: normalizeError(error),
+          },
+          "[Agent builder] - Failed to expand folders to tables"
+        );
+        throw new Error(
+          `Failed to expand folders for data source view ${dataSourceView.sId}`
+        );
       }
     }
   }
@@ -192,7 +199,6 @@ export async function submitAgentBuilderForm({
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
-  console.log(">>>>> formData", formData);
 
   // Process actions asynchronously to handle folder-to-table expansion
   const processedActions = [];
