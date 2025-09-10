@@ -1,3 +1,4 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
 import { runAction } from "@app/lib/actions/server";

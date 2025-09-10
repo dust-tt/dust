@@ -1,3 +1,4 @@
+import type { PostMessageFeedbackResponseType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -134,11 +135,7 @@ export const MessageFeedbackRequestBodySchema = t.type({
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<{
-      success: boolean;
-    }>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<PostMessageFeedbackResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const user = auth.getNonNullableUser();

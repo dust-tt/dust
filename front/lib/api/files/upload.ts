@@ -1,3 +1,4 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isDustMimeType } from "@dust-tt/client";
 import ConvertAPI from "convertapi";
 import type { IncomingMessage } from "http";

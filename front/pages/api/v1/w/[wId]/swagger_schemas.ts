@@ -1,3 +1,4 @@
+/* eslint-disable dust/enforce-client-types-in-public-api */
 /**
  * @swagger
  * components:

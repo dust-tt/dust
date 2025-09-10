@@ -1,5 +1,3 @@
-import { removeNulls } from "@dust-tt/client";
-
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isRunAgentResultResourceType,
@@ -12,6 +10,7 @@ import type {
   CitationType,
   LightAgentMessageType,
 } from "@app/types";
+import { removeNulls } from "@app/types";
 
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");

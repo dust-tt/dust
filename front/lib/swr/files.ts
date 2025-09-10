@@ -1,3 +1,6 @@
+// This hook uses a public API endpoint, so it's fine to use the client types.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import type { PublicFileResponseBodyType } from "@dust-tt/client";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -7,7 +10,6 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { PublicFileResponseBody } from "@app/pages/api/v1/public/files/[token]";
 import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
@@ -238,7 +240,7 @@ export function usePublicFile({
   includeContent?: boolean;
   shareToken: string | null;
 }) {
-  const fileMetadataFetcher: Fetcher<PublicFileResponseBody> = fetcher;
+  const fileMetadataFetcher: Fetcher<PublicFileResponseBodyType> = fetcher;
 
   const swrKey = shareToken
     ? `/api/v1/public/files/${shareToken}?includeContent=${includeContent}`

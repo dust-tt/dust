@@ -1,4 +1,4 @@
-import type { FileType } from "@dust-tt/client";
+import type { PublicFileResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
@@ -7,11 +7,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-export interface PublicFileResponseBody {
-  content?: string;
-  file: FileType;
-}
-
 /**
  * @ignoreswagger
  *
@@ -19,7 +14,7 @@ export interface PublicFileResponseBody {
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PublicFileResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PublicFileResponseBodyType>>
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {

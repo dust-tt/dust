@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { assertNever, Err, Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
@@ -23,8 +21,14 @@ import {
   createOrUpdateAgentScheduleWorkflow,
   deleteAgentScheduleWorkflow,
 } from "@app/temporal/agent_schedule/client";
-import type { ModelId } from "@app/types";
-import { errorToString, normalizeError } from "@app/types";
+import type { ModelId, Result } from "@app/types";
+import {
+  assertNever,
+  Err,
+  errorToString,
+  normalizeError,
+  Ok,
+} from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
