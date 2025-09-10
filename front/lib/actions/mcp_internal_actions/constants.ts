@@ -928,7 +928,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "slideshow",
       version: "0.1.0",
-      description: "Create slideshows.",
+      description: "Create interactive slideshows.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
