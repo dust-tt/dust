@@ -104,13 +104,19 @@ describe("augmentInputsWithConfiguration", () => {
             workspaceId: mockWorkspace.sId,
             sId: "ds-123",
             dataSourceViewId: "view-123",
-            filter: { tags: { in: ["test"], not: [], mode: "auto" }, parents: { in: [], not: [] } },
+            filter: {
+              tags: { in: ["test"], not: [], mode: "auto" },
+              parents: { in: [], not: [] },
+            },
           },
         ],
         inputSchema: {
           type: "object",
           properties: {
-            dataSource: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+            dataSource:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+              ],
           },
           required: ["dataSource"],
         },
@@ -140,13 +146,19 @@ describe("augmentInputsWithConfiguration", () => {
             workspaceId: mockWorkspace.sId,
             sId: undefined,
             dataSourceViewId: "view-123",
-            filter: { tags: { in: ["test"], not: [], mode: "auto" }, parents: { in: [], not: [] } },
+            filter: {
+              tags: { in: ["test"], not: [], mode: "auto" },
+              parents: { in: [], not: [] },
+            },
           },
         ],
         inputSchema: {
           type: "object",
           properties: {
-            dataSource: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+            dataSource:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+              ],
           },
           required: ["dataSource"],
         },
@@ -158,10 +170,12 @@ describe("augmentInputsWithConfiguration", () => {
         actionConfiguration: config,
       });
 
-      const expectedFilter = encodeURIComponent(JSON.stringify({ 
-        tags: { in: ["test"], not: [], mode: "auto" }, 
-        parents: { in: [], not: [] } 
-      }));
+      const expectedFilter = encodeURIComponent(
+        JSON.stringify({
+          tags: { in: ["test"], not: [], mode: "auto" },
+          parents: { in: [], not: [] },
+        })
+      );
       expect(result).toEqual({
         dataSource: [
           {
@@ -188,7 +202,10 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            table: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
+            table:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE
+              ],
           },
           required: ["table"],
         },
@@ -219,7 +236,10 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            agent: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+            agent:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT
+              ],
           },
           required: ["agent"],
         },
@@ -246,7 +266,10 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            agent: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+            agent:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT
+              ],
           },
           required: ["agent"],
         },
@@ -275,7 +298,10 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            model: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL],
+            model:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
+              ],
           },
           required: ["model"],
         },
@@ -310,7 +336,10 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            timeFrame: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME],
+            timeFrame:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+              ],
           },
           required: ["timeFrame"],
         },
@@ -373,7 +402,8 @@ describe("augmentInputsWithConfiguration", () => {
   });
 
   describe("JSON_SCHEMA mime type", () => {
-    it("should augment inputs with JSON schema configuration", () => { // FAILS
+    it("should augment inputs with JSON schema configuration", () => {
+      // FAILS
       const rawInputs = {};
       const jsonSchema = {
         type: "object" as const,
@@ -387,7 +417,10 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            schema: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA],
+            schema:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+              ],
           },
           required: ["schema"],
         },
@@ -452,7 +485,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "stringParam": "test-value",
+          stringParam: "test-value",
         },
         inputSchema: {
           type: "object",
@@ -491,7 +524,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "numberParam": 42,
+          numberParam: 42,
         },
         inputSchema: {
           type: "object",
@@ -530,7 +563,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "booleanParam": true,
+          booleanParam: true,
         },
         inputSchema: {
           type: "object",
@@ -569,7 +602,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "enumParam": "option1",
+          enumParam: "option1",
         },
         inputSchema: {
           type: "object",
@@ -608,7 +641,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "listParam": ["item1", "item2", "item3"],
+          listParam: ["item1", "item2", "item3"],
         },
         inputSchema: {
           type: "object",
@@ -732,7 +765,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "stringParam": 123, // Invalid type
+          stringParam: 123, // Invalid type
         },
         inputSchema: {
           type: "object",
@@ -766,7 +799,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "numberParam": "not-a-number",
+          numberParam: "not-a-number",
         },
         inputSchema: {
           type: "object",
@@ -800,7 +833,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "listParam": "not-an-array",
+          listParam: "not-an-array",
         },
         inputSchema: {
           type: "object",
@@ -831,7 +864,9 @@ describe("augmentInputsWithConfiguration", () => {
           rawInputs,
           actionConfiguration: config,
         });
-      }).toThrow("Expected array of string values for key listParam, got string");
+      }).toThrow(
+        "Expected array of string values for key listParam, got string"
+      );
     });
   });
 
@@ -848,7 +883,10 @@ describe("augmentInputsWithConfiguration", () => {
             nested: {
               type: "object",
               properties: {
-                stringParam: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
+                stringParam:
+                  ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                  ],
               },
               required: ["stringParam"],
             },
@@ -877,23 +915,35 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "stringParam": "string-value",
-          "numberParam": 42,
+          stringParam: "string-value",
+          numberParam: 42,
         },
         dataSources: [
           {
             workspaceId: mockWorkspace.sId,
             sId: "ds-123",
             dataSourceViewId: "view-123",
-            filter: { tags: { in: ["test"], not: [], mode: "auto" }, parents: { in: [], not: [] } },
+            filter: {
+              tags: { in: ["test"], not: [], mode: "auto" },
+              parents: { in: [], not: [] },
+            },
           },
         ],
         inputSchema: {
           type: "object",
           properties: {
-            stringParam: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
-            numberParam: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER],
-            dataSource: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+            stringParam:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+              ],
+            numberParam:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
+              ],
+            dataSource:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+              ],
           },
           required: ["stringParam", "numberParam", "dataSource"],
         },
@@ -932,7 +982,10 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            dataSource: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+            dataSource:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+              ],
           },
           required: ["dataSource"],
         },
@@ -956,7 +1009,10 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            dataSource: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+            dataSource:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+              ],
           },
           required: ["dataSource"],
         },
@@ -980,7 +1036,7 @@ describe("augmentInputsWithConfiguration", () => {
       };
       const config = createBasicMCPConfiguration({
         additionalConfiguration: {
-          "stringParam": "config-value",
+          stringParam: "config-value",
         },
         inputSchema: {
           type: "object",

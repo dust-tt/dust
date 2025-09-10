@@ -202,7 +202,7 @@ export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => {
     const jsonSchema = zodToJsonSchema(schema, {
       // Use 'none' to inline all references instead of creating $ref pointers
-      $refStrategy: 'none',
+      $refStrategy: "none",
     });
     // Remove $schema property since these are property definitions, not standalone schemas
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
