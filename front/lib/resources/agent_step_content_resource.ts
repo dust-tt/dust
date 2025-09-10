@@ -68,6 +68,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     const agentMessages = await AgentMessage.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         id: { [Op.in]: uniqueAgentMessageIds },
       },
     });
