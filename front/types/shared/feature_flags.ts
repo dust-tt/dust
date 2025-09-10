@@ -151,6 +151,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Activate @research agent.",
     stage: "dust_only",
   },
+  research_agent_2: {
+    description:
+      "Activate second version of @research agent (dust only for evals).",
+    stage: "dust_only",
+  },
   hootl: {
     description: "Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",

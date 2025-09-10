@@ -1606,6 +1606,7 @@ export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
   DUST_DEEP = "dust-deep",
+  DUST_DEEP_2 = "dust-deep-2",
   DUST_TASK = "dust-task",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
@@ -1675,6 +1676,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.DUST_DEEP,
+  GLOBAL_AGENTS_SID.DUST_DEEP_2,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.O3_MINI,
@@ -1721,6 +1723,13 @@ export function compareAgentsForSort(
     return -1;
   }
   if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+    return 1;
+  }
+
+  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP_2) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP_2) {
     return 1;
   }
 

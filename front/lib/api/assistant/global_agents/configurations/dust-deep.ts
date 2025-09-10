@@ -271,6 +271,7 @@ function getCompanyDataWarehousesAction(
 export function _getDustDeepGlobalAgent(
   auth: Authenticator,
   {
+    sId,
     settings,
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
@@ -281,6 +282,7 @@ export function _getDustDeepGlobalAgent(
     toolsetsMCPServerView,
     slideshowMCPServerView,
   }: {
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP | GLOBAL_AGENTS_SID.DUST_DEEP_2;
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -294,20 +296,23 @@ export function _getDustDeepGlobalAgent(
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
-  const name = "dust-deep";
+  const name =
+    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2 ? "dust-deep-2" : "dust-deep";
   const description =
     "Deep research with company data, web search/browse, Content Creation, slideshow presentations, and data warehouses.";
 
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfig = getModelConfig(owner, "anthropic");
+  const preferredModel =
+    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2 ? "openai" : "anthropic";
+  const modelConfig = getModelConfig(owner, preferredModel);
 
   const deepAgent: Omit<
     AgentConfigurationType,
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST_DEEP,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,

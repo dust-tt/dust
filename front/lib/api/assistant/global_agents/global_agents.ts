@@ -283,7 +283,9 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_DEEP:
+    case GLOBAL_AGENTS_SID.DUST_DEEP_2:
       agentConfiguration = _getDustDeepGlobalAgent(auth, {
+        sId: sId as GLOBAL_AGENTS_SID.DUST_DEEP | GLOBAL_AGENTS_SID.DUST_DEEP_2,
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
@@ -462,7 +464,14 @@ export async function getGlobalAgents(
 
   if (!flags.includes("research_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP
+      (sId) =>
+        sId !== GLOBAL_AGENTS_SID.DUST_DEEP &&
+        sId !== GLOBAL_AGENTS_SID.DUST_DEEP_2
+    );
+  }
+  if (!flags.includes("research_agent_2")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP_2
     );
   }
 
