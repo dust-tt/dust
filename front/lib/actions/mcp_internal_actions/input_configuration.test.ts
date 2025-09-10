@@ -1074,5 +1074,42 @@ describe("augmentInputsWithConfiguration", () => {
         },
       });
     });
+
+    it("should ignore legacy additionalConfiguration keys not in inputSchema", () => {
+      const rawInputs = { existingParam: "keep-me", numberParam: 42 };
+      const config = createBasicMCPConfiguration({
+        additionalConfiguration: {
+          stringParam: "from-config",
+          otherStringParam: "legacy-ignored", // legacy key not present anymore in the current schema
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            existingParam: { type: "string" },
+            numberParam: { type: "number" },
+            stringParam:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+              ],
+          },
+          required: ["existingParam", "numberParam", "stringParam"],
+        },
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual({
+        existingParam: "keep-me",
+        numberParam: 42,
+        stringParam: {
+          value: "from-config",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      });
+    });
   });
 });
