@@ -261,11 +261,11 @@ function generateConfiguredInput({
             propSchema.default !== null &&
             "values" in propSchema.default
           ) {
-            if (
-              Array.isArray(propSchema.default.values) &&
-              propSchema.default.values.every((v) => typeof v === "string")
-            ) {
-              values = propSchema.default.values;
+             if (
+               Array.isArray(propSchema.default.values) &&
+               propSchema.default.values.every((v): v is string => typeof v === "string")
+             ) {
+               values = propSchema.default.values;
             } else {
               // Invalid object-level default type - throw specific error
               throw new Error(
@@ -280,13 +280,13 @@ function generateConfiguredInput({
             propSchema.properties?.values &&
             isJSONSchemaObject(propSchema.properties.values)
           ) {
-            if (
-              Array.isArray(propSchema.properties.values.default) &&
-              propSchema.properties.values.default.every(
-                (v) => typeof v === "string"
-              )
-            ) {
-              values = propSchema.properties.values.default;
+             if (
+               Array.isArray(propSchema.properties.values.default) &&
+               propSchema.properties.values.default.every(
+                 (v): v is string => typeof v === "string"
+               )
+             ) {
+               values = propSchema.properties.values.default;
             } else {
               // Invalid property-level default type - throw specific error
               throw new Error(
