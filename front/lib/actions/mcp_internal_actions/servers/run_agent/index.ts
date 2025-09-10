@@ -36,6 +36,7 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -229,6 +230,25 @@ export default async function createServer(
       }
       const childAgentId = childAgentIdRes.value;
 
+      // Store the query resource immediately so it's available in the UI while the action is running
+      if (_meta?.progressToken) {
+        const queryResourceContent = {
+          type: "resource" as const,
+          resource: {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+            text: query,
+            childAgentId: childAgentId,
+            uri: "",
+          },
+        };
+
+        await AgentMCPActionOutputItem.create({
+          workspaceId: owner.id,
+          agentMCPActionId: parseInt(_meta.progressToken as string),
+          content: queryResourceContent,
+        });
+      }
+
       const user = auth.user();
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -276,15 +296,6 @@ export default async function createServer(
                 mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
                 conversationId: convRes.value.conversation.sId,
                 text: `Query delegated to ${childAgentBlob.name}.`,
-                uri: "",
-              },
-            },
-            {
-              type: "resource",
-              resource: {
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-                text: query,
-                childAgentId: childAgentId,
                 uri: "",
               },
             },
@@ -524,15 +535,6 @@ export default async function createServer(
       return {
         isError: false,
         content: [
-          {
-            type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-              text: query,
-              childAgentId: childAgentId,
-              uri: "",
-            },
-          },
           {
             type: "resource",
             resource: {
