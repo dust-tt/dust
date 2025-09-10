@@ -1508,12 +1508,20 @@ async fn data_sources_tokenize(
         .load_data_source(&project, &data_source_id)
         .await
     {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to retrieve data source",
-            Some(e),
-        ),
+        Err(e) => {
+            error!(
+                error = %e,
+                project_id = project_id,
+                data_source_id = %data_source_id,
+                "Failed to retrieve data source"
+            );
+            error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve data source",
+                Some(e),
+            )
+        }
         Ok(ds) => match ds {
             None => error_response(
                 StatusCode::NOT_FOUND,
@@ -1523,22 +1531,41 @@ async fn data_sources_tokenize(
             ),
             Some(ds) => {
                 let embedder_config = ds.embedder_config().clone();
+                let provider_id = embedder_config.provider_id;
+                let model_id = embedder_config.model_id.clone();
                 let embedder =
                     provider(embedder_config.provider_id).embedder(embedder_config.model_id);
                 match embedder.tokenize(vec![payload.text]).await {
-                    Err(e) => error_response(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "internal_server_error",
-                        "Failed to tokenize text",
-                        Some(e),
-                    ),
-                    Ok(mut res) => match res.pop() {
-                        None => error_response(
+                    Err(e) => {
+                        error!(
+                            error = %e,
+                            project_id = project_id,
+                            data_source_id = %data_source_id,
+                            provider_id = %provider_id,
+                            model_id = %model_id,
+                            "Failed to tokenize text"
+                        );
+                        error_response(
                             StatusCode::INTERNAL_SERVER_ERROR,
                             "internal_server_error",
                             "Failed to tokenize text",
-                            None,
-                        ),
+                            Some(e),
+                        )
+                    }
+                    Ok(mut res) => match res.pop() {
+                        None => {
+                            error!(
+                                project_id = project_id,
+                                data_source_id = %data_source_id,
+                                "Tokenizer returned empty result"
+                            );
+                            error_response(
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                "internal_server_error",
+                                "Failed to tokenize text",
+                                None,
+                            )
+                        }
                         Some(tokens) => (
                             StatusCode::OK,
                             Json(APIResponse {
