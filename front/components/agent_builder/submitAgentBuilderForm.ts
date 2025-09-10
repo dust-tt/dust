@@ -2,10 +2,18 @@ import type {
   AdditionalConfigurationInBuilderType,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
+import {
+  expandFoldersToTables,
+  getTableIdForContentNode,
+} from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import { fetcherWithBody } from "@app/lib/swr/swr";
 import logger from "@app/logger/logger";
+import type {
+  GetContentNodesOrChildrenRequestBodyType,
+  GetDataSourceViewContentNodes,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type {
   AgentConfigurationType,
   DataSourcesConfigurationsCodecType,
@@ -45,25 +53,103 @@ function processDataSourceConfigurations(
   }));
 }
 
-function processTableSelection(
+async function processTableSelection(
   tablesConfigurations: DataSourceViewSelectionConfigurations | null,
   owner: WorkspaceType
-): TableDataSourceConfiguration[] | null {
+): Promise<TableDataSourceConfiguration[] | null> {
   if (!tablesConfigurations || Object.keys(tablesConfigurations).length === 0) {
     return null;
   }
 
-  const tables = Object.values(tablesConfigurations).flatMap(
-    ({ dataSourceView, selectedResources }) => {
-      return selectedResources.map((resource) => ({
+  console.log(">>>>> tablesConfigurations", tablesConfigurations);
+  const allTables: TableDataSourceConfiguration[] = [];
+
+  for (const {
+    dataSourceView,
+    selectedResources,
+    isSelectAll,
+    excludedResources,
+  } of Object.values(tablesConfigurations)) {
+    console.log(">>>>> dataSourceView", dataSourceView);
+    console.log(">>>>> selectedResources", selectedResources);
+    console.log(">>>>> isSelectAll", isSelectAll);
+
+    let resourcesToProcess = selectedResources;
+
+    // If isSelectAll is true, we need to fetch all resources from the data source view
+    if (isSelectAll) {
+      try {
+        const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
+        const body: GetContentNodesOrChildrenRequestBodyType = {
+          internalIds: undefined,
+          parentId: undefined, // Get root level resources
+          viewType: "table", // We want tables and folders that might contain tables
+          sorting: undefined,
+        };
+
+        const result: GetDataSourceViewContentNodes = await fetcherWithBody([
+          url,
+          body,
+          "POST",
+        ]);
+
+        const excludedIds = new Set(excludedResources.map((r) => r.internalId));
+        resourcesToProcess = result.nodes.filter(
+          (node) => !excludedIds.has(node.internalId)
+        );
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            dataSourceViewId: dataSourceView.sId,
+            error: normalizeError(error),
+          },
+          "[Agent builder] - Failed to fetch all resources for `isSelectAll`"
+        );
+        throw new Error(
+          `Failed to fetch resources for data source view ${dataSourceView.sId}`
+        );
+      }
+    }
+
+    const folderResources = resourcesToProcess.filter(
+      (resource) => resource.type === "folder"
+    );
+    const tableResources = resourcesToProcess.filter(
+      (resource) => resource.type === "table"
+    );
+    console.log(">>>>> folderResources", folderResources);
+    console.log(">>>>> tableResources", tableResources);
+
+    for (const resource of tableResources) {
+      allTables.push({
         dataSourceViewId: dataSourceView.sId,
         workspaceId: owner.sId,
         tableId: getTableIdForContentNode(dataSourceView.dataSource, resource),
-      }));
+      });
     }
-  );
+    console.log(">>>>> allTables", allTables);
 
-  return tables.length > 0 ? tables : null;
+    if (folderResources.length > 0) {
+      const expandedTables = await expandFoldersToTables(
+        owner,
+        dataSourceView,
+        folderResources
+      );
+      for (const tableNode of expandedTables) {
+        allTables.push({
+          dataSourceViewId: dataSourceView.sId,
+          workspaceId: owner.sId,
+          tableId: getTableIdForContentNode(
+            dataSourceView.dataSource,
+            tableNode
+          ),
+        });
+      }
+    }
+  }
+
+  return allTables.length > 0 ? allTables : null;
 }
 
 export function processAdditionalConfiguration(
@@ -106,6 +192,50 @@ export async function submitAgentBuilderForm({
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
+  console.log(">>>>> formData", formData);
+
+  // Process actions asynchronously to handle folder-to-table expansion
+  const processedActions = [];
+  for (const action of formData.actions) {
+    if (action.type === "DATA_VISUALIZATION") {
+      continue;
+    }
+
+    if (action.type === "MCP") {
+      processedActions.push({
+        type: "mcp_server_configuration" as const,
+        mcpServerViewId: action.configuration.mcpServerViewId,
+        name: action.name,
+        description: action.description,
+        dataSources:
+          action.configuration.dataSourceConfigurations !== null
+            ? processDataSourceConfigurations(
+                action.configuration.dataSourceConfigurations,
+                owner
+              )
+            : null,
+        tables:
+          action.configuration.tablesConfigurations !== null
+            ? await processTableSelection(
+                action.configuration.tablesConfigurations,
+                owner
+              )
+            : null,
+        childAgentId: action.configuration.childAgentId,
+        reasoningModel: action.configuration.reasoningModel,
+        timeFrame: action.configuration.timeFrame,
+        jsonSchema: action.configuration.jsonSchema,
+        additionalConfiguration:
+          action.configuration.additionalConfiguration !== null
+            ? processAdditionalConfiguration(
+                action.configuration.additionalConfiguration
+              )
+            : {},
+        dustAppConfiguration: action.configuration.dustAppConfiguration,
+      });
+    }
+  }
+
   const requestBody: PostOrPatchAgentConfigurationRequestBody = {
     assistant: {
       name: formData.agentSettings.name,
@@ -123,49 +253,7 @@ export async function submitAgentBuilderForm({
         reasoningEffort: formData.generationSettings.reasoningEffort,
         responseFormat: formData.generationSettings.responseFormat,
       },
-      actions: formData.actions.flatMap((action) => {
-        if (action.type === "DATA_VISUALIZATION") {
-          return [];
-        }
-
-        if (action.type === "MCP") {
-          return [
-            {
-              type: "mcp_server_configuration",
-              mcpServerViewId: action.configuration.mcpServerViewId,
-              name: action.name,
-              description: action.description,
-              dataSources:
-                action.configuration.dataSourceConfigurations !== null
-                  ? processDataSourceConfigurations(
-                      action.configuration.dataSourceConfigurations,
-                      owner
-                    )
-                  : null,
-              tables:
-                action.configuration.tablesConfigurations !== null
-                  ? processTableSelection(
-                      action.configuration.tablesConfigurations,
-                      owner
-                    )
-                  : null,
-              childAgentId: action.configuration.childAgentId,
-              reasoningModel: action.configuration.reasoningModel,
-              timeFrame: action.configuration.timeFrame,
-              jsonSchema: action.configuration.jsonSchema,
-              additionalConfiguration:
-                action.configuration.additionalConfiguration !== null
-                  ? processAdditionalConfiguration(
-                      action.configuration.additionalConfiguration
-                    )
-                  : {},
-              dustAppConfiguration: action.configuration.dustAppConfiguration,
-            },
-          ];
-        }
-
-        return [];
-      }),
+      actions: processedActions,
       visualizationEnabled: formData.actions.some(
         (action) => action.type === "DATA_VISUALIZATION"
       ),

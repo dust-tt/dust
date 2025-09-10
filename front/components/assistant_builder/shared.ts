@@ -1,4 +1,15 @@
-import type { DataSourceType, LightContentNode } from "@app/types";
+import { fetcherWithBody } from "@app/lib/swr/swr";
+import logger from "@app/logger/logger";
+import type {
+  GetContentNodesOrChildrenRequestBodyType,
+  GetDataSourceViewContentNodes,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+import type {
+  DataSourceType,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+} from "@app/types";
 import { assertNever } from "@app/types";
 
 export function getTableIdForContentNode(
@@ -36,4 +47,83 @@ export function getTableIdForContentNode(
     default:
       assertNever(dataSource.connectorProvider);
   }
+}
+
+async function expandFolderToTables(
+  owner: LightWorkspaceType,
+  dataSourceView: DataSourceViewType,
+  folderNode: LightContentNode,
+  visitedFolders: Set<string> = new Set()
+): Promise<LightContentNode[]> {
+  if (visitedFolders.has(folderNode.internalId)) {
+    return [];
+  }
+  visitedFolders.add(folderNode.internalId);
+
+  try {
+    const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
+    const body: GetContentNodesOrChildrenRequestBodyType = {
+      internalIds: undefined,
+      parentId: folderNode.internalId,
+      viewType: "table",
+      sorting: undefined,
+    };
+
+    const result: GetDataSourceViewContentNodes = await fetcherWithBody([
+      url,
+      body,
+      "POST",
+    ]);
+
+    const tables: LightContentNode[] = [];
+
+    for (const child of result.nodes) {
+      if (child.type === "table") {
+        tables.push(child);
+      } else if (child.type === "folder") {
+        // Recursively expand nested folders
+        const nestedTables = await expandFolderToTables(
+          owner,
+          dataSourceView,
+          child,
+          visitedFolders
+        );
+        tables.push(...nestedTables);
+      }
+    }
+
+    return tables;
+  } catch (error) {
+    logger.error(
+      `Failed to fetch children for folder ${folderNode.internalId}:`,
+      error,
+      {
+        owner,
+        dataSourceView,
+        folderNode,
+      }
+    );
+    throw new Error(
+      `Failed to fetch children for folder ${folderNode.internalId}`
+    );
+  }
+}
+
+export async function expandFoldersToTables(
+  owner: LightWorkspaceType,
+  dataSourceView: DataSourceViewType,
+  folderNodes: LightContentNode[]
+): Promise<LightContentNode[]> {
+  const allTables: LightContentNode[] = [];
+
+  for (const folderNode of folderNodes) {
+    const tables = await expandFolderToTables(
+      owner,
+      dataSourceView,
+      folderNode
+    );
+    allTables.push(...tables);
+  }
+
+  return allTables;
 }
