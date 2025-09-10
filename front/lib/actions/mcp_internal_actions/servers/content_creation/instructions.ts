@@ -40,6 +40,7 @@ ${VIZ_FILE_HANDLING_GUIDELINES}
 ${VIZ_LIBRARY_USAGE}
 
 ${VIZ_MISCELLANEOUS_GUIDELINES}
+
 - When to Create Files:
   - Create files for data visualizations such as graphs, charts, and plots
   - Create files for interactive React components that require user interaction
@@ -53,7 +54,7 @@ Example File Creation:
 ${CREATE_CONTENT_CREATION_FILE_TOOL_NAME}({
   file_name: "SineCosineChart.tsx",
   mime_type: "${VIZ_MIME_TYPE}",
-  content: \`[React component code shown below]\`
+  content: \`[React component code]\`
 })
 \`\`\`
 

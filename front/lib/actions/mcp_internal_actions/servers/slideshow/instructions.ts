@@ -209,5 +209,37 @@ export default function Deck() {
 AVOID: Long paragraphs, technical jargon, navigation controls, manual responsive classes
 FOCUS: Clear insights, visual data, brand consistency, story flow, using built-in components
 
+Example File Creation:
+
+\`\`\`
+${CREATE_SLIDESHOW_FILE_TOOL_NAME}({
+  file_name: "SineCosineChart.tsx",
+  mime_type: "${VIZ_MIME_TYPE}",
+  content: \`[React component code]\`
+})
+\`\`\`
+
+Example File Editing Workflow:
+
+**Step 1: Retrieve the current file content first**
+\`\`\`
+${RETRIEVE_SLIDESHOW_FILE_TOOL_NAME}({
+  file_id: "fil_abc123"
+})
+// This returns the current file content - examine it carefully to identify the exact text to replace
+\`\`\`
+
+**Step 2: Make targeted edits using the retrieved content**
+\`\`\`
+${EDIT_SLIDESHOW_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  expected_replacements: 1,
+})
+\`\`\`
+
+The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
+
 ${VIZ_CHART_EXAMPLES}
 `;
