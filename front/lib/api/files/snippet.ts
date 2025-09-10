@@ -9,6 +9,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
+import { isSupportedAudioContentType } from "@app/types";
 import {
   assertNever,
   CoreAPI,
@@ -183,6 +184,20 @@ export async function generateSnippet(
       default:
         assertNever(run);
     }
+  }
+
+  if (isSupportedAudioContentType(file.contentType)) {
+    const content = await getFileContent(auth, file, "processed");
+    if (!content) {
+      return new Err(new Error("Failed to get file processed content"));
+    }
+
+    let snippet = `Audio file: ${content}`;
+    if (snippet.length > 256) {
+      snippet = snippet.slice(0, 242) + "... (truncated)";
+    }
+
+    return new Ok(snippet);
   }
 
   return new Err(new Error("Unsupported file type"));
