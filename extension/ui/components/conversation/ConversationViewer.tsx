@@ -4,11 +4,14 @@ import { classNames } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
 import MessageGroup from "@app/ui/components/conversation/MessageGroup";
 import { useConversationFeedbacks } from "@app/ui/components/conversation/useConversationFeedbacks";
+import { useConversationMarkAsRead } from "@app/ui/components/conversation/useConversationMarkAsRead";
 import { usePublicConversation } from "@app/ui/components/conversation/usePublicConversation";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
+import { datadogLogs } from "@datadog/browser-logs";
 import type {
   AgentGenerationCancelledEvent,
   AgentMentionType,
+  AgentMessageDoneEvent,
   AgentMessageNewEvent,
   AgentMessagePublicType,
   ContentFragmentType,
@@ -18,6 +21,7 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { isAgentMention } from "@dust-tt/client";
+import { debounce } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 interface ConversationViewerProps {
@@ -37,6 +41,12 @@ export function ConversationViewer({
     usePublicConversation({
       conversationId,
     });
+
+  const { markAsRead } = useConversationMarkAsRead({ conversation });
+  const debouncedMarkAsRead = useMemo(
+    () => debounce(markAsRead, 2000),
+    [markAsRead]
+  );
 
   // We only keep the last version of each message.
   const messages = (conversation?.content || []).map(
@@ -99,6 +109,7 @@ export function ConversationViewer({
           | UserMessageNewEvent
           | AgentMessageNewEvent
           | AgentGenerationCancelledEvent
+          | AgentMessageDoneEvent
           | ConversationTitleEvent;
       } = JSON.parse(eventStr);
 
@@ -118,9 +129,20 @@ export function ConversationViewer({
           case "conversation_title":
             void mutateConversation();
             break;
+
+          case "agent_message_done":
+            // Mark as read and do not mutate the list of convos in the sidebar to avoid any network request.
+            // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
+            void debouncedMarkAsRead(event.conversationId, false);
+
+            // Mutate the messages to be sure that the swr cache is updated.
+            // Fixes an issue where the last message of a conversation is "thinking" and not "done" the first time you switch back and forth to a conversation.
+            void mutateConversation();
+            break;
+
           default:
             ((t: never) => {
-              console.error("Unknown event type", t);
+              datadogLogs.logger.error("Unknown event type", { eventType: t });
             })(event);
         }
       }
