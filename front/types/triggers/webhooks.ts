@@ -1,7 +1,7 @@
-import { ModelId } from "@app/types/shared/model_id";
-import { EditedByUser } from "@app/types/user";
-
 import * as t from "io-ts";
+
+import type { ModelId } from "@app/types/shared/model_id";
+import type { EditedByUser } from "@app/types/user";
 
 export type WebhookSourceType = {
   id: ModelId;
@@ -15,7 +15,7 @@ export type WebhookSourceType = {
   updatedAt: number;
 };
 
-export type WebhookSourcesViewType = {
+export type WebhookSourceViewType = {
   id: ModelId;
   sId: string;
   customName: string | null;
