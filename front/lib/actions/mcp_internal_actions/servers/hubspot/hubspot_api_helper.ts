@@ -115,6 +115,23 @@ const getAllOwners = async (accessToken: string): Promise<PublicOwner[]> => {
   return allOwners;
 };
 
+const getOwnerByEmail = async (
+  accessToken: string,
+  email: string
+): Promise<PublicOwner | null> => {
+  const hubspotClient = new Client({ accessToken });
+
+  // The getPage method can filter by email directly
+  const owners = await hubspotClient.crm.owners.ownersApi.getPage(
+    email, // email filter
+    undefined, // after
+    1, // limit - we only need one
+    undefined // archived
+  );
+
+  return owners.results.length > 0 ? owners.results[0] : null;
+};
+
 export const getObjectByEmail = async (
   accessToken: string,
   objectType: SimpleObjectType | SpecialObjectType,
@@ -123,9 +140,7 @@ export const getObjectByEmail = async (
   const hubspotClient = new Client({ accessToken });
 
   if (objectType === "owners") {
-    const allOwners = await getAllOwners(accessToken);
-    const owner = allOwners.find((owner) => owner.email === email);
-    return owner || null;
+    return getOwnerByEmail(accessToken, email);
   }
 
   const properties =
