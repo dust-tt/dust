@@ -1164,9 +1164,10 @@ describe("augmentInputsWithConfiguration", () => {
           inputSchema: {
             type: "object",
             properties: {
-              stringParam: ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-              ],
+              stringParam:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                ],
             },
             required: ["stringParam"],
           },
@@ -1174,11 +1175,15 @@ describe("augmentInputsWithConfiguration", () => {
         });
 
         // Manually modify the schema to add property-level default
-        if (config.inputSchema.properties?.stringParam && 
-            typeof config.inputSchema.properties.stringParam === 'object' &&
-            config.inputSchema.properties.stringParam.properties?.value &&
-            typeof config.inputSchema.properties.stringParam.properties.value === 'object') {
-          config.inputSchema.properties.stringParam.properties.value.default = "property-level-default";
+        if (
+          config.inputSchema.properties?.stringParam &&
+          typeof config.inputSchema.properties.stringParam === "object" &&
+          config.inputSchema.properties.stringParam.properties?.value &&
+          typeof config.inputSchema.properties.stringParam.properties.value ===
+            "object"
+        ) {
+          config.inputSchema.properties.stringParam.properties.value.default =
+            "property-level-default";
         }
 
         const result = augmentInputsWithConfiguration({
@@ -1202,7 +1207,9 @@ describe("augmentInputsWithConfiguration", () => {
             type: "object",
             properties: {
               stringParam: {
-                ...ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
+                ...ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                ],
                 default: {
                   value: "should-not-be-used",
                   mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
@@ -1279,9 +1286,10 @@ describe("augmentInputsWithConfiguration", () => {
           inputSchema: {
             type: "object",
             properties: {
-              numberParam: ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
-              ],
+              numberParam:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
+                ],
             },
             required: ["numberParam"],
           },
@@ -1289,10 +1297,13 @@ describe("augmentInputsWithConfiguration", () => {
         });
 
         // Manually modify the schema to add property-level default
-        if (config.inputSchema.properties?.numberParam && 
-            typeof config.inputSchema.properties.numberParam === 'object' &&
-            config.inputSchema.properties.numberParam.properties?.value &&
-            typeof config.inputSchema.properties.numberParam.properties.value === 'object') {
+        if (
+          config.inputSchema.properties?.numberParam &&
+          typeof config.inputSchema.properties.numberParam === "object" &&
+          config.inputSchema.properties.numberParam.properties?.value &&
+          typeof config.inputSchema.properties.numberParam.properties.value ===
+            "object"
+        ) {
           config.inputSchema.properties.numberParam.properties.value.default = 100;
         }
 
@@ -1359,9 +1370,10 @@ describe("augmentInputsWithConfiguration", () => {
           inputSchema: {
             type: "object",
             properties: {
-              booleanParam: ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
-              ],
+              booleanParam:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
+                ],
             },
             required: ["booleanParam"],
           },
@@ -1369,11 +1381,15 @@ describe("augmentInputsWithConfiguration", () => {
         });
 
         // Manually modify the schema to add property-level default
-        if (config.inputSchema.properties?.booleanParam && 
-            typeof config.inputSchema.properties.booleanParam === 'object' &&
-            config.inputSchema.properties.booleanParam.properties?.value &&
-            typeof config.inputSchema.properties.booleanParam.properties.value === 'object') {
-          config.inputSchema.properties.booleanParam.properties.value.default = false;
+        if (
+          config.inputSchema.properties?.booleanParam &&
+          typeof config.inputSchema.properties.booleanParam === "object" &&
+          config.inputSchema.properties.booleanParam.properties?.value &&
+          typeof config.inputSchema.properties.booleanParam.properties.value ===
+            "object"
+        ) {
+          config.inputSchema.properties.booleanParam.properties.value.default =
+            false;
         }
 
         const result = augmentInputsWithConfiguration({
@@ -1401,9 +1417,9 @@ describe("augmentInputsWithConfiguration", () => {
               enumParam: {
                 type: "object",
                 properties: {
-                  value: { 
+                  value: {
                     type: "string",
-                    enum: ["option1", "option2", "option3"]
+                    enum: ["option1", "option2", "option3"],
                   },
                   mimeType: {
                     type: "string",
@@ -1445,10 +1461,10 @@ describe("augmentInputsWithConfiguration", () => {
               enumParam: {
                 type: "object",
                 properties: {
-                  value: { 
+                  value: {
                     type: "string",
                     enum: ["red", "green", "blue"],
-                    default: "green"
+                    default: "green",
                   },
                   mimeType: {
                     type: "string",
@@ -1489,9 +1505,9 @@ describe("augmentInputsWithConfiguration", () => {
                 type: "object",
                 properties: {
                   options: { type: "object" },
-                  values: { 
+                  values: {
                     type: "array",
-                    items: { type: "string" }
+                    items: { type: "string" },
                   },
                   mimeType: {
                     type: "string",
@@ -1534,10 +1550,10 @@ describe("augmentInputsWithConfiguration", () => {
                 type: "object",
                 properties: {
                   options: { type: "object" },
-                  values: { 
+                  values: {
                     type: "array",
                     items: { type: "string" },
-                    default: ["prop1", "prop2", "prop3"]
+                    default: ["prop1", "prop2", "prop3"],
                   },
                   mimeType: {
                     type: "string",
@@ -1576,9 +1592,9 @@ describe("augmentInputsWithConfiguration", () => {
                 type: "object",
                 properties: {
                   options: { type: "object" },
-                  values: { 
+                  values: {
                     type: "array",
-                    items: { type: "string" }
+                    items: { type: "string" },
                   },
                   mimeType: {
                     type: "string",
@@ -1623,7 +1639,9 @@ describe("augmentInputsWithConfiguration", () => {
             type: "object",
             properties: {
               stringParam: {
-                ...ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
+                ...ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                ],
                 default: {
                   value: 123, // Wrong type - should be ignored
                   mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
@@ -1651,9 +1669,10 @@ describe("augmentInputsWithConfiguration", () => {
           inputSchema: {
             type: "object",
             properties: {
-              numberParam: ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
-              ],
+              numberParam:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
+                ],
             },
             required: ["numberParam"],
           },
@@ -1661,11 +1680,15 @@ describe("augmentInputsWithConfiguration", () => {
         });
 
         // Manually modify the schema to add invalid property-level default
-        if (config.inputSchema.properties?.numberParam && 
-            typeof config.inputSchema.properties.numberParam === 'object' &&
-            config.inputSchema.properties.numberParam.properties?.value &&
-            typeof config.inputSchema.properties.numberParam.properties.value === 'object') {
-          config.inputSchema.properties.numberParam.properties.value.default = "not-a-number";
+        if (
+          config.inputSchema.properties?.numberParam &&
+          typeof config.inputSchema.properties.numberParam === "object" &&
+          config.inputSchema.properties.numberParam.properties?.value &&
+          typeof config.inputSchema.properties.numberParam.properties.value ===
+            "object"
+        ) {
+          config.inputSchema.properties.numberParam.properties.value.default =
+            "not-a-number";
         }
 
         // Should throw because no valid default was found and value is required
@@ -1688,9 +1711,9 @@ describe("augmentInputsWithConfiguration", () => {
                 type: "object",
                 properties: {
                   options: { type: "object" },
-                  values: { 
+                  values: {
                     type: "array",
-                    items: { type: "string" }
+                    items: { type: "string" },
                   },
                   mimeType: {
                     type: "string",
@@ -1732,7 +1755,9 @@ describe("augmentInputsWithConfiguration", () => {
                 type: "object",
                 properties: {
                   stringParam: {
-                    ...ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING],
+                    ...ConfigurableToolInputJSONSchemas[
+                      INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                    ],
                     default: {
                       value: "nested-default",
                       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,

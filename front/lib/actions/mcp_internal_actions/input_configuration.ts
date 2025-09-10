@@ -62,6 +62,60 @@ function generateConfiguredInput({
     "Action configuration must be a server-side MCP tool configuration"
   );
 
+  type PrimitiveType = string | number | boolean | string[];
+
+  const handleDefaultValue = <U extends PrimitiveType>(
+    actionConfiguration: MCPToolConfigurationType,
+    keyPath: string,
+    value: PrimitiveType | undefined,
+    expectedType: string,
+    typeGuard: (val: unknown) => val is U
+  ): U => {
+    if (value === undefined) {
+      const propSchema = findSchemaAtPath(
+        actionConfiguration.inputSchema,
+        keyPath.split(".")
+      );
+      if (propSchema) {
+        // Handle both object-level default {value, mimeType} and property-level default
+        if (
+          propSchema.default &&
+          typeof propSchema.default === "object" &&
+          propSchema.default !== null &&
+          "value" in propSchema.default
+        ) {
+          if (typeGuard(propSchema.default.value)) {
+            value = propSchema.default.value;
+          } else {
+            // Invalid object-level default type - throw specific error
+            throw new Error(
+              `Expected ${expectedType} value for key ${keyPath}, got ${typeof propSchema.default.value}`
+            );
+          }
+        } else if (
+          propSchema.properties?.value &&
+          isJSONSchemaObject(propSchema.properties.value) &&
+          propSchema.properties.value.default !== undefined
+        ) {
+          if (typeGuard(propSchema.properties.value.default)) {
+            value = propSchema.properties.value.default;
+          } else {
+            // Invalid property-level default type - throw specific error
+            throw new Error(
+              `Expected ${expectedType} value for key ${keyPath}, got ${typeof propSchema.properties.value.default}`
+            );
+          }
+        }
+      }
+    }
+    if (!typeGuard(value)) {
+      throw new Error(
+        `Expected ${expectedType} value for key ${keyPath}, got ${typeof value}`
+      );
+    }
+    return value;
+  };
+
   switch (mimeType) {
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE: {
       return (
@@ -142,172 +196,58 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
-      let value = actionConfiguration.additionalConfiguration[keyPath];
+      const value = handleDefaultValue<string>(
+        actionConfiguration,
+        keyPath,
+        actionConfiguration.additionalConfiguration[keyPath],
+        "string",
+        (val): val is string => typeof val === "string"
+      );
 
-      if (value === undefined || value === null || value === "") {
-        const propSchema = findSchemaAtPath(
-          actionConfiguration.inputSchema,
-          keyPath.split(".")
-        );
-        if (propSchema) {
-          // Handle both object-level default {value, mimeType} and property-level default
-          if (
-            propSchema.default &&
-            typeof propSchema.default === "object" &&
-            propSchema.default !== null &&
-            "value" in propSchema.default
-          ) {
-            if (typeof propSchema.default.value === "string") {
-              value = propSchema.default.value;
-            } else {
-              // Invalid object-level default type - throw specific error
-              throw new Error(
-                `Expected string value for key ${keyPath}, got ${typeof propSchema.default.value}`
-              );
-            }
-          } else if (
-            propSchema.properties?.value &&
-            isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined
-          ) {
-            if (typeof propSchema.properties.value.default === "string") {
-              value = propSchema.properties.value.default;
-            } else {
-              // Invalid property-level default type - throw specific error
-              throw new Error(
-                `Expected string value for key ${keyPath}, got ${typeof propSchema.properties.value.default}`
-              );
-            }
-          }
-        }
-      }
-
-      if (typeof value !== "string") {
-        throw new Error(
-          `Expected string value for key ${keyPath}, got ${typeof value}`
-        );
-      }
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
-      let value = actionConfiguration.additionalConfiguration[keyPath];
+      const value = handleDefaultValue<number>(
+        actionConfiguration,
+        keyPath,
+        actionConfiguration.additionalConfiguration[keyPath],
+        "number",
+        (val): val is number => typeof val === "number"
+      );
 
-      if (value === undefined || value === null) {
-        const propSchema = findSchemaAtPath(
-          actionConfiguration.inputSchema,
-          keyPath.split(".")
-        );
-        if (propSchema) {
-          // Handle both object-level default {value, mimeType} and property-level default
-          if (
-            propSchema.default &&
-            typeof propSchema.default === "object" &&
-            propSchema.default !== null &&
-            "value" in propSchema.default &&
-            typeof propSchema.default.value === "number"
-          ) {
-            value = propSchema.default.value;
-          } else if (
-            propSchema.properties?.value &&
-            isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined &&
-            typeof propSchema.properties.value.default === "number"
-          ) {
-            value = propSchema.properties.value.default;
-          }
-        }
-      }
-
-      if (typeof value !== "number") {
-        throw new Error(
-          `Expected number value for key ${keyPath}, got ${typeof value}`
-        );
-      }
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
-      let value = actionConfiguration.additionalConfiguration[keyPath];
+      const value = handleDefaultValue<boolean>(
+        actionConfiguration,
+        keyPath,
+        actionConfiguration.additionalConfiguration[keyPath],
+        "boolean",
+        (val): val is boolean => typeof val === "boolean"
+      );
 
-      if (value === undefined || value === null) {
-        const propSchema = findSchemaAtPath(
-          actionConfiguration.inputSchema,
-          keyPath.split(".")
-        );
-        if (propSchema) {
-          // Handle both object-level default {value, mimeType} and property-level default
-          if (
-            propSchema.default &&
-            typeof propSchema.default === "object" &&
-            propSchema.default !== null &&
-            "value" in propSchema.default &&
-            typeof propSchema.default.value === "boolean"
-          ) {
-            value = propSchema.default.value;
-          } else if (
-            propSchema.properties?.value &&
-            isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined &&
-            typeof propSchema.properties.value.default === "boolean"
-          ) {
-            value = propSchema.properties.value.default;
-          }
-        }
-      }
-
-      if (typeof value !== "boolean") {
-        throw new Error(
-          `Expected boolean value for key ${keyPath}, got ${typeof value}`
-        );
-      }
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
-      let value = actionConfiguration.additionalConfiguration[keyPath];
+      const value = handleDefaultValue<string>(
+        actionConfiguration,
+        keyPath,
+        actionConfiguration.additionalConfiguration[keyPath],
+        "string",
+        (val): val is string => typeof val === "string"
+      );
 
-      if (value === undefined || value === null || value === "") {
-        const propSchema = findSchemaAtPath(
-          actionConfiguration.inputSchema,
-          keyPath.split(".")
-        );
-        if (propSchema) {
-          // Handle both object-level default {value, mimeType} and property-level default
-          if (
-            propSchema.default &&
-            typeof propSchema.default === "object" &&
-            propSchema.default !== null &&
-            "value" in propSchema.default &&
-            typeof propSchema.default.value === "string"
-          ) {
-            value = propSchema.default.value;
-          } else if (
-            propSchema.properties?.value &&
-            isJSONSchemaObject(propSchema.properties.value) &&
-            propSchema.properties.value.default !== undefined &&
-            typeof propSchema.properties.value.default === "string"
-          ) {
-            value = propSchema.properties.value.default;
-          }
-        }
-      }
-
-      if (typeof value !== "string") {
-        throw new Error(
-          `Expected string value for key ${keyPath}, got ${typeof value}`
-        );
-      }
       return { value, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.LIST: {
-      let value = actionConfiguration.additionalConfiguration[keyPath];
-
+      let values = actionConfiguration.additionalConfiguration[keyPath];
       if (
-        value === undefined ||
-        value === null ||
-        (Array.isArray(value) && value.length === 0)
+        values === undefined ||
+        (Array.isArray(values) && values.length === 0)
       ) {
         const propSchema = findSchemaAtPath(
           actionConfiguration.inputSchema,
@@ -319,28 +259,54 @@ function generateConfiguredInput({
             propSchema.default &&
             typeof propSchema.default === "object" &&
             propSchema.default !== null &&
-            "values" in propSchema.default &&
-            Array.isArray(propSchema.default.values) &&
-            propSchema.default.values.every((v) => typeof v === "string")
+            "values" in propSchema.default
           ) {
-            value = propSchema.default.values;
+            if (
+              Array.isArray(propSchema.default.values) &&
+              propSchema.default.values.every((v) => typeof v === "string")
+            ) {
+              values = propSchema.default.values;
+            } else {
+              // Invalid object-level default type - throw specific error
+              throw new Error(
+                `Expected array of string values for key ${keyPath}, got ${
+                  Array.isArray(propSchema.default.values)
+                    ? "array with non-string elements"
+                    : typeof propSchema.default.values
+                }`
+              );
+            }
           } else if (
             propSchema.properties?.values &&
-            isJSONSchemaObject(propSchema.properties.values) &&
-            Array.isArray(propSchema.properties.values.default) &&
-            propSchema.properties.values.default.every((v) => typeof v === "string")
+            isJSONSchemaObject(propSchema.properties.values)
           ) {
-            value = propSchema.properties.values.default;
+            if (
+              Array.isArray(propSchema.properties.values.default) &&
+              propSchema.properties.values.default.every(
+                (v) => typeof v === "string"
+              )
+            ) {
+              values = propSchema.properties.values.default;
+            } else {
+              // Invalid property-level default type - throw specific error
+              throw new Error(
+                `Expected array of string values for key ${keyPath}, got ${
+                  Array.isArray(propSchema.properties.values.default)
+                    ? "array with non-string elements"
+                    : typeof propSchema.properties.values.default
+                }`
+              );
+            }
           }
         }
       }
-
-      if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+      if (!Array.isArray(values) || values.some((v) => typeof v !== "string")) {
         throw new Error(
-          `Expected array of string values for key ${keyPath}, got ${typeof value} for mime type ${mimeType}`
+          `Expected array of string values for key ${keyPath}, got ${typeof values}`
         );
       }
-      return { values: value, mimeType };
+
+      return { values: values, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP: {
@@ -384,14 +350,10 @@ function findPathsToConfiguration({
     }
 
     if (tool.inputSchema) {
-      const match = findMatchingSubSchemas(tool.inputSchema, mimeType);
       matches = {
         ...matches,
-        ...match,
+        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
       };
-      if (!match) {
-        console.log("no match for tool:", tool);
-      }
     }
   }
 
@@ -546,7 +508,7 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-export interface MCPServerToolsConfigurations {
+export interface MCPServerRequirements {
   requiresDataSourceConfiguration: boolean;
   requiresDataWarehouseConfiguration: boolean;
   requiresTableConfiguration: boolean;
@@ -573,9 +535,9 @@ export interface MCPServerToolsConfigurations {
   noRequirement: boolean;
 }
 
-export function getMCPServerToolsConfigurations(
+export function getMCPServerRequirements(
   mcpServerView: MCPServerViewType | null | undefined
-): MCPServerToolsConfigurations {
+): MCPServerRequirements {
   if (!mcpServerView) {
     return {
       requiresDataSourceConfiguration: false,
@@ -655,7 +617,7 @@ export function getMCPServerToolsConfigurations(
     (tool) => tool.inputSchema?.properties?.jsonSchema
   );
 
-  const stringConfigurations = Object.entries(
+  const requiredStrings = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
@@ -665,7 +627,7 @@ export function getMCPServerToolsConfigurations(
     description: schema.description,
   }));
 
-  const numberConfigurations = Object.entries(
+  const requiredNumbers = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
@@ -675,7 +637,7 @@ export function getMCPServerToolsConfigurations(
     description: schema.description,
   }));
 
-  const booleanConfigurations = Object.entries(
+  const requiredBooleans = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
@@ -685,7 +647,7 @@ export function getMCPServerToolsConfigurations(
     description: schema.description,
   }));
 
-  const enumConfigurations = Object.fromEntries(
+  const requiredEnums = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -709,7 +671,7 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const listConfigurations = Object.fromEntries(
+  const requiredLists = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -768,11 +730,11 @@ export function getMCPServerToolsConfigurations(
     requiresReasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
-    requiredStrings: stringConfigurations,
-    requiredNumbers: numberConfigurations,
-    requiredBooleans: booleanConfigurations,
-    requiredEnums: enumConfigurations,
-    requiredLists: listConfigurations,
+    requiredStrings,
+    requiredNumbers,
+    requiredBooleans,
+    requiredEnums,
+    requiredLists,
     requiresDustAppConfiguration: requiredDustAppConfiguration,
     noRequirement:
       !requiresDataSourceConfiguration &&
@@ -782,11 +744,11 @@ export function getMCPServerToolsConfigurations(
       !requiresReasoningConfiguration &&
       !requiredDustAppConfiguration &&
       !mayRequireTimeFrameConfiguration &&
-      stringConfigurations.length <= 0 &&
-      numberConfigurations.length <= 0 &&
-      booleanConfigurations.length <= 0 &&
-      Object.keys(enumConfigurations).length <= 0 &&
-      Object.keys(listConfigurations).length <= 0,
+      requiredStrings.length <= 0 &&
+      requiredNumbers.length <= 0 &&
+      requiredBooleans.length <= 0 &&
+      Object.keys(requiredEnums).length <= 0 &&
+      Object.keys(requiredLists).length <= 0,
   };
 }
 
