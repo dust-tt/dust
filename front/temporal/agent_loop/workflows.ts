@@ -155,7 +155,7 @@ export async function agentLoopWorkflow({
     }
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
-    
+
     // Notify error in a non-cancellable scope to ensure it runs even if workflow is cancelled
     await CancellationScope.nonCancellable(async () => {
       await notifyWorkflowError(authType, {
@@ -165,7 +165,7 @@ export async function agentLoopWorkflow({
         error: workflowError,
       });
     });
-    
+
     throw err;
   }
 }

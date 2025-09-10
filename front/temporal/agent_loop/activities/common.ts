@@ -1,13 +1,10 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
-import {
-  AgentMessage as AgentMessageModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ConversationWithoutContentType } from "@app/types";
@@ -149,32 +146,22 @@ export async function notifyWorkflowError(
 ): Promise<void> {
   const auth = await AuthenticatorClass.fromJSON(authType);
 
-  // Fetch the agent message row
-  const messageRow = await Message.findOne({
-    where: {
-      sId: agentMessageId,
-      conversationId,
-      version: agentMessageVersion,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    include: [
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!messageRow?.agentMessage) {
-    throw new Error(`Agent message not found: ${agentMessageId}`);
-  }
-
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     throw new Error(`Conversation not found: ${conversationId}`);
   }
   const conversation = conversationRes.value;
+
+  // Fetch the agent message using the proper API function
+  const messageRow = await fetchMessageInConversation(
+    auth,
+    conversation,
+    agentMessageId
+  );
+
+  if (!messageRow?.agentMessage) {
+    throw new Error(`Agent message not found: ${agentMessageId}`);
+  }
 
   const errorEvent: AgentMessageEvents = {
     type: "agent_error",
