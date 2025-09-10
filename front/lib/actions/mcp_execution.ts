@@ -25,6 +25,7 @@ import {
   isBlobResource,
   isMCPProgressNotificationType,
   isResourceWithName,
+  isStoreResourceProgressOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
@@ -102,6 +103,17 @@ export async function* executeMCPTool({
     } else if (event.type === "notification") {
       const { notification } = event;
       if (isMCPProgressNotificationType(notification)) {
+        const output = notification.params.data.output;
+        
+        // Handle store_resource notifications by creating output items immediately
+        if (isStoreResourceProgressOutput(output)) {
+          await AgentMCPActionOutputItem.create({
+            workspaceId: action.workspaceId,
+            agentMCPActionId: action.id,
+            content: output.content,
+          });
+        }
+        
         // Regular notifications, we yield them as is with the type "tool_notification".
         yield {
           type: "tool_notification",

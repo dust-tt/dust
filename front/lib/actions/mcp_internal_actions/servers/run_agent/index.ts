@@ -36,7 +36,6 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -230,25 +229,6 @@ export default async function createServer(
       }
       const childAgentId = childAgentIdRes.value;
 
-      // Store the query resource immediately so it's available in the UI while the action is running
-      if (_meta?.progressToken) {
-        const queryResourceContent = {
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-            text: query,
-            childAgentId: childAgentId,
-            uri: "",
-          },
-        };
-
-        await AgentMCPActionOutputItem.create({
-          workspaceId: owner.id,
-          agentMCPActionId: parseInt(_meta.progressToken as string),
-          content: queryResourceContent,
-        });
-      }
-
       const user = auth.user();
 
       const prodCredentials = await prodAPICredentialsForOwner(owner);
@@ -304,6 +284,34 @@ export default async function createServer(
       }
 
       const { conversation, isNewConversation, userMessageId } = convRes.value;
+
+      // Store the query resource immediately so it's available in the UI while the action is running
+      if (_meta?.progressToken && sendNotification) {
+        const storeResourceNotification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 0,
+            total: 1,
+            progressToken: _meta.progressToken,
+            data: {
+              label: `Storing query resource`,
+              output: {
+                type: "store_resource",
+                content: {
+                  type: "resource",
+                  resource: {
+                    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+                    text: query,
+                    childAgentId: childAgentId,
+                    uri: "",
+                  },
+                },
+              },
+            },
+          },
+        };
+        await sendNotification(storeResourceNotification);
+      }
 
       // Send notification indicating that a run_agent started and a new conversation was created if
       // it is the first time the conversation is created.
