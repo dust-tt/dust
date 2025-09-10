@@ -1089,12 +1089,10 @@ The directive should be used to display a clickable version of the agent name in
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isPreview: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("data_warehouses_tool");
-    },
+    isPreview: false,
+    isRestricted: undefined,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1113,12 +1111,10 @@ The directive should be used to display a clickable version of the agent name in
   },
   toolsets: {
     id: 1013,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("toolsets_tool");
-    },
+    isRestricted: undefined,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
