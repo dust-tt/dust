@@ -2,13 +2,11 @@ import type {
   AdditionalConfigurationInBuilderType,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  expandFoldersToTables,
-  getTableIdForContentNode,
-} from "@app/components/assistant_builder/shared";
+import { expandFoldersToTables, getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
@@ -202,14 +200,16 @@ export async function submitAgentBuilderForm({
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
   // Process actions asynchronously to handle folder-to-table expansion
-  const processedActions = [];
-  for (const action of formData.actions) {
-    if (action.type === "DATA_VISUALIZATION") {
-      continue;
-    }
+  const mcpActions = formData.actions.filter((action) => action.type === "MCP");
 
-    if (action.type === "MCP") {
-      processedActions.push({
+  const processedActions = await concurrentExecutor(
+    mcpActions,
+    async (action) => {
+      if (!action.configuration) {
+        throw new Error(`MCP action ${action.name} has no configuration`);
+      }
+
+      return {
         type: "mcp_server_configuration" as const,
         mcpServerViewId: action.configuration.mcpServerViewId,
         name: action.name,
@@ -239,9 +239,10 @@ export async function submitAgentBuilderForm({
               )
             : {},
         dustAppConfiguration: action.configuration.dustAppConfiguration,
-      });
-    }
-  }
+      };
+    },
+    { concurrency: 3 }
+  );
 
   const requestBody: PostOrPatchAgentConfigurationRequestBody = {
     assistant: {

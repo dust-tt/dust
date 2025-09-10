@@ -1,16 +1,12 @@
 import { fetcherWithBody } from "@app/lib/swr/swr";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
-import type {
-  DataSourceType,
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-} from "@app/types";
-import { assertNever } from "@app/types";
+import type { DataSourceType, DataSourceViewType, LightContentNode, LightWorkspaceType } from "@app/types";
+import { assertNever, normalizeError } from "@app/types";
 
 export function getTableIdForContentNode(
   dataSource: DataSourceType,
@@ -81,7 +77,6 @@ async function expandFolderToTables(
       if (child.type === "table") {
         tables.push(child);
       } else if (child.type === "folder") {
-        // Recursively expand nested folders
         const nestedTables = await expandFolderToTables(
           owner,
           dataSourceView,
@@ -95,13 +90,13 @@ async function expandFolderToTables(
     return tables;
   } catch (error) {
     logger.error(
-      `Failed to fetch children for folder ${folderNode.internalId}:`,
-      error,
       {
-        owner,
-        dataSourceView,
-        folderNode,
-      }
+        error: normalizeError(error),
+        folderId: folderNode.internalId,
+        workspaceId: owner.sId,
+        dataSourceViewId: dataSourceView.sId,
+      },
+      "Failed to fetch children for folder"
     );
     throw new Error(
       `Failed to fetch children for folder ${folderNode.internalId}`
@@ -114,16 +109,11 @@ export async function expandFoldersToTables(
   dataSourceView: DataSourceViewType,
   folderNodes: LightContentNode[]
 ): Promise<LightContentNode[]> {
-  const allTables: LightContentNode[] = [];
+  const tablesArrays = await concurrentExecutor(
+    folderNodes,
+    (folderNode) => expandFolderToTables(owner, dataSourceView, folderNode),
+    { concurrency: 5 }
+  );
 
-  for (const folderNode of folderNodes) {
-    const tables = await expandFolderToTables(
-      owner,
-      dataSourceView,
-      folderNode
-    );
-    allTables.push(...tables);
-  }
-
-  return allTables;
+  return tablesArrays.flat();
 }
