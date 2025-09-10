@@ -15,6 +15,8 @@ const ConfigSchema = z.object({
   timeout: z.number().int().positive().default(60000),
   output: z.enum(["json", "csv", "console"]).default("console"),
   outputFile: z.string().optional(),
+  resume: z.boolean().default(false),
+  mode: z.enum(["score", "versus"]).default("score"),
 })
 
 async function main(): Promise<void> {
@@ -33,6 +35,12 @@ async function main(): Promise<void> {
     .option("--timeout <ms>", "Timeout per agent call in milliseconds", "60000")
     .option("--output <format>", "Output format: json, csv, console", "console")
     .option("--output-file <path>", "Path to save results")
+    .option("--resume", "Resume from last checkpoint if available", false)
+    .option(
+      "--mode <mode>",
+      "Evaluation mode: score (0-3 rating) or versus (pick best)",
+      "score"
+    )
 
   program.parse(process.argv)
   const options = program.opts()
@@ -61,6 +69,8 @@ async function main(): Promise<void> {
     timeout: parseInt(options["timeout"]),
     output: options["output"],
     outputFile: options["outputFile"],
+    resume: options["resume"],
+    mode: options["mode"],
   })
 
   if (!parseResult.success) {
@@ -77,6 +87,7 @@ async function main(): Promise<void> {
     parallel: parseResult.data.parallel,
     timeout: parseResult.data.timeout,
     outputFormat: parseResult.data.output,
+    mode: parseResult.data.mode,
     ...(parseResult.data.outputFile && {
       outputFile: parseResult.data.outputFile,
     }),
@@ -89,9 +100,18 @@ async function main(): Promise<void> {
   console.error(`  Runs: ${config.runs}`)
   console.error(`  Parallel: ${config.parallel}`)
   console.error(`  Timeout: ${config.timeout}ms`)
+  console.error(`  Mode: ${config.mode}`)
+  if (parseResult.data.resume) {
+    console.error(`  Resume: Enabled`)
+  }
 
   // Run evaluation.
-  const result = await runEvaluation(config, apiKey, workspaceId)
+  const result = await runEvaluation(
+    config,
+    apiKey,
+    workspaceId,
+    parseResult.data.resume
+  )
 
   if (!result.isOk) {
     console.error(`Evaluation failed: ${result.error.message}`)

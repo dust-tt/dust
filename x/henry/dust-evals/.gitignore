@@ -8,6 +8,9 @@ dist/
 # Results
 results/
 
+# Checkpoints
+.checkpoint_*.json
+
 # Environment
 .env
 .env.local

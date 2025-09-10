@@ -11,14 +11,70 @@ import type {
 import { Ok, Err } from "./types"
 import { DustClient } from "./dust-client"
 import { extractScore, formatJudgePrompt } from "./grading"
+import { loadCheckpoint, saveCheckpoint, deleteCheckpoint } from "./checkpoint"
 
 export async function runEvaluation(
   config: EvalConfig,
   apiKey: string,
-  workspaceId: string
+  workspaceId: string,
+  resume: boolean = false
 ): Promise<Result<EvalReport>> {
-  const startTime = new Date()
+  // Handle versus mode separately
+  if (config.mode === "versus") {
+    const { VersusEvaluator } = await import("./evaluator-versus")
+    const versusEvaluator = new VersusEvaluator(apiKey, workspaceId)
+    const versusResults = await versusEvaluator.runEvaluation(config)
+
+    if (!versusResults.isOk) {
+      return Err(versusResults.error)
+    }
+
+    // Convert versus results to standard report format for compatibility
+    const endTime = new Date()
+    const report: EvalReport = {
+      config,
+      startTime: new Date().toISOString(),
+      endTime: endTime.toISOString(),
+      totalDuration: 0, // Will be calculated from results
+      results: [], // Versus mode uses different result structure
+      statistics: [], // Will need different calculation for versus mode
+      summary: {
+        totalPrompts: versusResults.value.length / config.runs,
+        totalRuns: config.runs,
+        successRate: 1.0, // All completed
+        averageScore: 0, // N/A for versus mode
+      },
+    }
+
+    // Store versus results separately for proper reporting
+    ;(report as any).versusResults = versusResults.value
+    ;(report as any).isVersusMode = true
+
+    return Ok(report)
+  }
+
+  // Original score mode implementation continues below
+  let startTime = new Date()
   const client = new DustClient(apiKey, workspaceId)
+
+  // Check for existing checkpoint if resume is requested
+  let existingResults: EvalResult[] = []
+  let completedTasks = new Set<string>()
+
+  if (resume) {
+    const checkpoint = await loadCheckpoint(config)
+    if (checkpoint) {
+      console.error("\nResuming from checkpoint...")
+      console.error(`  Previous results: ${checkpoint.results.length}`)
+      console.error(`  Completed tasks: ${checkpoint.completedTasks.size}`)
+
+      existingResults = checkpoint.results
+      completedTasks = checkpoint.completedTasks
+      startTime = new Date(checkpoint.startTime)
+    } else {
+      console.error("No checkpoint found. Starting fresh...")
+    }
+  }
 
   // Load and parse CSV.
   const csvResult = await loadCSV(config.csvPath)
@@ -27,8 +83,15 @@ export async function runEvaluation(
   }
   const rows = csvResult.value
 
-  // Run standard evaluation.
-  const result = await runStandardEvaluation(rows, config, client)
+  // Run standard evaluation with resume support.
+  const result = await runStandardEvaluation(
+    rows,
+    config,
+    client,
+    existingResults,
+    completedTasks,
+    startTime.toISOString()
+  )
   if (!result.isOk) {
     return result
   }
@@ -71,9 +134,19 @@ async function loadCSV(path: string): Promise<Result<EvalRow[]>> {
 
     const rows: EvalRow[] = []
     for (const record of records) {
+      // Debug logging
+      if (rows.length === 0) {
+        console.error("CSV columns found:", Object.keys(record))
+      }
       if (!record["prompt"] || !record["judge_prompt"]) {
+        console.error(
+          "Missing required columns or empty values. Record:",
+          record
+        )
         return Err(
-          new Error("CSV must have 'prompt' and 'judge_prompt' columns")
+          new Error(
+            "CSV must have 'prompt' and 'judge_prompt' columns with non-empty values"
+          )
         )
       }
       rows.push({
@@ -95,122 +168,178 @@ async function loadCSV(path: string): Promise<Result<EvalRow[]>> {
 async function runStandardEvaluation(
   rows: EvalRow[],
   config: EvalConfig,
-  client: DustClient
+  client: DustClient,
+  existingResults: EvalResult[] = [],
+  completedTasks: Set<string> = new Set(),
+  startTimeStr: string = new Date().toISOString()
 ): Promise<Result<{ results: EvalResult[]; statistics: EvalStatistics[] }>> {
-  const results: EvalResult[] = []
+  const results: EvalResult[] = [...existingResults]
+  let checkpointCounter = 0
 
   // Process in batches.
   for (let run = 1; run <= config.runs; run++) {
     console.error(`\nRun ${run}/${config.runs}`)
 
-    for (const row of rows) {
-      console.error(`  Processing: "${row.prompt.substring(0, 50)}..."`)
+    // Collect all tasks for this run
+    const allTasks: Array<{
+      taskId: string
+      promptIndex: number
+      agentId: string
+      row: EvalRow
+      promise: Promise<void>
+    }> = []
 
-      // Run agents in parallel.
-      const agentPromises = config.agents.map(async (agentId) => {
-        const agentResult = await client.callAgent(
-          agentId,
-          row.prompt,
-          config.timeout
-        )
+    for (let promptIndex = 0; promptIndex < rows.length; promptIndex++) {
+      const row = rows[promptIndex]
+      if (!row) continue
 
-        if (!agentResult.isOk) {
-          results.push({
-            prompt: row.prompt,
-            judgePrompt: row.judge_prompt,
-            agentId,
-            response: "",
-            score: 0,
-            judgeReasoning: "",
-            timestamp: Date.now(),
-            runNumber: run,
-            durationMs: 0,
-            error: agentResult.error.message,
-          })
+      // Store row in a const to ensure TypeScript knows it's defined
+      const currentRow = row
+
+      // Create tasks for each agent
+      config.agents.forEach((agentId) => {
+        // Create unique task ID
+        const taskId = `${run}-${promptIndex}-${agentId}`
+
+        // Skip if already completed
+        if (completedTasks.has(taskId)) {
           return
         }
 
-        const response = agentResult.value
+        const task = async (): Promise<void> => {
+          console.error(
+            `  Processing: "${currentRow.prompt.substring(0, 50)}..." with ${agentId}`
+          )
 
-        // Get judge evaluation.
-        const judgePrompt = formatJudgePrompt(
-          row.prompt,
-          response.response,
-          row.judge_prompt
-        )
+          const agentResult = await client.callAgent(
+            agentId,
+            currentRow.prompt,
+            config.timeout
+          )
 
-        const judgeResult = await client.callJudge(
-          config.judgeAgent,
-          judgePrompt,
-          config.timeout
-        )
+          if (!agentResult.isOk) {
+            results.push({
+              prompt: currentRow.prompt,
+              judgePrompt: currentRow.judge_prompt,
+              agentId,
+              response: "",
+              score: 0,
+              judgeReasoning: "",
+              timestamp: Date.now(),
+              runNumber: run,
+              durationMs: 0,
+              error: agentResult.error.message,
+            })
+            completedTasks.add(taskId)
+            return
+          }
 
-        if (!judgeResult.isOk) {
+          const response = agentResult.value
+
+          // Get judge evaluation.
+          const judgePrompt = formatJudgePrompt(
+            currentRow.prompt,
+            response.response,
+            currentRow.judge_prompt
+          )
+
+          const judgeResult = await client.callJudge(
+            config.judgeAgent,
+            judgePrompt,
+            config.timeout
+          )
+
+          if (!judgeResult.isOk) {
+            results.push({
+              prompt: currentRow.prompt,
+              judgePrompt: currentRow.judge_prompt,
+              agentId,
+              response: response.response,
+              score: 0,
+              judgeReasoning: "",
+              timestamp: response.timestamp,
+              runNumber: run,
+              durationMs: response.durationMs,
+              error: `Judge error: ${judgeResult.error.message}`,
+            })
+            completedTasks.add(taskId)
+            return
+          }
+
+          // Parse score.
+          const scoreResult = extractScore(judgeResult.value)
+
+          if (!scoreResult.isOk) {
+            results.push({
+              prompt: currentRow.prompt,
+              judgePrompt: currentRow.judge_prompt,
+              agentId,
+              response: response.response,
+              score: 0,
+              judgeReasoning: judgeResult.value,
+              timestamp: response.timestamp,
+              runNumber: run,
+              durationMs: response.durationMs,
+              error: `Score parsing error: ${scoreResult.error.message}`,
+            })
+            completedTasks.add(taskId)
+            return
+          }
+
           results.push({
-            prompt: row.prompt,
-            judgePrompt: row.judge_prompt,
+            prompt: currentRow.prompt,
+            judgePrompt: currentRow.judge_prompt,
             agentId,
             response: response.response,
-            score: 0,
-            judgeReasoning: "",
-            timestamp: response.timestamp,
-            runNumber: run,
-            durationMs: response.durationMs,
-            error: `Judge error: ${judgeResult.error.message}`,
-          })
-          return
-        }
-
-        // Parse score.
-        const scoreResult = extractScore(judgeResult.value)
-
-        if (!scoreResult.isOk) {
-          results.push({
-            prompt: row.prompt,
-            judgePrompt: row.judge_prompt,
-            agentId,
-            response: response.response,
-            score: 0,
+            score: scoreResult.value,
             judgeReasoning: judgeResult.value,
             timestamp: response.timestamp,
             runNumber: run,
             durationMs: response.durationMs,
-            error: `Score parsing error: ${scoreResult.error.message}`,
           })
-          return
+
+          // Mark task as completed
+          completedTasks.add(taskId)
+
+          // Save checkpoint after each agent completes
+          checkpointCounter++
+          if (checkpointCounter % 5 === 0) {
+            // Save every 5 agent completions
+            await saveCheckpoint(config, results, completedTasks, startTimeStr)
+            console.error(`    [Checkpoint saved: ${results.length} results]`)
+          }
         }
 
-        results.push({
-          prompt: row.prompt,
-          judgePrompt: row.judge_prompt,
+        allTasks.push({
+          taskId,
+          promptIndex,
           agentId,
-          response: response.response,
-          score: scoreResult.value,
-          judgeReasoning: judgeResult.value,
-          timestamp: response.timestamp,
-          runNumber: run,
-          durationMs: response.durationMs,
+          row: currentRow,
+          promise: task(),
         })
       })
+    }
 
-      // Limit parallelism.
-      const chunks = []
-      for (let i = 0; i < agentPromises.length; i += config.parallel) {
-        chunks.push(agentPromises.slice(i, i + config.parallel))
-      }
+    // Process all tasks with parallelism limit
+    console.error(`  Total tasks for this run: ${allTasks.length}`)
+    console.error(`  Processing with parallelism: ${config.parallel}`)
 
-      for (const chunk of chunks) {
-        await Promise.all(chunk)
-      }
+    // Execute tasks in parallel batches
+    for (let i = 0; i < allTasks.length; i += config.parallel) {
+      const batch = allTasks.slice(i, i + config.parallel)
+      await Promise.all(batch.map((t) => t.promise))
     }
   }
 
   // Calculate statistics.
   const statistics = calculateStatistics(results, config.agents)
 
+  // Delete checkpoint since evaluation completed successfully
+  await deleteCheckpoint(config)
+  console.error("\n[Evaluation completed - checkpoint deleted]")
+
   return Ok({ results, statistics })
 }
-
 
 function calculateStatistics(
   results: EvalResult[],
@@ -265,4 +394,3 @@ function calculateStatistics(
 
   return stats
 }
-

@@ -6,10 +6,14 @@ A comprehensive evaluation framework for testing and benchmarking Dust agents us
 
 This tool allows you to:
 - Evaluate multiple Dust agents against a set of test prompts
-- Use a judge agent to score responses on a 0-3 scale
+- Two evaluation modes:
+  - **Score mode**: Judge rates each response on a 0-3 scale
+  - **Versus mode**: Judge picks the best response among all agents
 - Generate detailed reports in multiple formats (console, JSON, CSV)
 - Run multiple evaluation rounds for statistical analysis
 - Control parallelism and timeouts for optimal performance
+- Automatically retry failed API calls (up to 3 attempts with exponential backoff)
+- Resume interrupted evaluations from checkpoints
 
 ## Prerequisites
 
@@ -94,6 +98,7 @@ bun run eval \
 | `--timeout` | Timeout per agent call in milliseconds | No | 60000 |
 | `--output` | Output format: json, csv, console | No | console |
 | `--output-file` | Path to save results | No | - |
+| `--mode` | Evaluation mode: score or versus | No | score |
 
 ## CSV Format
 
@@ -109,9 +114,10 @@ prompt,judge_prompt
 - **prompt**: The question or task sent to agents
 - **judge_prompt**: Evaluation criteria for the judge agent (what constitutes a good answer)
 
-## Scoring System
+## Evaluation Modes
 
-The judge agent scores each response on a 0-3 scale:
+### Score Mode (Default)
+In score mode, the judge independently rates each agent response on a 0-3 scale:
 
 - **0**: Completely wrong or unhelpful response
 - **1**: Partially correct but missing key elements
@@ -119,6 +125,25 @@ The judge agent scores each response on a 0-3 scale:
 - **3**: Excellent, complete, and accurate response
 
 The judge must return scores in the format: `SCORE: <number>`
+
+### Versus Mode
+In versus mode, all agent responses are presented to the judge simultaneously:
+
+- Agents are anonymized (shown as Response 1, Response 2, etc.)
+- Judge picks the best response based on evaluation criteria
+- Additional information beyond criteria is neither rewarded nor penalized
+- Thinking tokens are automatically filtered from responses
+- Output format: `WINNER: <number>` or `WINNER: DRAW`
+
+Example usage:
+```bash
+bun run eval \
+  --agents "agent1,agent2,agent3" \
+  --csv "./prompts.csv" \
+  --judge "judge-agent" \
+  --mode versus \
+  --runs 3
+```
 
 ## Output Formats
 
@@ -154,22 +179,24 @@ Tabular format with columns:
 ```
 dust-evals/
 ├── src/
-│   ├── cli.ts           # Command-line interface
-│   ├── types.ts         # TypeScript type definitions
-│   ├── dust-client.ts   # Dust SDK wrapper
-│   ├── evaluator.ts     # Core evaluation logic
-│   ├── grading.ts       # Score extraction and formatting
-│   ├── reporter.ts      # Output formatting and reporting
-│   └── utils.ts         # Utility functions
+│   ├── cli.ts              # Command-line interface
+│   ├── types.ts            # TypeScript type definitions
+│   ├── dust-client.ts      # Dust SDK wrapper with retry logic
+│   ├── evaluator.ts        # Core evaluation logic (score mode)
+│   ├── evaluator-versus.ts # Versus mode evaluation logic
+│   ├── grading.ts          # Score extraction and formatting
+│   ├── reporter.ts         # Output formatting and reporting
+│   ├── checkpoint.ts       # Resume/checkpoint functionality
+│   └── utils.ts            # Utility functions
 ├── examples/
-│   ├── simple.csv       # Basic evaluation examples
-│   └── complex.csv      # Advanced evaluation examples
-├── CLAUDE.md            # AI assistant documentation
-├── README.md            # This file
-├── package.json         # Project configuration
-├── tsconfig.json        # TypeScript configuration
-├── .eslintrc.json       # ESLint rules
-└── .prettierrc          # Code formatting rules
+│   ├── simple.csv          # Basic evaluation examples
+│   └── complex.csv         # Advanced evaluation examples
+├── CLAUDE.md               # AI assistant documentation
+├── README.md               # This file
+├── package.json            # Project configuration
+├── tsconfig.json           # TypeScript configuration
+├── .eslintrc.json          # ESLint rules
+└── .prettierrc             # Code formatting rules
 ```
 
 ### Available Scripts
@@ -263,6 +290,11 @@ All async operations return Results. Check with `.isOk` before accessing values.
    - Ensure CSV has required columns: `prompt` and `judge_prompt`
    - Check for proper quote escaping in CSV values
    - Verify file encoding is UTF-8
+
+4. **"callbacks must be an object" Error**
+   - This is caused by a version mismatch with `eventsource-parser`
+   - The fix is already included in `package.json` with the `overrides` field
+   - If you encounter this, run `rm -rf node_modules bun.lock && bun install`
 
 4. **Score Extraction Errors**
    - Ensure judge agent returns scores as `SCORE: 0`, `SCORE: 1`, `SCORE: 2`, or `SCORE: 3`

@@ -19,6 +19,11 @@ export interface JudgeResult {
   reasoning: string
 }
 
+export interface VersusJudgeResult {
+  winner: string // Agent ID or "DRAW"
+  reasoning: string
+}
+
 export interface EvalResult {
   prompt: string
   judgePrompt: string
@@ -30,6 +35,20 @@ export interface EvalResult {
   runNumber: number
   durationMs: number
   error?: string
+}
+
+export interface VersusEvalResult {
+  prompt: string
+  judgePrompt: string
+  responses: Array<{
+    agentId: string
+    response: string
+    durationMs: number
+  }>
+  winner: string
+  judgeReasoning: string
+  timestamp: number
+  runNumber: number
 }
 
 export interface EvalStatistics {
@@ -53,6 +72,7 @@ export interface EvalConfig {
   timeout: number
   outputFormat: "json" | "csv" | "console"
   outputFile?: string
+  mode?: "score" | "versus" // Default is "score"
 }
 
 export interface EvalReport {
