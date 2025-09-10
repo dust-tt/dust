@@ -68,6 +68,7 @@ export function InputBarAttachments({
         id: blob.id,
         title: blob.id,
         preview: blob.preview,
+        contentType: blob.contentType,
         isUploading: blob.isUploading,
         onRemove: () => files.service.removeFile(blob.id),
       })) || []

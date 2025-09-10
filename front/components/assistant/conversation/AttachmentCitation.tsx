@@ -17,7 +17,7 @@ import {
 import React from "react";
 
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import type { ContentFragmentType } from "@app/types";
+import type { ContentFragmentType, SupportedFileContentType } from "@app/types";
 import {
   assertNever,
   isContentNodeContentFragment,
@@ -29,6 +29,7 @@ export type FileAttachment = {
   id: string;
   title: string;
   preview?: string;
+  contentType?: SupportedFileContentType;
   isUploading: boolean;
   onRemove: () => void;
 };
@@ -146,6 +147,13 @@ export function contentFragmentToAttachmentCitation(
 ): AttachmentCitation {
   // Handle expired content fragments
   if (contentFragment.expiredReason) {
+    const isImageType = contentFragment.contentType.startsWith("image/");
+    const isAudioType = contentFragment.contentType.startsWith("audio/");
+    const visual = isImageType
+      ? ImageIcon
+      : isAudioType
+        ? ActionVolumeUpIcon
+        : DocumentIcon;
     return {
       type: "file",
       id: contentFragment.sId,
@@ -153,7 +161,7 @@ export function contentFragmentToAttachmentCitation(
       sourceUrl: null,
       visual: (
         <span className="flex items-center justify-center">
-          <Icon visual={DocumentIcon} size="md" className="text-gray-400" />
+          <Icon visual={visual} size="md" className="text-gray-400" />
         </span>
       ),
     };
@@ -212,18 +220,21 @@ export function attachmentToAttachmentCitation(
   attachment: Attachment
 ): AttachmentCitation {
   if (attachment.type === "file") {
+    const isImageType = attachment.contentType?.startsWith("image/");
+    const isAudioType = attachment.contentType?.startsWith("audio/");
+    const visual = isImageType
+      ? ImageIcon
+      : isAudioType
+        ? ActionVolumeUpIcon
+        : DocumentIcon;
+
     return {
       type: "file",
       id: attachment.id,
       title: attachment.title,
       preview: attachment.preview,
       isUploading: attachment.isUploading,
-      visual: (
-        <Icon
-          visual={attachment.preview ? ImageIcon : DocumentIcon}
-          size="md"
-        />
-      ),
+      visual: <Icon visual={visual} size="md" />,
       sourceUrl: null,
     };
   } else {
