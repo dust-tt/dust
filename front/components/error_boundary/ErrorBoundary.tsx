@@ -1,4 +1,3 @@
-import { datadogLogs } from "@datadog/browser-logs";
 import * as React from "react";
 
 interface ErrorBoundaryProps {
@@ -24,8 +23,8 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    // This will send a log to Datadog RUM + log so no need to manually log it
-    console.error(error);
+    // This will send an error to Datadog RUM + logs so no need to manually log it
+    console.error("Uncaught client side error: ", error);
   }
 
   render() {
