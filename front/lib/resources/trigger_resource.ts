@@ -29,7 +29,11 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import type {
+  ScheduleConfig,
+  TriggerType,
+  WebhookConfig,
+} from "@app/types/assistant/triggers";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -243,6 +247,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           auth,
           trigger: this,
         });
+      case "webhook":
+        // TODO: Implement webhook workflow when ready.
+        throw new Error("Webhook trigger workflows not yet implemented");
       default:
         assertNever(this.kind);
     }
@@ -257,6 +264,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           workspaceId: auth.getNonNullableWorkspace().sId,
           triggerId: this.sId(),
         });
+      case "webhook":
+        // TODO: Implement webhook workflow when ready.
+        throw new Error("Webhook workflow removal not yet implemented");
       default:
         assertNever(this.kind);
     }
@@ -421,7 +431,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   toJSON(): TriggerType {
-    return {
+    const base = {
       id: this.id,
       sId: this.sId(),
       name: this.name,
@@ -429,9 +439,27 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       enabled: this.enabled,
-      kind: this.kind,
-      configuration: this.configuration,
       createdAt: this.createdAt.getTime(),
     };
+
+    if (this.kind === "webhook") {
+      return {
+        ...base,
+        kind: "webhook" as const,
+        configuration: this.configuration as WebhookConfig,
+        webhookSourceViewSId: this.webhookSourceViewId
+          ? makeSId("webhook_sources_view", {
+              id: this.webhookSourceViewId,
+              workspaceId: this.workspaceId,
+            })
+          : null,
+      };
+    } else {
+      return {
+        ...base,
+        kind: "schedule" as const,
+        configuration: this.configuration as ScheduleConfig,
+      };
+    }
   }
 }

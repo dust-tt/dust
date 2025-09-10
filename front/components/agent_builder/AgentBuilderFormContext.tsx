@@ -191,14 +191,50 @@ const scheduleConfigSchema = z.object({
   timezone: z.string(),
 });
 
-const triggerSchema = z.object({
+const webhookConfigSchema = z.record(z.never());
+
+const webhookTriggerSchema = z.object({
+  sId: z.string().optional(),
+  name: z.string(),
+  kind: z.enum(["webhook"]),
+  customPrompt: z.string().nullable(),
+  configuration: z.union([webhookConfigSchema, z.null()]),
+  editor: z.number().nullable(),
+  webhookSourceViewSId: z.string().nullable().optional(),
+});
+
+const scheduleTriggerSchema = z.object({
   sId: z.string().optional(),
   name: z.string(),
   kind: z.enum(["schedule"]),
   customPrompt: z.string().nullable(),
-  configuration: z.union([scheduleConfigSchema, z.null()]),
+  configuration: scheduleConfigSchema,
   editor: z.number().nullable(),
 });
+
+const triggerSchema = z.discriminatedUnion("kind", [
+  webhookTriggerSchema,
+  scheduleTriggerSchema,
+]);
+
+export type AgentBuilderWebhookTriggerType = z.infer<
+  typeof webhookTriggerSchema
+>;
+export type AgentBuilderScheduleTriggerType = z.infer<
+  typeof scheduleTriggerSchema
+>;
+
+export function isAgentBuilderWebhookTriggerType(
+  trigger: AgentBuilderTriggerType
+): trigger is AgentBuilderWebhookTriggerType {
+  return trigger.kind === "webhook";
+}
+
+export function isAgentBuilderScheduleTriggerType(
+  trigger: AgentBuilderTriggerType
+): trigger is AgentBuilderScheduleTriggerType {
+  return trigger.kind === "schedule";
+}
 
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
