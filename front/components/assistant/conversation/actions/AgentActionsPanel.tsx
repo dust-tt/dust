@@ -76,7 +76,7 @@ function AgentActionsPanelContent({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Track whether the user is currently scrolled to the bottom of the panel
-  const isUserAtBottomRef = useRef<boolean>(true);
+  const shouldAutoScroll = useRef<boolean>(true);
 
   /**
    * Preserve chain of thought content to prevent flickering during state transitions.
@@ -107,7 +107,7 @@ function AgentActionsPanelContent({
       return;
     }
 
-    if (isUserAtBottomRef.current) {
+    if (shouldAutoScroll.current) {
       el.scrollTo({
         top: el.scrollHeight,
         behavior: "smooth",
@@ -117,13 +117,18 @@ function AgentActionsPanelContent({
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
+    const scrollUp =
+      Number(el.scrollTop) < Number(el.dataset.lastScrollTop || 0);
+
+    el.dataset.lastScrollTop = el.scrollTop.toString();
     /**
      * 1000px threshold is used to determine if the user is at the bottom of the panel.
      * If the user is within 1000px of the bottom, we consider them to be at the bottom.
      * This is to prevent losing auto-scroll when we receive a visually BIG chunk.
      */
     const threshold = 1000;
-    isUserAtBottomRef.current =
+    shouldAutoScroll.current =
+      !scrollUp &&
       el.scrollHeight - el.clientHeight <= el.scrollTop + threshold;
   };
 
@@ -227,6 +232,7 @@ function AgentActionsPanelContent({
                 showSeparator={currentStreamingStep > 1}
               />
             )}
+          <div>&nbsp;</div>
         </div>
       </div>
     </div>
