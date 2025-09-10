@@ -55,14 +55,16 @@ export function AgentMessageActions({
   };
 
   useEffect(() => {
-    if (currentPanel === "actions" && data !== agentMessage.sId) {
-      const isNewLastMessage = agentMessage.content === null && ref.current;
-      if (isNewLastMessage) {
-        openPanel({
-          type: "actions",
-          messageId: agentMessage.sId,
-        });
-      }
+    if (
+      currentPanel === "actions" &&
+      data !== agentMessage.sId &&
+      agentMessage.content === null &&
+      ref.current
+    ) {
+      openPanel({
+        type: "actions",
+        messageId: agentMessage.sId,
+      });
     }
     ref.current = false;
   }, [agentMessage, currentPanel, data, openPanel]);
