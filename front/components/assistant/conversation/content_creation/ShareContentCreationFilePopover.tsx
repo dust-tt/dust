@@ -2,6 +2,7 @@ import {
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
+  cn,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -36,15 +37,14 @@ interface FileSharingDropdownProps {
   isUsingConversationFiles: boolean;
 }
 
-const getScopeOptions = (
-  owner: LightWorkspaceType,
-  isUsingConversationFiles: boolean
-) => {
-  const options: {
-    icon: React.ComponentType;
-    label: string;
-    value: FileShareScope;
-  }[] = [
+function FileSharingDropdown({
+  selectedScope,
+  onScopeChange,
+  owner,
+  disabled = false,
+  isUsingConversationFiles,
+}: FileSharingDropdownProps) {
+  const scopeOptions = [
     {
       icon: LockIcon,
       label: "Only conversation participants",
@@ -55,28 +55,12 @@ const getScopeOptions = (
       label: `Anyone in ${owner.name} workspace`,
       value: "workspace" as const,
     },
-  ];
-
-  if (!isUsingConversationFiles) {
-    options.push({
+    {
       icon: GlobeAltIcon,
       label: "Anyone with the link",
       value: "public" as const,
-    });
-  }
-
-  return options;
-};
-
-function FileSharingDropdown({
-  selectedScope,
-  onScopeChange,
-  owner,
-  disabled = false,
-  isUsingConversationFiles,
-}: FileSharingDropdownProps) {
-  console.log("FileSharingDropdown");
-  const scopeOptions = getScopeOptions(owner, isUsingConversationFiles);
+    },
+  ];
 
   const selectedOption = scopeOptions.find(
     (opt) => opt.value === selectedScope
@@ -96,7 +80,12 @@ function FileSharingDropdown({
             label={selectedOption?.label}
             icon={selectedOption?.icon}
             disabled={disabled}
-            className="grid w-full grid-cols-[auto_1fr_auto] truncate"
+            className={cn(
+              "grid w-full grid-cols-[auto_1fr_auto] truncate",
+              selectedOption?.value === "public" &&
+                isUsingConversationFiles &&
+                "text-primary-400 dark:text-primary-400-night"
+            )}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
@@ -107,6 +96,7 @@ function FileSharingDropdown({
               onClick={() => onScopeChange(option.value)}
               truncateText
               icon={option.icon}
+              disabled={option.value === "public" && isUsingConversationFiles}
             />
           ))}
         </DropdownMenuContent>
