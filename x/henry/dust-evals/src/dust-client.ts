@@ -33,15 +33,13 @@ export class DustClient {
     )
   }
 
-  async callAgent(
+  private async callAgentInternal(
     agentId: string,
     prompt: string,
-    timeout: number
+    timeout: number,
+    startTime: number
   ): Promise<Result<AgentResponse>> {
-    const startTime = Date.now()
-
     try {
-      console.error(`    Calling agent: ${agentId}`)
       // Create a new conversation with the message included.
       const conversationRes = await this.client.createConversation({
         title: prompt.substring(0, 50) + (prompt.length > 50 ? "..." : ""),
@@ -62,7 +60,6 @@ export class DustClient {
       })
 
       if (!conversationRes.isOk()) {
-        console.error(`    Failed to create conversation:`, conversationRes.error)
         return Err(
           new Error(
             `Failed to create conversation: ${JSON.stringify(conversationRes.error)}`
@@ -94,7 +91,6 @@ export class DustClient {
         })
 
         if (!streamRes.isOk()) {
-          console.error(`    Failed to stream response:`, streamRes.error)
           const errorMessage = streamRes.error
             ? typeof streamRes.error === "object"
               ? "message" in streamRes.error
@@ -117,7 +113,13 @@ export class DustClient {
           switch (event.type) {
             case "generation_tokens":
               if ("text" in event && event.text) {
-                fullResponse += event.text
+                // Check if event has classification for thinking tokens
+                const classification = (event as any).classification
+
+                // Only add non-thinking tokens to the response
+                if (classification !== "thinking") {
+                  fullResponse += event.text
+                }
               }
               break
             case "agent_error":
@@ -168,12 +170,57 @@ export class DustClient {
     }
   }
 
+  async callAgent(
+    agentId: string,
+    prompt: string,
+    timeout: number,
+    maxRetries: number = 3
+  ): Promise<Result<AgentResponse>> {
+    const startTime = Date.now()
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.error(
+        `    Calling agent: ${agentId} (attempt ${attempt}/${maxRetries})`
+      )
+
+      const result = await this.callAgentInternal(
+        agentId,
+        prompt,
+        timeout,
+        startTime
+      )
+
+      if (result.isOk) {
+        return result
+      }
+
+      lastError = result.error
+
+      // Log the error
+      console.error(`    Attempt ${attempt} failed: ${result.error.message}`)
+
+      // Don't retry if this is the last attempt
+      if (attempt < maxRetries) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = Math.pow(2, attempt - 1) * 1000
+        console.error(`    Retrying in ${delay}ms...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+
+    // All retries failed
+    console.error(`    All ${maxRetries} attempts failed for agent: ${agentId}`)
+    return Err(lastError || new Error("All retry attempts failed"))
+  }
+
   async callJudge(
     judgeId: string,
     prompt: string,
-    timeout: number
+    timeout: number,
+    maxRetries: number = 3
   ): Promise<Result<string>> {
-    const result = await this.callAgent(judgeId, prompt, timeout)
+    const result = await this.callAgent(judgeId, prompt, timeout, maxRetries)
 
     if (!result.isOk) {
       return result
