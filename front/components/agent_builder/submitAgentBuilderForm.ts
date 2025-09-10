@@ -2,7 +2,10 @@ import type {
   AdditionalConfigurationInBuilderType,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { expandFoldersToTables, getTableIdForContentNode } from "@app/components/assistant_builder/shared";
+import {
+  expandFoldersToTables,
+  getTableIdForContentNode,
+} from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
@@ -66,7 +69,6 @@ async function processTableSelection(
     isSelectAll,
     excludedResources,
   } of Object.values(tablesConfigurations)) {
-
     let resourcesToProcess = selectedResources;
 
     // If isSelectAll is true, we need to fetch all resources from the data source view
@@ -199,7 +201,6 @@ export async function submitAgentBuilderForm({
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
-
   // Process actions asynchronously to handle folder-to-table expansion
   const processedActions = [];
   for (const action of formData.actions) {
