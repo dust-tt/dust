@@ -46,7 +46,7 @@ export function AgentMessageActions({
 
   const chainOfThought = agentMessage.chainOfThought || "";
 
-  const ref = useRef<boolean>(true);
+  const firstRender = useRef<boolean>(true);
   const onClick = () => {
     openPanel({
       type: "actions",
@@ -55,18 +55,19 @@ export function AgentMessageActions({
   };
 
   useEffect(() => {
+    // Only if we are in the first rendering, message is empty and panel is open on another message.
     if (
       currentPanel === "actions" &&
       data !== agentMessage.sId &&
       agentMessage.content === null &&
-      ref.current
+      firstRender.current
     ) {
       openPanel({
         type: "actions",
         messageId: agentMessage.sId,
       });
     }
-    ref.current = false;
+    firstRender.current = false;
   }, [agentMessage, currentPanel, data, openPanel]);
 
   const lastNotification = lastAction
