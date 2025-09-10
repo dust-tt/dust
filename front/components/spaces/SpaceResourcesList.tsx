@@ -375,6 +375,7 @@ export const SpaceResourcesList = ({
           onClick: () => onSelect(dataSourceView.sId),
         };
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelect is not stable, mutating the agents list which prevent pagination to work
   }, [
     spaceDataSourceViews,
     owner.sId,
@@ -383,7 +384,6 @@ export const SpaceResourcesList = ({
     isWebsiteOrFolder,
     canWriteInSpace,
     isFolder,
-    onSelect,
     isDark,
   ]);
 
