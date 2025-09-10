@@ -270,6 +270,7 @@ export function throwIfInvalidAgentConfiguration(
   }
 }
 
+// TODO: replace with a typeguard AgentMCPActionWithOutputType.
 function isMCPActionType(action: unknown): action is MCPActionType {
   return (
     typeof action === "object" &&
@@ -286,6 +287,7 @@ function isMCPActionType(action: unknown): action is MCPActionType {
   );
 }
 
+// TODO: replace with a typeguard on AgentMCPActionWithOutputType.
 export function isMCPActionArray(actions: unknown): actions is MCPActionType[] {
   return Array.isArray(actions) && actions.every(isMCPActionType);
 }

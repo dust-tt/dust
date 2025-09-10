@@ -10,7 +10,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
@@ -36,6 +35,7 @@ import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -361,27 +361,24 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           "Unexpected: MCP actions on non-function call step content"
         );
         // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
+        // TODO(durable-agents): use AgentMCPActionResource.toJSON(), which may require moving
+        //  its constructor to the AgentStepContentResource instead of the model.
         base.mcpActions = this.agentMCPActions.map(
           (action: AgentMCPActionModel) => {
             const mcpServerId = action.toolConfiguration?.toolServerId || null;
 
-            return new MCPActionType({
+            return {
               id: action.id,
+              agentMessageId: action.agentMessageId,
+              functionCallName: value.value.name,
+              internalMCPServerName:
+                getInternalMCPServerNameFromSId(mcpServerId),
+              mcpServerId,
               params: JSON.parse(value.value.arguments),
+              status: action.status,
               output: removeNulls(
                 action.outputItems.map(hideFileFromActionOutput)
               ),
-              functionCallId: value.value.id,
-              functionCallName: value.value.name,
-              mcpServerId,
-              internalMCPServerName:
-                getInternalMCPServerNameFromSId(mcpServerId),
-              agentMessageId: action.agentMessageId,
-              step: this.step,
-              mcpServerConfigurationId: action.mcpServerConfigurationId,
-              type: "tool_action",
-              status: action.status,
-              citationsAllocated: action.citationsAllocated,
               generatedFiles: removeNulls(
                 action.outputItems.map((o) => {
                   if (!o.file) {
@@ -402,7 +399,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
                   };
                 })
               ),
-            });
+            } satisfies AgentMCPActionWithOutputType;
           }
         );
       }
