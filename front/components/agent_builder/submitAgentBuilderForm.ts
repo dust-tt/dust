@@ -2,7 +2,10 @@ import type {
   AdditionalConfigurationInBuilderType,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { expandFoldersToTables, getTableIdForContentNode } from "@app/components/assistant_builder/shared";
+import {
+  expandFoldersToTables,
+  getTableIdForContentNode,
+} from "@app/components/assistant_builder/shared";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";

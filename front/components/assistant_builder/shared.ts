@@ -5,7 +5,12 @@ import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
-import type { DataSourceType, DataSourceViewType, LightContentNode, LightWorkspaceType } from "@app/types";
+import type {
+  DataSourceType,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+} from "@app/types";
 import { assertNever, normalizeError } from "@app/types";
 
 export function getTableIdForContentNode(
@@ -48,14 +53,8 @@ export function getTableIdForContentNode(
 async function expandFolderToTables(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
-  folderNode: LightContentNode,
-  visitedFolders: Set<string> = new Set()
+  folderNode: LightContentNode
 ): Promise<LightContentNode[]> {
-  if (visitedFolders.has(folderNode.internalId)) {
-    return [];
-  }
-  visitedFolders.add(folderNode.internalId);
-
   try {
     const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
     const body: GetContentNodesOrChildrenRequestBodyType = {
@@ -71,23 +70,7 @@ async function expandFolderToTables(
       "POST",
     ]);
 
-    const tables: LightContentNode[] = [];
-
-    for (const child of result.nodes) {
-      if (child.type === "table") {
-        tables.push(child);
-      } else if (child.type === "folder") {
-        const nestedTables = await expandFolderToTables(
-          owner,
-          dataSourceView,
-          child,
-          visitedFolders
-        );
-        tables.push(...nestedTables);
-      }
-    }
-
-    return tables;
+    return result.nodes;
   } catch (error) {
     logger.error(
       {
