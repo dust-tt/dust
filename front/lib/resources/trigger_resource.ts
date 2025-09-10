@@ -239,6 +239,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           auth,
           trigger: this,
         });
+      case "webhook":
+        // Webhook triggers don't need temporal workflows
+        return new Ok(undefined);
       default:
         assertNever(this.kind);
     }
@@ -253,6 +256,9 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           workspaceId: auth.getNonNullableWorkspace().sId,
           triggerId: this.sId(),
         });
+      case "webhook":
+        // Webhook triggers don't need temporal workflows
+        return new Ok(undefined);
       default:
         assertNever(this.kind);
     }
@@ -417,7 +423,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   toJSON(): TriggerType {
-    return {
+    const base = {
       id: this.id,
       sId: this.sId(),
       name: this.name,
@@ -425,9 +431,21 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       editor: this.editor,
       customPrompt: this.customPrompt,
       enabled: this.enabled,
-      kind: this.kind,
-      configuration: this.configuration,
       createdAt: this.createdAt.getTime(),
     };
+
+    if (this.kind === "schedule") {
+      return {
+        ...base,
+        kind: "schedule" as const,
+        configuration: this.configuration as { cron: string; timezone: string },
+      };
+    } else {
+      return {
+        ...base,
+        kind: "webhook" as const,
+        configuration: this.configuration as { webhookSourceViewId: string },
+      };
+    }
   }
 }

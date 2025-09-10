@@ -27,13 +27,18 @@ import type { TagType } from "@app/types/tag";
 export type AssistantBuilderTriggerType = {
   sId?: string;
   name: string;
-  kind: "schedule";
+  kind: "schedule" | "webhook";
   customPrompt: string | null;
   editor: UserType["id"] | null;
-  configuration: {
-    cron: string;
-    timezone: string;
-  } | null;
+  configuration:
+    | {
+        cron: string;
+        timezone: string;
+      }
+    | {
+        webhookSourceViewId: string;
+      }
+    | null;
 };
 
 // MCP configuration

@@ -9,12 +9,21 @@ export type ScheduleConfig = {
   timezone: string;
 };
 
-export type TriggerConfigurationType = ScheduleConfig;
-
-export type TriggerConfiguration = {
-  kind: "schedule";
-  configuration: ScheduleConfig;
+export type WebhookConfig = {
+  webhookSourceViewId: string;
 };
+
+export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
+
+export type TriggerConfiguration =
+  | {
+      kind: "schedule";
+      configuration: ScheduleConfig;
+    }
+  | {
+      kind: "webhook";
+      configuration: WebhookConfig;
+    };
 
 export type TriggerType = {
   id: ModelId;
@@ -30,7 +39,7 @@ export type TriggerType = {
 export type TriggerKind = TriggerType["kind"];
 
 export function isValidTriggerKind(kind: string): kind is TriggerKind {
-  return ["schedule"].includes(kind);
+  return ["schedule", "webhook"].includes(kind);
 }
 
 const ScheduleConfigSchema = t.type({
@@ -38,9 +47,21 @@ const ScheduleConfigSchema = t.type({
   timezone: t.string,
 });
 
-export const TriggerSchema = t.type({
-  name: t.string,
-  kind: t.literal("schedule"),
-  customPrompt: t.string,
-  configuration: ScheduleConfigSchema,
+const WebhookConfigSchema = t.type({
+  webhookSourceViewId: t.string,
 });
+
+export const TriggerSchema = t.union([
+  t.type({
+    name: t.string,
+    kind: t.literal("schedule"),
+    customPrompt: t.string,
+    configuration: ScheduleConfigSchema,
+  }),
+  t.type({
+    name: t.string,
+    kind: t.literal("webhook"),
+    customPrompt: t.string,
+    configuration: WebhookConfigSchema,
+  }),
+]);

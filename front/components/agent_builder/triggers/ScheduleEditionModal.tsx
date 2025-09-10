@@ -74,10 +74,16 @@ export function ScheduleEditionModal({
 
   const { reset } = form;
   useEffect(() => {
+    const scheduleConfig =
+      trigger?.kind === "schedule" &&
+      trigger?.configuration &&
+      "cron" in trigger.configuration
+        ? trigger.configuration
+        : null;
     reset({
       name: trigger?.name ?? defaultValues.name,
-      cron: trigger?.configuration?.cron ?? defaultValues.cron,
-      timezone: trigger?.configuration?.timezone ?? defaultValues.timezone,
+      cron: scheduleConfig?.cron ?? defaultValues.cron,
+      timezone: scheduleConfig?.timezone ?? defaultValues.timezone,
       customPrompt: trigger?.customPrompt ?? defaultValues.customPrompt,
     });
   }, [
@@ -169,7 +175,11 @@ export function ScheduleEditionModal({
                   <Label htmlFor="trigger-description">Scheduler</Label>
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     The trigger will run in the{" "}
-                    {trigger?.configuration?.timezone ||
+                    {(trigger?.kind === "schedule" &&
+                    trigger?.configuration &&
+                    "timezone" in trigger.configuration
+                      ? trigger.configuration.timezone
+                      : null) ||
                       Intl.DateTimeFormat().resolvedOptions().timeZone}{" "}
                     timezone.
                   </p>

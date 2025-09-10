@@ -191,12 +191,16 @@ const scheduleConfigSchema = z.object({
   timezone: z.string(),
 });
 
+const webhookConfigSchema = z.object({
+  webhookSourceViewId: z.string(),
+});
+
 const triggerSchema = z.object({
   sId: z.string().optional(),
   name: z.string(),
-  kind: z.enum(["schedule"]),
+  kind: z.enum(["schedule", "webhook"]),
   customPrompt: z.string().nullable(),
-  configuration: z.union([scheduleConfigSchema, z.null()]),
+  configuration: z.union([scheduleConfigSchema, webhookConfigSchema, z.null()]),
   editor: z.number().nullable(),
 });
 

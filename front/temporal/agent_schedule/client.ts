@@ -18,6 +18,13 @@ function getScheduleOptions(
   trigger: TriggerResource,
   scheduleId: string
 ): ScheduleOptions {
+  if (trigger.kind !== "schedule") {
+    throw new Error("Cannot create schedule for non-schedule trigger");
+  }
+  const configuration = trigger.configuration as {
+    cron: string;
+    timezone: string;
+  };
   return {
     action: {
       type: "startWorkflow",
@@ -34,8 +41,8 @@ function getScheduleOptions(
       overlap: ScheduleOverlapPolicy.SKIP,
     },
     spec: {
-      cronExpressions: [trigger.configuration.cron],
-      timezone: trigger.configuration.timezone,
+      cronExpressions: [configuration.cron],
+      timezone: configuration.timezone,
     },
   };
 }

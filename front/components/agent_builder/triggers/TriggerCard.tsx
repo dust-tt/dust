@@ -37,14 +37,20 @@ export const TriggerCard = ({
   const isEditor = trigger.editor === user?.id;
   const cronDescription = useMemo(() => {
     try {
-      if (trigger.configuration?.cron) {
-        return `Runs ${cronstrue.toString(trigger.configuration?.cron)}.`;
+      if (
+        trigger.kind === "schedule" &&
+        trigger.configuration &&
+        "cron" in trigger.configuration
+      ) {
+        return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
+      } else if (trigger.kind === "webhook") {
+        return "Triggered by webhook.";
       }
     } catch (error) {
       // Ignore.
     }
     return "";
-  }, [trigger.configuration?.cron]);
+  }, [trigger.kind, trigger.configuration]);
 
   return (
     <Card
