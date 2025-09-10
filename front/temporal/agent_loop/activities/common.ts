@@ -1,4 +1,3 @@
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -146,7 +145,12 @@ export async function notifyWorkflowError(
 ): Promise<void> {
   const auth = await AuthenticatorClass.fromJSON(authType);
 
-  const conversationRes = await getConversation(auth, conversationId);
+  // Use lighter fetchConversationWithoutContent
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId
+    );
   if (conversationRes.isErr()) {
     throw new Error(`Conversation not found: ${conversationId}`);
   }
@@ -173,7 +177,8 @@ export async function notifyWorkflowError(
       message: error.message || "Workflow execution failed",
       metadata: {
         category: "critical_failure",
-        errorName: error.name,
+        // Ensure errorName is a string (not an Error object or undefined)
+        errorName: error.name || "UnknownError",
       },
     },
   };
