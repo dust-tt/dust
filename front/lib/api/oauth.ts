@@ -20,6 +20,7 @@ import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
+import { OpenAIOAuthProvider } from "@app/lib/api/oauth/providers/openai";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
@@ -59,6 +60,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   mcp: new MCPOAuthProvider(),
   mcp_static: new MCPOAuthStaticOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
+  openai: new OpenAIOAuthProvider(),
   microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),
   notion: new NotionOAuthProvider(),

@@ -112,6 +112,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to OpenAI o1 high reasoning model",
     stage: "on_demand",
   },
+  openai_usage_mcp: {
+    description:
+      "OpenAI Usage and Costs MCP tool for tracking API consumption and costs",
+    stage: "rolling_out",
+  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",
