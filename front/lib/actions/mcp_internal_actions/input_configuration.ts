@@ -516,19 +516,16 @@ export interface MCPServerRequirements {
   requiresReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  requiredStrings: { key: string; description?: string; default?: string }[];
-  requiredNumbers: { key: string; description?: string; default?: number }[];
-  requiredBooleans: { key: string; description?: string; default?: boolean }[];
-  requiredEnums: Record<
-    string,
-    { options: string[]; description?: string; default?: string }
-  >;
+  requiredStrings: { key: string; description?: string }[];
+  requiredNumbers: { key: string; description?: string }[];
+  requiredBooleans: { key: string; description?: string }[];
+  requiredEnums: Record<string, { options: string[]; description?: string }>;
   requiredLists: Record<
     string,
     {
       options: Record<string, string>;
       description?: string;
-      default?: string[];
+      values?: string[];
     }
   >;
   requiresDustAppConfiguration: boolean;
