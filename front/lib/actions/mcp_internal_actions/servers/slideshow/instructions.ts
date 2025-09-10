@@ -1,11 +1,56 @@
+import {
+  VIZ_CHART_EXAMPLES,
+  VIZ_FILE_HANDLING_GUIDELINES,
+  VIZ_LIBRARY_USAGE,
+  VIZ_MIME_TYPE,
+  VIZ_MISCELLANEOUS_GUIDELINES,
+  VIZ_REACT_COMPONENT_GUIDELINES,
+  VIZ_STYLING_GUIDELINES,
+  VIZ_USE_FILE_EXAMPLES,
+} from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
+import {
+  CREATE_SLIDESHOW_FILE_TOOL_NAME,
+  CREATE_SLIDESHOW_OUTLINE_TOOL_NAME,
+  EDIT_SLIDESHOW_FILE_TOOL_NAME,
+  RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/slideshow/types";
+
 export const SLIDESHOW_INSTRUCTIONS = `
+## CREATING SLIDESHOWS WITH CONTENT CREATION
+
+You have access to a Content Creation system that allows you to create and update executable files for slideshow presentations. When creating slideshows, you should create files instead of using the :::visualization directive.
+
+### File Management Guidelines:
+- Use the \`${CREATE_SLIDESHOW_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
+- Use MIME type \`${VIZ_MIME_TYPE}\`
+- Supported file extensions: .js, .jsx, .ts, .tsx
+- Files are automatically made available to the user for execution
+
+### Updating Existing Files:
+- To modify existing Content Creation files, always use \`${RETRIEVE_SLIDESHOW_FILE_TOOL_NAME}\` first to read the current content
+- Then use \`${EDIT_SLIDESHOW_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
+- The edit tool requires exact text matching - include surrounding context for unique identification
+- Never attempt to edit without first retrieving the current file content
+
+${VIZ_REACT_COMPONENT_GUIDELINES}
+
+${VIZ_STYLING_GUIDELINES}
+
+${VIZ_FILE_HANDLING_GUIDELINES}
+
+${VIZ_LIBRARY_USAGE}
+
+${VIZ_MISCELLANEOUS_GUIDELINES}
+
+${VIZ_USE_FILE_EXAMPLES}
+
 ### Using Slideshow Components in Content Creation Files
 
 ### When to Use Slideshow Components:
 Use the Slideshow component in Content Creation files for: presentations, tutorials, step-by-step analysis, comparisons, reports
 
 WORKFLOW ENFORCEMENT:
-- STEP 1: ALWAYS use create_slideshow_outline tool first
+- STEP 1: ALWAYS use ${CREATE_SLIDESHOW_OUTLINE_TOOL_NAME} tool first
 - STEP 2: Wait for explicit user confirmation of the outline
 - STEP 3: Only after confirmation, proceed with slide creation
 - FORBIDDEN: Never create slides directly without outline approval
@@ -25,10 +70,10 @@ COMMON SLIDESHOW STRUCTURES:
 
 ### Technical Implementation:
 
-Import
+Imports:
 - import { Slideshow } from "@dust/slideshow/v1"
 
-Core pattern
+Core pattern:
 - Always wrap slides with <Slideshow.Root>…</Slideshow.Root>.
 - Each Slideshow.Preset.* component creates one complete slide
 - Slideshow.Preset.* components are direct children of Slideshow.Root only
@@ -163,4 +208,38 @@ export default function Deck() {
 
 AVOID: Long paragraphs, technical jargon, navigation controls, manual responsive classes
 FOCUS: Clear insights, visual data, brand consistency, story flow, using built-in components
+
+Example File Creation:
+
+\`\`\`
+${CREATE_SLIDESHOW_FILE_TOOL_NAME}({
+  file_name: "SineCosineChart.tsx",
+  mime_type: "${VIZ_MIME_TYPE}",
+  content: \`[React component code]\`
+})
+\`\`\`
+
+Example File Editing Workflow:
+
+**Step 1: Retrieve the current file content first**
+\`\`\`
+${RETRIEVE_SLIDESHOW_FILE_TOOL_NAME}({
+  file_id: "fil_abc123"
+})
+// This returns the current file content - examine it carefully to identify the exact text to replace
+\`\`\`
+
+**Step 2: Make targeted edits using the retrieved content**
+\`\`\`
+${EDIT_SLIDESHOW_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  expected_replacements: 1,
+})
+\`\`\`
+
+The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
+
+${VIZ_CHART_EXAMPLES}
 `;

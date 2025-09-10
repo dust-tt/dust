@@ -14,6 +14,7 @@ import {
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
+import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -76,6 +77,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "image_generation",
   "include_data",
   "content_creation",
+  "slideshow",
   "jira",
   "missing_action_catcher",
   "monday",
@@ -910,6 +912,27 @@ The directive should be used to display a clickable version of the agent name in
       icon: "DriveLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-drive",
       instructions: null,
+    },
+  },
+  slideshow: {
+    id: 28,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slideshow");
+    },
+    isPreview: true,
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slideshow",
+      version: "0.1.0",
+      description: "Create interactive slideshows.",
+      authorization: null,
+      icon: "ActionDocumentTextIcon",
+      documentationUrl: null,
+      instructions: SLIDESHOW_INSTRUCTIONS,
     },
   },
   [SEARCH_SERVER_NAME]: {
