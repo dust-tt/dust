@@ -118,8 +118,6 @@ export async function agentLoopWorkflow({
   let childWorkflowHandle: ChildWorkflowHandle<
     typeof agentLoopConversationTitleWorkflow
   > | null = null;
-  let workflowFailed = false;
-  let workflowError: Error | undefined;
 
   try {
     // If conversation title is not set, launch a child workflow to generate the conversation title in
@@ -156,20 +154,18 @@ export async function agentLoopWorkflow({
       await childWorkflowHandle.result();
     }
   } catch (err) {
-    workflowFailed = true;
-    workflowError = err instanceof Error ? err : new Error(String(err));
-    throw err;
-  } finally {
-    // Only notify error if the workflow actually failed
-    if (workflowFailed && workflowError) {
-      await CancellationScope.nonCancellable(async () => {
-        await notifyWorkflowError(authType, {
-          conversationId: runAsynchronousAgentArgs.conversationId,
-          agentMessageId: runAsynchronousAgentArgs.agentMessageId,
-          agentMessageVersion: runAsynchronousAgentArgs.agentMessageVersion,
-          error: workflowError as Error, // We know it's defined here due to the conditional check
-        });
+    const workflowError = err instanceof Error ? err : new Error(String(err));
+    
+    // Notify error in a non-cancellable scope to ensure it runs even if workflow is cancelled
+    await CancellationScope.nonCancellable(async () => {
+      await notifyWorkflowError(authType, {
+        conversationId: runAsynchronousAgentArgs.conversationId,
+        agentMessageId: runAsynchronousAgentArgs.agentMessageId,
+        agentMessageVersion: runAsynchronousAgentArgs.agentMessageVersion,
+        error: workflowError,
       });
-    }
+    });
+    
+    throw err;
   }
 }
