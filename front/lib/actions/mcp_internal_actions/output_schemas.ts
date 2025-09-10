@@ -16,8 +16,7 @@ import {
   INTERNAL_ALLOWED_ICONS,
 } from "@app/lib/actions/mcp_icons";
 import type { AllSupportedFileContentType } from "@app/types";
-import { CONNECTOR_PROVIDERS } from "@app/types";
-import { ALL_FILE_FORMATS } from "@app/types";
+import { ALL_FILE_FORMATS, CONNECTOR_PROVIDERS } from "@app/types";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
@@ -847,11 +846,13 @@ const NotificationStoreResourceContentSchema = z.object({
   type: z.literal("store_resource"),
   content: z.object({
     type: z.literal("resource"),
-    resource: z.object({
-      mimeType: z.string(),
-      text: z.string(),
-      uri: z.string(),
-    }).passthrough(), // Allow additional properties
+    resource: z
+      .object({
+        mimeType: z.string(),
+        text: z.string(),
+        uri: z.string(),
+      })
+      .passthrough(), // Allow additional properties
   }),
 });
 
