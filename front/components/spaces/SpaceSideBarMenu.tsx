@@ -42,6 +42,7 @@ import {
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AppType,
@@ -275,6 +276,7 @@ const SystemSpaceMenu = ({
             return null;
           }
         }
+
         return (
           <SystemSpaceItem
             category={item.category as DataSourceViewCategoryWithoutApps}
@@ -418,6 +420,10 @@ const SpaceMenuItem = ({
                     owner={owner}
                     space={space}
                   />
+                );
+              } else if (c === "triggers") {
+                return (
+                  <SpaceTriggersSubMenu key={c} owner={owner} space={space} />
                 );
               } else {
                 return (
@@ -775,6 +781,70 @@ const SpaceActionsSubMenu = ({
               action={serverView}
               key={serverView.server.name}
               owner={owner}
+            />
+          ))}
+        </Tree>
+      )}
+    </Tree.Item>
+  );
+};
+
+const SpaceTriggerItem = ({ label }: { label: string }): ReactElement => {
+  return <Tree.Item type="leaf" label={label} visual={BellIcon} />;
+};
+
+const TRIGGERS_CATEGORY: DataSourceViewCategory = "triggers";
+
+const SpaceTriggersSubMenu = ({
+  owner,
+  space,
+}: {
+  owner: LightWorkspaceType;
+  space: SpaceType;
+}) => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
+  const router = useRouter();
+  const spaceTriggersPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${TRIGGERS_CATEGORY}`;
+  const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
+    path: spaceTriggersPath,
+  });
+  const triggersCategoryDetails = CATEGORY_DETAILS[TRIGGERS_CATEGORY];
+
+  const { webhookSourceViews, isWebhookSourceViewsLoading } =
+    useWebhookSourceViews({
+      owner,
+      space,
+      disabled: !isSelected,
+    });
+
+  return (
+    <Tree.Item
+      isNavigatable
+      label={triggersCategoryDetails.label}
+      collapsed={!isExpanded}
+      onItemClick={async () => {
+        await setNavigationSelection({
+          lastSpaceId: space.sId,
+          lastSpaceCategory: TRIGGERS_CATEGORY,
+        });
+        void router.push(spaceTriggersPath);
+      }}
+      isSelected={isSelected}
+      onChevronClick={toggleExpanded}
+      visual={triggersCategoryDetails.icon}
+      areActionsFading={false}
+      type={
+        isWebhookSourceViewsLoading || webhookSourceViews.length > 0
+          ? "node"
+          : "leaf"
+      }
+    >
+      {isExpanded && (
+        <Tree isLoading={isWebhookSourceViewsLoading}>
+          {webhookSourceViews.map((webhookView) => (
+            <SpaceTriggerItem
+              label={webhookView.customName ?? webhookView.sId}
+              key={webhookView.sId}
             />
           ))}
         </Tree>
