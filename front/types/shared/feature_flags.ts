@@ -89,8 +89,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   labs_trackers: {
-    description: "Tracker feature (Labs)",
-    stage: "on_demand",
+    description:
+      "Tracker feature. Check with Henry or eng oncall before activating to a new workspace.",
+    stage: "rolling_out",
   },
   labs_transcripts: {
     description: "Transcript feature (Labs)",
@@ -146,22 +147,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tool for creating and managing agent configurations",
     stage: "dust_only",
   },
-
   research_agent: {
     description: "Activate @research agent.",
     stage: "dust_only",
   },
-  data_warehouses_tool: {
-    description:
-      "Data warehouses file system navigation with hierarchical warehouse structure",
-    stage: "dust_only",
-  },
   hootl: {
     description: "Human Out Of The Loop (aka Triggers)",
-    stage: "dust_only",
-  },
-  toolsets_tool: {
-    description: "Toolsets MCP tool",
     stage: "dust_only",
   },
   slack_enhanced_default_agent: {
