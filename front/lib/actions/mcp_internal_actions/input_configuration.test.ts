@@ -93,6 +93,52 @@ describe("augmentInputsWithConfiguration", () => {
 
       expect(result).toEqual(rawInputs);
     });
+
+    it("should preserve existing inputs and only add missing ones", () => {
+      const rawInputs = {
+        existingParam: "existing-value",
+        partiallyProvided: "user-provided",
+      };
+      const config = createBasicMCPConfiguration({
+        additionalConfiguration: {
+          stringParam: "config-value",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            existingParam: { type: "string" },
+            partiallyProvided: { type: "string" },
+            stringParam: {
+              type: "object",
+              properties: {
+                value: { type: "string" },
+                mimeType: {
+                  type: "string",
+                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+                },
+              },
+              required: ["value", "mimeType"],
+            },
+          },
+          required: ["existingParam", "partiallyProvided", "stringParam"],
+        },
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual({
+        existingParam: "existing-value",
+        partiallyProvided: "user-provided",
+        stringParam: {
+          value: "config-value",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      });
+    });
   });
 
   describe("DATA_SOURCE mime type", () => {
@@ -1029,51 +1075,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
-    it("should preserve existing inputs and only add missing ones", () => {
-      const rawInputs = {
-        existingParam: "existing-value",
-        partiallyProvided: "user-provided",
-      };
-      const config = createBasicMCPConfiguration({
-        additionalConfiguration: {
-          stringParam: "config-value",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            existingParam: { type: "string" },
-            partiallyProvided: { type: "string" },
-            stringParam: {
-              type: "object",
-              properties: {
-                value: { type: "string" },
-                mimeType: {
-                  type: "string",
-                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                },
-              },
-              required: ["value", "mimeType"],
-            },
-          },
-          required: ["existingParam", "partiallyProvided", "stringParam"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        existingParam: "existing-value",
-        partiallyProvided: "user-provided",
-        stringParam: {
-          value: "config-value",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-        },
-      });
-    });
+    // moved: "should preserve existing inputs and only add missing ones" now under basic functionality
 
     it("should ignore legacy additionalConfiguration keys not in inputSchema", () => {
       const rawInputs = { existingParam: "keep-me", numberParam: 42 };
