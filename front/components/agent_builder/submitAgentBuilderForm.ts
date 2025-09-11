@@ -373,6 +373,36 @@ export async function submitAgentBuilderForm({
       );
 
       if (!slackLinkRes.ok) {
+        try {
+          const errorBody = await slackLinkRes.json();
+          
+          // Check if this is a "connector_operation_in_progress" error
+          if (errorBody?.error?.type === "connector_operation_in_progress") {
+            logger.info(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: agentConfiguration.sId,
+                httpStatus: slackLinkRes.status,
+                body: slackRequestBody,
+                slackChannelsCount: slackChannels.length,
+              },
+              "[Agent builder] - Slack channel linking already in progress"
+            );
+            // For "operation in progress", we consider this a partial success
+            // The agent was saved, but the channel linking is still in progress
+            // We'll handle this in the UI by showing an informational message
+            // Return success with a special marker in the agent configuration
+            const agentWithWarning = {
+              ...agentConfiguration,
+              _warning: "slack_channel_linking_in_progress",
+              _warningMessage: errorBody.error.message || "The channel is already being linked. Please wait for the operation to complete."
+            };
+            return new Ok(agentWithWarning as typeof agentConfiguration);
+          }
+        } catch {
+          // If we can't parse the error, fall through to generic error
+        }
+        
         logger.error(
           {
             workspaceId: owner.sId,

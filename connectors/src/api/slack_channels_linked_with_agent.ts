@@ -153,6 +153,35 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   );
   for (const joinRes of joinPromises) {
     if (joinRes.isErr()) {
+      // Check if the error is specifically about operation already in progress
+      if (
+        typeof joinRes.error === "object" &&
+        joinRes.error !== null &&
+        "type" in joinRes.error &&
+        joinRes.error.type === "connector_operation_in_progress"
+      ) {
+        return apiError(
+          req,
+          res,
+          {
+            status_code: 409, // Conflict - operation already in progress
+            api_error: {
+              type: "connector_operation_in_progress",
+              message: joinRes.error.message as string,
+            },
+          }
+        );
+      }
+      
+      // Convert the error to an Error object if it's not already
+      const error = joinRes.error instanceof Error
+        ? joinRes.error
+        : new Error(
+            typeof joinRes.error === "object" && joinRes.error !== null && "message" in joinRes.error
+              ? (joinRes.error.message as string)
+              : `Could not launch join channel workflow: ${joinRes.error}`
+          );
+      
       return apiError(
         req,
         res,
@@ -160,10 +189,10 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
           status_code: 400,
           api_error: {
             type: "connector_update_error",
-            message: `Could not launch join channel workflow: ${joinRes.error}`,
+            message: error.message,
           },
         },
-        joinRes.error
+        error
       );
     }
   }

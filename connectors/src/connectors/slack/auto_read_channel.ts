@@ -62,7 +62,32 @@ export async function autoReadChannel(
   );
 
   if (workflowResult.isErr()) {
-    return new Err(workflowResult.error);
+    // Check if this is the "operation in progress" error
+    if (
+      typeof workflowResult.error === "object" &&
+      workflowResult.error !== null &&
+      "type" in workflowResult.error &&
+      workflowResult.error.type === "connector_operation_in_progress"
+    ) {
+      // For auto-read, if the operation is already in progress, that's fine
+      logger.info(
+        {
+          connectorId,
+          slackChannelId,
+          teamId,
+        },
+        "Auto-read channel join already in progress"
+      );
+      return new Ok(true);
+    }
+    
+    // For other errors, return them as is
+    const error = workflowResult.error instanceof Error 
+      ? workflowResult.error 
+      : new Error(typeof workflowResult.error === 'object' && 'message' in workflowResult.error 
+        ? (workflowResult.error.message as string)
+        : 'Unknown error');
+    return new Err(error);
   }
 
   return new Ok(true);

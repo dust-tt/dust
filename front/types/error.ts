@@ -55,6 +55,7 @@ const API_ERROR_TYPES = [
   "connector_oauth_user_missing_rights",
   "connector_provider_not_supported",
   "connector_credentials_error",
+  "connector_operation_in_progress",
   "agent_configuration_not_found",
   "agent_group_permission_error",
   "agent_message_error",

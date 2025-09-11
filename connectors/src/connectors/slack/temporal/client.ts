@@ -1,4 +1,5 @@
 import { Err, Ok, removeNulls } from "@dust-tt/client";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import { getChannelsToSync } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -366,6 +367,22 @@ export async function launchJoinChannelWorkflow(
     );
     return new Ok(workflowId);
   } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.info(
+        {
+          workflowId,
+          channelId,
+          useCase,
+        },
+        "JoinChannel workflow already started, channel is being linked."
+      );
+      // Return a specific error that indicates the operation is in progress
+      return new Err({
+        type: "connector_operation_in_progress" as const,
+        message: "Channel is already being linked to the agent. Please wait for the operation to complete.",
+      });
+    }
+    
     logger.error(
       {
         workflowId,
