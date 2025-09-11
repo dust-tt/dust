@@ -1,5 +1,6 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
+  BellIcon,
   BoltIcon,
   Breadcrumbs,
   CloudArrowLeftRightIcon,
@@ -72,20 +73,32 @@ export function SpaceBreadCrumbs({
 
     if (space.kind === "system") {
       // Root managed connection in system space.
-      if (category === "managed" && !dataSourceView) {
-        return [
-          {
-            icon: CloudArrowLeftRightIcon,
-            label: "Connections Admin",
-          },
-        ];
-      } else if (category === "actions") {
-        return [
-          {
-            icon: BoltIcon,
-            label: "Tools",
-          },
-        ];
+      switch (category) {
+        case "managed": {
+          if (dataSourceView === undefined) {
+            return [
+              {
+                icon: CloudArrowLeftRightIcon,
+                label: "Connections Admin",
+              },
+            ];
+          }
+          break;
+        }
+        case "actions":
+          return [
+            {
+              icon: BoltIcon,
+              label: "Tools",
+            },
+          ];
+        case "triggers":
+          return [
+            {
+              icon: BellIcon,
+              label: "Triggers",
+            },
+          ];
       }
 
       // For system space, we don't want the first breadcrumb to show, since

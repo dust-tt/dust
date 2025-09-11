@@ -15,7 +15,7 @@ export type WebhookSourceType = {
   updatedAt: number;
 };
 
-export type WebhookSourcesViewType = {
+export type WebhookSourceViewType = {
   id: ModelId;
   sId: string;
   customName: string | null;
@@ -24,6 +24,10 @@ export type WebhookSourcesViewType = {
   spaceId: string;
   webhookSource: WebhookSourceType;
   editedByUser: EditedByUser | null;
+};
+
+export type WebhookSourceWithViews = WebhookSourceType & {
+  views: WebhookSourceViewType[];
 };
 
 export const WebhookSourceSchema = t.type({

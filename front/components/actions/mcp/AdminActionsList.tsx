@@ -51,6 +51,7 @@ type RowData = {
 
 const NameCell = ({ row }: { row: RowData }) => {
   const { mcpServer, mcpServerView, isConnected } = row;
+
   return (
     <DataTable.CellContent grow>
       <div
@@ -162,32 +163,28 @@ export const AdminActionsList = ({
     () =>
       mcpServers
         .filter((mcpServer) => mcpServer.availability === "manual")
-        .map((mcpServer) => {
-          const mcpServerWithViews = mcpServers.find(
-            (s) => s.sId === mcpServer.sId
-          );
+        .map((mcpServerWithViews) => {
           const mcpServerView = mcpServerWithViews?.views.find(
             (v) => v.spaceId === systemSpace?.sId
           );
-          const spaceIds = mcpServerWithViews
-            ? mcpServerWithViews.views.map((v) => v.spaceId)
-            : [];
+          const spaceIds =
+            mcpServerWithViews?.views.map((v) => v.spaceId) ?? [];
           const agentsUsage =
             usage && mcpServerView ? usage[mcpServerView.server.sId] : null;
 
           return {
-            mcpServer,
+            mcpServer: mcpServerWithViews,
             mcpServerView,
             spaces: spaces.filter((s) => spaceIds?.includes(s.sId)),
             usage: agentsUsage,
             isConnected: !!connections.find(
               (c) =>
-                c.internalMCPServerId === mcpServer.sId ||
-                c.remoteMCPServerId === mcpServer.sId
+                c.internalMCPServerId === mcpServerWithViews.sId ||
+                c.remoteMCPServerId === mcpServerWithViews.sId
             ),
             onClick: () => {
-              if (mcpServerView && mcpServer) {
-                setMcpServerToShow(mcpServer);
+              if (mcpServerView && mcpServerWithViews) {
+                setMcpServerToShow(mcpServerWithViews);
               }
             },
           };
@@ -242,6 +239,7 @@ export const AdminActionsList = ({
         header: "Access",
         cell: (info: CellContext<RowData, SpaceType[]>) => {
           const globalSpace = info.getValue().find((s) => s.kind === "global");
+
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
@@ -271,6 +269,7 @@ export const AdminActionsList = ({
         header: "By",
         cell: (info) => {
           const editedByUser = info.row.original.mcpServerView?.editedByUser;
+
           return (
             <DataTable.CellContent
               avatarUrl={editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}

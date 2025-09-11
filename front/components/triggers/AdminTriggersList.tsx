@@ -1,0 +1,158 @@
+import { classNames, DataTable, Spinner } from "@dust-tt/sparkle";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useMemo } from "react";
+
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
+import type {
+  WebhookSourceViewType,
+  WebhookSourceWithViews,
+} from "@app/types/triggers/webhooks";
+
+type RowData = {
+  webhookSourceWithViews: WebhookSourceWithViews;
+  webhookSourceView?: WebhookSourceViewType;
+  spaces: SpaceType[];
+  onClick?: () => void;
+};
+
+const NameCell = ({ row }: { row: RowData }) => {
+  const { webhookSourceWithViews, webhookSourceView } = row;
+
+  return (
+    <DataTable.CellContent grow>
+      <div
+        className={classNames(
+          "flex flex-row items-center gap-3 py-3",
+          webhookSourceView ? "" : "opacity-50"
+        )}
+      >
+        <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
+          <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+            {webhookSourceView?.customName ?? webhookSourceWithViews.name}
+          </div>
+        </div>
+      </div>
+    </DataTable.CellContent>
+  );
+};
+
+type AdminTriggersListProps = {
+  owner: LightWorkspaceType;
+  systemSpace: SpaceType;
+};
+
+export const AdminTriggersList = ({
+  owner,
+  systemSpace,
+}: AdminTriggersListProps) => {
+  const { spaces } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: false,
+  });
+
+  const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
+    useWebhookSourcesWithViews({
+      owner,
+      disabled: false,
+    });
+
+  const rows: RowData[] = useMemo(
+    () =>
+      webhookSourcesWithViews.map((webhookSourceWithViews) => {
+        const webhookSourceView = webhookSourceWithViews?.views.find(
+          (view) => view.spaceId === systemSpace?.sId
+        );
+        const spaceIds =
+          webhookSourceWithViews?.views.map((view) => view.spaceId) ?? [];
+
+        return {
+          webhookSourceWithViews,
+          webhookSourceView,
+          spaces: spaces.filter((space) => spaceIds?.includes(space.sId)),
+        };
+      }),
+    [webhookSourcesWithViews, spaces, systemSpace?.sId]
+  );
+  const columns = useMemo((): ColumnDef<RowData>[] => {
+    const columns: ColumnDef<RowData, any>[] = [];
+
+    columns.push(
+      {
+        id: "name",
+        accessorKey: "name",
+        header: "Name",
+        cell: (info: CellContext<RowData, string>) => (
+          <NameCell row={info.row.original} />
+        ),
+      },
+      {
+        id: "by",
+        accessorKey: "webhookSourceView.editedByUser",
+        header: "By",
+        cell: (info) => {
+          const editedByUser =
+            info.row.original.webhookSourceView?.editedByUser;
+
+          return (
+            <DataTable.CellContent
+              avatarUrl={editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
+              avatarTooltipLabel={editedByUser?.fullName ?? undefined}
+              roundedAvatar
+            />
+          );
+        },
+        meta: {
+          className: "w-10",
+        },
+      },
+      {
+        id: "lastUpdated",
+        accessorKey: "webhookSourceView.editedByUser.editedAt",
+        header: "Last updated",
+        cell: (info: CellContext<RowData, number>) => (
+          <DataTable.BasicCellContent
+            label={
+              info.getValue()
+                ? formatTimestampToFriendlyDate(info.getValue(), "compact")
+                : "-"
+            }
+          />
+        ),
+        meta: {
+          className: "w-28",
+        },
+      }
+    );
+
+    return columns;
+  }, []);
+
+  if (isWebhookSourcesWithViewsLoading) {
+    return (
+      <div className="mt-16 flex justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+        You don’t have any triggers yet.
+      </div>
+    );
+  }
+
+  return (
+    <DataTable
+      data={rows}
+      columns={columns}
+      className="pb-4"
+      filterColumn="name"
+    />
+  );
+};

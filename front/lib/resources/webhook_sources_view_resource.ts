@@ -20,7 +20,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import type { ModelId, Result } from "@app/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
-import type { WebhookSourcesViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -405,7 +405,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   }
 
   // Serialization.
-  toJSON(): WebhookSourcesViewType {
+  toJSON(): WebhookSourceViewType {
     return {
       id: this.id,
       sId: this.sId,

@@ -481,7 +481,7 @@ export interface LoggerInterface {
 }
 
 const DataSourceViewCategoriesSchema = FlexibleEnumSchema<
-  "managed" | "folder" | "website" | "apps" | "actions"
+  "managed" | "folder" | "website" | "apps" | "actions" | "triggers"
 >();
 
 const BlockTypeSchema = FlexibleEnumSchema<
@@ -633,6 +633,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_sheets_tool"
   | "hootl"
   | "hootl_subscriptions"
+  | "hootl_webhooks"
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"
