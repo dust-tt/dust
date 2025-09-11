@@ -233,11 +233,17 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           model: RemoteMCPServerToolMetadataModel,
           as: "internalToolsMetadata",
           required: false,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
         },
         {
           model: RemoteMCPServerToolMetadataModel,
           as: "remoteToolsMetadata",
           required: false,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
         },
       ],
     });
