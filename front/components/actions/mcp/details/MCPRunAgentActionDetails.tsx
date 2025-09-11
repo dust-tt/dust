@@ -96,8 +96,8 @@ export function MCPRunAgentActionDetails({
     if (lastNotification?.data.output) {
       const output = lastNotification.data.output;
       if (isStoreResourceProgressOutput(output)) {
-        const runAgentQueryResource = output.contents.find((r) =>
-          isRunAgentQueryResourceType(r)
+        const runAgentQueryResource = output.contents.find(
+          isRunAgentQueryResourceType
         );
         if (runAgentQueryResource) {
           setQuery(runAgentQueryResource.resource.text);
