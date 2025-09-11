@@ -6,6 +6,7 @@ import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { SlackAutoReadPattern } from "@connectors/types";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
 export function findMatchingChannelPatterns(
   remoteChannelName: string,
@@ -63,12 +64,7 @@ export async function autoReadChannel(
 
   if (workflowResult.isErr()) {
     // Check if this is the "operation in progress" error
-    if (
-      typeof workflowResult.error === "object" &&
-      workflowResult.error !== null &&
-      "type" in workflowResult.error &&
-      workflowResult.error.type === "connector_operation_in_progress"
-    ) {
+    if (workflowResult.error instanceof WorkflowExecutionAlreadyStartedError) {
       // For auto-read, if the operation is already in progress, that's fine
       logger.info(
         {
@@ -81,13 +77,7 @@ export async function autoReadChannel(
       return new Ok(true);
     }
 
-    // For other errors, return them as is
-    const error = workflowResult.error instanceof Error 
-      ? workflowResult.error 
-        ? (typeof workflowResult.error.message === "string" ? workflowResult.error.message : "Unknown error")
-        ? (workflowResult.error.message as string)
-        : 'Unknown error');
-    return new Err(error);
+    return new Err(workflowResult.error);
   }
 
   return new Ok(true);

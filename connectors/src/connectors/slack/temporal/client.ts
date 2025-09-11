@@ -367,22 +367,6 @@ export async function launchJoinChannelWorkflow(
     );
     return new Ok(workflowId);
   } catch (e) {
-    if (e instanceof WorkflowExecutionAlreadyStartedError) {
-      logger.info(
-        {
-          workflowId,
-          channelId,
-          useCase,
-        },
-        "JoinChannel workflow already started."
-      );
-      // Return a specific error that indicates the operation is in progress
-      return new Err({
-        type: "connector_operation_in_progress" as const,
-        message: "JoinChannel workflow already started.",
-      });
-    }
-
     logger.error(
       {
         workflowId,

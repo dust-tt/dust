@@ -12,6 +12,7 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,
@@ -153,34 +154,19 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   );
   for (const joinRes of joinPromises) {
     if (joinRes.isErr()) {
-      if (
-        typeof joinRes.error === "object" &&
-        joinRes.error !== null &&
-        "type" in joinRes.error &&
-        joinRes.error.type === "connector_operation_in_progress"
-      ) {
-        return apiError(
-          req,
-          res,
-          {
-            status_code: 409, // Conflict - operation already in progress
-            api_error: {
-              type: "connector_operation_in_progress",
-              message: typeof joinRes.error.message === "string" ? joinRes.error.message : "Unknown error",
-            },
-          }
-        );
+      if (joinRes.error instanceof WorkflowExecutionAlreadyStartedError) {
+        return apiError(req, res, {
+          status_code: 409, // Conflict - operation already in progress
+          api_error: {
+            type: "connector_operation_in_progress",
+            message:
+              typeof joinRes.error.message === "string"
+                ? joinRes.error.message
+                : "Unknown error",
+          },
+        });
       }
 
-      // Convert the error to an Error object if it's not already
-      const error = joinRes.error instanceof Error
-        ? joinRes.error
-        : new Error(
-            typeof joinRes.error === "object" && joinRes.error !== null && "message" in joinRes.error
-              ? (typeof joinRes.error.message === "string" ? joinRes.error.message : "Unknown error")
-              : `Could not launch join channel workflow: ${joinRes.error}`
-          );
-      
       return apiError(
         req,
         res,
@@ -188,10 +174,10 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
           status_code: 400,
           api_error: {
             type: "connector_update_error",
-            message: error.message,
+            message: joinRes.error.message,
           },
         },
-        error
+        joinRes.error
       );
     }
   }
