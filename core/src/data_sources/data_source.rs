@@ -2100,7 +2100,14 @@ impl DataSource {
         );
 
         // Process tables deletion in chunks to avoid too much concurrency
-        for chunk in tables.chunks(100) {
+        for (batch_index, chunk) in tables.chunks(100).enumerate() {
+            info!(
+                data_source_internal_id = self.internal_id(),
+                batch_index = batch_index,
+                batch_size = chunk.len(),
+                "Deleting table batch"
+            );
+
             try_join_all(
                 chunk
                     .iter()
