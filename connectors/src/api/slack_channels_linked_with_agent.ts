@@ -153,7 +153,6 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   );
   for (const joinRes of joinPromises) {
     if (joinRes.isErr()) {
-      // Check if the error is specifically about operation already in progress
       if (
         typeof joinRes.error === "object" &&
         joinRes.error !== null &&
