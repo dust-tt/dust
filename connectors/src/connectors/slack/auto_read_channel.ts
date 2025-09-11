@@ -1,12 +1,12 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
 import { launchJoinChannelWorkflow } from "@connectors/connectors/slack/temporal/client";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { SlackAutoReadPattern } from "@connectors/types";
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
 export function findMatchingChannelPatterns(
   remoteChannelName: string,
