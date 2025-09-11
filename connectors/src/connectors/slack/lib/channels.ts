@@ -296,20 +296,18 @@ export async function joinChannelWithRetries(
  */
 
 /**
- * Call cache to avoid rate limits.
- * Fetch all channels from Slack API using conversations.list.
- * This returns all channels in the workspace that the app has access to.
- *
+ *  Call cache to avoid rate limits
  *  ON RATE LIMIT ERRORS PERTAINING TO THIS FUNCTION:
  * - the next step will be to paginate (overkill at time of writing)
  * - see issue https://github.com/dust-tt/tasks/issues/1655
  * - and related PR https://github.com/dust-tt/dust/pull/8709
- * @param slackClient
  * @param connectorId
+ * @param joinedOnly
  */
-export const getAllChannels = cacheWithRedis(
-  _getAllChannelsUncached,
-  (slackClient, connectorId) => `slack-all-channels-${connectorId}`,
+export const getChannels = cacheWithRedis(
+  _getChannelsUncached,
+  (slackClient, connectorId, joinedOnly) =>
+    `slack-channels-${connectorId}-${joinedOnly}`,
   {
     ttlMs: 5 * 60 * 1000,
   }
@@ -331,6 +329,13 @@ export const getJoinedChannels = cacheWithRedis(
     ttlMs: 5 * 60 * 1000,
   }
 );
+
+export async function getAllChannels(
+  slackClient: WebClient,
+  connectorId: ModelId
+): Promise<Channel[]> {
+  return getChannels(slackClient, connectorId, false);
+}
 
 async function _getJoinedChannelsUncached(
   slackClient: WebClient,
@@ -392,13 +397,24 @@ async function _getJoinedChannelsUncached(
   return allChannels;
 }
 
-async function _getAllChannelsUncached(
+async function _getChannelsUncached(
   slackClient: WebClient,
-  connectorId: ModelId
+  connectorId: ModelId,
+  joinedOnly: boolean
 ): Promise<Channel[]> {
   return Promise.all([
-    _getTypedChannelsUncached(slackClient, connectorId, "public_channel"),
-    _getTypedChannelsUncached(slackClient, connectorId, "private_channel"),
+    _getTypedChannelsUncached(
+      slackClient,
+      connectorId,
+      joinedOnly,
+      "public_channel"
+    ),
+    _getTypedChannelsUncached(
+      slackClient,
+      connectorId,
+      joinedOnly,
+      "private_channel"
+    ),
   ]).then(([publicChannels, privateChannels]) => [
     ...publicChannels,
     ...privateChannels,
@@ -408,6 +424,7 @@ async function _getAllChannelsUncached(
 async function _getTypedChannelsUncached(
   slackClient: WebClient,
   connectorId: ModelId,
+  joinedOnly: boolean,
   types: "public_channel" | "private_channel"
 ): Promise<Channel[]> {
   const allChannels = [];
@@ -453,7 +470,9 @@ async function _getTypedChannelsUncached(
     }
     for (const channel of c.channels) {
       if (channel && channel.id) {
-        allChannels.push(channel);
+        if (!joinedOnly || channel.is_member) {
+          allChannels.push(channel);
+        }
       }
     }
   } while (nextCursor);
