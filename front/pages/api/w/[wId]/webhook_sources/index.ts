@@ -26,26 +26,39 @@ async function handler(
       const webhookSourceResources =
         await WebhookSourceResource.listByWorkspace(auth);
 
-      return res.status(200).json({
-        success: true,
-        webhookSourcesWithViews: await concurrentExecutor(
+      try {
+        const webhookSourcesWithViews = await concurrentExecutor(
           webhookSourceResources,
           async (webhookSourceResource) => {
             const webhookSource = webhookSourceResource.toJSON();
-            const views = (
+            const webhookSourceViewResources =
               await WebhookSourcesViewResource.listByWebhookSource(
                 auth,
                 webhookSource.id
-              )
-            ).map((view) => view.toJSON());
+              );
+            const views = webhookSourceViewResources.map((view) =>
+              view.toJSON()
+            );
 
             return { ...webhookSource, views };
           },
           {
             concurrency: 10,
           }
-        ),
-      });
+        );
+
+        return res.status(200).json({
+          success: true,
+          webhookSourcesWithViews,
+        });
+      } catch (error) {
+        return res.status(500).json({
+          error: {
+            type: "internal_server_error",
+            message: "Failed to load webhook source views.",
+          },
+        });
+      }
     }
     default: {
       return apiError(req, res, {
