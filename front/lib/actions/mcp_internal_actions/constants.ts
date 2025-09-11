@@ -957,7 +957,13 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       icon: "ActionBrainIcon",
       documentationUrl: null,
-      instructions: null, // TODO(daph): Add proper instructions.
+      instructions:
+        "This tool performs a complete handoff to the dust-deep research agent. " +
+        "Once you call this tool, the dust-deep agent takes full responsibility for the research and response. " +
+        "DO NOT attempt to answer the query yourself or promise to incorporate additional information - " +
+        "you cannot interact with or modify the dust-deep agent's research once the handoff is complete. " +
+        "Your only role is to prepare a comprehensive query that includes all relevant context and pass it to dust-deep. " +
+        "The dust-deep agent will handle the entire research process and provide the final answer directly to the user.",
     },
   },
   [SEARCH_SERVER_NAME]: {
