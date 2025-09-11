@@ -1,7 +1,9 @@
+// Okay to use public API types because it's front/connectors communication.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { ConnectorsAPIError } from "@dust-tt/client";
 
-import { CONVERSATION_ERROR_TYPES } from "./assistant/conversation";
-import type { CoreAPIError } from "./core/core_api";
+import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
+import type { CoreAPIError } from "@app/types/core/core_api";
 
 export type InternalErrorWithStatusCode = {
   status_code: number;
