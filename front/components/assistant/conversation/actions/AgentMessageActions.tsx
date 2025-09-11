@@ -121,7 +121,7 @@ export function AgentMessageActions({
   ) : (
     <div className="flex flex-col items-start gap-y-4">
       <Button
-        size="sm"
+        size="xs"
         label="Message Breakdown"
         icon={CommandLineIcon}
         variant={data === agentMessage.sId ? "primary" : "outline"}
