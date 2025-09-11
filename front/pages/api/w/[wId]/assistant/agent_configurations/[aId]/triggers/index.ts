@@ -85,7 +85,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      // Fetch all editor users in batch to avoid N+1 queries
+      // Fetch all editor users in batch
       const editorIds = [...new Set(triggers.map((trigger) => trigger.editor))];
       const editorUsers = await UserResource.fetchByModelIds(editorIds);
       const editorEmailMap = new Map(
