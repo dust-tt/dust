@@ -82,15 +82,11 @@ export async function autoReadChannel(
     }
 
     // For other errors, return them as is
-    const error =
-      workflowResult.error instanceof Error
-        ? workflowResult.error
-        : new Error(
-            typeof workflowResult.error === "object" &&
-            "message" in workflowResult.error
-              ? (workflowResult.error.message as string)
-              : "Unknown error"
-          );
+    const error = workflowResult.error instanceof Error 
+      ? workflowResult.error 
+        ? (typeof workflowResult.error.message === "string" ? workflowResult.error.message : "Unknown error")
+        ? (workflowResult.error.message as string)
+        : 'Unknown error');
     return new Err(error);
   }
 
