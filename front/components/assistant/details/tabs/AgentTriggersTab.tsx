@@ -4,7 +4,6 @@ import {
   BellIcon,
   ClockIcon,
   PencilSquareIcon,
-  PlusIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
@@ -20,7 +19,6 @@ import {
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
-import { isAdmin } from "@app/types";
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -47,7 +45,6 @@ export function AgentTriggersTab({
     agentConfigurationId: agentConfiguration.sId,
   });
 
-  const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
   const editionURL = getAgentBuilderRoute(owner.sId, agentConfiguration.sId);
 
   return (
@@ -131,17 +128,6 @@ export function AgentTriggersTab({
               </div>
             </div>
           ))}
-          {canEditAssistant && (
-            <div className="flex self-center pt-4">
-              <Button
-                icon={PlusIcon}
-                label="Create Trigger"
-                href={editionURL}
-                variant="primary"
-                size="sm"
-              />
-            </div>
-          )}
         </div>
       )}
     </>

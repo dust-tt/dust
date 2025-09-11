@@ -1,7 +1,9 @@
 import {
   AnimatedText,
+  ArrowRightIcon,
   ClockIcon,
   ContentMessage,
+  DotIcon,
   Input,
   Label,
   Sheet,
@@ -101,10 +103,10 @@ export function ScheduleEditionModal({
         return "Unable to generate a schedule (note: it can't be more frequent than hourly).";
       case "idle":
         if (!cron) {
-          return `Please describe above... (minimum ${MIN_DESCRIPTION_LENGTH} characters)`;
+          return undefined;
         }
         try {
-          return `${cronstrue.toString(cron)}.`;
+          return cronstrue.toString(cron);
         } catch (error) {
           setNaturalDescriptionToCronRuleStatus("error");
         }
@@ -152,8 +154,8 @@ export function ScheduleEditionModal({
         <SheetContainer>
           <FormProvider form={form} onSubmit={onSubmit}>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="trigger-name">Trigger Name</Label>
+              <div className="space-y-1">
+                <Label htmlFor="trigger-name">Name</Label>
                 <Input
                   id="trigger-name"
                   {...form.register("name")}
@@ -164,16 +166,14 @@ export function ScheduleEditionModal({
                 />
               </div>
 
-              <div>
-                <div className="pb-2">
-                  <Label htmlFor="trigger-description">Scheduler</Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    The trigger will run in the{" "}
-                    {trigger?.configuration?.timezone ||
-                      Intl.DateTimeFormat().resolvedOptions().timeZone}{" "}
-                    timezone.
-                  </p>
-                </div>
+              <div className="space-y-1">
+                <Label htmlFor="trigger-description">Scheduler</Label>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Timezone:{" "}
+                  {trigger?.configuration?.timezone ||
+                    Intl.DateTimeFormat().resolvedOptions().timeZone}
+                  .
+                </p>
 
                 <TextArea
                   id="schedule-description"
@@ -210,30 +210,35 @@ export function ScheduleEditionModal({
                     }
                   }}
                 />
-                <div className="my-2">
-                  <ContentMessage variant="outline" size="lg">
-                    <div className="flex flex-row items-start gap-2 text-foreground dark:text-foreground-night">
-                      <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
-                      {naturalDescriptionToCronRuleStatus === "loading" ? (
-                        <AnimatedText variant="primary">
-                          {cronDescription}
-                        </AnimatedText>
-                      ) : (
-                        <p>Agent will run {cronDescription}</p>
-                      )}
-                    </div>
-                  </ContentMessage>
-                </div>
+
+                {cronDescription && (
+                  <div className="my-2">
+                    <ContentMessage variant="outline" size="lg">
+                      <div className="flex flex-row items-start gap-2 text-foreground dark:text-foreground-night">
+                        {naturalDescriptionToCronRuleStatus === "loading" ? (
+                          <>
+                            <DotIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                            <AnimatedText variant="primary">
+                              {cronDescription}
+                            </AnimatedText>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRightIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                            <p>{cronDescription}</p>
+                          </>
+                        )}
+                      </div>
+                    </ContentMessage>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <div className="pb-2">
-                  <Label htmlFor="trigger-description">Custom Message</Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    (optional) A custom message that will be sent to the agent
-                    when triggered.
-                  </p>
-                </div>
+              <div className="space-y-1">
+                <Label htmlFor="trigger-description">Message (Optional)</Label>
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Add context or instructions for the agent when triggered.
+                </p>
                 <TextArea
                   id="schedule-custom-prompt"
                   placeholder='e.g. "Provide a summary of the latest sales figures."'
