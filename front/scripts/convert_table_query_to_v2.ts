@@ -105,12 +105,6 @@ async function convertWorkspaceTableQueryToolsToV2({
         const originalMcpServerViewId = config.mcpServerViewId;
         const originalInternalMCPServerId = config.internalMCPServerId;
 
-        console.log(">>>> originalMcpServerViewId", originalMcpServerViewId);
-        console.log(
-          ">>>> originalInternalMCPServerId",
-          originalInternalMCPServerId
-        );
-
         // Update to use query_tables_v2
         await config.update({
           mcpServerViewId: mcpServerViewV2.id,
