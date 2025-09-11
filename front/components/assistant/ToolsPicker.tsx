@@ -19,7 +19,7 @@ import {
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useInternalMCPServerViewsFromSpaces,
@@ -79,7 +79,7 @@ export function ToolsPicker({
     ].filter(
       (v) =>
         // Only tools that do not require any configuration can be enabled directly in a conversation.
-        getMCPServerRequirements(v).noRequirement &&
+        getMCPServerToolsConfigurations(v).noRequirement &&
         (searchText.length === 0 ||
           getMcpServerViewDisplayName(v)
             .toLowerCase()

@@ -516,54 +516,75 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-export interface MCPServerRequirements {
-  requiresDataSourceConfiguration: boolean;
-  requiresDataWarehouseConfiguration: boolean;
-  requiresTableConfiguration: boolean;
-  requiresChildAgentConfiguration: boolean;
-  requiresReasoningConfiguration: boolean;
+/*
+The "mayRequire" properties are true in one of two cases:
+  1. There is a property with a missing value that must be inputted to validate the schema.
+  2. There is a property with a default value that may still be changed by the user.
+*/
+export interface MCPServerToolsConfigurations {
+  mayRequireDataSourceConfiguration: boolean;
+  mayRequireDataWarehouseConfiguration: boolean;
+  mayRequireTableConfiguration: boolean;
+  mayRequireChildAgentConfiguration: boolean;
+  mayRequireReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  requiredStrings: { key: string; description?: string }[];
-  requiredNumbers: { key: string; description?: string }[];
-  requiredBooleans: { key: string; description?: string }[];
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<
+  stringConfigurations: {
+    key: string;
+    description?: string;
+    default?: string;
+  }[];
+  numberConfigurations: {
+    key: string;
+    description?: string;
+    default?: number;
+  }[];
+  booleanConfigurations: {
+    key: string;
+    description?: string;
+    default?: boolean;
+  }[];
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string; default?: string }
+  >;
+  listConfigurations: Record<
     string,
     {
       options: Record<string, string>;
       description?: string;
       values?: string[];
+      default?: string;
     }
   >;
-  requiresDustAppConfiguration: boolean;
+  mayRequireDustAppConfiguration: boolean;
   noRequirement: boolean;
 }
 
-export function getMCPServerRequirements(
+export function getMCPServerToolsConfigurations(
   mcpServerView: MCPServerViewType | null | undefined
-): MCPServerRequirements {
+): MCPServerToolsConfigurations {
   if (!mcpServerView) {
     return {
-      requiresDataSourceConfiguration: false,
-      requiresDataWarehouseConfiguration: false,
-      requiresTableConfiguration: false,
-      requiresChildAgentConfiguration: false,
-      requiresReasoningConfiguration: false,
+      mayRequireDataSourceConfiguration: false,
+      mayRequireDataWarehouseConfiguration: false,
+      mayRequireTableConfiguration: false,
+      mayRequireChildAgentConfiguration: false,
+      mayRequireReasoningConfiguration: false,
       mayRequireTimeFrameConfiguration: false,
       mayRequireJsonSchemaConfiguration: false,
-      requiredStrings: [],
-      requiredNumbers: [],
-      requiredBooleans: [],
-      requiredEnums: {},
-      requiredLists: {},
-      requiresDustAppConfiguration: false,
+      stringConfigurations: [],
+      numberConfigurations: [],
+      booleanConfigurations: [],
+      enumConfigurations: {},
+      listConfigurations: {},
+      mayRequireDustAppConfiguration: false,
       noRequirement: false,
     };
   }
   const { server } = mcpServerView;
 
-  const requiresDataSourceConfiguration =
+  const mayRequireDataSourceConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
@@ -571,7 +592,7 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const requiresDataWarehouseConfiguration =
+  const mayRequireDataWarehouseConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
@@ -579,7 +600,7 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const requiresTableConfiguration =
+  const mayRequireTableConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
@@ -587,7 +608,7 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const requiresChildAgentConfiguration =
+  const mayRequireChildAgentConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
@@ -595,7 +616,7 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
-  const requiresReasoningConfiguration =
+  const mayRequireReasoningConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
@@ -622,7 +643,7 @@ export function getMCPServerRequirements(
     (tool) => tool.inputSchema?.properties?.jsonSchema
   );
 
-  const requiredStrings = Object.entries(
+  const stringConfigurations = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
@@ -632,7 +653,7 @@ export function getMCPServerRequirements(
     description: schema.description,
   }));
 
-  const requiredNumbers = Object.entries(
+  const numberConfigurations = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
@@ -642,7 +663,7 @@ export function getMCPServerRequirements(
     description: schema.description,
   }));
 
-  const requiredBooleans = Object.entries(
+  const booleanConfigurations = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
@@ -652,7 +673,7 @@ export function getMCPServerRequirements(
     description: schema.description,
   }));
 
-  const requiredEnums = Object.fromEntries(
+  const enumConfigurations = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -676,7 +697,7 @@ export function getMCPServerRequirements(
     })
   );
 
-  const requiredLists = Object.fromEntries(
+  const listConfigurations = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -719,7 +740,7 @@ export function getMCPServerRequirements(
     })
   );
 
-  const requiredDustAppConfiguration =
+  const mayRequireDustAppConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
@@ -728,32 +749,32 @@ export function getMCPServerRequirements(
     ).length > 0;
 
   return {
-    requiresDataSourceConfiguration,
-    requiresDataWarehouseConfiguration,
-    requiresTableConfiguration,
-    requiresChildAgentConfiguration,
-    requiresReasoningConfiguration,
+    mayRequireDataSourceConfiguration,
+    mayRequireDataWarehouseConfiguration,
+    mayRequireTableConfiguration,
+    mayRequireChildAgentConfiguration,
+    mayRequireReasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
-    requiredStrings,
-    requiredNumbers,
-    requiredBooleans,
-    requiredEnums,
-    requiredLists,
-    requiresDustAppConfiguration: requiredDustAppConfiguration,
+    stringConfigurations,
+    numberConfigurations,
+    booleanConfigurations,
+    enumConfigurations,
+    listConfigurations,
+    mayRequireDustAppConfiguration,
     noRequirement:
-      !requiresDataSourceConfiguration &&
-      !requiresDataWarehouseConfiguration &&
-      !requiresTableConfiguration &&
-      !requiresChildAgentConfiguration &&
-      !requiresReasoningConfiguration &&
-      !requiredDustAppConfiguration &&
+      !mayRequireDataSourceConfiguration &&
+      !mayRequireDataWarehouseConfiguration &&
+      !mayRequireTableConfiguration &&
+      !mayRequireChildAgentConfiguration &&
+      !mayRequireReasoningConfiguration &&
+      !mayRequireDustAppConfiguration &&
       !mayRequireTimeFrameConfiguration &&
-      requiredStrings.length === 0 &&
-      requiredNumbers.length === 0 &&
-      requiredBooleans.length === 0 &&
-      Object.keys(requiredEnums).length === 0 &&
-      Object.keys(requiredLists).length === 0,
+      stringConfigurations.length <= 0 &&
+      numberConfigurations.length <= 0 &&
+      booleanConfigurations.length <= 0 &&
+      Object.keys(enumConfigurations).length <= 0 &&
+      Object.keys(listConfigurations).length <= 0,
   };
 }
 

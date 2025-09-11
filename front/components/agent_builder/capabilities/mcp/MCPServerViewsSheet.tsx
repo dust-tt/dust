@@ -72,7 +72,7 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { O4_MINI_MODEL_ID } from "@app/types";
@@ -187,7 +187,8 @@ export function MCPServerViewsSheet({
 
     // You should not be able to select Reasoning if there is no reasoning model available.
     return filteredList.filter(
-      (view) => !getMCPServerRequirements(view).requiresReasoningConfiguration
+      (view) =>
+        !getMCPServerToolsConfigurations(view).mayRequireReasoningConfiguration
     );
   }, [defaultMCPServerViews, actions, hasReasoningModel]);
 
@@ -348,11 +349,11 @@ export function MCPServerViewsSheet({
 
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const requirement = getMCPServerRequirements(mcpServerView);
+    const requirement = getMCPServerToolsConfigurations(mcpServerView);
 
     if (!requirement.noRequirement) {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = requirement.requiresReasoningConfiguration;
+      const isReasoning = requirement.mayRequireReasoningConfiguration;
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -487,8 +488,9 @@ export function MCPServerViewsSheet({
     shouldUnregister: false,
   });
 
-  const requirements = useMemo(
-    () => (mcpServerView ? getMCPServerRequirements(mcpServerView) : null),
+  const toolsConfigurations = useMemo(
+    () =>
+      mcpServerView ? getMCPServerToolsConfigurations(mcpServerView) : null,
     [mcpServerView]
   );
 
@@ -566,7 +568,10 @@ export function MCPServerViewsSheet({
       description: "",
       icon: undefined,
       content:
-        configurationTool && mcpServerView && requirements && formSchema ? (
+        configurationTool &&
+        mcpServerView &&
+        toolsConfigurations &&
+        formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
@@ -576,34 +581,40 @@ export function MCPServerViewsSheet({
                   allowNameEdit={!configurationTool.noConfigurationRequired}
                 />
 
-                {requirements.requiresReasoningConfiguration && (
+                {toolsConfigurations.mayRequireReasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {requirements.requiresChildAgentConfiguration && (
+                {toolsConfigurations.mayRequireChildAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
-                {requirements.mayRequireTimeFrameConfiguration && (
+                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {requirements.requiresDustAppConfiguration && (
+                {toolsConfigurations.mayRequireDustAppConfiguration && (
                   <DustAppSection />
                 )}
 
-                {requirements.mayRequireJsonSchemaConfiguration && (
+                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
 
                 <AdditionalConfigurationSection
-                  requiredStrings={requirements.requiredStrings}
-                  requiredNumbers={requirements.requiredNumbers}
-                  requiredBooleans={requirements.requiredBooleans}
-                  requiredEnums={requirements.requiredEnums}
-                  requiredLists={requirements.requiredLists}
+                  stringConfigurations={
+                    toolsConfigurations.stringConfigurations
+                  }
+                  numberConfigurations={
+                    toolsConfigurations.numberConfigurations
+                  }
+                  booleanConfigurations={
+                    toolsConfigurations.booleanConfigurations
+                  }
+                  enumConfigurations={toolsConfigurations.enumConfigurations}
+                  listConfigurations={toolsConfigurations.listConfigurations}
                 />
               </div>
             </div>

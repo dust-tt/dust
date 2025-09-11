@@ -87,15 +87,15 @@ function BooleanConfigurationInput({
 }
 
 function BooleanConfigurationSection({
-  requiredBooleans,
+  booleanConfigurations,
 }: {
-  requiredBooleans: OptionalDescribedKey[];
+  booleanConfigurations: OptionalDescribedKey[];
 }) {
-  if (requiredBooleans.length === 0) {
+  if (booleanConfigurations.length === 0) {
     return null;
   }
 
-  return requiredBooleans.map(({ key, description }) => (
+  return booleanConfigurations.map(({ key, description }) => (
     <BooleanConfigurationInput
       key={key}
       configKey={key}
@@ -149,15 +149,15 @@ function NumberConfigurationInput({
 }
 
 function NumberConfigurationSection({
-  requiredNumbers,
+  numberConfigurations,
 }: {
-  requiredNumbers: OptionalDescribedKey[];
+  numberConfigurations: OptionalDescribedKey[];
 }) {
-  if (requiredNumbers.length === 0) {
+  if (numberConfigurations.length === 0) {
     return null;
   }
 
-  return requiredNumbers.map(({ key, description }) => (
+  return numberConfigurations.map(({ key, description }) => (
     <NumberConfigurationInput
       key={key}
       configKey={key}
@@ -211,15 +211,15 @@ function StringConfigurationInput({
 }
 
 function StringConfigurationSection({
-  requiredStrings,
+  stringConfigurations,
 }: {
-  requiredStrings: OptionalDescribedKey[];
+  stringConfigurations: OptionalDescribedKey[];
 }) {
-  if (requiredStrings.length === 0) {
+  if (stringConfigurations.length === 0) {
     return null;
   }
 
-  return requiredStrings.map(({ key, description }) => (
+  return stringConfigurations.map(({ key, description }) => (
     <StringConfigurationInput
       key={key}
       configKey={key}
@@ -293,15 +293,18 @@ function EnumConfigurationInput({
 }
 
 function EnumConfigurationSection({
-  requiredEnums,
+  enumConfigurations,
 }: {
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string }
+  >;
 }) {
-  if (Object.keys(requiredEnums).length === 0) {
+  if (Object.keys(enumConfigurations).length === 0) {
     return null;
   }
 
-  return Object.entries(requiredEnums).map(
+  return Object.entries(enumConfigurations).map(
     ([key, { options, description }]) => (
       <EnumConfigurationInput
         key={key}
@@ -403,18 +406,18 @@ function ListConfigurationInput({
 }
 
 function ListConfigurationSection({
-  requiredLists,
+  listConfigurations,
 }: {
-  requiredLists: Record<
+  listConfigurations: Record<
     string,
     { options: Record<string, string>; description?: string }
   >;
 }) {
-  if (Object.keys(requiredLists).length === 0) {
+  if (Object.keys(listConfigurations).length === 0) {
     return null;
   }
 
-  return Object.entries(requiredLists).map(
+  return Object.entries(listConfigurations).map(
     ([key, { options, description }]) => (
       <ListConfigurationInput
         key={key}
@@ -428,11 +431,14 @@ function ListConfigurationSection({
 
 interface GroupedConfigurationSectionProps {
   prefix: string;
-  requiredStrings: OptionalDescribedKey[];
-  requiredNumbers: OptionalDescribedKey[];
-  requiredBooleans: OptionalDescribedKey[];
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<
+  stringConfigurations: OptionalDescribedKey[];
+  numberConfigurations: OptionalDescribedKey[];
+  booleanConfigurations: OptionalDescribedKey[];
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string }
+  >;
+  listConfigurations: Record<
     string,
     { options: Record<string, string>; description?: string }
   >;
@@ -440,18 +446,18 @@ interface GroupedConfigurationSectionProps {
 
 function GroupedConfigurationSection({
   prefix,
-  requiredStrings,
-  requiredNumbers,
-  requiredBooleans,
-  requiredEnums,
-  requiredLists,
+  stringConfigurations,
+  numberConfigurations,
+  booleanConfigurations,
+  enumConfigurations,
+  listConfigurations,
 }: GroupedConfigurationSectionProps) {
   const hasConfiguration =
-    requiredStrings.length > 0 ||
-    requiredNumbers.length > 0 ||
-    requiredBooleans.length > 0 ||
-    Object.keys(requiredEnums).length > 0 ||
-    Object.keys(requiredLists).length > 0;
+    stringConfigurations.length > 0 ||
+    numberConfigurations.length > 0 ||
+    booleanConfigurations.length > 0 ||
+    Object.keys(enumConfigurations).length > 0 ||
+    Object.keys(listConfigurations).length > 0;
 
   if (!hasConfiguration) {
     return null;
@@ -465,53 +471,62 @@ function GroupedConfigurationSection({
         </Label>
       )}
       <div className="w-full space-y-4">
-        <StringConfigurationSection requiredStrings={requiredStrings} />
-        <NumberConfigurationSection requiredNumbers={requiredNumbers} />
-        <BooleanConfigurationSection requiredBooleans={requiredBooleans} />
-        <EnumConfigurationSection requiredEnums={requiredEnums} />
-        <ListConfigurationSection requiredLists={requiredLists} />
+        <StringConfigurationSection
+          stringConfigurations={stringConfigurations}
+        />
+        <NumberConfigurationSection
+          numberConfigurations={numberConfigurations}
+        />
+        <BooleanConfigurationSection
+          booleanConfigurations={booleanConfigurations}
+        />
+        <EnumConfigurationSection enumConfigurations={enumConfigurations} />
+        <ListConfigurationSection listConfigurations={listConfigurations} />
       </div>
     </div>
   );
 }
 
 interface AdditionalConfigurationSectionProps {
-  requiredStrings: OptionalDescribedKey[];
-  requiredNumbers: OptionalDescribedKey[];
-  requiredBooleans: OptionalDescribedKey[];
-  requiredEnums: Record<string, { options: string[]; description?: string }>;
-  requiredLists: Record<
+  stringConfigurations: OptionalDescribedKey[];
+  numberConfigurations: OptionalDescribedKey[];
+  booleanConfigurations: OptionalDescribedKey[];
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string }
+  >;
+  listConfigurations: Record<
     string,
     { options: Record<string, string>; description?: string }
   >;
 }
 
 export function AdditionalConfigurationSection({
-  requiredStrings,
-  requiredNumbers,
-  requiredBooleans,
-  requiredEnums,
-  requiredLists,
+  stringConfigurations,
+  numberConfigurations,
+  booleanConfigurations,
+  enumConfigurations,
+  listConfigurations,
 }: AdditionalConfigurationSectionProps) {
   // Group configuration fields by prefix.
   const groupedStrings = useMemo(
-    () => groupKeysByPrefix(requiredStrings),
-    [requiredStrings]
+    () => groupKeysByPrefix(stringConfigurations),
+    [stringConfigurations]
   );
   const groupedNumbers = useMemo(
-    () => groupKeysByPrefix(requiredNumbers),
-    [requiredNumbers]
+    () => groupKeysByPrefix(numberConfigurations),
+    [numberConfigurations]
   );
   const groupedBooleans = useMemo(
-    () => groupKeysByPrefix(requiredBooleans),
-    [requiredBooleans]
+    () => groupKeysByPrefix(booleanConfigurations),
+    [booleanConfigurations]
   );
   const groupedEnums = useMemo(() => {
     const groups: Record<
       string,
       Record<string, { options: string[]; description?: string }>
     > = {};
-    Object.entries(requiredEnums).forEach(([key, values]) => {
+    Object.entries(enumConfigurations).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
         groups[prefix] = {};
@@ -519,14 +534,14 @@ export function AdditionalConfigurationSection({
       groups[prefix][key] = values;
     });
     return groups;
-  }, [requiredEnums]);
+  }, [enumConfigurations]);
 
   const groupedLists = useMemo(() => {
     const groups: Record<
       string,
       Record<string, { options: Record<string, string>; description?: string }>
     > = {};
-    Object.entries(requiredLists).forEach(([key, values]) => {
+    Object.entries(listConfigurations).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
       if (!groups[prefix]) {
         groups[prefix] = {};
@@ -534,7 +549,7 @@ export function AdditionalConfigurationSection({
       groups[prefix][key] = values;
     });
     return groups;
-  }, [requiredLists]);
+  }, [listConfigurations]);
 
   // Get all unique prefixes
   const allPrefixes = useMemo(() => {
@@ -556,11 +571,11 @@ export function AdditionalConfigurationSection({
   ]);
 
   const hasConfiguration =
-    requiredStrings.length > 0 ||
-    requiredNumbers.length > 0 ||
-    requiredBooleans.length > 0 ||
-    Object.keys(requiredEnums).length > 0 ||
-    Object.keys(requiredLists).length > 0;
+    stringConfigurations.length > 0 ||
+    numberConfigurations.length > 0 ||
+    booleanConfigurations.length > 0 ||
+    Object.keys(enumConfigurations).length > 0 ||
+    Object.keys(listConfigurations).length > 0;
 
   if (!hasConfiguration) {
     return null;
@@ -576,11 +591,11 @@ export function AdditionalConfigurationSection({
           <GroupedConfigurationSection
             key={prefix || "general"}
             prefix={prefix}
-            requiredStrings={groupedStrings[prefix] || []}
-            requiredNumbers={groupedNumbers[prefix] || []}
-            requiredBooleans={groupedBooleans[prefix] || []}
-            requiredEnums={groupedEnums[prefix] || {}}
-            requiredLists={groupedLists[prefix] || {}}
+            stringConfigurations={groupedStrings[prefix] || []}
+            numberConfigurations={groupedNumbers[prefix] || []}
+            booleanConfigurations={groupedBooleans[prefix] || []}
+            enumConfigurations={groupedEnums[prefix] || {}}
+            listConfigurations={groupedLists[prefix] || {}}
           />
         ))}
       </ConfigurationSectionContainer>

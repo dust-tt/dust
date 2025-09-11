@@ -8,7 +8,7 @@ import {
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type {
@@ -122,7 +122,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
 export function getDefaultMCPServerActionConfiguration(
   mcpServerView?: MCPServerViewType
 ): AssistantBuilderMCPConfiguration {
-  const requirements = getMCPServerRequirements(mcpServerView);
+  const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
   return {
     type: "MCP",
@@ -140,14 +140,14 @@ export function getDefaultMCPServerActionConfiguration(
     },
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      requirements.requiresDataSourceConfiguration ||
-      requirements.requiresDataWarehouseConfiguration ||
-      requirements.requiresTableConfiguration
+      toolsConfigurations.mayRequireDataSourceConfiguration ||
+      toolsConfigurations.mayRequireDataWarehouseConfiguration ||
+      toolsConfigurations.mayRequireTableConfiguration
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: requirements.noRequirement,
+    noConfigurationRequired: toolsConfigurations.noRequirement,
   };
 }
 
