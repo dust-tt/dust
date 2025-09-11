@@ -529,10 +529,25 @@ export interface MCPServerToolsConfigurations {
   mayRequireReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  stringConfigurations: { key: string; description?: string; default?: string }[];
-  numberConfigurations: { key: string; description?: string; default?: number }[];
-  booleanConfigurations: { key: string; description?: string; default?: boolean }[];
-  enumConfigurations: Record<string, { options: string[]; description?: string; default?: string }>;
+  stringConfigurations: {
+    key: string;
+    description?: string;
+    default?: string;
+  }[];
+  numberConfigurations: {
+    key: string;
+    description?: string;
+    default?: number;
+  }[];
+  booleanConfigurations: {
+    key: string;
+    description?: string;
+    default?: boolean;
+  }[];
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string; default?: string }
+  >;
   listConfigurations: Record<
     string,
     {
