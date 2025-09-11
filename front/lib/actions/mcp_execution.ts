@@ -110,11 +110,13 @@ export async function* executeMCPTool({
 
         // Handle store_resource notifications by creating output items immediately
         if (isStoreResourceProgressOutput(output)) {
-          await AgentMCPActionOutputItem.create({
-            workspaceId: action.workspaceId,
-            agentMCPActionId: action.id,
-            content: output.content,
-          });
+          await AgentMCPActionOutputItem.bulkCreate(
+            output.contents.map((content) => ({
+              workspaceId: action.workspaceId,
+              agentMCPActionId: action.id,
+              content,
+            }))
+          );
         }
 
         // Specific handling for run_agent notifications indicating the tool has

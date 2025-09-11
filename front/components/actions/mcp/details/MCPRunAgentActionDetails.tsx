@@ -95,12 +95,14 @@ export function MCPRunAgentActionDetails({
     }
     if (lastNotification?.data.output) {
       const output = lastNotification.data.output;
-      if (
-        isStoreResourceProgressOutput(output) &&
-        isRunAgentQueryResourceType(output.content)
-      ) {
-        setQuery(output.content.resource.text);
-        setChildAgentId(output.content.resource.childAgentId);
+      if (isStoreResourceProgressOutput(output)) {
+        const runAgentQueryResource = output.contents.find(
+          isRunAgentQueryResourceType
+        );
+        if (runAgentQueryResource) {
+          setQuery(runAgentQueryResource.resource.text);
+          setChildAgentId(runAgentQueryResource.resource.childAgentId);
+        }
       } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
         setStreamedChainOfThought(output.chainOfThought);
       } else if (isRunAgentGenerationTokensProgressOutput(output)) {

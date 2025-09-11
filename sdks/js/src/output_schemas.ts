@@ -535,16 +535,18 @@ export function isContentCreationFileContentOutput(
 
 const NotificationStoreResourceContentSchema = z.object({
   type: z.literal("store_resource"),
-  content: z.object({
-    type: z.literal("resource"),
-    resource: z
-      .object({
-        mimeType: z.string(),
-        text: z.string(),
-        uri: z.string(),
-      })
-      .passthrough(), // Allow additional properties
-  }),
+  contents: z.array(
+    z.object({
+      type: z.literal("resource"),
+      resource: z
+        .object({
+          mimeType: z.string(),
+          text: z.string(),
+          uri: z.string(),
+        })
+        .passthrough(),
+    }) // Allow additional properties
+  ),
 });
 
 const NotificationTextContentSchema = z.object({

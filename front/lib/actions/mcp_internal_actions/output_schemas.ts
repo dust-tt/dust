@@ -600,6 +600,28 @@ export const isRunAgentResultResourceType = (
   );
 };
 
+export const RunAgentHandoverResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type RunAgentHandoverResourceType = z.infer<
+  typeof RunAgentHandoverResourceSchema
+>;
+
+export const isRunAgentHandoverResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentHandoverResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentHandoverResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Extract data outputs: query and results.
 
 export const ExtractQueryResourceSchema = z.object({
@@ -844,16 +866,18 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
 
 const NotificationStoreResourceContentSchema = z.object({
   type: z.literal("store_resource"),
-  content: z.object({
-    type: z.literal("resource"),
-    resource: z
-      .object({
-        mimeType: z.string(),
-        text: z.string(),
-        uri: z.string(),
-      })
-      .passthrough(), // Allow additional properties
-  }),
+  contents: z.array(
+    z.object({
+      type: z.literal("resource"),
+      resource: z
+        .object({
+          mimeType: z.string(),
+          text: z.string(),
+          uri: z.string(),
+        })
+        .passthrough(),
+    }) // Allow additional properties
+  ),
 });
 
 const NotificationTextContentSchema = z.object({
