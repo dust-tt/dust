@@ -13,7 +13,6 @@ import {
   Input,
   Label,
   LinkIcon,
-  LockIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -48,7 +47,7 @@ const getScopeDisplayInfo = (
     case "conversation_participants":
       return {
         label: "Conversation participants",
-        icon: LockIcon,
+        icon: LinkIcon,
         value: scope,
       };
     case "workspace":
@@ -64,7 +63,7 @@ const getScopeDisplayInfo = (
         value: scope,
       };
     default:
-      return { label: "Not shared", icon: LockIcon, value: scope };
+      return { label: "Not shared", icon: LinkIcon, value: scope };
   }
 };
 
