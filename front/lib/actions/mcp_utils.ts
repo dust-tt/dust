@@ -69,7 +69,7 @@ export function hideFileFromActionOutput({
   const snippet = file?.snippet ?? null;
   return {
     type: "text",
-    text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation. ${snippet ? `\n\nSnippet:\n ${snippet}` : ""}`,
+    text: `A file of type ${contentType} with id ${sid} was generated successfully and made available to the conversation. The user is presented with a button to download it, do not attempt to generate a link to it. ${snippet ? `\n\nSnippet:\n ${snippet}` : ""}`,
   };
 }
 
