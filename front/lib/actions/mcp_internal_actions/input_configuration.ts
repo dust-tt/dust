@@ -64,7 +64,13 @@ function generateConfiguredInput({
 
   type PrimitiveType = string | number | boolean | string[];
 
-  const handleDefaultValue = <U extends PrimitiveType>(
+  /*
+   * Get a validated value from the action configuration.
+   * If the value is not provided, we look for a default value in the input schema.
+   * If the value is provided, we validate it against the expected type.
+   * If the value is not provided and there is no default value, we throw an error.
+   */
+  const getValidatedValue = <U extends PrimitiveType>(
     actionConfiguration: MCPToolConfigurationType,
     keyPath: string,
     value: PrimitiveType | undefined,
@@ -196,7 +202,7 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
-      const value = handleDefaultValue<string>(
+      const value = getValidatedValue<string>(
         actionConfiguration,
         keyPath,
         actionConfiguration.additionalConfiguration[keyPath],
@@ -208,7 +214,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
-      const value = handleDefaultValue<number>(
+      const value = getValidatedValue<number>(
         actionConfiguration,
         keyPath,
         actionConfiguration.additionalConfiguration[keyPath],
@@ -220,7 +226,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
-      const value = handleDefaultValue<boolean>(
+      const value = getValidatedValue<boolean>(
         actionConfiguration,
         keyPath,
         actionConfiguration.additionalConfiguration[keyPath],
@@ -232,7 +238,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
-      const value = handleDefaultValue<string>(
+      const value = getValidatedValue<string>(
         actionConfiguration,
         keyPath,
         actionConfiguration.additionalConfiguration[keyPath],
@@ -743,11 +749,11 @@ export function getMCPServerRequirements(
       !requiresReasoningConfiguration &&
       !requiredDustAppConfiguration &&
       !mayRequireTimeFrameConfiguration &&
-      requiredStrings.length <= 0 &&
-      requiredNumbers.length <= 0 &&
-      requiredBooleans.length <= 0 &&
-      Object.keys(requiredEnums).length <= 0 &&
-      Object.keys(requiredLists).length <= 0,
+      requiredStrings.length === 0 &&
+      requiredNumbers.length === 0 &&
+      requiredBooleans.length === 0 &&
+      Object.keys(requiredEnums).length === 0 &&
+      Object.keys(requiredLists).length === 0,
   };
 }
 
