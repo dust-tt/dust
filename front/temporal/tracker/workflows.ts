@@ -32,6 +32,8 @@ const { processTrackerNotificationWorkflowActivity } = proxyActivities<
   startToCloseTimeout: "30 minutes",
 });
 
+const INITIAL_WAIT_TIME = 60000; // 1 minute.
+
 /**
  * Workflow that is ran when a document is upserted.
  * It fetches the trackers that are watching the document and runs the document tracker generation.
@@ -48,6 +50,9 @@ export async function trackersGenerationWorkflow(
   setHandler(newUpsertSignal, () => {
     lastUpsertAt = Date.now();
   });
+
+  // Start by waiting (to ensure elasticsearch index is ready)
+  await sleep(INITIAL_WAIT_TIME);
 
   const shouldRun = await shouldRunTrackersActivity({
     workspaceId,
