@@ -10,7 +10,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/instructions";
 import {
   CREATE_SLIDESHOW_FILE_TOOL_NAME,
-  CREATE_SLIDESHOW_OUTLINE_TOOL_NAME,
   EDIT_SLIDESHOW_FILE_TOOL_NAME,
   RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/types";
@@ -48,12 +47,6 @@ ${VIZ_USE_FILE_EXAMPLES}
 
 ### When to Use Slideshow Components:
 Use the Slideshow component in Content Creation files for: presentations, tutorials, step-by-step analysis, comparisons, reports
-
-WORKFLOW ENFORCEMENT:
-- STEP 1: ALWAYS use ${CREATE_SLIDESHOW_OUTLINE_TOOL_NAME} tool first
-- STEP 2: Wait for explicit user confirmation of the outline
-- STEP 3: Only after confirmation, proceed with slide creation
-- FORBIDDEN: Never create slides directly without outline approval
 
 CONTENT PRINCIPLES:
 - Start with your key insight, not background context
