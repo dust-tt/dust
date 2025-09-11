@@ -14,6 +14,7 @@ import {
   Input,
   Label,
   LinkIcon,
+  LockIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -46,10 +47,10 @@ const getScopeDisplayInfo = (
   value: FileShareScope;
 } => {
   switch (scope) {
-    case "conversation_participants":
+    case "none":
       return {
-        label: "Conversation participants",
-        icon: LinkIcon,
+        label: "Not shared",
+        icon: LockIcon,
         value: scope,
       };
     case "workspace":
@@ -65,7 +66,7 @@ const getScopeDisplayInfo = (
         value: scope,
       };
     default:
-      return { label: "Not shared", icon: LinkIcon, value: scope };
+      return { label: "Not shared", icon: LockIcon, value: scope };
   }
 };
 
@@ -137,9 +138,8 @@ export function ShareContentCreationFilePopover({
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
-  const [selectedScope, setSelectedScope] = React.useState<FileShareScope>(
-    "conversation_participants"
-  );
+  const [selectedScope, setSelectedScope] =
+    React.useState<FileShareScope>("none");
 
   const isSharingForbidden =
     owner.metadata?.allowContentCreationFileSharing === false;
@@ -187,8 +187,13 @@ export function ShareContentCreationFilePopover({
     : null;
 
   const getShareButtonIcon = () => {
-    if (currentScopeInfo) {
-      return currentScopeInfo.icon;
+    switch (currentShareScope) {
+      case "none":
+        return LinkIcon;
+      case "workspace":
+        return UserGroupIcon;
+      case "public":
+        return GlobeAltIcon;
     }
 
     return LinkIcon;
@@ -254,25 +259,28 @@ export function ShareContentCreationFilePopover({
                   isLoading={isUpdatingShare}
                 />
 
-                <Separator />
-
-                {/* Content area with loading state */}
-                <div className="flex items-center gap-2">
-                  <div className="grow">
-                    <Input
-                      disabled
-                      onClick={(e) => e.currentTarget.select()}
-                      readOnly
-                      value={shareURL}
-                    />
-                  </div>
-                  <IconButton
-                    className="flex-none"
-                    icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                    tooltip={isCopied ? "Copied!" : "Copy link"}
-                    onClick={handleCopyLink}
-                  />
-                </div>
+                {selectedScope !== "none" && (
+                  <>
+                    <Separator />
+                    {/* Content area with loading state */}
+                    <div className="flex items-center gap-2">
+                      <div className="grow">
+                        <Input
+                          disabled
+                          onClick={(e) => e.currentTarget.select()}
+                          readOnly
+                          value={shareURL}
+                        />
+                      </div>
+                      <IconButton
+                        className="flex-none"
+                        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                        tooltip={isCopied ? "Copied!" : "Copy link"}
+                        onClick={handleCopyLink}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
