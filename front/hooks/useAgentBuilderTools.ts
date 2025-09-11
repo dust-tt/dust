@@ -1,10 +1,10 @@
-import { groupBy } from "lodash";
+import groupBy from 'lodash/groupBy';
 import { useMemo } from "react";
 
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 function getGroupedMCPServerViews({
@@ -55,12 +55,12 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const requirements = getMCPServerRequirements(view);
+      const requirements = getMCPServerToolsConfigurations(view);
 
       const isWithKnowledge =
-        requirements.requiresDataSourceConfiguration ||
-        requirements.requiresDataWarehouseConfiguration ||
-        requirements.requiresTableConfiguration;
+        requirements.mayRequireDataSourceConfiguration ||
+        requirements.mayRequireDataWarehouseConfiguration ||
+        requirements.mayRequireTableConfiguration;
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"

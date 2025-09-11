@@ -47,7 +47,7 @@ import {
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 
@@ -139,7 +139,7 @@ function KnowledgeConfigurationSheetForm({
 
   const handleSave = (formData: CapabilityFormData) => {
     const { description, configuration, mcpServerView } = formData;
-    const requirements = getMCPServerRequirements(mcpServerView);
+    const requirements = getMCPServerToolsConfigurations(mcpServerView);
 
     // Transform the tree structure to selection configurations
     const dataSourceConfigurations = transformTreeToSelectionConfigurations(
@@ -148,8 +148,8 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      requirements.requiresDataSourceConfiguration ||
-      requirements.requiresDataWarehouseConfiguration
+      requirements.mayRequireDataSourceConfiguration ||
+      requirements.mayRequireDataWarehouseConfiguration
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -258,7 +258,7 @@ function KnowledgeConfigurationSheetContent({
   }, [mcpServerView]);
 
   const requirements = useMemo(() => {
-    return getMCPServerRequirements(mcpServerView);
+    return getMCPServerToolsConfigurations(mcpServerView);
   }, [mcpServerView]);
 
   // Focus NameSection input when navigating to CONFIGURATION page
@@ -324,10 +324,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: requirements.requiresTableConfiguration
+      title: requirements.mayRequireTableConfiguration
         ? "Select Tables"
         : "Select Data Sources",
-      description: requirements.requiresTableConfiguration
+      description: requirements.mayRequireTableConfiguration
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,

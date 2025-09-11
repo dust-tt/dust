@@ -7,7 +7,7 @@ import {
   getMcpServerViewDisplayName,
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -101,7 +101,7 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const requirements = getMCPServerRequirements(view);
+      const requirements = getMCPServerToolsConfigurations(view);
 
       // Special handling for content_creation server:
       // The content_creation server includes list and cat tools for convenience, but its primary purpose is
@@ -110,9 +110,9 @@ function getGroupedMCPServerViews({
 
       const isWithKnowledge =
         !isContentCreationServer &&
-        (requirements.requiresDataSourceConfiguration ||
-          requirements.requiresDataWarehouseConfiguration ||
-          requirements.requiresTableConfiguration);
+        (requirements.mayRequireDataSourceConfiguration ||
+          requirements.mayRequireDataWarehouseConfiguration ||
+          requirements.mayRequireTableConfiguration);
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"

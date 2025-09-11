@@ -8,7 +8,7 @@ import { getDefaultConfiguration } from "@app/components/agent_builder/capabilit
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { WhitelistableFeature } from "@app/types";
@@ -127,7 +127,7 @@ export const capabilityFormSchema = z
     configuration: mcpServerConfigurationSchema,
   })
   .superRefine((val, ctx) => {
-    const requirements = getMCPServerRequirements(val.mcpServerView);
+    const requirements = getMCPServerToolsConfigurations(val.mcpServerView);
     const configuration = val.configuration;
 
     if (!requirements) {
@@ -172,7 +172,7 @@ export const capabilityFormSchema = z
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
 ): AgentBuilderAction {
-  const requirements = getMCPServerRequirements(mcpServerView);
+  const requirements = getMCPServerToolsConfigurations(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);
 
   return {
@@ -181,9 +181,9 @@ export function getDefaultMCPAction(
     configuration,
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      requirements.requiresDataSourceConfiguration ||
-      requirements.requiresDataWarehouseConfiguration ||
-      requirements.requiresTableConfiguration
+      requirements.mayRequireDataSourceConfiguration ||
+      requirements.mayRequireDataWarehouseConfiguration ||
+      requirements.mayRequireTableConfiguration
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
