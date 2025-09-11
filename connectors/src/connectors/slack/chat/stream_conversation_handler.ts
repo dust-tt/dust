@@ -1,11 +1,11 @@
 import type {
   AgentActionPublicType,
   ConversationPublicType,
-  DustAPI,
   LightAgentConfigurationType,
   Result,
   UserMessageType,
 } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
 import {
   assertNever,
   Err,
@@ -28,6 +28,8 @@ import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import { isWebAPIRateLimitedError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import { apiConfig } from "@connectors/lib/api/config";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -64,7 +66,6 @@ interface StreamConversationToSlackParams {
   userMessage: UserMessageType;
   slackChatBotMessage: SlackChatBotMessage;
   agentConfigurations: LightAgentConfigurationType[];
-  enabledMessageSplitting?: boolean;
 }
 
 interface SlackUpdateState {
@@ -344,10 +345,12 @@ async function streamAgentAnswerToSlack(
           normalizeContentForSlack(formattedContent)
         );
 
-        if (
-          conversationData.enabledMessageSplitting &&
+        const shouldSplitMessage = 
           slackContent.length > MAX_SLACK_MESSAGE_LENGTH
-        ) {
+            ? await getMessageSplittingFromFeatureFlag(conversationData.connector)
+            : false;
+
+        if (shouldSplitMessage) {
           const splitMessages = splitContentForSlack(slackContent);
 
           updateState = await postSlackMessageUpdate(
@@ -686,5 +689,48 @@ async function postThreadFollowUpMessages(
         throw threadError;
       }
     }
+  }
+}
+
+async function getMessageSplittingFromFeatureFlag(
+  connector: ConnectorResource
+): Promise<boolean> {
+  try {
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    const dustAPI = new DustAPI(
+      {
+        url: apiConfig.getDustFrontAPIUrl(),
+      },
+      {
+        apiKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+      },
+      logger
+    );
+
+    const featureFlagsRes = await dustAPI.getWorkspaceFeatureFlags();
+    if (featureFlagsRes.isOk()) {
+      return featureFlagsRes.value.includes("slack_message_splitting");
+    } else {
+      logger.warn(
+        {
+          error: featureFlagsRes.error,
+          connectorId: connector.id,
+          workspaceId: connector.workspaceId,
+        },
+        "Failed to fetch feature flags, defaulting to message truncation"
+      );
+      return false;
+    }
+  } catch (error) {
+    logger.warn(
+      {
+        error,
+        connectorId: connector.id,
+        workspaceId: connector.workspaceId,
+      },
+      "Failed to fetch feature flags, defaulting to message truncation"
+    );
+    return false;
   }
 }

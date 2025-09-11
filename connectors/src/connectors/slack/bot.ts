@@ -988,9 +988,6 @@ async function answerMessage(
     await slackChatBotMessage.save();
   }
 
-  const enabledMessageSplitting =
-    await getMessageSplittingFromFeatureFlag(connector);
-
   const streamRes = await streamConversationToSlack(dustAPI, {
     assistantName: mention.assistantName,
     connector,
@@ -1006,7 +1003,6 @@ async function answerMessage(
     userMessage,
     slackChatBotMessage,
     agentConfigurations: mostPopularAgentConfigurations,
-    enabledMessageSplitting,
   });
 
   // Immediately mark the conversation as read.
@@ -1352,45 +1348,3 @@ async function isAgentAccessingRestrictedSpace(
   }
 }
 
-async function getMessageSplittingFromFeatureFlag(
-  connector: ConnectorResource
-): Promise<boolean> {
-  try {
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    const dustAPI = new DustAPI(
-      {
-        url: apiConfig.getDustFrontAPIUrl(),
-      },
-      {
-        apiKey: dataSourceConfig.workspaceAPIKey,
-        workspaceId: dataSourceConfig.workspaceId,
-      },
-      logger
-    );
-
-    const featureFlagsRes = await dustAPI.getWorkspaceFeatureFlags();
-    if (featureFlagsRes.isOk()) {
-      return featureFlagsRes.value.includes("slack_message_splitting");
-    } else {
-      logger.warn(
-        {
-          error: featureFlagsRes.error,
-          connectorId: connector.id,
-          workspaceId: connector.workspaceId,
-        },
-        "Failed to fetch feature flags, defaulting to message truncation"
-      );
-      return false;
-    }
-  } catch (error) {
-    logger.warn(
-      {
-        error,
-        connectorId: connector.id,
-        workspaceId: connector.workspaceId,
-      },
-      "Failed to fetch feature flags, defaulting to message truncation"
-    );
-    return false;
-  }
-}
