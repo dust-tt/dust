@@ -1002,6 +1002,7 @@ The directive should be used to display a clickable version of the agent name in
       read_channel_history: "never_ask" as const,
       read_thread_messages: "never_ask" as const,
     },
+    tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
       name: "slack_bot",
