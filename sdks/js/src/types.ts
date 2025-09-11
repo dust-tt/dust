@@ -632,6 +632,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl"
+  | "hootl_subscriptions"
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"

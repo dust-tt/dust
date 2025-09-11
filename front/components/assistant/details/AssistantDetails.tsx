@@ -114,7 +114,9 @@ export function AssistantDetails({
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs = assistantId != null && !isGlobalAgent;
   const showTriggersTabs =
-    assistantId != null && !isGlobalAgent && featureFlags.includes("hootl");
+    assistantId != null &&
+    !isGlobalAgent &&
+    featureFlags.includes("hootl_subscriptions");
   const showAgentMemory = !!agentConfiguration?.actions.find(
     isMCPConfigurationForAgentMemory
   );

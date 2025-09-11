@@ -74,12 +74,14 @@ export default function ProfilePage({
             <Separator />
 
             <Page.SectionHeader
-              title={hasFeature("hootl") ? "Tools & Triggers" : "Tools"}
+              title={
+                hasFeature("hootl_subscriptions") ? "Tools & Triggers" : "Tools"
+              }
             />
             <Tabs defaultValue="tools" className="w-full">
               <TabsList>
                 <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
-                {hasFeature("hootl") && (
+                {hasFeature("hootl_subscriptions") && (
                   <TabsTrigger
                     value="triggers"
                     label="Triggers"
@@ -90,7 +92,7 @@ export default function ProfilePage({
               <TabsContent value="tools" className="mt-4">
                 <UserToolsTable owner={owner} />
               </TabsContent>
-              {hasFeature("hootl") && (
+              {hasFeature("hootl_subscriptions") && (
                 <TabsContent value="triggers" className="mt-4">
                   <ProfileTriggersTab owner={owner} />
                 </TabsContent>
