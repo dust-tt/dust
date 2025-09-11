@@ -55,7 +55,9 @@ export async function* getConversationEvents({
   }
 
   try {
-    const TIMEOUT = 60000; // 1 minute
+    // As most clients always listen to conversation events, we have a longer timeout to limit the overhead of initiating a new subscription.
+    // See https://dust4ai.slack.com/archives/C050SM8NSPK/p1757577149634519
+    const TIMEOUT = 180000; // 3 minutes
 
     // Do not loop forever, we will timeout after some time to avoid blocking the load balancer
     while (true) {
