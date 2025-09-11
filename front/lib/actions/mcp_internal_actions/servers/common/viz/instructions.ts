@@ -116,12 +116,6 @@ useEffect(() => {
   loadFile();
   }, [file]);
 
-// WRONG: This will cause FileReader errors
-// if (file) {
-//   const text = file.text(); // This is a Promise, not a string!
-//   Papa.parse(text, ...); // Will fail
-// }
-
 \`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
 
 Example using the \`triggerUserFileDownload\` hook:
