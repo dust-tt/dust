@@ -173,6 +173,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
+  slack_message_splitting: {
+    description:
+      "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
