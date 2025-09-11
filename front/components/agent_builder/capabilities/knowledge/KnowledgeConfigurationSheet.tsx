@@ -139,7 +139,7 @@ function KnowledgeConfigurationSheetForm({
 
   const handleSave = (formData: CapabilityFormData) => {
     const { description, configuration, mcpServerView } = formData;
-    const requirements = getMCPServerToolsConfigurations(mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
     // Transform the tree structure to selection configurations
     const dataSourceConfigurations = transformTreeToSelectionConfigurations(
@@ -148,8 +148,8 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      requirements.mayRequireDataSourceConfiguration ||
-      requirements.mayRequireDataWarehouseConfiguration
+      toolsConfigurations.mayRequireDataSourceConfiguration ||
+      toolsConfigurations.mayRequireDataWarehouseConfiguration
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -257,7 +257,7 @@ function KnowledgeConfigurationSheetContent({
     return null;
   }, [mcpServerView]);
 
-  const requirements = useMemo(() => {
+  const toolsConfigurations = useMemo(() => {
     return getMCPServerToolsConfigurations(mcpServerView);
   }, [mcpServerView]);
 
@@ -324,10 +324,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: requirements.mayRequireTableConfiguration
+      title: toolsConfigurations.mayRequireTableConfiguration
         ? "Select Tables"
         : "Select Data Sources",
-      description: requirements.mayRequireTableConfiguration
+      description: toolsConfigurations.mayRequireTableConfiguration
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
@@ -354,11 +354,11 @@ function KnowledgeConfigurationSheetContent({
             placeholder="Name ..."
           />
 
-          {requirements.mayRequireTimeFrameConfiguration && (
+          {toolsConfigurations.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
           )}
 
-          {requirements.mayRequireJsonSchemaConfiguration && (
+          {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 

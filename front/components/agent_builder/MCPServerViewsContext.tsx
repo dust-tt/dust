@@ -101,7 +101,7 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const requirements = getMCPServerToolsConfigurations(view);
+      const toolsConfigurations = getMCPServerToolsConfigurations(view);
 
       // Special handling for content_creation server:
       // The content_creation server includes list and cat tools for convenience, but its primary purpose is
@@ -110,9 +110,9 @@ function getGroupedMCPServerViews({
 
       const isWithKnowledge =
         !isContentCreationServer &&
-        (requirements.mayRequireDataSourceConfiguration ||
-          requirements.mayRequireDataWarehouseConfiguration ||
-          requirements.mayRequireTableConfiguration);
+        (toolsConfigurations.mayRequireDataSourceConfiguration ||
+          toolsConfigurations.mayRequireDataWarehouseConfiguration ||
+          toolsConfigurations.mayRequireTableConfiguration);
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"

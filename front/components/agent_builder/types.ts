@@ -127,14 +127,14 @@ export const capabilityFormSchema = z
     configuration: mcpServerConfigurationSchema,
   })
   .superRefine((val, ctx) => {
-    const requirements = getMCPServerToolsConfigurations(val.mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(val.mcpServerView);
     const configuration = val.configuration;
 
-    if (!requirements) {
+    if (!toolsConfigurations) {
       return true;
     }
 
-    if (requirements.mayRequireTimeFrameConfiguration) {
+    if (toolsConfigurations.mayRequireTimeFrameConfiguration) {
       if (
         configuration.timeFrame !== null &&
         (configuration.timeFrame.duration === null ||
@@ -150,7 +150,7 @@ export const capabilityFormSchema = z
     }
 
     if (
-      requirements.mayRequireJsonSchemaConfiguration &&
+      toolsConfigurations.mayRequireJsonSchemaConfiguration &&
       configuration._jsonSchemaString !== null
     ) {
       const parsedSchema = validateConfiguredJsonSchema(
