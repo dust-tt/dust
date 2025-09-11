@@ -46,25 +46,11 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     };
   }
 
-  const { file, shareScope } = result;
+  const { file } = result;
   const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
   if (!workspace) {
     return {
       notFound: true,
-    };
-  }
-
-  // If the file is shared with conversation participants, redirect to the conversation.
-  if (shareScope === "conversation_participants") {
-    const pathname = `/w/${workspace.sId}/assistant/${file.useCaseMetadata?.conversationId}`;
-    const hash = `#?${FULL_SCREEN_HASH_PARAM}=true&${SIDE_PANEL_TYPE_HASH_PARAM}=${CONTENT_CREATION_SIDE_PANEL_TYPE}&${SIDE_PANEL_HASH_PARAM}=${file.sId}`;
-    const destination = pathname + hash;
-
-    return {
-      redirect: {
-        destination,
-        permanent: false,
-      },
     };
   }
 
