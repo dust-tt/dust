@@ -177,13 +177,36 @@ export async function renderConversationForModel(
           return `@${name}`;
         }
       );
+
+      // Build system context from systemMetadata
+      let systemContext = "";
+      if (m.systemMetadata) {
+        const items = [];
+        if (m.systemMetadata.currentDate) {
+          items.push(
+            `- Current date: ${new Date(m.systemMetadata.currentDate).toISOString()}`
+          );
+        }
+        if (
+          m.systemMetadata.origin === "triggered" &&
+          m.systemMetadata.lastRunAt
+        ) {
+          items.push(
+            `- Last scheduled run: ${new Date(m.systemMetadata.lastRunAt).toISOString()}`
+          );
+        }
+        if (items.length > 0) {
+          systemContext = `<dust_system>\n${items.join("\n")}\n</dust_system>\n\n`;
+        }
+      }
+
       messages.push({
         role: "user" as const,
         name: m.context.fullName || m.context.username,
         content: [
           {
             type: "text",
-            text: content,
+            text: systemContext + content,
           },
         ],
       });

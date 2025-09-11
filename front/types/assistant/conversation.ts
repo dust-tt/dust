@@ -82,6 +82,7 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
@@ -100,6 +101,16 @@ export type UserMessageContext = {
   selectedMCPServerViewIds?: string[];
 };
 
+export type UserMessageSystemMetadata = {
+  currentDate: string;
+} & (
+  | { origin?: Exclude<UserMessageOrigin, "triggered"> | null }
+  | {
+      origin?: "triggered";
+      lastRunAt?: Date;
+    }
+);
+
 export type UserMessageType = {
   id: ModelId;
   created: number;
@@ -111,6 +122,7 @@ export type UserMessageType = {
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
+  systemMetadata: UserMessageSystemMetadata;
 };
 export type UserMessageWithRankType = WithRank<UserMessageType>;
 

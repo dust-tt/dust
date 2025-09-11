@@ -14,6 +14,7 @@ import type {
   MessageVisibility,
   ParticipantActionType,
   UserMessageOrigin,
+  UserMessageSystemMetadata,
 } from "@app/types";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
@@ -184,6 +185,8 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
 
   declare content: string;
 
+  declare systemMetadata: UserMessageSystemMetadata;
+
   // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
   declare localMCPServerIds?: string[];
   declare clientSideMCPServerIds: string[];
@@ -213,6 +216,11 @@ UserMessage.init(
     content: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    systemMetadata: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
     },
     // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
     localMCPServerIds: {

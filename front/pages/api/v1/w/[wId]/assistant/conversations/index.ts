@@ -380,6 +380,11 @@ async function handler(
           }
         }
 
+        const systemMetadata = {
+          currentDate: new Date().toISOString(),
+          origin: message.context.origin,
+        };
+
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message. `postUserMessage` returns as soon as the user message
         // and the agent messages are created, while `postUserMessageAndWaitForCompletion` waits for
@@ -393,6 +398,7 @@ async function handler(
                 executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
+                systemMetadata,
               })
             : await postUserMessage(auth, {
                 content: message.content,
@@ -401,6 +407,7 @@ async function handler(
                 executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
+                systemMetadata,
               });
 
         if (messageRes.isErr()) {

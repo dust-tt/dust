@@ -64,6 +64,7 @@ import type {
   PlanType,
   Result,
   UserMessageContext,
+  UserMessageSystemMetadata,
   UserMessageType,
   UserMessageWithRankType,
   UserType,
@@ -384,6 +385,7 @@ export async function postUserMessage(
     content,
     mentions,
     context,
+    systemMetadata,
     skipToolsValidation,
     executionMode,
   }: {
@@ -391,6 +393,7 @@ export async function postUserMessage(
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    systemMetadata: UserMessageSystemMetadata;
     skipToolsValidation: boolean;
     executionMode?: ExecutionMode;
   }
@@ -536,6 +539,7 @@ export async function postUserMessage(
               await UserMessage.create(
                 {
                   content,
+                  systemMetadata,
                   // TODO(MCP Clean-up): Rename field in DB.
                   clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
                   userContextUsername: context.username,
@@ -577,6 +581,7 @@ export async function postUserMessage(
         mentions,
         content,
         context,
+        systemMetadata,
         rank: m.rank,
       };
 
@@ -980,6 +985,10 @@ export async function editUserMessage(
               await UserMessage.create(
                 {
                   content,
+                  systemMetadata: {
+                    ...userMessageRow.systemMetadata,
+                    currentDate: new Date().toISOString(),
+                  },
                   // No support for client-side MCP servers when editing/retrying a user message.
                   clientSideMCPServerIds: [],
                   userContextUsername: userMessageRow.userContextUsername,
@@ -1023,6 +1032,7 @@ export async function editUserMessage(
         mentions,
         content,
         context: message.context,
+        systemMetadata: message.systemMetadata,
         rank: m.rank,
       };
 

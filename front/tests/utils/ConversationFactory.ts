@@ -93,6 +93,10 @@ const createMessageAndUserMessage = async ({
         await UserMessage.create(
           {
             createdAt,
+            systemMetadata: {
+              currentDate: new Date().toISOString(),
+              origin: "web",
+            },
             updatedAt: createdAt,
             userId: user.id,
             workspaceId: workspace.id,

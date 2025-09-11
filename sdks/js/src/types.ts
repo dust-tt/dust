@@ -293,6 +293,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
@@ -889,6 +890,22 @@ const UserMessageContextSchema = z.object({
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
 });
 
+const UserMessageSystemMetadataSchema = z
+  .object({
+    currentDate: z.string(),
+  })
+  .and(
+    z.union([
+      z.object({
+        origin: UserMessageOriginSchema,
+      }),
+      z.object({
+        origin: z.literal("triggered"),
+        lastRunAt: z.date().optional(),
+      }),
+    ])
+  );
+
 const UserMessageSchema = z.object({
   id: ModelIdSchema,
   created: z.number(),
@@ -899,6 +916,7 @@ const UserMessageSchema = z.object({
   user: UserSchema.nullable(),
   mentions: z.array(AgentMentionSchema),
   content: z.string(),
+  systemMetadata: UserMessageSystemMetadataSchema.nullable(),
   context: UserMessageContextSchema,
 });
 export type UserMessageType = z.infer<typeof UserMessageSchema>;

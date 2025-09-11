@@ -213,6 +213,10 @@ async function handler(
           // For now we never skip tools when interacting with agents from the web client.
           skipToolsValidation: false,
           executionMode,
+          systemMetadata: {
+            currentDate: new Date().toISOString(),
+            origin: "web",
+          },
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

@@ -57,6 +57,10 @@ export function createPlaceholderUserMessage({
       username,
       origin: "web",
     },
+    systemMetadata: {
+      currentDate: new Date().toISOString(),
+      origin: "web",
+    },
   };
 }
 

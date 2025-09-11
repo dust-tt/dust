@@ -176,6 +176,7 @@ async function batchRenderUserMessages(
           })
         : [],
       content: userMessage.content,
+      systemMetadata: userMessage.systemMetadata,
       context: {
         username: userMessage.userContextUsername,
         timezone: userMessage.userContextTimezone,

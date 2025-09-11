@@ -12,6 +12,7 @@ import type {
   PubSubError,
   Result,
   UserMessageContext,
+  UserMessageSystemMetadata,
   UserMessageType,
 } from "@app/types";
 import { Ok } from "@app/types";
@@ -148,6 +149,7 @@ export async function postUserMessageAndWaitForCompletion(
     executionMode,
     mentions,
     skipToolsValidation,
+    systemMetadata,
   }: {
     content: string;
     context: UserMessageContext;
@@ -155,6 +157,7 @@ export async function postUserMessageAndWaitForCompletion(
     executionMode?: ExecutionMode;
     mentions: MentionType[];
     skipToolsValidation: boolean;
+    systemMetadata: UserMessageSystemMetadata;
   }
 ): Promise<
   Result<
@@ -172,6 +175,7 @@ export async function postUserMessageAndWaitForCompletion(
     executionMode,
     mentions,
     skipToolsValidation,
+    systemMetadata,
   });
 
   if (postResult.isErr()) {

@@ -90,21 +90,19 @@ const createConversationForAgentConfiguration = async (
     origin: null,
   };
 
-  // Build schedule context information
-  const currentDate = new Date();
-  const scheduleContext = lastRunAt
-    ? `**Schedule Context:**\n- Current execution: ${currentDate.toISOString()}\n- Last scheduled run: ${lastRunAt.toISOString()}\n\n`
-    : `**Schedule Context:**\n- Current execution: ${currentDate.toISOString()}\n- This is the first scheduled run for this agent\n\n`;
-
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
     content:
-      scheduleContext +
       `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}` +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,
     skipToolsValidation: false,
+    systemMetadata: {
+      currentDate: new Date().toISOString(),
+      origin: "triggered",
+      lastRunAt: lastRunAt || undefined,
+    },
   });
 
   if (messageRes.isErr()) {

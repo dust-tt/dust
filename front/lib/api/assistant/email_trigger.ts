@@ -394,6 +394,10 @@ export async function triggerFromEmail({
     // them and run the tools by default. This is in tension with the admin settings and could be
     // revisited if needed.
     skipToolsValidation: true,
+    systemMetadata: {
+      currentDate: new Date().toISOString(),
+      origin: "email",
+    },
   });
 
   if (messageRes.isErr()) {

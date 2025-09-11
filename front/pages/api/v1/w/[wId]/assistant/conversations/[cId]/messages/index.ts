@@ -180,6 +180,11 @@ async function handler(
         username: context.username,
       };
 
+      const systemMetadata = {
+        currentDate: new Date().toISOString(),
+        origin: context.origin,
+      };
+
       const messageRes =
         blocking === true
           ? await postUserMessageAndWaitForCompletion(auth, {
@@ -189,6 +194,7 @@ async function handler(
               executionMode,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
+              systemMetadata,
             })
           : await postUserMessage(auth, {
               content,
@@ -197,6 +203,7 @@ async function handler(
               executionMode,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
+              systemMetadata,
             });
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);
