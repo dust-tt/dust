@@ -296,6 +296,17 @@ export function SlackSettingsSheet({
               <span className="font-bold">@Dust</span> Slack bot is mentioned in
               these channels.
             </div>
+
+            {slackDataSource?.connectorProvider === "slack_bot" && (
+              <div className="rounded-lg border bg-gray-50 p-3 dark:bg-gray-900">
+                <div className="text-sm">
+                  Only channels where the @Dust bot is a member will appear
+                  below. To add the bot to a channel, type{" "}
+                  <code>/invite @Dust</code> in the desired channel.
+                </div>
+              </div>
+            )}
+
             <SlackChannelsList
               existingSelection={localSlackChannels}
               onSelectionChange={handleSelectionChange}

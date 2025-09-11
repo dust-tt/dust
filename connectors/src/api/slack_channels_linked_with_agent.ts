@@ -6,7 +6,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { Op } from "sequelize";
 
-import { getChannels } from "@connectors/connectors/slack/lib/channels";
+import { getAllChannels } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 import { launchJoinChannelWorkflow } from "@connectors/connectors/slack/temporal/client";
@@ -89,7 +89,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   await withTransaction(async (t) => {
     if (missingSlackChannelIds.length) {
       const remoteChannels = (
-        await getChannels(slackClient, parseInt(connectorId), false)
+        await getAllChannels(slackClient, parseInt(connectorId))
       ).flatMap((c) =>
         c.id && c.name
           ? [{ id: c.id, name: c.name, private: !!c.is_private }]

@@ -21,7 +21,7 @@ import {
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
   getChannelById,
-  getChannels,
+  getJoinedChannels,
   joinChannel,
   migrateChannelsFromLegacyBotToNewBot,
   updateSlackChannelInConnectorsDb,
@@ -1103,7 +1103,7 @@ export async function getChannelsToGarbageCollect(
   const remoteChannels = new Set(
     (
       await withSlackErrorHandling(() =>
-        getChannels(slackClient, connectorId, true)
+        getJoinedChannels(slackClient, connectorId)
       )
     )
       .filter((c) => c.id)
