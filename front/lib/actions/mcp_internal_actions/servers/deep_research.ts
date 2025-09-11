@@ -24,12 +24,12 @@ const createServer = (
 
   server.tool(
     "run_dust_deep",
-    "Handoff the query to the deep research agent",
+    "Handoff the query to the generic deep research agent",
     {
       query: z
         .string()
         .describe(
-          "The research query or question to be investigated. This should be a clear, specific request that will be processed by the deep research agent."
+          "The research query or question to be investigated that includes any company or user specific context relevant to the query. This should be a clear, specific request that will be processed by the deep research agent."
         ),
     },
     withToolLogging(
@@ -125,7 +125,7 @@ const createServer = (
             resource: {
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
               conversationId: convRes.value.conversation.sId,
-              text: `Query delegated from :mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} to :mention[dust-deep]{sId=${GLOBAL_AGENTS_SID.DUST_DEEP}}. ${agentConfiguration.name} is an agent with the following instruction: ${instructions} `,
+              text: `Query fully handed off from agent ${agentConfiguration.name} to agent dust-deep. ${agentConfiguration.name} cannot interact with or modify the research after this handoff. dust-deep has complete control and will provide the final results directly to the user. Original agent instructions: ${instructions}`,
               uri: "",
             },
           },
