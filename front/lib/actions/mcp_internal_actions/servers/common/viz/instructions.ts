@@ -44,8 +44,9 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
+  - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
-- User data download from the visualization:
+  - User data download from the visualization:
   - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
   - \`triggerUserFileDownload\` has to be imported from \`"@dust/react-hooks"\`.
   - Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
@@ -95,19 +96,31 @@ export const VIZ_MISCELLANEOUS_GUIDELINES = `
 export const VIZ_USE_FILE_EXAMPLES = `
 Example using the \`useFile\` hook:
 
-\`\`\`
-// Reading files from conversation
+// Reading files from conversation - ASYNC HANDLING REQUIRED
 import { useFile } from "@dust/react-hooks";
+import { useState, useEffect } from "react";
 
 const file = useFile(fileId);
-if (file) {
-  const file = useFile(fileId);
-  // for text file:
-  const text = await file.text();
-  // for binary file:
-  const arrayBuffer = await file.arrayBuffer();
-}
-\`\`\`
+const [fileContent, setFileContent] = useState(null);
+
+useEffect(() => {
+  const loadFile = async () => {
+    if (file) {
+      // CORRECT: await the Promise
+      const text = await file.text();
+      setFileContent(text);
+        // for binary file:
+        // const arrayBuffer = await file.arrayBuffer();
+      }
+  };
+  loadFile();
+  }, [file]);
+
+// WRONG: This will cause FileReader errors
+// if (file) {
+//   const text = file.text(); // This is a Promise, not a string!
+//   Papa.parse(text, ...); // Will fail
+// }
 
 \`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
 
