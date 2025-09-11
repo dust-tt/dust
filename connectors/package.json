@@ -99,6 +99,12 @@
     "tsx": "^4.10.2",
     "typescript": "^5.4.5",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.0.8"
+    "vitest": "^3.0.8",
+    "lint-staged": "^16.1.6"
+  },
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [
+      "prettier --write"
+    ]
   }
 }

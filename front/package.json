@@ -210,10 +210,16 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.0.8",
     "vitest-canvas-mock": "^0.3.3",
-    "yalc": "^1.0.0-pre.53"
+    "yalc": "^1.0.0-pre.53",
+    "lint-staged": "^16.1.6"
   },
   "peerDependencies": {
     "typescript": "5.4.5"
+  },
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [
+      "prettier --write"
+    ]
   },
   "browser": {
     "net": false,
