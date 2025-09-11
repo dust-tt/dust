@@ -7,12 +7,6 @@ import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session"
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getFaviconPath } from "@app/lib/utils";
-import {
-  CONTENT_CREATION_SIDE_PANEL_TYPE,
-  FULL_SCREEN_HASH_PARAM,
-  SIDE_PANEL_HASH_PARAM,
-  SIDE_PANEL_TYPE_HASH_PARAM,
-} from "@app/types/conversation_side_panel";
 
 interface SharedFilePageProps {
   shareUrl: string;
