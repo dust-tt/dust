@@ -260,7 +260,15 @@ export async function listEvents(
   accessToken: string,
   params: ListEventsParams
 ): Promise<{ events: OutlookEvent[]; nextLink?: string } | { error: string }> {
-  const { calendarId, search, startTime, endTime, top = 50, skip = 0, userTimezone } = params;
+  const {
+    calendarId,
+    search,
+    startTime,
+    endTime,
+    top = 50,
+    skip = 0,
+    userTimezone,
+  } = params;
 
   // Use calendarView endpoint when date range is specified to get recurring events
   if (startTime && endTime && !search) {
@@ -682,7 +690,13 @@ export async function checkAvailability(
   | { availability: any[]; timeSlot: { start: string; end: string } }
   | { error: string }
 > {
-  const { emails, startTime, endTime, intervalInMinutes = 60, userTimezone } = params;
+  const {
+    emails,
+    startTime,
+    endTime,
+    intervalInMinutes = 60,
+    userTimezone,
+  } = params;
 
   const requestBody = {
     schedules: emails,

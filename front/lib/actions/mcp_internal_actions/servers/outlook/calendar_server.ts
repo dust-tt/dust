@@ -28,7 +28,8 @@ const createServer = (): McpServer => {
           message: "User timezone retrieved successfully",
           result: {
             timezone: result,
-            description: "Use this timezone value when creating, updating, or searching for calendar events to ensure times are displayed correctly.",
+            description:
+              "Use this timezone value when creating, updating, or searching for calendar events to ensure times are displayed correctly.",
           },
         });
       } else {
@@ -119,7 +120,15 @@ const createServer = (): McpServer => {
         ),
     },
     async (
-      { calendarId, search, startTime, endTime, top = 50, skip = 0, userTimezone },
+      {
+        calendarId,
+        search,
+        startTime,
+        endTime,
+        top = 50,
+        skip = 0,
+        userTimezone,
+      },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
