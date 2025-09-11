@@ -5,6 +5,7 @@ import type {
   MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 /**
@@ -54,6 +55,14 @@ export function getDefaultConfiguration(
 
   for (const [key] of Object.entries(requirements.requiredLists)) {
     set(additionalConfig, key, []);
+  }
+
+  // Set default value for advanced search switch for search servers
+  if (
+    mcpServerView?.serverType === "internal" &&
+    mcpServerView.server.name === "search"
+  ) {
+    additionalConfig[ADVANCED_SEARCH_SWITCH] = false;
   }
 
   defaults.additionalConfiguration = additionalConfig;
