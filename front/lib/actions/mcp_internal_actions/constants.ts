@@ -1007,7 +1007,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "slack_bot",
       version: "1.0.0",
       description:
-        "Slack tools using workspace bot credentials. Messages and actions will appear as coming from the Dust Slack bot rather than your personal account. The Slack bot must be added to channels before it is able to post messages. Direct messages are not supported. For message search and private channel access, use the user credentials Slack tool instead.",
+        "Slack tools using workspace bot credentials. Messages and actions will appear as coming from the Dust Slack bot rather than your personal account.",
       authorization: {
         provider: "slack" as const,
         supported_use_cases: ["platform_actions"] as const,

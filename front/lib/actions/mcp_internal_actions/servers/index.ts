@@ -36,8 +36,8 @@ import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
-import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
+import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
