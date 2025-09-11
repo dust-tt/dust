@@ -46,7 +46,7 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
-  - User data download from the visualization:
+- User data download from the visualization:
   - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
   - \`triggerUserFileDownload\` has to be imported from \`"@dust/react-hooks"\`.
   - Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
