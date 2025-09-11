@@ -59,41 +59,16 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
     },
   ];
 
-  const rows: RowData[] = React.useMemo(() => {
-    // Add some fake rows for UI testing
-    const fakeRows: RowData[] = [
-      {
-        id: "fake-trigger-1",
-        name: "Slack Message Trigger",
-        lastUpdated: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
-      },
-      {
-        id: "fake-trigger-2",
-        name: "GitHub PR Webhook",
-        lastUpdated: Date.now() - 1000 * 60 * 60 * 24, // 1 day ago
-      },
-      {
-        id: "fake-trigger-3",
-        name: "Email Notification Trigger",
-        lastUpdated: Date.now() - 1000 * 60 * 30, // 30 minutes ago
-      },
-      {
-        id: "fake-trigger-4",
-        name: "Document Update Trigger",
-        lastUpdated: Date.now() - 1000 * 60 * 60 * 48, // 2 days ago
-      },
-    ];
-
-    const realRows =
+  const rows: RowData[] = React.useMemo(
+    () =>
       webhookSourceViews.map((webhookSourceView) => ({
         id: webhookSourceView.sId,
         name:
           webhookSourceView.customName ?? webhookSourceView.webhookSource.name,
         lastUpdated: webhookSourceView.updatedAt,
-      })) || [];
-
-    return [...realRows, ...fakeRows];
-  }, [webhookSourceViews]);
+      })),
+    [webhookSourceViews]
+  );
 
   if (isWebhookSourceViewsLoading) {
     return (
