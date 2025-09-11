@@ -319,6 +319,13 @@ export const FILE_FORMATS = {
     exts: [".mp3", ".mp4"],
     isSafeToDisplay: false,
   },
+  // In theory deprecated => https://mimetype.io/audio/x-m4a
+  // But apple voice recordings use it.
+  "audio/x-m4a": {
+    cat: "audio",
+    exts: [".m4a", ".mp4"],
+    isSafeToDisplay: false,
+  },
   "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: false },
   "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: false },
   "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: false },
