@@ -106,15 +106,17 @@ const [fileContent, setFileContent] = useState(null);
 useEffect(() => {
   const loadFile = async () => {
     if (file) {
-      // CORRECT: await the Promise
+      // For text files
       const text = await file.text();
       setFileContent(text);
-        // for binary file:
-        // const arrayBuffer = await file.arrayBuffer();
-      }
+
+      // For binary files
+      const arrayBuffer = await file.arrayBuffer();
+      setFileContent(arrayBuffer);
+    }
   };
   loadFile();
-  }, [file]);
+}, [file]);
 
 \`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
 
