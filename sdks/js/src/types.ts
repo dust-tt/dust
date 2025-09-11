@@ -208,6 +208,7 @@ export const supportedImageFileFormats = {
 
 export const supportedAudioFileFormats = {
   "audio/mpeg": [".mp3", ".mp4"],
+  "audio/x-m4a": [".m4a", ".mp4"],
   "audio/ogg": [".ogg"],
   "audio/wav": [".wav"],
   "audio/webm": [".webm"],
