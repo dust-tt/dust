@@ -1,3 +1,4 @@
+import type { MCPProgressNotificationType } from "@dust-tt/client";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -34,7 +35,7 @@ const createServer = (
     withToolLogging(
       auth,
       { toolName: "run_dust_deep", agentLoopContext },
-      async ({ query }) => {
+      async ({ query }, { sendNotification, _meta }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));
         }
@@ -58,6 +59,47 @@ const createServer = (
 
         const runContext = agentLoopContext.runContext;
         const { agentConfiguration, conversation } = runContext;
+        const instructions = agentConfiguration.instructions;
+
+        if (_meta?.progressToken && sendNotification) {
+          // Store the query resource immediately so it's available in the UI while the action is running.
+          const storeResourceNotification: MCPProgressNotificationType = {
+            method: "notifications/progress",
+            params: {
+              progress: 0,
+              total: 1,
+              progressToken: _meta.progressToken,
+              data: {
+                label: `Storing query resource`,
+                output: {
+                  type: "store_resource",
+                  contents: [
+                    {
+                      type: "resource",
+                      resource: {
+                        mimeType:
+                          INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+                        text: query,
+                        childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
+                        uri: "",
+                      },
+                    },
+                    {
+                      type: "resource",
+                      resource: {
+                        mimeType:
+                          INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER,
+                        text: instructions ?? "",
+                        uri: "",
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          };
+          await sendNotification(storeResourceNotification);
+        }
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
@@ -83,16 +125,7 @@ const createServer = (
             resource: {
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
               conversationId: convRes.value.conversation.sId,
-              text: `Query delegated to dust-deep.`,
-              uri: "",
-            },
-          },
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-              text: query,
-              childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
+              text: `Query delegated from :mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} to :mention[dust-deep]{sId=${GLOBAL_AGENTS_SID.DUST_DEEP}}. ${agentConfiguration.name} is an agent with the following instruction: ${instructions} `,
               uri: "",
             },
           },
