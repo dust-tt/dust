@@ -3,6 +3,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import uniqueId from "lodash/uniqueId";
 import type React from "react";
 
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
@@ -23,18 +24,6 @@ import type {
   WhitelistableFeature,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
-
-export type AssistantBuilderTriggerType = {
-  sId?: string;
-  name: string;
-  kind: "schedule";
-  customPrompt: string | null;
-  editor: UserType["id"] | null;
-  configuration: {
-    cron: string;
-    timezone: string;
-  } | null;
-};
 
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
@@ -94,7 +83,7 @@ export type AssistantBuilderState = {
     responseFormat?: string;
   };
   actions: AssistantBuilderMCPOrVizState[];
-  triggers: AssistantBuilderTriggerType[];
+  triggers: AgentBuilderTriggerType[];
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];

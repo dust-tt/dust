@@ -9,6 +9,7 @@ import cronstrue from "cronstrue";
 import { useMemo } from "react";
 
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { isAgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useUser } from "@app/lib/swr/user";
 import type { TriggerKind } from "@app/types/assistant/triggers";
 
@@ -37,14 +38,20 @@ export const TriggerCard = ({
   const isEditor = trigger.editor === user?.id;
   const cronDescription = useMemo(() => {
     try {
-      if (trigger.configuration?.cron) {
-        return `Runs ${cronstrue.toString(trigger.configuration?.cron)}.`;
+      if (
+        trigger.kind === "schedule" &&
+        trigger.configuration &&
+        "cron" in trigger.configuration
+      ) {
+        return `Runs ${cronstrue.toString(trigger.configuration.cron)}.`;
+      } else if (trigger.kind === "webhook") {
+        return "Triggered by webhook.";
       }
     } catch (error) {
       // Ignore.
     }
     return "";
-  }, [trigger.configuration?.cron]);
+  }, [trigger.kind, trigger.configuration]);
 
   return (
     <Card
@@ -69,11 +76,11 @@ export const TriggerCard = ({
           <Avatar visual={getIcon(trigger.kind)} size="xs" />
           <span className="truncate">{trigger.name}</span>
         </div>
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          {trigger.kind === "schedule" && (
+        {isAgentBuilderScheduleTriggerType(trigger) && (
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
             <span className="line-clamp-2 break-words">{cronDescription}</span>
-          )}
-        </span>
+          </span>
+        )}
       </div>
     </Card>
   );
