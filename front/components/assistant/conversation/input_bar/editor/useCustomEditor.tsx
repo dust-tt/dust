@@ -78,6 +78,10 @@ const useEditorService = (editor: Editor | null) => {
   const editorService = useMemo(() => {
     // Return the service object with utility functions.
     return {
+      // Insert text helper function.
+      insertText: (text: string) => {
+        editor?.chain().focus().insertContent(text).run();
+      },
       // Insert mention helper function.
       insertMention: ({ id, label }: { id: string; label: string }) => {
         const shouldAddSpaceBeforeMention =

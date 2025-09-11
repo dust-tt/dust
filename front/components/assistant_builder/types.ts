@@ -3,12 +3,13 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import uniqueId from "lodash/uniqueId";
 import type React from "react";
 
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type {
@@ -23,18 +24,6 @@ import type {
   WhitelistableFeature,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
-
-export type AssistantBuilderTriggerType = {
-  sId?: string;
-  name: string;
-  kind: "schedule";
-  customPrompt: string | null;
-  editor: UserType["id"] | null;
-  configuration: {
-    cron: string;
-    timezone: string;
-  } | null;
-};
 
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
@@ -94,7 +83,7 @@ export type AssistantBuilderState = {
     responseFormat?: string;
   };
   actions: AssistantBuilderMCPOrVizState[];
-  triggers: AssistantBuilderTriggerType[];
+  triggers: AgentBuilderTriggerType[];
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
@@ -122,7 +111,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
 export function getDefaultMCPServerActionConfiguration(
   mcpServerView?: MCPServerViewType
 ): AssistantBuilderMCPConfiguration {
-  const requirements = getMCPServerRequirements(mcpServerView);
+  const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
   return {
     type: "MCP",
@@ -140,14 +129,14 @@ export function getDefaultMCPServerActionConfiguration(
     },
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      requirements.requiresDataSourceConfiguration ||
-      requirements.requiresDataWarehouseConfiguration ||
-      requirements.requiresTableConfiguration
+      toolsConfigurations.mayRequireDataSourceConfiguration ||
+      toolsConfigurations.mayRequireDataWarehouseConfiguration ||
+      toolsConfigurations.mayRequireTableConfiguration
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: requirements.noRequirement,
+    noConfigurationRequired: toolsConfigurations.noRequirement,
   };
 }
 

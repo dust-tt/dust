@@ -206,8 +206,16 @@ export const supportedImageFileFormats = {
   "image/webp": [".webp"],
 } as const;
 
+export const supportedAudioFileFormats = {
+  "audio/mpeg": [".mp3", ".mp4"],
+  "audio/ogg": [".ogg"],
+  "audio/wav": [".wav"],
+  "audio/webm": [".webm"],
+} as const;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
+type AudioContentType = keyof typeof supportedAudioFileFormats;
 
 const supportedOtherContentTypes = Object.keys(
   supportedOtherFileFormats
@@ -215,21 +223,29 @@ const supportedOtherContentTypes = Object.keys(
 const supportedImageContentTypes = Object.keys(
   supportedImageFileFormats
 ) as ImageContentType[];
+const supportedAudioContentTypes = Object.keys(
+  supportedAudioFileFormats
+) as AudioContentType[];
 
 export const supportedFileExtensions = [
   ...Object.keys(supportedOtherFileFormats),
   ...Object.keys(supportedImageFileFormats),
 ];
 
-export type SupportedFileContentType = OtherContentType | ImageContentType;
+export type SupportedFileContentType =
+  | OtherContentType
+  | ImageContentType
+  | AudioContentType;
 const supportedUploadableContentType = [
   ...supportedOtherContentTypes,
   ...supportedImageContentTypes,
+  ...supportedAudioContentTypes,
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | keyof typeof supportedAudioFileFormats
   | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
@@ -238,6 +254,7 @@ const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | keyof typeof supportedAudioFileFormats
 >();
 
 export function isSupportedFileContentType(
@@ -258,6 +275,12 @@ export function isSupportedImageContentType(
   contentType: string
 ): contentType is ImageContentType {
   return supportedImageContentTypes.includes(contentType as ImageContentType);
+}
+
+export function isSupportedAudioContentType(
+  contentType: string
+): contentType is AudioContentType {
+  return supportedAudioContentTypes.includes(contentType as AudioContentType);
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
@@ -609,6 +632,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl"
+  | "hootl_subscriptions"
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "jira_tool"

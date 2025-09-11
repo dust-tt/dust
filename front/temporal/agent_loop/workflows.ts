@@ -33,7 +33,7 @@ const activities: AgentLoopActivities = {
   runModelAndCreateActionsActivity: proxyActivities<
     typeof runModelAndCreateWrapperActivities
   >({
-    startToCloseTimeout: "7 minutes",
+    startToCloseTimeout: "10 minutes",
   }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
     // The activity timeout should be slightly longer than the max timeout of

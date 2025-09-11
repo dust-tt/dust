@@ -14,7 +14,7 @@ import {
   InternalActionIcons,
   isCustomServerIconType,
 } from "@app/lib/actions/mcp_icons";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 interface DataVisualizationCardProps {
@@ -54,7 +54,7 @@ function MCPServerCard({
   onClick,
   onToolInfoClick,
 }: MCPServerCardProps) {
-  const requirement = getMCPServerRequirements(view);
+  const requirement = getMCPServerToolsConfigurations(view);
   const canAdd = requirement.noRequirement ? !isSelected : true;
 
   const icon = isCustomServerIconType(view.server.icon)

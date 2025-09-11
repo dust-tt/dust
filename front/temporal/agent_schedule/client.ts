@@ -12,10 +12,12 @@ import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
 import { agentScheduleWorkflow } from "@app/temporal/agent_schedule/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
+import { isScheduleTrigger } from "@app/types/assistant/triggers";
 
 function getScheduleOptions(
   auth: Authenticator,
-  trigger: TriggerResource,
+  triggerData: ScheduleTriggerType,
   scheduleId: string
 ): ScheduleOptions {
   return {
@@ -25,7 +27,7 @@ function getScheduleOptions(
       args: [
         auth.getNonNullableUser().sId,
         auth.getNonNullableWorkspace().sId,
-        trigger.toJSON(),
+        triggerData,
       ],
       taskQueue: QUEUE_NAME,
     },
@@ -34,8 +36,8 @@ function getScheduleOptions(
       overlap: ScheduleOverlapPolicy.SKIP,
     },
     spec: {
-      cronExpressions: [trigger.configuration.cron],
-      timezone: trigger.configuration.timezone,
+      cronExpressions: [triggerData.configuration.cron],
+      timezone: triggerData.configuration.timezone,
     },
   };
 }
@@ -66,12 +68,14 @@ export async function createOrUpdateAgentScheduleWorkflow({
     trigger: trigger.toJSON(),
   });
 
-  if (trigger.kind !== "schedule") {
+  const scheduleTrigger = trigger.toJSON();
+
+  if (!isScheduleTrigger(scheduleTrigger)) {
     childLogger.error("Trigger is not a schedule.");
     return new Err(new Error("Trigger is not a schedule"));
   }
 
-  const scheduleOptions = getScheduleOptions(auth, trigger, scheduleId);
+  const scheduleOptions = getScheduleOptions(auth, scheduleTrigger, scheduleId);
 
   /**
    * First, we try to get and update the existing schedule

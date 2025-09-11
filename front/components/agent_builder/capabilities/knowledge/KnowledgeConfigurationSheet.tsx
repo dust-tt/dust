@@ -1,6 +1,9 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
   Avatar,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   MultiPageSheet,
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
@@ -26,6 +29,7 @@ import {
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
+import { CustomCheckboxSection } from "@app/components/agent_builder/capabilities/shared/CustomCheckboxSection";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
@@ -47,7 +51,11 @@ import {
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import {
+  ADVANCED_SEARCH_SWITCH,
+  SEARCH_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 
@@ -139,7 +147,7 @@ function KnowledgeConfigurationSheetForm({
 
   const handleSave = (formData: CapabilityFormData) => {
     const { description, configuration, mcpServerView } = formData;
-    const requirements = getMCPServerRequirements(mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
     // Transform the tree structure to selection configurations
     const dataSourceConfigurations = transformTreeToSelectionConfigurations(
@@ -148,8 +156,8 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      requirements.requiresDataSourceConfiguration ||
-      requirements.requiresDataWarehouseConfiguration
+      toolsConfigurations.mayRequireDataSourceConfiguration ||
+      toolsConfigurations.mayRequireDataWarehouseConfiguration
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -240,6 +248,7 @@ function KnowledgeConfigurationSheetContent({
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const nameSectionRef = useRef<HTMLInputElement>(null);
   const { setValue, getValues } = useFormContext<CapabilityFormData>();
+  const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -257,8 +266,8 @@ function KnowledgeConfigurationSheetContent({
     return null;
   }, [mcpServerView]);
 
-  const requirements = useMemo(() => {
-    return getMCPServerRequirements(mcpServerView);
+  const toolsConfigurations = useMemo(() => {
+    return getMCPServerToolsConfigurations(mcpServerView);
   }, [mcpServerView]);
 
   // Focus NameSection input when navigating to CONFIGURATION page
@@ -324,10 +333,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: requirements.requiresTableConfiguration
+      title: toolsConfigurations.mayRequireTableConfiguration
         ? "Select Tables"
         : "Select Data Sources",
-      description: requirements.requiresTableConfiguration
+      description: toolsConfigurations.mayRequireTableConfiguration
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
@@ -354,17 +363,41 @@ function KnowledgeConfigurationSheetContent({
             placeholder="Name ..."
           />
 
-          {requirements.mayRequireTimeFrameConfiguration && (
+          {toolsConfigurations.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
           )}
 
-          {requirements.mayRequireJsonSchemaConfiguration && (
+          {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 
           {config && <DescriptionSection {...config?.descriptionConfig} />}
 
           <SelectDataSourcesFilters />
+
+          {/* Advanced Settings collapsible section */}
+          {mcpServerView?.serverType === "internal" &&
+            mcpServerView.server.name === SEARCH_SERVER_NAME && (
+              <Collapsible
+                open={isAdvancedSettingsOpen}
+                onOpenChange={setAdvancedSettingsOpen}
+              >
+                <CollapsibleTrigger isOpen={isAdvancedSettingsOpen}>
+                  <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+                    Advanced Settings
+                  </h3>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="m-1">
+                  <CustomCheckboxSection
+                    title="Advanced Search Mode"
+                    description="Enable advanced search capabilities with enhanced discovery and filtering options for more precise results."
+                    targetMCPServerName={SEARCH_SERVER_NAME}
+                    selectedMCPServerView={mcpServerView ?? undefined}
+                    configurationKey={ADVANCED_SEARCH_SWITCH}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
         </div>
       ),
     },

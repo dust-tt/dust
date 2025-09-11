@@ -340,6 +340,16 @@ export default async function createServer(
 
       const { conversation, isNewConversation, userMessageId } = convRes.value;
 
+      if (isNewConversation) {
+        logger.info(
+          {
+            childConversationId: conversation.sId,
+            conversationId: mainConversation.sId,
+          },
+          "Conversation created for run_agent"
+        );
+      }
+
       if (_meta?.progressToken && sendNotification && isNewConversation) {
         // Send notification indicating that a run_agent started to store resume state.
         const notification: MCPProgressNotificationType = {

@@ -247,6 +247,11 @@ impl Table {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         search_store: Option<Box<dyn SearchStore + Sync + Send>>,
     ) -> Result<()> {
+        info!(
+            table_id = self.table_id(),
+            "DSSTRUCTSTAT [delete] Deleting table"
+        );
+        let now = utils::now();
         if self.remote_database_table_id().is_none() {
             // Invalidate the databases that use the table.
             try_join_all(
@@ -284,6 +289,11 @@ impl Table {
                 .await?;
         }
 
+        info!(
+            table_id = self.table_id(),
+            duration = utils::now() - now,
+            "DSSTRUCTSTAT [delete] Table deleted"
+        );
         Ok(())
     }
 

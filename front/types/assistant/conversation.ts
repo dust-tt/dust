@@ -58,7 +58,7 @@ export type LightMessageType =
 export type MessageWithContentFragmentsType =
   | LightAgentMessageType
   | (UserMessageType & {
-      contenFragments?: ContentFragmentType[];
+      contentFragments?: ContentFragmentType[];
     });
 
 export type WithRank<T> = T & {

@@ -280,8 +280,44 @@ export default function AgentBuilder({
     }
   };
 
+  const handleFormErrors = (errors: Record<string, any>) => {
+    const getFirstErrorMessage = (errorObj: Record<string, any>): string => {
+      for (const key in errorObj) {
+        if (errorObj[key]) {
+          if (typeof errorObj[key] === "string") {
+            return errorObj[key];
+          }
+          if (errorObj[key].message) {
+            return errorObj[key].message;
+          }
+          if (typeof errorObj[key] === "object") {
+            const nestedError = getFirstErrorMessage(errorObj[key]);
+            if (nestedError) {
+              return nestedError;
+            }
+          }
+        }
+      }
+      return "Unknown error";
+    };
+    const errorMessage = getFirstErrorMessage(errors);
+    logger.error(
+      {
+        errorMessage,
+        agentConfigurationId: agentConfiguration?.sId,
+      },
+      "[Agent builder] - Form validation error"
+    );
+    sendNotification({
+      title: `Agent ${agentConfiguration ? "edition" : "creation"} failed.`,
+      description: "There was an error validating the form.",
+      type: "error",
+    });
+    setIsSaving(false);
+  };
+
   const handleSave = () => {
-    void form.handleSubmit(handleSubmit)();
+    void form.handleSubmit(handleSubmit, handleFormErrors)();
   };
 
   const handleCancel = async () => {

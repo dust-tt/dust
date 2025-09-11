@@ -157,7 +157,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   hootl: {
-    description: "Human Out Of The Loop (aka Triggers)",
+    description: "Display Triggers section in the Agent Builder",
+    stage: "rolling_out",
+  },
+  hootl_subscriptions: {
+    description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
   },
   slack_enhanced_default_agent: {

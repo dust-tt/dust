@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -30,6 +31,17 @@ export interface PatchTriggersRequestBody {
       customPrompt: string;
     } & TriggerConfiguration
   >;
+}
+
+// Helper type guard for decoded trigger data from TriggerSchema
+function isWebhookTriggerData(trigger: {
+  kind: string;
+  webhookSourceViewSId?: unknown;
+}): trigger is { kind: "webhook"; webhookSourceViewSId: string } {
+  return (
+    trigger.kind === "webhook" &&
+    typeof trigger.webhookSourceViewSId === "string"
+  );
 }
 
 async function handler(
@@ -152,10 +164,18 @@ async function handler(
 
         if (triggerData.sId && currentTriggersMap.has(triggerData.sId)) {
           const existingTrigger = currentTriggersMap.get(triggerData.sId)!;
+
+          const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
+            ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
+            : null;
+
           const updatedTrigger = await TriggerResource.update(
             auth,
             existingTrigger.sId(),
-            validatedTrigger
+            {
+              ...validatedTrigger,
+              webhookSourceViewId,
+            }
           );
           if (updatedTrigger.isErr()) {
             return apiError(req, res, {
@@ -170,6 +190,10 @@ async function handler(
           resultTriggers.push(updatedTrigger.value.toJSON());
           currentTriggersMap.delete(triggerData.sId);
         } else {
+          const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
+            ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
+            : null;
+
           const newTrigger = await TriggerResource.makeNew(auth, {
             workspaceId: workspace.id,
             agentConfigurationId,
@@ -178,6 +202,7 @@ async function handler(
             configuration: validatedTrigger.configuration,
             customPrompt: validatedTrigger.customPrompt,
             editor: auth.getNonNullableUser().id,
+            webhookSourceViewId,
           });
 
           if (newTrigger.isErr()) {

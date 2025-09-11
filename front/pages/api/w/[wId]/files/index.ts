@@ -84,7 +84,7 @@ async function handler(
         });
       }
 
-      // Agressively rate limit file uploads.
+      // Aggressively rate limit file uploads.
       const remaining = await rateLimiter({
         key: `workspace:${owner.id}:file_uploads`,
         maxPerTimeframe: 40,

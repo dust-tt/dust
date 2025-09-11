@@ -373,7 +373,7 @@ export const VisualizationActionIframe = forwardRef<
                     ref={combinedRef}
                     className={cn("h-full w-full", !errorMessage && "min-h-96")}
                     src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}${isInDrawer ? "&fullHeight=true" : ""}`}
-                    sandbox="allow-scripts"
+                    sandbox="allow-scripts allow-popups"
                   />
                 </div>
               )}

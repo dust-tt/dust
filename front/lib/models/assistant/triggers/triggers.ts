@@ -2,6 +2,7 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -26,6 +27,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
    */
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]>;
   declare editor: ForeignKey<UserModel["id"]>;
+  declare webhookSourceViewId: ForeignKey<WebhookSourcesViewModel["id"]> | null;
 
   declare configuration: TriggerConfigurationType;
 }
@@ -68,6 +70,10 @@ TriggerModel.init(
       type: DataTypes.JSONB,
       allowNull: false,
     },
+    webhookSourceViewId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
   },
   {
     modelName: "trigger",
@@ -81,10 +87,17 @@ TriggerModel.init(
     },
     indexes: [
       { fields: ["workspaceId", "agentConfigurationId", "name"], unique: true },
+      { fields: ["workspaceId", "webhookSourceViewId"] },
     ],
   }
 );
 
 TriggerModel.belongsTo(UserModel, {
   foreignKey: { name: "editor", allowNull: false },
+});
+
+TriggerModel.belongsTo(WebhookSourcesViewModel, {
+  foreignKey: { name: "webhookSourceViewId", allowNull: true },
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
 });

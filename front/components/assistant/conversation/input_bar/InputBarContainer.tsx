@@ -21,6 +21,7 @@ import useUrlHandler from "@app/components/assistant/conversation/input_bar/edit
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
+import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -28,6 +29,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -42,6 +44,7 @@ export const INPUT_BAR_ACTIONS = [
   "attachment",
   "assistants-list",
   "assistants-list-with-actions",
+  "voice",
   "fullscreen",
 ] as const;
 
@@ -86,6 +89,7 @@ const InputBarContainer = ({
   onMCPServerViewDeselect,
   selectedMCPServerViewIds,
 }: InputBarContainerProps) => {
+  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -326,6 +330,17 @@ const InputBarContainer = ({
                 disabled={disableTextInput}
               />
             )}
+            {featureFlags.hasFeature("simple_audio_transcription") &&
+              actions.includes("voice") && (
+                <VoicePicker
+                  owner={owner}
+                  fileUploaderService={fileUploaderService}
+                  onTranscribeDelta={(delta) => {
+                    editorService.insertText(delta);
+                  }}
+                  disabled={disableTextInput}
+                />
+              )}
           </div>
           <Button
             size="xs"

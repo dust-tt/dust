@@ -147,7 +147,7 @@ export async function getContentFragmentBlob(
       auth,
       cf.nodeDataSourceViewId
     );
-    // If dsView is not defined it means it does not exist of we don't have access to it.
+    // If dsView is not defined, it means it does not exist of we don't have access to it.
     if (!dsView) {
       return new Err(
         new Error("Unknown data source view for content fragment input")
