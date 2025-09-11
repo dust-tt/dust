@@ -2092,6 +2092,13 @@ impl DataSource {
         let (tables, total) = store
             .list_data_source_tables(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
+
+        info!(
+            data_source_internal_id = self.internal_id(),
+            table_count = total,
+            "Deleting tables"
+        );
+
         try_join_all(
             tables
                 .iter()
