@@ -3,7 +3,7 @@ const isDev = process.env.NODE_ENV === "development";
 
 const CONTENT_SECURITY_POLICIES = `connect-src 'self'; media-src 'self'; frame-ancestors 'self' ${
   isDev ? "http://localhost:3000" : "https://dust.tt https://eu.dust.tt"
-}; default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; object-src 'none';`;
+}; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; object-src 'none';`;
 
 const nextConfig = {
   async headers() {
