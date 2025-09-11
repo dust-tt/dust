@@ -59,7 +59,12 @@ export type FileTypeWithMetadata = FileType & {
   useCaseMetadata: FileUseCaseMetadata;
 };
 
-export type FileFormatCategory = "image" | "data" | "code" | "delimited";
+export type FileFormatCategory =
+  | "image"
+  | "data"
+  | "code"
+  | "delimited"
+  | "audio";
 
 // Define max sizes for each category.
 export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
@@ -67,6 +72,7 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
   image: 5 * 1024 * 1024, // 5 MB
+  audio: 25 * 1024 * 1024, // 25 MB
 };
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {
@@ -133,6 +139,7 @@ type FileFormat = {
    * Unsafe file types include:
    * - HTML and XML files
    * - Script files (js, ts, py, etc.)
+   * - Audio files (mp4, ogg, etc.)
    * - Any file type that could contain executable code
    */
   isSafeToDisplay: boolean;
@@ -306,6 +313,16 @@ export const FILE_FORMATS = {
     isSafeToDisplay: false,
   },
 
+  // Audio
+  "audio/mpeg": {
+    cat: "audio",
+    exts: [".mp3", ".mp4"],
+    isSafeToDisplay: false,
+  },
+  "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: false },
+  "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: false },
+  "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: false },
+
   // Unknown.
   "application/octet-stream": {
     cat: "data",
@@ -377,6 +394,14 @@ export type SupportedNonImageContentType = {
     : K;
 }[keyof typeof FILE_FORMATS];
 
+export type SupportedAudioContentType = {
+  [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
+    cat: "audio";
+  }
+    ? K
+    : never;
+}[keyof typeof FILE_FORMATS];
+
 // All the ones listed above
 export const supportedUploadableContentType = Object.keys(FILE_FORMATS);
 
@@ -432,6 +457,18 @@ export function isSupportedDelimitedTextContentType(
 
   if (format) {
     return format.cat === "delimited";
+  }
+
+  return false;
+}
+
+export function isSupportedAudioContentType(
+  contentType: string
+): contentType is SupportedAudioContentType {
+  const format = getFileFormat(contentType);
+
+  if (format) {
+    return format.cat === "audio";
   }
 
   return false;

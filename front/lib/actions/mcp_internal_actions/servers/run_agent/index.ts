@@ -266,6 +266,14 @@ export default async function createServer(
         return makeMCPToolTextError(convRes.error.message);
       }
 
+      logger.info(
+        {
+          childConversationId: convRes.value.conversation.sId,
+          conversationId: mainConversation.sId,
+        },
+        "Conversation created for run_agent"
+      );
+
       if (convRes.value.conversation.sId === mainConversation.sId) {
         return {
           isError: false,
@@ -279,24 +287,40 @@ export default async function createServer(
                 uri: "",
               },
             },
-            {
-              type: "resource",
-              resource: {
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-                text: query,
-                childAgentId: childAgentId,
-                uri: "",
-              },
-            },
           ],
         };
       }
 
       const { conversation, isNewConversation, userMessageId } = convRes.value;
 
-      // Send notification indicating that a run_agent started and a new conversation was created if
-      // it is the first time the conversation is created.
       if (_meta?.progressToken && sendNotification && isNewConversation) {
+        // Store the query resource immediately so it's available in the UI while the action is running.
+        const storeResourceNotification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 0,
+            total: 1,
+            progressToken: _meta.progressToken,
+            data: {
+              label: `Storing query resource`,
+              output: {
+                type: "store_resource",
+                content: {
+                  type: "resource",
+                  resource: {
+                    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+                    text: query,
+                    childAgentId: childAgentId,
+                    uri: "",
+                  },
+                },
+              },
+            },
+          },
+        };
+        await sendNotification(storeResourceNotification);
+
+        // Send notification indicating that a run_agent started to store resume state.
         const notification: MCPProgressNotificationType = {
           method: "notifications/progress",
           params: {
@@ -525,15 +549,6 @@ export default async function createServer(
       return {
         isError: false,
         content: [
-          {
-            type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-              text: query,
-              childAgentId: childAgentId,
-              uri: "",
-            },
-          },
           {
             type: "resource",
             resource: {

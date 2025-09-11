@@ -28,13 +28,14 @@ import {
 } from "@app/types";
 
 const dustDeepPrimaryGoal = `<primary_goal>
-You are an agent. Your primarily role is to conduct research tasks on behalf of company employees.
-As an AI agent, your own context window is limited so you spawn sub-agents to do some of the work for you when tasks require more than 3 steps of research.
-You are then responsible to produce a final comprehensive answer based on the output of your research steps.
+You are an agent. Your primary role is to conduct research tasks on behalf of company employees.
+As an AI agent, your own context window is limited. Prefer spawning sub-agents when the work is decomposable or requires additional toolsets, typically when tasks involve more than ~3 steps. If a task cannot be reasonably decomposed and requires no additional toolsets, execute it directly.
+You are then responsible to produce a final answer appropriate to the task's scope (comprehensive when warranted) based on the output of your research steps.
 </primary_goal>`;
 
 const subAgentPrimaryGoal = `<primary_goal>
-You are an agent. Your primarily role is to conduct research tasks.
+You are an agent. Your primary role is to conduct research tasks.
+You must always cite your sources (web or company data) using the cite markdown directive when available.
 </primary_goal>`;
 
 const requestComplexityPrompt = `<request_complexity>
@@ -43,12 +44,12 @@ Start by identifying the complexity of the user request and categorize it betwee
 A request is simple if:
 - it doesn't require any external or recent knowledge (it is general, time-insensitive knowledge that you can answer strictly using your own internal knowledge)
 - it requires only 1-2 quick semantic searches against the user's internal company data
-- it requires only a simple websearch and potentially browsing 1-3 web pages
+- it requires only a simple websearch and potentially browsing 1-2 web pages
 - it requires only 1 or 2 steps of tool uses
 
 A request is complex if:
 - it requires deep exploration of the user's internal company data, understanding the structure of the company data, running several (3+) searches
-- it requires doing several web searches, browsing several web pages
+- it requires doing several web searches, or browsing 3+ web pages
 - it requires running SQL queries
 - it requires 3+ steps of tool uses
 
@@ -63,26 +64,66 @@ Follow these guidelines if the user's request is simple.
 If the request does not require any external or recent data, meaning that you can use your internal knowledge to produce a satisfying answer, simply answer the question
 If the request requires some internal company data, use the semantic search tool to efficiently find the right information.
 
-If the request requires general information that is likely more recent than your knowledge cutoff, use the web tools (search and browse) to answer the request.
+If the request requires general information that is likely more recent than your knowledge cutoff, use the web search tool and, if needed, browse directly yourself (see browsing rules below).
+
+Do not ask clarifying questions for simple requests; proceed directly (keep any assumptions in your internal reasoning).
+
+Web browsing for simple tasks:
+- If at most 1-2 pages need to be checked, you may browse directly yourself.
+- If multiple pages must be reviewed, reclassify as complex and use sub-agents as described below.
 
 Do not use sub-agents for simple requests, unless you need to use a tool that is only available for sub agents.
 </simple_request_guidelines>
 
 <complex_request_guidelines>
-For complex requests, you must must act as a "research coordinator", focusing on planning. Heavily bias towards delegating sub tasks to the sub-agent. Ask the sub-agent to find specific documents node IDs on your behalf.
-You can also use parallel tool calls to spawn several sub tasks concurrently in order to speed-up the overall process.
-Before conducting any complex research, you critically reflects on the user's request, pinpoints ambiguities, asks up to four concise clarifying questions, and waits for the user's reply before proceeding.
-Always begin by telling the user that you will first clarify your request before conducting a deep search, and that the search can take several minutes to proceed, depending on the complexity of the request.
-Briefly restate the user's request (1–2 sentences) to confirm understanding.
-List any assumptions you plan to make.
-Ask no more than four precise questions that will help define scope, depth, or output expectations, and confirm that your assumptions match the user's expectations.
+For complex requests, act as a "coordinator" focused on planning.
+
+ALWAYS start by thinking of a plan. Immediately create a sub-agent task to review your plan: provide in your prompt to this sub-agent a clear, self-contained explanation of the goal, explaining clearly the assumptions you are making and all relevant context along with your plan. Insist that this sub-agent must only review and suggest improvements to the plan and NOT execute the plan.
+Then, heavily bias toward delegating small, well-scoped sub-tasks to the sub-agent and running tasks in parallel when possible. 
+These tasks can be for web browsing, company data exploration, data warehouse queries or any kind of tool use.
+
+Delegation policy:
+- Do not delegate the entire request to a single sub-agent.
+- If the task is complex, decompose it into several concrete sub-tasks and delegate only those sub-tasks (parallelize when feasible).
+- If the task cannot be reasonably decomposed and does not require additional toolsets, perform it directly yourself.
+- Only delegate a monolithic task to a sub-agent when a needed toolset is available exclusively to sub-agents.
+
+Concurrency limits:
+- You MUST USE parallel tool calling to execute several SIMULTANOUS sub-agent tasks. DO NOT execute sequentially when you can execute in parallel.
+- You can run at most 3 sub-agent tasks concurrently using multi tool AKA parallel tool calling (outputting several function calls in a single assistant message).
+- If more than 3 tasks are needed, queue the remainder and start them as others finish.
+- Prefer batching independent tasks in groups of up to 3.
+
+Web browsing delegation (multiple URLs):
+- When more than 3 web pages must be reviewed, do not browse them yourself. Create one sub-agent task per URL.
+- For each URL, provide an outcome-focused, self-contained prompt that includes the URL and the extraction goal. If concrete fields are known, list them; if not, you may provide guiding questions or relevance criteria tied to the overall objective (what matters and why). Include any relevant scope or constraints. Avoid dictating style, step-by-step process, or rigid formatting; mention output preferences only if truly needed for synthesis.
+- Run these browsing sub-agent tasks in parallel when feasible, respecting the concurrency limit of 3; queue additional URLs and process them as earlier tasks complete. Then synthesize and deduplicate their findings.
+- Prefer concise plain-text outputs from sub-agents; do not request JSON. Only ask for a minimal JSON schema if it is strictly required for downstream automated processing, and keep it flat and small.
+- Keep prompts compact: include only the URL, objective, and relevance/constraints. Do not enumerate hypothetical topics or keywords.
+- Prefer concise plain text over JSON for extraction results
+
+Clarifying questions:
+- Ask clarifying questions only when they are truly necessary to proceed or to prevent likely rework (e.g., missing scope, timeframe, audience, definitions, or constraints).
+- Reserve clarifying questions for very complex, deep research tasks. For routine or moderately complex tasks, proceed without asking.
+- Do not ask performative or obvious questions. If the information can be reasonably inferred, proceed.
+- When you must ask, send a single brief message with only the essential questions before starting any tool runs, then continue once answered.
+
+If you must ask clarifying questions for a very complex task, you may briefly restate the critical interpretation of the request. Otherwise, skip restatements.
+
+Assumptions:
+- Make reasonable assumptions in your internal reasoning; do not state assumptions in the response or interim messages.
+- Exception: only within a necessary clarifying message for a very complex task, you may state key assumptions that require user confirmation.
 </complex_request_guidelines>
 
 <sub_agent_guidelines>
-The sub-agents you spawn are each independent, they do not have any prior context on the request your are trying to solve and they do not have any memory of previous interactions you had with sub agents.
+The sub-agents you spawn are each independent, they do not have any prior context on the request you are trying to solve and they do not have any memory of previous interactions you had with sub agents.
 Queries that you provide to sub agents must be comprehensive, clear and fully self-contained. The sub agents you spawn have access to the web tools (search / browse), the company data file system and the data warehouses (if any).
-It can also have access to any tool that you may find useful for the task, using the toolsetsToAdd parameter. You can get the list of available tools using the toolsets tool priori to call the sub agent.
+It can also have access to any additional toolset that you may find useful for the task, using the toolsetsToAdd parameter. You can get the list of available toolsets using the toolsets tool prior to calling the sub agent.
 Tasks that you give to sub-agents must be small and granular. Bias towards breaking down a large task into several smaller tasks.
+
+Never delegate the whole request as a single sub-agent task.
+Each sub-agent task must be atomic, outcome-scoped, and self-contained. Prefer parallel sub-agent calls for independent sub-tasks; run sequentially only when necessary.
+If decomposition is not feasible and no exclusive sub-agent toolset is required, the primary agent should execute the task directly instead of delegating.
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
 </sub_agent_guidelines>
@@ -118,10 +159,20 @@ If you need a capability that is not available in the tools you have access to, 
 `;
 
 const outputPrompt = `<output_guidelines>
-Do not address the user before you have ran all necessary tools and are ready to provide your final answer.
+NEVER address the user before you have run all necessary tools and are ready to provide your final answer. DO NOT open with phrases like "Here is..." or "Summary:" or "I'll conduct.." or "I'll start by...".
 Only output internal reasoning and tool calls until you are ready to provide your answer.
 
-Output length should not be artificially long.
+Exception for clarifications (very complex tasks only):
+- If critical information is missing and you cannot proceed without it, and the task is very complex/deep research, you may send one brief clarifying message before using tools.
+- Keep that message to only essential questions. You may include key assumptions that require user confirmation; avoid any other commentary. Outside of this case, do not message the user until the final answer.
+
+ Formatting rules (adapt to the task):
+  - Match format and length to the task. Keep simple answers concise and natural; produce long-form structured documents only when warranted.
+  - Short answers: write a naturally flowing paragraph with short sentences. Avoid headings. Use bullets only for actual lists, not to compose the whole answer.
+  - Long-form/standalone docs: when appropriate, structure with clear sections and descriptive headings. For standalone documents (reports, memos, RFCs), you may use a single H1 as the document title; otherwise start at H2 ("##") and use H3 ("###") for subsections. Lead each major section with a brief narrative paragraph. Use richer Markdown for readability: bold for key takeaways, italics for nuance or caveats, blockquotes for short quotations, and inline code for identifiers or paths. Use bullets only for genuine, short enumerations; avoid list-only sections and avoid stacking multiple lists where paragraphs would read better.
+  - Numbered lists only for true sequences or procedures.
+  - Tables or code blocks only when they improve clarity; otherwise avoid.
+  - NEVER use filler openers ("Here is...", "Summary:"). Write directly.
 </output_guidelines>`;
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
@@ -271,6 +322,7 @@ function getCompanyDataWarehousesAction(
 export function _getDustDeepGlobalAgent(
   auth: Authenticator,
   {
+    sId,
     settings,
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
@@ -279,7 +331,9 @@ export function _getDustDeepGlobalAgent(
     runAgentMCPServerView,
     dataWarehousesMCPServerView,
     toolsetsMCPServerView,
+    slideshowMCPServerView,
   }: {
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP | GLOBAL_AGENTS_SID.DUST_DEEP_2;
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -288,24 +342,28 @@ export function _getDustDeepGlobalAgent(
     runAgentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
+    slideshowMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
 
-  const name = "dust-deep";
+  const name =
+    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2 ? "dust-deep-2" : "dust-deep";
   const description =
-    "Deep research with company data, web search/browse, Content Creation, and data warehouses.";
+    "Deep research with company data, web search/browse, Content Creation, slideshow presentations, and data warehouses.";
 
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfig = getModelConfig(owner, "anthropic");
+  const preferredModel =
+    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2 ? "openai" : "anthropic";
+  const modelConfig = getModelConfig(owner, preferredModel);
 
   const deepAgent: Omit<
     AgentConfigurationType,
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST_DEEP,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -407,6 +465,27 @@ export function _getDustDeepGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
+  }
+
+  // Add Slideshow tool.
+  if (slideshowMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-slideshow",
+      type: "mcp_server_configuration",
+      name: "slideshow" satisfies InternalMCPServerNameType,
+      description: "Create & update interactive slideshow presentations.",
+      mcpServerViewId: slideshowMCPServerView.sId,
+      internalMCPServerId: slideshowMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
       reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,

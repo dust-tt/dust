@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
@@ -13,8 +11,8 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId } from "@app/types";
-import { normalizeError, redactString } from "@app/types";
+import type { ModelId, Result } from "@app/types";
+import { Err, normalizeError, Ok, redactString } from "@app/types";
 import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;

@@ -1,3 +1,5 @@
+// Public API types are okay to use here because it's front/connectors communication.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isConnectorsAPIError } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";

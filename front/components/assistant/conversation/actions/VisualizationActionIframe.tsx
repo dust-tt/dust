@@ -296,8 +296,8 @@ export const VisualizationActionIframe = forwardRef<
 
   const iframeLoaded = contentHeight > 0;
   const showSpinner = useMemo(
-    () => codeFullyGenerated && !iframeLoaded && !isErrored,
-    [codeFullyGenerated, iframeLoaded, isErrored]
+    () => (codeFullyGenerated && !iframeLoaded && !isErrored) || retryClicked,
+    [codeFullyGenerated, iframeLoaded, isErrored, retryClicked]
   );
 
   const { handleVisualizationRetry, canRetry } = useVisualizationRetry({
@@ -313,6 +313,7 @@ export const VisualizationActionIframe = forwardRef<
     }
 
     setRetryClicked(true);
+    setErrorMessage(null);
 
     const success = await handleVisualizationRetry(errorMessage);
     if (!success) {
@@ -372,11 +373,11 @@ export const VisualizationActionIframe = forwardRef<
                     ref={combinedRef}
                     className={cn("h-full w-full", !errorMessage && "min-h-96")}
                     src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}${isInDrawer ? "&fullHeight=true" : ""}`}
-                    sandbox="allow-scripts"
+                    sandbox="allow-scripts allow-popups"
                   />
                 </div>
               )}
-              {isErrored && (
+              {isErrored && !retryClicked && (
                 <div className="flex h-full w-full items-center justify-center p-6">
                   <ContentMessage
                     title="Visualization Error"
@@ -401,6 +402,7 @@ export const VisualizationActionIframe = forwardRef<
                           size="sm"
                           label="Retry Visualization"
                           onClick={handleRetryClick}
+                          disabled={retryClicked}
                         />
                       </div>
                     )}

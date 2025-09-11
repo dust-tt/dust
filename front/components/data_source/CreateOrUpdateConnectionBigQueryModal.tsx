@@ -1,3 +1,5 @@
+// Okay to use public API types because it's front/connectors communication.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,

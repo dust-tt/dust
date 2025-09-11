@@ -64,7 +64,13 @@ function generateConfiguredInput({
 
   type PrimitiveType = string | number | boolean | string[];
 
-  const handleDefaultValue = <U extends PrimitiveType>(
+  /*
+   * Get a validated value from the action configuration.
+   * If the value is not provided, we look for a default value in the input schema.
+   * If the value is provided, we validate it against the expected type.
+   * If the value is not provided and there is no default value, we throw an error.
+   */
+  const getValidatedValue = <U extends PrimitiveType>(
     actionConfiguration: MCPToolConfigurationType,
     keyPath: string,
     value: PrimitiveType | undefined,
@@ -196,7 +202,7 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.STRING: {
       // For primitive types, we have rendered the key from the path and use it to look up the value.
-      const value = handleDefaultValue<string>(
+      const value = getValidatedValue<string>(
         actionConfiguration,
         keyPath,
         actionConfiguration.additionalConfiguration[keyPath],
@@ -208,7 +214,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER: {
-      const value = handleDefaultValue<number>(
+      const value = getValidatedValue<number>(
         actionConfiguration,
         keyPath,
         actionConfiguration.additionalConfiguration[keyPath],
@@ -220,7 +226,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN: {
-      const value = handleDefaultValue<boolean>(
+      const value = getValidatedValue<boolean>(
         actionConfiguration,
         keyPath,
         actionConfiguration.additionalConfiguration[keyPath],
@@ -232,7 +238,7 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM: {
-      const value = handleDefaultValue<string>(
+      const value = getValidatedValue<string>(
         actionConfiguration,
         keyPath,
         actionConfiguration.additionalConfiguration[keyPath],
@@ -244,6 +250,71 @@ function generateConfiguredInput({
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.LIST: {
+      let values = actionConfiguration.additionalConfiguration[keyPath];
+      if (
+        values === undefined ||
+        (Array.isArray(values) && values.length === 0)
+      ) {
+        const propSchema = findSchemaAtPath(
+          actionConfiguration.inputSchema,
+          keyPath.split(".")
+        );
+        if (propSchema) {
+          // Handle both object-level default {values, mimeType} and property-level default
+          if (
+            propSchema.default &&
+            typeof propSchema.default === "object" &&
+            propSchema.default !== null &&
+            "values" in propSchema.default
+          ) {
+            if (
+              Array.isArray(propSchema.default.values) &&
+              propSchema.default.values.every(
+                (v): v is string => typeof v === "string"
+              )
+            ) {
+              values = propSchema.default.values;
+            } else {
+              // Invalid object-level default type - throw specific error
+              throw new Error(
+                `Expected array of string values for key ${keyPath}, got ${
+                  Array.isArray(propSchema.default.values)
+                    ? "array with non-string elements"
+                    : typeof propSchema.default.values
+                }`
+              );
+            }
+          } else if (
+            propSchema.properties?.values &&
+            isJSONSchemaObject(propSchema.properties.values)
+          ) {
+            if (
+              Array.isArray(propSchema.properties.values.default) &&
+              propSchema.properties.values.default.every(
+                (v): v is string => typeof v === "string"
+              )
+            ) {
+              values = propSchema.properties.values.default;
+            } else {
+              // Invalid property-level default type - throw specific error
+              throw new Error(
+                `Expected array of string values for key ${keyPath}, got ${
+                  Array.isArray(propSchema.properties.values.default)
+                    ? "array with non-string elements"
+                    : typeof propSchema.properties.values.default
+                }`
+              );
+            }
+          }
+        }
+      }
+      if (!Array.isArray(values) || values.some((v) => typeof v !== "string")) {
+        throw new Error(
+          `Expected array of string values for key ${keyPath}, got ${typeof values}`
+        );
+      }
+
+      return { values: values, mimeType };
       let values = actionConfiguration.additionalConfiguration[keyPath];
       if (
         values === undefined ||
@@ -523,32 +594,16 @@ export interface MCPServerToolsConfigurations {
   mayRequireReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  stringConfigurations: {
-    key: string;
-    description?: string;
-    default?: string;
-  }[];
-  numberConfigurations: {
-    key: string;
-    description?: string;
-    default?: number;
-  }[];
-  booleanConfigurations: {
-    key: string;
-    description?: string;
-    default?: boolean;
-  }[];
-  enumConfigurations: Record<
-    string,
-    { options: string[]; description?: string; default?: string }
-  >;
-  listConfigurations: Record<
+  requiredStrings: { key: string; description?: string }[];
+  requiredNumbers: { key: string; description?: string }[];
+  requiredBooleans: { key: string; description?: string }[];
+  requiredEnums: Record<string, { options: string[]; description?: string }>;
+  requiredLists: Record<
     string,
     {
       options: Record<string, string>;
       description?: string;
       values?: string[];
-      default?: string;
     }
   >;
   mayRequireDustAppConfiguration: boolean;

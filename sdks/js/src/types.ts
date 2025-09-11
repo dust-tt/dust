@@ -206,8 +206,16 @@ export const supportedImageFileFormats = {
   "image/webp": [".webp"],
 } as const;
 
+export const supportedAudioFileFormats = {
+  "audio/mpeg": [".mp3", ".mp4"],
+  "audio/ogg": [".ogg"],
+  "audio/wav": [".wav"],
+  "audio/webm": [".webm"],
+} as const;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
+type AudioContentType = keyof typeof supportedAudioFileFormats;
 
 const supportedOtherContentTypes = Object.keys(
   supportedOtherFileFormats
@@ -215,21 +223,29 @@ const supportedOtherContentTypes = Object.keys(
 const supportedImageContentTypes = Object.keys(
   supportedImageFileFormats
 ) as ImageContentType[];
+const supportedAudioContentTypes = Object.keys(
+  supportedAudioFileFormats
+) as AudioContentType[];
 
 export const supportedFileExtensions = [
   ...Object.keys(supportedOtherFileFormats),
   ...Object.keys(supportedImageFileFormats),
 ];
 
-export type SupportedFileContentType = OtherContentType | ImageContentType;
+export type SupportedFileContentType =
+  | OtherContentType
+  | ImageContentType
+  | AudioContentType;
 const supportedUploadableContentType = [
   ...supportedOtherContentTypes,
   ...supportedImageContentTypes,
+  ...supportedAudioContentTypes,
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | keyof typeof supportedAudioFileFormats
   | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
@@ -238,6 +254,7 @@ const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | keyof typeof supportedAudioFileFormats
 >();
 
 export function isSupportedFileContentType(
@@ -258,6 +275,12 @@ export function isSupportedImageContentType(
   contentType: string
 ): contentType is ImageContentType {
   return supportedImageContentTypes.includes(contentType as ImageContentType);
+}
+
+export function isSupportedAudioContentType(
+  contentType: string
+): contentType is AudioContentType {
+  return supportedAudioContentTypes.includes(contentType as AudioContentType);
 }
 
 const UserMessageOriginSchema = FlexibleEnumSchema<
@@ -598,7 +621,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
-  | "data_warehouses_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
@@ -623,13 +645,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "research_agent"
+  | "research_agent_2"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
   | "slack_semantic_search"
   | "slack_enhanced_default_agent"
+  | "slack_message_splitting"
   | "slideshow"
-  | "toolsets_tool"
   | "usage_data_api"
   | "xai_feature"
   | "simple_audio_transcription"
@@ -1054,12 +1077,27 @@ const NotificationRunAgentGenerationTokensSchema = z.object({
   text: z.string(),
 });
 
+const NotificationStoreResourceContentSchema = z.object({
+  type: z.literal("store_resource"),
+  content: z.object({
+    type: z.literal("resource"),
+    resource: z
+      .object({
+        mimeType: z.string(),
+        text: z.string(),
+        uri: z.string(),
+      })
+      .passthrough(), // Allow additional properties
+  }),
+});
+
 const NotificationContentSchema = z.union([
   NotificationContentCreationFileContentSchema,
   NotificationImageContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,
   NotificationRunAgentGenerationTokensSchema,
+  NotificationStoreResourceContentSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,
 ]);
@@ -1739,6 +1777,10 @@ export type PublicPostMessageFeedbackRequestBody = z.infer<
 export const PostMessageFeedbackResponseSchema = z.object({
   success: z.literal(true),
 });
+
+export type PostMessageFeedbackResponseType = z.infer<
+  typeof PostMessageFeedbackResponseSchema
+>;
 
 export const PostUserMessageResponseSchema = z.object({
   message: UserMessageSchema,
@@ -2435,6 +2477,14 @@ export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
 >;
 
+const GetWorkspaceUsageResponseSchema = z
+  .string()
+  .or(z.undefined())
+  .or(z.instanceof(Buffer));
+export type GetWorkspaceUsageResponseType = z.infer<
+  typeof GetWorkspaceUsageResponseSchema
+>;
+
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(4096, "File name must be less than 4096 characters"),
@@ -2494,6 +2544,15 @@ export const FileUploadedRequestResponseSchema = z.object({
 });
 export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
+>;
+
+export const PublicFileResponseBodySchema = z.object({
+  content: z.string().optional(),
+  file: FileTypeSchema,
+});
+
+export type PublicFileResponseBodyType = z.infer<
+  typeof PublicFileResponseBodySchema
 >;
 
 export const MeResponseSchema = z.object({

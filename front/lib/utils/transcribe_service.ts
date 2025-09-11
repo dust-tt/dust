@@ -29,8 +29,13 @@ async function getOpenAI() {
 
 const _TRANSCRIBE_MODEL = "gpt-4o-transcribe";
 
+type FormidableFileLike = Pick<
+  formidable.File,
+  "filepath" | "originalFilename"
+>;
+
 async function toFileLike(
-  input: formidable.File,
+  input: FormidableFileLike,
   fallbackName = "audio.wav"
 ): Promise<FileLike> {
   const stream = fs.createReadStream(input.filepath);
@@ -39,7 +44,7 @@ async function toFileLike(
 }
 
 export async function transcribeFile(
-  input: formidable.File
+  input: FormidableFileLike
 ): Promise<Result<string, Error>> {
   try {
     const openai = await getOpenAI();

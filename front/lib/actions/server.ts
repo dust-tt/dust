@@ -1,4 +1,7 @@
+// Okay to use public API types because it's internal MCP servers.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { DustAppConfigType, DustAppType } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DustAPI } from "@dust-tt/client";
 import { z } from "zod";
 

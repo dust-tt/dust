@@ -8,6 +8,7 @@ import {
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useEffect, useRef } from "react";
 
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -35,7 +36,7 @@ export function AgentMessageActions({
   actionProgress,
   owner,
 }: AgentMessageActionsProps) {
-  const { openPanel } = useConversationSidePanelContext();
+  const { openPanel, currentPanel, data } = useConversationSidePanelContext();
 
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -45,12 +46,29 @@ export function AgentMessageActions({
 
   const chainOfThought = agentMessage.chainOfThought || "";
 
+  const firstRender = useRef<boolean>(true);
   const onClick = () => {
     openPanel({
       type: "actions",
       messageId: agentMessage.sId,
     });
   };
+
+  useEffect(() => {
+    // Only if we are in the first rendering, message is empty and panel is open on another message.
+    if (
+      currentPanel === "actions" &&
+      data !== agentMessage.sId &&
+      agentMessage.content === null &&
+      firstRender.current
+    ) {
+      openPanel({
+        type: "actions",
+        messageId: agentMessage.sId,
+      });
+    }
+    firstRender.current = false;
+  }, [agentMessage, currentPanel, data, openPanel]);
 
   const lastNotification = lastAction
     ? actionProgress.get(lastAction.id)?.progress ?? null
@@ -103,10 +121,10 @@ export function AgentMessageActions({
   ) : (
     <div className="flex flex-col items-start gap-y-4">
       <Button
-        size="sm"
+        size="xs"
         label="Message Breakdown"
         icon={CommandLineIcon}
-        variant="outline"
+        variant={data === agentMessage.sId ? "primary" : "outline"}
         onClick={onClick}
       />
     </div>

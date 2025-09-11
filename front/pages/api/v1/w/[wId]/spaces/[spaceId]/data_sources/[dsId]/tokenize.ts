@@ -1,3 +1,4 @@
+import type { TokenizeResponseType } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -10,7 +11,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { CoreAPITokenType, WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 import { CoreAPI } from "@app/types";
 
 export type PostDatasourceTokenizeBody = {
@@ -21,19 +22,13 @@ const PostDatasourceTokenizeBodySchema = t.type({
   text: t.string,
 });
 
-type PostDatasourceTokenizeResponseBody = {
-  tokens: CoreAPITokenType[];
-};
-
 /**
  * @ignoreswagger
  * This endpoint is not to be included in the public API docs.
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<PostDatasourceTokenizeResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<TokenizeResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const { dsId } = req.query;

@@ -1,3 +1,5 @@
+// Okay to use public API types because it's front/connectors communication.
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isFolder, isWebsite } from "@dust-tt/client";
 import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -68,6 +70,7 @@ export function InputBarAttachments({
         id: blob.id,
         title: blob.id,
         preview: blob.preview,
+        contentType: blob.contentType,
         isUploading: blob.isUploading,
         onRemove: () => files.service.removeFile(blob.id),
       })) || []

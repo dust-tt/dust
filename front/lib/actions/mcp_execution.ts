@@ -1,5 +1,7 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { McpError } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  CallToolResult,
+  McpError,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { Logger } from "pino";
 
 import {
@@ -26,6 +28,7 @@ import {
   isMCPProgressNotificationType,
   isResourceWithName,
   isRunAgentQueryProgressOutput,
+  isStoreResourceProgressOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
@@ -103,17 +106,29 @@ export async function* executeMCPTool({
     } else if (event.type === "notification") {
       const { notification } = event;
       if (isMCPProgressNotificationType(notification)) {
+        const output = notification.params.data.output;
+
+        // Handle store_resource notifications by creating output items immediately
+        if (isStoreResourceProgressOutput(output)) {
+          await AgentMCPActionOutputItem.create({
+            workspaceId: action.workspaceId,
+            agentMCPActionId: action.id,
+            content: output.content,
+          });
+        }
+
         // Specific handling for run_agent notifications indicating the tool has
         // started and can be resumed: the action is updated to save the resumeState.
-        if (isRunAgentQueryProgressOutput(notification.params.data.output)) {
+        if (isRunAgentQueryProgressOutput(output)) {
           await action.updateStepContext({
             ...action.stepContext,
             resumeState: {
-              userMessageId: notification.params.data.output.userMessageId,
-              conversationId: notification.params.data.output.conversationId,
+              userMessageId: output.userMessageId,
+              conversationId: output.conversationId,
             },
           });
         }
+
         // Regular notifications, we yield them as is with the type "tool_notification".
         yield {
           type: "tool_notification",

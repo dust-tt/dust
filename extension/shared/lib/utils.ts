@@ -207,6 +207,13 @@ export function compareAgentsForSort(
     return 1;
   }
 
+  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP_2) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP_2) {
+    return 1;
+  }
+
   if (a.sId === GLOBAL_AGENTS_SID.CLAUDE_4_SONNET) {
     return -1;
   }
