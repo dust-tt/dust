@@ -1,6 +1,9 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
   Avatar,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   MultiPageSheet,
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
@@ -26,6 +29,7 @@ import {
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
+import { CustomCheckboxSection } from "@app/components/agent_builder/capabilities/shared/CustomCheckboxSection";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
@@ -47,6 +51,7 @@ import {
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
@@ -240,6 +245,7 @@ function KnowledgeConfigurationSheetContent({
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const nameSectionRef = useRef<HTMLInputElement>(null);
   const { setValue, getValues } = useFormContext<CapabilityFormData>();
+  const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -365,6 +371,27 @@ function KnowledgeConfigurationSheetContent({
           {config && <DescriptionSection {...config?.descriptionConfig} />}
 
           <SelectDataSourcesFilters />
+
+          {/* Advanced Settings collapsible section */}
+          <Collapsible
+            open={isAdvancedSettingsOpen}
+            onOpenChange={setAdvancedSettingsOpen}
+          >
+            <CollapsibleTrigger isOpen={isAdvancedSettingsOpen}>
+              <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+                Advanced Settings
+              </h3>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="m-1">
+              <CustomCheckboxSection
+                title="Advanced Search Mode"
+                description="Enable advanced search capabilities with enhanced discovery and filtering options for more precise results."
+                targetMCPServerName="search"
+                selectedMCPServerView={mcpServerView ?? undefined}
+                configurationKey={ADVANCED_SEARCH_SWITCH}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       ),
     },
