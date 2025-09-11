@@ -25,6 +25,7 @@ export function CustomCheckboxSection({
 }: CustomCheckboxSectionProps) {
   const { field } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configurationKey}`,
+    defaultValue: false,
   });
 
   const isTargetServer =
@@ -35,7 +36,7 @@ export function CustomCheckboxSection({
     return null;
   }
 
-  const isEnabled = field.value === true;
+  const isEnabled = Boolean(field.value);
 
   return (
     <div className="flex flex-col gap-3">
@@ -43,7 +44,10 @@ export function CustomCheckboxSection({
       <div className="flex items-center justify-between gap-2">
         <Checkbox
           checked={isEnabled}
-          onCheckedChange={(checked) => field.onChange(checked)}
+          onCheckedChange={(checked) => {
+            const boolValue = checked === true;
+            field.onChange(boolValue);
+          }}
         />
         <div className="flex-1">
           {description && (
