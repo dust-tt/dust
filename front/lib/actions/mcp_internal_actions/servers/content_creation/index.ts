@@ -210,6 +210,13 @@ const createServer = (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
+        const validationResult = validateContent(new_string);
+        if (validationResult.isErr()) {
+          return new Err(
+            new MCPError(validationResult.error.message, { tracked: false })
+          );
+        }
+
         const { agentConfiguration } = agentLoopContext?.runContext ?? {};
 
         const result = await editClientExecutableFile(auth, {
