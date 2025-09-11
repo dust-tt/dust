@@ -232,10 +232,14 @@ export const supportedFileExtensions = [
   ...Object.keys(supportedImageFileFormats),
 ];
 
-export type SupportedFileContentType = OtherContentType | ImageContentType;
+export type SupportedFileContentType =
+  | OtherContentType
+  | ImageContentType
+  | AudioContentType;
 const supportedUploadableContentType = [
   ...supportedOtherContentTypes,
   ...supportedImageContentTypes,
+  ...supportedAudioContentTypes,
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
