@@ -444,6 +444,7 @@ const RenderConversation = ({
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
+  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
   const conversationLabel =
     conversation.title ||
     (moment(conversation.created).isSame(moment(), "day")
@@ -483,8 +484,21 @@ const RenderConversation = ({
           }
           label={conversationLabel}
           className={conversation.unread ? "font-medium" : undefined}
-          href={`/w/${owner.sId}/assistant/${conversation.sId}`}
-          shallow
+          onClick={async () => {
+            // Side bar is the floating sidebar that appears when the screen is small.
+            if (sidebarOpen) {
+              setSidebarOpen(false);
+              // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
+              await new Promise((resolve) => setTimeout(resolve, 600));
+            }
+            await router.push(
+              `/w/${owner.sId}/assistant/${conversation.sId}`,
+              undefined,
+              {
+                shallow: true,
+              }
+            );
+          }}
         />
       )}
     </>

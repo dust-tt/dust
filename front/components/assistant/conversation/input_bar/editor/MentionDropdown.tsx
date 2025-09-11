@@ -96,8 +96,16 @@ export const MentionDropdown = ({
                       ? "text-highlight-500"
                       : "text-foreground dark:text-foreground-night"
                   )}
-                  onClick={() => onSelect(suggestion)}
-                  onMouseEnter={() => onSelectedIndexChange(index)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSelect(suggestion);
+                  }}
+                  onMouseEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSelectedIndexChange(index);
+                  }}
                 >
                   {suggestion.label}
                 </button>
