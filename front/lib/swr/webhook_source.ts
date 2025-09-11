@@ -16,7 +16,10 @@ export function useWebhookSourceViews({
   disabled?: boolean;
 }) {
   const configFetcher: Fetcher<GetWebhookSourceViewsResponseBody> = fetcher;
-  const url = getWebhookSourceViewsKey(owner, space);
+  const url =
+    space !== undefined
+      ? `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`
+      : null;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled,
   });
@@ -33,14 +36,6 @@ export function useWebhookSourceViews({
   };
 }
 
-function getWebhookSourceViewsKey(
-  owner: LightWorkspaceType,
-  space?: SpaceType
-) {
-  return space !== undefined
-    ? `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`
-    : null;
-}
 export function useWebhookSourcesWithViews({
   owner,
   disabled,
