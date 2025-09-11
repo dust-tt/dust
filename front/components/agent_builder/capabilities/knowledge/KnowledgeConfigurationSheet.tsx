@@ -51,7 +51,10 @@ import {
   useKnowledgePageContext,
 } from "@app/components/data_source_view/context/PageContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  ADVANCED_SEARCH_SWITCH,
+  SEARCH_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
@@ -373,25 +376,28 @@ function KnowledgeConfigurationSheetContent({
           <SelectDataSourcesFilters />
 
           {/* Advanced Settings collapsible section */}
-          <Collapsible
-            open={isAdvancedSettingsOpen}
-            onOpenChange={setAdvancedSettingsOpen}
-          >
-            <CollapsibleTrigger isOpen={isAdvancedSettingsOpen}>
-              <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
-                Advanced Settings
-              </h3>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="m-1">
-              <CustomCheckboxSection
-                title="Advanced Search Mode"
-                description="Enable advanced search capabilities with enhanced discovery and filtering options for more precise results."
-                targetMCPServerName="search"
-                selectedMCPServerView={mcpServerView ?? undefined}
-                configurationKey={ADVANCED_SEARCH_SWITCH}
-              />
-            </CollapsibleContent>
-          </Collapsible>
+          {mcpServerView?.serverType === "internal" &&
+            mcpServerView.server.name === SEARCH_SERVER_NAME && (
+              <Collapsible
+                open={isAdvancedSettingsOpen}
+                onOpenChange={setAdvancedSettingsOpen}
+              >
+                <CollapsibleTrigger isOpen={isAdvancedSettingsOpen}>
+                  <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+                    Advanced Settings
+                  </h3>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="m-1">
+                  <CustomCheckboxSection
+                    title="Advanced Search Mode"
+                    description="Enable advanced search capabilities with enhanced discovery and filtering options for more precise results."
+                    targetMCPServerName={SEARCH_SERVER_NAME}
+                    selectedMCPServerView={mcpServerView ?? undefined}
+                    configurationKey={ADVANCED_SEARCH_SWITCH}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
         </div>
       ),
     },
