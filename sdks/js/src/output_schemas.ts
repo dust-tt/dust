@@ -533,6 +533,20 @@ export function isContentCreationFileContentOutput(
   return output !== undefined && output.type === "content_creation_file";
 }
 
+const NotificationStoreResourceContentSchema = z.object({
+  type: z.literal("store_resource"),
+  content: z.object({
+    type: z.literal("resource"),
+    resource: z
+      .object({
+        mimeType: z.string(),
+        text: z.string(),
+        uri: z.string(),
+      })
+      .passthrough(), // Allow additional properties
+  }),
+});
+
 const NotificationTextContentSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
@@ -545,11 +559,22 @@ const NotificationRunAgentContentSchema = z.object({
   query: z.string(),
 });
 
+type StoreResourceProgressOutput = z.infer<
+  typeof NotificationStoreResourceContentSchema
+>;
+
+export function isStoreResourceProgressOutput(
+  output: ProgressNotificationOutput
+): output is StoreResourceProgressOutput {
+  return output !== undefined && output.type === "store_resource";
+}
+
 export const ProgressNotificationOutputSchema = z
   .union([
-    NotificationImageContentSchema,
     NotificationContentCreationFileContentSchema,
+    NotificationImageContentSchema,
     NotificationRunAgentContentSchema,
+    NotificationStoreResourceContentSchema,
     NotificationTextContentSchema,
   ])
   .optional();

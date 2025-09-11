@@ -34,10 +34,9 @@ import { getIcon } from "@app/lib/actions/mcp_icons";
 import {
   isRunAgentChainOfThoughtProgressOutput,
   isRunAgentGenerationTokensProgressOutput,
-  isRunAgentProgressOutput,
-  isRunAgentQueryProgressOutput,
   isRunAgentQueryResourceType,
   isRunAgentResultResourceType,
+  isStoreResourceProgressOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -73,26 +72,14 @@ export function MCPRunAgentActionDetails({
   });
 
   const queryResource = toolOutput?.find(isRunAgentQueryResourceType) || null;
-
   const resultResource = toolOutput?.find(isRunAgentResultResourceType) || null;
 
   const generatedFiles =
     toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
-  const childAgentId = useMemo(() => {
-    if (queryResource) {
-      return queryResource.resource.childAgentId;
-    }
-    if (lastNotification) {
-      const output = lastNotification.data.output;
-      if (isRunAgentProgressOutput(output)) {
-        return output.childAgentId;
-      }
-    }
-    return null;
-  }, [queryResource, lastNotification]);
-
   const [query, setQuery] = useState<string | null>(null);
+  const [childAgentId, setChildAgentId] = useState<string | null>(null);
+
   const [streamedChainOfThought, setStreamedChainOfThought] = useState<
     string | null
   >(null);
@@ -104,18 +91,23 @@ export function MCPRunAgentActionDetails({
   useEffect(() => {
     if (queryResource) {
       setQuery(queryResource.resource.text);
+      setChildAgentId(queryResource.resource.childAgentId);
     }
     if (lastNotification?.data.output) {
       const output = lastNotification.data.output;
-      if (isRunAgentQueryProgressOutput(output) && !query) {
-        setQuery(output.query);
+      if (
+        isStoreResourceProgressOutput(output) &&
+        isRunAgentQueryResourceType(output.content)
+      ) {
+        setQuery(output.content.resource.text);
+        setChildAgentId(output.content.resource.childAgentId);
       } else if (isRunAgentChainOfThoughtProgressOutput(output)) {
         setStreamedChainOfThought(output.chainOfThought);
       } else if (isRunAgentGenerationTokensProgressOutput(output)) {
         setStreamedResponse(output.text);
       }
     }
-  }, [queryResource, lastNotification, query]);
+  }, [queryResource, lastNotification]);
 
   const response = useMemo(() => {
     if (resultResource) {
@@ -192,7 +184,12 @@ export function MCPRunAgentActionDetails({
     }),
     []
   );
-  const agentName = childAgent?.name ? childAgent.name : "Agent";
+
+  if (!childAgent) {
+    return null;
+  }
+
+  const agentName = childAgent.name;
 
   return (
     <ActionDetailsWrapper
