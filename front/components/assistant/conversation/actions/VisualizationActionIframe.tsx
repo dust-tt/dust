@@ -377,7 +377,8 @@ export const VisualizationActionIframe = forwardRef<
                   />
                 </div>
               )}
-              {isErrored && !retryClicked && (
+
+              {isErrored && !retryClicked && !isPublic && (
                 <div className="flex h-full w-full items-center justify-center p-6">
                   <ContentMessage
                     title="Visualization Error"
@@ -406,6 +407,23 @@ export const VisualizationActionIframe = forwardRef<
                         />
                       </div>
                     )}
+                  </ContentMessage>
+                </div>
+              )}
+
+              {isErrored && isPublic && (
+                <div className="flex h-full w-full items-center justify-center p-6">
+                  <ContentMessage
+                    title="An error occurred"
+                    variant="warning"
+                    icon={ExclamationCircleIcon}
+                    className="max-w-md text-center"
+                  >
+                    <div className="my-2 text-sm">
+                      This visualization encountered an error and cannot be
+                      displayed. Please contact the creator of this
+                      visualization for assistance.
+                    </div>
                   </ContentMessage>
                 </div>
               )}
