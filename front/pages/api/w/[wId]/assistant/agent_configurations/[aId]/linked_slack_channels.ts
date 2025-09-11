@@ -163,7 +163,7 @@ async function handler(
         },
       });
     }
-    
+
     logger.error(
       connectorsApiRes.error,
       "An error occurred while linking Slack channels."

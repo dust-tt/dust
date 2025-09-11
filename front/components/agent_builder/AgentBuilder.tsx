@@ -256,10 +256,14 @@ export default function AgentBuilder({
       const isCreatingNew = duplicateAgentId || !agentConfiguration;
 
       // Check if there's a warning about Slack channel linking
-      if ('_warning' in createdAgent && createdAgent._warning === 'slack_channel_linking_in_progress') {
+      if (
+        "_warning" in createdAgent &&
+        createdAgent._warning === "slack_channel_linking_in_progress"
+      ) {
         sendNotification({
           title: isCreatingNew ? "Agent created" : "Agent saved",
-          description: "The agent has been saved successfully. The Slack channel is already being linked - please wait a moment for the operation to complete.",
+          description:
+            "The agent has been saved successfully. The Slack channel is already being linked - please wait a moment for the operation to complete.",
           type: "info",
         });
       } else {

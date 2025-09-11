@@ -379,10 +379,11 @@ export async function launchJoinChannelWorkflow(
       // Return a specific error that indicates the operation is in progress
       return new Err({
         type: "connector_operation_in_progress" as const,
-        message: "Channel is already being linked to the agent. Please wait for the operation to complete.",
+        message:
+          "Channel is already being linked to the agent. Please wait for the operation to complete.",
       });
     }
-    
+
     logger.error(
       {
         workflowId,
