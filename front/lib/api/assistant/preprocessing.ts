@@ -309,7 +309,7 @@ export async function renderConversationForModel(
       messageCount: messages.length,
       promptToken: promptCount,
       tokensUsed,
-      messageSelected: selected.length,
+      messageSelected: selected,
       elapsed: Date.now() - now,
     },
     "[ASSISTANT_TRACE] renderConversationForModelMultiActions"

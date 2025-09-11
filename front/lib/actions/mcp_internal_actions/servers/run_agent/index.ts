@@ -247,6 +247,60 @@ export default async function createServer(
         logger
       );
 
+      const isHandover = conversationId === mainConversation.sId;
+      const instructions =
+        agentLoopContext.runContext.agentConfiguration.instructions;
+      if (_meta?.progressToken && sendNotification) {
+        const contents: {
+          type: "resource";
+          resource: {
+            uri: string;
+            mimeType: string;
+            text: string;
+            childAgentId?: string;
+          };
+        }[] = [
+          {
+            type: "resource",
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT
+                .RUN_AGENT_QUERY as string,
+              text: query,
+              childAgentId: childAgentId,
+              uri: "",
+            },
+          },
+        ];
+        if (isHandover) {
+          contents.push({
+            type: "resource",
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER,
+              text: instructions ?? "",
+              uri: "",
+            },
+          });
+        }
+
+        // Store the query resource immediately so it's available in the UI while the action is running.
+        const storeResourceNotification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 0,
+            total: 1,
+            progressToken: _meta.progressToken,
+            data: {
+              label: `Storing query resource`,
+              output: {
+                type: "store_resource",
+                contents,
+              },
+            },
+          },
+        };
+        await sendNotification(storeResourceNotification);
+      }
+
       const convRes = await getOrCreateConversation(
         api,
         agentLoopContext.runContext,
@@ -266,7 +320,8 @@ export default async function createServer(
         return makeMCPToolTextError(convRes.error.message);
       }
 
-      if (convRes.value.conversation.sId === mainConversation.sId) {
+      if (isHandover) {
+        // Return early - no need to stream, all output have already been sent through notifications
         return {
           isError: false,
           content: [
@@ -274,7 +329,7 @@ export default async function createServer(
               type: "resource",
               resource: {
                 mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
-                conversationId: convRes.value.conversation.sId,
+                conversationId: mainConversation.sId,
                 text: `Query delegated to ${childAgentBlob.name}.`,
                 uri: "",
               },
@@ -286,32 +341,6 @@ export default async function createServer(
       const { conversation, isNewConversation, userMessageId } = convRes.value;
 
       if (_meta?.progressToken && sendNotification && isNewConversation) {
-        // Store the query resource immediately so it's available in the UI while the action is running.
-        const storeResourceNotification: MCPProgressNotificationType = {
-          method: "notifications/progress",
-          params: {
-            progress: 0,
-            total: 1,
-            progressToken: _meta.progressToken,
-            data: {
-              label: `Storing query resource`,
-              output: {
-                type: "store_resource",
-                content: {
-                  type: "resource",
-                  resource: {
-                    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-                    text: query,
-                    childAgentId: childAgentId,
-                    uri: "",
-                  },
-                },
-              },
-            },
-          },
-        };
-        await sendNotification(storeResourceNotification);
-
         // Send notification indicating that a run_agent started to store resume state.
         const notification: MCPProgressNotificationType = {
           method: "notifications/progress",
