@@ -74,17 +74,6 @@ async function handler(
     });
   }
 
-  // If the share scope is "none", the file should not be accessible to anyone.
-  if (shareScope === "none") {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "You cannot access this file.",
-      },
-    });
-  }
-
   // Check if file is safe to display.
   if (!file.isSafeToDisplay()) {
     return apiError(req, res, {
@@ -92,6 +81,17 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "File is not safe for public display.",
+      },
+    });
+  }
+
+  // If the share scope is "none", the file should not be accessible to anyone.
+  if (shareScope === "none") {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "You cannot access this file.",
       },
     });
   }
