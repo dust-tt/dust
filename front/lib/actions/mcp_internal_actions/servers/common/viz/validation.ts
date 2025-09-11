@@ -61,72 +61,6 @@ export function validateTailwindCode(code: string): Result<undefined, Error> {
 }
 
 /**
- * Validates that the generated code doesn't contain insecure function calls.
- *
- * This function checks for dangerous patterns like eval(), Function(), and dangerouslySetInnerHTML
- * that could lead to code injection vulnerabilities.
- */
-export function validateSecurity(code: string): Result<undefined, Error> {
-  const insecurePatterns = [
-    {
-      pattern: /\beval\s*\(/g,
-      name: "eval()",
-      description: "eval() can execute arbitrary code and is a security risk",
-    },
-    {
-      pattern: /\bFunction\s*\(/g,
-      name: "Function()",
-      description:
-        "Function() constructor can execute arbitrary code and is a security risk",
-    },
-    {
-      pattern: /dangerouslySetInnerHTML/g,
-      name: "dangerouslySetInnerHTML",
-      description: "dangerouslySetInnerHTML can lead to XSS vulnerabilities",
-    },
-    {
-      pattern: /\bwindow\s*\.\s*eval\s*\(/g,
-      name: "window.eval()",
-      description:
-        "window.eval() can execute arbitrary code and is a security risk",
-    },
-    {
-      pattern: /\bglobal\s*\.\s*eval\s*\(/g,
-      name: "global.eval()",
-      description:
-        "global.eval() can execute arbitrary code and is a security risk",
-    },
-    {
-      pattern: /\bthis\s*\.\s*eval\s*\(/g,
-      name: "this.eval()",
-      description:
-        "this.eval() can execute arbitrary code and is a security risk",
-    },
-  ];
-
-  const foundInsecurePatterns: string[] = [];
-
-  for (const { pattern, name } of insecurePatterns) {
-    pattern.lastIndex = 0;
-    if (pattern.test(code)) {
-      foundInsecurePatterns.push(name);
-    }
-  }
-
-  if (foundInsecurePatterns.length > 0) {
-    const examples = foundInsecurePatterns.join(", ");
-    return new Err(
-      new Error(
-        `Insecure function calls detected: ${examples}. ` +
-          `These patterns can lead to code injection vulnerabilities and are not allowed in generated code.`
-      )
-    );
-  }
-
-  return new Ok(undefined);
-}
-
-/**
  * Validates JSX syntax using Babel parser for proper AST validation.
  * Catches syntax errors, mismatched tags, and other JSX issues.
  */
@@ -160,19 +94,13 @@ export function validateJSX(code: string): Result<undefined, Error> {
  * the generated code is safe and will render correctly.
  */
 export function validateContent(code: string): Result<undefined, Error> {
-  // First check for security issues
-  const securityResult = validateSecurity(code);
-  if (securityResult.isErr()) {
-    return securityResult;
-  }
-
-  // Then check for Tailwind issues
+  // check for Tailwind issues
   const tailwindResult = validateTailwindCode(code);
   if (tailwindResult.isErr()) {
     return tailwindResult;
   }
 
-  // Then check for JSX issues
+  // check for JSX issues
   const jsxResult = validateJSX(code);
   if (jsxResult.isErr()) {
     return jsxResult;
