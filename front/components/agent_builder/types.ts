@@ -127,7 +127,9 @@ export const capabilityFormSchema = z
     configuration: mcpServerConfigurationSchema,
   })
   .superRefine((val, ctx) => {
-    const toolsConfigurations = getMCPServerToolsConfigurations(val.mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(
+      val.mcpServerView
+    );
     const configuration = val.configuration;
 
     if (!toolsConfigurations) {

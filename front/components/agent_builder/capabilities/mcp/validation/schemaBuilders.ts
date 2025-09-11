@@ -123,7 +123,9 @@ function createAdditionalConfigurationSchema(
         nestedStructure[rootKey] = buildNestedSchema(nestedKeys[rootKey], path);
       } else {
         // This is a leaf value - determine type based on requirements
-        if (requirements.stringConfigurations.some((item) => item.key === path)) {
+        if (
+          requirements.stringConfigurations.some((item) => item.key === path)
+        ) {
           nestedStructure[rootKey] = z.string().min(1);
         } else if (
           requirements.numberConfigurations.some((item) => item.key === path)
@@ -135,7 +137,10 @@ function createAdditionalConfigurationSchema(
           nestedStructure[rootKey] = z.coerce.boolean();
         } else if (requirements.enumConfigurations[path]) {
           nestedStructure[rootKey] = z.enum(
-            requirements.enumConfigurations[path].options as [string, ...string[]]
+            requirements.enumConfigurations[path].options as [
+              string,
+              ...string[],
+            ]
           );
         } else if (requirements.listConfigurations[rootKey]) {
           nestedStructure[rootKey] = z

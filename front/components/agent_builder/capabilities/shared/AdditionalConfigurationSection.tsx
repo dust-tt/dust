@@ -295,7 +295,10 @@ function EnumConfigurationInput({
 function EnumConfigurationSection({
   enumConfigurations,
 }: {
-  enumConfigurations: Record<string, { options: string[]; description?: string }>;
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string }
+  >;
 }) {
   if (Object.keys(enumConfigurations).length === 0) {
     return null;
@@ -431,7 +434,10 @@ interface GroupedConfigurationSectionProps {
   stringConfigurations: OptionalDescribedKey[];
   numberConfigurations: OptionalDescribedKey[];
   booleanConfigurations: OptionalDescribedKey[];
-  enumConfigurations: Record<string, { options: string[]; description?: string }>;
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string }
+  >;
   listConfigurations: Record<
     string,
     { options: Record<string, string>; description?: string }
@@ -465,9 +471,15 @@ function GroupedConfigurationSection({
         </Label>
       )}
       <div className="w-full space-y-4">
-        <StringConfigurationSection stringConfigurations={stringConfigurations} />
-        <NumberConfigurationSection numberConfigurations={numberConfigurations} />
-        <BooleanConfigurationSection booleanConfigurations={booleanConfigurations} />
+        <StringConfigurationSection
+          stringConfigurations={stringConfigurations}
+        />
+        <NumberConfigurationSection
+          numberConfigurations={numberConfigurations}
+        />
+        <BooleanConfigurationSection
+          booleanConfigurations={booleanConfigurations}
+        />
         <EnumConfigurationSection enumConfigurations={enumConfigurations} />
         <ListConfigurationSection listConfigurations={listConfigurations} />
       </div>
@@ -479,7 +491,10 @@ interface AdditionalConfigurationSectionProps {
   stringConfigurations: OptionalDescribedKey[];
   numberConfigurations: OptionalDescribedKey[];
   booleanConfigurations: OptionalDescribedKey[];
-  enumConfigurations: Record<string, { options: string[]; description?: string }>;
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string }
+  >;
   listConfigurations: Record<
     string,
     { options: Record<string, string>; description?: string }

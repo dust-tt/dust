@@ -187,7 +187,8 @@ export function MCPServerViewsSheet({
 
     // You should not be able to select Reasoning if there is no reasoning model available.
     return filteredList.filter(
-      (view) => !getMCPServerToolsConfigurations(view).mayRequireReasoningConfiguration
+      (view) =>
+        !getMCPServerToolsConfigurations(view).mayRequireReasoningConfiguration
     );
   }, [defaultMCPServerViews, actions, hasReasoningModel]);
 
@@ -488,7 +489,8 @@ export function MCPServerViewsSheet({
   });
 
   const toolsConfigurations = useMemo(
-    () => (mcpServerView ? getMCPServerToolsConfigurations(mcpServerView) : null),
+    () =>
+      mcpServerView ? getMCPServerToolsConfigurations(mcpServerView) : null,
     [mcpServerView]
   );
 
@@ -566,7 +568,10 @@ export function MCPServerViewsSheet({
       description: "",
       icon: undefined,
       content:
-        configurationTool && mcpServerView && toolsConfigurations && formSchema ? (
+        configurationTool &&
+        mcpServerView &&
+        toolsConfigurations &&
+        formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
@@ -599,9 +604,15 @@ export function MCPServerViewsSheet({
                 )}
 
                 <AdditionalConfigurationSection
-                  stringConfigurations={toolsConfigurations.stringConfigurations}
-                  numberConfigurations={toolsConfigurations.numberConfigurations}
-                  booleanConfigurations={toolsConfigurations.booleanConfigurations}
+                  stringConfigurations={
+                    toolsConfigurations.stringConfigurations
+                  }
+                  numberConfigurations={
+                    toolsConfigurations.numberConfigurations
+                  }
+                  booleanConfigurations={
+                    toolsConfigurations.booleanConfigurations
+                  }
                   enumConfigurations={toolsConfigurations.enumConfigurations}
                   listConfigurations={toolsConfigurations.listConfigurations}
                 />

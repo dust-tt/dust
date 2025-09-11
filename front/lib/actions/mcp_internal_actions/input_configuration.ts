@@ -523,10 +523,25 @@ export interface MCPServerToolsConfigurations {
   mayRequireReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  stringConfigurations: { key: string; description?: string; default?: string }[];
-  numberConfigurations: { key: string; description?: string; default?: number }[];
-  booleanConfigurations: { key: string; description?: string; default?: boolean }[];
-  enumConfigurations: Record<string, { options: string[]; description?: string; default?: string }>;
+  stringConfigurations: {
+    key: string;
+    description?: string;
+    default?: string;
+  }[];
+  numberConfigurations: {
+    key: string;
+    description?: string;
+    default?: number;
+  }[];
+  booleanConfigurations: {
+    key: string;
+    description?: string;
+    default?: boolean;
+  }[];
+  enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string; default?: string }
+  >;
   listConfigurations: Record<
     string,
     {
@@ -613,7 +628,6 @@ export function getMCPServerToolsConfigurations(
     disabledToolNames.length > 0
       ? server.tools.filter((tool) => !disabledToolNames.includes(tool.name))
       : server.tools;
-
 
   const mayRequireTimeFrameConfiguration = enabledTools.some(
     (tool) => tool.inputSchema?.properties?.timeFrame
