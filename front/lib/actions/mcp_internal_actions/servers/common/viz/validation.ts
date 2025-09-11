@@ -34,12 +34,12 @@ export function validateTailwindCode(code: string): Result<undefined, Error> {
   };
 
   let classMatch: RegExpExecArray | null = null;
-  classNameDoubleQuoteRegex.lastIndex = 0; // Reset regex state
+  classNameDoubleQuoteRegex.lastIndex = 0;
   while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
     checkClassNameContent(classMatch[1]);
   }
 
-  classNameSingleQuoteRegex.lastIndex = 0; // Reset regex state
+  classNameSingleQuoteRegex.lastIndex = 0;
   while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
     checkClassNameContent(classMatch[1]);
   }
@@ -107,7 +107,7 @@ export function validateSecurity(code: string): Result<undefined, Error> {
   const foundInsecurePatterns: string[] = [];
 
   for (const { pattern, name } of insecurePatterns) {
-    pattern.lastIndex = 0; // Reset regex state
+    pattern.lastIndex = 0;
     if (pattern.test(code)) {
       foundInsecurePatterns.push(name);
     }
