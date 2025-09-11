@@ -15,6 +15,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
+import { normalizeError } from "@app/types";
 
 const createServer = async (
   auth: Authenticator,
@@ -64,7 +65,7 @@ const createServer = async (
           auth
         );
       } catch (error) {
-        return makeMCPToolTextError(`Error posting message: ${error}`);
+        return makeMCPToolTextError(`Error posting message: ${normalizeError(error)}`);
       }
     }
   );
@@ -87,7 +88,7 @@ const createServer = async (
       try {
         return await executeListUsers(nameFilter, accessToken);
       } catch (error) {
-        return makeMCPToolTextError(`Error listing users: ${error}`);
+        return makeMCPToolTextError(`Error listing users: ${normalizeError(error)}`);
       }
     }
   );
@@ -109,7 +110,7 @@ const createServer = async (
       try {
         return await executeGetUser(userId, accessToken);
       } catch (error) {
-        return makeMCPToolTextError(`Error retrieving user info: ${error}`);
+        return makeMCPToolTextError(`Error retrieving user info: ${normalizeError(error)}`);
       }
     }
   );
@@ -136,7 +137,7 @@ const createServer = async (
           mcpServerId
         );
       } catch (error) {
-        return makeMCPToolTextError(`Error listing channels: ${error}`);
+        return makeMCPToolTextError(`Error listing channels: ${normalizeError(error)}`);
       }
     }
   );
@@ -198,7 +199,7 @@ const createServer = async (
           },
         });
       } catch (error) {
-        return makeMCPToolTextError(`Error reading channel history: ${error}`);
+        return makeMCPToolTextError(`Error reading channel history: ${normalizeError(error)}`);
       }
     }
   );
@@ -275,7 +276,7 @@ const createServer = async (
           },
         });
       } catch (error) {
-        return makeMCPToolTextError(`Error reading thread messages: ${error}`);
+        return makeMCPToolTextError(`Error reading thread messages: ${normalizeError(error)}`);
       }
     }
   );
