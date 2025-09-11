@@ -96,6 +96,7 @@ export const VIZ_MISCELLANEOUS_GUIDELINES = `
 export const VIZ_USE_FILE_EXAMPLES = `
 Example using the \`useFile\` hook:
 
+\`\`\`
 // Reading files from conversation - ASYNC HANDLING REQUIRED
 import { useFile } from "@dust/react-hooks";
 import { useState, useEffect } from "react";
@@ -117,8 +118,10 @@ useEffect(() => {
   };
   loadFile();
 }, [file]);
+\`\`\`
 
 \`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
+
 
 Example using the \`triggerUserFileDownload\` hook:
 
