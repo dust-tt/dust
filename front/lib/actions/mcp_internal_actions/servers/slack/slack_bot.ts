@@ -65,7 +65,9 @@ const createServer = async (
           auth
         );
       } catch (error) {
-        return makeMCPToolTextError(`Error posting message: ${normalizeError(error)}`);
+        return makeMCPToolTextError(
+          `Error posting message: ${normalizeError(error)}`
+        );
       }
     }
   );
@@ -88,7 +90,9 @@ const createServer = async (
       try {
         return await executeListUsers(nameFilter, accessToken);
       } catch (error) {
-        return makeMCPToolTextError(`Error listing users: ${normalizeError(error)}`);
+        return makeMCPToolTextError(
+          `Error listing users: ${normalizeError(error)}`
+        );
       }
     }
   );
@@ -110,7 +114,9 @@ const createServer = async (
       try {
         return await executeGetUser(userId, accessToken);
       } catch (error) {
-        return makeMCPToolTextError(`Error retrieving user info: ${normalizeError(error)}`);
+        return makeMCPToolTextError(
+          `Error retrieving user info: ${normalizeError(error)}`
+        );
       }
     }
   );
@@ -137,7 +143,9 @@ const createServer = async (
           mcpServerId
         );
       } catch (error) {
-        return makeMCPToolTextError(`Error listing channels: ${normalizeError(error)}`);
+        return makeMCPToolTextError(
+          `Error listing channels: ${normalizeError(error)}`
+        );
       }
     }
   );
@@ -199,7 +207,9 @@ const createServer = async (
           },
         });
       } catch (error) {
-        return makeMCPToolTextError(`Error reading channel history: ${normalizeError(error)}`);
+        return makeMCPToolTextError(
+          `Error reading channel history: ${normalizeError(error)}`
+        );
       }
     }
   );
@@ -276,7 +286,9 @@ const createServer = async (
           },
         });
       } catch (error) {
-        return makeMCPToolTextError(`Error reading thread messages: ${normalizeError(error)}`);
+        return makeMCPToolTextError(
+          `Error reading thread messages: ${normalizeError(error)}`
+        );
       }
     }
   );
