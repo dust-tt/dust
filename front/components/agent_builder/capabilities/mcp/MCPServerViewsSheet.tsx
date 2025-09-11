@@ -487,7 +487,7 @@ export function MCPServerViewsSheet({
     shouldUnregister: false,
   });
 
-  const requirements = useMemo(
+  const toolsConfigurations = useMemo(
     () => (mcpServerView ? getMCPServerToolsConfigurations(mcpServerView) : null),
     [mcpServerView]
   );
@@ -566,7 +566,7 @@ export function MCPServerViewsSheet({
       description: "",
       icon: undefined,
       content:
-        configurationTool && mcpServerView && requirements && formSchema ? (
+        configurationTool && mcpServerView && toolsConfigurations && formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
@@ -576,34 +576,34 @@ export function MCPServerViewsSheet({
                   allowNameEdit={!configurationTool.noConfigurationRequired}
                 />
 
-                {requirements.mayRequireReasoningConfiguration && (
+                {toolsConfigurations.mayRequireReasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {requirements.mayRequireChildAgentConfiguration && (
+                {toolsConfigurations.mayRequireChildAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
-                {requirements.mayRequireTimeFrameConfiguration && (
+                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {requirements.mayRequireDustAppConfiguration && (
+                {toolsConfigurations.mayRequireDustAppConfiguration && (
                   <DustAppSection />
                 )}
 
-                {requirements.mayRequireJsonSchemaConfiguration && (
+                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
 
                 <AdditionalConfigurationSection
-                  stringConfigurations={requirements.stringConfigurations}
-                  numberConfigurations={requirements.numberConfigurations}
-                  booleanConfigurations={requirements.booleanConfigurations}
-                  enumConfigurations={requirements.enumConfigurations}
-                  listConfigurations={requirements.listConfigurations}
+                  stringConfigurations={toolsConfigurations.stringConfigurations}
+                  numberConfigurations={toolsConfigurations.numberConfigurations}
+                  booleanConfigurations={toolsConfigurations.booleanConfigurations}
+                  enumConfigurations={toolsConfigurations.enumConfigurations}
+                  listConfigurations={toolsConfigurations.listConfigurations}
                 />
               </div>
             </div>

@@ -13,11 +13,11 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 export function getMCPConfigurationFormSchema(
   mcpServerView: MCPServerViewType | null | undefined
 ) {
-  const requirements = mcpServerView
+  const toolsConfigurations = mcpServerView
     ? getMCPServerToolsConfigurations(mcpServerView)
     : null;
 
-  return createMCPFormSchema(requirements);
+  return createMCPFormSchema(toolsConfigurations);
 }
 
 /**
@@ -31,9 +31,9 @@ export function validateMCPActionConfiguration(
   serverView: MCPServerViewType
 ): { isValid: boolean; errorMessage?: string } {
   try {
-    const requirements = getMCPServerToolsConfigurations(serverView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(serverView);
 
-    if (requirements.noRequirement) {
+    if (toolsConfigurations.noRequirement) {
       return { isValid: true };
     }
 

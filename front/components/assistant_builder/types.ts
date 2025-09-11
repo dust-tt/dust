@@ -122,7 +122,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
 export function getDefaultMCPServerActionConfiguration(
   mcpServerView?: MCPServerViewType
 ): AssistantBuilderMCPConfiguration {
-  const requirements = getMCPServerToolsConfigurations(mcpServerView);
+  const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
   return {
     type: "MCP",
@@ -140,14 +140,14 @@ export function getDefaultMCPServerActionConfiguration(
     },
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      requirements.mayRequireDataSourceConfiguration ||
-      requirements.mayRequireDataWarehouseConfiguration ||
-      requirements.mayRequireTableConfiguration
+      toolsConfigurations.mayRequireDataSourceConfiguration ||
+      toolsConfigurations.mayRequireDataWarehouseConfiguration ||
+      toolsConfigurations.mayRequireTableConfiguration
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: requirements.noRequirement,
+    noConfigurationRequired: toolsConfigurations.noRequirement,
   };
 }
 

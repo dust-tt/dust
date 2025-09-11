@@ -15,7 +15,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 export function getDefaultConfiguration(
   mcpServerView?: MCPServerViewType | null
 ): MCPServerConfigurationType {
-  const requirements = mcpServerView
+  const toolsConfigurations = mcpServerView
     ? getMCPServerToolsConfigurations(mcpServerView)
     : null;
 
@@ -32,7 +32,7 @@ export function getDefaultConfiguration(
     _jsonSchemaString: null,
   };
 
-  if (!requirements) {
+  if (!toolsConfigurations) {
     return defaults;
   }
 
@@ -40,19 +40,19 @@ export function getDefaultConfiguration(
 
   // Set default values only for boolean and enums
   // Strings and numbers should be left empty to trigger validation
-  for (const { key } of requirements.booleanConfigurations) {
+  for (const { key } of toolsConfigurations.booleanConfigurations) {
     set(additionalConfig, key, false);
   }
 
   for (const [key, { options: enumValues }] of Object.entries(
-    requirements.enumConfigurations
+    toolsConfigurations.enumConfigurations
   )) {
     if (enumValues.length > 0) {
       set(additionalConfig, key, enumValues[0]);
     }
   }
 
-  for (const [key] of Object.entries(requirements.listConfigurations)) {
+  for (const [key] of Object.entries(toolsConfigurations.listConfigurations)) {
     set(additionalConfig, key, []);
   }
 

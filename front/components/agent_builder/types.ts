@@ -172,7 +172,7 @@ export const capabilityFormSchema = z
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
 ): AgentBuilderAction {
-  const requirements = getMCPServerToolsConfigurations(mcpServerView);
+  const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);
 
   return {
@@ -181,14 +181,14 @@ export function getDefaultMCPAction(
     configuration,
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      requirements.mayRequireDataSourceConfiguration ||
-      requirements.mayRequireDataWarehouseConfiguration ||
-      requirements.mayRequireTableConfiguration
+      toolsConfigurations.mayRequireDataSourceConfiguration ||
+      toolsConfigurations.mayRequireDataWarehouseConfiguration ||
+      toolsConfigurations.mayRequireTableConfiguration
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: requirements.noRequirement,
+    noConfigurationRequired: toolsConfigurations.noRequirement,
   };
 }
 
