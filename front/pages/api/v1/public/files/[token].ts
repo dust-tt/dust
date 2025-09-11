@@ -74,6 +74,17 @@ async function handler(
     });
   }
 
+  // If the share scope is "none", the file should not be accessible to anyone.
+  if (shareScope === "none") {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "You cannot access this file.",
+      },
+    });
+  }
+
   // Check if file is safe to display.
   if (!file.isSafeToDisplay()) {
     return apiError(req, res, {
@@ -85,18 +96,6 @@ async function handler(
     });
   }
 
-  // This endpoint does not support conversation participants sharing. It goes through the private
-  // API endpoint instead.
-  if (shareScope === "conversation_participants") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
-  }
-
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
     const isWorkspaceUser = await isSessionWithUserFromWorkspace(
@@ -104,6 +103,7 @@ async function handler(
       res,
       workspace.sId
     );
+
     if (!isWorkspaceUser) {
       return apiError(req, res, {
         status_code: 404,

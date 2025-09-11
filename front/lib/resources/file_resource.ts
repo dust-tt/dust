@@ -138,6 +138,10 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
+    if (shareableFile.shareScope === "none") {
+      return null;
+    }
+
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
