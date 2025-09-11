@@ -1,15 +1,15 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isSupportedImageContentType } from "@dust-tt/client";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
-import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
 import {
   isBlobResource,
   isSearchQueryResourceType,
   isToolGeneratedFile,
   isToolMarkerResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+} from "@dust-tt/mcp-types";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+import { MAX_RESOURCE_CONTENT_SIZE } from "@app/lib/actions/action_output_limits";
 import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,

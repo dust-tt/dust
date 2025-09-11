@@ -1,7 +1,7 @@
+import type { SearchQueryResourceType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
-import type { SearchQueryResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderMimeType } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { DATA_SOURCE_NODE_ID } from "@app/types";
 

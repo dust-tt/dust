@@ -1,9 +1,9 @@
+import type { AgentCreationResultResourceType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import type { AgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,

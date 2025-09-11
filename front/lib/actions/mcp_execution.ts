@@ -1,3 +1,11 @@
+import {
+  isBlobResource,
+  isMCPProgressNotificationType,
+  isResourceWithName,
+  isRunAgentQueryProgressOutput,
+  isStoreResourceProgressOutput,
+  isToolGeneratedFile,
+} from "@dust-tt/mcp-types";
 import type {
   CallToolResult,
   McpError,
@@ -23,14 +31,6 @@ import type {
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { augmentInputsWithConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import {
-  isBlobResource,
-  isMCPProgressNotificationType,
-  isResourceWithName,
-  isRunAgentQueryProgressOutput,
-  isStoreResourceProgressOutput,
-  isToolGeneratedFile,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type {

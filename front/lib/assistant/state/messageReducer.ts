@@ -1,5 +1,6 @@
+import type { ProgressNotificationContentType } from "@dust-tt/mcp-types";
+
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
-import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { LightAgentMessageWithActionsType, ModelId } from "@app/types";

@@ -1,4 +1,5 @@
-import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
+import { removeNulls } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/mcp-types";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";

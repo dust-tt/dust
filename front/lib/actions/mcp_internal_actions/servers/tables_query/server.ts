@@ -1,3 +1,9 @@
+import type {
+  ExecuteTablesQueryErrorResourceType,
+  SqlQueryOutputType,
+  ThinkingOutputType,
+  ToolGeneratedFileType,
+} from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -11,12 +17,6 @@ import {
   TABLE_QUERY_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type {
-  ExecuteTablesQueryErrorResourceType,
-  SqlQueryOutputType,
-  ThinkingOutputType,
-  ToolGeneratedFileType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   makeInternalMCPServer,

@@ -1,4 +1,6 @@
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { ToolGeneratedFileType } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/mcp-types";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
@@ -15,7 +17,6 @@ import type {
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,

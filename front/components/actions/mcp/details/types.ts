@@ -1,6 +1,6 @@
+import type { ProgressNotificationContentType } from "@dust-tt/mcp-types";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { LightWorkspaceType } from "@app/types";
 
 // Generic interface for every component that displays details for a certain type of tool output.

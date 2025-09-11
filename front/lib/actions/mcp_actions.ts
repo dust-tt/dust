@@ -1,6 +1,8 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { MCPProgressNotificationType } from "@dust-tt/mcp-types";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/mcp-types";
+import { isMCPProgressNotificationType } from "@dust-tt/mcp-types";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type {
   CallToolResult,
@@ -42,8 +44,6 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   extractToolBlockedAwaitingInputResponse,
   isToolBlockedAwaitingInputResponse,

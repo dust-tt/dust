@@ -1,4 +1,4 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/mcp-types";
 import assert from "assert";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";

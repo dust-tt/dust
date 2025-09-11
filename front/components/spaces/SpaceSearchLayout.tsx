@@ -1,6 +1,6 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/mcp-types";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";

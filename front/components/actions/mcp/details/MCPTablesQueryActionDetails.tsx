@@ -1,6 +1,12 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/mcp-types";
+import {
+  isExecuteTablesQueryErrorResourceType,
+  isSqlQueryOutput,
+  isThinkingOutput,
+  isToolGeneratedFile,
+} from "@dust-tt/mcp-types";
 import { CodeBlock, TableIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -10,12 +16,6 @@ import {
   ToolGeneratedFileDetails,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import {
-  isExecuteTablesQueryErrorResourceType,
-  isSqlQueryOutput,
-  isThinkingOutput,
-  isToolGeneratedFile,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPTablesQueryActionDetails({
   toolOutput,

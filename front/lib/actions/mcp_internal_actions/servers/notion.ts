@@ -1,3 +1,7 @@
+import type {
+  SearchQueryResourceType,
+  SearchResultResourceType,
+} from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -12,10 +16,6 @@ import type {
 import { parseISO } from "date-fns";
 import { z } from "zod";
 
-import type {
-  SearchQueryResourceType,
-  SearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/personal_authentication";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {

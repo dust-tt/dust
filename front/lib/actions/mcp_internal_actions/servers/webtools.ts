@@ -1,3 +1,7 @@
+import type {
+  BrowseResultResourceType,
+  WebsearchResultResourceType,
+} from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -8,10 +12,6 @@ import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type {
-  BrowseResultResourceType,
-  WebsearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,

@@ -41,6 +41,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@dust-tt/mcp-types": "workspace:*",
     "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#628ebe48388549faae7e35504611af9ac2c6f5e4",
     "@types/json-schema": "^7.0.15",
     "event-source-polyfill": "^1.0.31",

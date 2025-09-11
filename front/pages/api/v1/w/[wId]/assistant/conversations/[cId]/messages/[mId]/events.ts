@@ -1,4 +1,5 @@
-import type { AgentMessageEventType } from "@dust-tt/client";
+/* eslint-disable dust/enforce-client-types-in-public-api */
+
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
@@ -78,7 +79,6 @@ import type { WithAPIErrorResponse } from "@app/types";
 async function handler(
   req: NextApiRequest,
   // This endpoint only returns void as it is used only for streaming, so no need to use @dust-tt/client types.
-  // eslint-disable-next-line dust/enforce-client-types-in-public-api
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
@@ -162,8 +162,11 @@ async function handler(
         controller.abort();
       });
 
-      const eventStream: AsyncGenerator<AgentMessageEventType> =
-        getMessagesEvents(auth, { messageId: mId, lastEventId, signal });
+      const eventStream = getMessagesEvents(auth, {
+        messageId: mId,
+        lastEventId,
+        signal,
+      });
 
       for await (const event of eventStream) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);

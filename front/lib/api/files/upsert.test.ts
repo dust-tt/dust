@@ -1,5 +1,5 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/mcp-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDataSourceFolder, upsertTable } from "@app/lib/api/data_sources";

@@ -1,4 +1,14 @@
+import type {
+  SqlQueryOutputType,
+  ThinkingOutputType,
+  ToolGeneratedFileType,
+  ToolMarkerResourceType,
+} from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  EXECUTE_TABLES_QUERY_MARKER,
+  GET_DATABASE_SCHEMA_MARKER,
+} from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -13,16 +23,6 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type {
-  SqlQueryOutputType,
-  ThinkingOutputType,
-  ToolGeneratedFileType,
-  ToolMarkerResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  EXECUTE_TABLES_QUERY_MARKER,
-  GET_DATABASE_SCHEMA_MARKER,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,

@@ -1,8 +1,8 @@
+import type { MCPProgressNotificationType } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import OpenAI from "openai";
 import { z } from "zod";
 
-import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,

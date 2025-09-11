@@ -1,0 +1,37 @@
+{
+  "name": "@dust-tt/mcp-types",
+  "version": "1.0.0",
+  "description": "Shared types for MCP (Model Context Protocol) in Dust",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "dts build",
+    "dev": "dts build --watch",
+    "test": "dts test",
+    "lint": "dts lint"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "dts-cli": "^2.0.3",
+    "typescript": "^5.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dust-tt/dust.git",
+    "directory": "sdks/mcp-types"
+  },
+  "keywords": ["mcp", "types", "dust", "ai"],
+  "author": "Dust",
+  "license": "MIT"
+}

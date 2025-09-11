@@ -1,3 +1,9 @@
+import type { ProgressNotificationContentType } from "@dust-tt/mcp-types";
+import {
+  getOutputText,
+  isResourceContentWithText,
+  isTextContent,
+} from "@dust-tt/mcp-types";
 import {
   ActionDocumentTextIcon,
   ClockIcon,
@@ -44,12 +50,6 @@ import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  getOutputText,
-  isResourceContentWithText,
-  isTextContent,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";

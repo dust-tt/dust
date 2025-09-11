@@ -1,3 +1,20 @@
+import type {
+  ReasoningSuccessOutputType,
+  SqlQueryOutputType,
+  ThinkingOutputType,
+  ToolGeneratedFileType,
+} from "@dust-tt/mcp-types";
+import {
+  isDataSourceNodeContentType,
+  isDataSourceNodeListType,
+  isIncludeQueryResourceType,
+  isIncludeResultResourceType,
+  isSearchQueryResourceType,
+  isSearchResultResourceType,
+  isWarningResourceType,
+  isWebsearchQueryResourceType,
+  isWebsearchResultResourceType,
+} from "@dust-tt/mcp-types";
 import {
   Chip,
   Citation,
@@ -18,23 +35,6 @@ import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  ReasoningSuccessOutputType,
-  SqlQueryOutputType,
-  ThinkingOutputType,
-  ToolGeneratedFileType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  isDataSourceNodeContentType,
-  isDataSourceNodeListType,
-  isIncludeQueryResourceType,
-  isIncludeResultResourceType,
-  isSearchQueryResourceType,
-  isSearchResultResourceType,
-  isWarningResourceType,
-  isWebsearchQueryResourceType,
-  isWebsearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import type { LightWorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";

@@ -6,7 +6,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationContentCreationFileContentSchema } from "./output_schemas";
+import { NotificationContentCreationFileContentSchema } from "@dust-tt/mcp-types";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string

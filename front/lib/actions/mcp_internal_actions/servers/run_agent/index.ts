@@ -1,4 +1,6 @@
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
+import type { MCPProgressNotificationType } from "@dust-tt/mcp-types";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/mcp-types";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { z } from "zod";
@@ -7,7 +9,6 @@ import {
   AGENT_CONFIGURATION_URI_PATTERN,
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
 import type {
   ChildAgentBlob,

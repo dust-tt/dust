@@ -1,3 +1,7 @@
+import type {
+  SearchQueryResourceType,
+  SearchResultResourceType,
+} from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebClient } from "@slack/web-api";
@@ -8,10 +12,6 @@ import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
-import type {
-  SearchQueryResourceType,
-  SearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/personal_authentication";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {

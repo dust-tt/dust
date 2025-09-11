@@ -1,11 +1,10 @@
 // All mime types are okay to use from the public API.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { DustMimeType } from "@dust-tt/client";
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import {
-  DATA_SOURCE_MIME_TYPE,
-  isSupportedFileContentType,
-} from "@dust-tt/client";
+import { isSupportedFileContentType } from "@dust-tt/client";
+import type { DustMimeType } from "@dust-tt/mcp-types";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/mcp-types";
 import assert from "assert";
 
 import { isContentFragmentDataSourceNode } from "@app/lib/api/assistant/conversation/attachments";

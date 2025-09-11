@@ -1,4 +1,4 @@
-import type { ConnectorProvider, DustMimeType } from "@dust-tt/client";
+import type { ConnectorProvider, DustMimeType } from "@dust-tt/mcp-types";
 
 import type {
   LightMessageType,

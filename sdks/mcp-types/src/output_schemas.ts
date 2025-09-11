@@ -1,22 +1,8 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type {
-  CallToolResult,
-  Notification,
-} from "@modelcontextprotocol/sdk/types.js";
-import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
-import {
-  CUSTOM_SERVER_ALLOWED,
-  INTERNAL_ALLOWED_ICONS,
-} from "@app/lib/actions/mcp_icons";
-import type { AllSupportedFileContentType } from "@app/types";
-import { ALL_FILE_FORMATS, CONNECTOR_PROVIDERS } from "@app/types";
+import { INTERNAL_MIME_TYPES } from "./internal_mime_types";
+import { NotificationSchema } from "./raw_mcp_types";
+import type { CallToolResult, Notification } from "./raw_mcp_types.ts";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
@@ -39,12 +25,7 @@ const ToolGeneratedFileSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE),
   fileId: z.string(),
   title: z.string(),
-  contentType: z.enum(
-    Object.keys(ALL_FILE_FORMATS) as [
-      AllSupportedFileContentType,
-      ...AllSupportedFileContentType[],
-    ]
-  ),
+  contentType: z.string(),
   snippet: z.string().nullable(),
 });
 
@@ -499,6 +480,63 @@ export const isRunAgentQueryResourceType = (
   );
 };
 
+export const RunAgentResultResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
+  conversationId: z.string(),
+  text: z.string(),
+  chainOfThought: z.string().optional(),
+  uri: z.string(),
+  refs: z
+    .record(
+      z.string(),
+      z.object({
+        description: z.string().optional(),
+        href: z.string().optional(),
+        title: z.string(),
+        provider: z.string(),
+      })
+    )
+    .optional(),
+});
+
+export type RunAgentResultResourceType = z.infer<
+  typeof RunAgentResultResourceSchema
+>;
+
+export const isRunAgentResultResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentResultResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentResultResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const RunAgentHandoverResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export type RunAgentHandoverResourceType = z.infer<
+  typeof RunAgentHandoverResourceSchema
+>;
+
+export const isRunAgentHandoverResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: RunAgentHandoverResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    RunAgentHandoverResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Toolsets results.
 
 export const ToolsetsResultResourceSchema = z.object({
@@ -565,63 +603,6 @@ export const isAgentCreationResultResourceType = (
   );
 };
 
-export const RunAgentResultResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
-  conversationId: z.string(),
-  text: z.string(),
-  chainOfThought: z.string().optional(),
-  uri: z.string(),
-  refs: z
-    .record(
-      z.string(),
-      z.object({
-        description: z.string().optional(),
-        href: z.string().optional(),
-        title: z.string(),
-        provider: z.string(),
-      })
-    )
-    .optional(),
-});
-
-export type RunAgentResultResourceType = z.infer<
-  typeof RunAgentResultResourceSchema
->;
-
-export const isRunAgentResultResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: RunAgentResultResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    RunAgentResultResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
-export const RunAgentHandoverResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER),
-  text: z.string(),
-  uri: z.string(),
-});
-
-export type RunAgentHandoverResourceType = z.infer<
-  typeof RunAgentHandoverResourceSchema
->;
-
-export const isRunAgentHandoverResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: RunAgentHandoverResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    RunAgentHandoverResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 // Extract data outputs: query and results.
 
 export const ExtractQueryResourceSchema = z.object({
@@ -678,7 +659,7 @@ const RenderedNodeSchema = z.object({
   sourceUrl: z.string().nullable(),
   mimeType: z.string(),
   hasChildren: z.boolean(),
-  connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
+  connectorProvider: z.string().nullable(), // Note: simplified from enum to string for SDK
 });
 
 export const DataSourceNodeListSchema = z.object({
@@ -708,7 +689,7 @@ const RenderedWarehouseNodeSchema = z.object({
   parentTitle: z.string().nullable(),
   mimeType: z.string(),
   hasChildren: z.boolean(),
-  connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
+  connectorProvider: z.string().nullable(),
   sourceUrl: z.undefined(),
   lastUpdatedAt: z.undefined(),
 });
@@ -814,7 +795,7 @@ export function isImageProgressOutput(
 
 // Content creation file.
 
-const NotificationContentCreationFileContentSchema = z.object({
+export const NotificationContentCreationFileContentSchema = z.object({
   type: z.literal("content_creation_file"),
   fileId: z.string(),
   mimeType: z.string(),
@@ -832,17 +813,6 @@ export function isContentCreationFileContentOutput(
   return output !== undefined && output.type === "content_creation_file";
 }
 
-const InternalAllowedIconSchema = z.enum(
-  INTERNAL_ALLOWED_ICONS as [
-    InternalAllowedIconType,
-    ...InternalAllowedIconType[],
-  ]
-);
-
-const CustomServerIconSchema = z.enum(
-  CUSTOM_SERVER_ALLOWED as [CustomServerIconType, ...CustomServerIconType[]]
-);
-
 // Schema for the resource of a notification where the tool is asking for tool approval.
 // This schema contains all the information that the MCP server runner
 // needs to emit an event for tool approval.
@@ -853,14 +823,12 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
   messageId: z.string(),
   actionId: z.string(),
   inputs: z.record(z.unknown()),
-  stake: z.enum(MCP_TOOL_STAKE_LEVELS).optional(),
+  stake: z.string().optional(), // Note: simplified from enum to string for SDK
   metadata: z.object({
     mcpServerName: z.string(),
     toolName: z.string(),
     agentName: z.string(),
-    icon: z
-      .union([InternalAllowedIconSchema, CustomServerIconSchema])
-      .optional(),
+    icon: z.string().optional(), // Note: simplified from union to string for SDK
   }),
 });
 

@@ -1,3 +1,5 @@
+import type { ProgressNotificationContentType } from "@dust-tt/mcp-types";
+import { isTextContent } from "@dust-tt/mcp-types";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -15,8 +17,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";

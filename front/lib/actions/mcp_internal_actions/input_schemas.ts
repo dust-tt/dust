@@ -1,5 +1,5 @@
-import type { InternalToolInputMimeType } from "@dust-tt/client";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { InternalToolInputMimeType } from "@dust-tt/mcp-types";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/mcp-types";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z, ZodError } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";

@@ -1,7 +1,7 @@
+import { isContentCreationFileContentOutput } from "@dust-tt/mcp-types";
 import React from "react";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { isContentCreationFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType } from "@app/types";
 import { isContentCreationFileContentType, removeNulls } from "@app/types";

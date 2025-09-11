@@ -1,8 +1,8 @@
+import type { MCPProgressNotificationType } from "@dust-tt/client";
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,

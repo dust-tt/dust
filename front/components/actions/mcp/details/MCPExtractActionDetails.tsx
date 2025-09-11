@@ -1,4 +1,8 @@
 import {
+  isExtractQueryResourceType,
+  isExtractResultResourceType,
+} from "@dust-tt/mcp-types";
+import {
   Citation,
   CitationIcons,
   CitationTitle,
@@ -12,10 +16,6 @@ import { useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import {
-  isExtractQueryResourceType,
-  isExtractResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 
 interface MCPExtractActionQueryProps {

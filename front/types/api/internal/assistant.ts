@@ -1,4 +1,4 @@
-import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/mcp-types";
 import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";

@@ -11,7 +11,7 @@
 //   SqlQueryOutputType,
 //   ThinkingOutputType,
 //   ToolGeneratedFileType,
-// } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+// } from "@dust-tt/client";
 // import { getWorkspaceInfos } from "@app/lib/api/workspace";
 // import { Authenticator } from "@app/lib/auth";
 // import {

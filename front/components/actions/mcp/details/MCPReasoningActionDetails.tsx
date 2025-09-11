@@ -1,3 +1,7 @@
+import {
+  isReasoningSuccessOutput,
+  isThinkingOutput,
+} from "@dust-tt/mcp-types";
 import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -6,10 +10,6 @@ import {
   ThinkingBlock,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import {
-  isReasoningSuccessOutput,
-  isThinkingOutput,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPReasoningActionDetails({
   toolOutput,

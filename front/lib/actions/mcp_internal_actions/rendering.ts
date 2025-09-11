@@ -1,9 +1,9 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import type {
   DataSourceNodeListType,
   SearchQueryResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import type { ConnectorProvider, CoreAPIContentNode } from "@app/types";
 import type { CoreAPISearchNodesResponse, TimeFrame } from "@app/types";

@@ -1,9 +1,10 @@
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+} from "@dust-tt/mcp-types";
+
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import { rand } from "@app/lib/utils/seeded_random";
 import type {
   AgentMessageType,

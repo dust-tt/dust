@@ -1,3 +1,4 @@
+import { isImageProgressOutput } from "@dust-tt/mcp-types";
 import {
   ArrowPathIcon,
   Button,
@@ -49,7 +50,6 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
-import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";

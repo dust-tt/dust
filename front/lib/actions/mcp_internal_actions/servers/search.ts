@@ -1,3 +1,4 @@
+import type { SearchResultResourceType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -12,7 +13,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {

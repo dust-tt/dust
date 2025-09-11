@@ -1,11 +1,11 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import _ from "lodash";
-
 import type {
   RenderedWarehouseNodeType,
   WarehousesBrowseType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { WAREHOUSES_BROWSE_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { WAREHOUSES_BROWSE_MIME_TYPE } from "@dust-tt/client";
+import _ from "lodash";
+
 import type { ResolvedDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeDataSourceViewFilter } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import config from "@app/lib/api/config";

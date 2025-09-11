@@ -1,10 +1,10 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-
 import type {
   DatabaseSchemaResourceType,
   ExampleRowsResourceType,
   QueryWritingInstructionsResourceType,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+} from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
 import {
   DUST_SQLITE_INSTRUCTIONS,
   getGenericDialectInstructions,
