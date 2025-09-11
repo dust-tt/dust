@@ -266,6 +266,14 @@ export default async function createServer(
         return makeMCPToolTextError(convRes.error.message);
       }
 
+      logger.info(
+        {
+          childConversationId: convRes.value.conversation.sId,
+          conversationId: mainConversation.sId,
+        },
+        "Conversation created for run_agent"
+      );
+
       if (convRes.value.conversation.sId === mainConversation.sId) {
         return {
           isError: false,
