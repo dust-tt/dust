@@ -2099,14 +2099,24 @@ impl DataSource {
             "Deleting tables"
         );
 
-        try_join_all(
-            tables
-                .iter()
-                // not deleting from search index here, as it's done more efficiently in the
-                // full-nodes deletion below
-                .map(|t| t.delete(store.clone(), databases_store.clone(), None)),
-        )
-        .await?;
+        // Process tables deletion in chunks to avoid too much concurrency
+        for (batch_index, chunk) in tables.chunks(100).enumerate() {
+            info!(
+                data_source_internal_id = self.internal_id(),
+                batch_index = batch_index,
+                batch_size = chunk.len(),
+                "Deleting table batch"
+            );
+
+            try_join_all(
+                chunk
+                    .iter()
+                    // not deleting from search index here, as it's done more efficiently in the
+                    // full-nodes deletion below
+                    .map(|t| t.delete(store.clone(), databases_store.clone(), None)),
+            )
+            .await?;
+        }
 
         info!(
             data_source_internal_id = self.internal_id(),
