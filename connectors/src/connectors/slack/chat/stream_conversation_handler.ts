@@ -345,9 +345,11 @@ async function streamAgentAnswerToSlack(
           normalizeContentForSlack(formattedContent)
         );
 
-        const shouldSplitMessage = 
+        const shouldSplitMessage =
           slackContent.length > MAX_SLACK_MESSAGE_LENGTH
-            ? await getMessageSplittingFromFeatureFlag(conversationData.connector)
+            ? await getMessageSplittingFromFeatureFlag(
+                conversationData.connector
+              )
             : false;
 
         if (shouldSplitMessage) {
