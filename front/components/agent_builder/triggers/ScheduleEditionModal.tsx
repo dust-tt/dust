@@ -1,7 +1,6 @@
 import {
   AnimatedText,
   ArrowRightIcon,
-  ClockIcon,
   ContentMessage,
   DotIcon,
   Input,
