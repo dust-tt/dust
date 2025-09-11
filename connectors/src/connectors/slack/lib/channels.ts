@@ -296,41 +296,109 @@ export async function joinChannelWithRetries(
  */
 
 /**
- *  Call cached to avoid rate limits
+ * Call cache to avoid rate limits.
+ * Fetch all channels from Slack API using conversations.list.
+ * This returns all channels in the workspace that the app has access to.
+ *
  *  ON RATE LIMIT ERRORS PERTAINING TO THIS FUNCTION:
  * - the next step will be to paginate (overkill at time of writing)
  * - see issue https://github.com/dust-tt/tasks/issues/1655
  * - and related PR https://github.com/dust-tt/dust/pull/8709
+ * @param slackClient
  * @param connectorId
- * @param joinedOnly
  */
-export const getChannels = cacheWithRedis(
-  _getChannelsUncached,
-  (slackClient, connectorId, joinedOnly) =>
-    `slack-channels-${connectorId}-${joinedOnly}`,
+export const getAllChannels = cacheWithRedis(
+  _getAllChannelsUncached,
+  (slackClient, connectorId) => `slack-all-channels-${connectorId}`,
   {
     ttlMs: 5 * 60 * 1000,
   }
 );
 
-async function _getChannelsUncached(
+/**
+ * Fetch channels that the bot is a member of using users.conversations API.
+ * This is more efficient than getChannels for bot connectors as it only fetches
+ * channels the bot has joined, avoiding rate limits from fetching all workspace channels.
+ *
+ * @param slackClient
+ * @param connectorId
+ * @returns Promise<Channel[]> Array of channels the bot is a member of
+ */
+export const getJoinedChannels = cacheWithRedis(
+  _getJoinedChannelsUncached,
+  (slackClient, connectorId) => `slack-joined-channels-${connectorId}`,
+  {
+    ttlMs: 5 * 60 * 1000,
+  }
+);
+
+async function _getJoinedChannelsUncached(
   slackClient: WebClient,
-  connectorId: ModelId,
-  joinedOnly: boolean
+  connectorId: ModelId
+): Promise<Channel[]> {
+  const allChannels = [];
+  let nextCursor: string | undefined = undefined;
+  let nbCalls = 0;
+
+  do {
+    reportSlackUsage({
+      connectorId,
+      method: "users.conversations",
+      useCase: "bot",
+    });
+
+    const response = await withSlackErrorHandling(() =>
+      slackClient.users.conversations({
+        types: "public_channel,private_channel",
+        exclude_archived: true,
+        limit: 999, // Maximum allowed by Slack API
+        cursor: nextCursor,
+      })
+    );
+
+    nbCalls++;
+
+    logger.info(
+      {
+        connectorId,
+        returnedChannels: allChannels.length,
+        currentCursor: nextCursor,
+        nbCalls,
+      },
+      `[Slack] users.conversations called for getJoinedChannels (${nbCalls} calls)`
+    );
+
+    nextCursor = response?.response_metadata?.next_cursor;
+
+    if (response.error) {
+      throw new Error(`Failed to fetch joined channels: ${response.error}`);
+    }
+
+    if (response.channels === undefined) {
+      throw new Error(
+        "The channels list was undefined." +
+          response?.response_metadata?.next_cursor +
+          ""
+      );
+    }
+
+    for (const channel of response.channels) {
+      if (channel && channel.id) {
+        allChannels.push(channel);
+      }
+    }
+  } while (nextCursor);
+
+  return allChannels;
+}
+
+async function _getAllChannelsUncached(
+  slackClient: WebClient,
+  connectorId: ModelId
 ): Promise<Channel[]> {
   return Promise.all([
-    _getTypedChannelsUncached(
-      slackClient,
-      connectorId,
-      joinedOnly,
-      "public_channel"
-    ),
-    _getTypedChannelsUncached(
-      slackClient,
-      connectorId,
-      joinedOnly,
-      "private_channel"
-    ),
+    _getTypedChannelsUncached(slackClient, connectorId, "public_channel"),
+    _getTypedChannelsUncached(slackClient, connectorId, "private_channel"),
   ]).then(([publicChannels, privateChannels]) => [
     ...publicChannels,
     ...privateChannels,
@@ -340,7 +408,6 @@ async function _getChannelsUncached(
 async function _getTypedChannelsUncached(
   slackClient: WebClient,
   connectorId: ModelId,
-  joinedOnly: boolean,
   types: "public_channel" | "private_channel"
 ): Promise<Channel[]> {
   const allChannels = [];
@@ -386,9 +453,7 @@ async function _getTypedChannelsUncached(
     }
     for (const channel of c.channels) {
       if (channel && channel.id) {
-        if (!joinedOnly || channel.is_member) {
-          allChannels.push(channel);
-        }
+        allChannels.push(channel);
       }
     }
   } while (nextCursor);
@@ -401,7 +466,7 @@ export async function getChannelsToSync(
   connectorId: number
 ) {
   const [remoteChannels, localChannels] = await Promise.all([
-    getChannels(slackClient, connectorId, true),
+    getJoinedChannels(slackClient, connectorId),
     SlackChannel.findAll({
       where: {
         connectorId,
@@ -471,7 +536,7 @@ export async function migrateChannelsFromLegacyBotToNewBot(
 
   // Fetch all channels that the deprecated bot is a member of.
   const channels = await withSlackErrorHandling(() =>
-    getChannels(slackClient, slackConnector.id, true)
+    getJoinedChannels(slackClient, slackConnector.id)
   );
   const publicChannels = channels.filter((c) => !c.is_private);
 
