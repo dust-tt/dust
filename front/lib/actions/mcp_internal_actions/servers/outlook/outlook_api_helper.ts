@@ -77,6 +77,7 @@ export type OutlookEvent = z.infer<typeof OutlookEventSchema>;
 export interface ListCalendarsParams {
   top?: number;
   skip?: number;
+  userTimezone?: string;
 }
 
 export interface ListEventsParams {
@@ -86,11 +87,13 @@ export interface ListEventsParams {
   endTime?: string;
   top?: number;
   skip?: number;
+  userTimezone?: string;
 }
 
 export interface GetEventParams {
   calendarId?: string;
   eventId: string;
+  userTimezone?: string;
 }
 
 export interface CreateEventParams {
@@ -106,6 +109,7 @@ export interface CreateEventParams {
   isAllDay?: boolean;
   importance?: "low" | "normal" | "high";
   showAs?: "free" | "tentative" | "busy" | "oof" | "workingElsewhere";
+  userTimezone?: string;
 }
 
 export interface UpdateEventParams {
@@ -122,11 +126,13 @@ export interface UpdateEventParams {
   isAllDay?: boolean;
   importance?: "low" | "normal" | "high";
   showAs?: "free" | "tentative" | "busy" | "oof" | "workingElsewhere";
+  userTimezone?: string;
 }
 
 export interface DeleteEventParams {
   calendarId?: string;
   eventId: string;
+  userTimezone?: string;
 }
 
 export interface CheckAvailabilityParams {
@@ -134,19 +140,33 @@ export interface CheckAvailabilityParams {
   startTime: string;
   endTime: string;
   intervalInMinutes?: number;
+  userTimezone?: string;
 }
 
 const fetchFromOutlook = async (
   endpoint: string,
   accessToken: string,
-  options?: RequestInit
+  options?: RequestInit,
+  userTimezone?: string
 ): Promise<Response> => {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+
+  // Add existing headers from options
+  if (options?.headers) {
+    const existingHeaders = options.headers as Record<string, string>;
+    Object.assign(headers, existingHeaders);
+  }
+
+  // Add Prefer header with timezone if provided
+  if (userTimezone) {
+    headers["Prefer"] = `outlook.timezone="${userTimezone}"`;
+  }
+
   return fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
     ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...options?.headers,
-    },
+    headers,
   });
 };
 
@@ -159,13 +179,38 @@ const getErrorText = async (response: Response): Promise<string> => {
   }
 };
 
+export async function getUserTimezone(
+  accessToken: string
+): Promise<string | { error: string }> {
+  try {
+    const response = await fetchFromOutlook(
+      "/me/mailboxSettings",
+      accessToken,
+      { method: "GET" }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return {
+        error: `Failed to get user timezone: ${response.status} ${response.statusText} - ${errorText}`,
+      };
+    }
+
+    const result = await response.json();
+    return result.timeZone || "UTC";
+  } catch (error) {
+    localLogger.error({ error }, "Error getting user timezone");
+    return { error: `Error getting user timezone: ${error}` };
+  }
+}
+
 export async function listCalendars(
   accessToken: string,
   params: ListCalendarsParams
 ): Promise<
   { calendars: OutlookCalendar[]; nextLink?: string } | { error: string }
 > {
-  const { top = 250, skip = 0 } = params;
+  const { top = 250, skip = 0, userTimezone } = params;
 
   const urlParams = new URLSearchParams();
   urlParams.append("$top", Math.min(top, 999).toString());
@@ -175,7 +220,8 @@ export async function listCalendars(
     const response = await fetchFromOutlook(
       `/me/calendars?${urlParams.toString()}`,
       accessToken,
-      { method: "GET" }
+      { method: "GET" },
+      userTimezone
     );
 
     if (!response.ok) {
@@ -214,71 +260,134 @@ export async function listEvents(
   accessToken: string,
   params: ListEventsParams
 ): Promise<{ events: OutlookEvent[]; nextLink?: string } | { error: string }> {
-  const { calendarId, search, startTime, endTime, top = 50, skip = 0 } = params;
+  const {
+    calendarId,
+    search,
+    startTime,
+    endTime,
+    top = 50,
+    skip = 0,
+    userTimezone,
+  } = params;
 
-  const urlParams = new URLSearchParams();
-  urlParams.append("$top", Math.min(top, 999).toString());
-  urlParams.append("$orderby", "start/dateTime");
-
-  if (search) {
-    urlParams.append("$search", `"${search}"`);
-  } else {
+  // Use calendarView endpoint when date range is specified to get recurring events
+  if (startTime && endTime && !search) {
+    const urlParams = new URLSearchParams();
+    urlParams.append("startDateTime", startTime);
+    urlParams.append("endDateTime", endTime);
+    urlParams.append("$top", Math.min(top, 999).toString());
     urlParams.append("$skip", skip.toString());
-  }
+    urlParams.append("$orderby", "start/dateTime");
 
-  if (startTime || endTime) {
-    const filters = [];
-    if (startTime) {
-      filters.push(`start/dateTime ge '${startTime}'`);
-    }
-    if (endTime) {
-      filters.push(`end/dateTime le '${endTime}'`);
-    }
-    if (filters.length > 0) {
-      urlParams.append("$filter", filters.join(" and "));
-    }
-  }
+    const endpoint = calendarId
+      ? `/me/calendars/${calendarId}/calendarView`
+      : `/me/calendar/calendarView`;
 
-  const endpoint = calendarId
-    ? `/me/calendars/${calendarId}/events`
-    : `/me/events`;
-
-  try {
-    const response = await fetchFromOutlook(
-      `${endpoint}?${urlParams.toString()}`,
-      accessToken,
-      { method: "GET" }
-    );
-
-    if (!response.ok) {
-      const errorText = await getErrorText(response);
-      return {
-        error: `Failed to list events: ${response.status} ${response.statusText} - ${errorText}`,
-      };
-    }
-
-    const result = await response.json();
-    const eventsResult = z
-      .array(OutlookEventSchema)
-      .safeParse(result.value || []);
-
-    if (!eventsResult.success) {
-      localLogger.error(
-        { error: eventsResult.error },
-        "Invalid events data format"
+    try {
+      const response = await fetchFromOutlook(
+        `${endpoint}?${urlParams.toString()}`,
+        accessToken,
+        { method: "GET" },
+        userTimezone
       );
+
+      if (!response.ok) {
+        const errorText = await getErrorText(response);
+        return {
+          error: `Failed to list events: ${response.status} ${response.statusText} - ${errorText}`,
+        };
+      }
+
+      const result = await response.json();
+      const eventsResult = z
+        .array(OutlookEventSchema)
+        .safeParse(result.value || []);
+
+      if (!eventsResult.success) {
+        localLogger.error(
+          { error: eventsResult.error },
+          "Invalid events data format"
+        );
+        return {
+          error: `Invalid events data format: ${eventsResult.error.message}`,
+        };
+      }
+
       return {
-        error: `Invalid events data format: ${eventsResult.error.message}`,
+        events: eventsResult.data,
+        nextLink: result["@odata.nextLink"],
       };
+    } catch (error) {
+      localLogger.error({ error }, "Error listing events");
+      return { error: `Error listing events: ${error}` };
+    }
+  } else {
+    // Fall back to regular events endpoint for search queries or when no date range
+    const urlParams = new URLSearchParams();
+    urlParams.append("$top", Math.min(top, 999).toString());
+    urlParams.append("$orderby", "start/dateTime");
+
+    if (search) {
+      urlParams.append("$search", `"${search}"`);
+    } else {
+      urlParams.append("$skip", skip.toString());
     }
 
-    return {
-      events: eventsResult.data,
-      nextLink: result["@odata.nextLink"],
-    };
-  } catch (error) {
-    localLogger.error({ error }, "Error listing events");
-    return { error: `Error listing events: ${error}` };
+    if (startTime || endTime) {
+      const filters = [];
+      if (startTime) {
+        filters.push(`start/dateTime ge '${startTime}'`);
+      }
+      if (endTime) {
+        filters.push(`end/dateTime le '${endTime}'`);
+      }
+      if (filters.length > 0) {
+        urlParams.append("$filter", filters.join(" and "));
+      }
+    }
+
+    const endpoint = calendarId
+      ? `/me/calendars/${calendarId}/events`
+      : `/me/events`;
+
+    try {
+      const response = await fetchFromOutlook(
+        `${endpoint}?${urlParams.toString()}`,
+        accessToken,
+        { method: "GET" },
+        userTimezone
+      );
+
+      if (!response.ok) {
+        const errorText = await getErrorText(response);
+        return {
+          error: `Failed to list events: ${response.status} ${response.statusText} - ${errorText}`,
+        };
+      }
+
+      const result = await response.json();
+      const eventsResult = z
+        .array(OutlookEventSchema)
+        .safeParse(result.value || []);
+
+      if (!eventsResult.success) {
+        localLogger.error(
+          { error: eventsResult.error },
+          "Invalid events data format"
+        );
+        return {
+          error: `Invalid events data format: ${eventsResult.error.message}`,
+        };
+      }
+
+      return {
+        events: eventsResult.data,
+        nextLink: result["@odata.nextLink"],
+      };
+    } catch (error) {
+      localLogger.error({ error }, "Error listing events");
+      return { error: `Error listing events: ${error}` };
+    }
   }
 }
 
@@ -286,16 +395,19 @@ export async function getEvent(
   accessToken: string,
   params: GetEventParams
 ): Promise<OutlookEvent | { error: string }> {
-  const { calendarId, eventId } = params;
+  const { calendarId, eventId, userTimezone } = params;
 
   const endpoint = calendarId
     ? `/me/calendars/${calendarId}/events/${eventId}`
     : `/me/events/${eventId}`;
 
   try {
-    const response = await fetchFromOutlook(endpoint, accessToken, {
-      method: "GET",
-    });
+    const response = await fetchFromOutlook(
+      endpoint,
+      accessToken,
+      { method: "GET" },
+      userTimezone
+    );
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
@@ -344,6 +456,7 @@ export async function createEvent(
     isAllDay = false,
     importance = "normal",
     showAs = "busy",
+    userTimezone,
   } = params;
 
   const event: any = {
@@ -384,13 +497,18 @@ export async function createEvent(
     : `/me/events`;
 
   try {
-    const response = await fetchFromOutlook(endpoint, accessToken, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetchFromOutlook(
+      endpoint,
+      accessToken,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(event),
       },
-      body: JSON.stringify(event),
-    });
+      userTimezone
+    );
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
@@ -437,6 +555,7 @@ export async function updateEvent(
     isAllDay,
     importance,
     showAs,
+    userTimezone,
   } = params;
 
   const event: any = {};
@@ -486,13 +605,18 @@ export async function updateEvent(
     : `/me/events/${eventId}`;
 
   try {
-    const response = await fetchFromOutlook(endpoint, accessToken, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetchFromOutlook(
+      endpoint,
+      accessToken,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(event),
       },
-      body: JSON.stringify(event),
-    });
+      userTimezone
+    );
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
@@ -528,16 +652,19 @@ export async function deleteEvent(
   accessToken: string,
   params: DeleteEventParams
 ): Promise<{ success: true } | { error: string }> {
-  const { calendarId, eventId } = params;
+  const { calendarId, eventId, userTimezone } = params;
 
   const endpoint = calendarId
     ? `/me/calendars/${calendarId}/events/${eventId}`
     : `/me/events/${eventId}`;
 
   try {
-    const response = await fetchFromOutlook(endpoint, accessToken, {
-      method: "DELETE",
-    });
+    const response = await fetchFromOutlook(
+      endpoint,
+      accessToken,
+      { method: "DELETE" },
+      userTimezone
+    );
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
@@ -563,7 +690,13 @@ export async function checkAvailability(
   | { availability: any[]; timeSlot: { start: string; end: string } }
   | { error: string }
 > {
-  const { emails, startTime, endTime, intervalInMinutes = 60 } = params;
+  const {
+    emails,
+    startTime,
+    endTime,
+    intervalInMinutes = 60,
+    userTimezone,
+  } = params;
 
   const requestBody = {
     schedules: emails,
@@ -588,7 +721,8 @@ export async function checkAvailability(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
-      }
+      },
+      userTimezone
     );
 
     if (!response.ok) {
