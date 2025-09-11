@@ -12,6 +12,32 @@ const createServer = (): McpServer => {
   const server = makeInternalMCPServer("outlook_calendar");
 
   server.tool(
+    "get_user_timezone",
+    "Get the user's configured timezone from their Outlook mailbox settings. This should be called before creating, updating, or searching for events to ensure proper timezone handling.",
+    {},
+    async (_, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
+
+      const result = await OutlookApi.getUserTimezone(accessToken);
+
+      if (typeof result === "string") {
+        return makeMCPToolJSONSuccess({
+          message: "User timezone retrieved successfully",
+          result: {
+            timezone: result,
+            description: "Use this timezone value when creating, updating, or searching for calendar events to ensure times are displayed correctly.",
+          },
+        });
+      } else {
+        return makeMCPToolTextError(result.error);
+      }
+    }
+  );
+
+  server.tool(
     "list_calendars",
     "List all calendars accessible by the user in Outlook.",
     {
@@ -23,14 +49,24 @@ const createServer = (): McpServer => {
         .number()
         .optional()
         .describe("Number of calendars to skip for pagination."),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
+        ),
     },
-    async ({ top = 250, skip = 0 }, { authInfo }) => {
+    async ({ top = 250, skip = 0, userTimezone }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const result = await OutlookApi.listCalendars(accessToken, { top, skip });
+      const result = await OutlookApi.listCalendars(accessToken, {
+        top,
+        skip,
+        userTimezone,
+      });
 
       if ("error" in result) {
         return makeMCPToolTextError(result.error);
@@ -45,7 +81,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_events",
-    "List or search events from an Outlook Calendar. Supports filtering and searching.",
+    "List or search events from an Outlook Calendar. Supports filtering and searching. For accurate timezone handling, first call get_user_timezone and pass the timezone parameter.",
     {
       calendarId: z
         .string()
@@ -75,9 +111,15 @@ const createServer = (): McpServer => {
         .number()
         .optional()
         .describe("Number of events to skip for pagination."),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value for proper timezone handling."
+        ),
     },
     async (
-      { calendarId, search, startTime, endTime, top = 50, skip = 0 },
+      { calendarId, search, startTime, endTime, top = 50, skip = 0, userTimezone },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -92,6 +134,7 @@ const createServer = (): McpServer => {
         endTime,
         top,
         skip,
+        userTimezone,
       });
 
       if ("error" in result) {
@@ -116,8 +159,14 @@ const createServer = (): McpServer => {
           "The calendar ID. If not provided, uses the user's default calendar."
         ),
       eventId: z.string().describe("The ID of the event to retrieve."),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
+        ),
     },
-    async ({ calendarId, eventId }, { authInfo }) => {
+    async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return makeMCPToolTextError("Authentication required");
@@ -126,6 +175,7 @@ const createServer = (): McpServer => {
       const result = await OutlookApi.getEvent(accessToken, {
         calendarId,
         eventId,
+        userTimezone,
       });
 
       if ("error" in result) {
@@ -141,7 +191,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_event",
-    "Create a new event in an Outlook Calendar.",
+    "Create a new event in an Outlook Calendar. Call get_user_timezone first and pass the userTimezone parameter for proper timezone handling.",
     {
       calendarId: z
         .string()
@@ -184,6 +234,12 @@ const createServer = (): McpServer => {
         .enum(["free", "tentative", "busy", "oof", "workingElsewhere"])
         .optional()
         .describe("Show as status for the event (default: busy)."),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
+        ),
     },
     async (
       {
@@ -199,6 +255,7 @@ const createServer = (): McpServer => {
         isAllDay = false,
         importance = "normal",
         showAs = "busy",
+        userTimezone,
       },
       { authInfo }
     ) => {
@@ -220,6 +277,7 @@ const createServer = (): McpServer => {
         isAllDay,
         importance,
         showAs,
+        userTimezone,
       });
 
       if ("error" in result) {
@@ -235,7 +293,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "update_event",
-    "Update an existing event in an Outlook Calendar.",
+    "Update an existing event in an Outlook Calendar. Call get_user_timezone first and pass the userTimezone parameter for proper timezone handling.",
     {
       calendarId: z
         .string()
@@ -270,6 +328,12 @@ const createServer = (): McpServer => {
         .enum(["free", "tentative", "busy", "oof", "workingElsewhere"])
         .optional()
         .describe("Show as status for the event."),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
+        ),
     },
     async (
       {
@@ -286,6 +350,7 @@ const createServer = (): McpServer => {
         isAllDay,
         importance,
         showAs,
+        userTimezone,
       },
       { authInfo }
     ) => {
@@ -308,6 +373,7 @@ const createServer = (): McpServer => {
         isAllDay,
         importance,
         showAs,
+        userTimezone,
       });
 
       if ("error" in result) {
@@ -332,8 +398,14 @@ const createServer = (): McpServer => {
           "The calendar ID. If not provided, uses the user's default calendar."
         ),
       eventId: z.string().describe("The ID of the event to delete."),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
+        ),
     },
-    async ({ calendarId, eventId }, { authInfo }) => {
+    async ({ calendarId, eventId, userTimezone }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return makeMCPToolTextError("Authentication required");
@@ -342,6 +414,7 @@ const createServer = (): McpServer => {
       const result = await OutlookApi.deleteEvent(accessToken, {
         calendarId,
         eventId,
+        userTimezone,
       });
 
       if ("error" in result) {
@@ -376,9 +449,15 @@ const createServer = (): McpServer => {
         .describe(
           "Interval in minutes for availability slots (default: 60, max: 1440)"
         ),
+      userTimezone: z
+        .string()
+        .optional()
+        .describe(
+          "User's timezone (e.g., 'America/New_York'). Call get_user_timezone first to get this value."
+        ),
     },
     async (
-      { emails, startTime, endTime, intervalInMinutes = 60 },
+      { emails, startTime, endTime, intervalInMinutes = 60, userTimezone },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -391,6 +470,7 @@ const createServer = (): McpServer => {
         startTime,
         endTime,
         intervalInMinutes,
+        userTimezone,
       });
 
       if ("error" in result) {
