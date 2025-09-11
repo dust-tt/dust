@@ -1,4 +1,4 @@
-import { ActionMicIcon, Button, StopIcon } from "@dust-tt/sparkle";
+import { ActionMicIcon, Button } from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -32,12 +32,83 @@ export function VoicePicker({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const [level, setLevel] = useState(0);
 
   // Track pointer press to distinguish click (<150ms) vs hold (>=150ms).
   const pressStartRef = useRef<number | null>(null);
   const pressTimeoutRef = useRef<number | null>(null);
 
   const sendNotification = useSendNotification();
+
+  const stopLevelMetering = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    try {
+      analyserRef.current = null;
+      sourceNodeRef.current?.disconnect();
+      sourceNodeRef.current = null;
+      if (audioContextRef.current) {
+        // Close the AudioContext to release resources.
+        void audioContextRef.current.close();
+      }
+    } catch {
+      // Ignore errors on cleanup.
+    } finally {
+      audioContextRef.current = null;
+      setLevel(0);
+    }
+  }, []);
+
+  const startLevelMetering = useCallback(
+    (stream: MediaStream) => {
+      stopLevelMetering();
+      try {
+        const AC = hasWebkitAudioContext(window)
+          ? window.webkitAudioContext
+          : window.AudioContext;
+        const ctx = new AC();
+        audioContextRef.current = ctx;
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.85;
+        const source = ctx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        analyserRef.current = analyser;
+        sourceNodeRef.current = source;
+
+        const buffer = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          const a = analyserRef.current;
+          if (!a) {
+            return;
+          }
+          a.getByteTimeDomainData(buffer);
+          // Compute RMS level from time-domain data. Normalize to [0, 1].
+          let sumSquares = 0;
+          for (let i = 0; i < buffer.length; i++) {
+            const v = (buffer[i] - 128) / 128; // [-1, 1]
+            sumSquares += v * v;
+          }
+          const rms = Math.sqrt(sumSquares / buffer.length); // ~0..1
+          // Map RMS to a smoother visual level with light bias to show activity.
+          const visual = Math.max(0, Math.min(1, (rms - 0.02) / 0.3));
+          setLevel(visual);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch {
+        // If metering fails (unsupported), we silently ignore.
+        audioContextRef.current = null;
+        analyserRef.current = null;
+      }
+    },
+    [stopLevelMetering]
+  );
 
   // Cleanup on unmounting: ensure the recorder is stopped and tracks are closed.
   useEffect(() => {
@@ -46,9 +117,10 @@ export function VoicePicker({
       clearPressTimeout();
       pressStartRef.current = null;
       stopRecorder(mediaRecorderRef.current);
+      stopLevelMetering();
       stopTracks(streamRef.current);
     };
-  }, []);
+  }, [stopLevelMetering]);
 
   const finalizeRecordingHold = useCallback(
     async (file: File) => {
@@ -113,6 +185,9 @@ export function VoicePicker({
       const recorder = createRecorder(stream, chunksRef);
       mediaRecorderRef.current = recorder;
 
+      // Start level metering alongside recording.
+      startLevelMetering(stream);
+
       recorder.start();
       setIsRecording(true);
     } catch {
@@ -122,7 +197,7 @@ export function VoicePicker({
         description: "Please allow microphone access and try again.",
       });
     }
-  }, [isRecording, sendNotification]);
+  }, [isRecording, sendNotification, startLevelMetering]);
 
   const stopAndFinalize = useCallback(
     async (reason: "hold" | "click") => {
@@ -147,11 +222,17 @@ export function VoicePicker({
         });
       } finally {
         setIsTranscribing(false);
+        stopLevelMetering();
         stopTracks(streamRef.current);
         streamRef.current = null;
       }
     },
-    [finalizeRecordingHold, finalizeRecordingClick, sendNotification]
+    [
+      finalizeRecordingHold,
+      finalizeRecordingClick,
+      sendNotification,
+      stopLevelMetering,
+    ]
   );
 
   const stopRecording = useCallback(
@@ -171,6 +252,21 @@ export function VoicePicker({
     },
     [stopAndFinalize]
   );
+
+  // ----- Event handlers -------------------------------------------------------
+
+  // Type guard to check for prefixed webkitAudioContext without unsafe casts.
+
+  function hasWebkitAudioContext(
+    w: Window & typeof globalThis
+    // @ts-expect-error - Type 'Window' is not assignable to type 'Window & typeof globalThis'.
+  ): w is Window & { webkitAudioContext: typeof AudioContext } {
+    return "webkitAudioContext" in w;
+  }
+
+  // ----- Level metering (audio input visualization) ----------------------------
+
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
   // ----- Event handlers -------------------------------------------------------
 
@@ -244,9 +340,12 @@ export function VoicePicker({
 
   // ----- Render ---------------------------------------------------------------
 
+  // Use a dynamic recording icon that reflects the input level when recording.
+  const RecordingIcon = () => <VoiceLevelIcon level={level} />;
+
   return (
     <Button
-      icon={isRecording ? StopIcon : ActionMicIcon}
+      icon={isRecording ? RecordingIcon : ActionMicIcon}
       isLoading={isTranscribing}
       variant="ghost-secondary"
       size="xs"
@@ -316,4 +415,50 @@ const computeTooltip = (
     return isRecording ? "Release to stop" : "Hold to record";
   }
   return isRecording ? "Click to stop" : "Click to record";
+};
+
+interface VoiceLevelIconProps {
+  level: number; // Expected in [0, 1].
+}
+
+// Sparkle-consistent dynamic icon that visualizes the input level using bars.
+// - Uses currentColor for fill, so it inherits Button color.
+// - Sized with 1em so it matches the icon size expected by Button.
+// - Bars heights are smoothly mapped from the provided level.
+const VoiceLevelIcon = ({ level }: VoiceLevelIconProps) => {
+  // Clamp to [0,1] to be safe.
+  const l = Math.max(0, Math.min(1, level * 1.5));
+
+  // Compute heights for 5 bars with slight variance.
+  const base = 3; // Minimum bar height.
+  const max = 16; // Additional height available.
+  const factors = [0.4, 0.7, 1.0, 0.7, 0.4];
+  const heights = factors.map((f) => base + max * Math.pow(l, 0.7) * f);
+
+  // X positions for the bars in the 24x24 viewBox.
+  const xs = [5, 9, 13, 17, 21];
+  const bottom = 21; // Bottom baseline (y coordinate).
+  const width = 2; // Bar width.
+
+  return (
+    <svg
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {heights.map((h, i) => (
+        <rect
+          key={i}
+          x={xs[i] - width / 2}
+          width={width}
+          y={bottom - h}
+          height={h}
+          rx={1}
+        />
+      ))}
+    </svg>
+  );
 };
