@@ -137,19 +137,12 @@ export function validateJSX(code: string): Result<undefined, Error> {
       plugins: [
         "jsx",
         "typescript",
-        "decorators-legacy",
         "classProperties",
         "objectRestSpread",
-        "functionBind",
-        "exportDefaultFrom",
-        "exportNamespaceFrom",
-        "dynamicImport",
         "nullishCoalescingOperator",
         "optionalChaining",
       ],
       allowImportExportEverywhere: true,
-      allowReturnOutsideFunction: true,
-      allowUndeclaredExports: true,
     });
     return new Ok(undefined);
   } catch (error) {
