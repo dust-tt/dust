@@ -255,13 +255,26 @@ export default function AgentBuilder({
       const createdAgent = result.value;
       const isCreatingNew = duplicateAgentId || !agentConfiguration;
 
-      sendNotification({
-        title: isCreatingNew ? "Agent created" : "Agent saved",
-        description: isCreatingNew
-          ? "Your agent has been successfully created"
-          : "Your agent has been successfully saved",
-        type: "success",
-      });
+      // Check if there's a warning about Slack channel linking
+      if (
+        "_warning" in createdAgent &&
+        createdAgent._warning === "slack_channel_linking_in_progress"
+      ) {
+        sendNotification({
+          title: isCreatingNew ? "Agent created" : "Agent saved",
+          description:
+            "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.",
+          type: "info",
+        });
+      } else {
+        sendNotification({
+          title: isCreatingNew ? "Agent created" : "Agent saved",
+          description: isCreatingNew
+            ? "Your agent has been successfully created"
+            : "Your agent has been successfully saved",
+          type: "success",
+        });
+      }
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;

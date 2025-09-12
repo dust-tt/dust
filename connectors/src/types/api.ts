@@ -24,6 +24,7 @@ const CONNECTORS_API_ERROR_TYPES = [
   "connector_rate_limit_error",
   "slack_configuration_not_found",
   "google_drive_webhook_not_found",
+  "connector_operation_in_progress",
 ] as const;
 export type ConnectorsAPIErrorType =
   (typeof CONNECTORS_API_ERROR_TYPES)[number];
