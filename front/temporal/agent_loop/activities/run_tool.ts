@@ -4,6 +4,7 @@ import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
@@ -107,6 +108,28 @@ export async function runToolActivity(
 
         return { deferredEvents };
       case "tool_early_exit":
+        if (!event.isError && event.message) {
+          // Post message content
+          const all = await AgentStepContentResource.fetchByAgentMessages(
+            auth,
+            {
+              agentMessageIds: [agentMessage.agentMessageId],
+            }
+          );
+          const lastIndex = all.findLast((c) => c.step === step);
+          await AgentStepContentResource.createNewVersion({
+            workspaceId: conversation.owner.id,
+            agentMessageId: agentMessage.agentMessageId,
+            step,
+            index: lastIndex ? lastIndex.index + 1 : 0,
+            type: "text_content",
+            value: {
+              type: "text_content",
+              value: event.message,
+            },
+          });
+        }
+
         // TODO: Here we may want to return a success event instead of an error event, but we won't be able to pass any content in the success event.
         await updateResourceAndPublishEvent(auth, {
           event: event.isError

@@ -324,7 +324,7 @@ export default async function createServer(
       if (isHandover) {
         return makeMCPToolExit(
           `Query delegated to agent @${childAgentBlob.name}`,
-          true
+          false
         );
       }
 
