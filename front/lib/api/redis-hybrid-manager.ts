@@ -42,146 +42,6 @@ class RedisHybridManager {
   }
 
   /**
-   * Get or initialize the Redis client
-   */
-  private async getSubscriptionClient(): Promise<RedisClientType> {
-    if (!this.subscriptionClient) {
-      const { REDIS_URI } = process.env;
-      if (!REDIS_URI) {
-        throw new Error("REDIS_URI is not defined");
-      }
-
-      this.subscriptionClient = createClient({
-        url: REDIS_URI,
-        socket: {
-          reconnectStrategy: (retries) => {
-            return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
-          },
-        },
-      });
-
-      // Set up error handler
-      this.subscriptionClient.on("error", (err) => {
-        logger.error({ error: err }, "Redis subscription client error");
-        this.scheduleSubscriptionReconnect();
-      });
-
-      // Set up reconnect handler
-      this.subscriptionClient.on("connect", async () => {
-        logger.debug("Redis subscription client connected");
-
-        if (this.pubSubReconnectTimer) {
-          clearTimeout(this.pubSubReconnectTimer);
-          this.pubSubReconnectTimer = null;
-        }
-
-        // Resubscribe to all active channels
-        await this.resubscribeToChannels();
-      });
-
-      await this.subscriptionClient.connect();
-    }
-
-    return this.subscriptionClient;
-  }
-
-  private async getStreamAndPublishClient(): Promise<RedisClientType> {
-    if (!this.streamAndPublishClient) {
-      const { REDIS_URI } = process.env;
-      if (!REDIS_URI) {
-        throw new Error("REDIS_URI is not defined");
-      }
-
-      this.streamAndPublishClient = createClient({
-        url: REDIS_URI,
-        socket: {
-          reconnectStrategy: (retries) => {
-            return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
-          },
-        },
-      });
-
-      // Set up error handler
-      this.streamAndPublishClient.on("error", (err) => {
-        logger.error({ error: err }, "Redis stream and publish client error");
-        this.scheduleStreamAndPublishReconnect();
-      });
-
-      // Set up reconnect handler
-      this.streamAndPublishClient.on("connect", () => {
-        logger.debug("Redis stream and publish client connected");
-        if (this.streamReconnectTimer) {
-          clearTimeout(this.streamReconnectTimer);
-          this.streamReconnectTimer = null;
-        }
-      });
-
-      await this.streamAndPublishClient.connect();
-    }
-
-    return this.streamAndPublishClient;
-  }
-
-  /**
-   * Schedule a reconnection attempt for the subscription client
-   */
-  private scheduleSubscriptionReconnect(): void {
-    if (this.pubSubReconnectTimer) {
-      return;
-    }
-
-    this.pubSubReconnectTimer = setTimeout(async () => {
-      this.pubSubReconnectTimer = null;
-      try {
-        await this.getSubscriptionClient();
-      } catch (error) {
-        logger.error(
-          { error },
-          "Error reconnecting subscription client to Redis"
-        );
-        this.scheduleSubscriptionReconnect();
-      }
-    }, 5000);
-  }
-
-  /**
-   * Schedule a reconnection attempt for the stream and publish client
-   */
-  private scheduleStreamAndPublishReconnect(): void {
-    if (this.streamReconnectTimer) {
-      return;
-    }
-
-    this.streamReconnectTimer = setTimeout(async () => {
-      this.streamReconnectTimer = null;
-      try {
-        await this.getStreamAndPublishClient();
-      } catch (error) {
-        logger.error(
-          { error },
-          "Error reconnecting stream and publish client to Redis"
-        );
-        this.scheduleStreamAndPublishReconnect();
-      }
-    }, 5000);
-  }
-
-  private async resubscribeToChannels(): Promise<void> {
-    if (!this.subscriptionClient) {
-      return;
-    }
-
-    // Use the keys of the subscribers Map instead of activeSubscriptions
-    for (const channel of this.subscribers.keys()) {
-      try {
-        await this.subscriptionClient.subscribe(channel, this.onMessage);
-      } catch (error) {
-        logger.error({ error, channel }, "Error resubscribing to channel");
-      }
-    }
-  }
-
-  /**
    * Publish an event to both a stream and a pub/sub channel
    */
   public async publish(
@@ -359,70 +219,15 @@ class RedisHybridManager {
     }
   }
 
-  private async getHistory(
-    streamClient: RedisClientType,
-    streamName: string,
-    lastEventId: string = "0-0"
-  ): Promise<EventPayload[]> {
+  public async clearStream(channel: string): Promise<void> {
+    const streamClient = await this.getStreamAndPublishClient();
+    const streamName = this.getStreamName(channel);
     try {
-      return await streamClient
-        .xRead({ key: streamName, id: lastEventId }, { COUNT: 100 })
-        .then((events) => {
-          if (events) {
-            return events.flatMap((event) =>
-              event.messages.map((message) => ({
-                id: message.id,
-                message: { payload: message.message["payload"] },
-              }))
-            );
-          }
-          return [];
-        });
+      await streamClient.del(streamName);
+      logger.debug({ channel }, "Cleared Redis stream");
     } catch (error) {
-      logger.error(
-        {
-          error,
-          streamName,
-          lastEventId,
-        },
-        "Error fetching history from stream"
-      );
-      return Promise.resolve([]);
+      logger.error({ error, channel }, "Error clearing Redis stream");
     }
-  }
-
-  private onMessage = (message: string, channel: string) => {
-    const subscribers = this.subscribers.get(channel);
-    if (subscribers && subscribers.size > 0) {
-      try {
-        const event: EventPayload = JSON.parse(message);
-
-        subscribers.forEach((callback) => {
-          try {
-            callback(event);
-          } catch (error) {
-            logger.error({ error, channel }, "Error in subscriber callback");
-          }
-        });
-      } catch (error) {
-        logger.error({ error, channel }, "Error parsing message");
-      }
-    }
-  };
-
-  /**
-   * Get the pub/sub channel name for a given channel name
-   */
-  private getPubSubChannelName(channelName: string): string {
-    return `${this.CHANNEL_PREFIX}${channelName}`;
-  }
-
-  /**
-   * Map a channel name to a stream name
-   * By default, they're the same, but you can override this
-   */
-  private getStreamName(channelName: string): string {
-    return `${this.STREAM_PREFIX}${channelName}`;
   }
 
   /**
@@ -495,6 +300,212 @@ class RedisHybridManager {
         unsubscribe();
       },
     };
+  }
+
+  /**
+   * Get or initialize the Redis client
+   */
+  private async getSubscriptionClient(): Promise<RedisClientType> {
+    if (!this.subscriptionClient) {
+      const { REDIS_URI } = process.env;
+      if (!REDIS_URI) {
+        throw new Error("REDIS_URI is not defined");
+      }
+
+      this.subscriptionClient = createClient({
+        url: REDIS_URI,
+        socket: {
+          reconnectStrategy: (retries) => {
+            return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
+          },
+        },
+      });
+
+      // Set up error handler
+      this.subscriptionClient.on("error", (err) => {
+        logger.error({ error: err }, "Redis subscription client error");
+        this.scheduleSubscriptionReconnect();
+      });
+
+      // Set up reconnect handler
+      this.subscriptionClient.on("connect", async () => {
+        logger.debug("Redis subscription client connected");
+
+        if (this.pubSubReconnectTimer) {
+          clearTimeout(this.pubSubReconnectTimer);
+          this.pubSubReconnectTimer = null;
+        }
+
+        // Resubscribe to all active channels
+        await this.resubscribeToChannels();
+      });
+
+      await this.subscriptionClient.connect();
+    }
+
+    return this.subscriptionClient;
+  }
+
+  private async getStreamAndPublishClient(): Promise<RedisClientType> {
+    if (!this.streamAndPublishClient) {
+      const { REDIS_URI } = process.env;
+      if (!REDIS_URI) {
+        throw new Error("REDIS_URI is not defined");
+      }
+
+      this.streamAndPublishClient = createClient({
+        url: REDIS_URI,
+        socket: {
+          reconnectStrategy: (retries) => {
+            return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
+          },
+        },
+      });
+
+      // Set up error handler
+      this.streamAndPublishClient.on("error", (err) => {
+        logger.error({ error: err }, "Redis stream and publish client error");
+        this.scheduleStreamAndPublishReconnect();
+      });
+
+      // Set up reconnect handler
+      this.streamAndPublishClient.on("connect", () => {
+        logger.debug("Redis stream and publish client connected");
+        if (this.streamReconnectTimer) {
+          clearTimeout(this.streamReconnectTimer);
+          this.streamReconnectTimer = null;
+        }
+      });
+
+      await this.streamAndPublishClient.connect();
+    }
+
+    return this.streamAndPublishClient;
+  }
+
+  /**
+   * Schedule a reconnection attempt for the subscription client
+   */
+  private scheduleSubscriptionReconnect(): void {
+    if (this.pubSubReconnectTimer) {
+      return;
+    }
+
+    this.pubSubReconnectTimer = setTimeout(async () => {
+      this.pubSubReconnectTimer = null;
+      try {
+        await this.getSubscriptionClient();
+      } catch (error) {
+        logger.error(
+          { error },
+          "Error reconnecting subscription client to Redis"
+        );
+        this.scheduleSubscriptionReconnect();
+      }
+    }, 5000);
+  }
+
+  /**
+   * Schedule a reconnection attempt for the stream and publish client
+   */
+  private scheduleStreamAndPublishReconnect(): void {
+    if (this.streamReconnectTimer) {
+      return;
+    }
+
+    this.streamReconnectTimer = setTimeout(async () => {
+      this.streamReconnectTimer = null;
+      try {
+        await this.getStreamAndPublishClient();
+      } catch (error) {
+        logger.error(
+          { error },
+          "Error reconnecting stream and publish client to Redis"
+        );
+        this.scheduleStreamAndPublishReconnect();
+      }
+    }, 5000);
+  }
+
+  private async resubscribeToChannels(): Promise<void> {
+    if (!this.subscriptionClient) {
+      return;
+    }
+
+    // Use the keys of the subscribers Map instead of activeSubscriptions
+    for (const channel of this.subscribers.keys()) {
+      try {
+        await this.subscriptionClient.subscribe(channel, this.onMessage);
+      } catch (error) {
+        logger.error({ error, channel }, "Error resubscribing to channel");
+      }
+    }
+  }
+
+  private async getHistory(
+    streamClient: RedisClientType,
+    streamName: string,
+    lastEventId: string = "0-0"
+  ): Promise<EventPayload[]> {
+    try {
+      return await streamClient
+        .xRead({ key: streamName, id: lastEventId }, { COUNT: 100 })
+        .then((events) => {
+          if (events) {
+            return events.flatMap((event) =>
+              event.messages.map((message) => ({
+                id: message.id,
+                message: { payload: message.message["payload"] },
+              }))
+            );
+          }
+          return [];
+        });
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          streamName,
+          lastEventId,
+        },
+        "Error fetching history from stream"
+      );
+      return Promise.resolve([]);
+    }
+  }
+
+  private onMessage = (message: string, channel: string) => {
+    const subscribers = this.subscribers.get(channel);
+    if (subscribers && subscribers.size > 0) {
+      try {
+        const event: EventPayload = JSON.parse(message);
+
+        subscribers.forEach((callback) => {
+          try {
+            callback(event);
+          } catch (error) {
+            logger.error({ error, channel }, "Error in subscriber callback");
+          }
+        });
+      } catch (error) {
+        logger.error({ error, channel }, "Error parsing message");
+      }
+    }
+  };
+
+  /**
+   * Get the pub/sub channel name for a given channel name
+   */
+  private getPubSubChannelName(channelName: string): string {
+    return `${this.CHANNEL_PREFIX}${channelName}`;
+  }
+
+  /**
+   * Map a channel name to a stream name
+   * By default, they're the same, but you can override this
+   */
+  private getStreamName(channelName: string): string {
+    return `${this.STREAM_PREFIX}${channelName}`;
   }
 }
 

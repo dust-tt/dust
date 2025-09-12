@@ -151,7 +151,8 @@
     "yargs": "^17.7.2",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.24.5",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",
@@ -182,6 +183,7 @@
     "@types/tmp": "^0.2.3",
     "@types/uuid": "^9.0.1",
     "@types/yargs": "^17.0.33",
+    "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
     "@vitejs/plugin-react": "^4.3.4",

@@ -62,6 +62,10 @@ async function handler(
         }
         const { right: evt } = bodyValidation;
 
+        if (evt.type === "start") {
+          await redis.clearStream(channel);
+        }
+
         await redis.publish(
           channel,
           JSON.stringify({ type: evt.type, data: evt.data }),

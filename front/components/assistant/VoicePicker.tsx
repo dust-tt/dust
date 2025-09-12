@@ -2,6 +2,7 @@ import { Button, cn, MicIcon, SquareIcon } from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { WavPacker } from "@app/components/assistant/voice/wav_packer";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { WorkspaceType } from "@app/types";
@@ -42,6 +43,30 @@ export function VoicePicker({
   const rafRef = useRef<number | null>(null);
   const [level, setLevel] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Live transcription SSE and ordered live upload queue.
+  const sseRef = useRef<EventSource | null>(null);
+  const sendQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const enqueueLivePost = useCallback(
+    (body: { type: "start" | "audio" | "end"; data?: string }) => {
+      // Chain requests to preserve order.
+      sendQueueRef.current = sendQueueRef.current
+        .then(async () => {
+          console.log("sendQueue");
+          await fetch(`/api/w/${owner.sId}/me/audio/live`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          return undefined;
+        })
+        .catch(() => {
+          // Ignore network errors here; SSE will surface failures if critical.
+        });
+    },
+    [owner.sId]
+  );
 
   // Track pointer press to distinguish click (<150ms) vs hold (>=150ms).
   const pressStartRef = useRef<number | null>(null);
@@ -131,151 +156,88 @@ export function VoicePicker({
       stopRecorder(mediaRecorderRef.current);
       stopLevelMetering();
       stopTracks(streamRef.current);
+      // Close live transcription SSE if open.
+      try {
+        sseRef.current?.close();
+      } catch {}
+      sseRef.current = null;
     };
   }, [stopLevelMetering]);
 
-  const finalizeRecordingHold = useCallback(
-    async (blob: Blob) => {
-      // Open SSE connection to the live transcription handler, then POST the
-      // full audio file as a single chunk to the live ingestion endpoint.
-      await new Promise<void>((resolve) => {
-        let resolved = false;
-        const done = () => {
-          if (!resolved) {
-            resolved = true;
-            resolve();
-          }
-        };
+  const openTranscriptionSSE = useCallback(() => {
+    try {
+      // Close any previous SSE if still open.
+      if (sseRef.current) {
+        try {
+          sseRef.current.close();
+        } catch {}
+      }
+      const es = new EventSource(`/api/w/${owner.sId}/me/audio/transcription`);
+      sseRef.current = es;
+      setIsTranscribing(true);
 
-        // 1) Start listening to transcription SSE events.
-        const es = new EventSource(
-          `/api/w/${owner.sId}/me/audio/transcription`
-        );
-
-        const filename = `voice-${new Date().toISOString()}.wav`;
-        const file = new File([blob], filename, {
-          type: blob.type || "audio/wav",
-        });
-        const form = new FormData();
-        form.append("file", file);
-
-        es.onmessage = (ev) => {
-          const data = ev.data;
-          if (data === "done") {
-            es.close();
-            done();
-            return;
-          }
-          try {
-            const parsed = JSON.parse(data) as
-              | { type: "delta"; delta: string }
-              | { type: "full_transcript"; text: string }
-              | { type: "error"; message: string };
-
-            if (parsed.type === "delta") {
-              onTranscribeDelta(parsed.delta);
-            } else if (parsed.type === "full_transcript") {
-              // We already sent deltas; this signals completion.
-              es.close();
-              done();
-            } else if (parsed.type === "error") {
-              es.close();
-              sendNotification({
-                type: "error",
-                title: "Transcription failed.",
-                description: parsed.message,
-              });
-              done();
-            }
-          } catch {
-            // Ignore non-JSON messages (if any) except for "done" handled above.
-          }
-        };
-
-        es.onerror = () => {
+      es.onmessage = (ev) => {
+        console.debug("SSE message", ev.data);
+        const data = ev.data;
+        if (data === "done") {
           es.close();
+          sseRef.current = null;
+          setIsTranscribing(false);
           sendNotification({
-            type: "error",
-            title: "Transcription connection error.",
-            description: "Could not connect to live transcription.",
+            type: "success",
+            title: "Voice recorded.",
+            description: "Audio sent for transcription.",
           });
-          done();
-        };
-        // 2) Send the audio to the live ingestion endpoint as JSON events.
-        // We send a start marker, one audio event with base64 payload, and an end marker.
-        fetch(`/api/w/${owner.sId}/services/transcribe?stream=false`, {
-          method: "POST",
-          body: form,
-        })
-          .then((res) => res.json())
-          .then((res) => {
-            console.log("Transcription service response:", res);
-          })
-          .then(() =>
-            fetch(`/api/w/${owner.sId}/me/audio/live`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ type: "start" }),
-            })
-          )
-          .then(() => {
-            return blobToBase64v2(blob);
-          })
-          .then((b64) =>
-            fetch(`/api/w/${owner.sId}/me/audio/live`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ type: "audio", data: b64 }),
-            })
-          )
-          .then(() =>
-            fetch(`/api/w/${owner.sId}/me/audio/live`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ type: "end" }),
-            })
-          )
-          .then(async (resp) => {
-            if (!resp.ok) {
-              const msg = await resp.text();
-              sendNotification({
-                type: "error",
-                title: "Voice upload failed.",
-                description: msg || "Failed to send audio for transcription.",
-              });
-              // Still resolve to unblock UI; SSE will likely end without results.
-              es.close();
-              done();
-            } else {
-              // Success uploading. The SSE stream will complete on its own; do nothing here.
-            }
-          })
-          .catch(() => {
+          return;
+        }
+        try {
+          const parsed = JSON.parse(data) as
+            | { type: "delta"; delta: string }
+            | { type: "full_transcript"; text: string }
+            | { type: "error"; message: string };
+
+          if (parsed.type === "delta") {
+            onTranscribeDelta(parsed.delta);
+          } else if (parsed.type === "full_transcript") {
+            es.close();
+            sseRef.current = null;
+            setIsTranscribing(false);
+          } else if (parsed.type === "error") {
+            es.close();
+            sseRef.current = null;
+            setIsTranscribing(false);
             sendNotification({
               type: "error",
-              title: "Voice upload failed.",
-              description:
-                "Network error while sending audio for transcription.",
+              title: "Transcription failed.",
+              description: parsed.message,
             });
-            es.close();
-            done();
-          });
-      });
+          }
+        } catch {
+          // Ignore non-JSON messages (if any) except for "done" handled above.
+        }
+      };
 
+      es.onerror = () => {
+        try {
+          es.close();
+        } catch {}
+        sseRef.current = null;
+        setIsTranscribing(false);
+        sendNotification({
+          type: "error",
+          title: "Transcription connection error.",
+          description: "Could not connect to live transcription.",
+        });
+      };
+    } catch {
+      setIsTranscribing(false);
       sendNotification({
-        type: "success",
-        title: "Voice recorded.",
-        description: "Audio sent for transcription.",
+        type: "error",
+        title: "Transcription connection error.",
+        description: "Could not connect to live transcription.",
       });
-    },
-    [onTranscribeDelta, owner.sId, sendNotification]
-  );
+    }
+  }, [onTranscribeDelta, owner.sId, sendNotification]);
 
   const finalizeRecordingClick = useCallback(
     async (file: File) => {
@@ -335,8 +297,38 @@ export function VoicePicker({
             streamRef.current = wr.stream;
             startLevelMetering(streamRef.current);
           }
-          await wr.record();
+          // Open SSE to receive live transcription and start the live stream.
+          openTranscriptionSSE();
+          enqueueLivePost({ type: "start" });
+          let first = true;
+          // Start recording and send chunks to the live endpoint as they arrive.
+          await wr.record(async ({ raw }) => {
+            try {
+              if (raw && raw.byteLength > 0) {
+                if (first) {
+                  const float32Array = new Float32Array(0xffffffff);
+
+                  const audio = {
+                    bitsPerSample: 16,
+                    channels: [float32Array],
+                    data: raw,
+                  };
+                  const packer = new WavPacker();
+                  const result = packer.pack(wr?.getSampleRate(), audio);
+                  const b64 = await blobToBase64v2(result.blob);
+                  enqueueLivePost({ type: "audio", data: b64 });
+                  first = false;
+                } else {
+                  const b64 = arrayBufferToBase64(raw);
+                  enqueueLivePost({ type: "audio", data: b64 });
+                }
+              }
+            } catch {
+              // Ignore chunk processing errors.
+            }
+          }, 32_000);
           setIsRecording(true);
+          setIsTranscribing(true);
         } else {
           // Click mode: use MediaRecorder to capture webm for attachments.
           const stream = await requestMicrophone();
@@ -359,7 +351,13 @@ export function VoicePicker({
         });
       }
     },
-    [isRecording, sendNotification, startLevelMetering]
+    [
+      isRecording,
+      sendNotification,
+      startLevelMetering,
+      openTranscriptionSSE,
+      enqueueLivePost,
+    ]
   );
 
   const stopAndFinalize = useCallback(
@@ -368,11 +366,29 @@ export function VoicePicker({
       setIsTranscribing(true);
 
       try {
-        const file = buildAudioFile(chunksRef.current);
-        chunksRef.current = [];
-
         if (reason === "click") {
+          const file = buildAudioFile(chunksRef.current);
+          chunksRef.current = [];
+
           await finalizeRecordingClick(file);
+        } else {
+          if (wavRecorderRef.current) {
+            await wavRecorderRef.current.end();
+            const { blob } = await wavRecorderRef.current.save();
+            console.log("blob", blob.size);
+            const file = new File([blob], `voice-${Date.now()}.wav`, {
+              type: "audio/wav",
+            });
+            const form = new FormData();
+            form.append("file", file);
+            await fetch(
+              `/api/w/${owner.sId}/services/transcribe?stream=false`,
+              {
+                method: "POST",
+                body: form,
+              }
+            );
+          }
         }
       } catch (e) {
         sendNotification({
@@ -401,12 +417,24 @@ export function VoicePicker({
           if (!wr) {
             throw new Error("Recorder not initialized");
           }
-          const { blob } = await wr.end();
-          // const filename = `voice-${new Date().toISOString()}.wav`;
-          // const file = new File([blob], filename, {
-          //   type: blob.type || "audio/wav",
-          // });
-          await finalizeRecordingHold(blob);
+          // Flush any buffered audio chunks, then signal end of stream.
+          await wr.pause();
+          enqueueLivePost({ type: "end" });
+
+          await sendQueueRef.current;
+
+          const { blob } = await wr.save();
+          console.log("blob", blob.size);
+          const file = new File([blob], `voice-${Date.now()}.wav`, {
+            type: "audio/wav",
+          });
+          const form = new FormData();
+          form.append("file", file);
+          await fetch(`/api/w/${owner.sId}/services/transcribe?stream=false`, {
+            method: "POST",
+            body: form,
+          });
+          await wr.end();
         } catch (e) {
           sendNotification({
             type: "error",
@@ -415,12 +443,13 @@ export function VoicePicker({
               e instanceof Error ? e.message : "An unknown error occurred.",
           });
         } finally {
-          setIsTranscribing(false);
+          // Do not clear isTranscribing here; the SSE completion will handle it.
           stopLevelMetering();
           stopTracks(streamRef.current);
           streamRef.current = null;
           wavRecorderRef.current = null;
         }
+
         return;
       }
 
@@ -437,12 +466,7 @@ export function VoicePicker({
       await stopped;
       await stopAndFinalize(reason);
     },
-    [
-      finalizeRecordingHold,
-      sendNotification,
-      stopLevelMetering,
-      stopAndFinalize,
-    ]
+    [sendNotification, stopLevelMetering, stopAndFinalize, enqueueLivePost]
   );
 
   // ----- Event handlers -------------------------------------------------------
