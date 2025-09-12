@@ -45,7 +45,10 @@ import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/in
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  EarlyExitError,
+  extractEarlyExit,
   extractToolBlockedAwaitingInputResponse,
+  isEarlyExit,
   isToolBlockedAwaitingInputResponse,
   ToolBlockedAwaitingInputError,
 } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
@@ -411,6 +414,15 @@ export async function* tryCallMCPTool(
                 blockingEvents,
                 state
               );
+
+              yield {
+                type: "result",
+                result: new Err(err),
+              };
+              return;
+            } else if (isEarlyExit(parsed)) {
+              const { message, isError } = extractEarlyExit(parsed);
+              const err = new EarlyExitError(message, isError);
 
               yield {
                 type: "result",

@@ -16,6 +16,7 @@ import type {
 import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import {
   makeInternalMCPServer,
+  makeMCPToolExit,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
@@ -76,6 +77,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
 ): Promise<{
   name: string;
   description: string;
+  pictureUrl: string;
 } | null> {
   if (isGlobalAgentId(agentId)) {
     const metadata = getGlobalAgentMetadata(agentId);
@@ -87,6 +89,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
     return {
       name: metadata.name,
       description: metadata.description,
+      pictureUrl: metadata.pictureUrl,
     };
   }
 
@@ -98,7 +101,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
       workspaceId: owner.id,
       status: "active",
     },
-    attributes: ["name", "description"],
+    attributes: ["name", "description", "pictureUrl"],
   });
 
   if (!agentConfiguration) {
@@ -108,6 +111,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   return {
     name: agentConfiguration.name,
     description: agentConfiguration.description,
+    pictureUrl: agentConfiguration.pictureUrl,
   };
 }
 
@@ -321,21 +325,10 @@ export default async function createServer(
       }
 
       if (isHandover) {
-        // Return early - no need to stream, all output have already been sent through notifications
-        return {
-          isError: false,
-          content: [
-            {
-              type: "resource",
-              resource: {
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
-                conversationId: mainConversation.sId,
-                text: `Query delegated to ${childAgentBlob.name}.`,
-                uri: "",
-              },
-            },
-          ],
-        };
+        return makeMCPToolExit(
+          `Query delegated to agent @${childAgentBlob.name}`,
+          false
+        );
       }
 
       const { conversation, isNewConversation, userMessageId } = convRes.value;

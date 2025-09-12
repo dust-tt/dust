@@ -20,10 +20,12 @@ export async function runToolActivity(
     actionId,
     runAgentArgs,
     step,
+    runIds,
   }: {
     actionId: ModelId;
     runAgentArgs: RunAgentArgs;
     step: number;
+    runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
   const auth = await Authenticator.fromJSON(authType);
@@ -104,6 +106,40 @@ export async function runToolActivity(
         });
 
         return { deferredEvents };
+      case "tool_early_exit":
+        // TODO: Here we may want to return a success event instead of an error event, but we won't be able to pass any content in the success event.
+        await updateResourceAndPublishEvent(auth, {
+          event: event.isError
+            ? {
+                type: "tool_error",
+                created: event.created,
+                configurationId: agentConfiguration.sId,
+                messageId: agentMessage.sId,
+                conversationId: conversation.sId,
+                error: {
+                  code: "early_exit",
+                  message: event.message,
+                  metadata: {
+                    errorTitle: "Early exit",
+                  },
+                },
+                isLastBlockingEventForStep: true,
+              }
+            : {
+                type: "agent_message_success",
+                created: event.created,
+                configurationId: agentConfiguration.sId,
+                messageId: agentMessage.sId,
+                message: agentMessage,
+                runIds: runIds ?? [],
+              },
+
+          agentMessageRow,
+          conversation,
+          step,
+        });
+
+        return { deferredEvents, shouldPauseAgentLoop: true };
 
       case "tool_personal_auth_required":
       case "tool_approve_execution":

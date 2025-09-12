@@ -28,6 +28,45 @@ export function isRunAgentResumeState(
   );
 }
 
+// Early exit error for run_agent (stop current agent loop)
+
+const EarlyExitErrorName = "EarlyExitError";
+export class EarlyExitError extends Error {
+  constructor(
+    public readonly message: string,
+    public readonly isError: boolean
+  ) {
+    super("Early exit");
+    this.name = EarlyExitErrorName;
+  }
+}
+
+const DUST_EARLY_EXIT_INPUT_KEY = "__exit";
+
+export type EarlyExit = {
+  [DUST_EARLY_EXIT_INPUT_KEY]: {
+    message: string;
+    isError: boolean;
+  };
+};
+
+export function isEarlyExit(response: unknown): response is EarlyExit {
+  return (
+    typeof response === "object" &&
+    response !== null &&
+    DUST_EARLY_EXIT_INPUT_KEY in response &&
+    typeof response[DUST_EARLY_EXIT_INPUT_KEY] === "object" &&
+    response[DUST_EARLY_EXIT_INPUT_KEY] !== null
+  );
+}
+
+export function extractEarlyExit(response: EarlyExit): {
+  message: string;
+  isError: boolean;
+} {
+  return response[DUST_EARLY_EXIT_INPUT_KEY];
+}
+
 // Resume required error for run_agent.
 
 const ToolBlockedAwaitingInputErrorName = "ToolBlockedAwaitingInputError";

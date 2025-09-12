@@ -37,6 +37,24 @@ export function makeMCPToolTextError(text: string): {
   };
 }
 
+export function makeMCPToolExit(
+  message: string,
+  isError: boolean
+): {
+  isError: true;
+  content: [TextContent];
+} {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: `{"__exit": {"isError": ${isError}, "message": ${JSON.stringify(message)}}}`,
+      },
+    ],
+  };
+}
+
 export const makeMCPToolTextSuccess = ({
   message,
   result,
