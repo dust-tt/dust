@@ -14,6 +14,7 @@ export const FIELD_MAPPINGS = {
   assignee: { jqlField: "assignee" },
   created: { jqlField: "created", supportsOperators: true },
   dueDate: { jqlField: "dueDate", supportsOperators: true },
+  fixVersion: { jqlField: "fixVersion" },
   issueType: { jqlField: "issueType" },
   labels: { jqlField: "labels" },
   priority: { jqlField: "priority" },

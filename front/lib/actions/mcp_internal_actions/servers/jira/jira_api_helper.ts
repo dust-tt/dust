@@ -282,6 +282,35 @@ export async function getProjects(
   return handleResults(result, []);
 }
 
+export async function getProjectVersions(
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string
+): Promise<Result<any[], JiraErrorResult>> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/project/${projectKey}/versions`,
+      accessToken,
+    },
+    z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        released: z.boolean().optional(),
+        releaseDate: z.string().optional(),
+        startDate: z.string().optional(),
+        archived: z.boolean().optional(),
+      })
+    ),
+    {
+      baseUrl,
+    }
+  );
+
+  return handleResults(result, []);
+}
+
 export async function getProject(
   baseUrl: string,
   accessToken: string,
