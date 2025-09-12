@@ -44,7 +44,7 @@ function ShareOption({
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-colors",
+        "cursor-pointer",
         isSelected
           ? "border-highlight-500 bg-highlight-100 shadow-md hover:border-highlight-400 hover:bg-highlight-200 dark:border-highlight-400 dark:bg-highlight-800/30 dark:hover:border-highlight-300 dark:hover:bg-highlight-700/30"
           : "hover:border-structure-300 dark:hover:border-structure-300-dark",
@@ -84,7 +84,6 @@ export function ShareContentCreationFilePopover({
 }: ShareContentCreationFilePopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
   const [showShareOptions, setShowShareOptions] = React.useState(false);
   const [selectedScope, setSelectedScope] =
     React.useState<FileShareScope>("none");
@@ -107,14 +106,9 @@ export function ShareContentCreationFilePopover({
   }, [fileShare, isFileShareLoading, isFileShareError]);
 
   const handleChangeFileShare = async (shareScope: FileShareScope) => {
-    setIsUpdatingShare(true);
-    try {
-      await doShare(shareScope);
-      setSelectedScope(shareScope);
-      setShowShareOptions(shareScope !== "none");
-    } finally {
-      setIsUpdatingShare(false);
-    }
+    setSelectedScope(shareScope);
+    setShowShareOptions(shareScope !== "none");
+    await doShare(shareScope);
   };
 
   const handleCreateLink = () => {
@@ -125,10 +119,9 @@ export function ShareContentCreationFilePopover({
     if (scope === "none") {
       setShowShareOptions(false);
       setSelectedScope("none");
-      await handleChangeFileShare("none");
-    } else {
-      await handleChangeFileShare(scope);
     }
+
+    await handleChangeFileShare(scope);
   };
 
   const shareURL = fileShare?.shareUrl ?? "";
@@ -164,8 +157,7 @@ export function ShareContentCreationFilePopover({
     return `${window.location.origin}/w/${owner.sId}/assistant/conversation/share`;
   };
 
-  const isDisabled =
-    isSharingForbidden || isUsingConversationFiles || isUpdatingShare;
+  const isDisabled = isSharingForbidden || isUsingConversationFiles;
 
   const handleOpenChange = (open: boolean) => {
     // Reset to initial state if dialog is closed and file is not shared
@@ -216,11 +208,11 @@ export function ShareContentCreationFilePopover({
                       "disabled to protect company information."}
                 </ContentMessage>
               )}
-            {/* File sharing interface. */}
+            {/* File sharing options. */}
             {!isFileShareLoading && (
               <div className="flex flex-col gap-3">
                 {!showShareOptions ? (
-                  // Initial state: disabled input with placeholder and create link button
+                  // Not shared state: disabled input with placeholder and create link button
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-2">
                       <div className="grow">
@@ -241,7 +233,7 @@ export function ShareContentCreationFilePopover({
                     />
                   </div>
                 ) : (
-                  // Share options state
+                  // Share options
                   <div className="flex flex-col gap-3">
                     <Label className="text-sm font-semibold text-primary dark:text-primary-night">
                       Who can access
