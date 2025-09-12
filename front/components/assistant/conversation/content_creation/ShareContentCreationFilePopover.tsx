@@ -44,21 +44,25 @@ function FileSharingDropdown({
   disabled = false,
   isUsingConversationFiles,
 }: FileSharingDropdownProps) {
-  const scopeOptions = [
+  const scopeOptions: {
+    icon: React.ComponentType;
+    label: string;
+    value: FileShareScope;
+  }[] = [
     {
       icon: LockIcon,
       label: "Only conversation participants",
-      value: "conversation_participants" as const,
+      value: "conversation_participants",
     },
     {
       icon: UserGroupIcon,
       label: `Anyone in ${owner.name} workspace`,
-      value: "workspace" as const,
+      value: "workspace",
     },
     {
       icon: GlobeAltIcon,
       label: "Anyone with the link",
-      value: "public" as const,
+      value: "public",
     },
   ];
 
