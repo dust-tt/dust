@@ -34,6 +34,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
+    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
     const [configuration] = await Promise.all([
       getAgentConfiguration(auth, {
         agentId: context.params?.aId as string,

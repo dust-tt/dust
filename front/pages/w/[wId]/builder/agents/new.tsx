@@ -11,6 +11,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import config from "@app/lib/api/config";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
@@ -73,6 +74,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const { duplicate, templateId } = getDuplicateAndTemplateIdFromQuery(
     context.query
   );
+
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
   if (duplicate) {
     configuration = await getAgentConfiguration(auth, {
       agentId: duplicate,
