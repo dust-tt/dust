@@ -86,19 +86,19 @@ export function withToolLogging<T>(
 
     // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
-      logger.error(
-        {
-          error: result.error.message,
-          ...loggerArgs,
-        },
-        "Tool execution error"
-      );
-
       if (result.error.tracked) {
         statsDClient.increment("use_tools_error.count", 1, [
           "error_type:run_error",
           ...tags,
         ]);
+
+        logger.error(
+          {
+            error: result.error.message,
+            ...loggerArgs,
+          },
+          "Tool execution error"
+        );
       }
 
       return {
