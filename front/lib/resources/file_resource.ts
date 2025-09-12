@@ -166,8 +166,8 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    if (isFileUsingConversationFiles(content)) {
-      // If the file is using conversation files, we don't want to make it accessible.
+    if (isFileUsingConversationFiles(content) && shareableFile.shareScope === 'public') {
+      // If the file is using conversation files, we don't want to make it accessible to public.
       return null;
     }
 

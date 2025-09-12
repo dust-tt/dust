@@ -226,7 +226,7 @@ export function ClientExecutableRenderer({
                 fileMetadata?.useCaseMetadata
                   .lastEditedByAgentConfigurationId ?? ""
               }
-              workspace={owner}
+              workspaceId={owner.sId}
               visualization={{
                 code: fileContent ?? "",
                 complete: true,
