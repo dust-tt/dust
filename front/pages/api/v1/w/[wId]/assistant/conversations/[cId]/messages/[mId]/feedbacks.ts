@@ -142,7 +142,7 @@ async function handler(
 ): Promise<void> {
   // Try to get user from auth, or from email header if using API key
   let user = auth.user();
-  
+
   if (!user && auth.isKey()) {
     // Check if we have a user email header (used by Slack integration)
     const userEmail = getUserEmailFromHeaders(req.headers);
@@ -162,13 +162,14 @@ async function handler(
       }
     }
   }
-  
+
   if (!user) {
     return apiError(req, res, {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
-        message: "The user does not have an active session or is not authenticated.",
+        message:
+          "The user does not have an active session or is not authenticated.",
       },
     });
   }

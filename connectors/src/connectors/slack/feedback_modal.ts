@@ -140,7 +140,7 @@ export async function openFeedbackModal({
             type: "section",
             text: {
               type: "mrkdwn",
-              text: "_By submitting feedback, you agree to share your conversation for improvement purposes._",
+              text: "_By submitting feedback, you agree to share your conversation internally with the agent's editors._",
             },
           },
         ],
