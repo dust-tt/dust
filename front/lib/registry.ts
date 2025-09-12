@@ -347,6 +347,25 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "assistant-builder-cron-timezone-generator": {
+    app: {
+      appId: "T454vmSliN",
+      appHash:
+        "a7183268ee1d99e56774a5c93e6d715eb684bbfab9d34da99e0b92d299bfbde7",
+    },
+    config: {
+      CREATE_CRON: {
+        function_call: "set_schedule",
+        use_cache: false,
+        use_stream: true,
+      },
+      CREATE_TZ: {
+        function_call: "set_tz",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
 };
 
 export type DustRegistryActionName = keyof typeof BaseDustProdActionRegistry;
