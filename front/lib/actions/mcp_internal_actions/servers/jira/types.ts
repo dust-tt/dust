@@ -14,6 +14,7 @@ export const FIELD_MAPPINGS = {
   assignee: { jqlField: "assignee" },
   created: { jqlField: "created", supportsOperators: true },
   dueDate: { jqlField: "dueDate", supportsOperators: true },
+  fixVersion: { jqlField: "fixVersion" },
   issueType: { jqlField: "issueType" },
   labels: { jqlField: "labels" },
   priority: { jqlField: "priority" },
@@ -170,6 +171,16 @@ export const JiraProjectSchema = z.object({
   id: z.string(),
   key: z.string(),
   name: z.string(),
+});
+
+export const JiraProjectVersionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  released: z.boolean().optional(),
+  releaseDate: z.string().optional(),
+  startDate: z.string().optional(),
+  archived: z.boolean().optional(),
 });
 
 export const JiraTransitionSchema = z.object({

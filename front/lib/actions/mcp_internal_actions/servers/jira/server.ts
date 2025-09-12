@@ -13,6 +13,7 @@ import {
   getIssueTypes,
   getProject,
   getProjects,
+  getProjectVersions,
   getTransitions,
   listFieldSummaries,
   listUsers,
@@ -158,6 +159,35 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
+    "get_project_versions",
+    "Retrieves all versions (releases) for a JIRA project. Useful for getting release reports and understanding which versions are available for filtering issues.",
+    {
+      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
+    },
+    async ({ projectKey }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await getProjectVersions(
+            baseUrl,
+            accessToken,
+            projectKey
+          );
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error retrieving project versions: ${result.error}`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Project versions retrieved successfully",
+            result: result.value,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
     "get_transitions",
     "Gets available transitions for a JIRA issue based on its current status and workflow.",
     {
@@ -247,7 +277,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issues",
-    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. Results can be sorted using the sortBy parameter with field and direction (ASC/DESC). When referring to the user, use the get_connection_info tool. When referring to unknown create/update fields, use get_issue_create_fields or get_issue_types to discover the field names.",
+    "Search issues using one or more filters (e.g., status, priority, labels, assignee, fixVersion, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. Results can be sorted using the sortBy parameter with field and direction (ASC/DESC). When referring to the user, use the get_connection_info tool. When referring to unknown create/update fields, use get_issue_create_fields or get_issue_types to discover the field names.",
     {
       filters: z
         .array(JiraSearchFilterSchema)

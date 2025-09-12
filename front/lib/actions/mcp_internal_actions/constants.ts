@@ -713,6 +713,7 @@ The directive should be used to display a clickable version of the agent name in
       get_issue: "never_ask",
       get_projects: "never_ask",
       get_project: "never_ask",
+      get_project_versions: "never_ask",
       get_transitions: "never_ask",
       get_issues: "never_ask",
       get_issue_types: "never_ask",
