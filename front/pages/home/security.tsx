@@ -106,7 +106,10 @@ export default function Security() {
             <P size="lg" className="text-muted-foreground">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. <br></br>
-              <Strong>GDPR, HIPAA Compliant & SOC2 Type II Certified.</Strong>
+              <Strong>
+                GDPR Compliant & SOC2 Type II Certified. Enables HIPAA
+                compliance.
+              </Strong>
             </P>
             <div className="flex flex-col items-center gap-12 py-8 lg:flex-row">
               <div className="hidden gap-6 py-8 lg:flex">
