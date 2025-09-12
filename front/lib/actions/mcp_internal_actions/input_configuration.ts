@@ -783,7 +783,7 @@ export function getMCPServerToolsConfigurations(
  */
 function isSchemaConfigurable(
   schema: JSONSchema,
-  mimeType: InternalToolInputMimeType,
+  mimeType: InternalToolInputMimeType
 ): boolean {
   if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
     // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
@@ -835,10 +835,10 @@ function isSchemaConfigurable(
 export function findMatchingSubSchemas(
   inputSchema: JSONSchema,
   mimeType: InternalToolInputMimeType,
-  rootSchema?: JSONSchema,
+  rootSchema?: JSONSchema
 ): Record<string, JSONSchema> {
   const matches: Record<string, JSONSchema> = {};
-  
+
   // Use the root schema for reference resolution, defaulting to inputSchema for backward compatibility
   const resolverSchema = rootSchema ?? inputSchema;
 
@@ -859,23 +859,43 @@ export function findMatchingSubSchemas(
         // zodToJsonSchema generates references if the same subSchema is repeated.
         if (propSchema.$ref) {
           const refSchema = followInternalRef(resolverSchema, propSchema.$ref);
-          
-          if (refSchema && (isSchemaConfigurable(refSchema, mimeType) || key === "mimeType" || key === "value")) {
+
+          if (
+            refSchema &&
+            (isSchemaConfigurable(refSchema, mimeType) ||
+              key === "mimeType" ||
+              key === "value")
+          ) {
             matches[key] = refSchema;
           }
         }
 
         // Recursively check this property's schema
-        const nestedMatches = findMatchingSubSchemas(propSchema, mimeType, resolverSchema);
+        const nestedMatches = findMatchingSubSchemas(
+          propSchema,
+          mimeType,
+          resolverSchema
+        );
         // For nested matches, prefix with the current property key
         for (const match of Object.keys(nestedMatches)) {
           if (match !== "" && match !== "mimeType" && match !== "value") {
-          // Skip the empty string from direct matches
+            // Skip the empty string from direct matches
             matches[`${key}.${match}`] = nestedMatches[match];
           } else if (match === "mimeType" || match === "value") {
-            if (isSchemaConfigurable({...propSchema, properties: { ...nestedMatches }}, mimeType)) {
-              console.log(`Matched ${key} with ${match}`, { ...propSchema, properties: { ...nestedMatches } });
-              matches[key] = { ...propSchema, properties: { ...nestedMatches } };
+            if (
+              isSchemaConfigurable(
+                { ...propSchema, properties: { ...nestedMatches } },
+                mimeType
+              )
+            ) {
+              console.log(`Matched ${key} with ${match}`, {
+                ...propSchema,
+                properties: { ...nestedMatches },
+              });
+              matches[key] = {
+                ...propSchema,
+                properties: { ...nestedMatches },
+              };
             }
           }
         }
@@ -887,7 +907,11 @@ export function findMatchingSubSchemas(
   if (inputSchema.type === "array" && inputSchema.items) {
     if (isJSONSchemaObject(inputSchema.items)) {
       // Single schema for all items
-      const itemMatches = findMatchingSubSchemas(inputSchema.items, mimeType, resolverSchema);
+      const itemMatches = findMatchingSubSchemas(
+        inputSchema.items,
+        mimeType,
+        resolverSchema
+      );
       // For array items, we use the 'items' key as a prefix
       for (const match of Object.keys(itemMatches)) {
         if (match !== "") {
@@ -901,7 +925,11 @@ export function findMatchingSubSchemas(
       for (let i = 0; i < inputSchema.items.length; i++) {
         const item = inputSchema.items[i];
         if (isJSONSchemaObject(item)) {
-          const itemMatches = findMatchingSubSchemas(item, mimeType, resolverSchema);
+          const itemMatches = findMatchingSubSchemas(
+            item,
+            mimeType,
+            resolverSchema
+          );
           // For tuple items, we use the index as part of the key
           for (const match of Object.keys(itemMatches)) {
             if (match !== "") {
@@ -932,7 +960,11 @@ export function findMatchingSubSchemas(
     if (isJSONSchemaObject(value) && isSchemaConfigurable(value, mimeType)) {
       matches[key] = value;
     } else if (isJSONSchemaObject(value)) {
-      const nestedMatches = findMatchingSubSchemas(value, mimeType, resolverSchema);
+      const nestedMatches = findMatchingSubSchemas(
+        value,
+        mimeType,
+        resolverSchema
+      );
       for (const match of Object.keys(nestedMatches)) {
         if (match !== "") {
           matches[`${key}.${match}`] = nestedMatches[match];
