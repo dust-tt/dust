@@ -123,7 +123,7 @@ export async function openFeedbackModal({
             block_id: "feedback_text",
             label: {
               type: "plain_text",
-              text: "Additional feedback (optional)",
+              text: "Additional feedback",
             },
             element: {
               type: "plain_text_input",
