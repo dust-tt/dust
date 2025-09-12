@@ -35,7 +35,6 @@ const FeedbackActionSchema = t.type({
   action_id: t.literal(LEAVE_FEEDBACK),
   block_id: t.string,
   action_ts: t.string,
-  trigger_id: t.string,
 });
 
 const StaticAgentConfigSchema = t.type({
@@ -376,6 +375,7 @@ async function handleViewSubmission(
         messageId: metadata.messageId,
         workspaceId: metadata.workspaceId,
         slackUserId: metadata.slackUserId,
+        slackTeamId: payload.team.id,
         thumbDirection: ratingValue as "up" | "down",
         feedbackContent: feedbackText,
       });

@@ -2,6 +2,7 @@ import type { WebClient } from "@slack/web-api";
 
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import logger from "@connectors/logger/logger";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 export const FEEDBACK_MODAL_SUBMIT = "feedback_modal_submit";
 
@@ -133,7 +134,15 @@ export async function openFeedbackModal({
 export async function getSlackClientForTeam(
   slackTeamId: string
 ): Promise<WebClient> {
-  const slackClient = await getSlackClient(slackTeamId);
+  const slackConfig =
+    await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
+  if (!slackConfig) {
+    throw new Error(
+      `Failed to find Slack configuration for team ${slackTeamId}`
+    );
+  }
+
+  const slackClient = await getSlackClient(slackConfig.connectorId);
   if (!slackClient) {
     throw new Error(`Failed to get Slack client for team ${slackTeamId}`);
   }
