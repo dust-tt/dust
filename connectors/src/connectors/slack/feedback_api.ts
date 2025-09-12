@@ -1,6 +1,6 @@
 import { apiConfig } from "@connectors/lib/api/config";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export async function submitFeedbackToAPI({
   conversationId,
@@ -23,7 +23,7 @@ export async function submitFeedbackToAPI({
       workspaceId,
       "slack"
     );
-    
+
     if (!connector) {
       logger.error(
         { workspaceId },

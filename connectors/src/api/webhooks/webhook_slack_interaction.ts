@@ -12,11 +12,11 @@ import {
   SlackBlockIdStaticAgentConfigSchema,
   SlackBlockIdToolValidationSchema,
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
+import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
 import {
   getSlackClientForTeam,
   openFeedbackModal,
 } from "@connectors/connectors/slack/feedback_modal";
-import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 
@@ -85,7 +85,11 @@ const BlockActionsPayloadSchema = t.type({
     id: t.string,
   }),
   actions: t.array(
-    t.union([StaticAgentConfigSchema, ToolValidationActionsSchema, FeedbackActionSchema])
+    t.union([
+      StaticAgentConfigSchema,
+      ToolValidationActionsSchema,
+      FeedbackActionSchema,
+    ])
   ),
   trigger_id: t.union([t.string, t.undefined]),
   response_url: t.string,
@@ -175,171 +179,175 @@ const _webhookSlackInteractionsAPIHandler = async (
   if (payload.type === "block_actions") {
     const responseUrl = payload.response_url;
     for (const action of payload.actions) {
-    if (action.action_id === STATIC_AGENT_CONFIG) {
-      const blockIdValidation = SlackBlockIdStaticAgentConfigSchema.decode(
-        JSON.parse(action.block_id)
-      );
-
-      if (isLeft(blockIdValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          blockIdValidation.left
-        );
-        logger.error(
-          {
-            error: pathError,
-            blockId: action.block_id,
-          },
-          "Invalid block_id format in slack interactions"
-        );
-        return;
-      }
-
-      const { slackChatBotMessageId, slackThreadTs, messageTs, botId } =
-        blockIdValidation.right;
-
-      const params = {
-        slackTeamId: payload.team.id,
-        slackChannel: payload.channel.id,
-        slackUserId: payload.user.id,
-        slackBotId: botId,
-        slackThreadTs: slackThreadTs,
-        slackMessageTs: messageTs || "",
-      };
-
-      const selectedOption = action.selected_option?.value;
-      if (selectedOption && slackChatBotMessageId) {
-        const botRes = await botReplaceMention(
-          slackChatBotMessageId,
-          selectedOption,
-          params
+      if (action.action_id === STATIC_AGENT_CONFIG) {
+        const blockIdValidation = SlackBlockIdStaticAgentConfigSchema.decode(
+          JSON.parse(action.block_id)
         );
 
-        if (botRes.isErr()) {
+        if (isLeft(blockIdValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            blockIdValidation.left
+          );
           logger.error(
             {
-              error: botRes.error,
-              ...params,
+              error: pathError,
+              blockId: action.block_id,
             },
-            "Failed to post new message in slack"
+            "Invalid block_id format in slack interactions"
           );
           return;
         }
-      }
-    } else if (
-      action.action_id === APPROVE_TOOL_EXECUTION ||
-      action.action_id === REJECT_TOOL_EXECUTION
-    ) {
-      const blockIdValidation = SlackBlockIdToolValidationSchema.decode(
-        JSON.parse(action.block_id)
-      );
 
-      if (isLeft(blockIdValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          blockIdValidation.left
-        );
-        logger.error(
-          {
-            error: pathError,
-            blockId: action.block_id,
-          },
-          "Invalid block_id format in tool validation"
-        );
-        return;
-      }
+        const { slackChatBotMessageId, slackThreadTs, messageTs, botId } =
+          blockIdValidation.right;
 
-      const {
-        workspaceId,
-        conversationId,
-        messageId,
-        actionId,
-        slackThreadTs,
-        messageTs,
-        botId,
-        slackChatBotMessageId,
-      } = blockIdValidation.right;
-
-      const valueValidation = t
-        .type({
-          status: t.union([t.literal("approved"), t.literal("rejected")]),
-          agentName: t.string,
-          toolName: t.string,
-        })
-        .decode(JSON.parse(action.value));
-
-      if (isLeft(valueValidation)) {
-        const pathError = reporter.formatValidationErrors(valueValidation.left);
-        logger.error(
-          {
-            error: pathError,
-            value: action.value,
-          },
-          "Invalid value format in tool validation"
-        );
-        return;
-      }
-
-      const { status: approved, agentName, toolName } = valueValidation.right;
-
-      const text = `Agent \`@${agentName}\`'s request to use tool \`${toolName}\` was ${
-        approved === "approved" ? "✅ approved" : "❌ rejected"
-      }`;
-
-      const validationRes = await botValidateToolExecution(
-        {
-          actionId,
-          approved,
-          conversationId,
-          messageId,
-          slackChatBotMessageId,
-          text,
-        },
-        {
-          responseUrl,
+        const params = {
           slackTeamId: payload.team.id,
           slackChannel: payload.channel.id,
           slackUserId: payload.user.id,
           slackBotId: botId,
           slackThreadTs: slackThreadTs,
           slackMessageTs: messageTs || "",
-        }
-      );
+        };
 
-      if (validationRes.isErr()) {
-        logger.error(
-          {
-            error: validationRes.error,
-            workspaceId,
-            conversationId,
-            messageId,
-            actionId,
-          },
-          "Failed to validate tool execution"
+        const selectedOption = action.selected_option?.value;
+        if (selectedOption && slackChatBotMessageId) {
+          const botRes = await botReplaceMention(
+            slackChatBotMessageId,
+            selectedOption,
+            params
+          );
+
+          if (botRes.isErr()) {
+            logger.error(
+              {
+                error: botRes.error,
+                ...params,
+              },
+              "Failed to post new message in slack"
+            );
+            return;
+          }
+        }
+      } else if (
+        action.action_id === APPROVE_TOOL_EXECUTION ||
+        action.action_id === REJECT_TOOL_EXECUTION
+      ) {
+        const blockIdValidation = SlackBlockIdToolValidationSchema.decode(
+          JSON.parse(action.block_id)
         );
-      }
-    } else if (action.action_id === LEAVE_FEEDBACK) {
-      // Handle feedback button click - open modal
-      const blockData = JSON.parse(action.block_id);
-      const { conversationId, messageId, workspaceId } = blockData;
-      
-      if (payload.trigger_id) {
-        // Open the feedback modal
-        await openFeedbackModal({
-          slackClient: await getSlackClientForTeam(payload.team.id),
-          triggerId: payload.trigger_id,
+
+        if (isLeft(blockIdValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            blockIdValidation.left
+          );
+          logger.error(
+            {
+              error: pathError,
+              blockId: action.block_id,
+            },
+            "Invalid block_id format in tool validation"
+          );
+          return;
+        }
+
+        const {
+          workspaceId,
           conversationId,
           messageId,
-          workspaceId,
-          slackUserId: payload.user.id,
-        });
+          actionId,
+          slackThreadTs,
+          messageTs,
+          botId,
+          slackChatBotMessageId,
+        } = blockIdValidation.right;
+
+        const valueValidation = t
+          .type({
+            status: t.union([t.literal("approved"), t.literal("rejected")]),
+            agentName: t.string,
+            toolName: t.string,
+          })
+          .decode(JSON.parse(action.value));
+
+        if (isLeft(valueValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            valueValidation.left
+          );
+          logger.error(
+            {
+              error: pathError,
+              value: action.value,
+            },
+            "Invalid value format in tool validation"
+          );
+          return;
+        }
+
+        const { status: approved, agentName, toolName } = valueValidation.right;
+
+        const text = `Agent \`@${agentName}\`'s request to use tool \`${toolName}\` was ${
+          approved === "approved" ? "✅ approved" : "❌ rejected"
+        }`;
+
+        const validationRes = await botValidateToolExecution(
+          {
+            actionId,
+            approved,
+            conversationId,
+            messageId,
+            slackChatBotMessageId,
+            text,
+          },
+          {
+            responseUrl,
+            slackTeamId: payload.team.id,
+            slackChannel: payload.channel.id,
+            slackUserId: payload.user.id,
+            slackBotId: botId,
+            slackThreadTs: slackThreadTs,
+            slackMessageTs: messageTs || "",
+          }
+        );
+
+        if (validationRes.isErr()) {
+          logger.error(
+            {
+              error: validationRes.error,
+              workspaceId,
+              conversationId,
+              messageId,
+              actionId,
+            },
+            "Failed to validate tool execution"
+          );
+        }
+      } else if (action.action_id === LEAVE_FEEDBACK) {
+        // Handle feedback button click - open modal
+        const blockData = JSON.parse(action.block_id);
+        const { conversationId, messageId, workspaceId } = blockData;
+
+        if (payload.trigger_id) {
+          // Open the feedback modal
+          await openFeedbackModal({
+            slackClient: await getSlackClientForTeam(payload.team.id),
+            triggerId: payload.trigger_id,
+            conversationId,
+            messageId,
+            workspaceId,
+            slackUserId: payload.user.id,
+          });
+        }
       }
     }
   }
-  }
 };
 
-async function handleViewSubmission(payload: t.TypeOf<typeof ViewSubmissionPayloadSchema>) {
+async function handleViewSubmission(
+  payload: t.TypeOf<typeof ViewSubmissionPayloadSchema>
+) {
   const { callback_id, private_metadata, state } = payload.view;
-  
+
   if (callback_id === "feedback_modal_submit") {
     const metadata = JSON.parse(private_metadata) as {
       conversationId: string;
@@ -347,18 +355,20 @@ async function handleViewSubmission(payload: t.TypeOf<typeof ViewSubmissionPaylo
       workspaceId: string;
       slackUserId: string;
     };
-    
+
     // Extract feedback values from the modal
     const ratingSelection = state.values.feedback_rating?.rating_selection;
-    const ratingValue = ratingSelection && 'selected_option' in ratingSelection 
-      ? ratingSelection.selected_option?.value 
-      : undefined;
-    
+    const ratingValue =
+      ratingSelection && "selected_option" in ratingSelection
+        ? ratingSelection.selected_option?.value
+        : undefined;
+
     const feedbackInput = state.values.feedback_text?.feedback_input;
-    const feedbackText = feedbackInput && 'value' in feedbackInput 
-      ? feedbackInput.value || ""
-      : "";
-    
+    const feedbackText =
+      feedbackInput && "value" in feedbackInput
+        ? feedbackInput.value || ""
+        : "";
+
     if (ratingValue) {
       // Submit feedback to the API
       await submitFeedbackToAPI({
