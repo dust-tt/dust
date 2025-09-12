@@ -973,10 +973,8 @@ const ConversationWithoutContentSchema = z.object({
   updated: z.number().optional(),
   unread: z.boolean(),
   actionRequired: z.boolean(),
-  owner: WorkspaceSchema,
   sId: z.string(),
   title: z.string().nullable(),
-  visibility: ConversationVisibilitySchema,
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())),
 });
