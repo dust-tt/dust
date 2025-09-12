@@ -1100,6 +1100,8 @@ export async function getChannelsToGarbageCollect(
 
   const slackClient = await getSlackClient(connectorId);
 
+  // TODO: Consider using getJoinedChannels(slackClient, connectorId) for better performance.
+  // The only reason this was not done is to mitigate risk as this is a function with a large blast radius.
   const remoteChannels = new Set(
     (
       await withSlackErrorHandling(() =>

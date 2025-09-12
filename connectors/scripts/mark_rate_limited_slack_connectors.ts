@@ -1,6 +1,6 @@
 import type { Logger } from "pino";
 
-import { getChannels } from "@connectors/connectors/slack/lib/channels";
+import { getJoinedChannels } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackClient,
   withSlackErrorHandling,
@@ -85,7 +85,7 @@ makeScript(
         let channels;
         try {
           channels = await withSlackErrorHandling(async () =>
-            getChannels(slackClient, connector.id, true)
+            getJoinedChannels(slackClient, connector.id)
           );
         } catch (error: unknown) {
           if (error instanceof ProviderRateLimitError) {

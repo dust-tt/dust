@@ -18,7 +18,7 @@ import {
   uninstallSlack,
 } from "@connectors/connectors/slack";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
-import { getChannels } from "@connectors/connectors/slack/lib/channels";
+import { getJoinedChannels } from "@connectors/connectors/slack/lib/channels";
 import { retrievePermissions } from "@connectors/connectors/slack/lib/retrieve_permissions";
 import {
   getSlackAccessToken,
@@ -622,7 +622,7 @@ async function getFilteredChannels(
   const slackClient = await getSlackClient(connectorId);
 
   const [remoteChannels, localChannels] = await Promise.all([
-    getChannels(slackClient, connectorId, true),
+    getJoinedChannels(slackClient, connectorId),
     SlackChannel.findAll({
       where: {
         connectorId,
