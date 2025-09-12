@@ -89,7 +89,6 @@ const createServer = (
             {
               error: validationResult.error.message,
               toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-              fileName: file_name,
               mimeType: mime_type,
             },
             "Content Creation file create validation error"
@@ -230,8 +229,6 @@ const createServer = (
               error: validationResult.error.message,
               toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
               fileId: file_id,
-              oldString: old_string,
-              newString: new_string,
               agentConfigurationId: agentConfiguration?.sId,
             },
             "Content Creation file edit validation error"
