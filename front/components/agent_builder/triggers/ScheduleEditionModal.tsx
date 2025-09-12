@@ -137,6 +137,7 @@ export function ScheduleEditionModal({
       },
       editor: trigger?.editor ?? user?.id ?? null,
       customPrompt: data.customPrompt.trim() ?? null,
+      editorEmail: trigger?.editorEmail ?? user?.email,
     };
 
     onSave(triggerData);
@@ -157,6 +158,16 @@ export function ScheduleEditionModal({
         </SheetHeader>
 
         <SheetContainer>
+          {trigger && !isEditor && (
+            <ContentMessage variant="info">
+              You cannot edit this schedule. It is managed by{" "}
+              <span className="font-semibold">
+                {trigger.editorEmail || "another user"}
+              </span>
+              .
+            </ContentMessage>
+          )}
+
           <FormProvider form={form} onSubmit={onSubmit}>
             <div className="space-y-4">
               <div className="space-y-1">
