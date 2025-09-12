@@ -216,6 +216,7 @@ const createServer = (
           fileId: file_id,
           oldString: old_string,
           newString: new_string,
+          expectedReplacements: expected_replacements,
           editedByAgentConfigurationId: agentConfiguration?.sId,
         });
 
