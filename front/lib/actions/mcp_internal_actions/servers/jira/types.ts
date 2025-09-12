@@ -173,6 +173,16 @@ export const JiraProjectSchema = z.object({
   name: z.string(),
 });
 
+export const JiraProjectVersionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  released: z.boolean().optional(),
+  releaseDate: z.string().optional(),
+  startDate: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+
 export const JiraTransitionSchema = z.object({
   id: z.string(),
   name: z.string(),
