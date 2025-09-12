@@ -114,32 +114,28 @@ export async function createOrUpdateAgentScheduleWorkflow({
 
 export async function deleteAgentScheduleWorkflow({
   workspaceId,
-  triggerId,
+  trigger,
 }: {
   workspaceId: string;
-  triggerId: string;
+  trigger: TriggerResource;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();
-  const scheduleId = makeScheduleId(workspaceId, triggerId);
+  const scheduleId = makeScheduleId(workspaceId, trigger.sId());
 
   const childLogger = logger.child({
     workspaceId,
+    scheduleId,
+    trigger: trigger.toJSON(),
   });
 
   try {
     const handle = client.schedule.getHandle(scheduleId);
     await handle.delete();
-    childLogger.info(
-      { scheduleId },
-      "Deleted scheduled workflow successfully."
-    );
+    childLogger.info({}, "Deleted scheduled workflow successfully.");
     return new Ok(undefined);
   } catch (err) {
     if (err instanceof ScheduleNotFoundError) {
-      childLogger.warn(
-        { scheduleId },
-        "Workflow not found, nothing to delete."
-      );
+      childLogger.warn({}, "Workflow not found, nothing to delete.");
       return new Ok(undefined);
     }
 
