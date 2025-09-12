@@ -1,3 +1,4 @@
+import type { Block, KnownBlock } from "@slack/web-api";
 import { apiConfig } from "@connectors/lib/api/config";
 import { getSlackClient, getSlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { makeFeedbackSubmittedBlock, makeFooterBlock } from "@connectors/connectors/slack/chat/blocks";
@@ -171,29 +172,77 @@ export async function submitFeedbackToAPI({
             "Retrieved message to update"
           );
           
+          // Helper to check if block is feedback question block
+          function isFeedbackQuestionBlock(block: unknown): boolean {
+            if (typeof block !== "object" || block === null) {
+              return false;
+            }
+            
+            // Check basic structure
+            const b = block as Record<string, unknown>;
+            if (b.type !== "context" || !Array.isArray(b.elements)) {
+              return false;
+            }
+            
+            // Check first element
+            const elements = b.elements as unknown[];
+            if (elements.length === 0) {
+              return false;
+            }
+            
+            const firstElement = elements[0];
+            if (typeof firstElement !== "object" || firstElement === null) {
+              return false;
+            }
+            
+            const el = firstElement as Record<string, unknown>;
+            return el.type === "mrkdwn" && el.text === "Was this answer helpful?";
+          }
+
+          // Type guard for valid Slack blocks
+          function isValidSlackBlock(block: unknown): block is Block | KnownBlock {
+            return (
+              typeof block === "object" &&
+              block !== null &&
+              "type" in block &&
+              typeof (block as Record<string, unknown>).type === "string"
+            );
+          }
+
           // Find and replace the feedback blocks
-          const updatedBlocks = [];
+          const updatedBlocks: (Block | KnownBlock)[] = [];
           let skipNextAction = false;
           
           for (let i = 0; i < currentBlocks.length; i++) {
             const block = currentBlocks[i];
             
+            if (!block) continue;
+            
             // Check if this is the feedback context block
-            if (block.type === "context" && 
-                block.elements && 
-                block.elements.length > 0 &&
-                block.elements[0].type === "mrkdwn" &&
-                block.elements[0].text === "Was this answer helpful?") {
+            if (isFeedbackQuestionBlock(block)) {
               // Replace with "Feedback submitted" block
-              updatedBlocks.push(...makeFeedbackSubmittedBlock());
+              const feedbackBlocks = makeFeedbackSubmittedBlock();
+              for (const feedbackBlock of feedbackBlocks) {
+                if (isValidSlackBlock(feedbackBlock)) {
+                  updatedBlocks.push(feedbackBlock);
+                }
+              }
               // Mark to skip the next actions block
               skipNextAction = true;
-            } else if (skipNextAction && block.type === "actions") {
+              continue;
+            }
+            
+            // Check if this is the actions block following feedback
+            const blockObj = block as Record<string, unknown>;
+            if (skipNextAction && blockObj.type === "actions") {
               // Skip the actions block with thumbs that follows the feedback context
               skipNextAction = false;
               // Don't add this block to updatedBlocks
-            } else {
-              // Keep all other blocks (message content, footnotes, footer, etc.)
+              continue;
+            }
+            
+            // Keep all other blocks (message content, footnotes, footer, etc.)
+            if (isValidSlackBlock(block)) {
               updatedBlocks.push(block);
             }
           }
