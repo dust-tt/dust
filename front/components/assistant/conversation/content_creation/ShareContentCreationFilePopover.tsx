@@ -65,7 +65,7 @@ const getScopeDisplayInfo = (
         icon: GlobeAltIcon,
         value: scope,
       };
-    // Treat conversation_participants as workspace scope for backward compatibility
+    // conversation_participants is now treated as workspace scope
     case "conversation_participants":
       return {
         label: `${owner.name} workspace`,

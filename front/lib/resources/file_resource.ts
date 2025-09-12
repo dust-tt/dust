@@ -170,6 +170,7 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
+<<<<<<< HEAD
     if (
       isUsingConversationFiles(content) &&
       shareableFile.shareScope === "public"
@@ -178,6 +179,15 @@ export class FileResource extends BaseResource<FileModel> {
       // We have several other check points:
       // - You cannot set it to public if isUsingConversationFiles is true
       // - When you fetch a file in files/[token] page, we check authentication if it's for workspace sharing.
+=======
+    // Only block conversation files for public sharing.
+    // conversation_participants is now treated as workspace scope.
+    if (
+      shareableFile.shareScope === "public" &&
+      isFileUsingConversationFiles(content)
+    ) {
+      // If the file is using conversation files, we don't want to make it accessible publicly.
+>>>>>>> 9865e1604f (conversation_participants == workspace scope)
       return null;
     }
 
