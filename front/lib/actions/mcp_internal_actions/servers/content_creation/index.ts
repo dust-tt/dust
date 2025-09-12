@@ -19,6 +19,7 @@ import {
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import type { ContentCreationFileContentType } from "@app/types";
 import { clientExecutableContentType, Err, Ok } from "@app/types";
 import { CONTENT_CREATION_FILE_FORMATS } from "@app/types";
@@ -84,6 +85,16 @@ const createServer = (
       ) => {
         const validationResult = validateContent(content);
         if (validationResult.isErr()) {
+          logger.error(
+            {
+              error: validationResult.error.message,
+              toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+              fileName: file_name,
+              mimeType: mime_type,
+            },
+            "Content Creation file create validation error"
+          );
+
           return new Err(
             new MCPError(validationResult.error.message, { tracked: false })
           );
@@ -109,6 +120,16 @@ const createServer = (
         });
 
         if (result.isErr()) {
+          logger.error(
+            {
+              error: result.error.message,
+              toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+              fileName: file_name,
+              mimeType: mime_type,
+              createdByAgentConfigurationId: agentConfiguration?.sId,
+            },
+            "Content Creation file create execution error"
+          );
           return new Err(new MCPError(result.error.message));
         }
 
@@ -212,6 +233,18 @@ const createServer = (
       ) => {
         const validationResult = validateContent(new_string);
         if (validationResult.isErr()) {
+          logger.error(
+            {
+              error: validationResult.error.message,
+              toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+              fileId: file_id,
+              oldString: old_string,
+              newString: new_string,
+              expectedReplacements: expected_replacements,
+            },
+            "Content Creation file edit validation error"
+          );
+
           return new Err(
             new MCPError(validationResult.error.message, { tracked: false })
           );
@@ -228,6 +261,19 @@ const createServer = (
         });
 
         if (result.isErr()) {
+          logger.error(
+            {
+              error: result.error.message,
+              toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+              fileId: file_id,
+              oldString: old_string,
+              newString: new_string,
+              expectedReplacements: expected_replacements,
+              editedByAgentConfigurationId: agentConfiguration?.sId,
+            },
+            "Content Creation file edit execution error"
+          );
+
           return new Err(
             new MCPError(result.error.message, { tracked: false })
           );
