@@ -70,6 +70,12 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     },
   });
 
+  const channelsAlreadyLinkedToThisAgentIds = new Set(
+    slackChannels
+      .filter((c) => c.agentConfigurationId === agentConfigurationId)
+      .map((c) => c.slackChannelId)
+  );
+
   const foundSlackChannelIds = new Set(
     slackChannels.map((c) => c.slackChannelId)
   );
@@ -145,13 +151,18 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     );
   });
   const joinPromises = await Promise.all(
-    slackChannelIds.map((slackChannelId) =>
-      launchJoinChannelWorkflow(
-        parseInt(connectorId),
-        slackChannelId,
-        "join-only"
+    slackChannelIds
+      .filter(
+        (slackChannelId) =>
+          !channelsAlreadyLinkedToThisAgentIds.has(slackChannelId)
       )
-    )
+      .map((slackChannelId) =>
+        launchJoinChannelWorkflow(
+          parseInt(connectorId),
+          slackChannelId,
+          "join-only"
+        )
+      )
   );
 
   // If there's an error that's other than workflow already started, return it.
