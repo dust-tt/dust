@@ -18,7 +18,14 @@ export default {
 
 export const Demo = () => {
   const [isFocused, setIsFocused] = useState(false);
+  const [recordState, setRecordState] = useState<
+    "idle" | "pressAndHold" | "recording"
+  >("idle");
+  const [isPressAndHold, setIsPressAndHold] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const divRef = useRef<HTMLDivElement>(null);
+  const recordButtonRef = useRef<HTMLButtonElement>(null);
+  const mouseDownTimeRef = useRef<number>(0);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -33,8 +40,104 @@ export const Demo = () => {
     };
   }, []);
 
+  // Timer effect for recording and press and hold states
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (recordState === "pressAndHold" || recordState === "recording") {
+      interval = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      // Reset timer when not recording or press and hold
+      setElapsedSeconds(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [recordState]);
+
   const handleFocus = () => {
     setIsFocused(true);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleRecordMouseDown = () => {
+    console.log("MouseDown - recordState:", recordState);
+    mouseDownTimeRef.current = Date.now();
+    if (recordState === "idle") {
+      setRecordState("pressAndHold");
+      setIsPressAndHold(true);
+      console.log("Set to pressAndHold, isPressAndHold = true");
+    }
+  };
+
+  const handleRecordMouseUp = () => {
+    const holdDuration = Date.now() - mouseDownTimeRef.current;
+    console.log(
+      "MouseUp - recordState:",
+      recordState,
+      "holdDuration:",
+      holdDuration
+    );
+    if (recordState === "pressAndHold") {
+      setRecordState("idle");
+      console.log("Set to idle from pressAndHold");
+      // If held for more than 200ms, it was a press-and-hold, so ignore the upcoming click
+      if (holdDuration > 200) {
+        console.log("Was press-and-hold, keeping isPressAndHold = true");
+        // Keep isPressAndHold true to ignore the click
+      } else {
+        console.log("Was quick click, setting isPressAndHold = false");
+        setIsPressAndHold(false);
+        // For quick clicks, directly start recording
+        console.log("Starting recording from quick click");
+        setRecordState("recording");
+      }
+    }
+  };
+
+  const handleRecordClick = () => {
+    console.log(
+      "Click - recordState:",
+      recordState,
+      "isPressAndHold:",
+      isPressAndHold
+    );
+
+    // Handle stop recording
+    if (recordState === "recording") {
+      console.log("Setting to idle (stop recording)");
+      setRecordState("idle");
+      return;
+    }
+
+    // Only handle click if we're not in a press-and-hold sequence
+    if (!isPressAndHold) {
+      if (recordState === "idle") {
+        console.log("Setting to recording");
+        setRecordState("recording");
+      }
+    } else {
+      console.log("Ignoring click - was press and hold");
+      // Reset the flag after ignoring the click
+      setIsPressAndHold(false);
+    }
+  };
+
+  const handleRecordMouseLeave = () => {
+    if (recordState === "pressAndHold") {
+      setRecordState("idle");
+      setIsPressAndHold(false);
+    }
   };
 
   return (
@@ -80,8 +183,19 @@ export const Demo = () => {
               </div>
               <div className="s-grow" />
               <div className="s-flex s-items-center s-gap-1">
-                <div id="Recording" className="s-flex s-items-center s-gap-3">
-                  <div className="s-heading-xs">0:03</div>
+                <div
+                  id="Recording"
+                  className={cn(
+                    "s-duration-600 s-flex s-items-center s-gap-3 s-overflow-hidden s-px-2 s-transition-all s-ease-in-out",
+                    recordState === "pressAndHold" ||
+                      recordState === "recording"
+                      ? "s-w-24 s-opacity-100"
+                      : "s-w-6 s-opacity-0"
+                  )}
+                >
+                  <div className="s-heading-xs">
+                    {formatTime(elapsedSeconds)}
+                  </div>
                   <div className="s-flex s-h-5 s-items-center s-gap-0.5">
                     <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
                     <div className="s-h-[33%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
@@ -96,21 +210,41 @@ export const Demo = () => {
                     <div className="s-h-[12%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
                     <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
                   </div>
-                  <Button
-                    id="Stop Recording Button"
-                    variant="outline"
-                    icon={SquareIcon}
-                    size="xs"
-                    tooltip="Click, or Press & Hold to record"
-                    label="Stop"
-                  />
                 </div>
                 <Button
-                  id="Record Button"
-                  variant="ghost"
-                  icon={MicIcon}
+                  id={
+                    recordState === "recording"
+                      ? "Stop Recording Button"
+                      : "Record Button"
+                  }
+                  ref={recordButtonRef}
+                  variant={recordState === "recording" ? "highlight" : "ghost"}
+                  icon={recordState === "recording" ? SquareIcon : MicIcon}
                   size="xs"
-                  tooltip="Click, or Press & Hold to record"
+                  tooltip={
+                    recordState === "recording"
+                      ? "Stop recording"
+                      : recordState === "pressAndHold"
+                        ? ""
+                        : "Click, or Press & Hold to record"
+                  }
+                  label={recordState === "recording" ? "Stop" : undefined}
+                  onClick={handleRecordClick}
+                  onMouseDown={
+                    recordState === "recording"
+                      ? undefined
+                      : handleRecordMouseDown
+                  }
+                  onMouseUp={
+                    recordState === "recording"
+                      ? undefined
+                      : handleRecordMouseUp
+                  }
+                  onMouseLeave={
+                    recordState === "recording"
+                      ? undefined
+                      : handleRecordMouseLeave
+                  }
                 />
                 <Button
                   variant="highlight"
@@ -118,6 +252,7 @@ export const Demo = () => {
                   size="mini"
                   tooltip="Send message"
                   isRounded
+                  disabled={recordState === "recording"}
                 />
               </div>
             </div>
