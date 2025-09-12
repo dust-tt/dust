@@ -1,4 +1,4 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
 import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
@@ -30,14 +30,3 @@ export type WebhookSourceWithViews = WebhookSourceType & {
   views: WebhookSourceViewType[];
 };
 
-export const WebhookSourceSchema = t.type({
-  name: t.string,
-  secret: t.string,
-  signatureHeader: t.string,
-  signatureAlgorithm: t.union([
-    t.literal("sha1"),
-    t.literal("sha256"),
-    t.literal("sha512"),
-  ]),
-  customHeaders: t.record(t.string, t.string),
-});
