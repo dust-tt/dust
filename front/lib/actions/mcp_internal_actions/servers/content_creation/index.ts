@@ -120,16 +120,6 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          logger.error(
-            {
-              error: result.error.message,
-              toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-              fileName: file_name,
-              mimeType: mime_type,
-              createdByAgentConfigurationId: agentConfiguration?.sId,
-            },
-            "Content Creation file create execution error"
-          );
           return new Err(new MCPError(result.error.message));
         }
 
@@ -228,9 +218,11 @@ const createServer = (
       auth,
       { toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
       async (
-        { file_id, old_string, new_string, expected_replacements },
+        { file_id, old_string, new_string },
         { sendNotification, _meta }
       ) => {
+        const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+
         const validationResult = validateContent(new_string);
         if (validationResult.isErr()) {
           logger.error(
@@ -240,7 +232,7 @@ const createServer = (
               fileId: file_id,
               oldString: old_string,
               newString: new_string,
-              expectedReplacements: expected_replacements,
+              agentConfigurationId: agentConfiguration?.sId,
             },
             "Content Creation file edit validation error"
           );
@@ -250,33 +242,15 @@ const createServer = (
           );
         }
 
-        const { agentConfiguration } = agentLoopContext?.runContext ?? {};
-
         const result = await editClientExecutableFile(auth, {
           fileId: file_id,
           oldString: old_string,
           newString: new_string,
-          expectedReplacements: expected_replacements,
           editedByAgentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {
-          logger.error(
-            {
-              error: result.error.message,
-              toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-              fileId: file_id,
-              oldString: old_string,
-              newString: new_string,
-              expectedReplacements: expected_replacements,
-              editedByAgentConfigurationId: agentConfiguration?.sId,
-            },
-            "Content Creation file edit execution error"
-          );
-
-          return new Err(
-            new MCPError(result.error.message, { tracked: false })
-          );
+          return new Err(new MCPError(result.error.message));
         }
 
         const { fileResource, replacementCount } = result.value;
