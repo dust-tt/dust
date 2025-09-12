@@ -263,7 +263,7 @@ export default function AgentBuilder({
         sendNotification({
           title: isCreatingNew ? "Agent created" : "Agent saved",
           description:
-            "The agent has been saved successfully. The Slack channel is already being linked - please wait a moment for the operation to complete.",
+            "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.",
           type: "info",
         });
       } else {

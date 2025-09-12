@@ -394,9 +394,6 @@ export async function submitAgentBuilderForm({
             const agentWithWarning = {
               ...agentConfiguration,
               _warning: "slack_channel_linking_in_progress",
-              _warningMessage:
-                errorBody.error.message ||
-                "The channel is currently being linked. Please wait for the operation to complete.",
             };
             return new Ok(agentWithWarning as typeof agentConfiguration);
           }
