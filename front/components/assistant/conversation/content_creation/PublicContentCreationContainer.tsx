@@ -9,6 +9,7 @@ import { clientExecutableContentType } from "@app/types";
 
 interface PublicContentCreationContainerProps {
   shareToken: string;
+  workspaceId: string;
 }
 
 /**
@@ -17,6 +18,7 @@ interface PublicContentCreationContainerProps {
  */
 export function PublicContentCreationContainer({
   shareToken,
+  workspaceId,
 }: PublicContentCreationContainerProps) {
   const { fileMetadata, isFileLoading, isFileError } = usePublicFile({
     shareToken,
@@ -43,6 +45,7 @@ export function PublicContentCreationContainer({
             fileId={fileMetadata.sId}
             fileName={fileMetadata.fileName}
             shareToken={shareToken}
+            workspaceId={workspaceId}
           />
         );
 

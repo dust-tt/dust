@@ -26,7 +26,6 @@ import React, {
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import type {
   CommandResultMap,
-  LightWorkspaceType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types";
@@ -215,39 +214,13 @@ export function CodeDrawer({
     </Sheet>
   );
 }
-
-// This interface represents the props for the VisualizationActionIframe component when it is used
-// in a public context.
-interface PublicVisualizationActionIframeProps {
-  agentConfigurationId: null;
-  conversationId: null;
+interface VisualizationActionIframeProps {
+  agentConfigurationId: string | null;
+  conversationId: string | null;
   isInDrawer?: boolean;
   visualization: Visualization;
-  workspace: null;
-}
-
-// This interface represents the props for the VisualizationActionIframe component when it is used
-// in a conversation context.
-interface ConversationVisualizationActionIframeProps {
-  agentConfigurationId: string;
-  conversationId: string;
-  isInDrawer?: boolean;
-  visualization: Visualization;
-  workspace: LightWorkspaceType;
-}
-
-type VisualizationActionIframeProps =
-  | ConversationVisualizationActionIframeProps
-  | PublicVisualizationActionIframeProps;
-
-function isPublicVisualization(
-  props: VisualizationActionIframeProps
-): props is PublicVisualizationActionIframeProps {
-  return (
-    props.agentConfigurationId === null &&
-    props.conversationId === null &&
-    props.workspace === null
-  );
+  workspaceId: string;
+  isPublic?: boolean;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -278,18 +251,18 @@ export const VisualizationActionIframe = forwardRef<
 
   const isErrored = !!errorMessage || retryClicked;
 
-  const isPublic = isPublicVisualization(props);
-
   const {
     agentConfigurationId,
     conversationId,
     isInDrawer = false,
     visualization,
+    workspaceId,
+    isPublic = false,
   } = props;
 
   useVisualizationDataHandler({
     visualization,
-    workspaceId: isPublic ? null : props.workspace.sId,
+    workspaceId,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -305,7 +278,7 @@ export const VisualizationActionIframe = forwardRef<
   );
 
   const { handleVisualizationRetry, canRetry } = useVisualizationRetry({
-    workspaceId: isPublic ? null : props.workspace.sId,
+    workspaceId,
     conversationId,
     agentConfigurationId,
     isPublic,

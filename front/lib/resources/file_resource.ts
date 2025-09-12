@@ -12,7 +12,7 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
-import { isFileUsingConversationFiles } from "@app/lib/files";
+import { isUsingConversationFiles } from "@app/lib/files";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import {
   FileModel,
@@ -166,8 +166,14 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    if (isFileUsingConversationFiles(content)) {
-      // If the file is using conversation files, we don't want to make it accessible.
+    if (
+      isUsingConversationFiles(content) &&
+      shareableFile.shareScope === "public"
+    ) {
+      // We don't make it accessible to public if it's using a conversation file.
+      // We have several other check points:
+      // - You cannot set it to public if isUsingConversationFiles is true
+      // - When you fetch a file in files/[token] page, we check authentication if it's for workspace sharing.
       return null;
     }
 
