@@ -60,6 +60,7 @@ type UserUsageQueryResult = {
   lastMessageSent: string;
   activeDaysCount: number;
   groups: string;
+  userContextOrigin: string;
 };
 
 type BuilderUsageQueryResult = {
@@ -341,7 +342,13 @@ export async function getUserUsageData(
       return Message.findAll({
         attributes: [
           "userMessage.userId",
-          "userMessage.userContextFullName",
+          [
+            Sequelize.fn(
+              "MAX",
+              Sequelize.col("userMessage.userContextFullName")
+            ),
+            "userContextFullName",
+          ],
           [
             Sequelize.fn(
               "LOWER",
@@ -400,7 +407,6 @@ export async function getUserUsageData(
         ],
         group: [
           "userMessage.userId",
-          "userMessage.userContextFullName",
           Sequelize.fn("LOWER", Sequelize.col("userMessage.userContextEmail")),
           "userMessage.userContextOrigin",
         ],
@@ -437,6 +443,8 @@ export async function getUserUsageData(
       activeDaysCount: (result as unknown as { activeDaysCount: number })
         .activeDaysCount,
       groups: userGroupsMap[userId] || "",
+      userContextOrigin: (result as unknown as { userContextOrigin: string })
+        .userContextOrigin,
     };
   });
   if (!userUsage.length) {
