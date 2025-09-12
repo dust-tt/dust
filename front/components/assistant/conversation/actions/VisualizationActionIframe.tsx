@@ -176,7 +176,6 @@ function useVisualizationDataHandler({
 
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     code,
     downloadFileFromBlob,
@@ -186,6 +185,7 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
+    setIframeReady,
   ]);
 }
 
@@ -303,10 +303,9 @@ export const VisualizationActionIframe = forwardRef<
 
   const { code, complete: codeFullyGenerated } = visualization;
 
-  const iframeLoaded = iframeReady;
   const showSpinner = useMemo(
-    () => (codeFullyGenerated && !iframeLoaded && !isErrored) || retryClicked,
-    [codeFullyGenerated, iframeLoaded, isErrored, retryClicked]
+    () => (codeFullyGenerated && !iframeReady && !isErrored) || retryClicked,
+    [codeFullyGenerated, iframeReady, isErrored, retryClicked]
   );
 
   const { handleVisualizationRetry, canRetry } = useVisualizationRetry({
