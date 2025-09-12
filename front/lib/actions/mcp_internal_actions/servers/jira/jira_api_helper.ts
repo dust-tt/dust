@@ -32,6 +32,7 @@ import {
   JiraIssueSchema,
   JiraIssueTypeSchema,
   JiraProjectSchema,
+  JiraProjectVersionSchema,
   JiraResourceSchema,
   JiraSearchResultSchema,
   JiraTransitionIssueSchema,
@@ -277,6 +278,27 @@ export async function getProjects(
     },
     z.array(JiraProjectSchema),
     { baseUrl }
+  );
+
+  return handleResults(result, []);
+}
+
+export async function getProjectVersions(
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string
+): Promise<
+  Result<z.infer<typeof JiraProjectVersionSchema>[], JiraErrorResult>
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/project/${projectKey}/versions`,
+      accessToken,
+    },
+    z.array(JiraProjectVersionSchema),
+    {
+      baseUrl,
+    }
   );
 
   return handleResults(result, []);
