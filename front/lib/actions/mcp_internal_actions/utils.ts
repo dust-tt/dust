@@ -37,13 +37,13 @@ export function makeMCPToolTextError(text: string): {
   };
 }
 
-export function makeMCPToolExit(
-  message: string,
-  isError: boolean
-): {
-  isError: true;
-  content: [TextContent];
-} {
+export function makeMCPToolExit({
+  message,
+  isError,
+}: {
+  message: string;
+  isError: boolean;
+}) {
   return {
     isError: true,
     content: [

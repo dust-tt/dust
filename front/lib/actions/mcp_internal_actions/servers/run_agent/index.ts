@@ -322,10 +322,10 @@ export default async function createServer(
       }
 
       if (isHandover) {
-        return makeMCPToolExit(
-          `Query delegated to agent @${childAgentBlob.name}`,
-          false
-        );
+        return makeMCPToolExit({
+          message: `Query delegated to agent @${childAgentBlob.name}`,
+          isError: false,
+        });
       }
 
       const { conversation, isNewConversation, userMessageId } = convRes.value;
