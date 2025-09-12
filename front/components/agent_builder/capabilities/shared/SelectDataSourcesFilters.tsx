@@ -1,16 +1,29 @@
-import { Button, ContextItem } from "@dust-tt/sparkle";
+import { Button, ContentMessage, ContextItem } from "@dust-tt/sparkle";
 import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useKnowledgePageContext } from "@app/components/data_source_view/context/PageContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import {
+  DATA_WAREHOUSE_SERVER_NAME,
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceViewType } from "@app/types";
+import { asDisplayName } from "@app/types";
 import { pluralize } from "@app/types";
+
+const tablesServer = [
+  TABLE_QUERY_SERVER_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
+  DATA_WAREHOUSE_SERVER_NAME,
+];
 
 type DataSourceFilterItem = {
   dataSourceView: DataSourceViewType;
@@ -48,6 +61,19 @@ function DataSourceFilterContextItem({
 export function SelectDataSourcesFilters() {
   const { setSheetPageId } = useKnowledgePageContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
+  const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
+    name: "mcpServerView",
+  });
+
+  const { mcpServerViewsWithKnowledge } = useMCPServerViewsContext();
+
+  const internalMcpServerView = mcpServerViewsWithKnowledge.find(
+    (view) => view.sId === mcpServerView?.sId
+  );
+
+  const isTableOrWarehouseServer = tablesServer.find(
+    (server) => server === internalMcpServerView?.server.name
+  );
 
   const dataSourceViews = sources.in.reduce(
     (acc, source) => {
@@ -65,6 +91,35 @@ export function SelectDataSourcesFilters() {
     },
     {} as Record<string, DataSourceFilterItem>
   );
+
+  const hasDataSources = Object.values(dataSourceViews).length > 0;
+
+  if (!hasDataSources) {
+    return (
+      <ContentMessage
+        title={`No ${isTableOrWarehouseServer ? "table" : "document"} detected`}
+        variant="info"
+        size="lg"
+      >
+        <div className="flex w-full flex-row items-center justify-between">
+          <span>
+            We couldn't find any{" "}
+            {isTableOrWarehouseServer ? "tables" : "documents"} in your
+            selection. Add {isTableOrWarehouseServer ? "tables" : "documents"}{" "}
+            to enable "{asDisplayName(mcpServerView?.server.name)}".
+          </span>
+          <Button
+            label="Select data sources"
+            variant="outline"
+            size="xs"
+            onClick={() =>
+              setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION)
+            }
+          />
+        </div>
+      </ContentMessage>
+    );
+  }
 
   return (
     <div className="space-y-4">
