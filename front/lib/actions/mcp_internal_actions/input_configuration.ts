@@ -888,10 +888,6 @@ export function findMatchingSubSchemas(
                 mimeType
               )
             ) {
-              console.log(`Matched ${key} with ${match}`, {
-                ...propSchema,
-                properties: { ...nestedMatches },
-              });
               matches[key] = {
                 ...propSchema,
                 properties: { ...nestedMatches },
