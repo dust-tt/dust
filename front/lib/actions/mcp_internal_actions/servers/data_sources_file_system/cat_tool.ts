@@ -6,11 +6,11 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_CAT_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
-import { getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/server_utils";
 import {
   getAgentDataSourceConfigurations,
   makeDataSourceViewFilter,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";

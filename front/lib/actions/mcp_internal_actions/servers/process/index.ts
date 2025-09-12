@@ -20,12 +20,12 @@ import {
   ConfigurableToolInputSchemas,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/server_utils";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
