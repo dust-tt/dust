@@ -71,24 +71,11 @@ type ServersWithAuthorization = {
     : K;
 }[InternalMCPServerNameType];
 
-export function makePersonalAuthenticationError({
-  serverName,
-  mcpServerId,
-  scope,
-  provider,
-}:
-  | {
-      serverName?: never;
-      provider: OAuthProvider;
-      mcpServerId: string;
-      scope?: string;
-    }
-  | {
-      serverName: ServersWithAuthorization;
-      provider?: never;
-      mcpServerId: string;
-      scope?: string;
-    }) {
+export function makePersonalAuthenticationError(
+  provider: OAuthProvider,
+  mcpServerId: string,
+  scope?: string
+) {
   return {
     content: [
       {
@@ -98,9 +85,7 @@ export function makePersonalAuthenticationError({
           type: "tool_personal_auth_required",
           mcpServerId,
           scope,
-          provider:
-            provider ||
-            INTERNAL_MCP_SERVERS[serverName].serverInfo.authorization.provider,
+          provider,
           text: "Personal authentication required",
           uri: "",
         },

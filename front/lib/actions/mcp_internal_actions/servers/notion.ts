@@ -270,10 +270,7 @@ const createServer = (
     try {
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        return makePersonalAuthenticationError({
-          serverName: "notion",
-          mcpServerId,
-        });
+        return makePersonalAuthenticationError("notion", mcpServerId);
       }
       const notion = new Client({ auth: accessToken });
 
@@ -312,10 +309,7 @@ const createServer = (
 
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        return makePersonalAuthenticationError({
-          serverName: "notion",
-          mcpServerId,
-        });
+        return makePersonalAuthenticationError("notion", mcpServerId);
       }
       const notion = new Client({ auth: accessToken });
 

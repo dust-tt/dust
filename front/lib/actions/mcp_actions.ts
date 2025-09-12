@@ -292,11 +292,11 @@ export async function* tryCallMCPTool(
         yield {
           type: "result",
           result: new Ok(
-            makePersonalAuthenticationError({
-              provider: r.error.provider,
-              mcpServerId: r.error.mcpServerId,
-              scope: r.error.scope,
-            }).content
+            makePersonalAuthenticationError(
+              r.error.provider,
+              r.error.mcpServerId,
+              r.error.scope
+            ).content
           ),
         };
         return;
