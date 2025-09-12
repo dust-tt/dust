@@ -8,7 +8,6 @@ import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
 function isValidIANATimezone(timezone: string): boolean {
   // Get the list of all supported IANA timezones
   const supportedTimezones = Intl.supportedValuesOf("timeZone");
-  console.log("Supported IANA timezones:", supportedTimezones);
   return supportedTimezones.includes(timezone);
 }
 
@@ -86,8 +85,6 @@ export async function generateCronRule(
       }
     }
   }
-
-  console.log("Generated cron rule:", { cronRule, timezone });
 
   if (
     !cronRule ||
