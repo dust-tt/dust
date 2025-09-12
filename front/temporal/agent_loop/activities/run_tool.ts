@@ -120,8 +120,8 @@ export async function runToolActivity(
           await AgentStepContentResource.createNewVersion({
             workspaceId: conversation.owner.id,
             agentMessageId: agentMessage.agentMessageId,
-            step,
-            index: lastIndex ? lastIndex.index + 1 : 0,
+            step: step + 1,
+            index: 0,
             type: "text_content",
             value: {
               type: "text_content",
