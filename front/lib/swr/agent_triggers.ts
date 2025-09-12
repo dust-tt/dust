@@ -82,11 +82,12 @@ export function useTextAsCronRule({
           method: "POST",
           body: JSON.stringify({
             naturalDescription,
+            defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           } as PostTextAsCronRuleRequestBody),
         }
       );
 
-      return r.cronRule;
+      return { cron: r.cronRule, timezone: r.timezone };
     },
     [workspace]
   );

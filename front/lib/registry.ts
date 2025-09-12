@@ -332,16 +332,20 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-
-  "assistant-builder-cron-rule-generator": {
+  "assistant-builder-cron-timezone-generator": {
     app: {
-      appId: "I0f9t05qlZ",
+      appId: "T454vmSliN",
       appHash:
-        "589b73fa1ce8c6af9782bb9ece92f3cd421b1e8d94711b1cfbcb4c043206379c",
+        "a7183268ee1d99e56774a5c93e6d715eb684bbfab9d34da99e0b92d299bfbde7",
     },
     config: {
       CREATE_CRON: {
         function_call: "set_schedule",
+        use_cache: false,
+        use_stream: true,
+      },
+      CREATE_TZ: {
+        function_call: "set_tz",
         use_cache: false,
         use_stream: true,
       },
