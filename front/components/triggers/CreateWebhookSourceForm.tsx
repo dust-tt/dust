@@ -52,61 +52,55 @@ export function CreateWebhookSourceFormContent({
 }: CreateWebhookSourceFormContentProps) {
   return (
     <>
-      <div className="space-y-2">
-        <Controller
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="Name"
-              placeholder="Name..."
-              isError={form.formState.errors.name !== undefined}
-              message={form.formState.errors.name?.message}
-              messageStatus="error"
-              autoFocus
-            />
-          )}
-        />
-      </div>
+      <Controller
+        control={form.control}
+        name="name"
+        render={({ field }) => (
+          <Input
+            {...field}
+            label="Name"
+            placeholder="Name..."
+            isError={form.formState.errors.name !== undefined}
+            message={form.formState.errors.name?.message}
+            messageStatus="error"
+            autoFocus
+          />
+        )}
+      />
 
-      <div className="space-y-2">
-        <Controller
-          control={form.control}
-          name="secret"
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="Secret"
-              type="password"
-              placeholder="Secret for validation..."
-              isError={form.formState.errors.secret !== undefined}
-              message={form.formState.errors.secret?.message}
-              messageStatus="error"
-            />
-          )}
-        />
-      </div>
+      <Controller
+        control={form.control}
+        name="secret"
+        render={({ field }) => (
+          <Input
+            {...field}
+            label="Secret"
+            type="password"
+            placeholder="Secret for validation..."
+            isError={form.formState.errors.secret !== undefined}
+            message={form.formState.errors.secret?.message}
+            messageStatus="error"
+          />
+        )}
+      />
 
-      <div className="space-y-2">
-        <Controller
-          control={form.control}
-          name="signatureHeader"
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="Signature Header"
-              placeholder="Signature header..."
-              isError={form.formState.errors.signatureHeader !== undefined}
-              message={form.formState.errors.signatureHeader?.message}
-              messageStatus="error"
-            />
-          )}
-        />
-      </div>
+      <Controller
+        control={form.control}
+        name="signatureHeader"
+        render={({ field }) => (
+          <Input
+            {...field}
+            label="Signature Header"
+            placeholder="Signature header..."
+            isError={form.formState.errors.signatureHeader !== undefined}
+            message={form.formState.errors.signatureHeader?.message}
+            messageStatus="error"
+          />
+        )}
+      />
 
       <div className="flex items-center justify-between space-y-2">
-        <Label>Signature Algorithm *</Label>
+        <Label>Signature Algorithm</Label>
         <Controller
           control={form.control}
           name="signatureAlgorithm"
@@ -134,26 +128,25 @@ export function CreateWebhookSourceFormContent({
           )}
         />
       </div>
-      <div className="space-y-2">
-        <Controller
-          control={form.control}
-          name="customHeaders"
-          render={({ field }) => (
-            <>
-              <Label htmlFor="customHeaders">Custom Headers (optional)</Label>
-              <TextArea
-                {...field}
-                value={field.value ?? undefined}
-                id="customHeaders"
-                placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'
-                error={form.formState.errors.customHeaders?.message}
-                showErrorLabel={true}
-                rows={4}
-              />
-            </>
-          )}
-        />
-      </div>
+
+      <Controller
+        control={form.control}
+        name="customHeaders"
+        render={({ field }) => (
+          <>
+            <Label htmlFor="customHeaders">Custom Headers (optional)</Label>
+            <TextArea
+              {...field}
+              value={field.value ?? undefined}
+              id="customHeaders"
+              placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}'
+              error={form.formState.errors.customHeaders?.message}
+              showErrorLabel={true}
+              rows={4}
+            />
+          </>
+        )}
+      />
     </>
   );
 }

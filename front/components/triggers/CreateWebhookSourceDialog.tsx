@@ -73,7 +73,7 @@ export function CreateWebhookSourceDialog({
           <DialogTitle>Create Webhook Source</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          <FormProvider form={form} onSubmit={onSubmit}>
+          <FormProvider form={form} onSubmit={onSubmit} className="space-y-4">
             <CreateWebhookSourceFormContent form={form} />
           </FormProvider>
         </DialogContainer>
