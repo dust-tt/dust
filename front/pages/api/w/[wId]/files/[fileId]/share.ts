@@ -95,6 +95,7 @@ async function handler(
       const { shareScope } = parseResult.data;
 
       // For workspace/public sharing, check if file uses conversation files.
+      // conversation_participants is treated as workspace scope for backward compatibility
       if (shareScope !== "conversation_participants") {
         const fileContent = await getFileContent(auth, file, "original");
         if (!fileContent) {

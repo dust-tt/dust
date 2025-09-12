@@ -97,7 +97,11 @@ async function handler(
   }
 
   // For workspace sharing, check authentication.
-  if (shareScope === "workspace") {
+  // conversation_participants is treated as workspace scope for backward compatibility
+  if (
+    shareScope === "workspace" ||
+    shareScope === "conversation_participants"
+  ) {
     const isWorkspaceUser = await isSessionWithUserFromWorkspace(
       req,
       res,
