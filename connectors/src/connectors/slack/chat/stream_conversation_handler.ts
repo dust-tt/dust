@@ -337,6 +337,7 @@ async function streamAgentAnswerToSlack(
       case "agent_message_success": {
         const finalAnswer = event.message.content ?? "";
         const actions = event.message.actions;
+        const messageId = event.message.sId; // Get the message ID
         const { formattedContent, footnotes } = annotateCitations(
           finalAnswer,
           actions
@@ -362,6 +363,8 @@ async function streamAgentAnswerToSlack(
                 assistantName,
                 agentConfigurations,
                 footnotes,
+                conversationId: conversation.sId,
+                messageId,
               },
               ...conversationData,
               updateState,
@@ -386,6 +389,8 @@ async function streamAgentAnswerToSlack(
                 assistantName,
                 agentConfigurations,
                 footnotes,
+                conversationId: conversation.sId,
+                messageId,
               },
               ...conversationData,
               updateState,

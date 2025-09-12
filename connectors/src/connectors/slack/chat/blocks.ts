@@ -3,6 +3,7 @@ import type { LightAgentConfigurationType } from "@dust-tt/client";
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
+  LEAVE_FEEDBACK,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
 } from "@connectors/api/webhooks/webhook_slack_interaction";
@@ -66,12 +67,16 @@ function makeContextSectionBlocks({
   conversationUrl,
   footnotes,
   workspaceId,
+  conversationId,
+  messageId,
 }: {
   state: "thinking" | "answered";
   assistantName: string;
   conversationUrl: string | null;
   footnotes: SlackMessageFootnotes | undefined;
   workspaceId: string;
+  conversationId?: string;
+  messageId?: string;
 }) {
   const blocks = [];
 
@@ -91,9 +96,44 @@ function makeContextSectionBlocks({
     })
   );
 
+  // Add feedback button block when the message is answered and we have the required IDs
+  if (state === "answered" && conversationId && messageId) {
+    blocks.push(makeFeedbackButtonBlock({ conversationId, messageId, workspaceId }));
+  }
+
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
   return resultBlocks;
+}
+
+export function makeFeedbackButtonBlock({
+  conversationId,
+  messageId,
+  workspaceId,
+}: {
+  conversationId: string;
+  messageId: string;
+  workspaceId: string;
+}) {
+  return {
+    type: "actions",
+    block_id: JSON.stringify({
+      conversationId,
+      messageId,
+      workspaceId,
+    }),
+    elements: [
+      {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "Leave feedback",
+          emoji: true,
+        },
+        action_id: LEAVE_FEEDBACK,
+      },
+    ],
+  };
 }
 
 function makeThinkingBlock({
@@ -155,6 +195,8 @@ export type SlackMessageUpdate = {
   agentConfigurations: LightAgentConfigurationType[];
   text?: string;
   footnotes?: SlackMessageFootnotes;
+  conversationId?: string;
+  messageId?: string;
 };
 
 export function makeFooterBlock({
@@ -207,7 +249,7 @@ export function makeMessageUpdateBlocksAndText(
   workspaceId: string,
   messageUpdate: SlackMessageUpdate
 ) {
-  const { isThinking, thinkingAction, assistantName, text, footnotes } =
+  const { isThinking, thinkingAction, assistantName, text, footnotes, conversationId, messageId } =
     messageUpdate;
   const thinkingText = "Agent is thinking...";
   const thinkingTextWithAction = thinkingAction
@@ -227,6 +269,8 @@ export function makeMessageUpdateBlocksAndText(
         conversationUrl,
         footnotes,
         workspaceId,
+        conversationId,
+        messageId,
       }),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
