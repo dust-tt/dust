@@ -18,9 +18,9 @@ import {
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
-  getDataSourceSchemaWithDefaults,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/server_utils";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
   getDataSourceConfiguration,

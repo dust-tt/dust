@@ -1,3 +1,4 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type {
   CallToolResult,
@@ -6,6 +7,9 @@ import type {
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 export function makeInternalMCPServer(
   serverName: InternalMCPServerNameType,
@@ -74,3 +78,30 @@ export const makeMCPToolJSONSuccess = ({
     ],
   };
 };
+
+/**
+ * Helper function to get all available data sources for a user and convert them to the proper URI format
+ */
+async function getAllAvailableDataSources(auth: Authenticator) {
+  try {
+    const workspace = auth.getNonNullableWorkspace();
+    const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+    
+    return dataSourceViews.map(dsv => ({
+      uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_views/${dsv.sId}/filter/${encodeURIComponent(JSON.stringify({ parents: null, tags: null }))}`,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+    }));
+  } catch (error) {
+    // Return empty array if there's an error fetching data sources
+    return [];
+  }
+}
+
+/**
+ * Creates a data source schema with default values populated from all available data sources for the user
+ */
+export async function getDataSourceSchemaWithDefaults(auth: Authenticator) {
+  const defaultDataSources = await getAllAvailableDataSources(auth);
+  
+  return ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE].default(defaultDataSources);
+}

@@ -4,38 +4,9 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z, ZodError } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import type { Authenticator } from "@app/lib/auth";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { Result } from "@app/types";
 import { normalizeError } from "@app/types";
 import { Err, Ok } from "@app/types";
-
-/**
- * Helper function to get all available data sources for a user and convert them to the proper URI format
- */
-async function getAllAvailableDataSources(auth: Authenticator) {
-  try {
-    const workspace = auth.getNonNullableWorkspace();
-    const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
-    
-    return dataSourceViews.map(dsv => ({
-      uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_views/${dsv.sId}/filter/${encodeURIComponent(JSON.stringify({ parents: null, tags: null }))}`,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-    }));
-  } catch (error) {
-    // Return empty array if there's an error fetching data sources
-    return [];
-  }
-}
-
-/**
- * Creates a data source schema with default values populated from all available data sources for the user
- */
-export async function getDataSourceSchemaWithDefaults(auth: Authenticator) {
-  const defaultDataSources = await getAllAvailableDataSources(auth);
-  
-  return ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE].default(defaultDataSources);
-}
 
 /**
  * URI pattern for configuring the data source to use within an action.
