@@ -129,15 +129,14 @@ export const AdminTriggersList = ({
         header: "Last updated",
         cell: (info: CellContext<RowData, number>) => (
           <DataTable.BasicCellContent
-            label={
-              info.getValue()
-                ? formatTimestampToFriendlyDate(info.getValue(), "compact")
-                : "-"
-            }
+            label={formatTimestampToFriendlyDate(
+              info.row.original.webhookSourceWithViews.updatedAt,
+              "long"
+            )}
           />
         ),
         meta: {
-          className: "w-28",
+          className: "w-64",
         },
       }
     );
