@@ -18,7 +18,6 @@ import {
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import type { ContentCreationFileContentType } from "@app/types";
 import {
   clientExecutableContentType,
@@ -86,26 +85,6 @@ const createServer = (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
       ) => {
-<<<<<<< HEAD
-=======
-        const validationResult = validateTailwindCode(content);
-        if (validationResult.isErr()) {
-          logger.error(
-            {
-              error: validationResult.error.message,
-              toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-              fileName: file_name,
-              mimeType: mime_type,
-            },
-            "Content Creation file create validation error"
-          );
-
-          return new Err(
-            new MCPError(validationResult.error.message, { tracked: false })
-          );
-        }
-
->>>>>>> 7c4b267440 (add logs in content creation server if validation or creation fails)
         const { conversation, agentConfiguration } =
           agentLoopContext?.runContext ?? {};
 
@@ -126,25 +105,11 @@ const createServer = (
         });
 
         if (result.isErr()) {
-<<<<<<< HEAD
           return new Err(
             new MCPError(result.error.message, {
               tracked: result.error.tracked,
             })
           );
-=======
-          logger.error(
-            {
-              error: result.error.message,
-              toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-              fileName: file_name,
-              mimeType: mime_type,
-              createdByAgentConfigurationId: agentConfiguration?.sId,
-            },
-            "Content Creation file create execution error"
-          );
-          return new Err(new MCPError(result.error.message));
->>>>>>> 7c4b267440 (add logs in content creation server if validation or creation fails)
         }
 
         const { value: fileResource } = result;
@@ -242,7 +207,7 @@ const createServer = (
       auth,
       { toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
       async (
-        { file_id, old_string, new_string, expected_replacements },
+        { file_id, old_string, new_string },
         { sendNotification, _meta }
       ) => {
         const { agentConfiguration } = agentLoopContext?.runContext ?? {};
@@ -251,24 +216,10 @@ const createServer = (
           fileId: file_id,
           oldString: old_string,
           newString: new_string,
-          expectedReplacements: expected_replacements,
           editedByAgentConfigurationId: agentConfiguration?.sId,
         });
 
         if (result.isErr()) {
-          logger.error(
-            {
-              error: result.error.message,
-              toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-              fileId: file_id,
-              oldString: old_string,
-              newString: new_string,
-              expectedReplacements: expected_replacements,
-              editedByAgentConfigurationId: agentConfiguration?.sId,
-            },
-            "Content Creation file edit execution error"
-          );
-
           return new Err(
             new MCPError(result.error.message, {
               tracked: result.error.tracked,
