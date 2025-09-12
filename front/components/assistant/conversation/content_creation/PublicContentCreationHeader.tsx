@@ -1,10 +1,17 @@
-import { cn } from "@dust-tt/sparkle";
+import {
+  ActionSlideshowIcon,
+  Button,
+  cn,
+  FullscreenExitIcon,
+} from "@dust-tt/sparkle";
 
 import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 
 interface PublicContentCreationHeaderProps {
   title: string;
+  isFullScreen: boolean;
+  onFullScreenToggle: () => void;
 }
 
 // Applying flex & justify-center to the title won't make it centered in the header
@@ -14,6 +21,8 @@ interface PublicContentCreationHeaderProps {
 // TODO(CONTENT_CREATION 2025-08-27): optimize the header for mobile views once we have buttons.
 export function PublicContentCreationHeader({
   title,
+  isFullScreen,
+  onFullScreenToggle,
 }: PublicContentCreationHeaderProps) {
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 @container dark:bg-gray-900">
@@ -33,7 +42,15 @@ export function PublicContentCreationHeader({
           </span>
         </div>
 
-        <div className="md:grow-1 md:basis-60"></div>
+        <div className="md:grow-1 flex shrink-0 items-center justify-end md:basis-60">
+          <Button
+            icon={isFullScreen ? FullscreenExitIcon : ActionSlideshowIcon}
+            variant="ghost"
+            size="xs"
+            onClick={onFullScreenToggle}
+            tooltip={`${isFullScreen ? "Exit" : "Start"} presentation mode`}
+          />
+        </div>
       </div>
     </AppLayoutTitle>
   );
