@@ -65,6 +65,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
+  "deep_research",
   "extract_data",
   "file_generation",
   "freshservice",
@@ -935,6 +936,33 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
       instructions: SLIDESHOW_INSTRUCTIONS,
+    },
+  },
+  deep_research: {
+    id: 29,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("deep_research_as_a_tool");
+    },
+    allowMultipleInstances: false,
+    isPreview: true,
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "deep_research",
+      version: "0.1.0",
+      description: "Handoff the query to the deep research agent.",
+      authorization: null,
+      icon: "ActionBrainIcon",
+      documentationUrl: null,
+      instructions:
+        "This tool performs a complete handoff to the dust-deep research agent. " +
+        "Once you call this tool, the dust-deep agent takes full responsibility for the research and response. " +
+        "DO NOT attempt to answer the query yourself or promise to incorporate additional information - " +
+        "you cannot interact with or modify the dust-deep agent's research once the handoff is complete. " +
+        "Your only role is to prepare a comprehensive query that includes all relevant context and pass it to dust-deep. " +
+        "The dust-deep agent will handle the entire research process and provide the final answer directly to the user.",
     },
   },
   [SEARCH_SERVER_NAME]: {
