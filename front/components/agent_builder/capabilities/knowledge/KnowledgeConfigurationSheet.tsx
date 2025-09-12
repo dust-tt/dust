@@ -373,8 +373,6 @@ function KnowledgeConfigurationSheetContent({
 
           {config && <DescriptionSection {...config?.descriptionConfig} />}
 
-          <SelectDataSourcesFilters />
-
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
             mcpServerView.server.name === SEARCH_SERVER_NAME && (
@@ -398,6 +396,8 @@ function KnowledgeConfigurationSheetContent({
                 </CollapsibleContent>
               </Collapsible>
             )}
+
+          <SelectDataSourcesFilters />
         </div>
       ),
     },
