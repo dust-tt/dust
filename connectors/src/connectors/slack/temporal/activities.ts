@@ -1230,8 +1230,6 @@ export async function attemptChannelJoinActivity(
     throw res.error;
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 20000));
-
   const { channel, result } = res.value;
   if (result === "is_archived") {
     logger.info(
