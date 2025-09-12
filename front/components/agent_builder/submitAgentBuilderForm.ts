@@ -194,11 +194,13 @@ export async function submitAgentBuilderForm({
   owner,
   agentConfigurationId = null,
   isDraft = false,
+  areSlackChannelsChanged,
 }: {
   formData: AgentBuilderFormData;
   owner: WorkspaceType;
   agentConfigurationId?: string | null;
   isDraft?: boolean;
+  areSlackChannelsChanged?: boolean;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -351,9 +353,13 @@ export async function submitAgentBuilderForm({
     const { slackChannels, slackProvider } = formData.agentSettings;
     // If the user selected channels that were already routed to a different agent, the current behavior is to
     // unlink them from the previous agent and link them to this one.
-    if (slackProvider && slackChannels.length > 0) {
+    // Make the call even if slackChannels is empty, since if the user deselects all channels,
+    // the call need to be made to unlink them.
+    if (slackProvider && areSlackChannelsChanged) {
       const autoRespondWithoutMention =
-        slackChannels[0].autoRespondWithoutMention;
+        slackChannels.length > 0
+          ? slackChannels[0].autoRespondWithoutMention
+          : false;
       const slackRequestBody = JSON.stringify({
         provider: slackProvider,
         slack_channel_internal_ids: slackChannels.map(
