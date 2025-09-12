@@ -1,3 +1,5 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { isInternalToolOutputResourceType } from "@dust-tt/client";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 
 import type {
@@ -8,7 +10,6 @@ import type {
   MCPSuccessEvent,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
-import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import {
   executeMCPTool,
   processToolResults,
@@ -17,10 +18,6 @@ import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import {
-  EarlyExitError,
-  ToolBlockedAwaitingInputError,
-} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
@@ -117,63 +114,6 @@ export async function* runToolWithStreaming(
 
     const { error: toolErr } = toolCallResult ?? {};
 
-    // If we got a personal authentication error, we emit a specific event that will be
-    // deferred until after all tools complete, then converted to a tool_error.
-    if (MCPServerPersonalAuthenticationRequiredError.is(toolErr)) {
-      const authErrorMessage =
-        `The tool ${actionBaseParams.functionCallName} requires personal ` +
-        `authentication, please authenticate to use it.`;
-
-      // Update the action to mark it as blocked because of a personal authentication error.
-      await action.updateStatus("blocked_authentication_required");
-
-      yield {
-        type: "tool_personal_auth_required",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        conversationId: conversation.sId,
-        authError: {
-          mcpServerId: toolErr.mcpServerId,
-          provider: toolErr.provider,
-          toolName: actionBaseParams.functionCallName ?? "unknown",
-          message: authErrorMessage,
-          ...(toolErr.scope && {
-            scope: toolErr.scope,
-          }),
-        },
-      };
-
-      return;
-    } else if (toolErr instanceof ToolBlockedAwaitingInputError) {
-      // Update the action status to blocked_child_action_input_required to break the agent loop.
-      await action.updateStatus("blocked_child_action_input_required");
-
-      // Update the step context to save the resume state.
-      await action.updateStepContext({
-        ...action.stepContext,
-        resumeState: toolErr.resumeState,
-      });
-
-      // Yield the blocking events.
-      for (const event of toolErr.blockingEvents) {
-        yield event;
-      }
-
-      return;
-    } else if (toolErr instanceof EarlyExitError) {
-      yield {
-        type: "tool_early_exit",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        conversationId: conversation.sId,
-        messageId: agentMessage.sId,
-        message: toolErr.message,
-        isError: toolErr.isError,
-      };
-      return;
-    }
-
     let errorMessage: string;
 
     // We don't want to expose the MCP full error message to the user.
@@ -205,6 +145,78 @@ export async function* runToolWithStreaming(
       errorMessage,
     });
     return;
+  }
+
+  const internalToolOutput = toolCallResult?.value.find(
+    isInternalToolOutputResourceType
+  );
+
+  if (internalToolOutput) {
+    switch (internalToolOutput.resource.type) {
+      case "tool_early_exit": {
+        const { isError, text } = internalToolOutput.resource;
+        yield {
+          type: "tool_early_exit",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          text: text,
+          isError: isError,
+        };
+        return;
+      }
+      case "tool_blocked_awaiting_input": {
+        const { blockingEvents, state } = internalToolOutput.resource;
+        // Update the action status to blocked_child_action_input_required to break the agent loop.
+        await action.updateStatus("blocked_child_action_input_required");
+
+        // Update the step context to save the resume state.
+        await action.updateStepContext({
+          ...action.stepContext,
+          resumeState: state,
+        });
+
+        // Yield the blocking events.
+        for (const event of blockingEvents) {
+          yield event;
+        }
+
+        return;
+      }
+      case "tool_personal_auth_required": {
+        const { provider, mcpServerId, scope } = internalToolOutput.resource;
+        if (!mcpServerId) {
+          throw new Error("MCP server ID is required");
+        }
+
+        const authErrorMessage =
+          `The tool ${actionBaseParams.functionCallName} requires personal ` +
+          `authentication, please authenticate to use it.`;
+
+        // Update the action to mark it as blocked because of a personal authentication error.
+        await action.updateStatus("blocked_authentication_required");
+
+        yield {
+          type: "tool_personal_auth_required",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          conversationId: conversation.sId,
+          authError: {
+            mcpServerId: mcpServerId,
+            provider: provider,
+            toolName: actionBaseParams.functionCallName ?? "unknown",
+            message: authErrorMessage,
+            ...(scope && {
+              scope,
+            }),
+          },
+        };
+
+        return;
+      }
+    }
   }
 
   const { outputItems, generatedFiles } = await processToolResults(auth, {

@@ -615,3 +615,54 @@ export function isMCPProgressNotificationType(
 ): notification is MCPProgressNotificationType {
   return MCPProgressNotificationSchema.safeParse(notification).success;
 }
+
+// Internal tool output.
+
+export const AuthRequiredInternalToolOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT),
+  type: z.literal("tool_personal_auth_required"),
+  provider: z.string(),
+  mcpServerId: z.string().optional(),
+  scope: z.string().optional(),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export const BlockedAwaitingInputInternalToolOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT),
+  type: z.literal("tool_blocked_awaiting_input"),
+  text: z.string(),
+  uri: z.string(),
+  blockingEvents: z.array(z.any()),
+  state: z.any(),
+});
+
+export const EarlyExitInternalToolOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT),
+  type: z.literal("tool_early_exit"),
+  text: z.string(),
+  isError: z.boolean(),
+  uri: z.string(),
+});
+
+export const InternalToolOutputResourceSchema = z.union([
+  AuthRequiredInternalToolOutputResourceSchema,
+  BlockedAwaitingInputInternalToolOutputResourceSchema,
+  EarlyExitInternalToolOutputResourceSchema,
+]);
+
+export type InternalToolOutputResourceType = z.infer<
+  typeof InternalToolOutputResourceSchema
+>;
+
+export const isInternalToolOutputResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: InternalToolOutputResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    InternalToolOutputResourceSchema.safeParse(outputBlock.resource).success
+  );
+};

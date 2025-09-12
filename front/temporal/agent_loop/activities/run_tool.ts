@@ -108,7 +108,7 @@ export async function runToolActivity(
 
         return { deferredEvents };
       case "tool_early_exit":
-        if (!event.isError && event.message) {
+        if (!event.isError && event.text) {
           // Post message content
           const all = await AgentStepContentResource.fetchByAgentMessages(
             auth,
@@ -125,7 +125,7 @@ export async function runToolActivity(
             type: "text_content",
             value: {
               type: "text_content",
-              value: event.message,
+              value: event.text,
             },
           });
         }
@@ -140,7 +140,7 @@ export async function runToolActivity(
                 conversationId: conversation.sId,
                 error: {
                   code: "early_exit",
-                  message: event.message,
+                  message: event.text,
                   metadata: {
                     errorTitle: "Early exit",
                   },

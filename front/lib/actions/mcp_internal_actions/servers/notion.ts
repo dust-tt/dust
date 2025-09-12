@@ -16,12 +16,12 @@ import type {
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/personal_authentication";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
+  makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
@@ -256,32 +256,36 @@ function makeQueryResource(
   };
 }
 
-async function withNotionClient<T>(
-  fn: (notion: Client) => Promise<T>,
-  authInfo?: AuthInfo
-): Promise<CallToolResult> {
-  try {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return makePersonalAuthenticationError("notion");
-    }
-    const notion = new Client({ auth: accessToken });
-
-    const result = await fn(notion);
-    return makeMCPToolJSONSuccess({
-      message: "Success",
-      result: JSON.stringify(result),
-    });
-  } catch (e) {
-    return makeMCPToolTextError(normalizeError(e).message);
-  }
-}
-
 const createServer = (
   auth: Authenticator,
+  mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
   const server = makeInternalMCPServer("notion");
+
+  async function withNotionClient<T>(
+    fn: (notion: Client) => Promise<T>,
+    authInfo?: AuthInfo
+  ): Promise<CallToolResult> {
+    try {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makePersonalAuthenticationError({
+          serverName: "notion",
+          mcpServerId,
+        });
+      }
+      const notion = new Client({ auth: accessToken });
+
+      const result = await fn(notion);
+      return makeMCPToolJSONSuccess({
+        message: "Success",
+        result: JSON.stringify(result),
+      });
+    } catch (e) {
+      return makeMCPToolTextError(normalizeError(e).message);
+    }
+  }
 
   server.tool(
     "search",
@@ -308,7 +312,10 @@ const createServer = (
 
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        return makePersonalAuthenticationError("notion");
+        return makePersonalAuthenticationError({
+          serverName: "notion",
+          mcpServerId,
+        });
       }
       const notion = new Client({ auth: accessToken });
 

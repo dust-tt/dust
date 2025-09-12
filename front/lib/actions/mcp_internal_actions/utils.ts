@@ -1,3 +1,4 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type {
   CallToolResult,
@@ -6,6 +7,11 @@ import type {
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  RunAgentBlockingEvent,
+  RunAgentResumeState,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import type { OAuthProvider } from "@app/types";
 
 export function makeInternalMCPServer(
   serverName: InternalMCPServerNameType,
@@ -37,6 +43,72 @@ export function makeMCPToolTextError(text: string): {
   };
 }
 
+export function makeToolBlockedAwaitingInputResponse(
+  blockingEvents: RunAgentBlockingEvent[],
+  state: RunAgentResumeState
+): CallToolResult {
+  return {
+    content: [
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT,
+          type: "tool_blocked_awaiting_input",
+          text: "Tool requires resume after blocking events",
+          uri: "",
+          blockingEvents,
+          state,
+        },
+      },
+    ],
+  };
+}
+
+// Type that extracts server names where authorization is not null.
+type ServersWithAuthorization = {
+  [K in InternalMCPServerNameType]: (typeof INTERNAL_MCP_SERVERS)[K]["serverInfo"]["authorization"] extends null
+    ? never
+    : K;
+}[InternalMCPServerNameType];
+
+export function makePersonalAuthenticationError({
+  serverName,
+  mcpServerId,
+  scope,
+  provider,
+}:
+  | {
+      serverName?: never;
+      provider: OAuthProvider;
+      mcpServerId: string;
+      scope?: string;
+    }
+  | {
+      serverName: ServersWithAuthorization;
+      provider?: never;
+      mcpServerId: string;
+      scope?: string;
+    }) {
+  return {
+    content: [
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT,
+          type: "tool_personal_auth_required",
+          mcpServerId,
+          scope,
+          provider:
+            provider ||
+            INTERNAL_MCP_SERVERS[serverName].serverInfo.authorization.provider,
+          text: "Personal authentication required",
+          uri: "",
+        },
+      },
+    ],
+  };
+}
+
 export function makeMCPToolExit({
   message,
   isError,
@@ -45,11 +117,16 @@ export function makeMCPToolExit({
   isError: boolean;
 }) {
   return {
-    isError: true,
     content: [
       {
-        type: "text",
-        text: `{"__exit": {"isError": ${isError}, "message": ${JSON.stringify(message)}}}`,
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT,
+          text: message,
+          type: "tool_early_exit",
+          isError,
+          uri: "",
+        },
       },
     ],
   };
