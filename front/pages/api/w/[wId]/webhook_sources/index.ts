@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,16 +8,29 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { WebhookSourceWithViews } from "@app/types/triggers/webhooks";
+import type {
+  WebhookSourceType,
+  WebhookSourceWithViews,
+} from "@app/types/triggers/webhooks";
+import { PostWebhookSourcesSchema } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
   webhookSourcesWithViews: WebhookSourceWithViews[];
 };
 
+export type PostWebhookSourcesResponseBody = {
+  success: true;
+  webhookSource: WebhookSourceType;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetWebhookSourcesResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      GetWebhookSourcesResponseBody | PostWebhookSourcesResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
@@ -60,12 +74,70 @@ async function handler(
         });
       }
     }
+
+    case "POST": {
+      const bodyValidation = PostWebhookSourcesSchema.safeParse(req.body);
+
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const {
+        name,
+        secret,
+        signatureHeader,
+        signatureAlgorithm,
+        customHeaders,
+      } = bodyValidation.data;
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      try {
+        const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
+          workspaceId: workspace.id,
+          name,
+          secret,
+          signatureHeader,
+          signatureAlgorithm,
+          customHeaders,
+        });
+
+        if (webhookSourceRes.isErr()) {
+          throw new Error(webhookSourceRes.error.message);
+        }
+
+        const webhookSource = webhookSourceRes.value.toJSON();
+
+        return res.status(201).json({
+          success: true,
+          webhookSource,
+        });
+      } catch (error) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to create webhook source.",
+          },
+        });
+      }
+    }
+
     default: {
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
     }

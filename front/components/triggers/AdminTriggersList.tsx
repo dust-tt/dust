@@ -1,7 +1,17 @@
-import { classNames, DataTable, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  classNames,
+  DataTable,
+  EmptyCTA,
+  PlusIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
+import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -49,9 +59,13 @@ export const AdminTriggersList = ({
   owner,
   systemSpace,
 }: AdminTriggersListProps) => {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
+  });
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: TRIGGER_BUTTONS_CONTAINER_ID,
   });
 
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
@@ -115,21 +129,30 @@ export const AdminTriggersList = ({
         header: "Last updated",
         cell: (info: CellContext<RowData, number>) => (
           <DataTable.BasicCellContent
-            label={
-              info.getValue()
-                ? formatTimestampToFriendlyDate(info.getValue(), "compact")
-                : "-"
-            }
+            label={formatTimestampToFriendlyDate(
+              info.row.original.webhookSourceWithViews.updatedAt,
+              "long"
+            )}
           />
         ),
         meta: {
-          className: "w-28",
+          className: "w-64",
         },
       }
     );
 
     return columns;
   }, []);
+
+  const CreateWebhookCTA = () => (
+    <Button
+      label="Create webhook source"
+      variant="outline"
+      icon={PlusIcon}
+      size="sm"
+      onClick={() => setIsCreateOpen(true)}
+    />
+  );
 
   if (isWebhookSourcesWithViewsLoading) {
     return (
@@ -139,20 +162,29 @@ export const AdminTriggersList = ({
     );
   }
 
-  if (rows.length === 0) {
-    return (
-      <div className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-        You don’t have any triggers yet.
-      </div>
-    );
-  }
-
   return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      className="pb-4"
-      filterColumn="name"
-    />
+    <>
+      <CreateWebhookSourceDialog
+        isOpen={isCreateOpen}
+        setIsOpen={setIsCreateOpen}
+        owner={owner}
+      />
+      {rows.length === 0 ? (
+        <EmptyCTA
+          message="You don’t have any triggers yet."
+          action={<CreateWebhookCTA />}
+        />
+      ) : (
+        <>
+          {portalToHeader(<CreateWebhookCTA />)}
+          <DataTable
+            data={rows}
+            columns={columns}
+            className="pb-4"
+            filterColumn="name"
+          />
+        </>
+      )}
+    </>
   );
 };

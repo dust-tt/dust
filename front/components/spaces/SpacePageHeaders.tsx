@@ -10,6 +10,7 @@ import type {
 } from "@app/types";
 
 export const ACTION_BUTTONS_CONTAINER_ID = "space-action-buttons-container";
+export const TRIGGER_BUTTONS_CONTAINER_ID = "space-trigger-buttons-container";
 
 interface SpacePageToolsProps {
   category: DataSourceViewCategory | undefined;
@@ -65,6 +66,7 @@ export function SpacePageHeader({
           parentId={parentId}
         />
         <div id={ACTION_BUTTONS_CONTAINER_ID} className="flex gap-2" />
+        <div id={TRIGGER_BUTTONS_CONTAINER_ID} className="flex gap-2" />
       </div>
       {description && (
         <div className="text-sm text-muted-foreground">{description}</div>
