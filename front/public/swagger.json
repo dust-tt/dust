@@ -3939,7 +3939,9 @@
       "get": {
         "summary": "List available MCP server views.",
         "description": "Retrieves a list of enabled MCP server views (aka tools) for a specific space of the authenticated workspace.",
-        "tags": ["Tools"],
+        "tags": [
+          "Tools"
+        ],
         "security": [
           {
             "BearerAuth": []
@@ -5089,7 +5091,10 @@
           },
           "serverType": {
             "type": "string",
-            "enum": ["remote", "internal"],
+            "enum": [
+              "remote",
+              "internal"
+            ],
             "description": "Type of the MCP server",
             "example": "remote"
           },
@@ -5134,10 +5139,15 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": ["platform_actions", "personal_actions"]
+                      "enum": [
+                        "platform_actions",
+                        "personal_actions"
+                      ]
                     },
                     "description": "Supported use cases for the authorization",
-                    "example": ["platform_actions"]
+                    "example": [
+                      "platform_actions"
+                    ]
                   },
                   "scope": {
                     "type": "string",
@@ -5197,7 +5207,10 @@
           "oAuthUseCase": {
             "type": "string",
             "nullable": true,
-            "enum": ["platform_actions", "personal_actions"],
+            "enum": [
+              "platform_actions",
+              "personal_actions"
+            ],
             "description": "OAuth use case for the MCP server view",
             "example": "platform_actions"
           },
