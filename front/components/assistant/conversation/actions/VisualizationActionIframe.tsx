@@ -414,13 +414,13 @@ export const VisualizationActionIframe = forwardRef<
               {isErrored && isPublic && (
                 <div className="flex h-full w-full items-center justify-center p-6">
                   <div className="flex flex-col gap-3 text-center">
-                    <div>
-                      <span className="text-2xl leading-10 text-foreground dark:text-foreground-night">
-                        📊
-                      </span>
-                      <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
-                        Visualization Error
-                      </p>
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <ExclamationCircleIcon className="h-8 w-8" />
+                        <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+                          Visualization Error
+                        </p>
+                      </div>
                       <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
                         This visualization encountered an error and cannot be
                         displayed.
