@@ -19,6 +19,7 @@ import {
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import type { ContentCreationFileContentType } from "@app/types";
 import { clientExecutableContentType, Err, Ok } from "@app/types";
 import { CONTENT_CREATION_FILE_FORMATS } from "@app/types";
@@ -84,6 +85,15 @@ const createServer = (
       ) => {
         const validationResult = validateContent(content);
         if (validationResult.isErr()) {
+          logger.error(
+            {
+              error: validationResult.error.message,
+              toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+              mimeType: mime_type,
+            },
+            "Content Creation file create validation error"
+          );
+
           return new Err(
             new MCPError(validationResult.error.message, { tracked: false })
           );
@@ -210,14 +220,24 @@ const createServer = (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
+        const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+
         const validationResult = validateContent(new_string);
         if (validationResult.isErr()) {
+          logger.error(
+            {
+              error: validationResult.error.message,
+              toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+              fileId: file_id,
+              agentConfigurationId: agentConfiguration?.sId,
+            },
+            "Content Creation file edit validation error"
+          );
+
           return new Err(
             new MCPError(validationResult.error.message, { tracked: false })
           );
         }
-
-        const { agentConfiguration } = agentLoopContext?.runContext ?? {};
 
         const result = await editClientExecutableFile(auth, {
           fileId: file_id,
@@ -228,9 +248,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return new Err(
-            new MCPError(result.error.message, { tracked: false })
-          );
+          return new Err(new MCPError(result.error.message));
         }
 
         const { fileResource, replacementCount } = result.value;
