@@ -69,6 +69,7 @@ function useVisualizationDataHandler({
   visualization,
   setContentHeight,
   setErrorMessage,
+  setIframeReady,
   setCodeDrawerOpened,
   vizIframeRef,
   workspaceId,
@@ -76,6 +77,7 @@ function useVisualizationDataHandler({
   visualization: Visualization;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
+  setIframeReady: (v: SetStateAction<boolean>) => void;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string | null;
@@ -160,6 +162,10 @@ function useVisualizationDataHandler({
           setErrorMessage(data.params.errorMessage);
           break;
 
+        case "setIframeReady":
+          setIframeReady(data.params.ready);
+          break;
+
         case "downloadFileRequest":
           downloadFileFromBlob(data.params.blob, data.params.filename);
           break;
@@ -184,6 +190,7 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
+    setIframeReady,
   ]);
 }
 
@@ -262,6 +269,7 @@ export const VisualizationActionIframe = forwardRef<
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryClicked, setRetryClicked] = useState(false);
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
+  const [iframeReady, setIframeReady] = useState<boolean>(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Combine internal ref with forwarded ref.
@@ -293,16 +301,16 @@ export const VisualizationActionIframe = forwardRef<
     workspaceId: isPublic ? null : props.workspace.sId,
     setContentHeight,
     setErrorMessage,
+    setIframeReady,
     setCodeDrawerOpened,
     vizIframeRef,
   });
 
   const { code, complete: codeFullyGenerated } = visualization;
 
-  const iframeLoaded = contentHeight > 0;
   const showSpinner = useMemo(
-    () => (codeFullyGenerated && !iframeLoaded && !isErrored) || retryClicked,
-    [codeFullyGenerated, iframeLoaded, isErrored, retryClicked]
+    () => (codeFullyGenerated && !iframeReady && !isErrored) || retryClicked,
+    [codeFullyGenerated, iframeReady, isErrored, retryClicked]
   );
 
   const { handleVisualizationRetry, canRetry } = useVisualizationRetry({

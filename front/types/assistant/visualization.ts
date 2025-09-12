@@ -25,12 +25,17 @@ interface setErrorMessageParams {
   errorMessage: string;
 }
 
+interface setIframeReadyParams {
+  ready: boolean;
+}
+
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: setErrorMessageParams;
+  setIframeReady: setIframeReadyParams;
   downloadFileRequest: DownloadFileRequestParams;
   displayCode: null;
 };
@@ -51,6 +56,7 @@ export const validCommands: VisualizationRPCCommand[] = [
   "getCodeToExecute",
   "setContentHeight",
   "setErrorMessage",
+  "setIframeReady",
 ];
 
 // Command results.
@@ -61,6 +67,7 @@ export interface CommandResultMap {
   downloadFileRequest: { blob: Blob; filename?: string };
   setContentHeight: void;
   setErrorMessage: void;
+  setIframeReady: void;
   displayCode: void;
 }
 
@@ -150,6 +157,28 @@ export function isSetErrorMessageRequest(
   );
 }
 
+export function isSetIframeReadyRequest(
+  value: unknown
+): value is VisualizationRPCRequest & {
+  command: "setIframeReady";
+  params: setIframeReadyParams;
+} {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const v = value as Partial<VisualizationRPCRequest>;
+
+  return (
+    v.command === "setIframeReady" &&
+    typeof v.identifier === "string" &&
+    typeof v.messageUniqueId === "string" &&
+    typeof v.params === "object" &&
+    v.params !== null &&
+    typeof (v.params as setIframeReadyParams).ready === "boolean"
+  );
+}
+
 export function isDownloadFileRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
@@ -205,6 +234,7 @@ export function isVisualizationRPCRequest(
     isDownloadFileRequest(value) ||
     isSetContentHeightRequest(value) ||
     isSetErrorMessageRequest(value) ||
+    isSetIframeReadyRequest(value) ||
     isDisplayCodeRequest(value)
   );
 }
