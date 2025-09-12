@@ -238,6 +238,9 @@ export default function AgentBuilder({
         agentConfigurationId: duplicateAgentId
           ? null
           : agentConfiguration?.sId || null,
+        areSlackChannelsChanged: form.getFieldState(
+          "agentSettings.slackChannels"
+        ).isDirty,
       });
 
       if (!result.isOk()) {
