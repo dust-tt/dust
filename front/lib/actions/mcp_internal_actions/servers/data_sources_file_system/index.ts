@@ -336,8 +336,9 @@ const createServer = async (
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> => {
   const server = makeInternalMCPServer("data_sources_file_system");
-  
-  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
+
+  const dataSourceSchemaWithDefaults =
+    await getDataSourceSchemaWithDefaults(auth);
 
   await registerCatTool(auth, server, agentLoopContext, {
     name: FILESYSTEM_CAT_TOOL_NAME,

@@ -213,7 +213,8 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer(SEARCH_SERVER_NAME);
 
-  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
+  const dataSourceSchemaWithDefaults =
+    await getDataSourceSchemaWithDefaults(auth);
 
   const commonInputsSchema = {
     query: z

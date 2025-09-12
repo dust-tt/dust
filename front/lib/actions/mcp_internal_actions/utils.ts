@@ -86,8 +86,8 @@ async function getAllAvailableDataSources(auth: Authenticator) {
   try {
     const workspace = auth.getNonNullableWorkspace();
     const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
-    
-    return dataSourceViews.map(dsv => ({
+
+    return dataSourceViews.map((dsv) => ({
       uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_views/${dsv.sId}/filter/${encodeURIComponent(JSON.stringify({ parents: null, tags: null }))}`,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
     }));
@@ -102,6 +102,8 @@ async function getAllAvailableDataSources(auth: Authenticator) {
  */
 export async function getDataSourceSchemaWithDefaults(auth: Authenticator) {
   const defaultDataSources = await getAllAvailableDataSources(auth);
-  
-  return ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE].default(defaultDataSources);
+
+  return ConfigurableToolInputSchemas[
+    INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+  ].default(defaultDataSources);
 }

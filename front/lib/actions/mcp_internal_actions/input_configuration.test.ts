@@ -1388,8 +1388,7 @@ describe("augmentInputsWithConfiguration", () => {
           typeof config.inputSchema.properties.booleanParam.properties.value ===
             "object"
         ) {
-          config.inputSchema.properties.booleanParam.properties.value.default =
-            false;
+          config.inputSchema.properties.booleanParam.properties.value.default = false;
         }
 
         const result = augmentInputsWithConfiguration({

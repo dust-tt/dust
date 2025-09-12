@@ -59,7 +59,8 @@ export async function registerListTool(
   agentLoopContext: AgentLoopContextType | undefined,
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
-  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
+  const dataSourceSchemaWithDefaults =
+    await getDataSourceSchemaWithDefaults(auth);
   const baseDescription =
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
     "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +

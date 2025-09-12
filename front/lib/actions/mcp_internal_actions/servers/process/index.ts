@@ -271,8 +271,9 @@ async function createServer(
       ),
   };
 
-  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
-  
+  const dataSourceSchemaWithDefaults =
+    await getDataSourceSchemaWithDefaults(auth);
+
   const commonInputsSchema = {
     dataSources: dataSourceSchemaWithDefaults,
     objective: z

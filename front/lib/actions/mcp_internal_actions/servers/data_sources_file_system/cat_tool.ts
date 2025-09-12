@@ -52,7 +52,8 @@ export async function registerCatTool(
   //  encourage putting extra details in the server instructions, which are passed to the instructions.
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
-  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
+  const dataSourceSchemaWithDefaults =
+    await getDataSourceSchemaWithDefaults(auth);
   const baseDescription =
     "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
     "The nodeId can be obtained using the 'find', 'list' or 'search' tools.";

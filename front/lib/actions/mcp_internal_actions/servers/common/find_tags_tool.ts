@@ -39,7 +39,8 @@ export async function registerFindTagsTool(
   agentLoopContext: AgentLoopContextType | undefined,
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
-  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
+  const dataSourceSchemaWithDefaults =
+    await getDataSourceSchemaWithDefaults(auth);
   const baseDescription =
     `Find exact matching labels (also called tags).` +
     "Restricting or excluding content succeeds only with existing labels. " +

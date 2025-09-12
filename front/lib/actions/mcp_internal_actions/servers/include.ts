@@ -52,7 +52,8 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("include_data");
 
-  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
+  const dataSourceSchemaWithDefaults =
+    await getDataSourceSchemaWithDefaults(auth);
 
   const commonInputsSchema = {
     timeFrame:
