@@ -97,7 +97,7 @@ async function handler(
   }
 
   // For workspace sharing, check authentication.
-  // conversation_participants is treated as workspace scope for backward compatibility
+  // conversation_participants is now treated as workspace scope
   if (
     shareScope === "workspace" ||
     shareScope === "conversation_participants"
