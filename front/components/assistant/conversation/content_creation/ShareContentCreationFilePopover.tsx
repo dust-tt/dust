@@ -65,6 +65,13 @@ const getScopeDisplayInfo = (
         icon: GlobeAltIcon,
         value: scope,
       };
+    // Treat conversation_participants as workspace scope for backward compatibility
+    case "conversation_participants":
+      return {
+        label: `${owner.name} workspace`,
+        icon: UserGroupIcon,
+        value: "workspace" as FileShareScope,
+      };
     default:
       return { label: "Not shared", icon: LockIcon, value: scope };
   }
@@ -77,13 +84,13 @@ function FileSharingDropdown({
   disabled = false,
   isUsingConversationFiles,
 }: FileSharingDropdownProps) {
-  const scopeOptions = fileShareScopeSchema.options.map((scope) =>
-    getScopeDisplayInfo(scope, owner)
-  );
+  const scopeOptions = fileShareScopeSchema.options
+    .filter((scope) => scope !== "conversation_participants")
+    .map((scope) => getScopeDisplayInfo(scope, owner));
 
-  const selectedOption = scopeOptions.find(
-    (opt) => opt.value === selectedScope
-  );
+  const selectedOption =
+    scopeOptions.find((opt) => opt.value === selectedScope) ||
+    getScopeDisplayInfo(selectedScope, owner);
 
   return (
     <div className="flex flex-col gap-2">

@@ -31,7 +31,12 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
 };
 
-export const fileShareScopeSchema = z.enum(["none", "workspace", "public"]);
+export const fileShareScopeSchema = z.enum([
+  "none",
+  "workspace",
+  "public",
+  "conversation_participants",
+]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
