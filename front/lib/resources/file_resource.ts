@@ -173,7 +173,7 @@ export class FileResource extends BaseResource<FileModel> {
       // We don't make it accessible to public if it's using a conversation file.
       // We have several other check points:
       // - You cannot set it to public if isUsingConversationFiles is true
-      // - When you fetch a file in files/[token] page, we check authentication if it's for workspace sharing. 
+      // - When you fetch a file in files/[token] page, we check authentication if it's for workspace sharing.
       return null;
     }
 

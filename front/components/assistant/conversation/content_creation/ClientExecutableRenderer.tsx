@@ -91,7 +91,7 @@ export function ClientExecutableRenderer({
   });
   const { fileMetadata } = useFileMetadata({ fileId, owner });
 
-  const isUsingConversationFiles = React.useMemo(
+  const isFileUsingConversationFiles = React.useMemo(
     () => (fileContent ? isUsingConversationFiles(fileContent) : false),
     [fileContent]
   );
@@ -207,7 +207,7 @@ export function ClientExecutableRenderer({
         <ShareContentCreationFilePopover
           fileId={fileId}
           owner={owner}
-          isUsingConversationFiles={isUsingConversationFiles}
+          isUsingConversationFiles={isFileUsingConversationFiles}
         />
       </ContentCreationHeader>
 
