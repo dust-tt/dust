@@ -77,7 +77,6 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
 ): Promise<{
   name: string;
   description: string;
-  pictureUrl: string;
 } | null> {
   if (isGlobalAgentId(agentId)) {
     const metadata = getGlobalAgentMetadata(agentId);
@@ -89,7 +88,6 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
     return {
       name: metadata.name,
       description: metadata.description,
-      pictureUrl: metadata.pictureUrl,
     };
   }
 
@@ -101,7 +99,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
       workspaceId: owner.id,
       status: "active",
     },
-    attributes: ["name", "description", "pictureUrl"],
+    attributes: ["name", "description"],
   });
 
   if (!agentConfiguration) {
@@ -111,7 +109,6 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   return {
     name: agentConfiguration.name,
     description: agentConfiguration.description,
-    pictureUrl: agentConfiguration.pictureUrl,
   };
 }
 
@@ -327,7 +324,7 @@ export default async function createServer(
       if (isHandover) {
         return makeMCPToolExit(
           `Query delegated to agent @${childAgentBlob.name}`,
-          false
+          true
         );
       }
 
