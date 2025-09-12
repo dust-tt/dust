@@ -23,6 +23,7 @@ import React, {
 } from "react";
 
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
+import logger from "@app/logger/logger";
 import type {
   CommandResultMap,
   LightWorkspaceType,
@@ -152,6 +153,10 @@ function useVisualizationDataHandler({
           break;
 
         case "setErrorMessage":
+          logger.info(
+            { errorMessage: data.params.errorMessage },
+            "Visualization error"
+          );
           setErrorMessage(data.params.errorMessage);
           break;
 
