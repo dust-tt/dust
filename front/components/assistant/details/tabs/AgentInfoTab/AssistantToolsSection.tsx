@@ -6,6 +6,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getMcpServerDisplayName,
+  getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -17,6 +18,7 @@ import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
 import {
+  asDisplayName,
   assertNever,
   GLOBAL_AGENTS_SID,
   removeNulls,
@@ -128,16 +130,20 @@ function renderOtherAction(
     if (!mcpServer) {
       return null;
     }
+    const view = mcpServer.views.find((v) => v.sId === action.mcpServerViewId);
     const { serverType } = getServerTypeAndIdFromSId(mcpServer.sId);
     const avatar = getAvatar(mcpServer, "xs");
+    const title = view
+      ? getMcpServerViewDisplayName(view, action)
+      : getMcpServerDisplayName(mcpServer, action);
     return {
-      title: getMcpServerDisplayName(mcpServer),
+      title,
       avatar,
       order: serverType === "internal" ? 1 : 3,
     };
   } else if (isMCPServerConfiguration(action)) {
     return {
-      title: action.name,
+      title: asDisplayName(action.name),
       avatar: <Avatar icon={CommandIcon} size="xs" />,
       order: 3,
     };
