@@ -1,3 +1,4 @@
+import type { Err } from "@dust-tt/client";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -13,7 +14,6 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
-import { Err } from "@dust-tt/client";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,
@@ -155,12 +155,11 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   );
 
   // If there's an error that's other than workflow already started, return it.
-  const nonAlreadyStartedError: Err<Error> | undefined = joinPromises
-    .filter((j) => j.isErr())
-    .find(
-      (j: Err<Error>) =>
-        !(j.error instanceof WorkflowExecutionAlreadyStartedError)
-    );
+  const nonAlreadyStartedError = joinPromises.filter(
+    (j) =>
+      j.isErr() && !(j.error instanceof WorkflowExecutionAlreadyStartedError)
+  )?.[0] as Err<Error> | undefined;
+
   if (nonAlreadyStartedError) {
     return apiError(req, res, {
       status_code: 400,
@@ -171,11 +170,10 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     });
   }
 
-  const alreadyStartedError: Err<Error> | undefined = joinPromises
-    .filter((j) => j.isErr())
-    .filter(
-      (j: Err<Error>) => j.error instanceof WorkflowExecutionAlreadyStartedError
-    )?.[0];
+  const alreadyStartedError = joinPromises.filter(
+    (j) => j.isErr() && j.error instanceof WorkflowExecutionAlreadyStartedError
+  )?.[0] as Err<Error> | undefined;
+
   if (alreadyStartedError) {
     return apiError(req, res, {
       status_code: 409, // Conflict - operation already in progress
