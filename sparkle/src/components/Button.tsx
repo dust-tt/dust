@@ -100,16 +100,25 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        xmini: "s-h-6 s-w-6 s-rounded-lg s-label-xs s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-w-7 s-rounded-lg s-label-xs s-gap-1.5 s-shrink-0",
-        xs: "s-h-7 s-px-2.5 s-rounded-lg s-label-xs s-gap-1.5 s-shrink-0",
-        sm: "s-h-9 s-px-3 s-rounded-xl s-label-sm s-gap-2 s-shrink-0",
-        md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-label-base s-gap-2.5 s-shrink-0",
+        xmini: "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
+        mini: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
+        xs: "s-h-7 s-px-2.5 s-label-xs s-gap-1.5 s-shrink-0",
+        sm: "s-h-9 s-px-3 s-label-sm s-gap-2 s-shrink-0",
+        md: "s-h-12 s-px-4 s-py-2 s-label-base s-gap-2.5 s-shrink-0",
+      },
+      rounded: {
+        xmini: "s-rounded-lg",
+        mini: "s-rounded-lg",
+        xs: "s-rounded-lg",
+        sm: "s-rounded-xl",
+        md: "s-rounded-2xl",
+        full: "s-rounded-full",
       },
     },
     defaultVariants: {
       variant: "primary",
       size: "sm",
+      rounded: "sm",
     },
   }
 );
@@ -153,14 +162,30 @@ export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  isRounded?: boolean;
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
-  ({ className, asChild = false, variant, size, children, ...props }, ref) => {
+  (
+    {
+      className,
+      asChild = false,
+      variant,
+      size,
+      isRounded,
+      children,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : "button";
+
+    // Determine rounded variant based on isRounded prop
+    const rounded = isRounded ? "full" : size;
+
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, rounded, className }))}
         ref={ref}
         {...props}
       >
@@ -199,6 +224,7 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     tooltip?: string;
     isCounter?: boolean;
     counterValue?: string;
+    isRounded?: boolean;
   };
 
 export type MiniButtonProps = CommonButtonProps & {
@@ -230,6 +256,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isCounter = false,
       counterValue,
       size = "sm",
+      isRounded = false,
       href,
       target,
       rel,
@@ -338,6 +365,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         size={size}
         variant={variant}
+        isRounded={isRounded}
         disabled={isLoading || props.disabled}
         className={cn(
           (isPulsing || isPulsingBriefly) && "s-animate-pulse",
