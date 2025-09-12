@@ -1,6 +1,5 @@
 import {
   ActionCodeBoxIcon,
-  BellIcon,
   BookOpenIcon,
   ContextItem,
   EyeIcon,
@@ -53,14 +52,6 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     description:
       "Monitor and track MCP (Model Context Protocol) actions executed by your agents.",
     onlyAdminCanManage: true,
-  },
-  {
-    id: "transcription",
-    label: "Audio transcription",
-    featureFlag: "simple_audio_transcription",
-    visibleWithoutAccess: false,
-    icon: BellIcon,
-    description: "Transcribe audio files using state-of-the-art models.",
   },
 ];
 
