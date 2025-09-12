@@ -73,7 +73,11 @@ export default function DataSourceView({
     setError(false);
     let isCancelled = false;
     void (async () => {
-      if (searchQuery.trim().length == 0 && tagsIn.trim().length == 0 && tagsNotIn.trim().length == 0) {
+      if (
+        searchQuery.trim().length == 0 &&
+        tagsIn.trim().length == 0 &&
+        tagsNotIn.trim().length == 0
+      ) {
         setDocuments([]);
 
         return;
@@ -154,7 +158,7 @@ export default function DataSourceView({
             />
           </div>
         </div>
-        <div className="sm:col-span-6 mt-4">
+        <div className="mt-4 sm:col-span-6">
           <div className="mt-1 flex rounded-md">
             <Input
               type="text"
@@ -171,7 +175,7 @@ export default function DataSourceView({
             />
           </div>
         </div>
-        <div className="sm:col-span-6 mt-4">
+        <div className="mt-4 sm:col-span-6">
           <div className="mt-1 flex rounded-md">
             <Input
               type="text"
@@ -290,7 +294,9 @@ export default function DataSourceView({
                 }
                 if (
                   !isLoading &&
-                  (searchQuery.length > 0 || tagsIn.length > 0 || tagsNotIn.length > 0) &&
+                  (searchQuery.length > 0 ||
+                    tagsIn.length > 0 ||
+                    tagsNotIn.length > 0) &&
                   documents.length === 0
                 ) {
                   return <p>No document found.</p>;
