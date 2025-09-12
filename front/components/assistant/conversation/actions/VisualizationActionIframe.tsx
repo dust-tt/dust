@@ -153,7 +153,10 @@ function useVisualizationDataHandler({
           break;
 
         case "setErrorMessage":
-          logger.info("Visualization error: ", data.params.errorMessage);
+          logger.info(
+            { errorMessage: data.params.errorMessage },
+            "Visualization error"
+          );
           setErrorMessage(data.params.errorMessage);
           break;
 
