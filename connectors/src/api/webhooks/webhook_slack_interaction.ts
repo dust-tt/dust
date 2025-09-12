@@ -24,6 +24,8 @@ export const STATIC_AGENT_CONFIG = "static_agent_config";
 export const APPROVE_TOOL_EXECUTION = "approve_tool_execution";
 export const REJECT_TOOL_EXECUTION = "reject_tool_execution";
 export const LEAVE_FEEDBACK = "leave_feedback";
+export const LEAVE_FEEDBACK_UP = "leave_feedback_up";
+export const LEAVE_FEEDBACK_DOWN = "leave_feedback_down";
 
 const ToolValidationActionsCodec = t.union([
   t.literal(APPROVE_TOOL_EXECUTION),
@@ -32,9 +34,13 @@ const ToolValidationActionsCodec = t.union([
 
 const FeedbackActionSchema = t.type({
   type: t.string,
-  action_id: t.literal(LEAVE_FEEDBACK),
+  action_id: t.union([
+    t.literal(LEAVE_FEEDBACK_UP),
+    t.literal(LEAVE_FEEDBACK_DOWN),
+  ]),
   block_id: t.string,
   action_ts: t.string,
+  value: t.string,
 });
 
 const StaticAgentConfigSchema = t.type({
@@ -321,10 +327,10 @@ const _webhookSlackInteractionsAPIHandler = async (
             "Failed to validate tool execution"
           );
         }
-      } else if (action.action_id === LEAVE_FEEDBACK) {
+      } else if (action.action_id === LEAVE_FEEDBACK_UP || action.action_id === LEAVE_FEEDBACK_DOWN) {
         // Handle feedback button click - open modal
-        const blockData = JSON.parse(action.block_id);
-        const { conversationId, messageId, workspaceId } = blockData;
+        const buttonData = JSON.parse((action as any).value || "{}");
+        const { conversationId, messageId, workspaceId, preselectedThumb } = buttonData;
 
         if (payload.trigger_id) {
           // Open the feedback modal
@@ -335,6 +341,7 @@ const _webhookSlackInteractionsAPIHandler = async (
             messageId,
             workspaceId,
             slackUserId: payload.user.id,
+            preselectedThumb,
           });
         }
       }

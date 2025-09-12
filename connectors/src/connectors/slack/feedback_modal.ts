@@ -11,6 +11,7 @@ export interface FeedbackModalMetadata {
   messageId: string;
   workspaceId: string;
   slackUserId: string;
+  preselectedThumb?: "up" | "down";
 }
 
 export async function openFeedbackModal({
@@ -20,6 +21,7 @@ export async function openFeedbackModal({
   messageId,
   workspaceId,
   slackUserId,
+  preselectedThumb,
 }: {
   slackClient: WebClient;
   triggerId: string;
@@ -27,6 +29,7 @@ export async function openFeedbackModal({
   messageId: string;
   workspaceId: string;
   slackUserId: string;
+  preselectedThumb?: "up" | "down";
 }) {
   try {
     const metadata: FeedbackModalMetadata = {
@@ -34,6 +37,7 @@ export async function openFeedbackModal({
       messageId,
       workspaceId,
       slackUserId,
+      preselectedThumb,
     };
 
     await slackClient.views.open({
@@ -72,6 +76,13 @@ export async function openFeedbackModal({
             element: {
               type: "radio_buttons",
               action_id: "rating_selection",
+              initial_option: preselectedThumb ? {
+                text: {
+                  type: "plain_text",
+                  text: preselectedThumb === "up" ? "👍 Helpful" : "👎 Not helpful",
+                },
+                value: preselectedThumb,
+              } : undefined,
               options: [
                 {
                   text: {

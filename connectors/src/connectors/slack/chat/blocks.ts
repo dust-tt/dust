@@ -4,6 +4,8 @@ import type { RequestToolPermissionActionValueParsed } from "@connectors/api/web
 import {
   APPROVE_TOOL_EXECUTION,
   LEAVE_FEEDBACK,
+  LEAVE_FEEDBACK_DOWN,
+  LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
 } from "@connectors/api/webhooks/webhook_slack_interaction";
@@ -87,23 +89,21 @@ function makeContextSectionBlocks({
     }
   }
 
+  // Add feedback button blocks when the message is answered and we have the required IDs
+  if (state === "answered" && conversationId && messageId) {
+    blocks.push(
+      ...makeFeedbackButtonBlock({ conversationId, messageId, workspaceId })
+    );
+  }
+
   blocks.push(
     makeFooterBlock({
       state,
       assistantName,
       conversationUrl,
       workspaceId,
-      conversationId,
-      messageId,
     })
   );
-
-  // Add feedback button block when the message is answered and we have the required IDs
-  if (state === "answered" && conversationId && messageId) {
-    blocks.push(
-      makeFeedbackButtonBlock({ conversationId, messageId, workspaceId })
-    );
-  }
 
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
@@ -119,25 +119,52 @@ export function makeFeedbackButtonBlock({
   messageId: string;
   workspaceId: string;
 }) {
-  return {
-    type: "actions",
-    block_id: JSON.stringify({
-      conversationId,
-      messageId,
-      workspaceId,
-    }),
-    elements: [
-      {
-        type: "button",
-        text: {
-          type: "plain_text",
-          text: "Leave feedback 👍👎",
-          emoji: true,
+  return [
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: "What this answer helpful?",
         },
-        action_id: LEAVE_FEEDBACK,
-      },
-    ],
-  };
+      ],
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "👍",
+            emoji: true,
+          },
+          action_id: LEAVE_FEEDBACK_UP,
+          value: JSON.stringify({
+            conversationId,
+            messageId,
+            workspaceId,
+            preselectedThumb: "up",
+          }),
+        },
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "👎",
+            emoji: true,
+          },
+          action_id: LEAVE_FEEDBACK_DOWN,
+          value: JSON.stringify({
+            conversationId,
+            messageId,
+            workspaceId,
+            preselectedThumb: "down",
+          }),
+        },
+      ],
+    },
+  ];
 }
 
 function makeThinkingBlock({
@@ -208,15 +235,11 @@ export function makeFooterBlock({
   assistantName,
   conversationUrl,
   workspaceId,
-  conversationId,
-  messageId,
 }: {
   state: "thinking" | "error" | "answered";
   assistantName?: string;
   conversationUrl: string | null;
   workspaceId: string;
-  conversationId?: string;
-  messageId?: string;
 }) {
   const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
   let attribution = "";
@@ -244,7 +267,9 @@ export function makeFooterBlock({
   }
   links.push(`<${assistantsUrl}|Browse agents>`);
 
-  const fullText = attribution ? `${attribution} | ${links.join(" · ")}` : links.join(" · ");
+  const fullText = attribution
+    ? `${attribution} | ${links.join(" · ")}`
+    : links.join(" · ");
 
   return {
     type: "context",
