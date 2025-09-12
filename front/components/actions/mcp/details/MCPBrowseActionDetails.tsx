@@ -1,17 +1,24 @@
 import { Button, GlobeAltIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { isBrowseResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isBrowseResultResourceType,
+  isToolGeneratedFile,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export function MCPBrowseActionDetails({
   toolOutput,
   toolParams,
   viewType,
+  owner,
 }: ToolExecutionDetailsProps) {
   const urls = toolParams.urls as string[];
   const browseResults =
     toolOutput?.filter(isBrowseResultResourceType).map((o) => o.resource) ?? [];
+  const generatedFiles =
+    toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
 
   return (
     <ActionDetailsWrapper
@@ -51,9 +58,11 @@ export function MCPBrowseActionDetails({
                         <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                           {r.requestedUrl}
                         </span>
-                        <span className="text-sm text-foreground dark:text-foreground-night">
-                          {r.description ?? r.text.slice(0, 1024)}
-                        </span>
+                        {r.text && (
+                          <span className="text-sm text-foreground dark:text-foreground-night whitespace-pre-wrap">
+                            {r.description ?? r.text.slice(0, 2048)}
+                          </span>
+                        )}
                       </>
                     ) : (
                       <span className="text-sm text-foreground dark:text-foreground-night">
@@ -65,6 +74,22 @@ export function MCPBrowseActionDetails({
                 ))}
           </div>
         </div>
+
+        {generatedFiles.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              Files
+            </span>
+            {generatedFiles.map((file) => (
+              <ToolGeneratedFileDetails
+                key={file.fileId}
+                resource={file}
+                icon={GlobeAltIcon}
+                owner={owner}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </ActionDetailsWrapper>
   );

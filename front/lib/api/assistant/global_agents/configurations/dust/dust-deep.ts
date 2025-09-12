@@ -24,6 +24,7 @@ import type {
 import {
   assertNever,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
   GLOBAL_AGENTS_SID,
   GPT_5_MODEL_CONFIG,
@@ -42,13 +43,19 @@ You are an agent. Your primary role is to conduct research tasks.
 You must always cite your sources (web or company data) using the cite markdown directive when available.
 </primary_goal>`;
 
+const browserSummaryAgentPrimaryGoal = `<primary_goal>
+You are a web page summary agent. Your primary role is to summarize web page content.
+You are provided with a web page content and you must produce a high quality comprehensive summary of the content.
+Your goal is to remove the noise without altering meaning or removing important information. You may use a bullet-points-heavy format.
+</primary_goal>`;
+
 const requestComplexityPrompt = `<request_complexity>
 Start by identifying the complexity of the user request and categorize it between "simple" and "complex" request.
 
 A request is simple if:
 - it doesn't require any external or recent knowledge (it is general, time-insensitive knowledge that you can answer strictly using your own internal knowledge)
 - it requires only 1-2 quick semantic searches against the user's internal company data
-- it requires only a simple websearch and potentially browsing 1-2 web pages
+- it requires only a simple websearch and potentially browsing 1-3 web pages
 - it requires only 1 or 2 steps of tool uses
 
 A request is complex if:
@@ -73,7 +80,7 @@ If the request requires general information that is likely more recent than your
 Do not ask clarifying questions for simple requests; proceed directly (keep any assumptions in your internal reasoning).
 
 Web browsing for simple tasks:
-- If at most 1-2 pages need to be checked, you may browse directly yourself.
+- If at most 1-3 pages need to be checked, you may browse directly yourself.
 - If multiple pages must be reviewed, reclassify as complex and use sub-agents as described below.
 
 Do not use sub-agents for simple requests, unless you need to use a tool that is only available for sub agents.
@@ -181,10 +188,12 @@ Exception for clarifications (very complex tasks only):
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${toolsPrompt}`;
+const browserSummaryAgentInstructions = `${browserSummaryAgentPrimaryGoal}`;
 
 function getModelConfig(
   owner: WorkspaceType,
-  prefer: "anthropic" | "openai"
+  prefer: "anthropic" | "openai",
+  reasoning: boolean = true
 ): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: AgentReasoningEffort;
@@ -196,12 +205,16 @@ function getModelConfig(
     prefer === "anthropic"
       ? {
           model: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-          reasoningEffort: "medium",
+          reasoningEffort: reasoning
+            ? "medium"
+            : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         }
       : prefer === "openai"
         ? {
             model: GPT_5_MODEL_CONFIG,
-            reasoningEffort: "medium",
+            reasoningEffort: reasoning
+              ? "medium"
+              : GPT_5_MODEL_CONFIG.minimumReasoningEffort,
           }
         : assertNever(prefer);
 
@@ -212,11 +225,15 @@ function getModelConfig(
     prefer === "anthropic"
       ? {
           model: GPT_5_MODEL_CONFIG,
-          reasoningEffort: "medium",
+          reasoningEffort: reasoning
+            ? "medium"
+            : GPT_5_MODEL_CONFIG.minimumReasoningEffort,
         }
       : {
           model: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-          reasoningEffort: "medium",
+          reasoningEffort: reasoning
+            ? "medium"
+            : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         };
 
   if (isProviderWhitelisted(owner, preferredModel.model.providerId)) {
@@ -242,6 +259,19 @@ function getModelConfig(
     modelConfiguration,
     reasoningEffort: modelConfiguration.defaultReasoningEffort,
   };
+}
+
+function getFastModelConfig(owner: WorkspaceType): {
+  modelConfiguration: ModelConfigurationType;
+  reasoningEffort: AgentReasoningEffort;
+} | null {
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return {
+      modelConfiguration: GEMINI_2_5_FLASH_MODEL_CONFIG,
+      reasoningEffort: "none",
+    };
+  }
+  return getModelConfig(owner, "anthropic", false);
 }
 
 function getCompanyDataAction(
@@ -612,6 +642,70 @@ export function _getDustTaskGlobalAgent(
     ...dustTaskAgent,
     status: "active",
     actions,
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+  };
+}
+
+export function _getBrowserSummaryAgent(
+  auth: Authenticator,
+  { settings }: { settings: GlobalAgentSettings | null }
+): AgentConfigurationType | null {
+  const owner = auth.getNonNullableWorkspace();
+
+  const name = "dust-browser-summary";
+  const description = "A agent that summarizes web page content.";
+
+  const pictureUrl =
+    "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";
+
+  const browserSummaryAgent: Omit<
+    AgentConfigurationType,
+    "status" | "maxStepsPerRun" | "actions"
+  > = {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name,
+    description,
+    instructions: browserSummaryAgentInstructions,
+    pictureUrl,
+    scope: "global" as const,
+    userFavorite: false,
+    model: dummyModelConfiguration,
+    visualizationEnabled: true,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+
+  const modelConfig = getFastModelConfig(owner);
+
+  if (!modelConfig || settings?.status === "disabled_by_admin") {
+    return {
+      ...browserSummaryAgent,
+      status: "disabled_by_admin",
+      actions: [],
+      maxStepsPerRun: 0,
+    };
+  }
+
+  const model: AgentModelConfigurationType = {
+    providerId: modelConfig.modelConfiguration.providerId,
+    modelId: modelConfig.modelConfiguration.modelId,
+    temperature: 1.0,
+    reasoningEffort: modelConfig.reasoningEffort,
+  };
+
+  browserSummaryAgent.model = model;
+
+  return {
+    ...browserSummaryAgent,
+    status: "active",
+    actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }

@@ -336,6 +336,7 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.SLACK,
   // Hidden helper sub-agent, only invoked via run_agent by dust-deep
   GLOBAL_AGENTS_SID.DUST_TASK,
+  GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
 ];
 
 export async function getGlobalAgents(
@@ -364,6 +365,7 @@ export async function getGlobalAgents(
     helperPromptInstance,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
+    webtoolsEdgeMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
     contentCreationMCPServerView,
@@ -390,6 +392,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "web_search_&_browse"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "webtools_edge"
         )
       : null,
     variant === "full"
@@ -452,6 +460,13 @@ export async function getGlobalAgents(
     );
 
   const flags = await getFeatureFlags(owner);
+  const getWebSearchBrowseViewFor = (sId: string | number) => {
+    const useEdge =
+      sId === GLOBAL_AGENTS_SID.DUST_TASK &&
+      flags.includes("webtools_edge") &&
+      webtoolsEdgeMCPServerView;
+    return useEdge ? webtoolsEdgeMCPServerView : webSearchBrowseMCPServerView;
+  };
 
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
@@ -495,7 +510,7 @@ export async function getGlobalAgents(
       helperPromptInstance,
       globalAgentSettings,
       agentRouterMCPServerView,
-      webSearchBrowseMCPServerView,
+      webSearchBrowseMCPServerView: getWebSearchBrowseViewFor(sId),
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
       contentCreationMCPServerView,

@@ -184,7 +184,10 @@ export function MCPActionDetails({
     }
   }
 
-  if (internalMCPServerName === "web_search_&_browse") {
+  if (
+    internalMCPServerName === "web_search_&_browse" ||
+    internalMCPServerName === "webtools_edge"
+  ) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails

@@ -97,6 +97,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "toolsets",
   "web_search_&_browse",
+  "webtools_edge",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -214,6 +215,27 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     serverInfo: {
       name: DEFAULT_WEBSEARCH_ACTION_NAME,
+      version: "1.0.0",
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      icon: "ActionGlobeAltIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  webtools_edge: {
+    id: 29,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("webtools_edge");
+    },
+    isPreview: true,
+    tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "webtools_edge",
       version: "1.0.0",
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       icon: "ActionGlobeAltIcon",
