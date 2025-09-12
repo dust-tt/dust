@@ -32,9 +32,12 @@ export type FileUseCaseMetadata = {
 };
 
 export const fileShareScopeSchema = z.enum([
-  "conversation_participants",
+  "none",
   "workspace",
   "public",
+  // TODO(interactive-content/canvas): deprecated. Keep it for backward compatibility.
+  // Can be removed after migration (conversation_participants -> workspace) is done
+  "conversation_participants",
 ]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;

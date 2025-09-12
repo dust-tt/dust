@@ -138,6 +138,10 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
+    if (shareableFile.shareScope === "none") {
+      return null;
+    }
+
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
@@ -166,8 +170,12 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    if (isFileUsingConversationFiles(content)) {
-      // If the file is using conversation files, we don't want to make it accessible.
+    // If the file is using conversation files, we don't want to make it accessible publicly.
+    // can be accessed by workspace users only
+    if (
+      shareableFile.shareScope === "public" &&
+      isFileUsingConversationFiles(content)
+    ) {
       return null;
     }
 
@@ -297,11 +305,11 @@ export class FileResource extends BaseResource<FileModel> {
     const updateResult = await this.update({ status: "ready" });
 
     // For Content Creation conversation files, automatically create a ShareableFileModel with
-    // default conversation_participants scope.
+    // default none scope.
     if (this.isContentCreation) {
       await ShareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "conversation_participants",
+        shareScope: "none",
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),

@@ -85,25 +85,29 @@ async function handler(
     });
   }
 
-  // This endpoint does not support conversation participants sharing. It goes through the private
-  // API endpoint instead.
-  if (shareScope === "conversation_participants") {
+  // If the share scope is "none", the file should not be accessible to anyone.
+  if (shareScope === "none") {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
-        type: "file_not_found",
-        message: "File not found.",
+        type: "invalid_request_error",
+        message: "You cannot access this file.",
       },
     });
   }
 
   // For workspace sharing, check authentication.
-  if (shareScope === "workspace") {
+  // conversation_participants is now treated as workspace scope
+  if (
+    shareScope === "workspace" ||
+    shareScope === "conversation_participants"
+  ) {
     const isWorkspaceUser = await isSessionWithUserFromWorkspace(
       req,
       res,
       workspace.sId
     );
+
     if (!isWorkspaceUser) {
       return apiError(req, res, {
         status_code: 404,
