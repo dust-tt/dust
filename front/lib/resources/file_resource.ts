@@ -170,13 +170,12 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    // Only block conversation files for public sharing.
-    // conversation_participants is now treated as workspace scope.
+    // If the file is using conversation files, we don't want to make it accessible publicly.
+    // can be accessed by workspace users only
     if (
       shareableFile.shareScope === "public" &&
       isFileUsingConversationFiles(content)
     ) {
-      // If the file is using conversation files, we don't want to make it accessible publicly.
       return null;
     }
 
