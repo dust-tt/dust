@@ -128,6 +128,15 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
+  const sendIframeReadyStatus = useCallback(
+    async ({ ready }: { ready: boolean }) => {
+      await sendCrossDocumentMessage("setIframeReady", {
+        ready,
+      });
+    },
+    [sendCrossDocumentMessage]
+  );
+
   const downloadFile = useCallback(
     async (blob: Blob, filename?: string) => {
       await sendCrossDocumentMessage("downloadFileRequest", { blob, filename });
@@ -184,6 +193,7 @@ export function useVisualizationAPI(
     fetchCode,
     fetchFile,
     sendHeightToParent,
+    sendIframeReadyStatus,
   };
 }
 
@@ -292,6 +302,7 @@ export function VisualizationWrapper({
     fetchFile,
     error,
     sendHeightToParent,
+    sendIframeReadyStatus,
     downloadFile,
     displayCode,
     addEventListener,
@@ -350,6 +361,11 @@ export function VisualizationWrapper({
 
     loadCode();
   }, [fetchCode, fetchFile, memoizedDownloadFile]);
+
+  // Send iframe ready status when runnerParams changes
+  useEffect(() => {
+    sendIframeReadyStatus({ ready: runnerParams !== null });
+  }, [runnerParams, sendIframeReadyStatus]);
 
   const { ref } = useResizeDetector({
     handleHeight: true,

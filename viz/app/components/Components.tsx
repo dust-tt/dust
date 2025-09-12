@@ -1,9 +1,24 @@
 "use client";
 
-export const Spinner = () => {
+import React from "react";
+
+export function Spinner() {
   return (
-    <div className="flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent border-solid rounded-full animate-spin"></div>
+    <div className="fixed inset-0 flex items-center justify-center bg-white dark:bg-gray-900">
+      <div className="flex space-x-2">
+        <div
+          className="w-3 h-3 bg-gray-400 dark:bg-gray-600 rounded-full animate-bounce"
+          style={{ animationDelay: "0ms" }}
+        ></div>
+        <div
+          className="w-3 h-3 bg-gray-400 dark:bg-gray-600 rounded-full animate-bounce"
+          style={{ animationDelay: "150ms" }}
+        ></div>
+        <div
+          className="w-3 h-3 bg-gray-400 dark:bg-gray-600 rounded-full animate-bounce"
+          style={{ animationDelay: "300ms" }}
+        ></div>
+      </div>
     </div>
   );
-};
+}

@@ -19,12 +19,17 @@ interface setErrorMessageParams {
   errorMessage: string;
 }
 
+interface setIframeReadyParams {
+  ready: boolean;
+}
+
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: setErrorMessageParams;
+  setIframeReady: setIframeReadyParams;
   downloadFileRequest: DownloadFileRequestParams;
   displayCode: null;
 };
@@ -40,5 +45,6 @@ export interface CommandResultMap {
   downloadFileRequest: { blob: Blob; filename?: string };
   setContentHeight: void;
   setErrorMessage: void;
+  setIframeReady: void;
   displayCode: void;
 }
