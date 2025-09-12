@@ -272,8 +272,8 @@ export function SecurityComplianceSection() {
           </div>
           <H3 className="mb-4">Compliance</H3>
           <P size="sm" className="text-muted-foreground">
-            SOC 2 Type II certified. GDPR and HIPAA compliant. Enterprise audit
-            logs and data residency options.
+            SOC 2 Type II certified. GDPR compliant. Enables HIPAA compliance.
+            Enterprise audit logs and data residency options.
           </P>
         </div>
       </div>
