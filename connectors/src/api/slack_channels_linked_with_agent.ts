@@ -13,6 +13,7 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
+import { Err } from "@dust-tt/client";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,
@@ -154,9 +155,12 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
   );
 
   // If there's an error that's other than workflow already started, return it.
-  const nonAlreadyStartedError = joinPromises
+  const nonAlreadyStartedError: Err<Error> | undefined = joinPromises
     .filter((j) => j.isErr())
-    .find((j) => !(j.error instanceof WorkflowExecutionAlreadyStartedError));
+    .find(
+      (j: Err<Error>) =>
+        !(j.error instanceof WorkflowExecutionAlreadyStartedError)
+    );
   if (nonAlreadyStartedError) {
     return apiError(req, res, {
       status_code: 400,
@@ -167,10 +171,10 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     });
   }
 
-  const alreadyStartedError = joinPromises
+  const alreadyStartedError: Err<Error> | undefined = joinPromises
     .filter((j) => j.isErr())
     .filter(
-      (j) => j.error instanceof WorkflowExecutionAlreadyStartedError
+      (j: Err<Error>) => j.error instanceof WorkflowExecutionAlreadyStartedError
     )?.[0];
   if (alreadyStartedError) {
     return apiError(req, res, {
