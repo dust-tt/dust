@@ -13,6 +13,7 @@ import {
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -141,7 +142,8 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   // Try to get user from auth, or from email header if using API key
-  let user = auth.user();
+  let userResource = auth.user();
+  let user = userResource ? userResource.toJSON() : null;
 
   if (!user && auth.isKey()) {
     // Check if we have a user email header (used by Slack integration)
@@ -153,8 +155,12 @@ async function handler(
         // Get the first user (there might be multiple with same email)
         const workspace = auth.getNonNullableWorkspace();
         for (const u of users) {
-          const membership = await u.getMembership(workspace.id);
-          if (membership) {
+          const memberships = await MembershipResource.getActiveMemberships({
+            users: [u],
+            workspace,
+          });
+          if (memberships.memberships.length > 0) {
+            userResource = u;
             user = u.toJSON();
             break;
           }
@@ -226,7 +232,7 @@ async function handler(
       const created = await upsertMessageFeedback(auth, {
         messageId,
         conversation,
-        user: user,
+        user,
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
         content: bodyValidation.right.feedbackContent || "",
@@ -249,7 +255,7 @@ async function handler(
       const deleted = await deleteMessageFeedback(auth, {
         messageId,
         conversation,
-        user: user,
+        user,
       });
 
       if (deleted) {

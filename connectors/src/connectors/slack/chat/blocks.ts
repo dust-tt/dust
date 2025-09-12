@@ -3,7 +3,6 @@ import type { LightAgentConfigurationType } from "@dust-tt/client";
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
-  LEAVE_FEEDBACK,
   LEAVE_FEEDBACK_DOWN,
   LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,

@@ -1,14 +1,15 @@
 import type { Block, KnownBlock } from "@slack/web-api";
-import { apiConfig } from "@connectors/lib/api/config";
-import {
-  getSlackClient,
-  getSlackUserInfo,
-} from "@connectors/connectors/slack/lib/slack_client";
+
 import {
   makeFeedbackSubmittedBlock,
   makeFooterBlock,
 } from "@connectors/connectors/slack/chat/blocks";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import {
+  getSlackClient,
+  getSlackUserInfo,
+} from "@connectors/connectors/slack/lib/slack_client";
+import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -235,7 +236,9 @@ export async function submitFeedbackToAPI({
           for (let i = 0; i < currentBlocks.length; i++) {
             const block = currentBlocks[i];
 
-            if (!block) continue;
+            if (!block) {
+              continue;
+            }
 
             // Check if this is the feedback context block
             if (isFeedbackQuestionBlock(block)) {
