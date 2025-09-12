@@ -59,7 +59,7 @@ export function CreateWebhookSourceFormContent({
           render={({ field }) => (
             <Input
               {...field}
-              label="Name *"
+              label="Name"
               placeholder="Name..."
               isError={form.formState.errors.name !== undefined}
               message={form.formState.errors.name?.message}
@@ -77,7 +77,7 @@ export function CreateWebhookSourceFormContent({
           render={({ field }) => (
             <Input
               {...field}
-              label="Secret *"
+              label="Secret"
               type="password"
               placeholder="Secret for validation..."
               isError={form.formState.errors.secret !== undefined}
@@ -95,7 +95,7 @@ export function CreateWebhookSourceFormContent({
           render={({ field }) => (
             <Input
               {...field}
-              label="Signature Header *"
+              label="Signature Header"
               placeholder="Signature header..."
               isError={form.formState.errors.signatureHeader !== undefined}
               message={form.formState.errors.signatureHeader?.message}
@@ -140,7 +140,7 @@ export function CreateWebhookSourceFormContent({
           name="customHeaders"
           render={({ field }) => (
             <>
-              <Label htmlFor="customHeaders">Custom Headers (JSON)</Label>
+              <Label htmlFor="customHeaders">Custom Headers (optional)</Label>
               <TextArea
                 {...field}
                 value={field.value ?? undefined}
