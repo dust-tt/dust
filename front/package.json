@@ -25,8 +25,6 @@
     "sparkle:dev": "./admin/sparkle_dev.sh"
   },
   "dependencies": {
-    "@babel/parser": "^7.28.4",
-    "@babel/types": "^7.28.4",
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.2.612",
