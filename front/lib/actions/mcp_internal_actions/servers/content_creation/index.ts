@@ -207,7 +207,7 @@ const createServer = (
       auth,
       { toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
       async (
-        { file_id, old_string, new_string },
+        { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
         const { agentConfiguration } = agentLoopContext?.runContext ?? {};
