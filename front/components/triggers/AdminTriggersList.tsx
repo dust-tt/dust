@@ -1,7 +1,16 @@
-import { classNames, DataTable, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  classNames,
+  DataTable,
+  EmptyCTA,
+  PlusIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
+import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -52,6 +61,9 @@ export const AdminTriggersList = ({
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
+  });
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: TRIGGER_BUTTONS_CONTAINER_ID,
   });
 
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
@@ -131,6 +143,16 @@ export const AdminTriggersList = ({
     return columns;
   }, []);
 
+  const CreateWebhookCTA = () => (
+    <Button
+      label="Create webhook source"
+      variant="outline"
+      icon={PlusIcon}
+      size="sm"
+      onClick={() => {}}
+    />
+  );
+
   if (isWebhookSourcesWithViewsLoading) {
     return (
       <div className="mt-16 flex justify-center">
@@ -139,20 +161,24 @@ export const AdminTriggersList = ({
     );
   }
 
-  if (rows.length === 0) {
-    return (
-      <div className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-        You don’t have any triggers yet.
-      </div>
-    );
-  }
-
   return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      className="pb-4"
-      filterColumn="name"
-    />
+    <>
+      {rows.length === 0 ? (
+        <EmptyCTA
+          message="You don’t have any triggers yet."
+          action={<CreateWebhookCTA />}
+        />
+      ) : (
+        <>
+          {portalToHeader(<CreateWebhookCTA />)}
+          <DataTable
+            data={rows}
+            columns={columns}
+            className="pb-4"
+            filterColumn="name"
+          />
+        </>
+      )}
+    </>
   );
 };
