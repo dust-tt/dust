@@ -130,7 +130,6 @@ export async function runToolActivity(
           });
         }
 
-        // TODO: Here we may want to return a success event instead of an error event, but we won't be able to pass any content in the success event.
         await updateResourceAndPublishEvent(auth, {
           event: event.isError
             ? {
