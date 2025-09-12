@@ -343,8 +343,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       dangerouslySkipPermissionFiltering?: boolean;
     }
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
-    const owner = auth.getNonNullableWorkspace();
-
     const conversation = await this.fetchById(auth, sId, {
       includeDeleted: options?.includeDeleted,
     });
@@ -370,10 +368,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       id: conversation.id,
       created: conversation.createdAt.getTime(),
       sId: conversation.sId,
-      owner,
       title: conversation.title,
-      visibility: conversation.visibility,
-      depth: conversation.depth,
       triggerId: conversation.triggerSId(),
       actionRequired,
       unread,
@@ -453,11 +448,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           actionRequired: p.actionRequired,
           hasError: c.hasError,
           sId: c.sId,
-          owner,
           title: c.title,
-          visibility: c.visibility,
-          depth: c.depth,
-          triggerId: ConversationResource.triggerIdToSId(c.triggerId, owner.id),
           requestedGroupIds: resource.getRequestedGroupIdsFromModel(auth),
           requestedSpaceIds: resource.getRequestedSpaceIdsFromModel(auth),
         });
@@ -499,10 +490,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           id: c.id,
           created: c.createdAt.getTime(),
           sId: c.sId,
-          owner,
           title: c.title,
-          visibility: c.visibility,
-          depth: c.depth,
           triggerId: triggerId,
           actionRequired,
           unread,
@@ -639,7 +627,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversation,
       action,
     }: {
-      conversation: ConversationWithoutContentType;
+      conversation: ConversationWithoutContentType | ConversationType;
       action: ParticipantActionType;
     }
   ) {
@@ -673,7 +661,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             conversationId: conversation.id,
             action,
             userId: user.id,
-            workspaceId: conversation.owner.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
             unread: false,
             actionRequired: false,
           },
