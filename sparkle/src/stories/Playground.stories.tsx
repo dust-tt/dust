@@ -7,6 +7,7 @@ import {
   Button,
   cn,
   MicIcon,
+  PlusIcon,
   RainbowEffect,
   RobotIcon,
   SquareIcon,
@@ -141,124 +142,186 @@ export const Demo = () => {
   };
 
   return (
-    <div className="s-flex s-w-[900px] s-flex-1 s-p-0">
-      <RainbowEffect
-        containerClassName="s-w-full"
-        className="s-w-full"
-        size={isFocused ? "large" : "medium"}
-      >
-        <div
-          ref={divRef}
-          onClick={handleFocus}
-          className={cn(
-            "s-relative s-flex s-w-full s-flex-row",
-            "s-rounded-3xl s-border s-border-border/0 s-bg-primary-50 s-transition-all",
-            isFocused
-              ? "s-border-border s-ring-2 s-ring-highlight-300 s-ring-offset-2"
-              : ""
-          )}
+    <div className="s-flex s-h-[600px] s-w-full s-items-end s-justify-center s-border s-border-warning/20 sm:s-p-0 md:s-p-6">
+      <div className="s-flex s-w-full s-max-w-[900px] s-flex-1 s-p-0">
+        <RainbowEffect
+          containerClassName="s-w-full"
+          className="s-w-full"
+          size={isFocused ? "large" : "medium"}
         >
-          <div className="s-flex s-w-full s-flex-col">
-            <div className="s-h-full s-w-full s-p-5">Ask a question</div>
-            <div className="s-flex s-w-full s-gap-2 s-p-4">
-              <div className="s-flex s-gap-0">
+          <div
+            ref={divRef}
+            onClick={handleFocus}
+            className={cn(
+              "s-relative s-flex s-w-full s-flex-row",
+              "s-border s-border-border/0 s-bg-primary-50 s-transition-all md:s-rounded-3xl",
+              isFocused
+                ? "s-border-border md:s-ring-2 md:s-ring-highlight-300 md:s-ring-offset-2"
+                : ""
+            )}
+          >
+            <div className="s-flex s-w-full s-flex-col">
+              <div className="s-h-full s-w-full s-p-5">Ask a question</div>
+              <div className="s-flex s-w-full s-gap-2 s-p-4">
                 <Button
-                  variant="ghost"
-                  icon={AttachmentIcon}
-                  size="xs"
+                  variant="outline"
+                  icon={PlusIcon}
+                  size="sm"
                   tooltip="Attach a document"
+                  className="md:s-hidden"
                 />
-                <Button
-                  variant="ghost"
-                  icon={BoltIcon}
-                  size="xs"
-                  tooltip="Add functionality"
-                />
-                <Button
-                  variant="ghost"
-                  icon={RobotIcon}
-                  size="xs"
-                  tooltip="Mention an Agent"
-                />
-              </div>
-              <div className="s-grow" />
-              <div className="s-flex s-items-center s-gap-1">
-                <div
-                  id="Recording"
-                  className={cn(
-                    "s-duration-600 s-flex s-items-center s-gap-3 s-overflow-hidden s-px-2 s-transition-all s-ease-in-out",
-                    recordState === "pressAndHold" ||
-                      recordState === "recording"
-                      ? "s-w-24 s-opacity-100"
-                      : "s-w-6 s-opacity-0"
-                  )}
-                >
-                  <div className="s-heading-xs">
-                    {formatTime(elapsedSeconds)}
-                  </div>
-                  <div className="s-flex s-h-5 s-items-center s-gap-0.5">
-                    <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[33%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[18%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[64%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[98%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[56%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[6%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[34%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[76%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[46%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[12%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                    <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
-                  </div>
+                <div className="s-hidden s-gap-0 md:s-flex">
+                  <Button
+                    variant="ghost"
+                    icon={AttachmentIcon}
+                    size="xs"
+                    tooltip="Attach a document"
+                  />
+                  <Button
+                    variant="ghost"
+                    icon={BoltIcon}
+                    size="xs"
+                    tooltip="Add functionality"
+                  />
+                  <Button
+                    variant="ghost"
+                    icon={RobotIcon}
+                    size="xs"
+                    tooltip="Mention an Agent"
+                  />
                 </div>
-                <Button
-                  id={
-                    recordState === "recording"
-                      ? "Stop Recording Button"
-                      : "Record Button"
-                  }
-                  ref={recordButtonRef}
-                  variant={recordState === "recording" ? "highlight" : "ghost"}
-                  icon={recordState === "recording" ? SquareIcon : MicIcon}
-                  size="xs"
-                  tooltip={
-                    recordState === "recording"
-                      ? "Stop recording"
-                      : recordState === "pressAndHold"
-                        ? ""
-                        : "Click, or Press & Hold to record"
-                  }
-                  label={recordState === "recording" ? "Stop" : undefined}
-                  onClick={handleRecordClick}
-                  onMouseDown={
-                    recordState === "recording"
-                      ? undefined
-                      : handleRecordMouseDown
-                  }
-                  onMouseUp={
-                    recordState === "recording"
-                      ? undefined
-                      : handleRecordMouseUp
-                  }
-                  onMouseLeave={
-                    recordState === "recording"
-                      ? undefined
-                      : handleRecordMouseLeave
-                  }
-                />
-                <Button
-                  variant="highlight"
-                  icon={ArrowUpIcon}
-                  size="mini"
-                  tooltip="Send message"
-                  isRounded
-                  disabled={recordState === "recording"}
-                />
+                <div className="s-grow" />
+                <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
+                  <div
+                    id="Recording"
+                    className={cn(
+                      "s-duration-600 s-flex s-items-center s-gap-3 s-overflow-hidden s-px-2 s-transition-all s-ease-in-out",
+                      recordState === "pressAndHold" ||
+                        recordState === "recording"
+                        ? "s-w-24 s-opacity-100"
+                        : "s-w-6 s-opacity-0"
+                    )}
+                  >
+                    <div className="s-heading-xs">
+                      {formatTime(elapsedSeconds)}
+                    </div>
+                    <div className="s-flex s-h-5 s-items-center s-gap-0.5">
+                      <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[33%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[18%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[64%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[98%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[56%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[6%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[34%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[76%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[46%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[12%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                      <div className="s-h-[22%] s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground" />
+                    </div>
+                  </div>
+                  {/* Large */}
+                  <Button
+                    id={
+                      recordState === "recording"
+                        ? "Stop Recording Button"
+                        : "Record Button"
+                    }
+                    className="s-hidden md:s-flex"
+                    ref={recordButtonRef}
+                    variant={
+                      recordState === "recording" ? "highlight" : "ghost"
+                    }
+                    icon={recordState === "recording" ? SquareIcon : MicIcon}
+                    size="xs"
+                    tooltip={
+                      recordState === "recording"
+                        ? "Stop recording"
+                        : recordState === "pressAndHold"
+                          ? ""
+                          : "Click, or Press & Hold to record"
+                    }
+                    label={recordState === "recording" ? "Stop" : undefined}
+                    onClick={handleRecordClick}
+                    onMouseDown={
+                      recordState === "recording"
+                        ? undefined
+                        : handleRecordMouseDown
+                    }
+                    onMouseUp={
+                      recordState === "recording"
+                        ? undefined
+                        : handleRecordMouseUp
+                    }
+                    onMouseLeave={
+                      recordState === "recording"
+                        ? undefined
+                        : handleRecordMouseLeave
+                    }
+                  />
+                  <Button
+                    variant="highlight"
+                    icon={ArrowUpIcon}
+                    size="mini"
+                    tooltip="Send message"
+                    isRounded
+                    disabled={recordState === "recording"}
+                    className="s-hidden md:s-flex"
+                  />
+                  {/* Small */}
+                  <Button
+                    id={
+                      recordState === "recording"
+                        ? "Stop Recording Button"
+                        : "Record Button"
+                    }
+                    className="md:s-hidden"
+                    ref={recordButtonRef}
+                    variant={
+                      recordState === "recording" ? "highlight" : "ghost"
+                    }
+                    icon={recordState === "recording" ? SquareIcon : MicIcon}
+                    size="sm"
+                    tooltip={
+                      recordState === "recording"
+                        ? "Stop recording"
+                        : recordState === "pressAndHold"
+                          ? ""
+                          : "Click, or Press & Hold to record"
+                    }
+                    label={recordState === "recording" ? "Stop" : undefined}
+                    onClick={handleRecordClick}
+                    onMouseDown={
+                      recordState === "recording"
+                        ? undefined
+                        : handleRecordMouseDown
+                    }
+                    onMouseUp={
+                      recordState === "recording"
+                        ? undefined
+                        : handleRecordMouseUp
+                    }
+                    onMouseLeave={
+                      recordState === "recording"
+                        ? undefined
+                        : handleRecordMouseLeave
+                    }
+                  />
+                  <Button
+                    variant="highlight"
+                    icon={ArrowUpIcon}
+                    size="sm"
+                    tooltip="Send message"
+                    isRounded
+                    disabled={recordState === "recording"}
+                    className="md:s-hidden"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </RainbowEffect>
+        </RainbowEffect>
+      </div>
     </div>
   );
 };
