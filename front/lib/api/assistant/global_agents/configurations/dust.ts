@@ -17,6 +17,7 @@ import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
 } from "@app/types";
+import { isDevelopment } from "@app/types";
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
@@ -231,5 +232,31 @@ export function _getDustGlobalAgent(
     status: "active",
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+  };
+}
+
+export function _getNoopGlobalAgent(): AgentConfigurationType | null {
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.NOOP,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "noop",
+    description: "An agent that does nothing.",
+    instructions: "",
+    pictureUrl: "https://dust.tt/static/systemavatar/noop_avatar_full.png",
+    scope: "global" as const,
+    userFavorite: false,
+    model: dummyModelConfiguration,
+    visualizationEnabled: true,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+    status: isDevelopment() ? "active" : "archived",
+    actions: [],
+    maxStepsPerRun: 0,
   };
 }

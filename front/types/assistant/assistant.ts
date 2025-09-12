@@ -1636,6 +1636,8 @@ export enum GLOBAL_AGENTS_SID {
   MISTRAL_SMALL = "mistral",
   GEMINI_PRO = "gemini-pro",
   DEEPSEEK_R1 = "deepseek-r1",
+  // Dev only
+  NOOP = "noop",
 }
 
 export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
