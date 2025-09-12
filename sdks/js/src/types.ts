@@ -2182,6 +2182,7 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   async: z.boolean().nullable().optional(),
   mime_type: z.string().nullable().optional(),
   title: z.string().nullable().optional(),
+  file_id: z.string().nullable().optional(),
 });
 
 export type PostDataSourceDocumentRequestType = z.infer<
@@ -2494,12 +2495,12 @@ export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(4096, "File name must be less than 4096 characters"),
   fileSize: z.number(),
-  useCase: z.union([z.literal("conversation"), z.literal("upsert_table")]),
-  useCaseMetadata: z
-    .object({
-      conversationId: z.string(),
-    })
-    .optional(),
+  useCase: z.union([
+    z.literal("conversation"),
+    z.literal("upsert_table"),
+    z.literal("folders_document"),
+  ]),
+  useCaseMetadata: z.string().optional(),
 });
 export type FileUploadUrlRequestType = z.infer<
   typeof FileUploadUrlRequestSchema

@@ -11,19 +11,24 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
+import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  WithAPIErrorResponse,
+} from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
@@ -166,6 +171,9 @@ export const config = {
  *               upsert_context:
  *                 type: object
  *                 description: Additional context for the upsert operation.
+ *               file_id:
+ *                 type: string
+ *                 description: The ID of a previously uploaded file to use as document content. Use this for large files (>8MB) by first uploading the file via the /files endpoint, then referencing it here.
  *     responses:
  *       200:
  *         description: The document
@@ -416,6 +424,87 @@ async function handler(
         });
       }
 
+      // Handle file-based upload if file_id is provided
+      let section: CoreAPIDataSourceDocumentSection | null = null;
+      
+      if (r.data.file_id) {
+        // Fetch the file and get its content
+        const file = await FileResource.fetchById(auth, r.data.file_id);
+        
+        if (!file) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "file_not_found",
+              message: "The specified file was not found.",
+            },
+          });
+        }
+        
+        // Check if the file is ready
+        if (!file.isReady) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The specified file is not ready for processing.",
+            },
+          });
+        }
+        
+        // Check if the file belongs to the correct workspace
+        if (file.workspaceId !== owner.id) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "file_not_found",
+              message: "The specified file does not belong to this workspace.",
+            },
+          });
+        }
+        
+        // Check if file is for folders_document use case
+        if (file.useCase !== "folders_document") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The specified file is not intended for folder document uploads.",
+            },
+          });
+        }
+        
+        // Get the file content
+        const content = await getFileContent(auth, file);
+        
+        if (!content) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to retrieve file content.",
+            },
+          });
+        }
+        
+        // Create section from file content
+        section = {
+          prefix: null,
+          content: content,
+          sections: [],
+        };
+      } else {
+        // Use the text or section from the request body (backward compatibility)
+        section =
+          typeof r.data.text === "string"
+            ? {
+                prefix: null,
+                content: r.data.text,
+                sections: [],
+              }
+            : r.data.section || null;
+      }
+      
       let sourceUrl: string | null = null;
       if (r.data.source_url) {
         const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
@@ -434,22 +523,13 @@ async function handler(
         sourceUrl = standardizedSourceUrl;
       }
 
-      const section =
-        typeof r.data.text === "string"
-          ? {
-              prefix: null,
-              content: r.data.text,
-              sections: [],
-            }
-          : r.data.section || null;
-
       if (!section) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "Invalid request body, `text` or `section` must be provided.",
+              "Invalid request body, `text`, `section`, or `file_id` must be provided.",
           },
         });
       }
