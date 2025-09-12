@@ -12,6 +12,9 @@ export interface FeedbackModalMetadata {
   workspaceId: string;
   slackUserId: string;
   preselectedThumb?: "up" | "down";
+  slackChannelId: string;
+  slackMessageTs: string;
+  slackThreadTs: string;
 }
 
 export async function openFeedbackModal({
@@ -22,6 +25,9 @@ export async function openFeedbackModal({
   workspaceId,
   slackUserId,
   preselectedThumb,
+  slackChannelId,
+  slackMessageTs,
+  slackThreadTs,
 }: {
   slackClient: WebClient;
   triggerId: string;
@@ -30,6 +36,9 @@ export async function openFeedbackModal({
   workspaceId: string;
   slackUserId: string;
   preselectedThumb?: "up" | "down";
+  slackChannelId: string;
+  slackMessageTs: string;
+  slackThreadTs: string;
 }) {
   try {
     const metadata: FeedbackModalMetadata = {
@@ -38,6 +47,9 @@ export async function openFeedbackModal({
       workspaceId,
       slackUserId,
       preselectedThumb,
+      slackChannelId,
+      slackMessageTs,
+      slackThreadTs,
     };
 
     await slackClient.views.open({

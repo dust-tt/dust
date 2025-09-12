@@ -1,5 +1,7 @@
 import { apiConfig } from "@connectors/lib/api/config";
 import { getSlackClient, getSlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import { makeFeedbackSubmittedBlock, makeFooterBlock } from "@connectors/connectors/slack/chat/blocks";
+import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -13,6 +15,9 @@ export async function submitFeedbackToAPI({
   slackTeamId,
   thumbDirection,
   feedbackContent,
+  slackChannelId,
+  slackMessageTs,
+  slackThreadTs,
 }: {
   conversationId: string;
   messageId: string;
@@ -21,6 +26,9 @@ export async function submitFeedbackToAPI({
   slackTeamId: string;
   thumbDirection: "up" | "down";
   feedbackContent: string;
+  slackChannelId: string;
+  slackMessageTs: string;
+  slackThreadTs: string;
 }) {
   try {
     // Get the Slack configuration to find the connector
@@ -123,6 +131,116 @@ export async function submitFeedbackToAPI({
       },
       "Feedback submitted successfully from Slack"
     );
+
+    // Update the Slack message to show feedback has been submitted
+    try {
+      const slackClient = await getSlackClient(connector.id);
+      
+      logger.info(
+        {
+          slackChannelId,
+          slackMessageTs,
+          slackThreadTs,
+          conversationId,
+          messageId,
+        },
+        "Attempting to update Slack message after feedback"
+      );
+      
+      // Get all messages in the thread to find the assistant's message
+      const threadResult = await slackClient.conversations.replies({
+        channel: slackChannelId,
+        ts: slackThreadTs,
+      });
+      
+      if (threadResult.messages) {
+        // Find the assistant's message with our timestamp
+        const currentMessage = threadResult.messages.find(msg => msg.ts === slackMessageTs);
+        
+        if (currentMessage) {
+          const currentBlocks = currentMessage.blocks || [];
+          
+          logger.info(
+            {
+              messageTs: currentMessage.ts,
+              blockCount: currentBlocks.length,
+              blockTypes: currentBlocks.map(b => b.type),
+              hasText: !!currentMessage.text,
+              textPreview: currentMessage.text?.substring(0, 100),
+            },
+            "Retrieved message to update"
+          );
+          
+          // Find and replace the feedback blocks
+          const updatedBlocks = [];
+          let skipNextAction = false;
+          
+          for (let i = 0; i < currentBlocks.length; i++) {
+            const block = currentBlocks[i];
+            
+            // Check if this is the feedback context block
+            if (block.type === "context" && 
+                block.elements && 
+                block.elements.length > 0 &&
+                block.elements[0].type === "mrkdwn" &&
+                block.elements[0].text === "Was this answer helpful?") {
+              // Replace with "Feedback submitted" block
+              updatedBlocks.push(...makeFeedbackSubmittedBlock());
+              // Mark to skip the next actions block
+              skipNextAction = true;
+            } else if (skipNextAction && block.type === "actions") {
+              // Skip the actions block with thumbs that follows the feedback context
+              skipNextAction = false;
+              // Don't add this block to updatedBlocks
+            } else {
+              // Keep all other blocks (message content, footnotes, footer, etc.)
+              updatedBlocks.push(block);
+            }
+          }
+
+          // Update the message with the same text but updated blocks
+          await slackClient.chat.update({
+            channel: slackChannelId,
+            ts: slackMessageTs,
+            blocks: updatedBlocks,
+            text: currentMessage.text || "",
+          });
+
+          logger.info(
+            {
+              slackChannelId,
+              slackMessageTs,
+              conversationId,
+              messageId,
+            },
+            "Updated Slack message to show feedback submitted"
+          );
+        } else {
+          logger.warn(
+            {
+              slackChannelId,
+              slackMessageTs,
+              slackThreadTs,
+              conversationId,
+              messageId,
+            },
+            "Could not find message to update after feedback submission"
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          slackChannelId,
+          slackMessageTs,
+          slackThreadTs,
+          conversationId,
+          messageId,
+        },
+        "Failed to update Slack message after feedback submission"
+      );
+    }
   } catch (error) {
     logger.error(
       {

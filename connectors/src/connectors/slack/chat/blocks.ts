@@ -125,7 +125,7 @@ export function makeFeedbackButtonBlock({
       elements: [
         {
           type: "mrkdwn",
-          text: "What this answer helpful?",
+          text: "Was this answer helpful?",
         },
       ],
     },
@@ -161,6 +161,20 @@ export function makeFeedbackButtonBlock({
             workspaceId,
             preselectedThumb: "down",
           }),
+        },
+      ],
+    },
+  ];
+}
+
+export function makeFeedbackSubmittedBlock() {
+  return [
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: "✅ Feedback submitted",
         },
       ],
     },

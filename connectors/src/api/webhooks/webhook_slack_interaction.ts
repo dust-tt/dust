@@ -342,6 +342,9 @@ const _webhookSlackInteractionsAPIHandler = async (
             workspaceId,
             slackUserId: payload.user.id,
             preselectedThumb,
+            slackChannelId: payload.container.channel_id,
+            slackMessageTs: payload.container.message_ts,
+            slackThreadTs: payload.container.thread_ts,
           });
         }
       }
@@ -360,6 +363,9 @@ async function handleViewSubmission(
       messageId: string;
       workspaceId: string;
       slackUserId: string;
+      slackChannelId: string;
+      slackMessageTs: string;
+      slackThreadTs: string;
     };
 
     // Extract feedback values from the modal
@@ -385,6 +391,9 @@ async function handleViewSubmission(
         slackTeamId: payload.team.id,
         thumbDirection: ratingValue as "up" | "down",
         feedbackContent: feedbackText,
+        slackChannelId: metadata.slackChannelId,
+        slackMessageTs: metadata.slackMessageTs,
+        slackThreadTs: metadata.slackThreadTs,
       });
     }
   }
