@@ -10,7 +10,7 @@ import {
   INCLUDE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas, getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   IncludeQueryResourceType,
   IncludeResultResourceType,
@@ -45,19 +45,20 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
-function createServer(
+async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): Promise<McpServer> {
   const server = makeInternalMCPServer("include_data");
+
+  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
 
   const commonInputsSchema = {
     timeFrame:
       ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
       ],
-    dataSources:
-      ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+    dataSources: dataSourceSchemaWithDefaults,
   };
 
   const tagsInputSchema = {
@@ -283,7 +284,7 @@ function createServer(
       )
     );
 
-    registerFindTagsTool(auth, server, agentLoopContext, {
+    await registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
       extraDescription: `This tool is meant to be used before the ${INCLUDE_TOOL_NAME} tool.`,
     });

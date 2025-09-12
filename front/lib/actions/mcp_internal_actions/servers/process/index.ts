@@ -18,6 +18,7 @@ import {
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
+  getDataSourceSchemaWithDefaults,
   JsonSchemaSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
@@ -216,10 +217,10 @@ function makeExtractInformationFromDocumentsTool(
   );
 }
 
-function createServer(
+async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): Promise<McpServer> {
   const server = makeInternalMCPServer("extract_data");
 
   const isJsonSchemaConfigured =
@@ -270,9 +271,10 @@ function createServer(
       ),
   };
 
+  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
+  
   const commonInputsSchema = {
-    dataSources:
-      ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+    dataSources: dataSourceSchemaWithDefaults,
     objective: z
       .string()
       .describe(
@@ -323,7 +325,7 @@ function createServer(
       toolImplementation
     );
 
-    registerFindTagsTool(auth, server, agentLoopContext, {
+    await registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
       extraDescription: `This tool is meant to be used before the ${PROCESS_TOOL_NAME} tool.`,
     });

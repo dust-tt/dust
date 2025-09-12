@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_LIST_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas, getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
@@ -52,12 +52,13 @@ const ListToolInputSchema = {
   ...DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
 };
 
-export function registerListTool(
+export async function registerListTool(
   auth: Authenticator,
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
+  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
   const baseDescription =
     "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
     "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
@@ -71,7 +72,10 @@ export function registerListTool(
   server.tool(
     name,
     toolDescription,
-    ListToolInputSchema,
+    {
+      ...ListToolInputSchema,
+      dataSources: dataSourceSchemaWithDefaults,
+    },
     withToolLogging(
       auth,
       { toolName: FILESYSTEM_LIST_TOOL_NAME, agentLoopContext },

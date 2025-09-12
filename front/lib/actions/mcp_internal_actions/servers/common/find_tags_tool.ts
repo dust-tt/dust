@@ -6,7 +6,7 @@ import { z } from "zod";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas, getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -32,12 +32,13 @@ export const findTagsSchema = {
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 };
 
-export function registerFindTagsTool(
+export async function registerFindTagsTool(
   auth: Authenticator,
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
+  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
   const baseDescription =
     `Find exact matching labels (also called tags).` +
     "Restricting or excluding content succeeds only with existing labels. " +
@@ -49,7 +50,10 @@ export function registerFindTagsTool(
   server.tool(
     name,
     toolDescription,
-    findTagsSchema,
+    {
+      ...findTagsSchema,
+      dataSources: dataSourceSchemaWithDefaults,
+    },
     withToolLogging(
       auth,
       { toolName: FIND_TAGS_TOOL_NAME, agentLoopContext },

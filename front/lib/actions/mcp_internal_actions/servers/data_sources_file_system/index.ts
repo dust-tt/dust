@@ -14,7 +14,7 @@ import {
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas, getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   FilesystemPathType,
   SearchResultResourceType,
@@ -330,13 +330,15 @@ async function searchCallback(
   ]);
 }
 
-const createServer = (
+const createServer = async (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): Promise<McpServer> => {
   const server = makeInternalMCPServer("data_sources_file_system");
+  
+  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
 
-  registerCatTool(auth, server, agentLoopContext, {
+  await registerCatTool(auth, server, agentLoopContext, {
     name: FILESYSTEM_CAT_TOOL_NAME,
   });
 
@@ -373,10 +375,7 @@ const createServer = (
             "will be returned. If not provided, no filter will be applied. The mime types passed " +
             "here must be one of the mime types found in the 'mimeType' field."
         ),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
+      dataSources: dataSourceSchemaWithDefaults,
       ...DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
     },
     withToolLogging(
@@ -478,7 +477,7 @@ const createServer = (
     )
   );
 
-  registerListTool(auth, server, agentLoopContext, {
+  await registerListTool(auth, server, agentLoopContext, {
     name: FILESYSTEM_LIST_TOOL_NAME,
   });
 
@@ -502,7 +501,7 @@ const createServer = (
   } else {
     // If tags are dynamic, then we add a tool for the agent to discover tags and let it pass tags
     // in the search tool.
-    registerFindTagsTool(auth, server, agentLoopContext, {
+    await registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
       extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
     });
@@ -552,10 +551,7 @@ const createServer = (
       "the last node being the target node.",
     {
       nodeId: z.string().describe("The ID of the node to locate in the tree."),
-      dataSources:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
-        ],
+      dataSources: dataSourceSchemaWithDefaults,
     },
     withToolLogging(
       auth,

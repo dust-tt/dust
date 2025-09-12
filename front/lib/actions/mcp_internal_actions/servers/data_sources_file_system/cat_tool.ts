@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FILESYSTEM_CAT_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas, getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { renderNode } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   getAgentDataSourceConfigurations,
@@ -43,7 +43,7 @@ const catToolInputSchema = {
     ),
 };
 
-export function registerCatTool(
+export async function registerCatTool(
   auth: Authenticator,
   server: McpServer,
   agentLoopContext: AgentLoopContextType | undefined,
@@ -51,6 +51,7 @@ export function registerCatTool(
   //  encourage putting extra details in the server instructions, which are passed to the instructions.
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
+  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
   const baseDescription =
     "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). " +
     "The nodeId can be obtained using the 'find', 'list' or 'search' tools.";
@@ -61,7 +62,10 @@ export function registerCatTool(
   server.tool(
     name,
     toolDescription,
-    catToolInputSchema,
+    {
+      ...catToolInputSchema,
+      dataSources: dataSourceSchemaWithDefaults,
+    },
     withToolLogging(
       auth,
       { toolName: FILESYSTEM_CAT_TOOL_NAME, agentLoopContext },

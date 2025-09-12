@@ -11,7 +11,7 @@ import {
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getDataSourceSchemaWithDefaults } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
@@ -207,11 +207,13 @@ export async function searchFunction({
   ]);
 }
 
-function createServer(
+async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer {
+): Promise<McpServer> {
   const server = makeInternalMCPServer(SEARCH_SERVER_NAME);
+
+  const dataSourceSchemaWithDefaults = await getDataSourceSchemaWithDefaults(auth);
 
   const commonInputsSchema = {
     query: z
@@ -231,8 +233,7 @@ function createServer(
           " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
           " where {k} is a number. Be strict, do not invent invalid values."
       ),
-    dataSources:
-      ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+    dataSources: dataSourceSchemaWithDefaults,
   };
 
   const tagsInputSchema = {
@@ -286,7 +287,7 @@ function createServer(
       )
     );
 
-    registerFindTagsTool(auth, server, agentLoopContext, {
+    await registerFindTagsTool(auth, server, agentLoopContext, {
       name: FIND_TAGS_TOOL_NAME,
       extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
     });
