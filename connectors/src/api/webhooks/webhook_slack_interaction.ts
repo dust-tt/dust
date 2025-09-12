@@ -327,11 +327,15 @@ const _webhookSlackInteractionsAPIHandler = async (
             "Failed to validate tool execution"
           );
         }
-      } else if (action.action_id === LEAVE_FEEDBACK_UP || action.action_id === LEAVE_FEEDBACK_DOWN) {
+      } else if (
+        action.action_id === LEAVE_FEEDBACK_UP ||
+        action.action_id === LEAVE_FEEDBACK_DOWN
+      ) {
         // Handle feedback button click - open modal
         const feedbackAction = action as t.TypeOf<typeof FeedbackActionSchema>;
         const buttonData = JSON.parse(feedbackAction.value || "{}");
-        const { conversationId, messageId, workspaceId, preselectedThumb } = buttonData;
+        const { conversationId, messageId, workspaceId, preselectedThumb } =
+          buttonData;
 
         if (payload.trigger_id) {
           // Open the feedback modal

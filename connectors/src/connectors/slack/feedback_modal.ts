@@ -88,13 +88,18 @@ export async function openFeedbackModal({
             element: {
               type: "radio_buttons",
               action_id: "rating_selection",
-              initial_option: preselectedThumb ? {
-                text: {
-                  type: "plain_text",
-                  text: preselectedThumb === "up" ? "👍 Helpful" : "👎 Not helpful",
-                },
-                value: preselectedThumb,
-              } : undefined,
+              initial_option: preselectedThumb
+                ? {
+                    text: {
+                      type: "plain_text",
+                      text:
+                        preselectedThumb === "up"
+                          ? "👍 Helpful"
+                          : "👎 Not helpful",
+                    },
+                    value: preselectedThumb,
+                  }
+                : undefined,
               options: [
                 {
                   text: {
