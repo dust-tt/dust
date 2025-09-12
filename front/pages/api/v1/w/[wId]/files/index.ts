@@ -170,6 +170,35 @@ async function handler(
         });
       }
 
+      // Parse useCaseMetadata if provided
+      let parsedMetadata = null;
+      if (useCaseMetadata) {
+        try {
+          parsedMetadata = JSON.parse(useCaseMetadata);
+        } catch (e) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid useCaseMetadata format. Must be a valid JSON string.",
+            },
+          });
+        }
+      }
+
+      // For folders_document useCase, validate that spaceId is provided in metadata
+      if (useCase === "folders_document") {
+        if (!parsedMetadata?.spaceId) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "spaceId must be provided in useCaseMetadata for folders_document uploads.",
+            },
+          });
+        }
+      }
+
       const file = await FileResource.makeNew({
         contentType,
         fileName,
@@ -177,7 +206,7 @@ async function handler(
         userId: user?.id ?? null,
         workspaceId: owner.id,
         useCase,
-        useCaseMetadata: useCaseMetadata,
+        useCaseMetadata: parsedMetadata,
       });
 
       res.status(200).json({ file: file.toPublicJSONWithUploadUrl(auth) });
