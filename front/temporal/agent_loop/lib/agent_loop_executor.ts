@@ -80,11 +80,13 @@ async function executeStepIteration({
             actionId,
             runAgentArgs,
             step: currentStep,
+            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
           })
         : activities.runRetryableToolActivity(authType, {
             actionId,
             runAgentArgs,
             step: currentStep,
+            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
           })
     )
   );
@@ -110,7 +112,7 @@ async function executeStepIteration({
 
   return {
     runId,
-    shouldContinue: true,
+    shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
   };
 }
 

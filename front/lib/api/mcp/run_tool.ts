@@ -13,8 +13,14 @@ import {
   executeMCPTool,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
-import { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import type {
+  ToolEarlyExitEvent,
+  ToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
+import {
+  EarlyExitError,
+  ToolBlockedAwaitingInputError,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
@@ -58,7 +64,8 @@ export async function* runToolWithStreaming(
   | MCPParamsEvent
   | MCPSuccessEvent
   | ToolNotificationEvent
-  | ToolPersonalAuthRequiredEvent,
+  | ToolPersonalAuthRequiredEvent
+  | ToolEarlyExitEvent,
   void
 > {
   const owner = auth.getNonNullableWorkspace();
@@ -153,6 +160,17 @@ export async function* runToolWithStreaming(
         yield event;
       }
 
+      return;
+    } else if (toolErr instanceof EarlyExitError) {
+      yield {
+        type: "tool_early_exit",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        conversationId: conversation.sId,
+        messageId: agentMessage.sId,
+        message: toolErr.message,
+        isError: toolErr.isError,
+      };
       return;
     }
 

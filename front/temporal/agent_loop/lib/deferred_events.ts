@@ -36,4 +36,7 @@ export type DeferredEvent = {
 export type ToolExecutionResult = {
   // Events that should be sent after all tools in the step complete.
   deferredEvents: DeferredEvent[];
+
+  // Whether this event should pause the agent loop until external action is taken.
+  shouldPauseAgentLoop?: boolean;
 };
