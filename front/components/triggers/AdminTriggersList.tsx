@@ -7,9 +7,10 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
@@ -58,6 +59,7 @@ export const AdminTriggersList = ({
   owner,
   systemSpace,
 }: AdminTriggersListProps) => {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
@@ -149,7 +151,7 @@ export const AdminTriggersList = ({
       variant="outline"
       icon={PlusIcon}
       size="sm"
-      onClick={() => {}}
+      onClick={() => setIsCreateOpen(true)}
     />
   );
 
@@ -163,6 +165,11 @@ export const AdminTriggersList = ({
 
   return (
     <>
+      <CreateWebhookSourceDialog
+        isOpen={isCreateOpen}
+        setIsOpen={setIsCreateOpen}
+        owner={owner}
+      />
       {rows.length === 0 ? (
         <EmptyCTA
           message="You don’t have any triggers yet."
