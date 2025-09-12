@@ -69,7 +69,8 @@ export function isMCPConfigurationForInternalWebsearch(
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse")
+    (isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse") ||
+      isInternalMCPServerOfName(arg.internalMCPServerId, "webtools_edge"))
   );
 }
 
@@ -166,7 +167,8 @@ export function isMCPInternalWebsearch(
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse")
+    (isInternalMCPServerOfName(arg.internalMCPServerId, "web_search_&_browse") ||
+      isInternalMCPServerOfName(arg.internalMCPServerId, "webtools_edge"))
   );
 }
 
