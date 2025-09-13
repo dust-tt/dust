@@ -442,11 +442,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           unread: p.unread,
           actionRequired: p.actionRequired,
           sId: c.sId,
-          owner,
           title: c.title,
-          visibility: c.visibility,
           depth: c.depth,
-          triggerId: ConversationResource.triggerIdToSId(c.triggerId, owner.id),
           requestedGroupIds: new this(
             this.model,
             c.get()
@@ -665,7 +662,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             conversationId: conversation.id,
             action,
             userId: user.id,
-            workspaceId: conversation.owner.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
             unread: false,
             actionRequired: false,
           },
