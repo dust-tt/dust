@@ -14,6 +14,7 @@ interface ScrollAreaProps
     active?: string;
     inactive?: string;
   };
+  viewportRef?: React.RefObject<HTMLDivElement>;
 }
 
 const ScrollArea = React.forwardRef<
@@ -29,11 +30,12 @@ const ScrollArea = React.forwardRef<
       scrollBarClassName,
       viewportClassName,
       scrollStyles,
+      viewportRef,
       ...props
     },
     ref
   ) => {
-    const viewportRef = React.useRef<HTMLDivElement>(null);
+    const localViewportRef = React.useRef<HTMLDivElement>(null);
     const [isScrolled, setIsScrolled] = React.useState(false);
 
     const hasCustomScrollBar = useMemo(
@@ -50,8 +52,12 @@ const ScrollArea = React.forwardRef<
     const shouldHideDefaultScrollBar = hideScrollBar || hasCustomScrollBar;
 
     const handleScroll = React.useCallback(() => {
-      if (viewportRef.current) {
+      if (viewportRef && viewportRef.current) {
         setIsScrolled(viewportRef.current.scrollTop > 0);
+      }
+
+      if (localViewportRef.current) {
+        setIsScrolled(localViewportRef.current.scrollTop > 0);
       }
     }, []);
 
@@ -66,7 +72,7 @@ const ScrollArea = React.forwardRef<
         {...props}
       >
         <ScrollAreaPrimitive.Viewport
-          ref={viewportRef}
+          ref={viewportRef || localViewportRef}
           onScroll={handleScroll}
           className={cn(
             "s-h-full s-w-full s-rounded-[inherit]",

@@ -41,13 +41,18 @@ const NavigationListItemStyles = cva(
   }
 );
 
+interface NavigationListProps {
+  viewportRef?: React.RefObject<HTMLDivElement>;
+}
 const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> &
+    NavigationListProps
+>(({ className, children, viewportRef, ...props }, ref) => {
   return (
     <ScrollArea
       ref={ref}
+      viewportRef={viewportRef}
       className={cn(className, "s-transition-all s-duration-300")}
       {...props}
     >
