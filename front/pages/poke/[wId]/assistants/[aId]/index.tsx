@@ -13,6 +13,7 @@ import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
+import { ConversationAgentDataTable } from "@app/components/poke/conversations/agent_table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
@@ -107,6 +108,13 @@ const AssistantDetailsPage = ({
             resourceType: "agents",
             workspace: workspace,
           }}
+        />
+      </div>
+
+      <div className="mt-4">
+        <ConversationAgentDataTable
+          owner={workspace}
+          agentId={agentConfigurations[0].sId}
         />
       </div>
 
