@@ -12,6 +12,7 @@ interface PokeDataTableConditionalFetchProps<T, M> {
   header: string;
   loadOnInit?: boolean;
   owner: LightWorkspaceType;
+  showSensitiveDataWarning?: boolean;
   useSWRHook: (props: PokeConditionalFetchProps) => {
     data: T;
     isError: any;
@@ -27,6 +28,7 @@ export function PokeDataTableConditionalFetch<T, M>({
   header,
   loadOnInit = false,
   owner,
+  showSensitiveDataWarning = false,
   useSWRHook,
 }: PokeDataTableConditionalFetchProps<T, M>) {
   const [shouldLoad, setShouldLoad] = useState(loadOnInit);
@@ -36,7 +38,17 @@ export function PokeDataTableConditionalFetch<T, M>({
   });
 
   const handleLoadClick = () => {
-    setShouldLoad(true);
+    if (showSensitiveDataWarning) {
+      if (
+        window.confirm(
+          "Are you sure you want to access this sensitive user data? (Access will be logged)"
+        )
+      ) {
+        setShouldLoad(true);
+      }
+    } else {
+      setShouldLoad(true);
+    }
   };
 
   let content;
