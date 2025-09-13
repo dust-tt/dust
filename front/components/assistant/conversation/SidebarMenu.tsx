@@ -28,7 +28,14 @@ import {
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import React, { useCallback, useContext, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -230,8 +237,45 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     return groups;
   };
 
+  // Handle "infinite" scroll
+  // We only start with 10 conversations shown (no need more on mobile) and load more until we fill the parent container.
+  // We use an intersection observer to detect when the bottom of the list is visible and load more conversations.
+  // That way, the list starts lightweight and only show more conversations when needed.
+  const CONVERSATIONS_PER_PAGE = 10;
+
+  const [conversationsPage, setConversationsPage] = useState(0);
+
+  const nextPage = useCallback(() => {
+    setConversationsPage(conversationsPage + 1);
+  }, [setConversationsPage, conversationsPage]);
+
+  const previousEntry = useRef<IntersectionObserverEntry | undefined>(
+    undefined
+  );
+
+  const { ref, inView, entry } = useInView({
+    root: conversationsNavigationRef.current,
+    threshold: 0,
+  });
+
+  useEffect(() => {
+    if (
+      // The observer is in view.
+      inView &&
+      // We have more conversations to show.
+      conversations.length > conversationsPage * CONVERSATIONS_PER_PAGE &&
+      // The entry is different from the previous one to avoid multiple calls for the same intersection.
+      entry != previousEntry.current
+    ) {
+      previousEntry.current = entry;
+      nextPage();
+    }
+  }, [inView, nextPage, entry, conversations.length, conversationsPage]);
+
   const conversationsByDate = conversations.length
-    ? groupConversationsByDate(conversations)
+    ? groupConversationsByDate(
+        conversations.slice(0, (conversationsPage + 1) * CONVERSATIONS_PER_PAGE)
+      )
     : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
   const { setAnimate } = useContext(InputBarContext);
@@ -370,22 +414,36 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </Label>
             )}
             <NavigationList
-              className="dd-privacy-mask w-full px-3"
-              ref={conversationsNavigationRef}
+              className="dd-privacy-mask h-full w-full px-3"
+              viewportRef={conversationsNavigationRef}
             >
-              {conversationsByDate &&
-                Object.keys(conversationsByDate).map((dateLabel) => (
-                  <RenderConversations
-                    key={dateLabel}
-                    conversations={conversationsByDate[dateLabel as GroupLabel]}
-                    dateLabel={dateLabel}
-                    isMultiSelect={isMultiSelect}
-                    selectedConversations={selectedConversations}
-                    toggleConversationSelection={toggleConversationSelection}
-                    router={router}
-                    owner={owner}
-                  />
-                ))}
+              {conversationsByDate && conversations.length > 0 && (
+                <>
+                  {Object.keys(conversationsByDate).map((dateLabel) => (
+                    <RenderConversations
+                      key={dateLabel}
+                      conversations={
+                        conversationsByDate[dateLabel as GroupLabel]
+                      }
+                      dateLabel={dateLabel}
+                      isMultiSelect={isMultiSelect}
+                      selectedConversations={selectedConversations}
+                      toggleConversationSelection={toggleConversationSelection}
+                      router={router}
+                      owner={owner}
+                    />
+                  ))}
+                  {conversationsNavigationRef.current && (
+                    <div
+                      // Change the key each page to force a re-render and get a new entry
+                      key={`infinite-scroll-conversation-${conversationsPage}`}
+                      id="infinite-scroll-conversations"
+                      ref={ref}
+                      style={{ height: "2px" }}
+                    />
+                  )}
+                </>
+              )}
             </NavigationList>
           </div>
         </div>
