@@ -9,16 +9,16 @@ import {
   Square3Stack3DIcon,
   Tree,
 } from "@dust-tt/sparkle";
-import { useWatch } from "react-hook-form";
 import { useMemo } from "react";
+import { useWatch } from "react-hook-form";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { useKnowledgePageContext } from "@app/components/data_source_view/context/PageContext";
+import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
@@ -35,8 +35,7 @@ import {
 } from "@app/lib/content_nodes";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DataSourceViewType } from "@app/types";
-import { asDisplayName } from "@app/types";
-import { pluralize } from "@app/types";
+import { asDisplayName, pluralize } from "@app/types";
 
 const tablesServer = [
   TABLE_QUERY_SERVER_NAME,
@@ -54,87 +53,66 @@ const getVisualForSourceItem = (
   if (source.type === "node") {
     // Handle mime type specific cases first (mirrors getVisualForContentNode logic)
     if (source.mimeType) {
-      // Handle private channels with lock icon
       if (CHANNEL_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
         return source.providerVisibility === "private"
           ? LockIcon
           : ChatBubbleLeftRightIcon;
       }
-
-      // Handle database-like content
       if (DATABASE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
         return Square3Stack3DIcon;
       }
 
-      // Handle file-like content that isn't a document type
       if (FILE_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
-        // For file-like content, check if expandable (like getVisualForFileContentNode)
         return source.expandable ? DocumentPileIcon : DocumentIcon;
       }
 
-      // Handle spreadsheets
       if (SPREADSHEET_INTERNAL_MIME_TYPES.includes(source.mimeType)) {
         return FolderTableIcon;
       }
     }
 
-    // Fall back to node type if mime type doesn't determine the icon
     if (source.nodeType) {
       try {
         return getVisualForContentNodeType(source.nodeType);
       } catch {
-        // Graceful fallback if nodeType is invalid
         return DocumentIcon;
       }
     }
   }
-
   return DocumentIcon;
 };
 
 const groupSourcesByDataSource = (sources: DataSourceBuilderTreeItemType[]) => {
   return sources.reduce(
     (acc, source) => {
-      let dustAPIDataSourceId: string;
-      let dataSourceView: DataSourceViewType;
-      let sourceItem: DataSourceFilterItem["selectedSources"][0];
-
-      if (source.type === "data_source") {
-        dustAPIDataSourceId =
-          source.dataSourceView.dataSource.dustAPIDataSourceId;
-        dataSourceView = source.dataSourceView;
-        sourceItem = {
-          id: source.dataSourceView.id.toString(),
-          name: "All documents",
-          type: "data_source",
-          nodeType: undefined,
-          mimeType: undefined,
-          providerVisibility: undefined,
-          expandable: undefined,
-        };
-      } else if (source.type === "node") {
-        dustAPIDataSourceId =
-          source.node.dataSourceView.dataSource.dustAPIDataSourceId;
-        dataSourceView = source.node.dataSourceView;
-        sourceItem = {
-          id: source.node.internalId,
-          name: source.node.title,
-          type: "node",
-          nodeType: source.node.type,
-          mimeType: source.node.mimeType,
-          providerVisibility: source.node.providerVisibility,
-          expandable: source.node.expandable,
-        };
-      } else {
-        // Skip other types
+      if (source.type !== "data_source" && source.type !== "node") {
         return acc;
       }
 
+      const isDataSource = source.type === "data_source";
+      const dataSourceView = isDataSource
+        ? source.dataSourceView
+        : source.node.dataSourceView;
+      const dustAPIDataSourceId = dataSourceView.dataSource.dustAPIDataSourceId;
+
+      const sourceItem = isDataSource
+        ? ({
+            id: source.dataSourceView.id.toString(),
+            name: "All documents",
+            type: "data_source",
+          } satisfies SourceItem)
+        : ({
+            id: source.node.internalId,
+            name: source.node.title,
+            type: "node",
+            nodeType: source.node.type,
+            mimeType: source.node.mimeType,
+            providerVisibility: source.node.providerVisibility,
+            expandable: source.node.expandable,
+          } satisfies SourceItem);
+
       if (!acc[dustAPIDataSourceId]) {
-        acc[dustAPIDataSourceId] = {
-          dataSourceView,
-          selectedSources: [],
-        };
+        acc[dustAPIDataSourceId] = { dataSourceView, selectedSources: [] };
       }
 
       acc[dustAPIDataSourceId].selectedSources.push(sourceItem);
@@ -144,17 +122,19 @@ const groupSourcesByDataSource = (sources: DataSourceBuilderTreeItemType[]) => {
   );
 };
 
+type SourceItem = {
+  id: string;
+  name: string;
+  type: "data_source" | "node";
+  nodeType?: "table" | "folder" | "document";
+  mimeType?: string;
+  providerVisibility?: "public" | "private" | null;
+  expandable?: boolean;
+};
+
 type DataSourceFilterItem = {
   dataSourceView: DataSourceViewType;
-  selectedSources: Array<{
-    id: string;
-    name: string;
-    type: "data_source" | "node";
-    nodeType?: "table" | "folder" | "document";
-    mimeType?: string;
-    providerVisibility?: "public" | "private" | null;
-    expandable?: boolean;
-  }>;
+  selectedSources: SourceItem[];
 };
 
 type DataSourceTreeItemProps = {
