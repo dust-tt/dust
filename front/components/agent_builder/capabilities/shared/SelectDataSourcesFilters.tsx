@@ -10,7 +10,7 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import { useWatch } from "react-hook-form";
-import { useMemo, useCallback } from "react";
+import { useMemo } from "react";
 
 import { DataSourceViewTagsFilterDropdown } from "@app/components/agent_builder/capabilities/shared/DataSourceViewTagsFilterDropdown";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -92,70 +92,52 @@ const getVisualForSourceItem = (
   return DocumentIcon;
 };
 
-const processDataSourceBuilderItem = (
-  source: DataSourceBuilderTreeItemType
-) => {
-  if (source.type === "data_source") {
-    return {
-      dustAPIDataSourceId: source.dataSourceView.dataSource.dustAPIDataSourceId,
-      dataSourceView: source.dataSourceView,
-      sourceItem: {
-        id: source.dataSourceView.id.toString(),
-        name: "All documents",
-        type: "data_source" as const,
-        nodeType: undefined,
-        mimeType: undefined,
-        providerVisibility: undefined,
-        expandable: undefined,
-      },
-    };
-  }
-
-  if (source.type === "node") {
-    return {
-      dustAPIDataSourceId:
-        source.node.dataSourceView.dataSource.dustAPIDataSourceId,
-      dataSourceView: source.node.dataSourceView,
-      sourceItem: {
-        id: source.node.internalId,
-        name: source.node.title,
-        type: "node" as const,
-        nodeType: source.node.type,
-        mimeType: source.node.mimeType,
-        providerVisibility: source.node.providerVisibility,
-        expandable: source.node.expandable,
-      },
-    };
-  }
-
-  throw new Error(`Unsupported source type: ${(source as any).type}`);
-};
-
 const groupSourcesByDataSource = (sources: DataSourceBuilderTreeItemType[]) => {
   return sources.reduce(
     (acc, source) => {
-      // Skip non-data-source and non-node types
-      if (source.type !== "data_source" && source.type !== "node") {
+      let dustAPIDataSourceId: string;
+      let dataSourceView: DataSourceViewType;
+      let sourceItem: DataSourceFilterItem["selectedSources"][0];
+
+      if (source.type === "data_source") {
+        dustAPIDataSourceId =
+          source.dataSourceView.dataSource.dustAPIDataSourceId;
+        dataSourceView = source.dataSourceView;
+        sourceItem = {
+          id: source.dataSourceView.id.toString(),
+          name: "All documents",
+          type: "data_source",
+          nodeType: undefined,
+          mimeType: undefined,
+          providerVisibility: undefined,
+          expandable: undefined,
+        };
+      } else if (source.type === "node") {
+        dustAPIDataSourceId =
+          source.node.dataSourceView.dataSource.dustAPIDataSourceId;
+        dataSourceView = source.node.dataSourceView;
+        sourceItem = {
+          id: source.node.internalId,
+          name: source.node.title,
+          type: "node",
+          nodeType: source.node.type,
+          mimeType: source.node.mimeType,
+          providerVisibility: source.node.providerVisibility,
+          expandable: source.node.expandable,
+        };
+      } else {
+        // Skip other types
         return acc;
       }
 
-      try {
-        const { dustAPIDataSourceId, dataSourceView, sourceItem } =
-          processDataSourceBuilderItem(source);
-
-        if (!acc[dustAPIDataSourceId]) {
-          acc[dustAPIDataSourceId] = {
-            dataSourceView,
-            selectedSources: [],
-          };
-        }
-
-        acc[dustAPIDataSourceId].selectedSources.push(sourceItem);
-      } catch (error) {
-        // Skip invalid source items gracefully
-        console.warn("Failed to process source item:", source, error);
+      if (!acc[dustAPIDataSourceId]) {
+        acc[dustAPIDataSourceId] = {
+          dataSourceView,
+          selectedSources: [],
+        };
       }
 
+      acc[dustAPIDataSourceId].selectedSources.push(sourceItem);
       return acc;
     },
     {} as Record<string, DataSourceFilterItem>
@@ -185,78 +167,49 @@ function DataSourceTreeItem({
   const { isDark } = useTheme();
   const { spaces } = useSpacesContext();
 
-  const spaceName = useMemo(
-    () => spaces.find((s) => s.sId === dataSourceView.spaceId)?.name,
-    [spaces, dataSourceView.spaceId]
+  const spaceName = spaces.find((s) => s.sId === dataSourceView.spaceId)?.name;
+  const providerLogo = getConnectorProviderLogoWithFallback({
+    provider: dataSourceView.dataSource.connectorProvider,
+    isDark,
+  });
+  const displayName = getDisplayNameForDataSource(dataSourceView.dataSource);
+
+  const nodeItems = selectedSources.filter((source) => source.type === "node");
+  const hasDataSourceSelection = selectedSources.some(
+    (source) => source.type === "data_source"
   );
 
-  const providerLogo = useMemo(
-    () =>
-      getConnectorProviderLogoWithFallback({
-        provider: dataSourceView.dataSource.connectorProvider,
-        isDark,
-      }),
-    [dataSourceView.dataSource.connectorProvider, isDark]
-  );
+  const actions = spaceName ? (
+    <span className="text-xs text-muted-foreground">{spaceName}</span>
+  ) : undefined;
 
-  const displayName = useMemo(
-    () => getDisplayNameForDataSource(dataSourceView.dataSource),
-    [dataSourceView.dataSource]
-  );
-
-  // Filter out "All documents" entries - only show individual node selections
-  const nodeItems = useMemo(
-    () =>
-      selectedSources
-        .filter((source) => source.type === "node")
-        .map((source) => ({
-          id: source.id,
-          name: source.name,
-          visual: getVisualForSourceItem(source),
-        })),
-    [selectedSources]
-  );
-
-  const hasDataSourceSelection = useMemo(
-    () => selectedSources.some((source) => source.type === "data_source"),
-    [selectedSources]
-  );
-
-  // If entire data source is selected, don't show expandable tree
+  // If entire data source is selected and no specific nodes, show as leaf
   if (hasDataSourceSelection && nodeItems.length === 0) {
     return (
       <Tree.Item
         label={displayName}
         visual={providerLogo}
         type="leaf"
-        actions={
-          spaceName ? (
-            <span className="text-xs text-muted-foreground">{spaceName}</span>
-          ) : undefined
-        }
+        actions={actions}
       />
     );
   }
 
-  // If we have specific node selections, show them as expandable
+  // Show expandable tree with node selections
   return (
     <Tree.Item
       label={displayName}
       visual={providerLogo}
-      actions={
-        spaceName ? (
-          <span className="text-xs text-muted-foreground">{spaceName}</span>
-        ) : undefined
-      }
+      actions={actions}
       defaultCollapsed={true}
     >
       <Tree>
-        {nodeItems.map((item) => (
+        {nodeItems.map((source) => (
           <Tree.Item
-            key={item.id}
-            label={item.name}
+            key={source.id}
+            label={source.name}
             type="leaf"
-            visual={item.visual}
+            visual={getVisualForSourceItem(source)}
           />
         ))}
       </Tree>
@@ -277,8 +230,8 @@ export function SelectDataSourcesFilters() {
     (view) => view.sId === mcpServerView?.sId
   );
 
-  const isTableOrWarehouseServer = tablesServer.find(
-    (server) => server === internalMcpServerView?.server.name
+  const isTableOrWarehouseServer = tablesServer.includes(
+    internalMcpServerView?.server.name || ""
   );
 
   const dataSourceViews = useMemo(
@@ -286,10 +239,7 @@ export function SelectDataSourcesFilters() {
     [sources.in]
   );
 
-  const hasDataSources = useMemo(
-    () => Object.values(dataSourceViews).length > 0,
-    [dataSourceViews]
-  );
+  const hasDataSources = Object.values(dataSourceViews).length > 0;
 
   if (!hasDataSources) {
     return (
