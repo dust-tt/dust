@@ -197,7 +197,7 @@ function DataSourceTreeItem({
   );
 }
 
-export function SelectDataSourcesFilters() {
+export function SelectedDataSources() {
   const { setSheetPageId } = useKnowledgePageContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
