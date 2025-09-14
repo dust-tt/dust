@@ -11,6 +11,7 @@ import {
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
+  _getBrowserSummaryAgent,
   _getDustDeepGlobalAgent,
   _getDustTaskGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
@@ -307,6 +308,11 @@ function getGlobalAgent({
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
         dataWarehousesMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
+      agentConfiguration = _getBrowserSummaryAgent(auth, {
+        settings,
       });
       break;
     default:

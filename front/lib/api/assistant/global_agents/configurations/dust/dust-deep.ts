@@ -1,5 +1,6 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   DUST_DEEP_DESCRIPTION,
   DUST_DEEP_NAME,
@@ -169,6 +170,13 @@ If you need a capability that is not available in the tools you have access to, 
 </additional_tools>
 `;
 
+const offloadedBrowsingPrompt = `<web_browsing_guidelines>
+You can use the web tools to search the web and browse web pages.
+The browsing tool will return a summary of the content and a link to a file that contains the entire content of the web page in markdown format.
+You can read or search through the files contents to get access to the original, unaltered content, which can be crucial in some cases.
+</web_browsing_guidelines>
+`;
+
 const outputPrompt = `<output_guidelines>
 NEVER address the user before you have run all necessary tools and are ready to provide your final answer. DO NOT open with phrases like "Here is..." or "Summary:" or "I'll conduct.." or "I'll start by...".
 Only output internal reasoning and tool calls until you are ready to provide your answer.
@@ -187,7 +195,7 @@ Exception for clarifications (very complex tasks only):
 </output_guidelines>`;
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
-const subAgentInstructions = `${subAgentPrimaryGoal}\n${toolsPrompt}`;
+const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}`;
 const browserSummaryAgentInstructions = `${browserSummaryAgentPrimaryGoal}`;
 
 function getModelConfig(
@@ -626,6 +634,27 @@ export function _getDustTaskGlobalAgent(
       webSearchBrowseMCPServerView,
     })
   );
+
+  // If dust-task uses the webtools_edge server, preconfigure its browse tool summary agent
+  if (
+    webSearchBrowseMCPServerView?.internalMCPServerId &&
+    getInternalMCPServerNameFromSId(
+      webSearchBrowseMCPServerView.internalMCPServerId
+    ) === "webtools_edge"
+  ) {
+    const summaryAgent = _getBrowserSummaryAgent(auth, { settings });
+    if (summaryAgent && summaryAgent.status === "active") {
+      for (const a of actions) {
+        if (
+          a.sId === GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-action" &&
+          "mcpServerViewId" in a
+        ) {
+          // Configure via childAgentId so the AGENT input is auto-injected like run_agent
+          a.childAgentId = summaryAgent.sId;
+        }
+      }
+    }
+  }
 
   // Add data warehouses tool with all warehouses in global space (all remote DBs)
   const dataWarehousesAction = getCompanyDataWarehousesAction(
