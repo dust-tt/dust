@@ -31,6 +31,11 @@ export async function createClientExecutableFile(
     createdByAgentConfigurationId,
   } = params;
 
+  const validationResult = validateTailwindCode(content);
+  if (validationResult.isErr()) {
+    return new Err(new Error(validationResult.error.message));
+  }
+
   try {
     const workspace = auth.getNonNullableWorkspace();
 
