@@ -354,18 +354,15 @@ export function findPathsToConfiguration({
   for (const tool of mcpServer.tools) {
     // Skip disabled tools
     if (disabledTools.includes(tool.name)) {
-      console.log("skipping disabled tool:", tool.name);
       continue;
     }
 
     if (tool.inputSchema) {
-      console.log("processing tool:", tool.name);
       const inlinedSchema = inlineAllRefs(tool.inputSchema);
       matches = {
         ...matches,
         ...findMatchingSubSchemas(inlinedSchema, mimeType),
       };
-      console.log("matches:\n", JSON.stringify(matches, null, 2));
     }
   }
 
@@ -588,8 +585,6 @@ export function getMCPServerToolsConfigurations(
   }
   const { server } = mcpServerView;
 
-  console.log("mcpServerView:\n", JSON.stringify(mcpServerView, null, 2));
-
   const mayRequireDataSourceConfiguration =
     Object.keys(
       findPathsToConfiguration({
@@ -669,8 +664,6 @@ export function getMCPServerToolsConfigurations(
     description: schema.description,
   }));
 
-  console.log("numberConfigurations:\n", JSON.stringify(numberConfigurations, null, 2));
-
   const booleanConfigurations = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
@@ -695,12 +688,11 @@ export function getMCPServerToolsConfigurations(
       return [
         key,
         {
-          options:
-            Array.isArray(valueProperty.enum)
-              ? valueProperty.enum.filter(
-                  (v): v is string => typeof v === "string"
-                )
-              : [],
+          options: Array.isArray(valueProperty.enum)
+            ? valueProperty.enum.filter(
+                (v): v is string => typeof v === "string"
+              )
+            : [],
           description: schema.description,
         },
       ];
@@ -850,10 +842,6 @@ export function findMatchingSubSchemas(
     return matches;
   }
 
-  if (inputSchema.$ref) {
-    console.log("inputSchema contains a $ref:", inputSchema.$ref);
-  }
-
   // Check properties in object schemas
   if (inputSchema.properties) {
     for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
@@ -942,17 +930,19 @@ export function findMatchingSubSchemas(
   return matches;
 }
 
-
 /**
  * Inlines all references in a schema.
  * @param schema The schema to inline references in.
  * @param rootSchema The root schema to use for following references.
  * @returns The schema with all references inlined.
  */
-export function inlineAllRefs(schema: JSONSchema, rootSchema?: JSONSchema): JSONSchema {
+export function inlineAllRefs(
+  schema: JSONSchema,
+  rootSchema?: JSONSchema
+): JSONSchema {
   rootSchema = rootSchema ?? schema;
 
-  let outputSchema: JSONSchema = {...schema};
+  let outputSchema: JSONSchema = { ...schema };
 
   // If this schema is a direct reference, resolve it fully and continue inlining recursively
   if (schema.$ref) {
@@ -978,11 +968,11 @@ export function inlineAllRefs(schema: JSONSchema, rootSchema?: JSONSchema): JSON
     if (isJSONSchemaObject(schema.items)) {
       outputSchema.items = inlineAllRefs(schema.items, rootSchema);
     } else if (Array.isArray(schema.items)) {
-      outputSchema.items = schema.items.map((item) => 
-        isJSONSchemaObject(item) ? inlineAllRefs(item, rootSchema) : item);
+      outputSchema.items = schema.items.map((item) =>
+        isJSONSchemaObject(item) ? inlineAllRefs(item, rootSchema) : item
+      );
     }
   }
-
 
   // Handle all other keys
   for (const [key, value] of Object.entries(schema)) {
@@ -998,7 +988,10 @@ export function inlineAllRefs(schema: JSONSchema, rootSchema?: JSONSchema): JSON
       continue;
     }
     if (isJSONSchemaObject(value)) {
-      outputSchema = { ...outputSchema, [key]: inlineAllRefs(value, rootSchema) };
+      outputSchema = {
+        ...outputSchema,
+        [key]: inlineAllRefs(value, rootSchema),
+      };
     } else {
       outputSchema = { ...outputSchema, [key]: value };
     }

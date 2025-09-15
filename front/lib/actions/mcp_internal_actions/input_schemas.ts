@@ -4,7 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z, ZodError } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import { followInternalRef, isJSONSchemaObject } from "@app/lib/utils/json_schemas";
 import type { Result } from "@app/types";
 import { normalizeError } from "@app/types";
 import { Err, Ok } from "@app/types";
