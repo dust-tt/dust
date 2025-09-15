@@ -178,8 +178,6 @@ export async function renderConversationForModel(
         }
       );
 
-      console.log(m);
-
       let systemContext = "";
       if (m.context.origin === "triggered") {
         const items = [];
