@@ -1,8 +1,10 @@
-import { Err, type PostWebhookTriggerResponseType } from "@dust-tt/client";
+import type {PostWebhookTriggerResponseType} from "@dust-tt/client";
+import { Err  } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 
 import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -12,7 +14,6 @@ import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import { UserResource } from "@app/lib/resources/user_resource";
 
 /**
  * @swagger
@@ -151,7 +152,7 @@ async function handler(
       }
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, wId);
-      return await launchAgentTriggerWorkflow({ auth, trigger });
+      return launchAgentTriggerWorkflow({ auth, trigger });
     },
     { concurrency: 10 }
   );
