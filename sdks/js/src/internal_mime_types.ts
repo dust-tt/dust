@@ -242,6 +242,7 @@ const TOOL_MIME_TYPES = {
   TOOL_OUTPUT: generateToolMimeTypes({
     category: "TOOL_OUTPUT",
     resourceTypes: [
+      "AGENT_PAUSE_TOOL_OUTPUT",
       "BROWSE_RESULT",
       "DATA_SOURCE_SEARCH_QUERY",
       "DATA_SOURCE_SEARCH_RESULT",

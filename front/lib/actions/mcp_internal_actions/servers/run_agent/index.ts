@@ -13,10 +13,11 @@ import type {
   ChildAgentBlob,
   RunAgentBlockingEvent,
 } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import {
   makeInternalMCPServer,
+  makeMCPToolExit,
   makeMCPToolTextError,
+  makeToolBlockedAwaitingInputResponse,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   ActionGeneratedFileType,
@@ -321,21 +322,10 @@ export default async function createServer(
       }
 
       if (isHandover) {
-        // Return early - no need to stream, all output have already been sent through notifications
-        return {
+        return makeMCPToolExit({
+          message: `Query delegated to agent @${childAgentBlob.name}`,
           isError: false,
-          content: [
-            {
-              type: "resource",
-              resource: {
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
-                conversationId: mainConversation.sId,
-                text: `Query delegated to ${childAgentBlob.name}.`,
-                uri: "",
-              },
-            },
-          ],
-        };
+        });
       }
 
       const { conversation, isNewConversation, userMessageId } = convRes.value;

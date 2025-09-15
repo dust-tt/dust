@@ -32,6 +32,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import {
+  isAgentPauseOutputResourceType,
   isRunAgentChainOfThoughtProgressOutput,
   isRunAgentGenerationTokensProgressOutput,
   isRunAgentQueryResourceType,
@@ -73,6 +74,8 @@ export function MCPRunAgentActionDetails({
 
   const queryResource = toolOutput?.find(isRunAgentQueryResourceType) || null;
   const resultResource = toolOutput?.find(isRunAgentResultResourceType) || null;
+  const handoverResource =
+    toolOutput?.find(isAgentPauseOutputResourceType) || null;
 
   const generatedFiles =
     toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
@@ -255,7 +258,14 @@ export function MCPRunAgentActionDetails({
                 </ContentMessage>
               </div>
             )}
-            {childAgent && (
+            {handoverResource && (
+              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                <ContentMessage title="Handover" variant="primary" size="lg">
+                  {handoverResource.resource.text}
+                </ContentMessage>
+              </div>
+            )}
+            {childAgent && (chainOfThought || response) && (
               <CollapsibleComponent
                 rootProps={{ defaultOpen: true }}
                 triggerChildren={
