@@ -224,19 +224,19 @@ export async function editClientExecutableFile(
     });
   }
 
+  if (
+    editedByAgentConfigurationId &&
+    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+      editedByAgentConfigurationId
+  ) {
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+    });
+  }
+
   // Upload the updated content.
   try {
-    if (
-      editedByAgentConfigurationId &&
-      fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-        editedByAgentConfigurationId
-    ) {
-      await fileResource.setUseCaseMetadata({
-        ...fileResource.useCaseMetadata,
-        lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
-      });
-    }
-
     await fileResource.uploadContent(auth, updatedContent);
 
     return new Ok({ fileResource, replacementCount: occurrences });
