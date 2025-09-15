@@ -215,6 +215,14 @@ export const supportedAudioFileFormats = {
   "audio/webm": [".webm"],
 } as const;
 
+// Webhook trigger endpoint (skeleton) response type
+export const PostWebhookTriggerResponseSchema = z.object({
+  success: z.literal(true),
+});
+export type PostWebhookTriggerResponseType = z.infer<
+  typeof PostWebhookTriggerResponseSchema
+>;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 type AudioContentType = keyof typeof supportedAudioFileFormats;

@@ -1,16 +1,51 @@
+import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 
-import type { NextApiRequestWithContext } from "@app/logger/withlogging";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import logger from "@app/logger/logger";
 import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import logger from "@app/logger/logger";
+import type { NextApiRequestWithContext } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-type PostResponseBody = {
-  success: true;
-};
+/**
+ * @swagger
+ * /api/v1/w/{wId}/triggers/hooks/{webhookSourceId}:
+ *   post:
+ *     summary: Receive external webhook to trigger flows
+ *     description: Skeleton endpoint that verifies workspace and webhook source and logs receipt.
+ *     tags:
+ *       - Triggers
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: webhookSourceId
+ *         required: true
+ *         description: Webhook source ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Webhook received
+ *       400:
+ *         description: Invalid request
+ *       404:
+ *         description: Workspace or webhook source not found
+ *       405:
+ *         description: Method not allowed
+ */
 
 export const config = {
   api: {
@@ -22,7 +57,7 @@ export const config = {
 
 async function handler(
   req: NextApiRequestWithContext,
-  res: NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
   const { method } = req;
 
@@ -43,7 +78,8 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid route parameters: expected string wId and webhookSourceId.",
+        message:
+          "Invalid route parameters: expected string wId and webhookSourceId.",
       },
     });
   }
