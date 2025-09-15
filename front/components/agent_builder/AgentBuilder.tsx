@@ -43,9 +43,10 @@ import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
-import logger from "@app/logger/logger";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, removeNulls } from "@app/types";
+import { normalizeError } from "@app/types";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[],
@@ -99,7 +100,7 @@ export default function AgentBuilder({
   const { mcpServerViews } = useMCPServerViewsContext();
 
   const router = useRouter();
-  const sendNotification = useSendNotification();
+  const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
@@ -238,6 +239,9 @@ export default function AgentBuilder({
         agentConfigurationId: duplicateAgentId
           ? null
           : agentConfiguration?.sId || null,
+        areSlackChannelsChanged: form.getFieldState(
+          "agentSettings.slackChannels"
+        ).isDirty,
       });
 
       if (!result.isOk()) {
@@ -255,13 +259,26 @@ export default function AgentBuilder({
       const createdAgent = result.value;
       const isCreatingNew = duplicateAgentId || !agentConfiguration;
 
-      sendNotification({
-        title: isCreatingNew ? "Agent created" : "Agent saved",
-        description: isCreatingNew
-          ? "Your agent has been successfully created"
-          : "Your agent has been successfully saved",
-        type: "success",
-      });
+      // Check if there's a warning about Slack channel linking
+      if (
+        "_warning" in createdAgent &&
+        createdAgent._warning === "slack_channel_linking_in_progress"
+      ) {
+        sendNotification({
+          title: isCreatingNew ? "Agent created" : "Agent saved",
+          description:
+            "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.",
+          type: "info",
+        });
+      } else {
+        sendNotification({
+          title: isCreatingNew ? "Agent created" : "Agent saved",
+          description: isCreatingNew
+            ? "Your agent has been successfully created"
+            : "Your agent has been successfully saved",
+          type: "success",
+        });
+      }
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
@@ -275,7 +292,9 @@ export default function AgentBuilder({
 
       setIsSaving(false);
     } catch (error) {
-      logger.error("Unexpected error:", error);
+      datadogLogger.error("Unexpected error:", {
+        error: normalizeError(error),
+      });
       setIsSaving(false);
     }
   };
@@ -301,7 +320,7 @@ export default function AgentBuilder({
       return "Unknown error";
     };
     const errorMessage = getFirstErrorMessage(errors);
-    logger.error(
+    datadogLogger.error(
       {
         errorMessage,
         agentConfigurationId: agentConfiguration?.sId,

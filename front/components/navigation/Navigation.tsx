@@ -66,8 +66,11 @@ export function Navigation({
             />
           </SheetTrigger>
         </div>
-        <SheetContent side="left" className="flex w-full max-w-xs flex-1">
-          <SheetHeader className="bg-muted-background p-0">
+        <SheetContent
+          side="left"
+          className="flex w-full max-w-xs flex-1 bg-muted-background dark:bg-muted-background-night"
+        >
+          <SheetHeader className="bg-muted-background p-0" hideButton={true}>
             <VisuallyHidden>
               <SheetTitle className="hidden" />
             </VisuallyHidden>
@@ -77,6 +80,7 @@ export function Navigation({
             owner={owner}
             subNavigation={subNavigation}
             user={user}
+            isMobile={true}
           >
             {navChildren && navChildren}
           </NavigationSidebar>

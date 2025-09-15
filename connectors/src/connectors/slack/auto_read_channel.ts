@@ -1,5 +1,6 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
 import { launchJoinChannelWorkflow } from "@connectors/connectors/slack/temporal/client";
 import type { Logger } from "@connectors/logger/logger";
@@ -62,6 +63,20 @@ export async function autoReadChannel(
   );
 
   if (workflowResult.isErr()) {
+    // Check if this is the "operation in progress" error
+    if (workflowResult.error instanceof WorkflowExecutionAlreadyStartedError) {
+      // For auto-read, if the operation is already in progress, that's fine
+      logger.info(
+        {
+          connectorId,
+          slackChannelId,
+          teamId,
+        },
+        "Auto-read channel join already in progress"
+      );
+      return new Ok(true);
+    }
+
     return new Err(workflowResult.error);
   }
 

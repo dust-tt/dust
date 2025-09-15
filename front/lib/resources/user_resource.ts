@@ -342,6 +342,29 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async getToolValidations(): Promise<
+    { mcpServerId: string; toolNames: string[] }[]
+  > {
+    const metadata = await UserMetadataModel.findAll({
+      where: {
+        userId: this.id,
+        key: {
+          [Op.like]: "toolsValidations:%",
+        },
+      },
+    });
+
+    return metadata.map((m) => {
+      const mcpServerId = m.key.replace("toolsValidations:", "");
+      const toolNames = m.value
+        .split(USER_METADATA_COMMA_SEPARATOR)
+        .map((v) => v.replaceAll(USER_METADATA_COMMA_REPLACEMENT, ","))
+        .filter((name) => name.length > 0);
+
+      return { mcpServerId, toolNames };
+    });
+  }
+
   fullName(): string {
     return [this.firstName, this.lastName].filter(Boolean).join(" ");
   }

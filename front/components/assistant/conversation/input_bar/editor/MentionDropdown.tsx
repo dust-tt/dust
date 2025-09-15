@@ -84,21 +84,27 @@ export const MentionDropdown = ({
         ) : suggestions.length > 0 ? (
           <div className="flex flex-col gap-y-1 p-1">
             {suggestions.map((suggestion, index) => (
-              <div
-                key={suggestion.id}
-                className="flex flex-initial items-center gap-x-2 px-2 py-1"
-              >
-                <Avatar size="xs" visual={suggestion.pictureUrl} />
+              <div key={suggestion.id}>
                 <button
                   className={classNames(
-                    "flex-initial cursor-pointer text-left text-sm font-semibold",
+                    "flex items-center gap-x-2 px-2 py-1",
+                    "w-full flex-initial cursor-pointer text-left text-sm font-semibold",
                     index === selectedIndex
                       ? "text-highlight-500"
                       : "text-foreground dark:text-foreground-night"
                   )}
-                  onClick={() => onSelect(suggestion)}
-                  onMouseEnter={() => onSelectedIndexChange(index)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSelect(suggestion);
+                  }}
+                  onMouseEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSelectedIndexChange(index);
+                  }}
                 >
+                  <Avatar size="xs" visual={suggestion.pictureUrl} />
                   {suggestion.label}
                 </button>
               </div>

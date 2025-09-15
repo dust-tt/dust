@@ -9,7 +9,6 @@ import cronstrue from "cronstrue";
 import { useMemo } from "react";
 
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { isAgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useUser } from "@app/lib/swr/user";
 import type { TriggerKind } from "@app/types/assistant/triggers";
 
@@ -36,7 +35,7 @@ export const TriggerCard = ({
 }: TriggerCardProps) => {
   const { user } = useUser();
   const isEditor = trigger.editor === user?.id;
-  const cronDescription = useMemo(() => {
+  const description = useMemo(() => {
     try {
       if (
         trigger.kind === "schedule" &&
@@ -56,7 +55,7 @@ export const TriggerCard = ({
   return (
     <Card
       variant="primary"
-      className={"h-28 select-none"}
+      className={"min-h-28 select-none"}
       onClick={onEdit}
       action={
         isEditor && (
@@ -76,9 +75,16 @@ export const TriggerCard = ({
           <Avatar visual={getIcon(trigger.kind)} size="xs" />
           <span className="truncate">{trigger.name}</span>
         </div>
-        {isAgentBuilderScheduleTriggerType(trigger) && (
-          <span className="text-muted-foreground dark:text-muted-foreground-night">
-            <span className="line-clamp-2 break-words">{cronDescription}</span>
+        <span className="text-muted-foreground dark:text-muted-foreground-night">
+          <span className="line-clamp-2 break-words">{description}</span>
+        </span>
+        {trigger.editorEmail && (
+          <span className="mt-auto text-xs text-muted-foreground dark:text-muted-foreground-night">
+            Managed by{" "}
+            <span className="font-semibold">
+              {trigger.editorEmail ?? "another user"}
+            </span>
+            .
           </span>
         )}
       </div>

@@ -6,7 +6,7 @@ import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
-const AVATAR_SIZES = ["xs", "sm", "md", "lg", "xl", "xxl", "auto"] as const;
+const AVATAR_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl", "auto"] as const;
 type AvatarSizeType = (typeof AVATAR_SIZES)[number];
 
 const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
@@ -22,7 +22,7 @@ const avatarVariants = cva(
         md: "s-h-10 s-w-10",
         lg: "s-h-16 s-w-16",
         xl: "s-h-20 s-w-20",
-        xxl: "s-h-36 s-w-36",
+        "2xl": "s-h-36 s-w-36",
         auto: "s-w-full s-relative",
       },
       variant: {
@@ -64,7 +64,7 @@ const avatarVariants = cva(
       },
       {
         rounded: false,
-        size: "xxl",
+        size: "2xl",
         className: "s-rounded-[38px]",
       },
       {
@@ -89,7 +89,7 @@ const textVariants = cva("s-select-none s-font-semibold", {
       md: "s-text-base",
       lg: "s-text-3xl",
       xl: "s-text-5xl",
-      xxl: "s-text-7xl",
+      "2xl": "s-text-7xl",
       auto: "s-text-xl",
     },
   },

@@ -12,7 +12,6 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import isEmpty from "lodash/isEmpty";
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
@@ -139,6 +138,7 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
     </Card>
   );
 }
+
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
 }
@@ -194,12 +194,11 @@ export function AgentBuilderCapabilitiesBlock({
   };
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
+    const mcpServerView = mcpServerViewsWithKnowledge.find(
+      (view) => view.sId === action.configuration?.mcpServerViewId
+    );
     const isDataSourceSelectionRequired =
-      action.type === "MCP" &&
-      Boolean(
-        !isEmpty(action.configuration.dataSourceConfigurations) ||
-          !isEmpty(action.configuration.tablesConfigurations)
-      );
+      action.type === "MCP" && Boolean(mcpServerView);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });

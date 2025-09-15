@@ -7,6 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -20,6 +21,7 @@ export interface GetTriggersResponseBody {
   triggers: (TriggerType & {
     isSubscriber: boolean;
     isEditor: boolean;
+    editorEmail?: string;
   })[];
 }
 
@@ -83,11 +85,19 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      // Fetch all editor users in batch
+      const editorIds = [...new Set(triggers.map((trigger) => trigger.editor))];
+      const editorUsers = await UserResource.fetchByModelIds(editorIds);
+      const editorEmailMap = new Map(
+        editorUsers.map((user) => [user.id, user.email])
+      );
+
       const triggersWithIsSubscriber = await Promise.all(
         triggers.map(async (trigger) => ({
           ...trigger.toJSON(),
           isSubscriber: await trigger.isSubscriber(auth),
           isEditor: trigger.editor === auth.getNonNullableUser().id,
+          editorEmail: editorEmailMap.get(trigger.editor),
         }))
       );
 

@@ -366,6 +366,11 @@ export default async function createServer(
       const streamRes = await api.streamAgentAnswerEvents({
         conversation: conversation,
         userMessageId,
+        options: {
+          maxReconnectAttempts: 10,
+          reconnectDelay: 10000,
+          autoReconnect: true,
+        },
       });
 
       if (streamRes.isErr()) {

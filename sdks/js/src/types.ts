@@ -111,6 +111,7 @@ const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
   | "connector_rate_limit_error"
   | "slack_configuration_not_found"
   | "google_drive_webhook_not_found"
+  | "connector_operation_in_progress"
 >();
 
 const ConnectorsAPIErrorSchema = z.object({

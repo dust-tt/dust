@@ -8,6 +8,8 @@ import {
 } from "@app/lib/swr/swr";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
+import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
+import type { LightWorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
 
 export function useUser() {
@@ -38,9 +40,25 @@ export function useUserMetadata(key: string) {
   };
 }
 
+export function useUserApprovals(owner: LightWorkspaceType) {
+  const userApprovalsFetcher: Fetcher<GetUserApprovalsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/me/approvals`,
+    userApprovalsFetcher
+  );
+
+  return {
+    approvals: data ? data.approvals : [],
+    isApprovalsLoading: !error && !data,
+    isApprovalsError: error,
+    mutateApprovals: mutate,
+  };
+}
+
 export function useDeleteMetadata() {
   const deleteMetadata = async (prefix: string) => {
-    await fetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
+    return fetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
       method: "DELETE",
     });
   };

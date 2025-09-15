@@ -9,10 +9,12 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 export type PostTextAsCronRuleResponseBody = {
   cronRule: string;
+  timezone: string;
 };
 
 const PostTextAsCronRuleRequestBodySchema = z.object({
   naturalDescription: z.string(),
+  defaultTimezone: z.string(),
 });
 
 export type PostTextAsCronRuleRequestBody = z.infer<
@@ -40,10 +42,11 @@ async function handler(
         });
       }
 
-      const { naturalDescription } = bodyValidation.data;
+      const { naturalDescription, defaultTimezone } = bodyValidation.data;
 
       const r = await generateCronRule(auth, {
         naturalDescription,
+        defaultTimezone,
       });
 
       if (r.isErr()) {
@@ -57,7 +60,8 @@ async function handler(
       }
 
       return res.status(200).json({
-        cronRule: r.value,
+        cronRule: r.value.cron,
+        timezone: r.value.timezone,
       });
     }
 

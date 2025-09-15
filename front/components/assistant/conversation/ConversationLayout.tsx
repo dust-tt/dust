@@ -235,7 +235,7 @@ function ConversationInnerLayout({
                     <div
                       id={CONVERSATION_VIEW_SCROLL_LAYOUT}
                       className={cn(
-                        "dd-privacy-mask h-full overflow-y-auto scroll-smooth px-4",
+                        "dd-privacy-mask h-full overflow-y-auto overscroll-y-none scroll-smooth px-4",
                         // Hide conversation on mobile when any panel is opened.
                         currentPanel && "hidden md:block"
                       )}

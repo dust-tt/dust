@@ -5,14 +5,22 @@ import { cloneBaseConfig } from "@app/lib/registry";
 import type { Result } from "@app/types";
 import { Err, getSmallWhitelistedModel, Ok } from "@app/types";
 
+function isValidIANATimezone(timezone: string): boolean {
+  // Get the list of all supported IANA timezones
+  const supportedTimezones = Intl.supportedValuesOf("timeZone");
+  return supportedTimezones.includes(timezone);
+}
+
 export async function generateCronRule(
   auth: Authenticator,
   {
     naturalDescription,
+    defaultTimezone,
   }: {
     naturalDescription: string;
+    defaultTimezone: string;
   }
-): Promise<Result<string, Error>> {
+): Promise<Result<{ cron: string; timezone: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   const model = getSmallWhitelistedModel(owner);
@@ -23,18 +31,21 @@ export async function generateCronRule(
   }
 
   const config = cloneBaseConfig(
-    getDustProdAction("assistant-builder-cron-rule-generator").config
+    getDustProdAction("assistant-builder-cron-timezone-generator").config
   );
   config.CREATE_CRON.provider_id = model.providerId;
   config.CREATE_CRON.model_id = model.modelId;
+  config.CREATE_TZ.provider_id = model.providerId;
+  config.CREATE_TZ.model_id = model.modelId;
 
   const res = await runActionStreamed(
     auth,
-    "assistant-builder-cron-rule-generator",
+    "assistant-builder-cron-timezone-generator",
     config,
     [
       {
         naturalDescription,
+        defaultTimezone,
       },
     ],
     {
@@ -48,6 +59,7 @@ export async function generateCronRule(
 
   const { eventStream } = res.value;
   let cronRule: string | null = null;
+  let timezone: string | null = null;
 
   for await (const event of eventStream) {
     if (event.type === "error") {
@@ -67,6 +79,9 @@ export async function generateCronRule(
         if (v.cron) {
           cronRule = v.cron;
         }
+        if (v.timezone) {
+          timezone = v.timezone;
+        }
       }
     }
   }
@@ -79,8 +94,14 @@ export async function generateCronRule(
       /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/
     )
   ) {
-    return new Err(new Error("Error generating cron rule: malformed output"));
+    return new Err(
+      new Error("Error generating cron rule: malformed cron output")
+    );
   }
 
-  return new Ok(cronRule);
+  if (!timezone || !isValidIANATimezone(timezone)) {
+    return new Err(new Error("Error generating cron rule: invalid timezone"));
+  }
+
+  return new Ok({ cron: cronRule, timezone });
 }

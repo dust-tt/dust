@@ -713,6 +713,7 @@ The directive should be used to display a clickable version of the agent name in
       get_issue: "never_ask",
       get_projects: "never_ask",
       get_project: "never_ask",
+      get_project_versions: "never_ask",
       get_transitions: "never_ask",
       get_issues: "never_ask",
       get_issue_types: "never_ask",
@@ -809,6 +810,7 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: {
+      get_user_timezone: "never_ask",
       list_calendars: "never_ask",
       list_events: "never_ask",
       get_event: "never_ask",
@@ -827,7 +829,7 @@ The directive should be used to display a clickable version of the agent name in
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
         scope:
-          "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read offline_access" as const,
+          "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read MailboxSettings.Read offline_access" as const,
       },
       icon: "OutlookLogo",
       documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",

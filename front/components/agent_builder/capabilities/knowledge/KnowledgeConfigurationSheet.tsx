@@ -21,8 +21,10 @@ import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabil
 import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
-import { getKnowledgeDefaultValues } from "@app/components/agent_builder/capabilities/knowledge/utils";
-import { getInitialPageId } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import {
+  getInitialPageId,
+  getKnowledgeDefaultValues,
+} from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
   generateUniqueActionName,
   nameToDisplayFormat,
@@ -34,12 +36,14 @@ import { DescriptionSection } from "@app/components/agent_builder/capabilities/s
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ProcessingMethodSection } from "@app/components/agent_builder/capabilities/shared/ProcessingMethodSection";
-import { SelectDataSourcesFilters } from "@app/components/agent_builder/capabilities/shared/SelectDataSourcesFilters";
+import { SelectedDataSources } from "@app/components/agent_builder/capabilities/shared/SelectedDataSources";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
+import type {
+  AgentBuilderAction,
+  CapabilityFormData,
+} from "@app/components/agent_builder/types";
 import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
@@ -373,8 +377,6 @@ function KnowledgeConfigurationSheetContent({
 
           {config && <DescriptionSection {...config?.descriptionConfig} />}
 
-          <SelectDataSourcesFilters />
-
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
             mcpServerView.server.name === SEARCH_SERVER_NAME && (
@@ -398,6 +400,8 @@ function KnowledgeConfigurationSheetContent({
                 </CollapsibleContent>
               </Collapsible>
             )}
+
+          <SelectedDataSources />
         </div>
       ),
     },

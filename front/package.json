@@ -27,7 +27,7 @@
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/sparkle": "^0.2.612",
+    "@dust-tt/sparkle": "^0.2.614",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
     "@heroicons/react": "^2.0.11",
@@ -144,8 +144,8 @@
     "tailwindcss": "^3.2.4",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.163.0",
-    "tsconfig-paths-webpack-plugin": "^4.1.0",
     "tmp": "^0.2.5",
+    "tsconfig-paths-webpack-plugin": "^4.1.0",
     "undici": "^7.8.0",
     "uuid": "^9.0.0",
     "yargs": "^17.7.2",
@@ -179,9 +179,9 @@
     "@types/sanitize-html": "^2.11.0",
     "@types/showdown": "^2.0.1",
     "@types/three": "^0.154.0",
+    "@types/tmp": "^0.2.3",
     "@types/uuid": "^9.0.1",
     "@types/yargs": "^17.0.33",
-    "@types/tmp": "^0.2.3",
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
     "@vitejs/plugin-react": "^4.3.4",
@@ -197,6 +197,7 @@
     "eslint-plugin-unused-imports": "^3.2.0",
     "husky": "^9.0.11",
     "jsdom": "^26.0.0",
+    "lint-staged": "^16.1.6",
     "next-sitemap": "^4.2.3",
     "node-fetch": "^2.7.0",
     "node-mocks-http": "^1.16.2",
@@ -210,8 +211,7 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.0.8",
     "vitest-canvas-mock": "^0.3.3",
-    "yalc": "^1.0.0-pre.53",
-    "lint-staged": "^16.1.6"
+    "yalc": "^1.0.0-pre.53"
   },
   "peerDependencies": {
     "typescript": "5.4.5"
@@ -219,6 +219,9 @@
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [
       "prettier --check"
+    ],
+    "**/*.{js,jsx,ts,tsx}": [
+      "eslint"
     ]
   },
   "browser": {

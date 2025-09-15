@@ -1,3 +1,5 @@
+import type { Err } from "@dust-tt/client";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -67,6 +69,12 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
       connectorId,
     },
   });
+
+  const channelsAlreadyLinkedToThisAgentIds = new Set(
+    slackChannels
+      .filter((c) => c.agentConfigurationId === agentConfigurationId)
+      .map((c) => c.slackChannelId)
+  );
 
   const foundSlackChannelIds = new Set(
     slackChannels.map((c) => c.slackChannelId)
@@ -143,29 +151,48 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     );
   });
   const joinPromises = await Promise.all(
-    slackChannelIds.map((slackChannelId) =>
-      launchJoinChannelWorkflow(
-        parseInt(connectorId),
-        slackChannelId,
-        "join-only"
+    slackChannelIds
+      .filter(
+        (slackChannelId) =>
+          !channelsAlreadyLinkedToThisAgentIds.has(slackChannelId)
       )
-    )
+      .map((slackChannelId) =>
+        launchJoinChannelWorkflow(
+          parseInt(connectorId),
+          slackChannelId,
+          "join-only"
+        )
+      )
   );
-  for (const joinRes of joinPromises) {
-    if (joinRes.isErr()) {
-      return apiError(
-        req,
-        res,
-        {
-          status_code: 400,
-          api_error: {
-            type: "connector_update_error",
-            message: `Could not launch join channel workflow: ${joinRes.error}`,
-          },
-        },
-        joinRes.error
-      );
-    }
+
+  // If there's an error that's other than workflow already started, return it.
+  const nonAlreadyStartedError = joinPromises.filter(
+    (j) =>
+      j.isErr() && !(j.error instanceof WorkflowExecutionAlreadyStartedError)
+  )?.[0] as Err<Error> | undefined;
+
+  if (nonAlreadyStartedError) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "connector_update_error",
+        message: nonAlreadyStartedError.error.message,
+      },
+    });
+  }
+
+  const alreadyStartedError = joinPromises.filter(
+    (j) => j.isErr() && j.error instanceof WorkflowExecutionAlreadyStartedError
+  )?.[0] as Err<Error> | undefined;
+
+  if (alreadyStartedError) {
+    return apiError(req, res, {
+      status_code: 409, // Conflict - operation already in progress
+      api_error: {
+        type: "connector_operation_in_progress",
+        message: alreadyStartedError.error.message,
+      },
+    });
   }
 
   res.status(200).json({

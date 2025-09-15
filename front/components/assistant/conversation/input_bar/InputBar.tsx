@@ -1,4 +1,4 @@
-import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
+import { Button, cn, StopIcon } from "@dust-tt/sparkle";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
@@ -68,30 +68,10 @@ export function AssistantInputBar({
   disable = false,
 }: AssistantInputBarProps) {
   const [disableSendButton, setDisableSendButton] = useState(disable);
-  const [isFocused, setIsFocused] = useState(false);
-  const rainbowEffectRef = useRef<HTMLDivElement>(null);
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
   >([]);
-
-  useEffect(() => {
-    const container = rainbowEffectRef.current;
-    if (!container) {
-      return;
-    }
-
-    const onFocusIn = () => setIsFocused(true);
-    const onFocusOut = () => setIsFocused(false);
-
-    container.addEventListener("focusin", onFocusIn);
-    container.addEventListener("focusout", onFocusOut);
-
-    return () => {
-      container.removeEventListener("focusin", onFocusIn);
-      container.removeEventListener("focusout", onFocusOut);
-    };
-  }, []);
 
   const { mutateConversation } = useConversation({
     conversationId,
@@ -344,69 +324,60 @@ export function AssistantInputBar({
         </div>
       )}
 
-      <div ref={rainbowEffectRef} className="flex w-full flex-col">
-        <RainbowEffect
-          className="w-full"
-          containerClassName="w-full"
-          size={isFocused ? "large" : "medium"}
-          disabled={disable || !isFloating}
-        >
-          <div
-            className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
-              "rounded-2xl transition-all",
-              "bg-muted-background dark:bg-muted-background-night",
-              "border",
-              "border-border-dark dark:border-border-dark-night",
-              "sm:border-border-dark/50 sm:focus-within:border-border-dark",
-              "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
-              disable && "cursor-not-allowed opacity-75",
-              isFloating
-                ? classNames(
-                    "focus-within:ring-1 dark:focus-within:ring-1",
-                    "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
-                    "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
-                  )
-                : classNames(
-                    "focus-within:border-highlight-300",
-                    "dark:focus-within:border-highlight-300-night"
-                  ),
-              isAnimating ? "duration-600 animate-shake" : "duration-300"
-            )}
-          >
-            <div className="relative flex w-full flex-1 flex-col">
-              <InputBarAttachments
-                owner={owner}
-                files={{ service: fileUploaderService }}
-                nodes={{
-                  items: attachedNodes,
-                  onRemove: handleNodesAttachmentRemove,
-                }}
-              />
-              <InputBarContainer
-                actions={actions}
-                disableAutoFocus={disableAutoFocus}
-                allAssistants={activeAgents}
-                agentConfigurations={agentConfigurations}
-                owner={owner}
-                selectedAssistant={selectedAssistant}
-                onEnterKeyDown={handleSubmit}
-                stickyMentions={stickyMentions}
-                fileUploaderService={fileUploaderService}
-                disableSendButton={
-                  disableSendButton || fileUploaderService.isProcessingFiles
-                }
-                disableTextInput={disable}
-                onNodeSelect={handleNodesAttachmentSelect}
-                onNodeUnselect={handleNodesAttachmentRemove}
-                selectedMCPServerViewIds={selectedMCPServerViewIds}
-                onMCPServerViewSelect={handleMCPServerViewSelect}
-                onMCPServerViewDeselect={handleMCPServerViewDeselect}
-                attachedNodes={attachedNodes}
-              />
-            </div>
-          </div>
-        </RainbowEffect>
+      <div
+        className={classNames(
+          "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
+          "rounded-2xl transition-all",
+          "bg-muted-background dark:bg-muted-background-night",
+          "border",
+          "border-border-dark dark:border-border-dark-night",
+          "sm:border-border-dark/50 sm:focus-within:border-border-dark",
+          "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
+          disable && "cursor-not-allowed opacity-75",
+          isFloating
+            ? classNames(
+                "focus-within:ring-1 dark:focus-within:ring-1",
+                "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
+                "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+              )
+            : classNames(
+                "focus-within:border-highlight-300",
+                "dark:focus-within:border-highlight-300-night"
+              ),
+          isAnimating ? "duration-600 animate-shake" : "duration-300"
+        )}
+      >
+        <div className="relative flex w-full flex-1 flex-col">
+          <InputBarAttachments
+            owner={owner}
+            files={{ service: fileUploaderService }}
+            nodes={{
+              items: attachedNodes,
+              onRemove: handleNodesAttachmentRemove,
+            }}
+          />
+          <InputBarContainer
+            actions={actions}
+            disableAutoFocus={disableAutoFocus}
+            allAssistants={activeAgents}
+            agentConfigurations={agentConfigurations}
+            owner={owner}
+            selectedAssistant={selectedAssistant}
+            onEnterKeyDown={handleSubmit}
+            stickyMentions={stickyMentions}
+            fileUploaderService={fileUploaderService}
+            disableSendButton={
+              disableSendButton || fileUploaderService.isProcessingFiles
+            }
+            disableTextInput={disable}
+            onNodeSelect={handleNodesAttachmentSelect}
+            onNodeUnselect={handleNodesAttachmentRemove}
+            selectedMCPServerViewIds={selectedMCPServerViewIds}
+            onMCPServerViewSelect={handleMCPServerViewSelect}
+            onMCPServerViewDeselect={handleMCPServerViewDeselect}
+            attachedNodes={attachedNodes}
+          />
+        </div>
       </div>
     </div>
   );

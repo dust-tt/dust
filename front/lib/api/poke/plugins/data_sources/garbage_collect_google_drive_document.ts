@@ -45,7 +45,8 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
       documentId: {
         type: "string",
         label: "Document ID",
-        description: "Document ID to garbage collect.",
+        description:
+          "Document ID to garbage collect. e.g. gdrive-1sz1eozmkoydwK63KkO4MMmXKuzqtYrHF",
       },
     },
   },

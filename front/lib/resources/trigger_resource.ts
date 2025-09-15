@@ -262,7 +262,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       case "schedule":
         return deleteAgentScheduleWorkflow({
           workspaceId: auth.getNonNullableWorkspace().sId,
-          triggerId: this.sId(),
+          trigger: this,
         });
       case "webhook":
         // TODO: Implement webhook workflow when ready.

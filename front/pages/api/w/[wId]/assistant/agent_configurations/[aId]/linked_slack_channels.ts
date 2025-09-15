@@ -149,6 +149,21 @@ async function handler(
   });
 
   if (connectorsApiRes.isErr()) {
+    // Check if the error is specifically about operation already in progress
+    if (connectorsApiRes.error.type === "connector_operation_in_progress") {
+      logger.info(
+        connectorsApiRes.error,
+        "Slack channel linking already in progress."
+      );
+      return apiError(req, res, {
+        status_code: 409,
+        api_error: {
+          type: "connector_operation_in_progress",
+          message: connectorsApiRes.error.message,
+        },
+      });
+    }
+
     logger.error(
       connectorsApiRes.error,
       "An error occurred while linking Slack channels."
