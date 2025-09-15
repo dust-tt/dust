@@ -412,12 +412,8 @@ const ConversationViewer = React.forwardRef<
       {conversation &&
         dateGroupedMessages.map((dateGroup, dateIndex) => (
           <div key={`date-group-${dateIndex}`}>
-            <div className="flex w-full justify-center py-4">
-              <div className="bg-element-4 rounded-full px-3 py-1">
-                <span className="text-element-800 text-xs font-medium">
-                  {dateGroup.date}
-                </span>
-              </div>
+            <div className="flex w-full justify-center py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+              {dateGroup.date}
             </div>
             {dateGroup.messages.map((typedGroup, index) => {
               const isLastGroup =
