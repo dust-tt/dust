@@ -110,13 +110,6 @@ export async function runToolActivity(
       case "tool_early_exit":
         if (!event.isError && event.text) {
           // Post message content
-          const all = await AgentStepContentResource.fetchByAgentMessages(
-            auth,
-            {
-              agentMessageIds: [agentMessage.agentMessageId],
-            }
-          );
-          const lastIndex = all.findLast((c) => c.step === step);
           await AgentStepContentResource.createNewVersion({
             workspaceId: conversation.owner.id,
             agentMessageId: agentMessage.agentMessageId,
