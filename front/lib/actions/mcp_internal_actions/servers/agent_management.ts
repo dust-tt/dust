@@ -1,5 +1,4 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { DustAPI } from "@dust-tt/client";
+import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
