@@ -38,22 +38,63 @@ export function getDefaultConfiguration(
 
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
 
-  // Set default values only for boolean and enums
-  // Strings and numbers should be left empty to trigger validation
-  for (const { key } of toolsConfigurations.booleanConfigurations) {
-    set(additionalConfig, key, false);
+  // Set default values for all configuration types when available
+  // This provides better UX by pre-filling known defaults while still allowing
+  // validation to catch truly missing required fields
+
+  // Boolean configurations: use explicit default or fallback to false
+  for (const {
+    key,
+    default: defaultValue,
+  } of toolsConfigurations.booleanConfigurations) {
+    set(
+      additionalConfig,
+      key,
+      defaultValue !== undefined ? defaultValue : false
+    );
   }
 
-  for (const [key, { options: enumValues }] of Object.entries(
-    toolsConfigurations.enumConfigurations
-  )) {
-    if (enumValues.length > 0) {
+  // Enum configurations: use explicit default or fallback to first option
+  for (const [
+    key,
+    { options: enumValues, default: defaultValue },
+  ] of Object.entries(toolsConfigurations.enumConfigurations)) {
+    if (defaultValue !== undefined) {
+      set(additionalConfig, key, defaultValue);
+    } else if (enumValues.length > 0) {
       set(additionalConfig, key, enumValues[0]);
     }
   }
 
-  for (const [key] of Object.entries(toolsConfigurations.listConfigurations)) {
-    set(additionalConfig, key, []);
+  // List configurations: use explicit default or fallback to empty array
+  for (const [key, { default: defaultValue }] of Object.entries(
+    toolsConfigurations.listConfigurations
+  )) {
+    set(
+      additionalConfig,
+      key,
+      defaultValue !== undefined ? [defaultValue] : []
+    );
+  }
+
+  // String configurations: set defaults when available
+  for (const {
+    key,
+    default: defaultValue,
+  } of toolsConfigurations.stringConfigurations) {
+    if (defaultValue !== undefined) {
+      set(additionalConfig, key, defaultValue);
+    }
+  }
+
+  // Number configurations: set defaults when available
+  for (const {
+    key,
+    default: defaultValue,
+  } of toolsConfigurations.numberConfigurations) {
+    if (defaultValue !== undefined) {
+      set(additionalConfig, key, defaultValue);
+    }
   }
 
   defaults.additionalConfiguration = additionalConfig;
@@ -67,9 +108,12 @@ export function getDefaultConfiguration(
  * @returns Default form data object
  */
 export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
-  return {
+  const config = getDefaultConfiguration(mcpServerView);
+  const result = {
     name: "",
     description: "",
-    configuration: getDefaultConfiguration(mcpServerView),
+    configuration: config,
   };
+  
+  return result;
 }
