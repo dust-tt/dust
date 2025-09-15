@@ -4,7 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { validateContent } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/validation";
+import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/validation";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
@@ -82,7 +82,7 @@ const createServer = (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
       ) => {
-        const validationResult = validateContent(content);
+        const validationResult = validateTailwindCode(content);
         if (validationResult.isErr()) {
           return new Err(
             new MCPError(validationResult.error.message, { tracked: false })
@@ -210,13 +210,6 @@ const createServer = (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
-        const validationResult = validateContent(new_string);
-        if (validationResult.isErr()) {
-          return new Err(
-            new MCPError(validationResult.error.message, { tracked: false })
-          );
-        }
-
         const { agentConfiguration } = agentLoopContext?.runContext ?? {};
 
         const result = await editClientExecutableFile(auth, {

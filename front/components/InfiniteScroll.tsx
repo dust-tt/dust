@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
+import type { IntersectionOptions } from "react-intersection-observer";
 import { useInView } from "react-intersection-observer";
 
 export type InfiniteScrollProps = {
@@ -7,6 +8,7 @@ export type InfiniteScrollProps = {
   hasMore: boolean;
   showLoader: boolean;
   loader: ReactNode;
+  options?: IntersectionOptions;
 };
 
 /**
@@ -19,8 +21,10 @@ export const InfiniteScroll = ({
   hasMore,
   showLoader,
   loader,
+  options,
 }: InfiniteScrollProps) => {
-  const { ref, inView } = useInView();
+  const { ref, inView } = useInView(options);
+
   useEffect(() => {
     if (inView && hasMore) {
       void nextPage();

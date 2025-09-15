@@ -4,7 +4,7 @@ import { z } from "zod";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { isFileUsingConversationFiles } from "@app/lib/files";
+import { isUsingConversationFiles } from "@app/lib/files";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -94,8 +94,8 @@ async function handler(
 
       const { shareScope } = parseResult.data;
 
-      // For workspace/public sharing, check if file uses conversation files.
-      if (shareScope !== "conversation_participants") {
+      // For public sharing, check if file uses conversation files.
+      if (shareScope === "public") {
         const fileContent = await getFileContent(auth, file, "original");
         if (!fileContent) {
           return apiError(req, res, {
@@ -107,7 +107,7 @@ async function handler(
           });
         }
 
-        if (isFileUsingConversationFiles(fileContent)) {
+        if (isUsingConversationFiles(fileContent)) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {

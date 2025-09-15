@@ -9,16 +9,18 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
@@ -37,6 +39,7 @@ interface NavigationSidebarProps {
   // TODO(2024-06-19 flav) Move subscription to a hook.
   subscription: SubscriptionType;
   user: UserTypeWithWorkspaces | null;
+  isMobile?: boolean;
 }
 
 export const NavigationSidebar = React.forwardRef<
@@ -49,6 +52,7 @@ export const NavigationSidebar = React.forwardRef<
     subNavigation,
     children,
     user,
+    isMobile,
   }: NavigationSidebarProps,
   ref
 ) {
@@ -82,6 +86,8 @@ export const NavigationSidebar = React.forwardRef<
     () => navs.find((n) => n.isCurrent(activePath)),
     [navs, activePath]
   );
+
+  const { setSidebarOpen } = useContext(SidebarContext);
 
   // We display the banner if the end date is in 30 days or less.
   const endDate = subscription.endDate;
@@ -117,6 +123,15 @@ export const NavigationSidebar = React.forwardRef<
                   />
                 </div>
               ))}
+              {isMobile && (
+                <div className="flex flex-grow justify-end">
+                  <TabsTrigger
+                    value="close-icon"
+                    icon={XMarkIcon}
+                    onClick={() => setSidebarOpen(false)}
+                  />
+                </div>
+              )}
             </TabsList>
             {navs.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>

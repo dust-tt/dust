@@ -10,7 +10,7 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
+import datadogLogger from "@app/logger/datadogLogger";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
@@ -94,7 +94,7 @@ async function processTableSelection(
           (node) => !excludedIds.has(node.internalId)
         );
       } catch (error) {
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             dataSourceViewId: dataSourceView.sId,
@@ -143,7 +143,7 @@ async function processTableSelection(
           });
         }
       } catch (error) {
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             dataSourceViewId: dataSourceView.sId,
@@ -194,11 +194,13 @@ export async function submitAgentBuilderForm({
   owner,
   agentConfigurationId = null,
   isDraft = false,
+  areSlackChannelsChanged,
 }: {
   formData: AgentBuilderFormData;
   owner: WorkspaceType;
   agentConfigurationId?: string | null;
   isDraft?: boolean;
+  areSlackChannelsChanged?: boolean;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -249,7 +251,7 @@ export async function submitAgentBuilderForm({
       { concurrency: 3 }
     );
   } catch (error) {
-    logger.error(
+    datadogLogger.error(
       {
         workspaceId: owner.sId,
         agentConfigurationId,
@@ -308,12 +310,12 @@ export async function submitAgentBuilderForm({
     if (!response.ok) {
       try {
         const error = await response.json();
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId,
             endpoint,
-            body: JSON.stringify(requestBody),
+            body: requestBody,
             httpStatus: response.status,
             errorMessage: error.error?.message,
           },
@@ -323,11 +325,11 @@ export async function submitAgentBuilderForm({
           new Error(error.error?.message || "Failed to save agent")
         );
       } catch {
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId,
-            body: JSON.stringify(requestBody),
+            body: requestBody,
             endpoint,
             httpStatus: response.status,
           },
@@ -351,9 +353,13 @@ export async function submitAgentBuilderForm({
     const { slackChannels, slackProvider } = formData.agentSettings;
     // If the user selected channels that were already routed to a different agent, the current behavior is to
     // unlink them from the previous agent and link them to this one.
-    if (slackProvider && slackChannels.length > 0) {
+    // Make the call even if slackChannels is empty, since if the user deselects all channels,
+    // the call need to be made to unlink them.
+    if (slackProvider && areSlackChannelsChanged) {
       const autoRespondWithoutMention =
-        slackChannels[0].autoRespondWithoutMention;
+        slackChannels.length > 0
+          ? slackChannels[0].autoRespondWithoutMention
+          : false;
       const slackRequestBody = JSON.stringify({
         provider: slackProvider,
         slack_channel_internal_ids: slackChannels.map(
@@ -377,7 +383,7 @@ export async function submitAgentBuilderForm({
           const errorBody = await slackLinkRes.json();
 
           if (errorBody?.error?.type === "connector_operation_in_progress") {
-            logger.info(
+            datadogLogger.info(
               {
                 workspaceId: owner.sId,
                 agentConfigurationId: agentConfiguration.sId,
@@ -401,7 +407,7 @@ export async function submitAgentBuilderForm({
           // If we can't parse the error, fall through to generic error
         }
 
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId: agentConfiguration.sId,
@@ -433,7 +439,7 @@ export async function submitAgentBuilderForm({
     if (!triggerSyncRes.ok) {
       try {
         const error = await triggerSyncRes.json();
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId: agentConfiguration.sId,
@@ -450,7 +456,7 @@ export async function submitAgentBuilderForm({
           )
         );
       } catch {
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId: agentConfiguration.sId,
@@ -464,7 +470,7 @@ export async function submitAgentBuilderForm({
 
     return new Ok(agentConfiguration);
   } catch (error) {
-    logger.error(
+    datadogLogger.error(
       {
         workspaceId: owner.sId,
         agentConfigurationId,

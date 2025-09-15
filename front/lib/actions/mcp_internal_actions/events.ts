@@ -18,3 +18,13 @@ export type ToolPersonalAuthRequiredEvent = {
   conversationId: string;
   authError: ToolPersonalAuthError;
 };
+
+export type ToolEarlyExitEvent = {
+  type: "tool_early_exit";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  conversationId: string;
+  text: string;
+  isError: boolean;
+};

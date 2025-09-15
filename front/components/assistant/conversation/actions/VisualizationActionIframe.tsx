@@ -23,10 +23,9 @@ import React, {
 } from "react";
 
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
-import logger from "@app/logger/logger";
+import datadogLogger from "@app/logger/datadogLogger";
 import type {
   CommandResultMap,
-  LightWorkspaceType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types";
@@ -153,10 +152,9 @@ function useVisualizationDataHandler({
           break;
 
         case "setErrorMessage":
-          logger.info(
-            { errorMessage: data.params.errorMessage },
-            "Visualization error"
-          );
+          datadogLogger.info("Visualization error", {
+            errorMessage: data.params.errorMessage,
+          });
           setErrorMessage(data.params.errorMessage);
           break;
 
@@ -217,38 +215,13 @@ export function CodeDrawer({
   );
 }
 
-// This interface represents the props for the VisualizationActionIframe component when it is used
-// in a public context.
-interface PublicVisualizationActionIframeProps {
-  agentConfigurationId: null;
-  conversationId: null;
+interface VisualizationActionIframeProps {
+  agentConfigurationId: string | null;
+  conversationId: string | null;
   isInDrawer?: boolean;
   visualization: Visualization;
-  workspace: null;
-}
-
-// This interface represents the props for the VisualizationActionIframe component when it is used
-// in a conversation context.
-interface ConversationVisualizationActionIframeProps {
-  agentConfigurationId: string;
-  conversationId: string;
-  isInDrawer?: boolean;
-  visualization: Visualization;
-  workspace: LightWorkspaceType;
-}
-
-type VisualizationActionIframeProps =
-  | ConversationVisualizationActionIframeProps
-  | PublicVisualizationActionIframeProps;
-
-function isPublicVisualization(
-  props: VisualizationActionIframeProps
-): props is PublicVisualizationActionIframeProps {
-  return (
-    props.agentConfigurationId === null &&
-    props.conversationId === null &&
-    props.workspace === null
-  );
+  workspaceId: string;
+  isPublic?: boolean;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -279,18 +252,18 @@ export const VisualizationActionIframe = forwardRef<
 
   const isErrored = !!errorMessage || retryClicked;
 
-  const isPublic = isPublicVisualization(props);
-
   const {
     agentConfigurationId,
     conversationId,
     isInDrawer = false,
     visualization,
+    workspaceId,
+    isPublic = false,
   } = props;
 
   useVisualizationDataHandler({
     visualization,
-    workspaceId: isPublic ? null : props.workspace.sId,
+    workspaceId,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -306,7 +279,7 @@ export const VisualizationActionIframe = forwardRef<
   );
 
   const { handleVisualizationRetry, canRetry } = useVisualizationRetry({
-    workspaceId: isPublic ? null : props.workspace.sId,
+    workspaceId,
     conversationId,
     agentConfigurationId,
     isPublic,
