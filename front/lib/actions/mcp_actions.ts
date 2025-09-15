@@ -426,17 +426,14 @@ export async function* tryCallMCPTool(
       return result;
     };
 
-    const serverType = (() => {
-      if (isClientSideMCPToolConfiguration(toolConfiguration)) {
-        return "client";
-      }
-
-      if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-        return "internal";
-      }
-
-      return "remote";
-    })();
+    let serverType;
+    if (isClientSideMCPToolConfiguration(toolConfiguration)) {
+      serverType = "client";
+    } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+      serverType = "internal";
+    } else {
+      serverType = "remote";
+    }
 
     if (serverType === "remote") {
       const isValid = isValidContentSize(content);
