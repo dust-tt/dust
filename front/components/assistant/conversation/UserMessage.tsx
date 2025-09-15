@@ -24,6 +24,7 @@ import {
 } from "@app/components/markdown/MentionBlock";
 import { formatMessageTime } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
+import { BellIcon } from "lucide-react";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -102,9 +103,9 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
     });
   };
 
-  return (
-    <Tooltip
-      label={
+  const label = (function () {
+    if (message?.context.lastTriggerRunAt) {
+      return (
         <div className="flex flex-col gap-1 text-sm">
           <span className="font-bold">Scheduled and sent automatically</span>
           {message?.created && (
@@ -120,8 +121,19 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
             </span>
           )}
         </div>
-      }
-      trigger={<Avatar size="xs" visual={<ClockIcon className="h-4 w-4" />} />}
-    />
+      );
+    } else {
+      return (
+        <span className="font-bold">Triggered and sent automatically</span>
+      );
+    }
+  })();
+
+  const icon = message?.context.lastTriggerRunAt ? (
+    <ClockIcon className="h-4 w-4" />
+  ) : (
+    <BellIcon className="h-4 w-4" />
   );
+
+  return <Tooltip label={label} trigger={<Avatar size="xs" visual={icon} />} />;
 }
