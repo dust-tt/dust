@@ -930,25 +930,17 @@ export function findMatchingSubSchemas(
   return matches;
 }
 
-/**
- * Inlines all references in a schema.
- * @param schema The schema to inline references in.
- * @param rootSchema The root schema to use for following references.
- * @returns The schema with all references inlined.
- */
-export function inlineAllRefs(
+function recursiveInlineAllRefs(
   schema: JSONSchema,
-  rootSchema?: JSONSchema
+  rootSchema: JSONSchema
 ): JSONSchema {
-  rootSchema = rootSchema ?? schema;
-
   let outputSchema: JSONSchema = { ...schema };
 
   // If this schema is a direct reference, resolve it fully and continue inlining recursively
   if (schema.$ref) {
     const refSchema = followInternalRef(rootSchema, schema.$ref);
     if (refSchema && isJSONSchemaObject(refSchema)) {
-      return inlineAllRefs(refSchema, rootSchema);
+      return recursiveInlineAllRefs(refSchema, rootSchema);
     }
     return schema;
   }
@@ -957,7 +949,10 @@ export function inlineAllRefs(
     outputSchema.properties = {};
     for (const [key, propSchema] of Object.entries(schema.properties)) {
       if (isJSONSchemaObject(propSchema)) {
-        outputSchema.properties[key] = inlineAllRefs(propSchema, rootSchema);
+        outputSchema.properties[key] = recursiveInlineAllRefs(
+          propSchema,
+          rootSchema
+        );
       } else {
         outputSchema.properties[key] = propSchema;
       }
@@ -966,10 +961,12 @@ export function inlineAllRefs(
 
   if (schema.type == "array" && schema.items) {
     if (isJSONSchemaObject(schema.items)) {
-      outputSchema.items = inlineAllRefs(schema.items, rootSchema);
+      outputSchema.items = recursiveInlineAllRefs(schema.items, rootSchema);
     } else if (Array.isArray(schema.items)) {
       outputSchema.items = schema.items.map((item) =>
-        isJSONSchemaObject(item) ? inlineAllRefs(item, rootSchema) : item
+        isJSONSchemaObject(item)
+          ? recursiveInlineAllRefs(item, rootSchema)
+          : item
       );
     }
   }
@@ -990,7 +987,7 @@ export function inlineAllRefs(
     if (isJSONSchemaObject(value)) {
       outputSchema = {
         ...outputSchema,
-        [key]: inlineAllRefs(value, rootSchema),
+        [key]: recursiveInlineAllRefs(value, rootSchema),
       };
     } else {
       outputSchema = { ...outputSchema, [key]: value };
@@ -998,4 +995,13 @@ export function inlineAllRefs(
   }
 
   return outputSchema;
+}
+
+/**
+ * Inlines all references in a schema.
+ * @param schema The schema to inline references in.
+ * @returns The schema with all references inlined.
+ */
+export function inlineAllRefs(schema: JSONSchema): JSONSchema {
+  return recursiveInlineAllRefs(schema, schema);
 }
