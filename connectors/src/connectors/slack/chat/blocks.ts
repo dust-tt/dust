@@ -1,13 +1,13 @@
 import type { LightAgentConfigurationType } from "@dust-tt/client";
 
-import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_interaction";
+import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
   LEAVE_FEEDBACK_DOWN,
   LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
-} from "@connectors/api/webhooks/webhook_slack_interaction";
+} from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import { truncate } from "@connectors/types";
