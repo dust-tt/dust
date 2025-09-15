@@ -48,6 +48,43 @@ import {
 
 const DEFAULT_PAGE_LIMIT = 50;
 
+// Utility functions for date grouping
+const formatDateSeparator = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  const diffTime = today.getTime() - messageDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return "Today";
+  } else if (diffDays === 1) {
+    return "Yesterday";
+  } else {
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
+  }
+};
+
+const isSameDay = (timestamp1: number, timestamp2: number): boolean => {
+  const date1 = new Date(timestamp1);
+  const date2 = new Date(timestamp2);
+  return date1.getFullYear() === date2.getFullYear() &&
+         date1.getMonth() === date2.getMonth() &&
+         date1.getDate() === date2.getDate();
+};
+
+type MessageGroupWithDate = {
+  date: string;
+  timestamp: number;
+  messages: MessageWithContentFragmentsType[][];
+};
+
 interface ConversationViewerProps {
   conversationId: string;
   isInModal?: boolean;
@@ -337,6 +374,11 @@ const ConversationViewer = React.forwardRef<
     [messages]
   );
 
+  const dateGroupedMessages = useMemo(
+    () => groupMessagesByDate(typedGroupedMessages),
+    [typedGroupedMessages]
+  );
+
   useLastMessageGroupObserver(typedGroupedMessages);
 
   return (
@@ -362,24 +404,36 @@ const ConversationViewer = React.forwardRef<
         </div>
       )}
       {conversation &&
-        typedGroupedMessages.map((typedGroup, index) => {
-          const isLastGroup = index === typedGroupedMessages.length - 1;
-          return (
-            <MessageGroup
-              key={`typed-group-${index}`}
-              messages={typedGroup}
-              isLastMessageGroup={isLastGroup}
-              conversationId={conversationId}
-              feedbacks={feedbacks}
-              isInModal={isInModal}
-              owner={owner}
-              prevFirstMessageId={prevFirstMessageId}
-              prevFirstMessageRef={prevFirstMessageRef}
-              user={user}
-              latestPage={latestPage}
-            />
-          );
-        })}
+        dateGroupedMessages.map((dateGroup, dateIndex) => (
+          <div key={`date-group-${dateIndex}`}>
+            <div className="flex w-full justify-center py-4">
+              <div className="rounded-full bg-element-4 px-3 py-1">
+                <span className="text-xs font-medium text-element-800">
+                  {dateGroup.date}
+                </span>
+              </div>
+            </div>
+            {dateGroup.messages.map((typedGroup, index) => {
+              const isLastGroup = dateIndex === dateGroupedMessages.length - 1 && 
+                                index === dateGroup.messages.length - 1;
+              return (
+                <MessageGroup
+                  key={`typed-group-${dateIndex}-${index}`}
+                  messages={typedGroup}
+                  isLastMessageGroup={isLastGroup}
+                  conversationId={conversationId}
+                  feedbacks={feedbacks}
+                  isInModal={isInModal}
+                  owner={owner}
+                  prevFirstMessageId={prevFirstMessageId}
+                  prevFirstMessageRef={prevFirstMessageRef}
+                  user={user}
+                  latestPage={latestPage}
+                />
+              );
+            })}
+          </div>
+        ))}
     </div>
   );
 });
@@ -438,4 +492,41 @@ const groupMessagesByType = (
       }
     });
   return groupedMessages;
+};
+
+/**
+ * Groups message groups by date, creating date separators for different days.
+ * Takes the output from groupMessagesByType and further groups by date.
+ */
+const groupMessagesByDate = (
+  messageGroups: MessageWithContentFragmentsType[][]
+): MessageGroupWithDate[] => {
+  const dateGroups: MessageGroupWithDate[] = [];
+  
+  messageGroups.forEach((group) => {
+    if (group.length === 0) {
+      return;
+    }
+    
+    // Get the timestamp from the first message in the group
+    const firstMessage = group[0];
+    // Both UserMessageType and AgentMessageType (from API) have created field, 
+    // but TypeScript doesn't know this for LightAgentMessageType
+    const timestamp = (firstMessage as any).created || Date.now();
+    
+    // Check if we already have a group for this date
+    const existingDateGroup = dateGroups.find(dg => isSameDay(dg.timestamp, timestamp));
+    
+    if (existingDateGroup) {
+      existingDateGroup.messages.push(group);
+    } else {
+      dateGroups.push({
+        date: formatDateSeparator(timestamp),
+        timestamp,
+        messages: [group]
+      });
+    }
+  });
+  
+  return dateGroups;
 };
