@@ -1,5 +1,4 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { isInternalToolOutputResourceType } from "@dust-tt/client";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 
 import type {
@@ -18,6 +17,7 @@ import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import { getExitEvents } from "@app/lib/actions/mcp_internal_actions/utils";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
@@ -155,86 +155,37 @@ export async function* runToolWithStreaming(
     toolConfiguration,
   });
 
-  const exitOutputItem = outputItems
-    .map((item) => item.content)
-    .find(isInternalToolOutputResourceType)?.resource;
+  // Parse the output resources to check if we find special exit events.
+  // This could be an authentication, validation, or unconditional exit from the action.
+  const exitEvents = await getExitEvents({
+    outputItems,
+    action,
+    actionBaseParams,
+    agentConfiguration,
+    agentMessage,
+    conversation,
+  });
 
-  if (exitOutputItem) {
-    switch (exitOutputItem.type) {
-      case "tool_early_exit": {
-        const { isError, text } = exitOutputItem;
-        yield {
-          type: "tool_early_exit",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          conversationId: conversation.sId,
-          messageId: agentMessage.sId,
-          text: text,
-          isError: isError,
-        };
-        return;
-      }
-      case "tool_blocked_awaiting_input": {
-        const { blockingEvents, state } = exitOutputItem;
-        // Update the action status to blocked_child_action_input_required to break the agent loop.
-        await action.updateStatus("blocked_child_action_input_required");
-
-        // Update the step context to save the resume state.
-        await action.updateStepContext({
-          ...action.stepContext,
-          resumeState: state,
-        });
-
-        // Yield the blocking events.
-        for (const event of blockingEvents) {
-          yield event;
-        }
-        return;
-      }
-      case "tool_personal_auth_required": {
-        const { provider, scope } = exitOutputItem;
-
-        const authErrorMessage =
-          `The tool ${actionBaseParams.functionCallName} requires personal ` +
-          `authentication, please authenticate to use it.`;
-
-        // Update the action to mark it as blocked because of a personal authentication error.
-        await action.updateStatus("blocked_authentication_required");
-
-        yield {
-          type: "tool_personal_auth_required",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          conversationId: conversation.sId,
-          authError: {
-            mcpServerId: action.toolConfiguration.toolServerId,
-            provider: provider,
-            toolName: actionBaseParams.functionCallName ?? "unknown",
-            message: authErrorMessage,
-            ...(scope && {
-              scope,
-            }),
-          },
-        };
-        return;
-      }
+  if (exitEvents.length > 0) {
+    for (const event of exitEvents) {
+      yield event;
     }
+    return;
+  } else {
+    statsDClient.increment("mcp_actions_success.count", 1, tags);
+
+    await action.updateStatus("succeeded");
+
+    yield {
+      type: "tool_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: {
+        ...action.toJSON(),
+        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+        generatedFiles,
+      },
+    };
   }
-
-  statsDClient.increment("mcp_actions_success.count", 1, tags);
-
-  await action.updateStatus("succeeded");
-
-  yield {
-    type: "tool_success",
-    created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: {
-      ...action.toJSON(),
-      output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-      generatedFiles,
-    },
-  };
 }

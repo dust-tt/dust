@@ -1,3 +1,4 @@
+import { isInternalToolOutputResourceType } from "@dust-tt/client";
 import type {
   CallToolResult,
   McpError,
