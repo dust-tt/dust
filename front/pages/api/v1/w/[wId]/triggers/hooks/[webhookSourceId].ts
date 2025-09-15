@@ -1,4 +1,4 @@
-import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
+import { Err, type PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 
 import { Authenticator } from "@app/lib/auth";
@@ -12,6 +12,7 @@ import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
 import type { WithAPIErrorResponse } from "@app/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 /**
  * @swagger
@@ -137,23 +138,41 @@ async function handler(
     )
   ).flat();
 
-  await concurrentExecutor(
+  const results = await concurrentExecutor(
     triggers,
     // Run every trigger.
     async (trigger) => {
-      await launchAgentTriggerWorkflow({ auth, trigger });
+      // Get the trigger's user and create a new authenticator
+      const user = await UserResource.fetchByModelId(trigger.editor);
+
+      if (!user) {
+        logger.error({ triggerId: trigger.id }, "Trigger editor not found.");
+        return new Err(new Error("Trigger editor not found."));
+      }
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, wId);
+      return await launchAgentTriggerWorkflow({ auth, trigger });
     },
     { concurrency: 10 }
   );
 
-  logger.info(
-    {
-      workspaceId: wId,
-      webhookSourceId,
-    },
-    "[Webhook Trigger] Received webhook (skeleton handler)."
-  );
+  const errors = results.filter((result) => result.isErr());
 
+  if (errors.length > 0) {
+    logger.error({ errors }, "Error launching agent trigger workflows.");
+    return apiError(
+      req,
+      res,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Error launching agent trigger workflows.",
+        },
+      },
+      errors[0].error
+    );
+  }
   return res.status(200).json({ success: true });
 }
 
