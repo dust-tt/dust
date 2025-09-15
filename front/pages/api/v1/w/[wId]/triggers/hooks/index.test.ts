@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 
 import handler from "./[webhookSourceId]";
@@ -18,6 +19,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
   it("returns 200 when workspace and webhook source exist", async () => {
     const { req, res, workspace } = await setupTest("POST");
 
+    await SpaceFactory.system(workspace);
     const webhookSourceFactory = new WebhookSourceFactory(workspace);
     const created = await webhookSourceFactory.create();
     if (created.isErr()) {
