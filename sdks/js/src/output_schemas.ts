@@ -615,3 +615,53 @@ export function isMCPProgressNotificationType(
 ): notification is MCPProgressNotificationType {
   return MCPProgressNotificationSchema.safeParse(notification).success;
 }
+
+// Internal tool output.
+
+export const AuthRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_personal_auth_required"),
+  provider: z.string(),
+  scope: z.string().optional(),
+  text: z.string(),
+  uri: z.string(),
+});
+
+export const BlockedAwaitingInputOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_blocked_awaiting_input"),
+  text: z.string(),
+  uri: z.string(),
+  blockingEvents: z.array(z.any()),
+  state: z.any(),
+});
+
+export const EarlyExitOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
+  type: z.literal("tool_early_exit"),
+  text: z.string(),
+  isError: z.boolean(),
+  uri: z.string(),
+});
+
+export const AgentPauseOutputResourceSchema = z.union([
+  AuthRequiredOutputResourceSchema,
+  BlockedAwaitingInputOutputResourceSchema,
+  EarlyExitOutputResourceSchema,
+]);
+
+export type AgentPauseOutputResourceType = z.infer<
+  typeof AgentPauseOutputResourceSchema
+>;
+
+export const isAgentPauseOutputResourceType = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: AgentPauseOutputResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    AgentPauseOutputResourceSchema.safeParse(outputBlock.resource).success
+  );
+};

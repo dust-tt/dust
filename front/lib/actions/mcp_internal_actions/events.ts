@@ -25,6 +25,6 @@ export type ToolEarlyExitEvent = {
   configurationId: string;
   messageId: string;
   conversationId: string;
-  message: string;
+  text: string;
   isError: boolean;
 };
