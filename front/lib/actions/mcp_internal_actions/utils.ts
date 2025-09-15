@@ -2,7 +2,7 @@ import type { MCPApproveExecutionEvent } from "@dust-tt/client";
 import {
   assertNever,
   INTERNAL_MIME_TYPES,
-  isInternalToolOutputResourceType,
+  isAgentPauseOutputResourceType,
 } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type {
@@ -69,7 +69,7 @@ export function makeToolBlockedAwaitingInputResponse(
       {
         type: "resource" as const,
         resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
           type: "tool_blocked_awaiting_input",
           text: "Tool requires resume after blocking events",
           uri: "",
@@ -90,7 +90,7 @@ export function makePersonalAuthenticationError(
       {
         type: "resource" as const,
         resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
           type: "tool_personal_auth_required",
           scope,
           provider,
@@ -114,7 +114,7 @@ export function makeMCPToolExit({
       {
         type: "resource" as const,
         resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
           text: message,
           type: "tool_early_exit",
           isError,
@@ -163,7 +163,7 @@ export const makeMCPToolJSONSuccess = ({
   };
 };
 
-export const getExitEvents = async ({
+export const getAgentPauseEvents = async ({
   outputItems,
   action,
   actionBaseParams,
@@ -186,7 +186,7 @@ export const getExitEvents = async ({
 > => {
   const exitOutputItem = outputItems
     .map((item) => item.content)
-    .find(isInternalToolOutputResourceType)?.resource;
+    .find(isAgentPauseOutputResourceType)?.resource;
 
   if (exitOutputItem) {
     switch (exitOutputItem.type) {

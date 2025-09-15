@@ -17,7 +17,7 @@ import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import { getExitEvents } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getAgentPauseEvents } from "@app/lib/actions/mcp_internal_actions/utils";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
@@ -155,9 +155,9 @@ export async function* runToolWithStreaming(
     toolConfiguration,
   });
 
-  // Parse the output resources to check if we find special exit events.
+  // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.
-  const exitEvents = await getExitEvents({
+  const agentPauseEvents = await getAgentPauseEvents({
     outputItems,
     action,
     actionBaseParams,
@@ -166,8 +166,8 @@ export async function* runToolWithStreaming(
     conversation,
   });
 
-  if (exitEvents.length > 0) {
-    for (const event of exitEvents) {
+  if (agentPauseEvents.length > 0) {
+    for (const event of agentPauseEvents) {
       yield event;
     }
     return;

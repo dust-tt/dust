@@ -618,8 +618,8 @@ export function isMCPProgressNotificationType(
 
 // Internal tool output.
 
-export const AuthRequiredInternalToolOutputResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT),
+export const AuthRequiredOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_personal_auth_required"),
   provider: z.string(),
   scope: z.string().optional(),
@@ -627,8 +627,8 @@ export const AuthRequiredInternalToolOutputResourceSchema = z.object({
   uri: z.string(),
 });
 
-export const BlockedAwaitingInputInternalToolOutputResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT),
+export const BlockedAwaitingInputOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_blocked_awaiting_input"),
   text: z.string(),
   uri: z.string(),
@@ -636,32 +636,32 @@ export const BlockedAwaitingInputInternalToolOutputResourceSchema = z.object({
   state: z.any(),
 });
 
-export const EarlyExitInternalToolOutputResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT),
+export const EarlyExitOutputResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),
   type: z.literal("tool_early_exit"),
   text: z.string(),
   isError: z.boolean(),
   uri: z.string(),
 });
 
-export const InternalToolOutputResourceSchema = z.union([
-  AuthRequiredInternalToolOutputResourceSchema,
-  BlockedAwaitingInputInternalToolOutputResourceSchema,
-  EarlyExitInternalToolOutputResourceSchema,
+export const AgentPauseOutputResourceSchema = z.union([
+  AuthRequiredOutputResourceSchema,
+  BlockedAwaitingInputOutputResourceSchema,
+  EarlyExitOutputResourceSchema,
 ]);
 
-export type InternalToolOutputResourceType = z.infer<
-  typeof InternalToolOutputResourceSchema
+export type AgentPauseOutputResourceType = z.infer<
+  typeof AgentPauseOutputResourceSchema
 >;
 
-export const isInternalToolOutputResourceType = (
+export const isAgentPauseOutputResourceType = (
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
-  resource: InternalToolOutputResourceType;
+  resource: AgentPauseOutputResourceType;
 } => {
   return (
     outputBlock.type === "resource" &&
-    InternalToolOutputResourceSchema.safeParse(outputBlock.resource).success
+    AgentPauseOutputResourceSchema.safeParse(outputBlock.resource).success
   );
 };
