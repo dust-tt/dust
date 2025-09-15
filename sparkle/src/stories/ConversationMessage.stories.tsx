@@ -4,6 +4,7 @@ import React from "react";
 import {
   Avatar,
   Button,
+  Chip,
   Citation,
   CitationIcons,
   CitationTitle,
@@ -43,7 +44,9 @@ export const ConversationExample = () => {
                 <CitationTitle>Title</CitationTitle>
               </Citation>,
             ]}
-            chip={<Avatar size="xs" icon={ClockIcon} />}
+            infoChip={
+              <Avatar size="xs" visual={<ClockIcon className="h-4 w-4" />} />
+            }
           >
             I only want to show citations if a citations reactnode has been
             passed

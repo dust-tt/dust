@@ -38,7 +38,7 @@ interface ConversationMessageProps
   timestamp?: string;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
-  chip?: React.ReactNode;
+  infoChip?: React.ReactNode;
 }
 
 const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
@@ -86,7 +86,7 @@ export const ConversationMessage = React.forwardRef<
       timestamp,
       pictureUrl,
       renderName = (name) => <span>{name}</span>,
-      chip,
+      infoChip,
       type,
       className,
       ...props
@@ -103,7 +103,7 @@ export const ConversationMessage = React.forwardRef<
             isBusy={avatarBusy}
             isDisabled={isDisabled}
             renderName={renderName}
-            chip={chip}
+            infoChip={infoChip}
           />
 
           <ConversationMessageContent citations={citations}>
@@ -165,7 +165,7 @@ interface ConversationMessageHeaderProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
-  chip?: React.ReactNode;
+  infoChip?: React.ReactNode;
   renderName: (name: string | null) => React.ReactNode;
 }
 
@@ -180,7 +180,7 @@ export const ConversationMessageHeader = React.forwardRef<
       isDisabled,
       name = "",
       timestamp,
-      chip,
+      infoChip,
       renderName,
       className,
       ...props
@@ -221,10 +221,10 @@ export const ConversationMessageHeader = React.forwardRef<
             )}
           >
             {renderName(name)}
-            {chip}
+            {infoChip}
           </div>
           <div>
-            <span className="s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
               {timestamp}
             </span>
           </div>
