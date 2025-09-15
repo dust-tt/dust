@@ -111,11 +111,11 @@ const config: Config = {
     },
     {
       pattern: /text-(xs|sm|base|lg|xl|2xl|3xl)/,
-      variants: ['sm', 'md', 'lg'],
+      variants: ['sm', 'md', 'lg', 'xl', '2xl'],
     },
     {
       pattern: /(flex|grid|block|inline|hidden)/,
-      variants: ['sm', 'md', 'lg'],
+      variants: ['sm', 'md', 'lg', 'xl', '2xl'],
     },
     {
       pattern: /bg-(slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900)/,
@@ -123,7 +123,7 @@ const config: Config = {
     },
     {
       pattern: /text-(slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900)/,
-      variants: ['hover', 'sm', 'md', 'lg'],
+      variants: ['hover'],
     },
   ],
 };
