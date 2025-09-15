@@ -44,7 +44,7 @@ export const AvatarExample = () => (
       <Avatar size="md" />
       <Avatar size="lg" />
       <Avatar size="xl" />
-      <Avatar size="xxl" />
+      <Avatar size="2xl" />
     </div>
     <div>With name</div>
     <div className="s-flex s-gap-4">
@@ -53,7 +53,7 @@ export const AvatarExample = () => (
       <Avatar size="md" name="Aria Doe" />
       <Avatar size="lg" name="Omar Doe" />
       <Avatar size="xl" name="Omar Doe" />
-      <Avatar size="xxl" name="Omar Doe" />
+      <Avatar size="2xl" name="Omar Doe" />
     </div>
     <div>With emoji url</div>
     <div className="s-flex s-gap-4">
@@ -69,7 +69,7 @@ export const AvatarExample = () => (
       <Avatar size="md" emoji="😂" backgroundColor="s-bg-info-200" />
       <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-gray-200" />
       <Avatar size="xl" emoji="👕" backgroundColor="s-bg-blue-200" />
-      <Avatar size="xxl" emoji="👕" backgroundColor="s-bg-blue-200" />
+      <Avatar size="2xl" emoji="👕" backgroundColor="s-bg-blue-200" />
     </div>
     <div className="s-flex s-gap-4">
       <Avatar size="sm" name="Eleanor Wright" />
@@ -126,7 +126,7 @@ export const AvatarExample = () => (
       <Avatar size="lg" icon={ActionFlagIcon} />
       <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
       <Avatar size="xl" icon={ActionShirtIcon} />
-      <Avatar size="xxl" icon={StarStrokeIcon} />
+      <Avatar size="2xl" icon={StarStrokeIcon} />
     </div>
     <div className="heading-2xl">Tools example</div>
     <div>Remote MCP Servers</div>
