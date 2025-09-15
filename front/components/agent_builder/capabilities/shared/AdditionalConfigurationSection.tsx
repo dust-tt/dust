@@ -79,7 +79,7 @@ function BooleanConfigurationInput({
       </div>
       <Checkbox
         id={`boolean-${configKey}`}
-        checked={field.value === false}
+        checked={field.value === true}
         onCheckedChange={(checked) => field.onChange(checked)}
       />
     </div>
