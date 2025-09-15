@@ -678,7 +678,10 @@ export function getMCPServerToolsConfigurations(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
-    default: extractSchemaDefault(schema, (v: unknown): v is string => typeof v === "string"),
+    default: extractSchemaDefault(
+      schema,
+      (v: unknown): v is string => typeof v === "string"
+    ),
   }));
 
   const numberConfigurations = Object.entries(
@@ -689,7 +692,10 @@ export function getMCPServerToolsConfigurations(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
-    default: extractSchemaDefault(schema, (v: unknown): v is number => typeof v === "number"),
+    default: extractSchemaDefault(
+      schema,
+      (v: unknown): v is number => typeof v === "number"
+    ),
   }));
 
   const booleanConfigurations = Object.entries(
@@ -700,7 +706,10 @@ export function getMCPServerToolsConfigurations(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
-    default: extractSchemaDefault(schema, (v: unknown): v is boolean => typeof v === "boolean"),
+    default: extractSchemaDefault(
+      schema,
+      (v: unknown): v is boolean => typeof v === "boolean"
+    ),
   }));
 
   const enumConfigurations = Object.fromEntries(
@@ -714,9 +723,12 @@ export function getMCPServerToolsConfigurations(
       if (!valueProperty || !isJSONSchemaObject(valueProperty)) {
         return [key, { options: [], description: schema.description }];
       }
-      
-      const defaultValue = extractSchemaDefault(schema, (v: unknown): v is string => typeof v === "string");
-      
+
+      const defaultValue = extractSchemaDefault(
+        schema,
+        (v: unknown): v is string => typeof v === "string"
+      );
+
       return [
         key,
         {
@@ -770,13 +782,19 @@ export function getMCPServerToolsConfigurations(
         zip(labels, values).map(([label, value]) => [value, label])
       );
 
-      const defaultValue = extractSchemaDefault(schema, (v: unknown): v is string => typeof v === "string");
+      const defaultValue = extractSchemaDefault(
+        schema,
+        (v: unknown): v is string => typeof v === "string"
+      );
 
-      return [key, { 
-        options: valueToLabel, 
-        description: schema.description,
-        default: defaultValue,
-      }];
+      return [
+        key,
+        {
+          options: valueToLabel,
+          description: schema.description,
+          default: defaultValue,
+        },
+      ];
     })
   );
 

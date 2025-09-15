@@ -114,6 +114,6 @@ export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
     description: "",
     configuration: config,
   };
-  
+
   return result;
 }

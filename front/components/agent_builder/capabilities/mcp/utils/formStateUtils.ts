@@ -36,8 +36,9 @@ export function createFormResetHandler(
       } else if (mcpServerView) {
         // New configuration mode: check if we need to reset
         const currentValues = form.getValues();
-        const currentMcpServerViewId = currentValues.configuration?.mcpServerViewId;
-        
+        const currentMcpServerViewId =
+          currentValues.configuration?.mcpServerViewId;
+
         // Only reset if we're switching to a different MCP server or don't have the right ID
         if (currentMcpServerViewId !== mcpServerView.sId) {
           const defaultValues = getDefaultFormValues(mcpServerView);

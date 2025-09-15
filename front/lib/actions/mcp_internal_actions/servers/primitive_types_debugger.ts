@@ -34,22 +34,26 @@ function createServer(): McpServer {
       user: z.object({
         name: ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
-        ].describe("The name of the user").default({
-          value: "John Doe",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-        }),
-        age: ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
-        ].describe("The age of the user").default({
-          value: 30,
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-        }),
+        ]
+          .describe("The name of the user")
+          .default({
+            value: "John Doe",
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+          }),
+        age: ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER]
+          .describe("The age of the user")
+          .default({
+            value: 30,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
+          }),
         admin: ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
-        ].describe("Whether the user is an admin").default({
-          value: true,
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-        }),
+        ]
+          .describe("Whether the user is an admin")
+          .default({
+            value: true,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
+          }),
         location: ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
         ].describe("The location of the user"),
