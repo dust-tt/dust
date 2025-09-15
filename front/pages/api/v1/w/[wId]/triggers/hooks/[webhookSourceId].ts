@@ -1,5 +1,4 @@
-import type {PostWebhookTriggerResponseType} from "@dust-tt/client";
-import { Err  } from "@dust-tt/client";
+import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 
 import { Authenticator } from "@app/lib/auth";
@@ -13,7 +12,7 @@ import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
-import type { WithAPIErrorResponse } from "@app/types";
+import { Err, type WithAPIErrorResponse } from "@app/types";
 
 /**
  * @swagger
@@ -171,7 +170,8 @@ async function handler(
           message: "Error launching agent trigger workflows.",
         },
       },
-      errors[0].error
+      // Safe cast thanks to the .filter above.
+      (errors[0] as Err<Error>).error
     );
   }
   return res.status(200).json({ success: true });
