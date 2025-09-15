@@ -286,6 +286,22 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     });
   }
 
+  static async getWebhookSourceViewForSystemSpace(
+    auth: Authenticator,
+    webhookSourceId: ModelId
+  ): Promise<WebhookSourcesViewResource | null> {
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+    const views = await this.baseFetch(auth, {
+      where: {
+        vaultId: systemSpace.id,
+        webhookSourceId,
+      },
+    });
+
+    return views[0] ?? null;
+  }
+
   public async updateName(
     auth: Authenticator,
     name?: string
