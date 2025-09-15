@@ -49,7 +49,6 @@ async function handler(
     });
   }
 
-  // Fetch workspace by ID from route.
   const workspace = await WorkspaceResource.fetchById(wId);
   if (!workspace) {
     return apiError(req, res, {
@@ -60,12 +59,9 @@ async function handler(
       },
     });
   }
-  req.addResourceToLog?.(workspace);
 
-  // Create an internal authenticator for the workspace to fetch resources.
   const auth = await Authenticator.internalBuilderForWorkspace(wId);
 
-  // Fetch webhook source by ID from route.
   const webhookSource = await WebhookSourceResource.fetchById(
     auth,
     webhookSourceId
@@ -74,14 +70,12 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "resource_not_found",
+        type: "webhook_source_not_found",
         message: `Webhook source ${webhookSourceId} not found in workspace ${wId}.`,
       },
     });
   }
-  req.addResourceToLog?.(webhookSource);
 
-  // Skeleton: only log receipt with minimal context, do not process payload.
   logger.info(
     {
       workspaceId: wId,
