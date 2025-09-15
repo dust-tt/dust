@@ -1,5 +1,9 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  DUST_DEEP_DESCRIPTION,
+  DUST_DEEP_NAME,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getDefaultWebActionsForGlobalAgent,
@@ -348,9 +352,9 @@ export function _getDustDeepGlobalAgent(
   const owner = auth.getNonNullableWorkspace();
 
   const name =
-    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2 ? "dust-deep-2" : "dust-deep";
-  const description =
-    "Deep research with company data, web search/browse, Content Creation, slideshow presentations, and data warehouses.";
+    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2
+      ? DUST_DEEP_NAME + "-2"
+      : DUST_DEEP_NAME;
 
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
@@ -368,7 +372,7 @@ export function _getDustDeepGlobalAgent(
     versionCreatedAt: null,
     versionAuthorId: null,
     name,
-    description,
+    description: DUST_DEEP_DESCRIPTION,
     instructions: dustDeepInstructions,
     pictureUrl,
     scope: "global" as const,

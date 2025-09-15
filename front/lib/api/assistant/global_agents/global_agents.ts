@@ -9,11 +9,11 @@ import {
   _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
-import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust";
+import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   _getDustDeepGlobalAgent,
   _getDustTaskGlobalAgent,
-} from "@app/lib/api/assistant/global_agents/configurations/dust-deep";
+} from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
   _getHelperGlobalAgent,

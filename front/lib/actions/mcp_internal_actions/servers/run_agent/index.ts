@@ -218,7 +218,7 @@ export default async function createServer(
     ) => {
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called"
+        "agentLoopContext is required to run the run_agent tool"
       );
 
       const { agentConfiguration: mainAgent, conversation: mainConversation } =

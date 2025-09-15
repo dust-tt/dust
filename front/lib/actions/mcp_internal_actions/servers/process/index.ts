@@ -105,7 +105,7 @@ function makeExtractInformationFromDocumentsTool(
       // Unwrap and prepare variables.
       assert(
         agentLoopContext?.runContext,
-        "agentLoopContext is required where the tool is called."
+        "agentLoopContext is required to run the extract_data tool"
       );
       const { agentConfiguration, conversation } = agentLoopContext.runContext;
       const { model } = agentConfiguration;

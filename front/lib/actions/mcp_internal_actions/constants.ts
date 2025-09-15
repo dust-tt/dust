@@ -15,6 +15,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
+import { DUST_DEEP_DESCRIPTION } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -65,6 +66,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
+  "deep_research",
   "extract_data",
   "file_generation",
   "freshservice",
@@ -936,6 +938,27 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
       instructions: SLIDESHOW_INSTRUCTIONS,
+    },
+  },
+  deep_research: {
+    id: 29,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("deep_research_as_a_tool");
+    },
+    allowMultipleInstances: false,
+    isPreview: true,
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "deep_research",
+      version: "0.1.0",
+      description: "Handoff the query to the deep research agent.",
+      authorization: null,
+      icon: "ActionBrainIcon",
+      documentationUrl: null,
+      instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
     },
   },
   [SEARCH_SERVER_NAME]: {
