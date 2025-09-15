@@ -41,10 +41,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     blob: CreationAttributes<WebhookSourceModel>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WebhookSourceResource, Error>> {
-    const canAdministrate =
-      await SpaceResource.canAdministrateSystemSpace(auth);
     assert(
-      canAdministrate,
+      await SpaceResource.canAdministrateSystemSpace(auth),
       "The user is not authorized to create a webhook source"
     );
 
