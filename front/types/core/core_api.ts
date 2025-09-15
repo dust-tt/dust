@@ -2140,7 +2140,7 @@ export class CoreAPI {
     limit,
   }: {
     query?: string;
-    queryType?: string;
+    queryType?: "exact" | "prefix" | "match";
     dataSourceViews: DataSourceViewType[];
     limit?: number;
   }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
