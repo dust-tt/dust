@@ -706,10 +706,8 @@ The directive should be used to display a clickable version of the agent name in
     id: 22,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("jira_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       // Read operations - never ask (no side effects)
       get_issue: "never_ask",

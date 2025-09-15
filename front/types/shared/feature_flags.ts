@@ -80,10 +80,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Allow indexing of private Slack channels",
     stage: "on_demand",
   },
-  jira_tool: {
-    description: "Jira MCP tool",
-    stage: "rolling_out",
-  },
   labs_mcp_actions_dashboard: {
     description: "MCP actions dashboard in Labs section",
     stage: "on_demand",
