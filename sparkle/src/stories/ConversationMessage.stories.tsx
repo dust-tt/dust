@@ -4,7 +4,6 @@ import React from "react";
 import {
   Avatar,
   Button,
-  Chip,
   Citation,
   CitationIcons,
   CitationTitle,
