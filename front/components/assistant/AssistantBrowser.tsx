@@ -23,7 +23,14 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -62,26 +69,68 @@ export const AgentGrid = ({
   handleAssistantClick,
   handleMoreClick,
 }: AgentGridProps) => {
+  // Handle "infinite" scroll
+  // We only start with 9 items shown (no need more on mobile) and load more until we fill the parent container.
+  // We use an intersection observer to detect when the bottom of the list is visible and load more items.
+  // That way, the list starts lightweight and only show more items when needed.
+  const ITEMS_PER_PAGE = 9; // Should be a multiple of 3
+
+  const [itemsPage, setItemsPage] = useState(0);
+
+  const nextPage = useCallback(() => {
+    setItemsPage(itemsPage + 1);
+  }, [setItemsPage, itemsPage]);
+
+  const previousEntry = useRef<IntersectionObserverEntry | undefined>(
+    undefined
+  );
+
+  const { ref, inView, entry } = useInView({
+    threshold: 0,
+  });
+
+  useEffect(() => {
+    if (
+      // The observer is in view.
+      inView &&
+      // We have more items to show.
+      agentConfigurations.length > itemsPage * ITEMS_PER_PAGE &&
+      // The entry is different from the previous one to avoid multiple calls for the same intersection.
+      entry != previousEntry.current
+    ) {
+      previousEntry.current = entry;
+      nextPage();
+    }
+  }, [inView, nextPage, entry, agentConfigurations.length, itemsPage]);
+  const slicedAgentConfigurations = agentConfigurations.slice(
+    0,
+    (itemsPage + 1) * ITEMS_PER_PAGE
+  );
   return (
     <CardGrid>
-      {agentConfigurations.map((agent) => (
-        <AssistantCard
-          key={agent.sId}
-          title={agent.name}
-          pictureUrl={agent.pictureUrl}
-          subtitle={agent.lastAuthors?.join(", ") ?? ""}
-          description={agent.description}
-          onClick={() => handleAssistantClick(agent)}
-          action={
-            <AssistantCardMore
-              onClick={(e: Event) => {
-                e.stopPropagation();
-                handleMoreClick(agent);
-              }}
-            />
-          }
-        />
-      ))}
+      {slicedAgentConfigurations.map((agent, index) => {
+        const isLastItem = index === slicedAgentConfigurations.length - 1;
+        return (
+          <AssistantCard
+            // Force a re-render of the last item to trigger the intersection observer
+            key={isLastItem ? `${agent.sId}-${itemsPage}` : agent.sId}
+            ref={isLastItem ? ref : undefined}
+            title={agent.name}
+            pictureUrl={agent.pictureUrl}
+            subtitle={agent.lastAuthors?.join(", ") ?? ""}
+            description={agent.description}
+            onClick={() => handleAssistantClick(agent)}
+            action={
+              <AssistantCardMore
+                onClick={(e: Event) => {
+                  e.stopPropagation();
+                  handleMoreClick(agent);
+                }}
+              />
+            }
+          />
+        );
+      })}
     </CardGrid>
   );
 };
