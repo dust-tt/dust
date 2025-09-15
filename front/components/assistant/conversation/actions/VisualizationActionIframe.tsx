@@ -23,13 +23,13 @@ import React, {
 } from "react";
 
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
+import datadogLogger from "@app/logger/datadogLogger";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types";
 import { assertNever, isVisualizationRPCRequest } from "@app/types";
-import datadogLogger from "@app/logger/datadogLogger";
 
 export type Visualization = {
   code: string;

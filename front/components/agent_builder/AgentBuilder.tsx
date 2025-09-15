@@ -43,10 +43,10 @@ import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, removeNulls } from "@app/types";
 import { normalizeError } from "@app/types";
-import datadogLogger from "@app/logger/datadogLogger";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[],

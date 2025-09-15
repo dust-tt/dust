@@ -10,6 +10,7 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import datadogLogger from "@app/logger/datadogLogger";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
@@ -25,7 +26,6 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import datadogLogger from "@app/logger/datadogLogger";
 
 function processDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,
