@@ -121,6 +121,19 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth);
   }
 
+  static async listByWebhookSourceViewId(
+    auth: Authenticator,
+    webhookSourceViewId: ModelId
+  ) {
+    return this.baseFetch(auth, {
+      where: {
+        webhookSourceViewId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        kind: "webhook",
+      },
+    });
+  }
+
   static async listByUserEditor(auth: Authenticator) {
     const user = auth.getNonNullableUser();
 

@@ -8,6 +8,10 @@ import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
 
 /**
  * @swagger
@@ -110,6 +114,37 @@ async function handler(
       },
     });
   }
+
+  // Fetch all triggers based on the webhook source id
+  const views = await WebhookSourcesViewResource.listByWebhookSource(
+    auth,
+    webhookSource.id
+  );
+
+  // Fetch all triggers based on the webhook source id
+  // flatten the triggers
+  const triggers = (
+    await concurrentExecutor(
+      views,
+      async (view) => {
+        const triggers = await TriggerResource.listByWebhookSourceViewId(
+          auth,
+          view.id
+        );
+        return triggers;
+      },
+      { concurrency: 10 }
+    )
+  ).flat();
+
+  await concurrentExecutor(
+    triggers,
+    // Run every trigger.
+    async (trigger) => {
+      await launchAgentTriggerWorkflow({ auth, trigger });
+    },
+    { concurrency: 10 }
+  );
 
   logger.info(
     {
