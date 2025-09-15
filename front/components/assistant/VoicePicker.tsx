@@ -6,6 +6,8 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { WorkspaceType } from "@app/types";
 
+import { WavRecorder } from "./voice/wav_recorder.js";
+
 // Component intent:
 // - Supports two recording interaction patterns:
 //   - "hold": Press and hold to record, release to stop and transcribe immediately.
@@ -28,6 +30,9 @@ export function VoicePicker({
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [mode, setMode] = useState<"hold" | "click">("hold");
+
+  // WavRecorder instance used for "hold" mode.
+  const wavRecorderRef = useRef<WavRecorder | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -117,6 +122,12 @@ export function VoicePicker({
       // Clear any pending press timeout.
       clearPressTimeout();
       pressStartRef.current = null;
+      // Ensure any ongoing WavRecorder session is stopped.
+      try {
+        const wr = wavRecorderRef.current;
+        void wr?.quit();
+      } catch {}
+      wavRecorderRef.current = null;
       stopRecorder(mediaRecorderRef.current);
       stopLevelMetering();
       stopTracks(streamRef.current);
@@ -205,30 +216,50 @@ export function VoicePicker({
 
   // ----- Recording flow -------------------------------------------------------
 
-  const startRecording = useCallback(async () => {
-    if (isRecording) {
-      return;
-    }
-    try {
-      const stream = await requestMicrophone();
-      streamRef.current = stream;
+  const startRecording = useCallback(
+    async (reason: "hold" | "click") => {
+      if (isRecording) {
+        return;
+      }
+      try {
+        if (reason === "hold") {
+          // Use WavRecorder for hold-to-record mode.
+          let wr = wavRecorderRef.current;
+          if (!wr) {
+            wr = new WavRecorder({ sampleRate: 44100 });
+            wavRecorderRef.current = wr;
+          }
+          await wr.begin();
+          if (wr.stream) {
+            streamRef.current = wr.stream;
+            startLevelMetering(streamRef.current);
+          }
+          await wr.record();
+          setIsRecording(true);
+        } else {
+          // Click mode: use MediaRecorder to capture webm for attachments.
+          const stream = await requestMicrophone();
+          streamRef.current = stream;
 
-      const recorder = createRecorder(stream, chunksRef);
-      mediaRecorderRef.current = recorder;
+          const recorder = createRecorder(stream, chunksRef);
+          mediaRecorderRef.current = recorder;
 
-      // Start level metering alongside recording.
-      startLevelMetering(stream);
+          // Start level metering alongside recording.
+          startLevelMetering(stream);
 
-      recorder.start();
-      setIsRecording(true);
-    } catch {
-      sendNotification({
-        type: "error",
-        title: "Microphone permission required.",
-        description: "Please allow microphone access and try again.",
-      });
-    }
-  }, [isRecording, sendNotification, startLevelMetering]);
+          recorder.start();
+          setIsRecording(true);
+        }
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Microphone permission required.",
+          description: "Please allow microphone access and try again.",
+        });
+      }
+    },
+    [isRecording, sendNotification, startLevelMetering]
+  );
 
   const stopAndFinalize = useCallback(
     async (reason: "hold" | "click") => {
@@ -268,6 +299,37 @@ export function VoicePicker({
 
   const stopRecording = useCallback(
     async (reason: "hold" | "click") => {
+      if (reason === "hold") {
+        setIsRecording(false);
+        setIsTranscribing(true);
+        try {
+          const wr = wavRecorderRef.current;
+          if (!wr) {
+            throw new Error("Recorder not initialized");
+          }
+          const { blob } = await wr.end();
+          const filename = `voice-${new Date().toISOString()}.wav`;
+          const file = new File([blob], filename, {
+            type: blob.type || "audio/wav",
+          });
+          await finalizeRecordingHold(file);
+        } catch (e) {
+          sendNotification({
+            type: "error",
+            title: "Recording error.",
+            description:
+              e instanceof Error ? e.message : "An unknown error occurred.",
+          });
+        } finally {
+          setIsTranscribing(false);
+          stopLevelMetering();
+          stopTracks(streamRef.current);
+          streamRef.current = null;
+          wavRecorderRef.current = null;
+        }
+        return;
+      }
+
       const recorder = mediaRecorderRef.current;
       if (!recorder || recorder.state === "inactive") {
         return;
@@ -281,7 +343,12 @@ export function VoicePicker({
       await stopped;
       await stopAndFinalize(reason);
     },
-    [stopAndFinalize]
+    [
+      finalizeRecordingHold,
+      sendNotification,
+      stopLevelMetering,
+      stopAndFinalize,
+    ]
   );
 
   // ----- Event handlers -------------------------------------------------------
@@ -315,7 +382,7 @@ export function VoicePicker({
       if (pressStartRef.current !== null) {
         setMode("hold");
         if (!isRecording) {
-          await startRecording();
+          await startRecording("hold");
         }
       }
     }, 150);
@@ -338,7 +405,7 @@ export function VoicePicker({
       // Click mode: toggle start/stop on click.
       setMode("click");
       if (!isRecording) {
-        await startRecording();
+        await startRecording("click");
         return;
       }
       await stopRecording("click");
