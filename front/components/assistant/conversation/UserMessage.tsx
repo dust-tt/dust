@@ -1,4 +1,10 @@
-import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  ClockIcon,
+  ConversationMessage,
+  Markdown,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -16,6 +22,7 @@ import {
   getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
+import { formatMessageTime } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
 interface UserMessageProps {
@@ -54,6 +61,12 @@ export function UserMessage({
           pictureUrl={message.context.profilePictureUrl || message.user?.image}
           name={message.context.fullName ?? undefined}
           renderName={(name) => <div className="heading-base">{name}</div>}
+          timestamp={formatMessageTime(message.created)}
+          infoChip={
+            message.context.origin === "triggered" && (
+              <TriggerChip message={message} />
+            )
+          }
           type="user"
           citations={citations}
         >
@@ -74,5 +87,41 @@ export function UserMessage({
         />
       )}
     </div>
+  );
+}
+
+function TriggerChip({ message }: { message?: UserMessageType }) {
+  const getChipDateFormat = (date: Date) => {
+    return date.toLocaleDateString("en-EN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  return (
+    <Tooltip
+      label={
+        <div className="flex flex-col gap-1 text-sm">
+          <span className="font-bold">Scheduled and sent automatically</span>
+          {message?.created && (
+            <span>
+              <span className="font-semibold">Current execution</span>:{" "}
+              {getChipDateFormat(new Date(message?.created))}
+            </span>
+          )}
+          {message?.context.lastTriggerRunAt && (
+            <span>
+              <span className="font-semibold">Previous run</span>:{" "}
+              {getChipDateFormat(new Date(message?.context.lastTriggerRunAt))}
+            </span>
+          )}
+        </div>
+      }
+      trigger={<Avatar size="xs" visual={<ClockIcon className="h-4 w-4" />} />}
+    />
   );
 }

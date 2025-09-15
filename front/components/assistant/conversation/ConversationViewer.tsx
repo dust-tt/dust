@@ -53,20 +53,24 @@ const formatDateSeparator = (timestamp: number): string => {
   const date = new Date(timestamp);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
+  const messageDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
   const diffTime = today.getTime() - messageDate.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) {
     return "Today";
   } else if (diffDays === 1) {
     return "Yesterday";
   } else {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
     });
   }
 };
@@ -74,9 +78,11 @@ const formatDateSeparator = (timestamp: number): string => {
 const isSameDay = (timestamp1: number, timestamp2: number): boolean => {
   const date1 = new Date(timestamp1);
   const date2 = new Date(timestamp2);
-  return date1.getFullYear() === date2.getFullYear() &&
-         date1.getMonth() === date2.getMonth() &&
-         date1.getDate() === date2.getDate();
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
 };
 
 type MessageGroupWithDate = {
@@ -407,15 +413,16 @@ const ConversationViewer = React.forwardRef<
         dateGroupedMessages.map((dateGroup, dateIndex) => (
           <div key={`date-group-${dateIndex}`}>
             <div className="flex w-full justify-center py-4">
-              <div className="rounded-full bg-element-4 px-3 py-1">
-                <span className="text-xs font-medium text-element-800">
+              <div className="bg-element-4 rounded-full px-3 py-1">
+                <span className="text-element-800 text-xs font-medium">
                   {dateGroup.date}
                 </span>
               </div>
             </div>
             {dateGroup.messages.map((typedGroup, index) => {
-              const isLastGroup = dateIndex === dateGroupedMessages.length - 1 && 
-                                index === dateGroup.messages.length - 1;
+              const isLastGroup =
+                dateIndex === dateGroupedMessages.length - 1 &&
+                index === dateGroup.messages.length - 1;
               return (
                 <MessageGroup
                   key={`typed-group-${dateIndex}-${index}`}
@@ -502,31 +509,31 @@ const groupMessagesByDate = (
   messageGroups: MessageWithContentFragmentsType[][]
 ): MessageGroupWithDate[] => {
   const dateGroups: MessageGroupWithDate[] = [];
-  
+
   messageGroups.forEach((group) => {
     if (group.length === 0) {
       return;
     }
-    
+
     // Get the timestamp from the first message in the group
     const firstMessage = group[0];
-    // Both UserMessageType and AgentMessageType (from API) have created field, 
-    // but TypeScript doesn't know this for LightAgentMessageType
-    const timestamp = (firstMessage as any).created || Date.now();
-    
+    const timestamp = firstMessage.created || Date.now();
+
     // Check if we already have a group for this date
-    const existingDateGroup = dateGroups.find(dg => isSameDay(dg.timestamp, timestamp));
-    
+    const existingDateGroup = dateGroups.find((dg) =>
+      isSameDay(dg.timestamp, timestamp)
+    );
+
     if (existingDateGroup) {
       existingDateGroup.messages.push(group);
     } else {
       dateGroups.push({
         date: formatDateSeparator(timestamp),
         timestamp,
-        messages: [group]
+        messages: [group],
       });
     }
   });
-  
+
   return dateGroups;
 };

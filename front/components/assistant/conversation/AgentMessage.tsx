@@ -24,6 +24,7 @@ import {
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
+import { formatMessageTime } from "@app/lib/utils/timestamps";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -413,6 +414,7 @@ export function AgentMessage({
           isDisabled={isArchived}
         />
       )}
+      timestamp={formatMessageTime(agentMessageToRender.created)}
       type="agent"
       citations={citations}
     >
