@@ -12,36 +12,17 @@ import {
   SlackBlockIdStaticAgentConfigSchema,
   SlackBlockIdToolValidationSchema,
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
-import {
-  getSlackClientForTeam,
-  openFeedbackModal,
-} from "@connectors/connectors/slack/feedback_modal";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 
 export const STATIC_AGENT_CONFIG = "static_agent_config";
 export const APPROVE_TOOL_EXECUTION = "approve_tool_execution";
 export const REJECT_TOOL_EXECUTION = "reject_tool_execution";
-export const LEAVE_FEEDBACK = "leave_feedback";
-export const LEAVE_FEEDBACK_UP = "leave_feedback_up";
-export const LEAVE_FEEDBACK_DOWN = "leave_feedback_down";
 
 const ToolValidationActionsCodec = t.union([
   t.literal(APPROVE_TOOL_EXECUTION),
   t.literal(REJECT_TOOL_EXECUTION),
 ]);
-
-const FeedbackActionSchema = t.type({
-  type: t.string,
-  action_id: t.union([
-    t.literal(LEAVE_FEEDBACK_UP),
-    t.literal(LEAVE_FEEDBACK_DOWN),
-  ]),
-  block_id: t.string,
-  action_ts: t.string,
-  value: t.string,
-});
 
 const StaticAgentConfigSchema = t.type({
   type: t.string,
@@ -90,11 +71,7 @@ const BlockActionsPayloadSchema = t.type({
     id: t.string,
   }),
   actions: t.array(
-    t.union([
-      StaticAgentConfigSchema,
-      ToolValidationActionsSchema,
-      FeedbackActionSchema,
-    ])
+    t.union([StaticAgentConfigSchema, ToolValidationActionsSchema])
   ),
   trigger_id: t.union([t.string, t.undefined]),
   response_url: t.string,
@@ -327,31 +304,6 @@ const _webhookSlackInteractionsAPIHandler = async (
             "Failed to validate tool execution"
           );
         }
-      } else if (
-        action.action_id === LEAVE_FEEDBACK_UP ||
-        action.action_id === LEAVE_FEEDBACK_DOWN
-      ) {
-        // Handle feedback button click - open modal
-        const feedbackAction = action as t.TypeOf<typeof FeedbackActionSchema>;
-        const buttonData = JSON.parse(feedbackAction.value || "{}");
-        const { conversationId, messageId, workspaceId, preselectedThumb } =
-          buttonData;
-
-        if (payload.trigger_id) {
-          // Open the feedback modal
-          await openFeedbackModal({
-            slackClient: await getSlackClientForTeam(payload.team.id),
-            triggerId: payload.trigger_id,
-            conversationId,
-            messageId,
-            workspaceId,
-            slackUserId: payload.user.id,
-            preselectedThumb,
-            slackChannelId: payload.container.channel_id,
-            slackMessageTs: payload.container.message_ts,
-            slackThreadTs: payload.container.thread_ts,
-          });
-        }
       }
     }
   }
@@ -360,48 +312,9 @@ const _webhookSlackInteractionsAPIHandler = async (
 async function handleViewSubmission(
   payload: t.TypeOf<typeof ViewSubmissionPayloadSchema>
 ) {
-  const { callback_id, private_metadata, state } = payload.view;
-
-  if (callback_id === "feedback_modal_submit") {
-    const metadata = JSON.parse(private_metadata) as {
-      conversationId: string;
-      messageId: string;
-      workspaceId: string;
-      slackUserId: string;
-      slackChannelId: string;
-      slackMessageTs: string;
-      slackThreadTs: string;
-    };
-
-    // Extract feedback values from the modal
-    const ratingSelection = state.values.feedback_rating?.rating_selection;
-    const ratingValue =
-      ratingSelection && "selected_option" in ratingSelection
-        ? ratingSelection.selected_option?.value
-        : undefined;
-
-    const feedbackInput = state.values.feedback_text?.feedback_input;
-    const feedbackText =
-      feedbackInput && "value" in feedbackInput
-        ? feedbackInput.value || ""
-        : "";
-
-    if (ratingValue) {
-      // Submit feedback to the API
-      await submitFeedbackToAPI({
-        conversationId: metadata.conversationId,
-        messageId: metadata.messageId,
-        workspaceId: metadata.workspaceId,
-        slackUserId: metadata.slackUserId,
-        slackTeamId: payload.team.id,
-        thumbDirection: ratingValue as "up" | "down",
-        feedbackContent: feedbackText,
-        slackChannelId: metadata.slackChannelId,
-        slackMessageTs: metadata.slackMessageTs,
-        slackThreadTs: metadata.slackThreadTs,
-      });
-    }
-  }
+  // This function can handle other view submissions if needed in the future
+  const { callback_id } = payload.view;
+  logger.info({ callback_id }, "Received view submission");
 }
 
 export const webhookSlackInteractionsAPIHandler = withLogging(
