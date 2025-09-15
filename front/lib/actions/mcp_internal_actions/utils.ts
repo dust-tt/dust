@@ -163,7 +163,7 @@ export const makeMCPToolJSONSuccess = ({
   };
 };
 
-export const getAgentPauseEvents = async ({
+export const getExitOrPauseEvents = async ({
   outputItems,
   action,
   actionBaseParams,
