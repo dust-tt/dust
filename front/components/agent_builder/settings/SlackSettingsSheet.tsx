@@ -1,6 +1,7 @@
 import {
   Button,
   Checkbox,
+  ContentMessage,
   ExternalLinkIcon,
   Icon,
   SearchInput,
@@ -15,6 +16,7 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -23,6 +25,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DataSourceType, WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types/user";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
 
@@ -296,36 +299,27 @@ export function SlackSettingsSheet({
               <span className="font-bold">@Dust</span> Slack bot is mentioned in
               these channels.
             </div>
-            <SlackChannelsList
-              existingSelection={localSlackChannels}
-              onSelectionChange={handleSelectionChange}
-              owner={owner}
-              slackDataSource={slackDataSource}
-            />
-            {hasFeature("slack_enhanced_default_agent") && (
-              <div className="flex flex-col gap-2 border-t pt-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                      Enhanced Default Agent
-                    </span>
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      Agent will automatically respond to all new threads (not
-                      just @mentions).
-                    </span>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <SliderToggle
-                      selected={autoRespondWithoutMentionEnabled}
-                      onClick={() =>
-                        setAutoRespondWithoutMentionEnabled(
-                          !autoRespondWithoutMentionEnabled
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
+            {!isAdmin(owner) && (
+              <ContentMessage
+                size="md"
+                variant="warning"
+                title="Admin Access Required"
+                icon={InformationCircleIcon}
+              >
+                <p>
+                  Only administrators can enable default agents for specific
+                  Slack channels.
+                </p>
+              </ContentMessage>
+            )}
+
+            {isAdmin(owner) && (
+              <SlackChannelsList
+                existingSelection={localSlackChannels}
+                onSelectionChange={handleSelectionChange}
+                owner={owner}
+                slackDataSource={slackDataSource}
+              />
             )}
           </div>
         </SheetContainer>
@@ -342,7 +336,7 @@ export function SlackSettingsSheet({
             disabled: !hasUnsavedChanges,
           }}
         >
-          {hasFeature("slack_enhanced_default_agent") && (
+          {hasFeature("slack_enhanced_default_agent") && isAdmin(owner) && (
             <div className="flex flex-col border-t p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">

@@ -6,13 +6,14 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { Op } from "sequelize";
 
-import { getChannels } from "@connectors/connectors/slack/lib/channels";
+import { getChannelById } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 import { launchJoinChannelWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
@@ -88,42 +89,39 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
 
   await withTransaction(async (t) => {
     if (missingSlackChannelIds.length) {
-      const remoteChannels = (
-        await getChannels(slackClient, parseInt(connectorId), false)
-      ).flatMap((c) =>
-        c.id && c.name
-          ? [{ id: c.id, name: c.name, private: !!c.is_private }]
-          : []
-      );
-      const remoteChannelsById = remoteChannels.reduce(
-        (acc, ch) => {
-          acc[ch.id] = ch;
-          return acc;
-        },
-        {} as Record<string, { id: string; name: string; private: boolean }>
-      );
       const createdChannels = await Promise.all(
-        missingSlackChannelIds.map((slackChannelId) => {
-          const remoteChannel = remoteChannelsById[slackChannelId];
-          if (!remoteChannel) {
+        missingSlackChannelIds.map(async (slackChannelId) => {
+          try {
+            const remoteChannel = await getChannelById(
+              slackClient,
+              parseInt(connectorId),
+              slackChannelId
+            );
+
+            if (!remoteChannel.name) {
+              throw new Error(
+                `Unexpected error: Unable to find Slack channel ${slackChannelId}.`
+              );
+            }
+            return await SlackChannel.create(
+              {
+                connectorId: parseInt(connectorId),
+                slackChannelId,
+                slackChannelName: remoteChannel.name,
+                agentConfigurationId,
+                permission: "write",
+                private: !!remoteChannel.is_private,
+                autoRespondWithoutMention: autoRespondWithoutMention ?? false,
+              },
+              {
+                transaction: t,
+              }
+            );
+          } catch (error) {
             throw new Error(
-              `Unexpected error: Access to the Slack channel ${slackChannelId} seems lost.`
+              `Unexpected error: Unable to find Slack channel ${slackChannelId}: ${normalizeError(error)}`
             );
           }
-          return SlackChannel.create(
-            {
-              connectorId: parseInt(connectorId),
-              slackChannelId,
-              slackChannelName: remoteChannel.name,
-              agentConfigurationId,
-              permission: "write",
-              private: remoteChannel.private,
-              autoRespondWithoutMention: autoRespondWithoutMention ?? false,
-            },
-            {
-              transaction: t,
-            }
-          );
         })
       );
       slackChannelIds.push(...createdChannels.map((c) => c.slackChannelId));
