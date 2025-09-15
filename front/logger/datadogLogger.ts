@@ -61,7 +61,7 @@ function makeLogger(baseBindings?: LogContext) {
     }
   };
 
-  const logger = {
+  return {
     trace: (a?: LogArg, b?: LogArg) => call("trace", a, b),
     debug: (a?: LogArg, b?: LogArg) => call("debug", a, b),
     info: (a?: LogArg, b?: LogArg) => call("info", a, b),
@@ -72,8 +72,6 @@ function makeLogger(baseBindings?: LogContext) {
     child: (bindings?: LogContext) =>
       makeLogger({ ...(baseBindings || {}), ...(bindings || {}) }),
   };
-
-  return logger;
 }
 
 const datadogLogger = makeLogger();
