@@ -17,7 +17,6 @@ import {
   Markdown,
   SlackLogo,
   TableIcon,
-  Tooltip,
 } from "../index_with_tw_base";
 
 const meta = {
