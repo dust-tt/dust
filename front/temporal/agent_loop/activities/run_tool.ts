@@ -4,6 +4,7 @@ import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
@@ -20,10 +21,12 @@ export async function runToolActivity(
     actionId,
     runAgentArgs,
     step,
+    runIds,
   }: {
     actionId: ModelId;
     runAgentArgs: RunAgentArgs;
     step: number;
+    runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
   const auth = await Authenticator.fromJSON(authType);
@@ -104,6 +107,54 @@ export async function runToolActivity(
         });
 
         return { deferredEvents };
+      case "tool_early_exit":
+        if (!event.isError && event.text) {
+          // Post message content
+          await AgentStepContentResource.createNewVersion({
+            workspaceId: conversation.owner.id,
+            agentMessageId: agentMessage.agentMessageId,
+            step: step + 1,
+            index: 0,
+            type: "text_content",
+            value: {
+              type: "text_content",
+              value: event.text,
+            },
+          });
+        }
+
+        await updateResourceAndPublishEvent(auth, {
+          event: event.isError
+            ? {
+                type: "tool_error",
+                created: event.created,
+                configurationId: agentConfiguration.sId,
+                messageId: agentMessage.sId,
+                conversationId: conversation.sId,
+                error: {
+                  code: "early_exit",
+                  message: event.text,
+                  metadata: {
+                    errorTitle: "Early exit",
+                  },
+                },
+                isLastBlockingEventForStep: true,
+              }
+            : {
+                type: "agent_message_success",
+                created: event.created,
+                configurationId: agentConfiguration.sId,
+                messageId: agentMessage.sId,
+                message: agentMessage,
+                runIds: runIds ?? [],
+              },
+
+          agentMessageRow,
+          conversation,
+          step,
+        });
+
+        return { deferredEvents, shouldPauseAgentLoop: true };
 
       case "tool_personal_auth_required":
       case "tool_approve_execution":

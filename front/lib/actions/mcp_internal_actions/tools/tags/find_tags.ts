@@ -7,15 +7,14 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { CoreAPI, Err, removeNulls } from "@app/types";
-import { Ok } from "@app/types";
+import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 

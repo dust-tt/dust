@@ -22,7 +22,7 @@ import {
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { executeQuery } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
-import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -299,7 +299,7 @@ const createServer = (
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const schemaResult = await coreAPI.getDatabaseSchema({
           tables: validatedNodes.map((node) => ({
-            project_id: parseInt(dataSource.dustAPIProjectId),
+            project_id: parseInt(dataSource.dustAPIProjectId, 10),
             data_source_id: dataSource.dustAPIDataSourceId,
             table_id: node.node_id,
           })),
@@ -403,7 +403,7 @@ const createServer = (
 
         return executeQuery(auth, {
           tables: validatedNodes.map((node) => ({
-            project_id: parseInt(dataSource.dustAPIProjectId),
+            project_id: parseInt(dataSource.dustAPIProjectId, 10),
             data_source_id: dataSource.dustAPIDataSourceId,
             table_id: node.node_id,
           })),
