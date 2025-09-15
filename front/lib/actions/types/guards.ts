@@ -55,6 +55,15 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
+export function isMCPConfigurationForInternalSearch(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "search")
+  );
+}
+
 export function isMCPConfigurationForInternalContentCreation(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {

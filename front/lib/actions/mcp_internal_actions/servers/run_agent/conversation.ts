@@ -29,6 +29,7 @@ export async function getOrCreateConversation(
     toolsetsToAdd,
     fileOrContentFragmentIds,
     conversationId,
+    contentFragments,
   }: {
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
@@ -38,6 +39,7 @@ export async function getOrCreateConversation(
     toolsetsToAdd: string[] | null;
     fileOrContentFragmentIds: string[] | null;
     conversationId: string | null;
+    contentFragments: PublicPostContentFragmentRequestBody[] | null;
   }
 ): Promise<
   Result<
@@ -68,7 +70,8 @@ export async function getOrCreateConversation(
     });
   }
 
-  const contentFragments: PublicPostContentFragmentRequestBody[] = [];
+  const contentFragmentsToUse: PublicPostContentFragmentRequestBody[] =
+    contentFragments ? [...contentFragments] : [];
 
   if (fileOrContentFragmentIds) {
     // Get all files from the current conversation and filter which one to pass to the sub agent
@@ -79,7 +82,7 @@ export async function getOrCreateConversation(
         fileOrContentFragmentIds?.includes(attachment.fileId)
       ) {
         // Convert file attachment to content fragment
-        contentFragments.push({
+        contentFragmentsToUse.push({
           title: attachment.title,
           fileId: attachment.fileId,
           url: null,
@@ -90,7 +93,7 @@ export async function getOrCreateConversation(
         fileOrContentFragmentIds?.includes(attachment.contentFragmentId)
       ) {
         // Convert content node attachment to content fragment
-        contentFragments.push({
+        contentFragmentsToUse.push({
           title: attachment.title,
           nodeId: attachment.nodeId,
           nodeDataSourceViewId: attachment.nodeDataSourceViewId,
@@ -101,6 +104,20 @@ export async function getOrCreateConversation(
   }
 
   if (conversationId) {
+    // Post content fragments separately for existing conversations
+    if (contentFragmentsToUse.length > 0) {
+      for (const contentFragment of contentFragmentsToUse) {
+        const fragmentRes = await api.postContentFragment({
+          conversationId,
+          contentFragment,
+        });
+
+        if (fragmentRes.isErr()) {
+          return new Err(new Error("Failed to post content fragment"));
+        }
+      }
+    }
+
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
@@ -159,7 +176,7 @@ export async function getOrCreateConversation(
         selectedMCPServerViewIds: toolsetsToAdd,
       },
     },
-    contentFragments,
+    contentFragments: contentFragmentsToUse,
     skipToolsValidation: agentMessage.skipToolsValidation ?? false,
     params: {
       // TODO(DURABLE_AGENT 2025-08-20): Remove this if we decided to always use async mode.
