@@ -1,10 +1,6 @@
 import type { Block, KnownBlock } from "@slack/web-api";
 
-import {
-  makeFeedbackSubmittedBlock,
-  makeFooterBlock,
-} from "@connectors/connectors/slack/chat/blocks";
-import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import { makeFeedbackSubmittedBlock } from "@connectors/connectors/slack/chat/blocks";
 import {
   getSlackClient,
   getSlackUserInfo,
@@ -14,6 +10,43 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { getHeaderFromUserEmail } from "@connectors/types";
+
+// Helper to check if block is feedback question block
+function isFeedbackQuestionBlock(block: unknown): boolean {
+  if (typeof block !== "object" || block === null) {
+    return false;
+  }
+
+  // Check basic structure
+  const b = block as Record<string, unknown>;
+  if (b.type !== "context" || !Array.isArray(b.elements)) {
+    return false;
+  }
+
+  // Check first element
+  const elements = b.elements as unknown[];
+  if (elements.length === 0) {
+    return false;
+  }
+
+  const firstElement = elements[0];
+  if (typeof firstElement !== "object" || firstElement === null) {
+    return false;
+  }
+
+  const el = firstElement as Record<string, unknown>;
+  return el.type === "mrkdwn" && el.text === "Was this answer helpful?";
+}
+
+// Type guard for valid Slack blocks
+function isValidSlackBlock(block: unknown): block is Block | KnownBlock {
+  return (
+    typeof block === "object" &&
+    block !== null &&
+    "type" in block &&
+    typeof (block as Record<string, unknown>).type === "string"
+  );
+}
 
 export async function submitFeedbackToAPI({
   conversationId,
@@ -187,47 +220,6 @@ export async function submitFeedbackToAPI({
             },
             "Retrieved message to update"
           );
-
-          // Helper to check if block is feedback question block
-          function isFeedbackQuestionBlock(block: unknown): boolean {
-            if (typeof block !== "object" || block === null) {
-              return false;
-            }
-
-            // Check basic structure
-            const b = block as Record<string, unknown>;
-            if (b.type !== "context" || !Array.isArray(b.elements)) {
-              return false;
-            }
-
-            // Check first element
-            const elements = b.elements as unknown[];
-            if (elements.length === 0) {
-              return false;
-            }
-
-            const firstElement = elements[0];
-            if (typeof firstElement !== "object" || firstElement === null) {
-              return false;
-            }
-
-            const el = firstElement as Record<string, unknown>;
-            return (
-              el.type === "mrkdwn" && el.text === "Was this answer helpful?"
-            );
-          }
-
-          // Type guard for valid Slack blocks
-          function isValidSlackBlock(
-            block: unknown
-          ): block is Block | KnownBlock {
-            return (
-              typeof block === "object" &&
-              block !== null &&
-              "type" in block &&
-              typeof (block as Record<string, unknown>).type === "string"
-            );
-          }
 
           // Find and replace the feedback blocks
           const updatedBlocks: (Block | KnownBlock)[] = [];
