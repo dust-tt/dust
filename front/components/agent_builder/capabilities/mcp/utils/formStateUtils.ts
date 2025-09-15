@@ -4,7 +4,7 @@ import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderForm
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import logger from "@app/logger/logger";
+import datadogLogger from "@app/logger/datadogLogger";
 
 /**
  * Creates form reset function for different dialog modes
@@ -48,7 +48,7 @@ export function createFormResetHandler(
         form.reset(getDefaultFormValues(null));
       }
     } catch (error) {
-      logger.warn({ err: error }, "Form reset error");
+      datadogLogger.warn({ err: error }, "Form reset error");
       // Fallback: reset to default values
       form.reset(getDefaultFormValues(null));
     }

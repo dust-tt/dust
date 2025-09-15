@@ -1,4 +1,3 @@
-import { datadogLogs } from "@datadog/browser-logs";
 import {
   Button,
   cn,
@@ -24,6 +23,7 @@ import React, {
 } from "react";
 
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
+import datadogLogger from "@app/logger/datadogLogger";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
@@ -152,7 +152,7 @@ function useVisualizationDataHandler({
           break;
 
         case "setErrorMessage":
-          datadogLogs.logger.info("Visualization error", {
+          datadogLogger.info("Visualization error", {
             errorMessage: data.params.errorMessage,
           });
           setErrorMessage(data.params.errorMessage);
@@ -214,6 +214,7 @@ export function CodeDrawer({
     </Sheet>
   );
 }
+
 interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   conversationId: string | null;
