@@ -2,6 +2,7 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 
 import handler from "./[webhookSourceId]";
@@ -37,7 +38,10 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     const { req, res, workspace } = await setupTest("POST");
 
     req.query.wId = workspace.sId;
-    req.query.webhookSourceId = "webhook_source/999999999";
+    req.query.webhookSourceId = WebhookSourceResource.modelIdToSId({
+      id: 999999999,
+      workspaceId: workspace.id,
+    });
 
     await handler(req as any, res as any);
 
@@ -57,4 +61,3 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     expect(res._getStatusCode()).toBe(405);
   });
 });
-

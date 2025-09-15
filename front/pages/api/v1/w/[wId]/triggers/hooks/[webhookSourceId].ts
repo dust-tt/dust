@@ -12,7 +12,6 @@ type PostResponseBody = {
   success: true;
 };
 
-// Limit payload size as per design doc (2MB).
 export const config = {
   api: {
     bodyParser: {
