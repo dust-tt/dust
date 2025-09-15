@@ -9,7 +9,10 @@ import {
   _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
-import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust";
+import {
+  _getDustGlobalAgent,
+  _getNoopGlobalAgent,
+} from "@app/lib/api/assistant/global_agents/configurations/dust";
 import {
   _getDustDeepGlobalAgent,
   _getDustTaskGlobalAgent,
@@ -305,6 +308,9 @@ function getGlobalAgent({
         dataSourcesFileSystemMCPServerView,
         dataWarehousesMCPServerView,
       });
+      break;
+    case GLOBAL_AGENTS_SID.NOOP:
+      agentConfiguration = _getNoopGlobalAgent();
       break;
     default:
       return null;
