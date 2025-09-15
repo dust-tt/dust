@@ -3,6 +3,8 @@ import type { LightAgentConfigurationType } from "@dust-tt/client";
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_interaction";
 import {
   APPROVE_TOOL_EXECUTION,
+  LEAVE_FEEDBACK_DOWN,
+  LEAVE_FEEDBACK_UP,
   REJECT_TOOL_EXECUTION,
   STATIC_AGENT_CONFIG,
 } from "@connectors/api/webhooks/webhook_slack_interaction";
@@ -66,12 +68,16 @@ function makeContextSectionBlocks({
   conversationUrl,
   footnotes,
   workspaceId,
+  conversationId,
+  messageId,
 }: {
   state: "thinking" | "answered";
   assistantName: string;
   conversationUrl: string | null;
   footnotes: SlackMessageFootnotes | undefined;
   workspaceId: string;
+  conversationId?: string;
+  messageId?: string;
 }) {
   const blocks = [];
 
@@ -80,6 +86,13 @@ function makeContextSectionBlocks({
     if (footnotesBlock) {
       blocks.push(footnotesBlock);
     }
+  }
+
+  // Add feedback button blocks when the message is answered and we have the required IDs
+  if (state === "answered" && conversationId && messageId) {
+    blocks.push(
+      ...makeFeedbackButtonBlock({ conversationId, messageId, workspaceId })
+    );
   }
 
   blocks.push(
@@ -94,6 +107,77 @@ function makeContextSectionBlocks({
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
   return resultBlocks;
+}
+
+export function makeFeedbackButtonBlock({
+  conversationId,
+  messageId,
+  workspaceId,
+}: {
+  conversationId: string;
+  messageId: string;
+  workspaceId: string;
+}) {
+  return [
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: "Was this answer helpful?",
+        },
+      ],
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "👍",
+            emoji: true,
+          },
+          action_id: LEAVE_FEEDBACK_UP,
+          value: JSON.stringify({
+            conversationId,
+            messageId,
+            workspaceId,
+            preselectedThumb: "up",
+          }),
+        },
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "👎",
+            emoji: true,
+          },
+          action_id: LEAVE_FEEDBACK_DOWN,
+          value: JSON.stringify({
+            conversationId,
+            messageId,
+            workspaceId,
+            preselectedThumb: "down",
+          }),
+        },
+      ],
+    },
+  ];
+}
+
+export function makeFeedbackSubmittedBlock() {
+  return [
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: "✅ Feedback submitted",
+        },
+      ],
+    },
+  ];
 }
 
 function makeThinkingBlock({
@@ -155,6 +239,8 @@ export type SlackMessageUpdate = {
   agentConfigurations: LightAgentConfigurationType[];
   text?: string;
   footnotes?: SlackMessageFootnotes;
+  conversationId?: string;
+  messageId?: string;
 };
 
 export function makeFooterBlock({
@@ -169,34 +255,41 @@ export function makeFooterBlock({
   workspaceId: string;
 }) {
   const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
-  const baseHeader = `<${assistantsUrl}|Browse agents> | <${SLACK_HELP_URL}|Use Dust in Slack> | <${DUST_URL}|Learn more>`;
   let attribution = "";
   if (assistantName) {
     if (state === "thinking") {
-      attribution = `*${assistantName}* is thinking... | `;
+      attribution = `*${assistantName}* is thinking...`;
     } else if (state === "error") {
-      attribution = `*${assistantName}* encountered an error | `;
+      attribution = `*${assistantName}* encountered an error`;
     } else if (state === "answered") {
-      attribution = `Answered by *${assistantName}* | `;
+      attribution = `Answered by *${assistantName}*`;
     }
   } else {
     if (state === "thinking") {
-      attribution = "Thinking... | ";
+      attribution = "Thinking...";
     } else if (state === "error") {
-      attribution = "Error | ";
+      attribution = "Error";
     } else if (state === "answered") {
-      attribution = "Answered | ";
+      attribution = "Answered";
     }
   }
+
+  const links = [];
+  if (conversationUrl) {
+    links.push(`<${conversationUrl}|View full conversation>`);
+  }
+  links.push(`<${assistantsUrl}|Browse agents>`);
+
+  const fullText = attribution
+    ? `${attribution} | ${links.join(" · ")}`
+    : links.join(" · ");
 
   return {
     type: "context",
     elements: [
       {
         type: "mrkdwn",
-        text: conversationUrl
-          ? `${attribution}<${conversationUrl}|Go to full conversation> | ${baseHeader}`
-          : baseHeader,
+        text: fullText,
       },
     ],
   };
@@ -207,8 +300,15 @@ export function makeMessageUpdateBlocksAndText(
   workspaceId: string,
   messageUpdate: SlackMessageUpdate
 ) {
-  const { isThinking, thinkingAction, assistantName, text, footnotes } =
-    messageUpdate;
+  const {
+    isThinking,
+    thinkingAction,
+    assistantName,
+    text,
+    footnotes,
+    conversationId,
+    messageId,
+  } = messageUpdate;
   const thinkingText = "Agent is thinking...";
   const thinkingTextWithAction = thinkingAction
     ? `${thinkingText}... (${thinkingAction})`
@@ -227,6 +327,8 @@ export function makeMessageUpdateBlocksAndText(
         conversationUrl,
         footnotes,
         workspaceId,
+        conversationId,
+        messageId,
       }),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
