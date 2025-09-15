@@ -166,6 +166,7 @@ async function handler(
                   m.id.startsWith("code-") ||
                   m.id.startsWith("gpt-3.5-turbo") ||
                   m.id.startsWith("gpt-4") ||
+                  m.id.startsWith("gpt-5") ||
                   m.id.startsWith("o1-") ||
                   m.id.startsWith("o3-") ||
                   m.id.startsWith("o4-")
