@@ -252,37 +252,6 @@ export default async function createServer(
       const instructions =
         agentLoopContext.runContext.agentConfiguration.instructions;
       if (_meta?.progressToken && sendNotification) {
-        const contents: {
-          type: "resource";
-          resource: {
-            uri: string;
-            mimeType: string;
-            text: string;
-            childAgentId?: string;
-          };
-        }[] = [
-          {
-            type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT
-                .RUN_AGENT_QUERY as string,
-              text: query,
-              childAgentId: childAgentId,
-              uri: "",
-            },
-          },
-        ];
-        if (isHandover) {
-          contents.push({
-            type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER,
-              text: instructions ?? "",
-              uri: "",
-            },
-          });
-        }
-
         // Store the query resource immediately so it's available in the UI while the action is running.
         const storeResourceNotification: MCPProgressNotificationType = {
           method: "notifications/progress",
@@ -294,7 +263,17 @@ export default async function createServer(
               label: `Storing query resource`,
               output: {
                 type: "store_resource",
-                contents,
+                contents: [
+                  {
+                    type: "resource",
+                    resource: {
+                      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
+                      text: query,
+                      childAgentId: childAgentId,
+                      uri: "",
+                    },
+                  },
+                ],
               },
             },
           },
@@ -310,7 +289,13 @@ export default async function createServer(
           childAgentId,
           mainAgent,
           mainConversation,
-          query,
+          query: isHandover
+            ? `
+You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
+${instructions ?? ""}
+</main_agent_instructions>
+${query}`
+            : query,
           toolsetsToAdd: toolsetsToAdd ?? null,
           fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
           conversationId: conversationId ?? null,

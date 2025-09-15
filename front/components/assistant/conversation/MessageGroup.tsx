@@ -54,15 +54,22 @@ export default function MessageGroup({
     }
   }, [isLastMessageGroup]);
 
+  const filteredMessages = messages.filter(
+    (message) =>
+      message.type !== "user_message" ||
+      message.context.origin !== "agent_handover"
+  );
+
   return (
     <div
       id={isLastMessageGroup ? LAST_MESSAGE_GROUP_ID : ""}
       ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
     >
-      {messages.map((message) => (
+      {filteredMessages.map((message, index) => (
         <MessageItem
           key={`message-${message.sId}`}
+          index={index}
           conversationId={conversationId}
           messageFeedback={feedbacks.find(
             (feedback) => feedback.messageId === message.sId
