@@ -33,6 +33,15 @@ import { assertNever } from "@app/types";
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
+function formatTimezone(timezone: string): string {
+  const parts = timezone.split("/");
+  if (parts.length < 2) {
+    return timezone;
+  }
+  const city = parts[parts.length - 1].replace(/_/g, " ");
+  return `${city} (${timezone})`;
+}
+
 interface ScheduleEditionModalProps {
   owner: LightWorkspaceType;
   trigger?: AgentBuilderTriggerType;
@@ -68,6 +77,9 @@ export function ScheduleEditionModal({
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
   ] = useState<"idle" | "loading" | "error">("idle");
+  const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
+    null
+  );
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const textAsCronRule = useTextAsCronRule({
     workspace: owner,
@@ -105,13 +117,17 @@ export function ScheduleEditionModal({
       case "loading":
         return "Generating schedule...";
       case "error":
-        return "Unable to generate a schedule (note: it can't be more frequent than hourly).";
+        return "Unable to generate a schedule (note: it can't be more frequent than hourly). Try rephrasing.";
       case "idle":
         if (!cron) {
           return undefined;
         }
         try {
-          return cronstrue.toString(cron);
+          const cronDesc = cronstrue.toString(cron);
+          if (generatedTimezone) {
+            return `${cronDesc}, in ${formatTimezone(generatedTimezone)} timezone.`;
+          }
+          return cronDesc;
         } catch (error) {
           setNaturalDescriptionToCronRuleStatus("error");
         }
@@ -119,7 +135,7 @@ export function ScheduleEditionModal({
       default:
         assertNever(naturalDescriptionToCronRuleStatus);
     }
-  }, [naturalDescriptionToCronRuleStatus, cron]);
+  }, [naturalDescriptionToCronRuleStatus, cron, generatedTimezone]);
 
   const handleCancel = () => {
     onClose();
@@ -182,21 +198,8 @@ export function ScheduleEditionModal({
                 />
               </div>
 
-              <div>
-                <div className="pb-2">
-                  <Label htmlFor="trigger-description">Scheduler</Label>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    The trigger will run in the{" "}
-                    {(trigger?.kind === "schedule" &&
-                    trigger?.configuration &&
-                    "timezone" in trigger.configuration
-                      ? trigger.configuration.timezone
-                      : null) ||
-                      Intl.DateTimeFormat().resolvedOptions().timeZone}{" "}
-                    timezone.
-                  </p>
-                </div>
-
+              <div className="space-y-1">
+                <Label htmlFor="trigger-description">Scheduler</Label>
                 <TextArea
                   id="schedule-description"
                   placeholder='Describe when you want the agent to run in natural language. e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
@@ -215,11 +218,14 @@ export function ScheduleEditionModal({
                         async () => {
                           form.setValue("cron", "");
                           try {
-                            const cronRule = await textAsCronRule(txt);
-                            form.setValue("cron", cronRule);
+                            const result = await textAsCronRule(txt);
+                            form.setValue("cron", result.cron);
+                            form.setValue("timezone", result.timezone);
+                            setGeneratedTimezone(result.timezone);
                             setNaturalDescriptionToCronRuleStatus("idle");
                           } catch (error) {
                             setNaturalDescriptionToCronRuleStatus("error");
+                            setGeneratedTimezone(null);
                           }
                         },
                         500
