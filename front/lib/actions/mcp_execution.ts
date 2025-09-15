@@ -251,6 +251,7 @@ export async function processToolResults(
             if (file) {
               await uploadFileToConversationDataSource({ auth, file });
             }
+            const hidden = block.resource.hidden === true;
             return {
               content: {
                 type: block.type,
@@ -259,7 +260,8 @@ export async function processToolResults(
                   text: stripNullBytes(block.resource.text),
                 },
               },
-              file,
+              // Exclude from aggregated generatedFiles if marked hidden.
+              file: hidden ? null : file,
             };
           } else if (
             block.resource.mimeType &&

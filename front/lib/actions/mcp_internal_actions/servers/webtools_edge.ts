@@ -303,6 +303,7 @@ const createServer = (
               snippet,
               uri: file.getPublicUrl(auth),
               text: "Web page content archived as a file.",
+              hidden: true,
             },
           });
 
