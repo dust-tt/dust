@@ -293,7 +293,7 @@ export default async function createServer(
 You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
 ${instructions ?? ""}
 </main_agent_instructions>
-You must include these instructions in your prompt to answer my query :${query}`
+${query}`
             : query,
           toolsetsToAdd: toolsetsToAdd ?? null,
           fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,

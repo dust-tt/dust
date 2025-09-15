@@ -87,7 +87,8 @@ export type UserMessageOrigin =
   | "zendesk"
   | "excel"
   | "powerpoint"
-  | "run_agent";
+  | "run_agent"
+  | "agent_handover";
 
 export type UserMessageContext = {
   username: string;

@@ -56,7 +56,8 @@ export default function MessageGroup({
 
   const filteredMessages = messages.filter(
     (message) =>
-      message.type !== "user_message" || message.context.origin !== "run_agent"
+      message.type !== "user_message" ||
+      message.context.origin !== "agent_handover"
   );
 
   return (
