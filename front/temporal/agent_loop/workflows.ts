@@ -39,7 +39,7 @@ const activities: AgentLoopActivities = {
     // The activity timeout should be slightly longer than the max timeout of
     // the tool, to avoid the activity being killed before the tool timeout.
     startToCloseTimeout: `${
-      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
+      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 2
     } minutes`,
     retry: {
       // Do not retry tool activities. Those are not idempotent.
@@ -48,7 +48,7 @@ const activities: AgentLoopActivities = {
   }).runToolActivity,
   runRetryableToolActivity: proxyActivities<typeof runToolActivities>({
     startToCloseTimeout: `${
-      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
+      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 2
     } minutes`,
     retry: {
       maximumAttempts: 5,
