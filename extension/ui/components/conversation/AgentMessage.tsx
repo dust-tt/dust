@@ -1,5 +1,6 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { retryMessage } from "@app/shared/lib/conversation";
+import { formatMessageTime } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
 import type {
   AgentMessageStateEvent,
@@ -554,6 +555,7 @@ export function AgentMessage({
         );
       }}
       type="agent"
+      timestamp={formatMessageTime(agentMessageToRender.created)}
       citations={citations}
     >
       <div>
