@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -7,7 +8,9 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
+import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -38,10 +41,33 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     blob: CreationAttributes<WebhookSourceModel>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WebhookSourceResource, Error>> {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+    assert(
+      canAdministrate,
+      "The user is not authorized to create a webhook source"
+    );
+
     try {
       const webhookSource = await WebhookSourceModel.create(blob, {
         transaction,
       });
+
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+      // Immediately create a view for the webhook source in the system space.
+      await WebhookSourcesViewModel.create(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          vaultId: systemSpace.id,
+          editedAt: new Date(),
+          editedByUserId: auth.user()?.id,
+          webhookSourceId: webhookSource.id,
+        },
+        {
+          transaction,
+        }
+      );
 
       return new Ok(new this(WebhookSourceModel, webhookSource.get()));
     } catch (error) {
