@@ -111,7 +111,13 @@ export async function createClientExecutableFile(
 
 export async function editClientExecutableFile(
   auth: Authenticator,
-  params: {
+  {
+    fileId,
+    oldString,
+    newString,
+    expectedReplacements = 1,
+    editedByAgentConfigurationId,
+  }: {
     fileId: string;
     oldString: string;
     newString: string;
@@ -121,14 +127,6 @@ export async function editClientExecutableFile(
 ): Promise<
   Result<{ fileResource: FileResource; replacementCount: number }, Error>
 > {
-  const {
-    fileId,
-    oldString,
-    newString,
-    expectedReplacements = 1,
-    editedByAgentConfigurationId,
-  } = params;
-
   // Fetch the existing file.
   const fileContentResult = await getClientExecutableFileContent(auth, fileId);
   if (fileContentResult.isErr()) {
