@@ -1,13 +1,15 @@
-import type { MCPProgressNotificationType } from "@dust-tt/client";
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolExit,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { DUST_DEEP_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -25,17 +27,11 @@ const createServer = (
   server.tool(
     "run_dust_deep",
     "Handoff the query to the generic deep research agent",
-    {
-      query: z
-        .string()
-        .describe(
-          "The research query or question to be investigated that includes any company or user specific context relevant to the query. This should be a clear, specific request that will be processed by the deep research agent."
-        ),
-    },
+    {},
     withToolLogging(
       auth,
       { toolName: "run_dust_deep", agentLoopContext },
-      async ({ query }, { sendNotification, _meta }) => {
+      async () => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));
         }
@@ -60,50 +56,11 @@ const createServer = (
         const runContext = agentLoopContext.runContext;
         const { agentConfiguration, conversation } = runContext;
         const instructions = agentConfiguration.instructions;
-
-        if (_meta?.progressToken && sendNotification) {
-          // Store the query resource immediately so it's available in the UI while the action is running.
-          const storeResourceNotification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 0,
-              total: 1,
-              progressToken: _meta.progressToken,
-              data: {
-                label: `Storing query resource`,
-                output: {
-                  type: "store_resource",
-                  contents: [
-                    {
-                      type: "resource",
-                      resource: {
-                        mimeType:
-                          INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
-                        text: query,
-                        childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
-                        uri: "",
-                      },
-                    },
-                    {
-                      type: "resource",
-                      resource: {
-                        mimeType:
-                          INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER,
-                        text: instructions ?? "",
-                        uri: "",
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          };
-          await sendNotification(storeResourceNotification);
-        }
+        const query = `You have been summoned by @${agentConfiguration.name}. Its instructions are: <main_agent_instructions>${instructions ?? ""}</main_agent_instructions>`;
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
-            name: "dust-deep",
+            name: DUST_DEEP_NAME,
             description: "Deep research agent",
           },
           childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
@@ -119,17 +76,12 @@ const createServer = (
           return new Err(new MCPError(convRes.error.message));
         }
 
-        return new Ok([
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT,
-              conversationId: convRes.value.conversation.sId,
-              text: `Query fully handed off from agent ${agentConfiguration.name} to agent dust-deep. ${agentConfiguration.name} cannot interact with or modify the research after this handoff. dust-deep has complete control and will provide the final results directly to the user. Original agent instructions: ${instructions}`,
-              uri: "",
-            },
-          },
-        ]);
+        const response = makeMCPToolExit({
+          message: `Forwarding this request to @${DUST_DEEP_NAME} for Deep Research.`,
+          isError: false,
+        });
+
+        return new Ok(response.content);
       }
     )
   );
