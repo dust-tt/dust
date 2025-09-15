@@ -7,7 +7,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
-import mcp from "@app/pages/api/w/[wId]/mcp";
 import type {
   AgentMessageType,
   AssistantContentMessageTypeModel,
