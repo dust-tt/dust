@@ -1,9 +1,18 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { ServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { augmentInputsWithConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { 
+  augmentInputsWithConfiguration,
+  findPathsToConfiguration, 
+  inlineAllRefs
+} from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { ConfigurableToolInputJSONSchemas, ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { WorkspaceType } from "@app/types";
 
@@ -1790,6 +1799,563 @@ describe("augmentInputsWithConfiguration", () => {
           },
         });
       });
+    });
+  });
+});
+
+describe("findPathsToConfiguration", () => {
+  // Helper function to create Zod schemas that will generate JSON Schema with refs
+  function createZodSchemas() {
+    // Define reusable schemas that will generate $ref when used multiple times
+    const stringConfigSchema = ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    ];
+    const booleanConfigSchema = ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
+    ];
+    const numberConfigSchema = ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
+    ];
+
+    // Tool without configurable inputs
+    const toolWithoutConfigSchema = z.object({
+      query: z.string()
+    });
+
+    // Tool with multiple configurable inputs - using the same schemas multiple times to create refs
+    const passThroughSchema = z.object({
+      query: z.string(),
+      user: z.object({
+        name: stringConfigSchema.describe("The name of the user"),
+        age: numberConfigSchema.describe("The age of the user"), 
+        admin: booleanConfigSchema.describe("Whether the user is an admin"),
+        location: stringConfigSchema.describe("The location of the user"), // Reuses string schema
+        enabled: booleanConfigSchema.describe("Whether the user is enabled"), // Reuses boolean schema
+        category: z.object({
+          value: z.enum(["A", "B", "C"]),
+          mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
+        }).describe("The category of the user"),
+      }),
+      choices: z.object({
+        options: z
+          .union([
+            z.object({
+              value: z.literal("A"),
+              label: z.literal("Label A"),
+            }).describe("The label of the choice"),
+            z.object({
+              value: z.literal("B"),
+              label: z.literal("Label B"),
+            }).describe("The label of the choice"),
+            z.object({
+              value: z.literal("C"),
+              label: z.literal("Label C"),
+            }).describe("The label of the choice"),
+          ])
+          .optional(),
+        values: z.array(z.string()).describe("The values of the choices"),
+        mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST),
+      }).describe("Indicate the choices the agent can select from"),
+    });
+
+    return {
+      toolWithoutConfig: zodToJsonSchema(toolWithoutConfigSchema, {
+        // Allow refs to be generated - this is the default behavior
+        $refStrategy: "none",
+      }) as JSONSchema,
+      passThrough: zodToJsonSchema(passThroughSchema, {
+        // Allow refs to be generated - this is the default behavior  
+        $refStrategy: "none",
+      }) as JSONSchema
+    };
+  }
+
+  // Helper function to create a mock MCP server view similar to PrimitiveTypesDebugger
+  function createMockMCPServerView(): MCPServerViewType {
+    const schemas = createZodSchemas();
+    
+    return {
+      id: 1,
+      sId: "test-server-id",
+      name: "Primitive Types Debugger",
+      description: "Test server for primitive types",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "primitive-types-debugger",
+        name: "primitive_types_debugger",
+        version: "1.0.0",
+        description: "Super useful tool server",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          // Tool without configurable inputs
+          {
+            name: "tool_without_user_config",
+            description: "This tool is used to test the tool without user config.",
+            inputSchema: schemas.toolWithoutConfig
+          },
+          // Tool with multiple configurable inputs of same type - Zod will generate refs!
+          {
+            name: "pass_through", 
+            description: "Super useful tool that should be used at all times.",
+            inputSchema: schemas.passThrough
+          }
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [
+        { toolName: "tool_without_user_config", permission: "high", enabled: true },
+        { toolName: "pass_through", permission: "high", enabled: true }
+      ]
+    };
+  }
+
+  it("should find ALL string configurations across tools", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    });
+
+    // Should find both string configurations: user.name and user.location
+    const paths = Object.keys(stringConfigurations);
+    expect(paths).toHaveLength(2);
+    expect(paths).toContain("user.name");
+    expect(paths).toContain("user.location");
+    
+    // Verify both configurations have the correct core structure
+    expect(stringConfigurations["user.name"]).toMatchObject({
+      type: "object",
+      properties: {
+        value: { type: "string" },
+        mimeType: { 
+          type: "string", 
+          const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING 
+        }
+      }
+    });
+    
+    expect(stringConfigurations["user.location"]).toMatchObject({
+      type: "object",
+      properties: {
+        value: { type: "string" },
+        mimeType: { 
+          type: "string", 
+          const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING 
+        }
+      }
+    });
+  });
+
+  it("should find ALL boolean configurations across tools", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    const booleanConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
+    });
+
+    // Should find both boolean configurations: user.admin and user.enabled
+    const paths = Object.keys(booleanConfigurations);
+    expect(paths).toHaveLength(2);
+    expect(paths).toContain("user.admin");
+    expect(paths).toContain("user.enabled");
+    
+    // Verify both configurations have the correct core structure
+    for (const path of paths) {
+      expect(booleanConfigurations[path]).toMatchObject({
+        type: "object",
+        properties: {
+          value: { type: "boolean" },
+          mimeType: { 
+            type: "string", 
+            const: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN 
+          }
+        }
+      });
+    }
+  });
+
+  it("should find number configurations", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    const numberConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER
+    });
+
+    // Should find one number configuration: user.age
+    const paths = Object.keys(numberConfigurations);
+    expect(paths).toHaveLength(1);
+    expect(paths).toContain("user.age");
+    
+    expect(numberConfigurations["user.age"]).toMatchObject({
+      type: "object",
+      properties: {
+        value: { type: "number" },
+        mimeType: { 
+          type: "string", 
+          const: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER 
+        }
+      }
+    });
+  });
+
+  it("should find enum configurations", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    const enumConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
+    });
+
+    // Should find one enum configuration: user.category
+    const paths = Object.keys(enumConfigurations);
+    expect(paths).toHaveLength(1);
+    expect(paths).toContain("user.category");
+    
+    expect(enumConfigurations["user.category"]).toMatchObject({
+      type: "object",
+      properties: {
+        value: { 
+          type: "string",
+          enum: ["A", "B", "C"]
+        },
+        mimeType: { 
+          type: "string", 
+          const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM 
+        }
+      }
+    });
+  });
+
+  it("should find list configurations", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    const listConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST
+    });
+
+    // Should find one list configuration: choices
+    const paths = Object.keys(listConfigurations);
+    expect(paths).toHaveLength(1);
+    const choicesKey = paths.find(path => path.includes("choices"));
+    expect(choicesKey).toBeDefined();
+    
+    // Verify the core structure (Zod adds additionalProperties, description, etc.)
+    expect(listConfigurations[choicesKey!]).toMatchObject({
+      type: "object",
+      properties: {
+        options: {
+          anyOf: {
+            "0": {
+              type: "object",
+              properties: {
+                value: { const: "A" },
+                label: { const: "Label A" }
+              }
+            },
+            "1": {
+              type: "object", 
+              properties: {
+                value: { const: "B" },
+                label: { const: "Label B" }
+              }
+            },
+            "2": {
+              type: "object",
+              properties: {
+                value: { const: "C" },
+                label: { const: "Label C" }
+              }
+            }
+          }
+        },
+        values: {
+          type: "array",
+          items: { type: "string" }
+        },
+        mimeType: { 
+          type: "string", 
+          const: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST 
+        }
+      }
+    });
+  });
+
+  it("should not find configurations for disabled tools", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    // Disable the pass_through tool
+    if (mcpServerView.toolsMetadata) {
+      const passThroughMetadata = mcpServerView.toolsMetadata.find(
+        tool => tool.toolName === "pass_through"
+      );
+      if (passThroughMetadata) {
+        passThroughMetadata.enabled = false;
+      }
+    }
+    
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    });
+
+    // Should find no string configurations since pass_through is disabled
+    expect(Object.keys(stringConfigurations)).toHaveLength(0);
+  });
+
+  it("should handle servers with no configurable tools", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    // Remove the pass_through tool, keeping only tool_without_user_config
+    mcpServerView.server.tools = mcpServerView.server.tools.filter(
+      tool => tool.name === "tool_without_user_config"
+    );
+    
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    });
+
+    // Should find no configurations since no tools have configurable inputs
+    expect(Object.keys(stringConfigurations)).toHaveLength(0);
+  });
+
+  it("should handle multiple tools with same configuration types", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    // Create another tool using Zod that reuses the same string schema
+    const stringConfigSchema = ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    ];
+    
+    const anotherToolSchema = z.object({
+      title: stringConfigSchema.describe("The title of the item"),
+      description: stringConfigSchema.describe("The description of the item") // Reuses the same schema
+    });
+    
+    // Add another tool with string configurations using Zod
+    mcpServerView.server.tools.push({
+      name: "another_tool",
+      description: "Another tool with string configs",
+      inputSchema: zodToJsonSchema(anotherToolSchema, { name: "AnotherTool" }) as JSONSchema
+    });
+
+    // Add metadata for the new tool
+    if (mcpServerView.toolsMetadata) {
+      mcpServerView.toolsMetadata.push({
+        toolName: "another_tool",
+        permission: "high",
+        enabled: true
+      });
+    }
+    
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    });
+
+    // Should find all 4 string configurations across both tools
+    const paths = Object.keys(stringConfigurations);
+    expect(paths).toHaveLength(4);
+    expect(paths).toContain("user.name");        // from pass_through
+    expect(paths).toContain("user.location");    // from pass_through
+    expect(paths).toContain("title");            // from another_tool
+    expect(paths).toContain("description");      // from another_tool
+  });
+
+  it("should handle tools with no inputSchema", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    // Add a tool without inputSchema
+    mcpServerView.server.tools.push({
+      name: "tool_without_schema",
+      description: "Tool without input schema"
+      // No inputSchema property
+    });
+
+    if (mcpServerView.toolsMetadata) {
+      mcpServerView.toolsMetadata.push({
+        toolName: "tool_without_schema",
+        permission: "high", 
+        enabled: true
+      });
+    }
+    
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    });
+
+    // Should still find the 2 string configurations from the other tools
+    // The tool without inputSchema should not cause errors
+    const paths = Object.keys(stringConfigurations);
+    expect(paths).toHaveLength(2);
+    expect(paths).toContain("user.name");
+    expect(paths).toContain("user.location");
+  });
+
+  it("should handle nested object structures", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    // Create a tool with nested string configurations using Zod
+    const stringConfigSchema = ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    ];
+    
+    const nestedToolSchema = z.object({
+      config: z.object({
+        auth: z.object({
+          username: stringConfigSchema.describe("The username for authentication"),
+          token: stringConfigSchema.describe("The authentication token") // Reuses the same schema
+        })
+      })
+    });
+    
+    // Add a tool with nested string configurations
+    mcpServerView.server.tools.push({
+      name: "nested_tool",
+      description: "Tool with nested configurations",
+      inputSchema: zodToJsonSchema(nestedToolSchema, { name: "NestedTool" }) as JSONSchema
+    });
+
+    if (mcpServerView.toolsMetadata) {
+      mcpServerView.toolsMetadata.push({
+        toolName: "nested_tool",
+        permission: "high",
+        enabled: true
+      });
+    }
+    
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    });
+
+    // Should find all string configurations including nested ones
+    const paths = Object.keys(stringConfigurations);
+    expect(paths).toHaveLength(4);
+    expect(paths).toContain("user.name");              // from pass_through
+    expect(paths).toContain("user.location");          // from pass_through 
+    expect(paths).toContain("config.auth.username");   // from nested_tool
+    expect(paths).toContain("config.auth.token");      // from nested_tool
+  });
+
+  it("should properly inline refs generated by Zod schemas", () => {
+    const mcpServerView = createMockMCPServerView();
+
+    // Check that the original Zod-generated schema contains $refs
+    const passThroughTool = mcpServerView.server.tools.find(tool => tool.name === "pass_through");
+    expect(passThroughTool?.inputSchema).toBeDefined();
+    
+    // The Zod-generated schema should contain refs when the same schema is reused
+    const schemaString = JSON.stringify(passThroughTool?.inputSchema);
+    expect(schemaString).toContain("$ref"); // Verify that refs are present
+    
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    });
+
+    // Should find both string configurations despite having refs in the original schema
+    const paths = Object.keys(stringConfigurations);
+    expect(paths).toHaveLength(2);
+    expect(paths).toContain("user.name");
+    expect(paths).toContain("user.location");
+    
+    // Verify that the found configurations don't contain refs (they should be inlined)
+    Object.values(stringConfigurations).forEach(schema => {
+      const configString = JSON.stringify(schema);
+      expect(configString).not.toContain("$ref"); // Refs should be inlined
+    });
+  });
+
+  it("should handle complex ref structures with multiple reused schemas", () => {
+    const mcpServerView = createMockMCPServerView();
+    
+    // Create a tool that reuses the same schemas extensively to force complex refs
+    const stringConfigSchema = ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    ];
+    const booleanConfigSchema = ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
+    ];
+    
+    const complexToolSchema = z.object({
+      settings: z.object({
+        primary: z.object({
+          name: stringConfigSchema.describe("Primary name"),
+          enabled: booleanConfigSchema.describe("Primary enabled"),
+        }),
+        secondary: z.object({
+          name: stringConfigSchema.describe("Secondary name"), // Reuses string schema
+          enabled: booleanConfigSchema.describe("Secondary enabled"), // Reuses boolean schema
+        }),
+        fallback: z.object({
+          name: stringConfigSchema.describe("Fallback name"), // Reuses string schema again
+          enabled: booleanConfigSchema.describe("Fallback enabled"), // Reuses boolean schema again
+        })
+      })
+    });
+    
+    mcpServerView.server.tools.push({
+      name: "complex_refs_tool",
+      description: "Tool with complex ref structures",
+      inputSchema: zodToJsonSchema(complexToolSchema, { name: "ComplexRefsTool" }) as JSONSchema
+    });
+    
+    if (mcpServerView.toolsMetadata) {
+      mcpServerView.toolsMetadata.push({
+        toolName: "complex_refs_tool",
+        permission: "high",
+        enabled: true
+      });
+    }
+    
+    // Test string configurations
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+    });
+
+    // Should find all 5 string configurations (2 from pass_through + 3 from complex_refs_tool)
+    const stringPaths = Object.keys(stringConfigurations);
+    expect(stringPaths).toHaveLength(5);
+    expect(stringPaths).toContain("user.name");                // from pass_through
+    expect(stringPaths).toContain("user.location");            // from pass_through
+    expect(stringPaths).toContain("settings.primary.name");    // from complex_refs_tool
+    expect(stringPaths).toContain("settings.secondary.name");  // from complex_refs_tool
+    expect(stringPaths).toContain("settings.fallback.name");   // from complex_refs_tool
+    
+    // Test boolean configurations
+    const booleanConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
+    });
+
+    // Should find all 5 boolean configurations (2 from pass_through + 3 from complex_refs_tool)
+    const booleanPaths = Object.keys(booleanConfigurations);
+    expect(booleanPaths).toHaveLength(5);
+    expect(booleanPaths).toContain("user.admin");                // from pass_through
+    expect(booleanPaths).toContain("user.enabled");              // from pass_through
+    expect(booleanPaths).toContain("settings.primary.enabled");  // from complex_refs_tool
+    expect(booleanPaths).toContain("settings.secondary.enabled"); // from complex_refs_tool
+    expect(booleanPaths).toContain("settings.fallback.enabled"); // from complex_refs_tool
+    
+    // Verify all configurations are properly inlined (no refs)
+    [...Object.values(stringConfigurations), ...Object.values(booleanConfigurations)].forEach(schema => {
+      const configString = JSON.stringify(schema);
+      expect(configString).not.toContain("$ref"); // All refs should be inlined
     });
   });
 });
