@@ -192,7 +192,7 @@ export function MCPServerViewsSheet({
       );
 
       if (selectedAction) {
-        return !selectedAction.noConfigurationRequired; // Should filter out if not configurable
+        return selectedAction.noConfigurationRequired; // Should filter out if not configurable
       }
 
       return false;
