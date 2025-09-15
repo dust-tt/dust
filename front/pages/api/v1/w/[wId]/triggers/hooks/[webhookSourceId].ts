@@ -12,7 +12,8 @@ import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
-import { Err, type WithAPIErrorResponse } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
+import { Err } from "@app/types";
 
 /**
  * @swagger
