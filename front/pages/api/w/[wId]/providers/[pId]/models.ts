@@ -206,7 +206,7 @@ async function handler(
               // Active models.
               { id: "claude-3-haiku-20240307" },
               { id: "claude-3-5-haiku-20241022" },
-              { id: "claude-sonnet-4-20250514" },
+              { id: "claude-4-sonnet-20250514" },
               { id: "claude-opus-4-20250514" },
             ];
           }

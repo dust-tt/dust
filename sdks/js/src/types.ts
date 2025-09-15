@@ -215,6 +215,14 @@ export const supportedAudioFileFormats = {
   "audio/webm": [".webm"],
 } as const;
 
+// Webhook trigger endpoint (skeleton) response type
+export const PostWebhookTriggerResponseSchema = z.object({
+  success: z.literal(true),
+});
+export type PostWebhookTriggerResponseType = z.infer<
+  typeof PostWebhookTriggerResponseSchema
+>;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 type AudioContentType = keyof typeof supportedAudioFileFormats;
@@ -295,6 +303,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
@@ -891,6 +900,7 @@ const UserMessageContextSchema = z.object({
   origin: UserMessageOriginSchema,
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
+  lastTriggerRunAt: z.date().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
