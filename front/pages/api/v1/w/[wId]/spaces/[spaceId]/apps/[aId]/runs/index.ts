@@ -268,10 +268,14 @@ async function handler(
         }
       }
 
+      // Fetch the feature flags of the app's workspace.
+      const keyFlags = await getFeatureFlags(keyAuth.getNonNullableWorkspace());
+
       let credentials: CredentialsType | null = null;
       if (auth.isSystemKey() && !useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
-        credentials = dustManagedCredentials();
+        const useOpenAIEU = keyFlags.includes("use_openai_eu_key");
+        credentials = dustManagedCredentials({ useOpenAIEU });
       } else {
         credentials = credentialsFromProviders(providers);
       }

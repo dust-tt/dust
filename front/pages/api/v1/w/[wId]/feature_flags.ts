@@ -33,7 +33,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const feature_flags = await getFeatureFlags(owner);
-      return res.status(200).json({ feature_flags });
+      return res.status(200).json({ feature_flags: feature_flags as any });
 
     default:
       return apiError(req, res, {
