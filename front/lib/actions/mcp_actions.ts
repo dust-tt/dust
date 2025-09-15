@@ -318,12 +318,12 @@ export async function* tryCallMCPTool(
           ),
         };
         return;
-      } else {
-        yield {
-          type: "result",
-          result: r,
-        };
       }
+
+      yield {
+        type: "result",
+        result: r,
+      };
       return;
     }
     mcpClient = r.value;
