@@ -14,7 +14,7 @@ import {
 } from "../index_with_tw_base";
 
 export default {
-  title: "Playground/Demo",
+  title: "Playground/Playground",
 };
 
 export const Demo = () => {
@@ -195,14 +195,14 @@ export const Demo = () => {
                   <div
                     id="Recording"
                     className={cn(
-                      "s-duration-600 s-flex s-items-center s-gap-3 s-overflow-hidden s-px-2 s-transition-all s-ease-in-out",
+                      "s-duration-600 s-flex s-items-center s-justify-end s-gap-2 s-overflow-hidden s-px-2 s-transition-all s-ease-in-out",
                       recordState === "pressAndHold" ||
                         recordState === "recording"
                         ? "s-w-24 s-opacity-100"
                         : "s-w-6 s-opacity-0"
                     )}
                   >
-                    <div className="s-heading-xs">
+                    <div className="s-heading-xs s-font-mono">
                       {formatTime(elapsedSeconds)}
                     </div>
                     <div className="s-flex s-h-5 s-items-center s-gap-0.5">
