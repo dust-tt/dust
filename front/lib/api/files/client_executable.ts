@@ -125,12 +125,18 @@ export async function editClientExecutableFile(
     editedByAgentConfigurationId?: string;
   }
 ): Promise<
-  Result<{ fileResource: FileResource; replacementCount: number }, Error>
+  Result<
+    { fileResource: FileResource; replacementCount: number },
+    { tracked: boolean; message: string }
+  >
 > {
   // Fetch the existing file.
   const fileContentResult = await getClientExecutableFileContent(auth, fileId);
   if (fileContentResult.isErr()) {
-    return fileContentResult;
+    return new Err({
+      tracked: true,
+      message: fileContentResult.error.message,
+    });
   }
   const { fileResource, content: currentContent } = fileContentResult.value;
 
@@ -143,15 +149,17 @@ export async function editClientExecutableFile(
   const occurrences = matches ? matches.length : 0;
 
   if (occurrences === 0) {
-    return new Err(new Error(`String not found in file: "${oldString}"`));
+    return new Err({
+      tracked: false,
+      message: `String not found in file: "${oldString}"`,
+    });
   }
 
   if (occurrences !== expectedReplacements) {
-    return new Err(
-      new Error(
-        `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`
-      )
-    );
+    return new Err({
+      tracked: false,
+      message: `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
+    });
   }
 
   if (
@@ -171,7 +179,10 @@ export async function editClientExecutableFile(
   // Validate the Tailwind classes in the resulting code.
   const validationResult = validateTailwindCode(updatedContent);
   if (validationResult.isErr()) {
-    return new Err(new Error(validationResult.error.message));
+    return new Err({
+      tracked: false,
+      message: validationResult.error.message,
+    });
   }
 
   // Upload the updated content.

@@ -222,7 +222,9 @@ const createServer = (
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(result.error.message, { tracked: false })
+            new MCPError(result.error.message, {
+              tracked: result.error.tracked,
+            })
           );
         }
 
