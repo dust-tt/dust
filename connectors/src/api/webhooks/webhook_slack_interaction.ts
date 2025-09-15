@@ -41,6 +41,11 @@ const FeedbackActionSchema = t.type({
   block_id: t.string,
   action_ts: t.string,
   value: t.string,
+  text: t.type({
+    type: t.string,
+    text: t.string,
+    emoji: t.boolean,
+  }),
 });
 
 const StaticAgentConfigSchema = t.type({
