@@ -1079,11 +1079,19 @@ impl<'de> Deserialize<'de> for Row {
 
         match value["value"].as_object() {
             Some(subvalue) => {
-                let row_id = value
+                let row_id_val = value
                     .get("row_id")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| D::Error::custom("Missing or invalid row_id in Row"))?;
-                Ok(Row::new_from_value(row_id.to_string(), subvalue.clone()))
+                    .ok_or_else(|| D::Error::custom("Missing row_id in Row"))?;
+
+                let row_id = if let Some(s) = row_id_val.as_str() {
+                    s.to_string()
+                } else if let Some(i) = row_id_val.as_i64() {
+                    i.to_string()
+                } else {
+                    return Err(D::Error::custom("Invalid row_id type in Row"));
+                };
+
+                Ok(Row::new_from_value(row_id, subvalue.clone()))
             }
             None => Err(D::Error::custom("Missing value in Row")),
         }
