@@ -184,9 +184,9 @@ export async function renderConversationForModel(
         if (m.created) {
           items.push(`- Current date: ${new Date(m.created).toISOString()}`);
         }
-        if (m.context.lastTriggeredRunAt) {
+        if (m.context.lastTriggerRunAt) {
           items.push(
-            `- Last scheduled run: ${m.context.lastTriggeredRunAt.toISOString()}`
+            `- Last scheduled run: ${m.context.lastTriggerRunAt.toISOString()}`
           );
         }
         if (items.length > 0) {

@@ -88,7 +88,7 @@ const createConversationForAgentConfiguration = async (
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
     origin: "triggered" as const,
-    lastTriggeredRunAt: lastRunAt,
+    lastTriggerRunAt: lastRunAt,
   };
 
   const messageRes = await postUserMessage(auth, {

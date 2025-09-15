@@ -184,7 +184,7 @@ async function batchRenderUserMessages(
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
         origin: userMessage.userContextOrigin,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
-        lastTriggeredRunAt: userMessage.userContextLastTriggeredRunAt,
+        lastTriggerRunAt: userMessage.userContextLastTriggerRunAt,
       },
     } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };
