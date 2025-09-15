@@ -36,8 +36,8 @@ export type RunAgentBlockingEvent =
   | ToolPersonalAuthRequiredEvent;
 
 /**
- * Serializes a ToolBlockedAwaitingInputError for MCP transport.
- * MCP protocol strips custom error properties, so we encode them in the response content.
+ * Make a tool blocked awaiting input response.
+ * Serializes blocking events and resume state into a MCP tool response.
  */
 export function makeToolBlockedAwaitingInputResponse(
   blockingEvents: RunAgentBlockingEvent[],
