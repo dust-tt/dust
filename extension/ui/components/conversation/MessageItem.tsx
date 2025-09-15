@@ -18,6 +18,7 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 interface MessageItemProps {
+  index: number;
   conversationId: string;
   hideReactions: boolean;
   isInModal: boolean;
@@ -32,6 +33,7 @@ interface MessageItemProps {
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
+      index,
       conversationId,
       messageFeedback,
       isLastMessage,
@@ -124,7 +126,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
       case "agent_message":
         return (
-          <div key={`message-id-${sId}`} ref={ref} className="mt-6 md:mt-10">
+          <div
+            key={`message-id-${sId}`}
+            ref={ref}
+            className={index !== 0 ? "mt-6 md:mt-10" : undefined}
+          >
             <AgentMessage
               conversationId={conversationId}
               isLastMessage={isLastMessage}
