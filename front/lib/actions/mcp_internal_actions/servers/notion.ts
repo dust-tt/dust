@@ -256,33 +256,32 @@ function makeQueryResource(
   };
 }
 
+async function withNotionClient<T>(
+  fn: (notion: Client) => Promise<T>,
+  authInfo?: AuthInfo
+): Promise<CallToolResult> {
+  try {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return makePersonalAuthenticationError("notion");
+    }
+    const notion = new Client({ auth: accessToken });
+
+    const result = await fn(notion);
+    return makeMCPToolJSONSuccess({
+      message: "Success",
+      result: JSON.stringify(result),
+    });
+  } catch (e) {
+    return makeMCPToolTextError(normalizeError(e).message);
+  }
+}
+
 const createServer = (
   auth: Authenticator,
-  mcpServerId: string,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
   const server = makeInternalMCPServer("notion");
-
-  async function withNotionClient<T>(
-    fn: (notion: Client) => Promise<T>,
-    authInfo?: AuthInfo
-  ): Promise<CallToolResult> {
-    try {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makePersonalAuthenticationError("notion", mcpServerId);
-      }
-      const notion = new Client({ auth: accessToken });
-
-      const result = await fn(notion);
-      return makeMCPToolJSONSuccess({
-        message: "Success",
-        result: JSON.stringify(result),
-      });
-    } catch (e) {
-      return makeMCPToolTextError(normalizeError(e).message);
-    }
-  }
 
   server.tool(
     "search",
@@ -309,7 +308,7 @@ const createServer = (
 
       const accessToken = authInfo?.token;
       if (!accessToken) {
-        return makePersonalAuthenticationError("notion", mcpServerId);
+        return makePersonalAuthenticationError("notion");
       }
       const notion = new Client({ auth: accessToken });
 

@@ -147,14 +147,22 @@ export async function* runToolWithStreaming(
     return;
   }
 
-  const internalToolOutput = toolCallResult?.value.find(
-    isInternalToolOutputResourceType
-  );
+  const { outputItems, generatedFiles } = await processToolResults(auth, {
+    action,
+    conversation,
+    localLogger,
+    toolCallResult: toolCallResult.value,
+    toolConfiguration,
+  });
 
-  if (internalToolOutput) {
-    switch (internalToolOutput.resource.type) {
+  const exitOutputItem = outputItems
+    .map((item) => item.content)
+    .find(isInternalToolOutputResourceType)?.resource;
+
+  if (exitOutputItem) {
+    switch (exitOutputItem.type) {
       case "tool_early_exit": {
-        const { isError, text } = internalToolOutput.resource;
+        const { isError, text } = exitOutputItem;
         yield {
           type: "tool_early_exit",
           created: Date.now(),
@@ -167,7 +175,7 @@ export async function* runToolWithStreaming(
         return;
       }
       case "tool_blocked_awaiting_input": {
-        const { blockingEvents, state } = internalToolOutput.resource;
+        const { blockingEvents, state } = exitOutputItem;
         // Update the action status to blocked_child_action_input_required to break the agent loop.
         await action.updateStatus("blocked_child_action_input_required");
 
@@ -181,14 +189,10 @@ export async function* runToolWithStreaming(
         for (const event of blockingEvents) {
           yield event;
         }
-
         return;
       }
       case "tool_personal_auth_required": {
-        const { provider, mcpServerId, scope } = internalToolOutput.resource;
-        if (!mcpServerId) {
-          throw new Error("MCP server ID is required");
-        }
+        const { provider, scope } = exitOutputItem;
 
         const authErrorMessage =
           `The tool ${actionBaseParams.functionCallName} requires personal ` +
@@ -204,7 +208,7 @@ export async function* runToolWithStreaming(
           messageId: agentMessage.sId,
           conversationId: conversation.sId,
           authError: {
-            mcpServerId: mcpServerId,
+            mcpServerId: action.toolConfiguration.toolServerId,
             provider: provider,
             toolName: actionBaseParams.functionCallName ?? "unknown",
             message: authErrorMessage,
@@ -213,19 +217,10 @@ export async function* runToolWithStreaming(
             }),
           },
         };
-
         return;
       }
     }
   }
-
-  const { outputItems, generatedFiles } = await processToolResults(auth, {
-    action,
-    conversation,
-    localLogger,
-    toolCallResult: toolCallResult.value,
-    toolConfiguration,
-  });
 
   statsDClient.increment("mcp_actions_success.count", 1, tags);
 

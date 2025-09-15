@@ -294,7 +294,6 @@ export async function* tryCallMCPTool(
           result: new Ok(
             makePersonalAuthenticationError(
               r.error.provider,
-              r.error.mcpServerId,
               r.error.scope
             ).content
           ),

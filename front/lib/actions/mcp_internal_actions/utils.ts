@@ -66,7 +66,6 @@ export function makeToolBlockedAwaitingInputResponse(
 
 export function makePersonalAuthenticationError(
   provider: OAuthProvider,
-  mcpServerId: string,
   scope?: string
 ) {
   return {
@@ -76,7 +75,6 @@ export function makePersonalAuthenticationError(
         resource: {
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT,
           type: "tool_personal_auth_required",
-          mcpServerId,
           scope,
           provider,
           text: "Personal authentication required",

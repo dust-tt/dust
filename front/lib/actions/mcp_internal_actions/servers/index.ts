@@ -112,7 +112,7 @@ export async function getInternalMCPServer(
     case "missing_action_catcher":
       return missingActionCatcherServer(auth, agentLoopContext);
     case "notion":
-      return notionServer(auth, mcpServerId, agentLoopContext);
+      return notionServer(auth, agentLoopContext);
     case "include_data":
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":

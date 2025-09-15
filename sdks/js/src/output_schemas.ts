@@ -622,7 +622,6 @@ export const AuthRequiredInternalToolOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.INTERNAL_TOOL_OUTPUT),
   type: z.literal("tool_personal_auth_required"),
   provider: z.string(),
-  mcpServerId: z.string().optional(),
   scope: z.string().optional(),
   text: z.string(),
   uri: z.string(),
