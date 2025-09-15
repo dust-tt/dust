@@ -167,45 +167,65 @@ export function MCPServerViewsSheet({
 
   const hasReasoningModel = reasoningModels.length > 0;
 
-  // You cannot select the same tool twice unless it's configurable.
-  const selectableDefaultMCPServerViews = useMemo(() => {
-    const filteredList = defaultMCPServerViews.filter((view) => {
+  // Utility function to check if a server view should be filtered out based on allowMultipleInstances
+  const shouldFilterServerView = useCallback(
+    (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
+      // For servers that don't allow multiple instances, check if any action is using this server type
+      if (!view.server.allowMultipleInstances) {
+        const serverAlreadyUsed = actions.some((action) => {
+          // Check if this is an MCP action with the same server ID
+          return (
+            action.type === "MCP" &&
+            action.configuration &&
+            action.configuration.mcpServerViewId === view.sId
+          );
+        });
+
+        if (serverAlreadyUsed) {
+          return true;
+        }
+      }
+
+      // Legacy check for backward compatibility - tools can still be filtered by name/configurability
       const selectedAction = actions.find(
         (action) => action.name === view.server.name
       );
 
       if (selectedAction) {
-        return !selectedAction.noConfigurationRequired;
+        return selectedAction.noConfigurationRequired; // Should filter out if not configurable
       }
 
-      return true;
-    });
+      return false;
+    },
+    []
+  );
+
+  const selectableDefaultMCPServerViews = useMemo(() => {
+    const filteredList = defaultMCPServerViews.filter(
+      (view) => !shouldFilterServerView(view, actions)
+    );
 
     if (hasReasoningModel) {
       return filteredList;
     }
 
-    // You should not be able to select Reasoning if there is no reasoning model available.
     return filteredList.filter(
       (view) =>
         !getMCPServerToolsConfigurations(view).mayRequireReasoningConfiguration
     );
-  }, [defaultMCPServerViews, actions, hasReasoningModel]);
+  }, [
+    defaultMCPServerViews,
+    actions,
+    hasReasoningModel,
+    shouldFilterServerView,
+  ]);
 
   const selectableNonDefaultMCPServerViews = useMemo(
     () =>
-      nonDefaultMCPServerViews.filter((view) => {
-        const selectedAction = actions.find(
-          (action) => action.name === view.server.name
-        );
-
-        if (selectedAction) {
-          return !selectedAction.noConfigurationRequired;
-        }
-
-        return true;
-      }),
-    [nonDefaultMCPServerViews, actions]
+      nonDefaultMCPServerViews.filter(
+        (view) => !shouldFilterServerView(view, actions)
+      ),
+    [nonDefaultMCPServerViews, actions, shouldFilterServerView]
   );
 
   const filteredViews = useMemo(() => {
