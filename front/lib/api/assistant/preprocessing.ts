@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
+import mcp from "@app/pages/api/w/[wId]/mcp";
 import type {
   AgentMessageType,
   AssistantContentMessageTypeModel,
@@ -177,13 +178,32 @@ export async function renderConversationForModel(
           return `@${name}`;
         }
       );
+
+      console.log(m);
+
+      let systemContext = "";
+      if (m.context.origin === "triggered") {
+        const items = [];
+        if (m.created) {
+          items.push(`- Current date: ${new Date(m.created).toISOString()}`);
+        }
+        if (m.context.lastTriggeredRunAt) {
+          items.push(
+            `- Last scheduled run: ${m.context.lastTriggeredRunAt.toISOString()}`
+          );
+        }
+        if (items.length > 0) {
+          systemContext = `<dust_system>\n${items.join("\n")}\n</dust_system>\n\n`;
+        }
+      }
+
       messages.push({
         role: "user" as const,
         name: m.context.fullName || m.context.username,
         content: [
           {
             type: "text",
-            text: content,
+            text: systemContext + content,
           },
         ],
       });

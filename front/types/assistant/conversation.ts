@@ -82,6 +82,7 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
@@ -96,6 +97,7 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
+  lastTriggeredRunAt?: Date | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
 };

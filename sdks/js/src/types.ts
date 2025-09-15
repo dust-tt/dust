@@ -295,6 +295,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
@@ -890,6 +891,7 @@ const UserMessageContextSchema = z.object({
   origin: UserMessageOriginSchema,
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
+  lastTriggeredRunAt: z.date().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
