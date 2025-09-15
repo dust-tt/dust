@@ -46,6 +46,7 @@ import {
 import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -58,6 +59,18 @@ const AGENTS_TABS = [
 ] as const;
 
 type TabId = (typeof AGENTS_TABS)[number]["id"];
+
+const MOST_POPULAR_TAG: TagType = {
+  sId: "--most_popular--",
+  name: "Most popular",
+  kind: "protected",
+};
+
+const OTHERS_TAG: TagType = {
+  sId: "--others--",
+  name: "Others",
+  kind: "protected",
+};
 
 type AgentGridProps = {
   agentConfigurations: LightAgentConfigurationType[];
@@ -207,46 +220,62 @@ export function AssistantBrowser({
         )
         .slice(0, 6)
         .sort(sortAgents),
-      untagged: allAgents.filter((a) => a.tags.length === 0),
     };
   }, [agentConfigurations, sortAgents]);
 
-  const { filteredAgents, filteredTags, uniqueTags } = useMemo(() => {
-    const tags = agentConfigurations.flatMap((a) => a.tags);
-    // Remove duplicate tags by unique sId
-    const uniqueTags = Array.from(
-      new Map(tags.map((tag) => [tag.sId, tag])).values()
-    ).sort(tagsSorter);
+  const { filteredAgents, filteredTags, uniqueTags, noTagsDefined } =
+    useMemo(() => {
+      const tags = agentConfigurations.flatMap((a) => a.tags);
+      // Remove duplicate tags by unique sId
+      const uniqueTags = Array.from(
+        new Map(tags.map((tag) => [tag.sId, tag])).values()
+      ).sort(tagsSorter);
 
-    if (assistantSearch.trim() === "") {
-      return { filteredAgents: [], filteredTags: [], uniqueTags };
-    }
-    const search = assistantSearch.toLowerCase().trim().replace(/^@/, "");
+      // Always unshift most popular at the beginning
+      uniqueTags.unshift(MOST_POPULAR_TAG);
 
-    const filteredAgents: LightAgentConfigurationType[] = agentConfigurations
-      .filter(
-        (a) =>
-          a.status === "active" &&
-          // Filters on search query
-          subFilter(search, getAgentSearchString(a))
-      )
+      // Always append others at the end
+      uniqueTags.push(OTHERS_TAG);
 
-      .sort((a, b) => {
-        return (
-          compareForFuzzySort(
-            assistantSearch,
-            getAgentSearchString(a),
-            getAgentSearchString(b)
-          ) || (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
-        );
-      });
+      if (assistantSearch.trim() === "") {
+        return {
+          filteredAgents: [],
+          filteredTags: [],
+          uniqueTags,
+          noTagsDefined: uniqueTags.length === 2, // Only most popular and others
+        };
+      }
+      const search = assistantSearch.toLowerCase().trim().replace(/^@/, "");
 
-    const filteredTags = uniqueTags.filter((t) =>
-      subFilter(search, t.name.toLowerCase())
-    );
+      const filteredAgents: LightAgentConfigurationType[] = agentConfigurations
+        .filter(
+          (a) =>
+            a.status === "active" &&
+            // Filters on search query
+            subFilter(search, getAgentSearchString(a))
+        )
 
-    return { filteredAgents, filteredTags, uniqueTags };
-  }, [agentConfigurations, assistantSearch]);
+        .sort((a, b) => {
+          return (
+            compareForFuzzySort(
+              assistantSearch,
+              getAgentSearchString(a),
+              getAgentSearchString(b)
+            ) || (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
+          );
+        });
+
+      const filteredTags = uniqueTags.filter((t) =>
+        subFilter(search, t.name.toLowerCase())
+      );
+
+      return {
+        filteredAgents,
+        filteredTags,
+        uniqueTags,
+        noTagsDefined: uniqueTags.length === 2, // Only most popular and others
+      };
+    }, [agentConfigurations, assistantSearch]);
 
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
@@ -262,6 +291,13 @@ export function AssistantBrowser({
       ? selectedTab
       : enabledTabs[0]?.id;
   }, [selectedTab, agentsByTab]);
+
+  // Auto-pick the most popular tag if tags exists but no tags are selected.
+  useEffect(() => {
+    if (!noTagsDefined && selectedTags.length === 0) {
+      setSelectedTags([MOST_POPULAR_TAG.sId]);
+    }
+  }, [noTagsDefined, selectedTags.length]);
 
   const handleMoreClick = (agent: LightAgentConfigurationType) => {
     setQueryParam(router, "assistantDetails", agent.sId);
@@ -416,61 +452,68 @@ export function AssistantBrowser({
       {viewTab === "all" ? (
         <>
           <div className="mb-2 flex flex-wrap gap-2">
-            {uniqueTags.map((tag) => (
-              <Button
-                size="xs"
-                variant={selectedTags.includes(tag.sId) ? "primary" : "outline"}
-                key={tag.sId}
-                label={tag.name}
-                onClick={() => {
-                  if (selectedTags.includes(tag.sId)) {
-                    setSelectedTags(selectedTags.filter((t) => t !== tag.sId));
-                  } else {
-                    setSelectedTags([...selectedTags, tag.sId]);
-                  }
-                }}
-              />
-            ))}
+            {noTagsDefined
+              ? null
+              : uniqueTags
+                  .filter((tag) => tag.sId !== MOST_POPULAR_TAG.sId)
+                  .map((tag) => (
+                    <Button
+                      size="xs"
+                      variant={
+                        selectedTags.includes(tag.sId) ? "primary" : "outline"
+                      }
+                      key={tag.sId}
+                      label={tag.name}
+                      onClick={() => {
+                        if (selectedTags.includes(tag.sId)) {
+                          setSelectedTags(
+                            selectedTags.filter((t) => t !== tag.sId)
+                          );
+                        } else {
+                          setSelectedTags([...selectedTags, tag.sId]);
+                        }
+                      }}
+                    />
+                  ))}
           </div>
 
           <div className="flex flex-col gap-4">
-            {selectedTags.length === 0 && (
-              <>
-                <span className="heading-base">Most popular</span>
-                <AgentGrid
-                  agentConfigurations={agentsByTab.most_popular}
-                  handleAssistantClick={handleAssistantClick}
-                  handleMoreClick={handleMoreClick}
-                />
-              </>
-            )}
             {uniqueTags
               .filter(
-                (t) => selectedTags.length === 0 || selectedTags.includes(t.sId)
+                (t) =>
+                  // User picked specific tag(s).
+                  selectedTags.includes(t.sId) ||
+                  // No tags are defined, show most popular & others.
+                  noTagsDefined
               )
               .map((tag) => (
                 <React.Fragment key={tag.sId}>
                   <a id={`anchor-${tag.sId}`} />
                   <span className="heading-base">{tag.name}</span>
                   <AgentGrid
-                    agentConfigurations={agentsByTab.all.filter((a) =>
-                      a.tags.some((t) => t.sId === tag.sId)
-                    )}
+                    agentConfigurations={agentsByTab.all.filter((a) => {
+                      return (
+                        // One of the tags is the selected tag.
+                        a.tags.some((t) => t.sId === tag.sId) ||
+                        // Selected tag is others, and the agent has no tags.
+                        (tag.sId === OTHERS_TAG.sId &&
+                          a.tags.length === 0 &&
+                          // Exclude agents that are in the most popular list.
+                          !agentsByTab.most_popular.some(
+                            (a_popular) => a_popular.sId === a.sId
+                          )) ||
+                        // Selected tag is most popular, and the agent is in the most popular list.
+                        (tag.sId === MOST_POPULAR_TAG.sId &&
+                          agentsByTab.most_popular.some(
+                            (a_popular) => a_popular.sId === a.sId
+                          ))
+                      );
+                    })}
                     handleAssistantClick={handleAssistantClick}
                     handleMoreClick={handleMoreClick}
                   />
                 </React.Fragment>
               ))}
-            {selectedTags.length === 0 && agentsByTab.untagged.length > 0 && (
-              <React.Fragment>
-                <span className="heading-base">Others</span>
-                <AgentGrid
-                  agentConfigurations={agentsByTab.untagged}
-                  handleAssistantClick={handleAssistantClick}
-                  handleMoreClick={handleMoreClick}
-                />
-              </React.Fragment>
-            )}
           </div>
         </>
       ) : (
