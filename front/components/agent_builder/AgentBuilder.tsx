@@ -46,7 +46,7 @@ import { emptyArray } from "@app/lib/swr/swr";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, removeNulls } from "@app/types";
 import { normalizeError } from "@app/types";
-import datadogLogger from "@app/logger/datadogsLogger";
+import datadogLogger from "@app/logger/datadogLogger";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[],

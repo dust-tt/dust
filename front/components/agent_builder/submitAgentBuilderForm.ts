@@ -25,7 +25,7 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import datadogLogger from "@app/logger/datadogsLogger";
+import datadogLogger from "@app/logger/datadogLogger";
 
 function processDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,
