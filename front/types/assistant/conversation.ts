@@ -227,12 +227,9 @@ export type ConversationWithoutContentType = {
   updated?: number;
   unread: boolean;
   actionRequired: boolean;
-  owner: WorkspaceType;
   sId: string;
   title: string | null;
-  visibility: ConversationVisibility;
   depth: number;
-  triggerId: string | null;
   requestedGroupIds: string[][];
 };
 
@@ -241,6 +238,7 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
+  owner: WorkspaceType;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
