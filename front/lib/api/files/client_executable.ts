@@ -1,3 +1,4 @@
+import { validateTailwindCode } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/validation";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -6,10 +7,11 @@ import type { ContentCreationFileContentType, Result } from "@app/types";
 import {
   clientExecutableContentType,
   CONTENT_CREATION_FILE_FORMATS,
+  Err,
   isContentCreationContentType,
   normalizeError,
+  Ok,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
 
 export async function createClientExecutableFile(
   auth: Authenticator,
@@ -167,6 +169,12 @@ export async function editClientExecutableFile(
 
   // Perform the replacement.
   const updatedContent = currentContent.replace(regex, newString);
+
+  // Validate the Tailwind classes in the resulting code.
+  const validationResult = validateTailwindCode(updatedContent);
+  if (validationResult.isErr()) {
+    return new Err(new Error(validationResult.error.message));
+  }
 
   // Upload the updated content.
   await fileResource.uploadContent(auth, updatedContent);
