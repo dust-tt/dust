@@ -5,6 +5,7 @@ import {
   Markdown,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { BellIcon } from "lucide-react";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -24,7 +25,6 @@ import {
 } from "@app/components/markdown/MentionBlock";
 import { formatMessageTime } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
-import { BellIcon } from "lucide-react";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];

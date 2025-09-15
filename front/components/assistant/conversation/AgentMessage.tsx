@@ -24,7 +24,6 @@ import {
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
-import { formatMessageTime } from "@app/lib/utils/timestamps";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -54,6 +53,7 @@ import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/out
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
+import { formatMessageTime } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
