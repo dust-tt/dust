@@ -19,6 +19,7 @@ interface SharedFilePageProps {
   title: string;
   token: string;
   workspaceName: string;
+  workspaceId: string;
 }
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
@@ -78,6 +79,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       title: file.fileName,
       token,
       workspaceName: workspace.name,
+      workspaceId: workspace.sId,
     },
   };
 });
@@ -87,6 +89,7 @@ export default function SharedFilePage({
   title,
   token,
   workspaceName,
+  workspaceId,
 }: SharedFilePageProps) {
   const humanFriendlyTitle = formatFilenameForDisplay(title);
   const faviconPath = getFaviconPath();
@@ -134,7 +137,10 @@ export default function SharedFilePage({
         <link rel="icon" type="image/png" href={faviconPath} />
       </Head>
       <div className="flex h-screen w-full">
-        <PublicContentCreationContainer shareToken={token} />
+        <PublicContentCreationContainer
+          shareToken={token}
+          workspaceId={workspaceId}
+        />
       </div>
     </>
   );
