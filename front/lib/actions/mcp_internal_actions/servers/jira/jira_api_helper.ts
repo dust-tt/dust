@@ -493,6 +493,60 @@ export async function searchIssues(
   });
 }
 
+export async function searchJiraIssuesUsingJql(
+  baseUrl: string,
+  accessToken: string,
+  jql: string,
+  options?: {
+    nextPageToken?: string;
+    maxResults?: number;
+    fields?: string[];
+  }
+): Promise<Result<JiraSearchResult, JiraErrorResult>> {
+  const {
+    nextPageToken,
+    maxResults = SEARCH_ISSUES_MAX_RESULTS,
+    fields = ["summary"],
+  } = options || {};
+
+  const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
+    jql,
+    maxResults,
+    fields,
+  };
+
+  if (nextPageToken) {
+    requestBody.nextPageToken = nextPageToken;
+  }
+
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/search/jql`,
+      accessToken,
+    },
+    JiraSearchResultSchema,
+    {
+      baseUrl,
+      method: "POST",
+      body: requestBody,
+    }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  if (resourceInfo && result.value.issues) {
+    result.value.issues = result.value.issues.map((issue) => ({
+      ...issue,
+      browseUrl: `${resourceInfo.url}/browse/${issue.key}`,
+    }));
+  }
+
+  return new Ok(result.value);
+}
+
 export async function getIssueTypes(
   baseUrl: string,
   accessToken: string,

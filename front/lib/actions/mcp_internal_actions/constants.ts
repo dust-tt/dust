@@ -688,6 +688,7 @@ The directive should be used to display a clickable version of the agent name in
       get_project: "never_ask",
       get_transitions: "never_ask",
       get_issues: "never_ask",
+      get_issues_using_jql: "never_ask",
       get_issue_types: "never_ask",
       get_issue_create_fields: "never_ask",
       get_issue_read_fields: "never_ask",
