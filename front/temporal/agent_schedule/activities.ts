@@ -76,7 +76,16 @@ const createConversationForAgentConfiguration = async (
   lastRunAt: Date | null = null
 ) => {
   const newConversation = await createConversation(auth, {
-    title: `@${agentConfiguration.name} scheduled call - ${new Date().toLocaleDateString()}`,
+    title: `@${agentConfiguration.name} triggered (${trigger.kind}) - ${new Date().toLocaleDateString(
+      "en-US",
+      {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }
+    )}`,
     visibility: "unlisted",
     triggerId: trigger.id,
   });
