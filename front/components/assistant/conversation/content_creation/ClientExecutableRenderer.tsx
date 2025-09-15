@@ -3,6 +3,10 @@ import {
   Button,
   CodeBlock,
   CommandLineIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EyeIcon,
   FullscreenExitIcon,
   FullscreenIcon,
@@ -29,31 +33,57 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
+  fileContent: string | undefined;
+  fileName?: string;
 }
 
-function ExportContentDropdown({ iframeRef }: ExportContentDropdownProps) {
-  const exportVisualization = React.useCallback(
-    (format: "png" | "svg") => {
-      if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(
-          { type: `EXPORT_${format.toUpperCase()}` },
-          "*"
-        );
-      } else {
-        console.log("No iframe content window found");
-      }
-    },
-    [iframeRef]
-  );
+function ExportContentDropdown({
+  iframeRef,
+  fileContent,
+  fileName,
+}: ExportContentDropdownProps) {
+  const exportAsPng = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: `EXPORT_PNG` }, "*");
+    } else {
+      console.log("No iframe content window found");
+    }
+  };
+
+  const downloadAsFile = () => {
+    if (!fileContent || !fileName) {
+      return;
+    }
+
+    const blob = new Blob([fileContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName; // File name should contain an extension.
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <Button
-      icon={ArrowDownOnSquareIcon}
-      size="xs"
-      tooltip="Export as PNG"
-      variant="ghost"
-      onClick={() => exportVisualization("png")}
-    />
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          icon={ArrowDownOnSquareIcon}
+          isSelect
+          size="xs"
+          tooltip="Export content"
+          variant="ghost"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={exportAsPng}>Export as PNG</DropdownMenuItem>
+        <DropdownMenuItem onClick={downloadAsFile}>
+          Export file
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -203,7 +233,11 @@ export function ClientExecutableRenderer({
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
           variant="ghost"
         />
-        <ExportContentDropdown iframeRef={iframeRef} />
+        <ExportContentDropdown
+          iframeRef={iframeRef}
+          fileContent={fileContent}
+          fileName={fileName}
+        />
         <ShareContentCreationFilePopover
           fileId={fileId}
           owner={owner}
