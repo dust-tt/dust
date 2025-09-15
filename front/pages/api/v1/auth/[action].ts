@@ -7,6 +7,36 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 
+/**
+ * Sanitizes input object to prevent prototype pollution when used with URLSearchParams
+ * Only allows specific whitelisted keys commonly used in OAuth flows
+ */
+function sanitizeForUrlSearchParams(input: Record<string, any> | undefined): Record<string, string> {
+  const allowed = [
+    'code',
+    'redirect_uri', 
+    'state',
+    'grant_type',
+    'code_verifier',
+    'code_challenge',
+    'code_challenge_method',
+    'response_type',
+    'scope',
+    'session_token',
+    'organization_id',
+    'workspaceId',
+    'provider',
+    'organizationId',
+    'connectionId'
+  ];
+  
+  return Object.fromEntries(
+    Object.entries(input || {})
+      .filter(([k]) => allowed.includes(k))
+      .map(([k, v]) => [k, String(v)])
+  );
+}
+
 const workosConfig = {
   name: "workos",
   authorizeUri: "api.workos.com/user_management/authorize",
@@ -109,7 +139,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       },
       credentials: "include",
       body: new URLSearchParams({
-        ...req.body,
+        ...sanitizeForUrlSearchParams(req.body || req.query),
         client_id: workosConfig.clientId,
       }).toString(),
     });
@@ -124,7 +154,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
   const params = new URLSearchParams({
-    ...query,
+    ...sanitizeForUrlSearchParams(query),
     client_id: workosConfig.clientId,
   }).toString();
   const logoutUrl = `https://${workosConfig.logoutUri}?${params}`;
