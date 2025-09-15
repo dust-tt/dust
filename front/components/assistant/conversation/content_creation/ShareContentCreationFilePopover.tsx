@@ -55,9 +55,9 @@ function ShareOption({
       <div className="flex items-center gap-3">
         <Icon className="h-5 w-5" />
         <div className="flex flex-col">
-          <span className="text-sm font-medium text-primary dark:text-primary-night">
+          <Label className="text-sm font-medium text-primary dark:text-primary-night">
             {label}
-          </span>
+          </Label>
           <span className="text-element-600 dark:text-element-600-dark text-xs">
             {scope === "workspace"
               ? "People in your workspace"
@@ -240,6 +240,14 @@ export function ShareContentCreationFilePopover({
                     </Label>
                     <div className="flex flex-col gap-2">
                       <ShareOption
+                        scope="none"
+                        label="Private"
+                        icon={LinkIcon}
+                        isSelected={selectedScope === "none"}
+                        onSelect={() => handleShareOptionSelect("none")}
+                        disabled={isDisabled}
+                      />
+                      <ShareOption
                         scope="workspace"
                         label={`${owner.name} workspace`}
                         icon={UserGroupIcon}
@@ -253,14 +261,6 @@ export function ShareContentCreationFilePopover({
                         icon={GlobeAltIcon}
                         isSelected={selectedScope === "public"}
                         onSelect={() => handleShareOptionSelect("public")}
-                        disabled={isDisabled}
-                      />
-                      <ShareOption
-                        scope="none"
-                        label="Private"
-                        icon={LinkIcon}
-                        isSelected={selectedScope === "none"}
-                        onSelect={() => handleShareOptionSelect("none")}
                         disabled={isDisabled}
                       />
                     </div>
