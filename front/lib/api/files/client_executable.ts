@@ -60,25 +60,26 @@ function validateTailwindCode(code: string): Result<undefined, Error> {
 
 export async function createClientExecutableFile(
   auth: Authenticator,
-  params: {
+  {
+    content,
+    conversationId,
+    fileName,
+    mimeType,
+    createdByAgentConfigurationId,
+  }: {
     content: string;
     conversationId: string;
     fileName: string;
     mimeType: ContentCreationFileContentType;
     createdByAgentConfigurationId?: string;
   }
-): Promise<Result<FileResource, Error>> {
-  const {
-    content,
-    conversationId,
-    fileName,
-    mimeType,
-    createdByAgentConfigurationId,
-  } = params;
-
+): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
   const validationResult = validateTailwindCode(content);
   if (validationResult.isErr()) {
-    return new Err(new Error(validationResult.error.message));
+    return new Err({
+      message: validationResult.error.message,
+      tracked: false,
+    });
   }
 
   try {
@@ -90,11 +91,10 @@ export async function createClientExecutableFile(
         ", "
       );
 
-      return new Err(
-        new Error(
-          `Unsupported MIME type: ${mimeType}. Supported types: ${supportedTypes}`
-        )
-      );
+      return new Err({
+        message: `Unsupported MIME type: ${mimeType}. Supported types: ${supportedTypes}`,
+        tracked: false,
+      });
     }
 
     // Validate that the file extension matches the MIME type.
@@ -102,23 +102,23 @@ export async function createClientExecutableFile(
     const fileNameParts = fileName.split(".");
     if (fileNameParts.length < 2) {
       const supportedExts = fileFormat.exts.join(", ");
-      return new Err(
-        new Error(
+      return new Err({
+        message:
           `File name must include a valid extension. Supported extensions for ` +
-            `${mimeType}: ${supportedExts}.`
-        )
-      );
+          `${mimeType}: ${supportedExts}.`,
+        tracked: false,
+      });
     }
 
     const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
     if (!(fileFormat.exts as string[]).includes(extension)) {
       const supportedExts = fileFormat.exts.join(", ");
-      return new Err(
-        new Error(
+      return new Err({
+        message:
           `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
-            `Supported extensions: ${supportedExts}.`
-        )
-      );
+          `Supported extensions: ${supportedExts}.`,
+        tracked: false,
+      });
     }
 
     // Create the file resource.
@@ -151,11 +151,10 @@ export async function createClientExecutableFile(
       "Failed to create client executable file"
     );
 
-    return new Err(
-      new Error(
-        `Failed to create client executable file '${fileName}': ${normalizeError(error)}`
-      )
-    );
+    return new Err({
+      message: `Failed to create client executable file '${fileName}': ${normalizeError(error)}`,
+      tracked: true,
+    });
   }
 }
 
@@ -184,8 +183,8 @@ export async function editClientExecutableFile(
   const fileContentResult = await getClientExecutableFileContent(auth, fileId);
   if (fileContentResult.isErr()) {
     return new Err({
-      tracked: true,
       message: fileContentResult.error.message,
+      tracked: true,
     });
   }
   const { fileResource, content: currentContent } = fileContentResult.value;
@@ -200,15 +199,15 @@ export async function editClientExecutableFile(
 
   if (occurrences === 0) {
     return new Err({
-      tracked: false,
       message: `String not found in file: "${oldString}"`,
+      tracked: false,
     });
   }
 
   if (occurrences !== expectedReplacements) {
     return new Err({
-      tracked: false,
       message: `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
+      tracked: false,
     });
   }
 
@@ -230,8 +229,8 @@ export async function editClientExecutableFile(
   const validationResult = validateTailwindCode(updatedContent);
   if (validationResult.isErr()) {
     return new Err({
-      tracked: false,
       message: validationResult.error.message,
+      tracked: false,
     });
   }
 
