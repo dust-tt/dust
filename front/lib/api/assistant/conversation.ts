@@ -544,6 +544,7 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
+                  userContextLastTriggerRunAt: context.lastTriggerRunAt,
                   userId: user
                     ? user.id
                     : (
@@ -989,6 +990,8 @@ export async function editUserMessage(
                   userContextProfilePictureUrl:
                     userMessageRow.userContextProfilePictureUrl,
                   userContextOrigin: userMessageRow.userContextOrigin,
+                  userContextLastTriggerRunAt:
+                    userMessageRow.userContextLastTriggerRunAt,
                   userId: userMessageRow.userId
                     ? userMessageRow.userId
                     : (
