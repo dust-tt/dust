@@ -2,10 +2,12 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  Avatar,
   Button,
   Citation,
   CitationIcons,
   CitationTitle,
+  ClockIcon,
   ConversationContainer,
   ConversationMessage,
   GithubIcon,
@@ -15,6 +17,7 @@ import {
   Markdown,
   SlackLogo,
   TableIcon,
+  Tooltip,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -32,6 +35,7 @@ export const ConversationExample = () => {
             type="user"
             name="Edouard"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+            timestamp="14:30"
             citations={[
               <Citation href="https://www.google.com">
                 <CitationIcons>
@@ -40,6 +44,7 @@ export const ConversationExample = () => {
                 <CitationTitle>Title</CitationTitle>
               </Citation>,
             ]}
+            chip={<Avatar size="xs" icon={ClockIcon} />}
           >
             I only want to show citations if a citations reactnode has been
             passed

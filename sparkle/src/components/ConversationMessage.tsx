@@ -35,8 +35,10 @@ interface ConversationMessageProps
   citations?: React.ReactElement[];
   isDisabled?: boolean;
   name?: string;
+  timestamp?: string;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
+  chip?: React.ReactNode;
 }
 
 const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
@@ -81,8 +83,10 @@ export const ConversationMessage = React.forwardRef<
       citations,
       isDisabled = false,
       name,
+      timestamp,
       pictureUrl,
       renderName = (name) => <span>{name}</span>,
+      chip,
       type,
       className,
       ...props
@@ -95,9 +99,11 @@ export const ConversationMessage = React.forwardRef<
           <ConversationMessageHeader
             avatarUrl={pictureUrl}
             name={name}
+            timestamp={timestamp}
             isBusy={avatarBusy}
             isDisabled={isDisabled}
             renderName={renderName}
+            chip={chip}
           />
 
           <ConversationMessageContent citations={citations}>
@@ -158,6 +164,8 @@ interface ConversationMessageHeaderProps
   isBusy?: boolean;
   isDisabled?: boolean;
   name?: string;
+  timestamp?: string;
+  chip?: React.ReactNode;
   renderName: (name: string | null) => React.ReactNode;
 }
 
@@ -171,6 +179,8 @@ export const ConversationMessageHeader = React.forwardRef<
       isBusy,
       isDisabled,
       name = "",
+      timestamp,
+      chip,
       renderName,
       className,
       ...props
@@ -202,13 +212,22 @@ export const ConversationMessageHeader = React.forwardRef<
           disabled={isDisabled}
           size="sm"
         />
-        <div
-          className={cn(
-            "s-text-sm s-font-semibold @sm:s-text-base",
-            "s-text-foreground dark:s-text-foreground-night"
-          )}
-        >
-          {renderName(name)}
+        <div className="s-flex s-w-full s-flex-row s-justify-between s-gap-0.5">
+          <div
+            className={cn(
+              "s-text-sm s-font-semibold @sm:s-text-base",
+              "s-text-foreground dark:s-text-foreground-night",
+              "s-flex s-flex-row s-items-center s-gap-2"
+            )}
+          >
+            {renderName(name)}
+            {chip}
+          </div>
+          <div>
+            <span className="s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {timestamp}
+            </span>
+          </div>
         </div>
       </div>
     );
