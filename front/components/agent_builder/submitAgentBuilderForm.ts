@@ -10,7 +10,6 @@ import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/config
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
@@ -26,6 +25,7 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import datadogLogger from "@app/logger/datadogsLogger";
 
 function processDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,
@@ -94,7 +94,7 @@ async function processTableSelection(
           (node) => !excludedIds.has(node.internalId)
         );
       } catch (error) {
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             dataSourceViewId: dataSourceView.sId,
@@ -143,7 +143,7 @@ async function processTableSelection(
           });
         }
       } catch (error) {
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             dataSourceViewId: dataSourceView.sId,
@@ -251,7 +251,7 @@ export async function submitAgentBuilderForm({
       { concurrency: 3 }
     );
   } catch (error) {
-    logger.error(
+    datadogLogger.error(
       {
         workspaceId: owner.sId,
         agentConfigurationId,
@@ -310,7 +310,7 @@ export async function submitAgentBuilderForm({
     if (!response.ok) {
       try {
         const error = await response.json();
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId,
@@ -325,7 +325,7 @@ export async function submitAgentBuilderForm({
           new Error(error.error?.message || "Failed to save agent")
         );
       } catch {
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId,
@@ -383,7 +383,7 @@ export async function submitAgentBuilderForm({
           const errorBody = await slackLinkRes.json();
 
           if (errorBody?.error?.type === "connector_operation_in_progress") {
-            logger.info(
+            datadogLogger.info(
               {
                 workspaceId: owner.sId,
                 agentConfigurationId: agentConfiguration.sId,
@@ -407,7 +407,7 @@ export async function submitAgentBuilderForm({
           // If we can't parse the error, fall through to generic error
         }
 
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId: agentConfiguration.sId,
@@ -439,7 +439,7 @@ export async function submitAgentBuilderForm({
     if (!triggerSyncRes.ok) {
       try {
         const error = await triggerSyncRes.json();
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId: agentConfiguration.sId,
@@ -456,7 +456,7 @@ export async function submitAgentBuilderForm({
           )
         );
       } catch {
-        logger.error(
+        datadogLogger.error(
           {
             workspaceId: owner.sId,
             agentConfigurationId: agentConfiguration.sId,
@@ -470,7 +470,7 @@ export async function submitAgentBuilderForm({
 
     return new Ok(agentConfiguration);
   } catch (error) {
-    logger.error(
+    datadogLogger.error(
       {
         workspaceId: owner.sId,
         agentConfigurationId,

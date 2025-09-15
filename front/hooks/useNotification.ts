@@ -3,12 +3,12 @@ import type { NotificationType } from "@dust-tt/sparkle";
 import { useSendNotification as useSendNotificationWithoutLogging } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
-export const useSendNotification = () => {
+export const useSendNotification = (disableLogging: boolean = false) => {
   const sendNotification = useSendNotificationWithoutLogging();
 
   return useCallback(
     (notification: NotificationType) => {
-      if (notification.type === "error") {
+      if (notification.type === "error" && !disableLogging) {
         datadogLogs.logger.info(
           `UI error notification: ${notification.title}`,
           {
@@ -18,6 +18,6 @@ export const useSendNotification = () => {
       }
       sendNotification(notification);
     },
-    [sendNotification]
+    [disableLogging, sendNotification]
   );
 };

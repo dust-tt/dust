@@ -43,9 +43,10 @@ import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useEditors } from "@app/lib/swr/editors";
 import { emptyArray } from "@app/lib/swr/swr";
-import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isBuilder, removeNulls } from "@app/types";
+import { normalizeError } from "@app/types";
+import datadogLogger from "@app/logger/datadogsLogger";
 
 function processActionsFromStorage(
   actions: AssistantBuilderMCPConfigurationWithId[],
@@ -99,7 +100,7 @@ export default function AgentBuilder({
   const { mcpServerViews } = useMCPServerViewsContext();
 
   const router = useRouter();
-  const sendNotification = useSendNotification();
+  const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
@@ -291,7 +292,9 @@ export default function AgentBuilder({
 
       setIsSaving(false);
     } catch (error) {
-      logger.error("Unexpected error:", error);
+      datadogLogger.error("Unexpected error:", {
+        error: normalizeError(error),
+      });
       setIsSaving(false);
     }
   };
@@ -317,7 +320,7 @@ export default function AgentBuilder({
       return "Unknown error";
     };
     const errorMessage = getFirstErrorMessage(errors);
-    logger.error(
+    datadogLogger.error(
       {
         errorMessage,
         agentConfigurationId: agentConfiguration?.sId,
