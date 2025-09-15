@@ -212,17 +212,6 @@ export async function editClientExecutableFile(
     });
   }
 
-  if (
-    editedByAgentConfigurationId &&
-    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-      editedByAgentConfigurationId
-  ) {
-    await fileResource.setUseCaseMetadata({
-      ...fileResource.useCaseMetadata,
-      lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
-    });
-  }
-
   // Perform the replacement.
   const updatedContent = currentContent.replace(regex, newString);
 
@@ -236,9 +225,27 @@ export async function editClientExecutableFile(
   }
 
   // Upload the updated content.
-  await fileResource.uploadContent(auth, updatedContent);
+  try {
+    if (
+      editedByAgentConfigurationId &&
+      fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+        editedByAgentConfigurationId
+    ) {
+      await fileResource.setUseCaseMetadata({
+        ...fileResource.useCaseMetadata,
+        lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
+      });
+    }
 
-  return new Ok({ fileResource, replacementCount: occurrences });
+    await fileResource.uploadContent(auth, updatedContent);
+
+    return new Ok({ fileResource, replacementCount: occurrences });
+  } catch (error) {
+    return new Err({
+      message: `Failed to edit client executable file '${fileId}': ${normalizeError(error)}`,
+      tracked: true,
+    });
+  }
 }
 
 export async function getClientExecutableFileContent(
