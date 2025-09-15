@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
-
 import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
 import { redisClient } from "@app/lib/utils/redis_client";
 import { getStatsDClient } from "@app/lib/utils/statsd";
