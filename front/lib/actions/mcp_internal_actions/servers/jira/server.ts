@@ -18,6 +18,7 @@ import {
   listFieldSummaries,
   listUsers,
   searchIssues,
+  searchJiraIssuesUsingJql,
   searchUsersByEmailExact,
   transitionIssue,
   updateIssue,
@@ -307,6 +308,62 @@ const createServer = (): McpServer => {
             result.value.issues.length === 0
               ? "No issues found matching the search criteria"
               : "Issues retrieved successfully";
+          return makeMCPToolJSONSuccess({
+            message,
+            result: result.value,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_issues_using_jql",
+    "Search JIRA issues using a custom JQL (Jira Query Language) query. This tool allows for advanced search capabilities beyond the filtered search. Examples: 'project = PROJ AND status = Open', 'assignee = currentUser() AND priority = High', 'created >= -30d AND labels = bug'.",
+    {
+      jql: z.string().describe("The JQL (Jira Query Language) query string"),
+      maxResults: z
+        .number()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe(
+          "Maximum number of results to return (default: 50, max: 100)"
+        ),
+      fields: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Optional list of fields to include in the response. Defaults to ['summary']"
+        ),
+      nextPageToken: z
+        .string()
+        .optional()
+        .describe("Token for next page of results (for pagination)"),
+    },
+    async ({ jql, maxResults, fields, nextPageToken }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchJiraIssuesUsingJql(
+            baseUrl,
+            accessToken,
+            jql,
+            {
+              maxResults,
+              fields,
+              nextPageToken,
+            }
+          );
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error executing JQL search: ${result.error}`
+            );
+          }
+          const message =
+            result.value.issues.length === 0
+              ? "No issues found matching the JQL query"
+              : "Issues retrieved successfully using JQL";
           return makeMCPToolJSONSuccess({
             message,
             result: result.value,

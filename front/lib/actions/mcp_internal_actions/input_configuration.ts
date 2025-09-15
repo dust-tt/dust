@@ -645,6 +645,33 @@ export function getMCPServerToolsConfigurations(
     (tool) => tool.inputSchema?.properties?.jsonSchema
   );
 
+  function extractSchemaDefault<T>(
+    schema: JSONSchema,
+    typeGuard: (value: unknown) => value is T
+  ): T | undefined {
+    // Try object-level default first: { value: T, mimeType: "..." }
+    if (
+      schema.default &&
+      typeof schema.default === "object" &&
+      schema.default !== null &&
+      "value" in schema.default &&
+      typeGuard(schema.default.value)
+    ) {
+      return schema.default.value;
+    }
+
+    // Try property-level default: { properties: { value: { default: T } } }
+    if (
+      schema.properties?.value &&
+      isJSONSchemaObject(schema.properties.value) &&
+      typeGuard(schema.properties.value.default)
+    ) {
+      return schema.properties.value.default;
+    }
+
+    return undefined;
+  }
+
   const stringConfigurations = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
@@ -653,6 +680,10 @@ export function getMCPServerToolsConfigurations(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
+    default: extractSchemaDefault(
+      schema,
+      (v: unknown): v is string => typeof v === "string"
+    ),
   }));
 
   const numberConfigurations = Object.entries(
@@ -663,6 +694,10 @@ export function getMCPServerToolsConfigurations(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
+    default: extractSchemaDefault(
+      schema,
+      (v: unknown): v is number => typeof v === "number"
+    ),
   }));
 
   const booleanConfigurations = Object.entries(
@@ -673,6 +708,10 @@ export function getMCPServerToolsConfigurations(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
+    default: extractSchemaDefault(
+      schema,
+      (v: unknown): v is boolean => typeof v === "boolean"
+    ),
   }));
 
   const enumConfigurations = Object.fromEntries(
@@ -686,6 +725,12 @@ export function getMCPServerToolsConfigurations(
       if (!valueProperty || !isJSONSchemaObject(valueProperty)) {
         return [key, { options: [], description: schema.description }];
       }
+
+      const defaultValue = extractSchemaDefault(
+        schema,
+        (v: unknown): v is string => typeof v === "string"
+      );
+
       return [
         key,
         {
@@ -694,6 +739,7 @@ export function getMCPServerToolsConfigurations(
               (v): v is string => typeof v === "string"
             ) ?? [],
           description: schema.description,
+          default: defaultValue,
         },
       ];
     })
@@ -738,7 +784,19 @@ export function getMCPServerToolsConfigurations(
         zip(labels, values).map(([label, value]) => [value, label])
       );
 
-      return [key, { options: valueToLabel, description: schema.description }];
+      const defaultValue = extractSchemaDefault(
+        schema,
+        (v: unknown): v is string => typeof v === "string"
+      );
+
+      return [
+        key,
+        {
+          options: valueToLabel,
+          description: schema.description,
+          default: defaultValue,
+        },
+      ];
     })
   );
 

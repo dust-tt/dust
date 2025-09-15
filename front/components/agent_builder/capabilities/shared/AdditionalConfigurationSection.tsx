@@ -139,6 +139,7 @@ function NumberConfigurationInput({
           id={`number-${configKey}`}
           type="number"
           {...field}
+          value={field.value || null}
           placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
           isError={!!fieldState.error}
           message={fieldState.error?.message}
@@ -201,6 +202,7 @@ function StringConfigurationInput({
           id={`string-${configKey}`}
           type="text"
           {...field}
+          value={field.value || null}
           placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
           isError={!!fieldState.error}
           message={fieldState.error?.message}
