@@ -315,7 +315,7 @@ export async function submitAgentBuilderForm({
             workspaceId: owner.sId,
             agentConfigurationId,
             endpoint,
-            body: JSON.stringify(requestBody),
+            body: requestBody,
             httpStatus: response.status,
             errorMessage: error.error?.message,
           },
@@ -329,7 +329,7 @@ export async function submitAgentBuilderForm({
           {
             workspaceId: owner.sId,
             agentConfigurationId,
-            body: JSON.stringify(requestBody),
+            body: requestBody,
             endpoint,
             httpStatus: response.status,
           },
