@@ -1,15 +1,14 @@
 import { Op } from "sequelize";
 
-import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_TO_PREVIOUS_EDIT_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
+// Define tool names locally to avoid dependency cycles with action modules.
+const CREATE_CONTENT_CREATION_FILE_TOOL_NAME = "create_content_creation_file";
+const EDIT_CONTENT_CREATION_FILE_TOOL_NAME = "edit_content_creation_file";
+const REVERT_TO_PREVIOUS_EDIT_TOOL_NAME = "revert_to_previous_edit";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -302,7 +301,9 @@ export async function revertClientExecutableFileToPreviousState(
     currentAgentMessage: AgentMessageType;
     revertedByAgentConfigurationId?: string;
   }
-): Promise<Result<FileResource, Error>> {
+): Promise<
+  Result<{ fileResource: FileResource; revertedContent: string }, Error>
+> {
   const {
     fileId,
     conversationId,
@@ -357,10 +358,12 @@ export async function revertClientExecutableFileToPreviousState(
 
     const agentMessageIds = agentMessages.map((msg) => msg.id);
 
-    const allActions = await AgentMCPActionResource.listByAgentMessageIds(
-      auth,
-      agentMessageIds
-    );
+    const allActions = await AgentMCPActionModel.findAll({
+      where: {
+        workspaceId,
+        agentMessageId: { [Op.in]: agentMessageIds },
+      },
+    });
 
     // Attach output items to actions for easy access
     const actionIds = allActions.map((action) => action.id);
@@ -368,9 +371,12 @@ export async function revertClientExecutableFileToPreviousState(
       where: { workspaceId, agentMCPActionId: { [Op.in]: actionIds } },
     });
 
-    const outputItemsByActionId = new Map(
-      outputItems.map((item) => [item.agentMCPActionId, item])
-    );
+    const outputItemsByActionId = new Map<number, AgentMCPActionOutputItem[]>();
+    for (const item of outputItems) {
+      const items = outputItemsByActionId.get(item.agentMCPActionId) || [];
+      items.push(item);
+      outputItemsByActionId.set(item.agentMCPActionId, items);
+    }
 
     const fileActions = allActions
       .filter((action) => {
@@ -378,8 +384,13 @@ export async function revertClientExecutableFileToPreviousState(
         const fileIdFromInput = (action.augmentedInputs as any)?.file_id;
 
         if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
-          const actionFileId = outputItemsByActionId.get(action.id)?.content
-            .fileId;
+          const resourceOutput = outputItemsByActionId
+            .get(action.id)
+            ?.find((o) => o.content?.type === "resource");
+
+          const actionFileId = (
+            resourceOutput?.content.resource as { fileId: string }
+          )?.fileId;
           const isFileCreateAction = actionFileId === fileId;
           return isFileCreateAction;
         }
@@ -447,7 +458,9 @@ export async function revertClientExecutableFileToPreviousState(
       startingAgentMessageId = revertAction.agentMessageId;
 
       // Extract content from revert action's output items
-      const revertItemOutput = outputItemsByActionId.get(revertAction.id);
+      const revertItemOutput = outputItemsByActionId
+        .get(revertAction.id)
+        ?.find((o) => o.content?.type === "text");
 
       if (!revertItemOutput) {
         return new Err(
@@ -464,8 +477,9 @@ export async function revertClientExecutableFileToPreviousState(
           )
         );
       }
-      startingContent = (revertItemOutput.content.resource as { text: string })
-        .text;
+      startingContent = (
+        revertItemOutput.content as { type: "text"; text: string }
+      ).text;
     } else {
       // Use original content from create action
       const createAction = fileActions[createActionIndex];
@@ -531,7 +545,7 @@ export async function revertClientExecutableFileToPreviousState(
       });
     }
 
-    return new Ok(fileResource);
+    return new Ok({ fileResource, revertedContent });
   } catch (error) {
     return new Err(
       new Error(
