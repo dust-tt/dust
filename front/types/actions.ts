@@ -10,7 +10,7 @@ export type AgentMCPActionType = {
   citationsAllocated: number;
   // TODO(MCPActionDetails): prevent exposing the function call name
   //  currently used in the extension to guess the tool name but quite brittle.
-  functionCallName: string | null;
+  functionCallName: string;
   functionCallId: string;
   id: ModelId;
   internalMCPServerName: InternalMCPServerNameType | null;
