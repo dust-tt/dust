@@ -322,7 +322,6 @@ async function handler(
         "App run creation"
       );
 
-      // If we're using the OpenAI EU key, we also need to tell Core to use the EU host for OpenAI.
       if (useOpenAIEUKey && config.MODEL) {
         config.MODEL.use_openai_eu_host = true;
       }
