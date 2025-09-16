@@ -79,7 +79,7 @@ export function ToolsPicker({
     ].filter(
       (v) =>
         // Only tools that do not require any configuration can be enabled directly in a conversation.
-        getMCPServerToolsConfigurations(v).configurationNotObligatory &&
+        getMCPServerToolsConfigurations(v).configurable !== "required" &&
         (searchText.length === 0 ||
           getMcpServerViewDisplayName(v)
             .toLowerCase()

@@ -98,8 +98,7 @@ describe("getDefaultConfiguration", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
-        configurationNotObligatory: false,
-        configurable: true,
+        configurable: "optional",
       });
 
       const result = getDefaultConfiguration(mockMCPServerView);
@@ -130,8 +129,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -170,8 +168,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -198,8 +195,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -237,8 +233,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -276,8 +271,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -313,8 +307,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -355,8 +348,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -399,8 +391,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -434,8 +425,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -481,8 +471,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -553,8 +542,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -622,8 +610,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
-          configurationNotObligatory: false,
-          configurable: true,
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -763,8 +750,7 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
-        configurationNotObligatory: false,
-        configurable: true,
+        configurable: "optional",
       });
 
       const result = getDefaultConfiguration(mockMCPServerView);

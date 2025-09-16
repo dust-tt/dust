@@ -560,8 +560,7 @@ export interface MCPServerToolsConfigurations {
     }
   >;
   mayRequireDustAppConfiguration: boolean;
-  configurationNotObligatory: boolean;
-  configurable: boolean;
+  configurable: "no" | "optional" | "required";
 }
 
 export function getMCPServerToolsConfigurations(
@@ -582,8 +581,7 @@ export function getMCPServerToolsConfigurations(
       enumConfigurations: {},
       listConfigurations: {},
       mayRequireDustAppConfiguration: false,
-      configurationNotObligatory: false,
-      configurable: true,
+      configurable: "optional",
     };
   }
   const { server } = mcpServerView;
@@ -833,7 +831,9 @@ export function getMCPServerToolsConfigurations(
       (config) => config.default !== undefined
     );
 
-  const configurable =
+  let configurable: "no" | "optional" | "required" = "no";
+
+  const isConfigurable =
     mayRequireDataSourceConfiguration ||
     mayRequireDataWarehouseConfiguration ||
     mayRequireTableConfiguration ||
@@ -847,6 +847,16 @@ export function getMCPServerToolsConfigurations(
     booleanConfigurations.length > 0 ||
     Object.keys(enumConfigurations).length > 0 ||
     Object.keys(listConfigurations).length > 0;
+
+  if (isConfigurable) {
+    if (hasDefaultsForAllConfigurableValues) {
+      configurable = "optional";
+    } else {
+      configurable = "required";
+    }
+  } else {
+    configurable = "no";
+  }
 
   return {
     mayRequireDataSourceConfiguration,
@@ -862,8 +872,6 @@ export function getMCPServerToolsConfigurations(
     enumConfigurations,
     listConfigurations,
     mayRequireDustAppConfiguration,
-    configurationNotObligatory:
-      !configurable || hasDefaultsForAllConfigurableValues,
     configurable,
   };
 }
