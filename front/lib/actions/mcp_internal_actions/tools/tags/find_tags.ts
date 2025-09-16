@@ -41,9 +41,9 @@ export function registerFindTagsTool(
     `Find exact matching labels (also called tags).` +
     "Restricting or excluding content succeeds only with existing labels. " +
     "Searching without verifying labels first typically returns no results." +
-    "The output of this tool can typically be used in tagsIn (if we want to " +
-    "restrict the search to specific tags) or tagsNot (if we want to exclude " +
-    "specific tags) parameters.";
+    "The output of this tool can typically be used in `tagsIn` (if we want " +
+    "to restrict the search to specific tags) or `tagsNot` (if we want to " +
+    "exclude specific tags) parameters.";
   const toolDescription = extraDescription
     ? baseDescription + "\n" + extraDescription
     : baseDescription;
