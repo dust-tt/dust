@@ -316,7 +316,7 @@ async function handler(
       );
 
       if (keyWorkspaceFlags.includes("use_openai_eu_key") && config.MODEL) {
-        config.MODEL.openai_hostname = "eu.api.openai.com";
+        config.MODEL.use_openai_eu_key = true;
       }
 
       const runRes = await coreAPI.createRunStream(

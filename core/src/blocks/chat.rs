@@ -313,8 +313,8 @@ impl Block for Chat {
                 if let Some(Value::String(s)) = v.get("openai_organization_id") {
                     extras["openai_organization_id"] = json!(s.clone());
                 }
-                if let Some(Value::String(s)) = v.get("openai_hostname") {
-                    extras["openai_hostname"] = json!(s.clone());
+                if let Some(Value::Bool(s)) = v.get("use_openai_eu_key") {
+                    extras["use_openai_eu_key"] = json!(s.clone());
                 }
                 if let Some(Value::Object(s)) = v.get("response_format") {
                     extras["response_format"] = json!(s.clone());
