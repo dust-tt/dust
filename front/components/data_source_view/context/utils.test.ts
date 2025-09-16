@@ -404,7 +404,6 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [], // All exclusions removed
       });
     });
-
   });
 
   describe("removeNodeFromTree", () => {
@@ -959,6 +958,5 @@ describe("DataSourceBuilder utilities", () => {
       expect(isNodeSelected(tree, ["src"])).toBe(true);
       expect(isNodeSelected(tree, ["other"])).toBe(false);
     });
-
   });
 });

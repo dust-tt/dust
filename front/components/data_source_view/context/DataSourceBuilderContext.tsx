@@ -250,61 +250,19 @@ export function DataSourceBuilderProvider({
     navigationHistory: [{ type: "root" }],
   });
 
-  // Initialize navigation from existing selections
   const initializeNavigationFromSelections = useCallback(() => {
-    // If we have explicit inclusions, use those for navigation
-    if (field.value.in.length > 0) {
-      const spacePathCounts: Record<string, number> = {};
+    // just navigate to the first space we find in any selection
+    const allPaths = [...field.value.in, ...field.value.notIn];
 
-      field.value.in.forEach((source) => {
-        const pathParts = source.path.split("/");
-        // If path has at least 2 parts (root/space), count the space
-        if (pathParts.length >= 2) {
-          const spaceId = pathParts[1];
-          spacePathCounts[spaceId] = (spacePathCounts[spaceId] || 0) + 1;
-        }
-      });
-
-      // Find the most frequently occurring space to navigate to
-      const spaceEntries = Object.entries(spacePathCounts).sort(
-        ([, a], [, b]) => b - a
-      );
-
-      if (spaceEntries.length > 0) {
-        const [spaceId] = spaceEntries[0];
+    for (const source of allPaths) {
+      const pathParts = source.path.split("/");
+      if (pathParts.length >= 2) {
+        const spaceId = pathParts[1];
         const space = spaces.find((s) => s.sId === spaceId);
 
         if (space) {
           dispatch({ type: "NAVIGATION_SET_SPACE", payload: { space } });
           return;
-        }
-      }
-    }
-
-    // If we only have exclusions, try to infer the parent space from exclusions
-    // This handles cases where "select all" was used but only exclusions are stored
-    if (field.value.notIn.length > 0 && field.value.in.length === 0) {
-      const spacePathCounts: Record<string, number> = {};
-
-      field.value.notIn.forEach((source) => {
-        const pathParts = source.path.split("/");
-        // If path has at least 2 parts (root/space), count the space
-        if (pathParts.length >= 2) {
-          const spaceId = pathParts[1];
-          spacePathCounts[spaceId] = (spacePathCounts[spaceId] || 0) + 1;
-        }
-      });
-
-      const spaceEntries = Object.entries(spacePathCounts).sort(
-        ([, a], [, b]) => b - a
-      );
-
-      if (spaceEntries.length > 0) {
-        const [spaceId] = spaceEntries[0];
-        const space = spaces.find((s) => s.sId === spaceId);
-
-        if (space) {
-          dispatch({ type: "NAVIGATION_SET_SPACE", payload: { space } });
         }
       }
     }

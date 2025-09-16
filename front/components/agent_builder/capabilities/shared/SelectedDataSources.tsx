@@ -231,7 +231,7 @@ export function SelectedDataSources() {
             {
               id: exclusionView.dataSourceView.id.toString(),
               name: "All documents",
-              type: "data_source" as const,
+              type: "data_source",
             },
           ],
         };
