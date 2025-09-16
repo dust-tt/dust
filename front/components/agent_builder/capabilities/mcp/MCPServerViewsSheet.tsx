@@ -192,7 +192,7 @@ export function MCPServerViewsSheet({
       );
 
       if (selectedAction) {
-        return selectedAction.noConfigurationRequired; // Should filter out if not configurable
+        return !selectedAction.configurable; // Should filter out if not configurable
       }
 
       return false;
@@ -371,7 +371,7 @@ export function MCPServerViewsSheet({
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerToolsConfigurations(mcpServerView);
 
-    if (!requirement.noRequirement) {
+    if (requirement.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.mayRequireReasoningConfiguration;
 
@@ -468,7 +468,7 @@ export function MCPServerViewsSheet({
             configuration: null,
             name: DEFAULT_DATA_VISUALIZATION_NAME,
             description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-            noConfigurationRequired: true,
+            configurable: false,
           };
         } else {
           return tool.configuredAction || getDefaultMCPAction(tool.view);
@@ -598,7 +598,7 @@ export function MCPServerViewsSheet({
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
-                  allowNameEdit={!configurationTool.noConfigurationRequired}
+                  allowNameEdit={configurationTool.configurable}
                 />
 
                 {toolsConfigurations.mayRequireReasoningConfiguration && (

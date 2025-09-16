@@ -561,7 +561,7 @@ export interface MCPServerToolsConfigurations {
     }
   >;
   mayRequireDustAppConfiguration: boolean;
-  noRequirement: boolean;
+  configurable: "no" | "optional" | "required";
 }
 
 export function getMCPServerToolsConfigurations(
@@ -582,7 +582,7 @@ export function getMCPServerToolsConfigurations(
       enumConfigurations: {},
       listConfigurations: {},
       mayRequireDustAppConfiguration: false,
-      noRequirement: false,
+      configurable: "optional",
     };
   }
   const { server } = mcpServerView;
@@ -715,7 +715,10 @@ export function getMCPServerToolsConfigurations(
     ),
   }));
 
-  const enumConfigurations = Object.fromEntries(
+  const enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string; default?: string }
+  > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -747,7 +750,15 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const listConfigurations = Object.fromEntries(
+  const listConfigurations: Record<
+    string,
+    {
+      options: Record<string, string>;
+      description?: string;
+      values?: string[];
+      default?: string;
+    }
+  > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -810,6 +821,45 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
+  // TODO: We'll handle the sources and tables later
+  const hasDefaultsForAllConfigurableValues =
+    stringConfigurations.every((config) => config.default !== undefined) &&
+    numberConfigurations.every((config) => config.default !== undefined) &&
+    booleanConfigurations.every((config) => config.default !== undefined) &&
+    Object.values(enumConfigurations).every(
+      (config) => config.default !== undefined
+    ) &&
+    Object.values(listConfigurations).every(
+      (config) => config.default !== undefined
+    );
+
+  let configurable: "no" | "optional" | "required" = "no";
+
+  const isConfigurable =
+    mayRequireDataSourceConfiguration ||
+    mayRequireDataWarehouseConfiguration ||
+    mayRequireTableConfiguration ||
+    mayRequireChildAgentConfiguration ||
+    mayRequireReasoningConfiguration ||
+    mayRequireDustAppConfiguration ||
+    mayRequireTimeFrameConfiguration ||
+    mayRequireJsonSchemaConfiguration ||
+    stringConfigurations.length > 0 ||
+    numberConfigurations.length > 0 ||
+    booleanConfigurations.length > 0 ||
+    Object.keys(enumConfigurations).length > 0 ||
+    Object.keys(listConfigurations).length > 0;
+
+  if (isConfigurable) {
+    if (hasDefaultsForAllConfigurableValues) {
+      configurable = "optional";
+    } else {
+      configurable = "required";
+    }
+  } else {
+    configurable = "no";
+  }
+
   return {
     mayRequireDataSourceConfiguration,
     mayRequireDataWarehouseConfiguration,
@@ -824,19 +874,7 @@ export function getMCPServerToolsConfigurations(
     enumConfigurations,
     listConfigurations,
     mayRequireDustAppConfiguration,
-    noRequirement:
-      !mayRequireDataSourceConfiguration &&
-      !mayRequireDataWarehouseConfiguration &&
-      !mayRequireTableConfiguration &&
-      !mayRequireChildAgentConfiguration &&
-      !mayRequireReasoningConfiguration &&
-      !mayRequireDustAppConfiguration &&
-      !mayRequireTimeFrameConfiguration &&
-      stringConfigurations.length <= 0 &&
-      numberConfigurations.length <= 0 &&
-      booleanConfigurations.length <= 0 &&
-      Object.keys(enumConfigurations).length <= 0 &&
-      Object.keys(listConfigurations).length <= 0,
+    configurable,
   };
 }
 

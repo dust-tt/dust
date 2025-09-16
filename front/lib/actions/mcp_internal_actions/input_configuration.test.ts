@@ -379,6 +379,75 @@ describe("augmentInputsWithConfiguration", () => {
         },
       });
     });
+
+    it("should NOT augment when a partial model container exists (container present, missing required subfields)", () => {
+      const rawInputs = {
+        // Container present but invalid/partial: missing providerId, mimeType, etc.
+        model: { modelId: "gpt-4o" },
+      } as Record<string, unknown>;
+
+      const config = createBasicMCPConfiguration({
+        reasoningModel: {
+          modelId: "gpt-4o",
+          providerId: "openai",
+          temperature: 0.2,
+          reasoningEffort: "light",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            model:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
+              ],
+          },
+          required: ["model"],
+        },
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      // Current behavior: augmentation only reacts to top-level missing required properties.
+      // With a present (but invalid) container, no replacement occurs; the partial value is preserved.
+      expect(result).toEqual(rawInputs);
+    });
+
+    it("should NOT augment when an empty model object exists", () => {
+      const rawInputs = {
+        model: {},
+      } as Record<string, unknown>;
+
+      const config = createBasicMCPConfiguration({
+        reasoningModel: {
+          modelId: "gpt-4o",
+          providerId: "openai",
+          temperature: 0.5,
+          reasoningEffort: "medium",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            model:
+              ConfigurableToolInputJSONSchemas[
+                INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
+              ],
+          },
+          required: ["model"],
+        },
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual(rawInputs);
+    });
   });
 
   describe("NULLABLE_TIME_FRAME mime type", () => {

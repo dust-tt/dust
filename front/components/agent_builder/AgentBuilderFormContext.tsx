@@ -98,7 +98,7 @@ const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  noConfigurationRequired: z.boolean().optional(),
+  configurable: z.boolean().optional(),
 });
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
