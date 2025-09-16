@@ -1,4 +1,3 @@
-import _ from "lodash";
 import { Op } from "sequelize";
 
 import {
@@ -310,6 +309,7 @@ export async function revertClientExecutableFileToPreviousState(
     currentAgentMessage,
     revertedByAgentConfigurationId,
   } = params;
+
   try {
     const fileResource = await FileResource.fetchById(auth, fileId);
     if (!fileResource) {
@@ -326,106 +326,108 @@ export async function revertClientExecutableFileToPreviousState(
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Resolve conversation numeric id from sId
-    const conversationRes = await ConversationResource.fetchById(
+    const conversation = await ConversationResource.fetchById(
       auth,
       conversationId
     );
 
-    if (!conversationRes) {
+    if (!conversation) {
       return new Err(new Error(`Conversation not found: ${conversationId}`));
     }
 
-    logger.info(
-      { conversationResId: conversationRes.id },
-      "Conversation found"
-    );
-
-    // Gather agent messages for the conversation
     const agentMessages = await AgentMessage.findAll({
       where: { workspaceId },
       include: [
         {
           model: Message,
           as: "message",
-          where: { conversationId: conversationRes.id, workspaceId },
+          where: {
+            conversationId: conversation.id,
+            workspaceId,
+          },
           required: true,
         },
       ],
       attributes: ["id"],
     });
 
-    logger.info({ agentMessages }, "Agent messages found");
-
-    const agentMessageIds: ModelId[] = agentMessages.map((am) => am.id);
-    if (agentMessageIds.length === 0) {
+    if (agentMessages.length === 0) {
       return new Err(new Error("No MCP actions found for this conversation"));
     }
+
+    const agentMessageIds = agentMessages.map((msg) => msg.id);
 
     const allActions = await AgentMCPActionResource.listByAgentMessageIds(
       auth,
       agentMessageIds
     );
 
-    // Load output items and attach for easy access
-    const actionIds = allActions.map((a) => a.id);
-    const outputItemsByActionId = _.groupBy(
-      await AgentMCPActionOutputItem.findAll({
-        where: { workspaceId, agentMCPActionId: { [Op.in]: actionIds } },
-      }),
-      "agentMCPActionId"
+    // Attach output items to actions for easy access
+    const actionIds = allActions.map((action) => action.id);
+    const outputItems = await AgentMCPActionOutputItem.findAll({
+      where: { workspaceId, agentMCPActionId: { [Op.in]: actionIds } },
+    });
+
+    const outputItemsByActionId = new Map(
+      outputItems.map((item) => [item.agentMCPActionId, item])
     );
 
-    for (const a of allActions) {
-      (a as any).outputItems = outputItemsByActionId[a.id.toString()] ?? [];
-    }
-
-    logger.info({ allActions }, "All actions");
-
-    // Filter by fileId (support `file_id` in augmentedInputs)
     const fileActions = allActions
       .filter((action) => {
-        const name = action.toolConfiguration.originalName;
-        const inputs = action.augmentedInputs as any;
-        const fid = inputs?.file_id;
+        const toolName = action.toolConfiguration.originalName;
+        const fileIdFromInput = (action.augmentedInputs as any)?.file_id;
 
-        // we only keep create, edit, and revert actions
-        if (name === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
-          return true;
+        if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
+          const actionFileId = outputItemsByActionId.get(action.id)?.content
+            .fileId;
+          const isFileCreateAction = actionFileId === fileId;
+          return isFileCreateAction;
         }
 
-        if (name === EDIT_CONTENT_CREATION_FILE_TOOL_NAME) {
-          return fid === fileId;
+        if (toolName === EDIT_CONTENT_CREATION_FILE_TOOL_NAME) {
+          return fileIdFromInput === fileId;
         }
 
-        if (name === REVERT_TO_PREVIOUS_EDIT_TOOL_NAME) {
-          return fid === fileId;
+        if (toolName === REVERT_TO_PREVIOUS_EDIT_TOOL_NAME) {
+          return fileIdFromInput === fileId;
         }
 
         return false;
       })
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-    logger.info({ fileActions }, "File actions");
+      .filter((action) => action.status === "succeeded")
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
     if (fileActions.length === 0) {
       return new Err(new Error(`No MCP actions found for file '${fileId}'`));
     }
 
-    // Find last revert and last create
-    let lastRevertIndex = -1;
+    // Check if the most recent action is a revert, if true then return an error
+    const mostRecentAction = fileActions[fileActions.length - 1];
+    if (
+      mostRecentAction?.toolConfiguration.originalName ===
+      REVERT_TO_PREVIOUS_EDIT_TOOL_NAME
+    ) {
+      return new Err(
+        new Error(`Last action is a revert, cannot revert twice in a row`)
+      );
+    }
+
+    // Find the most recent revert action and the create action
+    let lastRevertActionIndex = -1;
     let createActionIndex = -1;
 
-    for (let i = 0; i < fileActions.length; i++) {
-      const name = fileActions[i].toolConfiguration.originalName;
+    // Find the index of the most recent revert action and the create action
+    for (let i = fileActions.length - 1; i >= 0; i--) {
+      const toolName = fileActions[i].toolConfiguration.originalName;
+
       if (
-        name === REVERT_TO_PREVIOUS_EDIT_TOOL_NAME &&
-        lastRevertIndex === -1
+        toolName === REVERT_TO_PREVIOUS_EDIT_TOOL_NAME &&
+        lastRevertActionIndex === -1
       ) {
-        lastRevertIndex = i;
+        lastRevertActionIndex = i;
       }
 
-      if (name === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
+      if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
         createActionIndex = i;
         break;
       }
@@ -435,70 +437,43 @@ export async function revertClientExecutableFileToPreviousState(
       return new Err(new Error(`No create action found for file '${fileId}'`));
     }
 
-    logger.info(
-      { lastRevertIndex, createActionIndex },
-      "Last revert index and create action index"
-    );
-
     // Determine starting content and starting agent message
     let startingContent: string;
     let startingAgentMessageId: ModelId;
 
-    // TODO: change to !== -1 after testing
-    if (lastRevertIndex === -1000) {
-      const revertAction: any = fileActions[lastRevertIndex];
+    // If there's a revert action, extract content from its output
+    if (lastRevertActionIndex !== -1) {
+      const revertAction = fileActions[lastRevertActionIndex];
       startingAgentMessageId = revertAction.agentMessageId;
 
-      // Find reverted content stored as JSON with a `content` field
-      const outputItems: any[] = (revertAction as any).outputItems ?? [];
-      let recoveredContent: string | null = null;
-      for (const item of outputItems) {
-        const c = item?.content;
-        if (!c || typeof c !== "object") {
-          continue;
-        }
+      // Extract content from revert action's output items
+      const revertItemOutput = outputItemsByActionId.get(revertAction.id);
 
-        // Case 1: text payload containing JSON
-        if (typeof (c as any).text === "string") {
-          const t = (c as any).text as string;
-          try {
-            const parsed = JSON.parse(t);
-            if (parsed && typeof parsed.content === "string") {
-              recoveredContent = parsed.content;
-              break;
-            }
-          } catch {
-            // ignore non-JSON text
-          }
-        }
-
-        // Case 2: structured payload already has a content field
-        if (typeof (c as any).content === "string") {
-          recoveredContent = (c as any).content;
-          break;
-        }
-
-        // Case 3: nested shapes like json/value
-        const nested = (c as any).json ?? (c as any).value ?? undefined;
-        if (nested && typeof nested.content === "string") {
-          recoveredContent = nested.content;
-          break;
-        }
-      }
-
-      if (!recoveredContent) {
+      if (!revertItemOutput) {
         return new Err(
           new Error(
-            `Could not find reverted content JSON with a 'content' field for file '${fileId}'`
+            `Could not find reverted content in revert action for file '${fileId}'`
           )
         );
       }
-      startingContent = recoveredContent;
+
+      if (!revertItemOutput.content) {
+        return new Err(
+          new Error(
+            `Could not find reverted content in revert action for file '${fileId}'`
+          )
+        );
+      }
+      startingContent = (revertItemOutput.content.resource as { text: string })
+        .text;
     } else {
+      // Use original content from create action
       const createAction = fileActions[createActionIndex];
       startingAgentMessageId = createAction.agentMessageId;
-      const originalContent = (createAction.augmentedInputs as any)?.content;
-      if (typeof originalContent !== "string") {
+      const originalContent =
+        (createAction.augmentedInputs?.content as string) ?? "";
+
+      if (!originalContent) {
         return new Err(
           new Error(
             `No original content found in create action for file '${fileId}'`
@@ -509,90 +484,58 @@ export async function revertClientExecutableFileToPreviousState(
       startingContent = originalContent;
     }
 
-    // Group actions by agent message (keeps chronological order after grouping)
-    let currentContent: string = startingContent;
+    // Find the starting point
+    const startIndex = fileActions.findIndex(
+      (action) => action.agentMessageId === startingAgentMessageId
+    );
 
-    const actionsByAgentMessage = new Map<ModelId, typeof fileActions>();
-    for (const action of fileActions) {
-      if (!actionsByAgentMessage.has(action.agentMessageId)) {
-        actionsByAgentMessage.set(action.agentMessageId, []);
-      }
-
-      actionsByAgentMessage.get(action.agentMessageId)!.push(action);
+    if (startIndex === -1) {
+      return new Err(
+        new Error("Could not find starting agent message for revert")
+      );
     }
 
-    const sortedAgentMsgIds = Array.from(actionsByAgentMessage.keys()).sort(
-      (a, b) => {
-        const a0 = actionsByAgentMessage.get(a)![0];
-        const b0 = actionsByAgentMessage.get(b)![0];
-        return a0.createdAt.getTime() - b0.createdAt.getTime();
+    let revertedContent = startingContent;
+
+    const currentAgentMessageIndex = fileActions.findIndex(
+      (action) => action.agentMessageId === currentAgentMessage.agentMessageId
+    );
+
+    for (let i = startIndex + 1; i < fileActions.length; i++) {
+      const action = fileActions[i];
+
+      // Stop when we reach the previous agent message
+      if (i >= currentAgentMessageIndex - 1) {
+        break;
       }
-    );
 
-    logger.info({ sortedAgentMsgIds }, "Sorted agent message ids");
+      if (
+        action.toolConfiguration.originalName ===
+        EDIT_CONTENT_CREATION_FILE_TOOL_NAME
+      ) {
+        const { old_string, new_string } = action.augmentedInputs as {
+          new_string: string;
+          old_string: string;
+        };
 
-    logger.info(
-      {
-        startingAgentMessageId,
-        currentAgentMessageId: currentAgentMessage.agentMessageId,
-        currentAgentMessage,
-      },
-      "Starting and current agent message ids"
-    );
-
-    const startIdx = sortedAgentMsgIds.indexOf(startingAgentMessageId);
-    const endIdx = sortedAgentMsgIds.indexOf(
-      currentAgentMessage.agentMessageId
-    );
-
-    if (startIdx === -1 || endIdx === -1) {
-      return new Err(new Error("Agent message bounds not found for revert"));
-    }
-
-    for (let i = startIdx + 1; i < endIdx; i++) {
-      const actions = actionsByAgentMessage.get(sortedAgentMsgIds[i]) || [];
-      for (const a of actions) {
-        if (
-          a.toolConfiguration.originalName ===
-          EDIT_CONTENT_CREATION_FILE_TOOL_NAME
-        ) {
-          const args = a.augmentedInputs as any;
-          if (args?.old_string && args?.new_string) {
-            currentContent = currentContent.replace(
-              args.old_string,
-              args.new_string
-            );
-          }
-        }
+        revertedContent = revertedContent.replace(new_string, old_string);
       }
     }
 
-    // Write the reverted content back to the file
-    // await fileResource.uploadContent(auth, currentContent);
-    logger.info({ currentContent }, "Current content");
+    await fileResource.uploadContent(auth, revertedContent);
 
-    // if (revertedByAgentConfigurationId) {
-    //   await fileResource.setUseCaseMetadata({
-    //     ...fileResource.useCaseMetadata,
-    //     lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
-    //   });
-    // }
-
-    logger.info(
-      { revertedByAgentConfigurationId },
-      "Reverted by agent configuration id"
-    );
-    logger.info(
-      "revertedByAgentConfigurationId",
-      { fileId, currentAgentMessageId: currentAgentMessage.sId },
-      "Reverted content creation file to previous state"
-    );
+    if (revertedByAgentConfigurationId) {
+      await fileResource.setUseCaseMetadata({
+        ...fileResource.useCaseMetadata,
+        lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+      });
+    }
 
     return new Ok(fileResource);
   } catch (error) {
     return new Err(
       new Error(
-        `Failed to revert file '${params.fileId}' to previous state: ${normalizeError(error)}`
+        `Failed to revert file '${fileId}' to previous state: ${normalizeError(error)}`
       )
     );
   }
