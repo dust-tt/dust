@@ -8,6 +8,7 @@ import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
+  REVERT_TO_PREVIOUS_EDIT_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -16,6 +17,7 @@ import {
   createClientExecutableFile,
   editClientExecutableFile,
   getClientExecutableFileContent,
+  revertClientExecutableFileToPreviousState,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import type { ContentCreationFileContentType } from "@app/types";
@@ -300,6 +302,112 @@ const createServer = (
             text:
               `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
               `successfully. Content:\n\n${content}`,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    REVERT_TO_PREVIOUS_EDIT_TOOL_NAME,
+    "Reverts the content creation to the state it was at the last agent message. " +
+      "This tool restores the content creation file to its previous state before the current agent message. " +
+      "Use this when you need to undo changes made in the current agent message and return to the previous state.",
+    {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Content Creation file to revert (e.g., 'fil_abc123')"
+        ),
+    },
+    withToolLogging(
+      auth,
+      { toolName: REVERT_TO_PREVIOUS_EDIT_TOOL_NAME, agentLoopContext },
+      async ({ file_id }, { sendNotification, _meta }) => {
+        const { conversation, agentMessage } =
+          agentLoopContext?.runContext ?? {};
+
+        if (!conversation) {
+          return new Err(
+            new MCPError(
+              "Conversation ID is required to revert a client executable file."
+            )
+          );
+        }
+
+        if (!agentMessage) {
+          return new Err(
+            new MCPError(
+              "Agent message is required to revert a client executable file."
+            )
+          );
+        }
+
+        const result = await revertClientExecutableFileToPreviousState(auth, {
+          fileId: file_id,
+          conversationId: conversation.sId,
+          currentAgentMessage: agentMessage,
+        });
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error.message));
+        }
+
+        const { value: fileResource } = result;
+
+        // Get the current content of the reverted file to include in the output
+        const contentResult = await getClientExecutableFileContent(
+          auth,
+          file_id
+        );
+        if (contentResult.isErr()) {
+          return new Err(new MCPError(contentResult.error.message));
+        }
+
+        const { content } = contentResult.value;
+
+        const responseText = `File '${fileResource.sId}' reverted to previous state successfully.`;
+
+        if (_meta?.progressToken) {
+          const notification: MCPProgressNotificationType = {
+            method: "notifications/progress",
+            params: {
+              progress: 1,
+              total: 1,
+              progressToken: _meta?.progressToken,
+              data: {
+                label: "Reverting Content Creation file...",
+                output: {
+                  type: "content_creation_file",
+                  fileId: fileResource.sId,
+                  mimeType: fileResource.contentType,
+                  title: fileResource.fileName,
+                  updatedAt: fileResource.updatedAtMs.toString(),
+                },
+              },
+            },
+          };
+
+          // Send a notification to the MCP Client, to refresh the Content Creation file.
+          await sendNotification(notification);
+        }
+
+        return new Ok([
+          {
+            type: "resource",
+            resource: {
+              contentType: fileResource.contentType,
+              fileId: fileResource.sId,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              snippet: fileResource.snippet,
+              text: responseText,
+              title: fileResource.fileName,
+              uri: fileResource.getPublicUrl(auth),
+            },
+          },
+          {
+            type: "text",
+            text: `Reverted file content:\n\n${content}`,
           },
         ]);
       }

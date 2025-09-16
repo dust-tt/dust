@@ -12,6 +12,7 @@ import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
+  REVERT_TO_PREVIOUS_EDIT_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 
 export const CONTENT_CREATION_INSTRUCTIONS = `\
@@ -30,6 +31,12 @@ You have access to a Content Creation system that allows you to create and updat
 - Then use \`${EDIT_CONTENT_CREATION_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
+
+### Reverting to Previous State:
+- To revert existing Content Creation files, always use \`${RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME}\` first to read the current content
+- Use \`${REVERT_TO_PREVIOUS_EDIT_TOOL_NAME}\` to revert the content creation file to the state it was at the last agent message.
+- Only use this tool if explicitly instructed to do so.
+- Never attempt to revert without first retrieving the current file content
 
 ${VIZ_REACT_COMPONENT_GUIDELINES}
 
