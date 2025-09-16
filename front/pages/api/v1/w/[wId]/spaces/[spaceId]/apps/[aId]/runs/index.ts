@@ -317,7 +317,7 @@ async function handler(
             name: owner.name,
           },
           app: app.sId,
-          useOpenAIEU: useOpenAIEUKey,
+          useOpenAIEUKey,
         },
         "App run creation"
       );
