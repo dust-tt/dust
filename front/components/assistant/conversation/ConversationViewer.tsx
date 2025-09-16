@@ -45,6 +45,7 @@ import {
   isContentFragmentType,
   isUserMessageType,
 } from "@app/types";
+import { groupBy } from "lodash";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -504,32 +505,27 @@ const groupMessagesByType = (
 const groupMessagesByDate = (
   messageGroups: MessageWithContentFragmentsType[][]
 ): MessageGroupWithDate[] => {
-  const dateGroups: MessageGroupWithDate[] = [];
+  // Filter out empty groups
+  const nonEmptyGroups = messageGroups.filter((group) => group.length > 0);
 
-  messageGroups.forEach((group) => {
-    if (group.length === 0) {
-      return;
-    }
-
-    // Get the timestamp from the first message in the group
+  // Group by day using lodash groupBy and isSameDay
+  const grouped = groupBy(nonEmptyGroups, (group) => {
     const firstMessage = group[0];
     const timestamp = firstMessage.created || Date.now();
-
-    // Check if we already have a group for this date
-    const existingDateGroup = dateGroups.find((dg) =>
-      isSameDay(dg.timestamp, timestamp)
-    );
-
-    if (existingDateGroup) {
-      existingDateGroup.messages.push(group);
-    } else {
-      dateGroups.push({
-        date: formatDateSeparator(timestamp),
-        timestamp,
-        messages: [group],
-      });
-    }
+    // Use the timestamp as the grouping key (by day)
+    // We'll use the timestamp of the start of the day for grouping
+    const date = new Date(timestamp);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
   });
 
-  return dateGroups;
+  // Convert grouped object to array of MessageGroupWithDate
+  return Object.entries(grouped).map(([dayTimestamp, groups]) => {
+    const timestamp = Number(dayTimestamp);
+    return {
+      date: formatDateSeparator(timestamp),
+      timestamp,
+      messages: groups,
+    };
+  });
 };
