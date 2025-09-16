@@ -3,7 +3,6 @@ import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 
 /**
@@ -39,13 +38,8 @@ makeScript({}, async ({ execute }, logger) => {
     }
 
     // Fetch all triggers resources from sIds.
-    const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
-    const sIds = triggersByWorkspace[workspace.id].map((t) =>
-      TriggerResource.modelIdToSId({ id: t.id, workspaceId: t.workspaceId })
-    );
-    const triggers = await TriggerResource.fetchByIds(auth, sIds);
-
-    for (const t of triggers) {
+    for (const trigger of triggersByWorkspace[workspace.id]) {
+      const t = new TriggerResource(TriggerModel, trigger.get());
       const user = await UserResource.fetchByModelId(t.editor);
       if (!user) {
         logger.error(
