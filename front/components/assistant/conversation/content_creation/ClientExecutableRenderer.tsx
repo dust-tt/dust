@@ -35,14 +35,12 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
-  fileName?: string;
   owner: LightWorkspaceType;
   fileId: string;
 }
 
 function ExportContentDropdown({
   iframeRef,
-  fileName,
   owner,
   fileId,
 }: ExportContentDropdownProps) {
@@ -58,10 +56,6 @@ function ExportContentDropdown({
   };
 
   const downloadAsCode = () => {
-    if (!fileName) {
-      return;
-    }
-
     try {
       const downloadUrl = `/api/w/${owner.sId}/files/${fileId}?action=download`;
       // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
@@ -246,7 +240,6 @@ export function ClientExecutableRenderer({
         />
         <ExportContentDropdown
           iframeRef={iframeRef}
-          fileName={fileName}
           owner={owner}
           fileId={fileId}
         />
