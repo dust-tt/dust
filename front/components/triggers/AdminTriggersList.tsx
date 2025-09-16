@@ -102,6 +102,35 @@ export const AdminTriggersList = ({
         ),
       },
       {
+        id: "access",
+        accessorKey: "spaces",
+        header: "Access",
+        cell: (info: CellContext<RowData, SpaceType[]>) => {
+          const globalSpace = info.getValue().find((s) => s.kind === "global");
+          const accessibleTo = globalSpace
+            ? "Everyone"
+            : info
+                .getValue()
+                .filter((s) => s.kind === "regular")
+                .map((s) => s.name)
+                .join(", ");
+
+          return (
+            <DataTable.CellContent>
+              <div className="flex items-center gap-2">{accessibleTo}</div>
+            </DataTable.CellContent>
+          );
+        },
+        sortingFn: (rowA, rowB) => {
+          return rowA.original.webhookSourceWithViews.name.localeCompare(
+            rowB.original.webhookSourceWithViews.name
+          );
+        },
+        meta: {
+          className: "w-28",
+        },
+      },
+      {
         id: "by",
         accessorKey: "webhookSourceView.editedByUser",
         header: "By",
