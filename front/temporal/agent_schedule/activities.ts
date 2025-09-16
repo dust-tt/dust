@@ -15,10 +15,11 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { makeScheduleId } from "@app/temporal/agent_schedule/client";
-import type {AgentConfigurationType, ContentFragmentInputWithFileIdType} from "@app/types";
-import {
-  assertNever
+import type {
+  AgentConfigurationType,
+  ContentFragmentInputWithFileIdType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
 /**
