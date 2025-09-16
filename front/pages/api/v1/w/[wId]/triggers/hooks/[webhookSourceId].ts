@@ -13,6 +13,7 @@ import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
 import type { WithAPIErrorResponse } from "@app/types";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Err } from "@app/types";
 
 /**
@@ -139,6 +140,30 @@ async function handler(
     )
   ).flat();
 
+  // Insert the webhook body as a file content fragment
+  const contentFragmentRes = await toFileContentFragment(auth, {
+    contentFragment: {
+      contentType: "application/json",
+      content: JSON.stringify(req.body),
+      title: `Webhook body (source id: ${webhookSource.id}, date: ${new Date().toISOString()})`,
+    },
+    fileName: `webhook_body_${webhookSource.id}_${Date.now()}.json`,
+  });
+
+  if (contentFragmentRes.isErr()) {
+    logger.error(
+      { contentFragment: contentFragmentRes },
+      "Error creating file content fragment."
+    );
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Error creating file content fragment.",
+      },
+    });
+  }
+
   const results = await concurrentExecutor(
     triggers,
     // Run every trigger.
@@ -152,7 +177,11 @@ async function handler(
       }
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, wId);
-      return launchAgentTriggerWorkflow({ auth, trigger });
+      return await launchAgentTriggerWorkflow({
+        auth,
+        trigger,
+        contentFragment: contentFragmentRes.value,
+      });
     },
     { concurrency: 10 }
   );
@@ -168,7 +197,7 @@ async function handler(
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "Error launching agent trigger workflows.",
+          message: `Error launching agent trigger workflows: ${errors.map((e) => e.error.message).join(", ")}`,
         },
       },
       // Safe cast thanks to the .filter above.
