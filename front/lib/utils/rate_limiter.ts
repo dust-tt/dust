@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from "uuid";
-
 import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
 import { redisClient } from "@app/lib/utils/redis_client";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -59,34 +58,60 @@ export async function rateLimiter({
   const redisKey = makeRateLimiterKey(key);
   const tags: string[] = [];
 
+  // Lua script for atomic rate limiting
+  const luaScript = `
+    local key = KEYS[1]
+    local window_seconds = tonumber(ARGV[1])
+    local limit = tonumber(ARGV[2])
+    local value = ARGV[3]
+
+    -- Use Redis server time to avoid client clock skew
+    local t = redis.call('TIME') -- { seconds, microseconds }
+    local sec = tonumber(t[1])
+    local usec = tonumber(t[2])
+
+    local now_ms = sec * 1000 + math.floor(usec / 1000)
+    local window_ms = window_seconds * 1000
+    local trim_before = now_ms - window_ms
+
+    -- Current count in window
+    local count = redis.call('ZCOUNT', key, trim_before, '+inf')
+
+    if count < limit then
+      -- Allow: record this request at now_ms
+      redis.call('ZADD', key, now_ms, value)
+      -- Keep the key around a bit longer than the window to allow trims
+      local ttl_ms = window_ms + 60000
+      redis.call('PEXPIRE', key, ttl_ms)
+      -- Return remaining BEFORE consuming to match previous behavior
+      return limit - count
+    else
+      -- Block
+      return 0
+    end
+
+  `;
+
   let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
   try {
     redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const remaining = (await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [timeframeSeconds.toString(), maxPerTimeframe.toString(), uuidv4()],
+    })) as number;
 
-    const zcountRes = await redis.zCount(
-      redisKey,
-      new Date().getTime() - timeframeSeconds * 1000,
-      "+inf"
-    );
-    const remaining = maxPerTimeframe - zcountRes;
-    if (remaining > 0) {
-      await redis.zAdd(redisKey, {
-        score: new Date().getTime(),
-        value: uuidv4(),
-      });
-      await redis.expire(redisKey, timeframeSeconds * 2);
-    } else {
-      statsDClient.increment("ratelimiter.exceeded.count", 1, tags);
-    }
     const totalTimeMs = new Date().getTime() - now.getTime();
-
     statsDClient.distribution(
       "ratelimiter.latency.distribution",
       totalTimeMs,
       tags
     );
 
-    return remaining > 0 ? remaining : 0;
+    if (remaining <= 0) {
+      statsDClient.increment("ratelimiter.exceeded.count", 1, tags);
+    }
+
+    return remaining;
   } catch (e) {
     statsDClient.increment("ratelimiter.error.count", 1, tags);
     logger.error(
@@ -98,9 +123,7 @@ export async function rateLimiter({
       },
       `RateLimiter error`
     );
-
-    // In case of error on our side, we allow the request.
-    return 1;
+    return 1; // Allow request if error is on our side
   }
 }
 
