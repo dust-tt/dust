@@ -1,6 +1,7 @@
 import {
   InformationCircleIcon,
   Sheet,
+  SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -12,6 +13,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useEffect, useState } from "react";
 
 import { WebhookSourceDetailsHeader } from "@app/components/triggers/WebhookSourceDetailsHeader";
+import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsProps = {
@@ -53,6 +55,12 @@ export function WebhookSourceDetails({
             </TabsList>
           </Tabs>
         </SheetHeader>
+
+        <SheetContainer>
+          {selectedTab === "info" && (
+            <WebhookSourceDetailsInfo webhookSourceView={webhookSourceView} />
+          )}
+        </SheetContainer>
       </SheetContent>
     </Sheet>
   );
