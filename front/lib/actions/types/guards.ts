@@ -302,6 +302,8 @@ function isMCPActionType(action: unknown): action is MCPActionType {
 }
 
 // TODO: replace with a typeguard on AgentMCPActionWithOutputType.
-export function isMCPActionArray(actions: unknown): actions is MCPActionType[] {
+export function isAgentMCPActionArray(
+  actions: unknown
+): actions is MCPActionType[] {
   return Array.isArray(actions) && actions.every(isMCPActionType);
 }
