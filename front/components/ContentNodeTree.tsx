@@ -200,7 +200,8 @@ function ContentNodeTreeChildren({
 
   const tree = (
     <Tree isLoading={isResourcesLoading} isBoxed={isRoundedBackground}>
-      {filteredNodes &&
+      {!isResourcesLoading &&
+        filteredNodes &&
         filteredNodes.length === 0 &&
         (emptyComponent || <Tree.Empty label="No documents" />)}
 
