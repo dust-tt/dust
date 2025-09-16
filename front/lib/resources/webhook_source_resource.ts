@@ -203,6 +203,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,
       customHeaders: this.customHeaders,
+      eventTypeHeader: this.eventTypeHeader,
+      allowedEventTypes: this.allowedEventTypes,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
     };

@@ -15,6 +15,7 @@ import {
   CreateWebhookSourceFormContent,
   CreateWebhookSourceSchema,
   validateCustomHeadersFromString,
+  validateEventTypesFromString,
 } from "@app/components/triggers/CreateWebhookSourceForm";
 import { useCreateWebhookSource } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
@@ -38,6 +39,8 @@ export function CreateWebhookSourceDialog({
       signatureHeader: "",
       signatureAlgorithm: "sha256",
       customHeaders: null,
+      eventTypeHeader: null,
+      allowedEventTypes: null,
     },
   });
 
@@ -52,10 +55,14 @@ export function CreateWebhookSourceDialog({
     const parsedCustomHeaders = validateCustomHeadersFromString(
       data.customHeaders
     );
+    const parsedEventTypes = validateEventTypesFromString(
+      data.allowedEventTypes
+    );
 
     const apiData = {
       ...data,
       customHeaders: parsedCustomHeaders?.parsed ?? null,
+      allowedEventTypes: parsedEventTypes?.parsed ?? null,
       includeGlobal: true,
     };
 

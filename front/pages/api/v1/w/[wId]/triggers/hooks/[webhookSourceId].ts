@@ -117,6 +117,27 @@ async function handler(
     });
   }
 
+  // Check event type filtering if configured
+  if (webhookSource.eventTypeHeader && webhookSource.allowedEventTypes) {
+    const eventTypeHeaderValue = req.headers[webhookSource.eventTypeHeader.toLowerCase()];
+    const eventType = Array.isArray(eventTypeHeaderValue) 
+      ? eventTypeHeaderValue[0] 
+      : eventTypeHeaderValue;
+
+    if (!eventType || !webhookSource.allowedEventTypes.includes(eventType)) {
+      logger.info(
+        {
+          webhookSourceId,
+          eventType,
+          allowedEventTypes: webhookSource.allowedEventTypes,
+          eventTypeHeader: webhookSource.eventTypeHeader,
+        },
+        "Webhook event type not allowed"
+      );
+      return res.status(200).json({ success: true, message: "Event type not processed" });
+    }
+  }
+
   // Fetch all triggers based on the webhook source id
   const views = await WebhookSourcesViewResource.listByWebhookSource(
     auth,

@@ -97,6 +97,8 @@ async function handler(
         signatureHeader,
         signatureAlgorithm,
         customHeaders,
+        eventTypeHeader,
+        allowedEventTypes,
         includeGlobal,
       } = bodyValidation.data;
 
@@ -110,6 +112,8 @@ async function handler(
           signatureHeader,
           signatureAlgorithm,
           customHeaders,
+          eventTypeHeader,
+          allowedEventTypes,
         });
 
         if (webhookSourceRes.isErr()) {

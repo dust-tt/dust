@@ -32,11 +32,29 @@ export const validateCustomHeadersFromString = (value: string | null) => {
   }
 };
 
+export const validateEventTypesFromString = (value: string | null) => {
+  if (value === null || value.trim() === "") {
+    return { parsed: null };
+  }
+  try {
+    const parsed = JSON.parse(value);
+    const result = z.array(z.string()).nullable().safeParse(parsed);
+
+    return result.success ? { parsed: result.data } : null;
+  } catch {
+    return null;
+  }
+};
+
 export const CreateWebhookSourceSchema = PostWebhookSourcesSchema.extend({
   customHeaders: z
     .string()
     .nullable()
     .refine(validateCustomHeadersFromString, "Invalid JSON format"),
+  allowedEventTypes: z
+    .string()
+    .nullable()
+    .refine(validateEventTypesFromString, "Invalid JSON array format"),
 });
 
 export type CreateWebhookSourceFormData = z.infer<
@@ -143,6 +161,41 @@ export function CreateWebhookSourceFormContent({
               error={form.formState.errors.customHeaders?.message}
               showErrorLabel={true}
               rows={4}
+            />
+          </>
+        )}
+      />
+
+      <Controller
+        control={form.control}
+        name="eventTypeHeader"
+        render={({ field }) => (
+          <Input
+            {...field}
+            value={field.value ?? undefined}
+            label="Event Type Header (optional)"
+            placeholder="X-Event-Type, X-GitHub-Event, etc."
+            isError={form.formState.errors.eventTypeHeader !== undefined}
+            message={form.formState.errors.eventTypeHeader?.message}
+            messageStatus="error"
+          />
+        )}
+      />
+
+      <Controller
+        control={form.control}
+        name="allowedEventTypes"
+        render={({ field }) => (
+          <>
+            <Label htmlFor="allowedEventTypes">Allowed Event Types (optional)</Label>
+            <TextArea
+              {...field}
+              value={field.value ?? undefined}
+              id="allowedEventTypes"
+              placeholder='["push", "pull_request", "issue"]'
+              error={form.formState.errors.allowedEventTypes?.message}
+              showErrorLabel={true}
+              rows={2}
             />
           </>
         )}

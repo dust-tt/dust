@@ -15,6 +15,8 @@ export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> 
   declare signatureAlgorithm: "sha1" | "sha256" | "sha512" | null;
 
   declare customHeaders: Record<string, string> | null;
+  declare eventTypeHeader: string | null;
+  declare allowedEventTypes: string[] | null;
 }
 
 WebhookSourceModel.init(
@@ -46,6 +48,14 @@ WebhookSourceModel.init(
       allowNull: true,
     },
     customHeaders: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    eventTypeHeader: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    allowedEventTypes: {
       type: DataTypes.JSONB,
       allowNull: true,
     },

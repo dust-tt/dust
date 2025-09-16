@@ -20,6 +20,8 @@ export type WebhookSourceType = {
   signatureHeader: string | null;
   signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
   customHeaders: Record<string, string> | null;
+  eventTypeHeader: string | null;
+  allowedEventTypes: string[] | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -47,5 +49,7 @@ export const PostWebhookSourcesSchema = z.object({
   signatureHeader: z.string().min(1, "Signature header is required"),
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
   customHeaders: z.record(z.string(), z.string()).nullable(),
+  eventTypeHeader: z.string().nullable(),
+  allowedEventTypes: z.array(z.string()).nullable(),
   includeGlobal: z.boolean().optional(),
 });
