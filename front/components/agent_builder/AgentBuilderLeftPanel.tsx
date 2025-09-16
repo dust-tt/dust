@@ -49,12 +49,10 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
-          {hasFeature("hootl_subscriptions") && (
-            <AgentBuilderTriggersBlock
-              owner={owner}
-              isTriggersLoading={isTriggersLoading}
-            />
-          )}
+          <AgentBuilderTriggersBlock
+            owner={owner}
+            isTriggersLoading={isTriggersLoading}
+          />
           <AgentBuilderSettingsBlock />
         </div>
       </ScrollArea>

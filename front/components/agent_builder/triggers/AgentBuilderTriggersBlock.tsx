@@ -89,7 +89,7 @@ export function AgentBuilderTriggersBlock({
 
   return (
     <AgentBuilderSectionContainer
-      title="Triggers"
+      title="[BETA] Triggers"
       description="Triggers agent execution based on events."
       headerActions={
         triggers.length > 0 && (
