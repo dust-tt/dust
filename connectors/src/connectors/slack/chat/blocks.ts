@@ -84,8 +84,6 @@ function makeContextSectionBlocks({
     }
   }
 
-  // Feedback is shown in the ephemeral message
-
   blocks.push(
     makeFooterBlock({
       state,
