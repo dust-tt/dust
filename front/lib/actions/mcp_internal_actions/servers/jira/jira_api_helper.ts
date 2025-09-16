@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { markdownToAdf } from "marklassian";
@@ -45,7 +43,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Type guard to check if a value is an ADFDocument
 function isADFDocument(value: unknown): value is ADFDocument {
