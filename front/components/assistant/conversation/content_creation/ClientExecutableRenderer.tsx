@@ -23,6 +23,7 @@ import { ShareContentCreationFilePopover } from "@app/components/assistant/conve
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
 import { useFileMetadata } from "@app/lib/swr/files";
@@ -31,7 +32,6 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
-import { useSendNotification } from "@app/hooks/useNotification";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -77,16 +77,6 @@ function ExportContentDropdown({
         description: "An error occurred while opening the download link.",
       });
     }
-
-    const blob = new Blob([fileContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName; // File name should contain an extension.
-    a.click();
-
-    URL.revokeObjectURL(url);
   };
 
   return (
