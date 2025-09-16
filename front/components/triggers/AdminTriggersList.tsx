@@ -13,7 +13,6 @@ import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHe
 import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
@@ -24,7 +23,7 @@ import type {
 
 type RowData = {
   webhookSourceWithViews: WebhookSourceWithViews;
-  webhookSourceView?: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceViewType | null;
   spaces: SpaceType[];
   onClick?: () => void;
 };
@@ -53,11 +52,15 @@ const NameCell = ({ row }: { row: RowData }) => {
 type AdminTriggersListProps = {
   owner: LightWorkspaceType;
   systemSpace: SpaceType;
+  isWebhookSourcesWithViewsLoading: boolean;
+  webhookSourcesWithViews: WebhookSourceWithViews[];
 };
 
 export const AdminTriggersList = ({
   owner,
   systemSpace,
+  isWebhookSourcesWithViewsLoading,
+  webhookSourcesWithViews,
 }: AdminTriggersListProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { spaces } = useSpacesAsAdmin({
@@ -66,20 +69,15 @@ export const AdminTriggersList = ({
   });
   const { portalToHeader } = useActionButtonsPortal({
     containerId: TRIGGER_BUTTONS_CONTAINER_ID,
-  });
-
-  const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
-    useWebhookSourcesWithViews({
-      owner,
-      disabled: false,
     });
 
   const rows: RowData[] = useMemo(
     () =>
       webhookSourcesWithViews.map((webhookSourceWithViews) => {
-        const webhookSourceView = webhookSourceWithViews?.views.find(
+        const webhookSourceView =
+          webhookSourceWithViews.views.find(
           (view) => view.spaceId === systemSpace?.sId
-        );
+          ) ?? null;
         const spaceIds =
           webhookSourceWithViews?.views.map((view) => view.spaceId) ?? [];
 
