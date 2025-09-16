@@ -26,6 +26,7 @@ import type {
   ContentFragmentType,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
+  LightAgentConfigurationType,
   LightAgentMessageType,
   LightMessageWithRankType,
   MessageWithRankType,
@@ -33,7 +34,6 @@ import type {
   Result,
   UserMessageType,
 } from "@app/types";
-import type { LightAgentConfigurationType } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
