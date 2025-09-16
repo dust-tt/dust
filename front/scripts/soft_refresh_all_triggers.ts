@@ -1,8 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
+import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
-import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 /**
  * This script pauses/unpauses all triggers across all workspaces.
@@ -10,17 +12,42 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
  */
 
 makeScript({}, async ({ execute }, logger) => {
-  return runOnAllWorkspaces(async (workspace) => {
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  // List all triggers that exists.
+  const triggers = await TriggerModel.findAll();
+  const activeTriggers = triggers.filter((t) => t.enabled);
 
-    const triggers = await TriggerResource.listByWorkspace(auth);
-    const activeTriggers = triggers.filter((t) => t.enabled);
+  // Group by workspace to minimize the number of workspace fetch.
+  const triggersByWorkspace = activeTriggers.reduce(
+    (acc, trigger) => {
+      if (!acc[trigger.workspaceId]) {
+        acc[trigger.workspaceId] = [];
+      }
+      acc[trigger.workspaceId].push(trigger);
+      return acc;
+    },
+    {} as Record<number, TriggerModel[]>
+  );
 
-    for (const trigger of activeTriggers) {
-      const user = await UserResource.fetchByModelId(trigger.editor);
+  // For each workspace, process all triggers sequentially.
+  for (const w of Object.keys(triggersByWorkspace)) {
+    const workspace = await WorkspaceModel.findByPk(w);
+    if (!workspace) {
+      logger.error({ workspaceId: w }, "Trigger workspace not found");
+      continue;
+    }
+
+    // Fetch all triggers resources from sIds.
+    const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+    const sIds = triggersByWorkspace[w].map((t) =>
+      TriggerResource.modelIdToSId({ id: t.id, workspaceId: t.workspaceId })
+    );
+    const triggers = await TriggerResource.fetchByIds(auth, sIds);
+
+    for (const t of triggers) {
+      const user = await UserResource.fetchByModelId(t.editor);
       if (!user) {
         logger.error(
-          { triggerId: trigger.sId(), triggerName: trigger.name },
+          { triggerId: t.sId(), triggerName: t.name },
           "Trigger editor user not found"
         );
         continue;
@@ -32,22 +59,24 @@ makeScript({}, async ({ execute }, logger) => {
       );
 
       if (execute) {
-        await trigger.disable(editorAuth);
+        await t.disable(editorAuth);
+        await t.enable(editorAuth);
         logger.info(
-          { triggerId: trigger.sId(), triggerName: trigger.name },
-          "Disabled trigger"
+          { triggerId: t.sId(), triggerName: t.name },
+          "Trigger reset successful."
         );
-        await trigger.enable(editorAuth);
         logger.info(
-          { triggerId: trigger.sId(), triggerName: trigger.name },
-          "Re-enabled trigger"
+          "----------------------------------------------------------------------------------------"
         );
       } else {
         logger.info(
-          { triggerId: trigger.sId(), triggerName: trigger.name },
+          { triggerId: t.sId(), triggerName: t.name },
           "Would disable and re-enable trigger (dry run)"
+        );
+        logger.info(
+          "----------------------------------------------------------------------------------------"
         );
       }
     }
-  });
+  }
 });
