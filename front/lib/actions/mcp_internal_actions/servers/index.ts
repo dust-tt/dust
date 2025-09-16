@@ -21,6 +21,8 @@ import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira/server";
+import { default as jitToolDatasourceSettingDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_tool_datasource_setting_debugger";
+import { default as jitToolStringSettingDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_tool_string_setting_debugger";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday/server";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
@@ -33,7 +35,6 @@ import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
-import { default as singleToolDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/single_tool_debugger";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
@@ -99,8 +100,10 @@ export async function getInternalMCPServer(
       return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
-    case "single_tool_debugger":
-      return singleToolDebuggerServer();
+    case "jit_tool_string_setting_debugger":
+      return jitToolStringSettingDebuggerServer();
+    case "jit_tool_datasource_setting_debugger":
+      return jitToolDatasourceSettingDebuggerServer();
     case "think":
       return thinkServer();
     case "web_search_&_browse":

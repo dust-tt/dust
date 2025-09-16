@@ -6,28 +6,27 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 
 function createServer(): McpServer {
-  const server = makeInternalMCPServer("single_tool_debugger");
+  const server = makeInternalMCPServer("jit_tool_datasource_setting_debugger");
 
   server.tool(
     "echo_with_config",
-    "Echo back the provided message along with a configurable setting.",
+    "Echo back the provided message along with configurable settings, including datasources.",
     {
       message: z.string().describe("Message to echo back"),
-      setting: ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING]
-        .describe("A configurable setting included in the response")
-        .default({
-          value: "default_setting_value",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-        }),
+      datasources: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
+      ]
+        .describe("Optional list of datasources to use.")
+        .default([]),
     },
-    async ({ message, setting }) => {
+    async ({ message, datasources }) => {
       return {
         content: [
           {
             type: "text",
             text: `Echo: ${message} | Setting: ${
-              typeof setting === "string" ? setting : setting.value
-            }`,
+              typeof datasources === "string" ? datasources : datasources.values
+            } | Datasources: ${Array.isArray(datasources) ? datasources.length : 0}`,
           },
         ],
       };
