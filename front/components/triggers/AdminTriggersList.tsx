@@ -7,6 +7,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
@@ -23,25 +24,25 @@ import type {
 
 type RowData = {
   webhookSourceWithViews: WebhookSourceWithViews;
-  webhookSourceView: WebhookSourceViewType | null;
+  webhookSourceSystemView: WebhookSourceViewType | null;
   spaces: SpaceType[];
   onClick?: () => void;
 };
 
 const NameCell = ({ row }: { row: RowData }) => {
-  const { webhookSourceWithViews, webhookSourceView } = row;
+  const { webhookSourceWithViews, webhookSourceSystemView } = row;
 
   return (
     <DataTable.CellContent grow>
       <div
         className={classNames(
           "flex flex-row items-center gap-3 py-3",
-          webhookSourceView ? "" : "opacity-50"
+          webhookSourceSystemView ? "" : "opacity-50"
         )}
       >
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-            {webhookSourceView?.customName ?? webhookSourceWithViews.name}
+            {webhookSourceSystemView?.customName ?? webhookSourceWithViews.name}
           </div>
         </div>
       </div>
@@ -52,6 +53,9 @@ const NameCell = ({ row }: { row: RowData }) => {
 type AdminTriggersListProps = {
   owner: LightWorkspaceType;
   systemSpace: SpaceType;
+  setSelectedWebhookSourceView: Dispatch<
+    SetStateAction<WebhookSourceViewType | null>
+  >;
   isWebhookSourcesWithViewsLoading: boolean;
   webhookSourcesWithViews: WebhookSourceWithViews[];
 };
@@ -59,6 +63,7 @@ type AdminTriggersListProps = {
 export const AdminTriggersList = ({
   owner,
   systemSpace,
+  setSelectedWebhookSourceView,
   isWebhookSourcesWithViewsLoading,
   webhookSourcesWithViews,
 }: AdminTriggersListProps) => {
@@ -69,25 +74,38 @@ export const AdminTriggersList = ({
   });
   const { portalToHeader } = useActionButtonsPortal({
     containerId: TRIGGER_BUTTONS_CONTAINER_ID,
-    });
+  });
 
   const rows: RowData[] = useMemo(
     () =>
       webhookSourcesWithViews.map((webhookSourceWithViews) => {
-        const webhookSourceView =
+        const webhookSourceSystemView =
           webhookSourceWithViews.views.find(
-          (view) => view.spaceId === systemSpace?.sId
+            (view) => view.spaceId === systemSpace?.sId
           ) ?? null;
         const spaceIds =
           webhookSourceWithViews?.views.map((view) => view.spaceId) ?? [];
 
+        const onClick =
+          webhookSourceSystemView !== null
+            ? () => {
+                setSelectedWebhookSourceView(webhookSourceSystemView);
+              }
+            : undefined;
+
         return {
           webhookSourceWithViews,
-          webhookSourceView,
+          webhookSourceSystemView,
           spaces: spaces.filter((space) => spaceIds?.includes(space.sId)),
+          onClick,
         };
       }),
-    [webhookSourcesWithViews, spaces, systemSpace?.sId]
+    [
+      webhookSourcesWithViews,
+      spaces,
+      systemSpace?.sId,
+      setSelectedWebhookSourceView,
+    ]
   );
   const columns = useMemo((): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -136,7 +154,7 @@ export const AdminTriggersList = ({
         header: "By",
         cell: (info) => {
           const editedByUser =
-            info.row.original.webhookSourceView?.editedByUser;
+            info.row.original.webhookSourceSystemView?.editedByUser;
 
           return (
             <DataTable.CellContent
