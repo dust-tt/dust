@@ -2,6 +2,7 @@ import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
@@ -32,12 +33,14 @@ export function _getDustGlobalAgent(
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
+    deepResearchMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     agentRouterMCPServerView: MCPServerViewResource | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
+    deepResearchMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -220,6 +223,26 @@ export function _getDustGlobalAgent(
       })
     )
   );
+
+  if (deepResearchMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST + "-deep-research",
+      type: "mcp_server_configuration",
+      name: "deep_research" satisfies InternalMCPServerNameType,
+      description: "Deep research agent",
+      mcpServerViewId: deepResearchMCPServerView.sId,
+      internalMCPServerId: deepResearchMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
+  }
 
   // Fix the action ids.
   actions.forEach((action, i) => {

@@ -268,10 +268,16 @@ async function handler(
         }
       }
 
+      // Fetch the feature flags for the owner of the run.
+      const keyWorkspaceFlags = await getFeatureFlags(
+        keyAuth.getNonNullableWorkspace()
+      );
+
       let credentials: CredentialsType | null = null;
       if (auth.isSystemKey() && !useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
-        credentials = dustManagedCredentials();
+        const useOpenAIEU = keyWorkspaceFlags.includes("use_openai_eu_key");
+        credentials = dustManagedCredentials({ useOpenAIEU });
       } else {
         credentials = credentialsFromProviders(providers);
       }
@@ -297,11 +303,6 @@ async function handler(
       // Fetch the feature flags of the app's workspace.
       const flags = await getFeatureFlags(owner);
       const storeBlocksResults = !flags.includes("disable_run_logs");
-
-      // Fetch the feature flags for the owner of the run.
-      const keyWorkspaceFlags = await getFeatureFlags(
-        keyAuth.getNonNullableWorkspace()
-      );
 
       logger.info(
         {

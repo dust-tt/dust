@@ -222,6 +222,25 @@ function makeClientSideMCPToolConfigurations(
   }));
 }
 
+function generateContentMetadata(content: CallToolResult["content"]): {
+  type: "text" | "image" | "resource" | "audio" | "resource_link";
+  byteSize: number;
+  maxSize: number;
+}[] {
+  const result = [];
+  for (const item of content) {
+    const byteSize = calculateContentSize(item);
+    const maxSize = getMaxSize(item);
+
+    result.push({ type: item.type, byteSize, maxSize });
+
+    if (byteSize > maxSize) {
+      break;
+    }
+  }
+  return result;
+}
+
 type MCPCallToolEvent =
   | {
       type: "notification";
@@ -299,12 +318,12 @@ export async function* tryCallMCPTool(
           ),
         };
         return;
-      } else {
-        yield {
-          type: "result",
-          result: r,
-        };
       }
+
+      yield {
+        type: "result",
+        result: r,
+      };
       return;
     }
     mcpClient = r.value;
@@ -375,20 +394,9 @@ export async function* tryCallMCPTool(
     // Tool is done now, wait for the actual result.
     const toolCallResult = await toolPromise;
 
-    // Do not raise an error here as it will break the conversation.
-    // Let the model decide what to do.
-    if (toolCallResult.isError) {
-      logger.error(
-        {
-          conversationId,
-          error: toolCallResult.content,
-          messageId,
-          toolName: toolConfiguration.originalName,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        `Error calling MCP tool in tryCallMCPTool().`
-      );
-    }
+    // We do not check toolCallResult.isError here and raise an error if true as this would break
+    // the conversation.
+    // Instead, we let the model decide what to do based on the content exposed.
 
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: CallToolResult["content"] = (toolCallResult.content ??
@@ -405,38 +413,14 @@ export async function* tryCallMCPTool(
       };
     }
 
-    const generateContentMetadata = (
-      content: CallToolResult["content"]
-    ): {
-      type: "text" | "image" | "resource" | "audio" | "resource_link";
-      byteSize: number;
-      maxSize: number;
-    }[] => {
-      const result = [];
-      for (const item of content) {
-        const byteSize = calculateContentSize(item);
-        const maxSize = getMaxSize(item);
-        const metadata = { type: item.type, byteSize, maxSize };
-        result.push(metadata);
-
-        if (byteSize > maxSize) {
-          break;
-        }
-      }
-      return result;
-    };
-
-    const serverType = (() => {
-      if (isClientSideMCPToolConfiguration(toolConfiguration)) {
-        return "client";
-      }
-
-      if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-        return "internal";
-      }
-
-      return "remote";
-    })();
+    let serverType;
+    if (isClientSideMCPToolConfiguration(toolConfiguration)) {
+      serverType = "client";
+    } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+      serverType = "internal";
+    } else {
+      serverType = "remote";
+    }
 
     if (serverType === "remote") {
       const isValid = isValidContentSize(content);

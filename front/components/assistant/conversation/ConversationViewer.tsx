@@ -1,5 +1,6 @@
 import { Spinner } from "@dust-tt/sparkle";
 import debounce from "lodash/debounce";
+import groupBy from "lodash/groupBy";
 import React, {
   useCallback,
   useEffect,
@@ -47,6 +48,39 @@ import {
 } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
+
+// Utility functions for date grouping
+const formatDateSeparator = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const messageDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  const diffTime = today.getTime() - messageDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return "Today";
+  } else if (diffDays === 1) {
+    return "Yesterday";
+  } else {
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    });
+  }
+};
+
+type MessageGroupWithDate = {
+  date: string;
+  timestamp: number;
+  messages: MessageWithContentFragmentsType[][];
+};
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -337,6 +371,11 @@ const ConversationViewer = React.forwardRef<
     [messages]
   );
 
+  const dateGroupedMessages = useMemo(
+    () => groupMessagesByDate(typedGroupedMessages),
+    [typedGroupedMessages]
+  );
+
   useLastMessageGroupObserver(typedGroupedMessages);
 
   return (
@@ -362,24 +401,33 @@ const ConversationViewer = React.forwardRef<
         </div>
       )}
       {conversation &&
-        typedGroupedMessages.map((typedGroup, index) => {
-          const isLastGroup = index === typedGroupedMessages.length - 1;
-          return (
-            <MessageGroup
-              key={`typed-group-${index}`}
-              messages={typedGroup}
-              isLastMessageGroup={isLastGroup}
-              conversationId={conversationId}
-              feedbacks={feedbacks}
-              isInModal={isInModal}
-              owner={owner}
-              prevFirstMessageId={prevFirstMessageId}
-              prevFirstMessageRef={prevFirstMessageRef}
-              user={user}
-              latestPage={latestPage}
-            />
-          );
-        })}
+        dateGroupedMessages.map((dateGroup, dateIndex) => (
+          <div key={`date-group-${dateIndex}`}>
+            <div className="flex w-full justify-center py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+              {dateGroup.date}
+            </div>
+            {dateGroup.messages.map((typedGroup, index) => {
+              const isLastGroup =
+                dateIndex === dateGroupedMessages.length - 1 &&
+                index === dateGroup.messages.length - 1;
+              return (
+                <MessageGroup
+                  key={`typed-group-${dateIndex}-${index}`}
+                  messages={typedGroup}
+                  isLastMessageGroup={isLastGroup}
+                  conversationId={conversationId}
+                  feedbacks={feedbacks}
+                  isInModal={isInModal}
+                  owner={owner}
+                  prevFirstMessageId={prevFirstMessageId}
+                  prevFirstMessageRef={prevFirstMessageRef}
+                  user={user}
+                  latestPage={latestPage}
+                />
+              );
+            })}
+          </div>
+        ))}
     </div>
   );
 });
@@ -438,4 +486,36 @@ const groupMessagesByType = (
       }
     });
   return groupedMessages;
+};
+
+/**
+ * Groups message groups by date, creating date separators for different days.
+ * Takes the output from groupMessagesByType and further groups by date.
+ */
+const groupMessagesByDate = (
+  messageGroups: MessageWithContentFragmentsType[][]
+): MessageGroupWithDate[] => {
+  // Filter out empty groups
+  const nonEmptyGroups = messageGroups.filter((group) => group.length > 0);
+
+  // Group by day using lodash groupBy and isSameDay
+  const grouped = groupBy(nonEmptyGroups, (group) => {
+    const firstMessage = group[0];
+    const timestamp = firstMessage.created || Date.now();
+    // Use the timestamp as the grouping key (by day)
+    // We'll use the timestamp of the start of the day for grouping
+    const date = new Date(timestamp);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime();
+  });
+
+  // Convert grouped object to array of MessageGroupWithDate
+  return Object.entries(grouped).map(([dayTimestamp, groups]) => {
+    const timestamp = Number(dayTimestamp);
+    return {
+      date: formatDateSeparator(timestamp),
+      timestamp,
+      messages: groups,
+    };
+  });
 };
