@@ -554,12 +554,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     return {
       agentMessageId: this.agentMessageId,
+      citationsAllocated: this.citationsAllocated,
       functionCallName: this.functionCallName,
       id: this.id,
       internalMCPServerName: this.metadata.internalMCPServerName,
       mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
+      step: this.stepContent.step,
     };
   }
 

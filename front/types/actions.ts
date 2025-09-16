@@ -7,6 +7,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 
 export type AgentMCPActionType = {
   agentMessageId: ModelId;
+  citationsAllocated: number;
   // TODO(MCPActionDetails): prevent exposing the function call name
   //  currently used in the extension to guess the tool name but quite brittle.
   functionCallName: string | null;
@@ -15,6 +16,7 @@ export type AgentMCPActionType = {
   mcpServerId: string | null;
   params: Record<string, unknown>;
   status: ToolExecutionStatus;
+  step: number;
 };
 
 export type AgentMCPActionWithOutputType = AgentMCPActionType & {
