@@ -31,7 +31,7 @@ export function MCPTablesQueryActionDetails({
     toolOutput
       ?.filter(isToolGeneratedFile)
       .map((o) => o.resource)
-      .filter((r) => !("hidden" in r && r.hidden)) ?? [];
+      .filter((r) => !r.hidden) ?? [];
   const errorBlocks =
     toolOutput
       ?.filter(isExecuteTablesQueryErrorResourceType)
