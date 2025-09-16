@@ -1,6 +1,7 @@
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -139,6 +140,30 @@ async function handler(
     )
   ).flat();
 
+  // Insert the webhook body as a file content fragment
+  const contentFragmentRes = await toFileContentFragment(auth, {
+    contentFragment: {
+      contentType: "application/json",
+      content: JSON.stringify(req.body),
+      title: `Webhook body (source id: ${webhookSource.id}, date: ${new Date().toISOString()})`,
+    },
+    fileName: `webhook_body_${webhookSource.id}_${Date.now()}.json`,
+  });
+
+  if (contentFragmentRes.isErr()) {
+    logger.error(
+      { contentFragment: contentFragmentRes },
+      "Error creating file content fragment."
+    );
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Error creating file content fragment.",
+      },
+    });
+  }
+
   const results = await concurrentExecutor(
     triggers,
     // Run every trigger.
@@ -152,7 +177,11 @@ async function handler(
       }
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, wId);
-      return launchAgentTriggerWorkflow({ auth, trigger });
+      return launchAgentTriggerWorkflow({
+        auth,
+        trigger,
+        contentFragment: contentFragmentRes.value,
+      });
     },
     { concurrency: 10 }
   );
@@ -164,14 +193,14 @@ async function handler(
     return apiError(
       req,
       res,
+      // Safe casts below on errors, thanks to the .filter above.
       {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "Error launching agent trigger workflows.",
+          message: `Error launching agent trigger workflows: ${errors.map((e) => (e as Err<Error>).error.message).join(", ")}`,
         },
       },
-      // Safe cast thanks to the .filter above.
       (errors[0] as Err<Error>).error
     );
   }
