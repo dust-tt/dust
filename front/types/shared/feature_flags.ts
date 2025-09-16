@@ -173,10 +173,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
-  webtools_edge: {
-    description: "Edge variant of web search & browse MCP server",
-    stage: "on_demand",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",

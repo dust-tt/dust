@@ -670,7 +670,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_openai_eu_key"
   | "xai_feature"
   | "simple_audio_transcription"
-  | "webtools_edge"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

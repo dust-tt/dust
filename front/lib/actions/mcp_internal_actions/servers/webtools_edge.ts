@@ -39,8 +39,6 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getHeaderFromUserEmail, Ok } from "@app/types";
 
-// No token-based truncation needed since we don't inline page content in tool output.
-
 function parseAgentConfigurationUri(uri: string): string | null {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
   return match ? match[2] : null;
@@ -75,7 +73,7 @@ async function summarizeWithAgent({
   const toSummarize = content.slice(0, maxChars);
 
   const convRes = await api.createConversation({
-    title: `webtools_edge summary`,
+    title: `Summary of web page content (main conversation: ${mainConversation.sId})`,
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     message: {
@@ -139,7 +137,7 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer("webtools_edge");
+  const server = makeInternalMCPServer("web_search_&_browse_with_summary");
 
   server.tool(
     WEBSEARCH_TOOL_NAME,

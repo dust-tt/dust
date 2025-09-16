@@ -186,7 +186,7 @@ export function MCPActionDetails({
 
   if (
     internalMCPServerName === "web_search_&_browse" ||
-    internalMCPServerName === "webtools_edge"
+    internalMCPServerName === "web_search_&_browse_with_summary"
   ) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
@@ -328,34 +328,37 @@ export function GenericActionDetails({
             />
           )}
 
-          {action.generatedFiles.length > 0 && (
+          {action.generatedFiles.filter((f) => !("hidden" in f && f.hidden))
+            .length > 0 && (
             <>
               <span className="heading-base">Generated Files</span>
               <div className="flex flex-col gap-1">
-                {action.generatedFiles.map((file) => {
-                  if (isSupportedImageContentType(file.contentType)) {
+                {action.generatedFiles
+                  .filter((file) => !("hidden" in file && file.hidden))
+                  .map((file) => {
+                    if (isSupportedImageContentType(file.contentType)) {
+                      return (
+                        <div key={file.fileId} className="mr-5">
+                          <img
+                            className="rounded-xl"
+                            src={`/api/w/${owner.sId}/files/${file.fileId}`}
+                            alt={`${file.title}`}
+                          />
+                        </div>
+                      );
+                    }
                     return (
-                      <div key={file.fileId} className="mr-5">
-                        <img
-                          className="rounded-xl"
-                          src={`/api/w/${owner.sId}/files/${file.fileId}`}
-                          alt={`${file.title}`}
-                        />
+                      <div key={file.fileId}>
+                        <a
+                          href={`/api/w/${owner.sId}/files/${file.fileId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {file.title}
+                        </a>
                       </div>
                     );
-                  }
-                  return (
-                    <div key={file.fileId}>
-                      <a
-                        href={`/api/w/${owner.sId}/files/${file.fileId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {file.title}
-                      </a>
-                    </div>
-                  );
-                })}
+                  })}
               </div>
             </>
           )}

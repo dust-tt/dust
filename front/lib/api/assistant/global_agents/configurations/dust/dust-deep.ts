@@ -37,17 +37,17 @@ const dustDeepPrimaryGoal = `<primary_goal>
 You are an agent. Your primary role is to conduct research tasks on behalf of company employees.
 As an AI agent, your own context window is limited. Prefer spawning sub-agents when the work is decomposable or requires additional toolsets, typically when tasks involve more than ~3 steps. If a task cannot be reasonably decomposed and requires no additional toolsets, execute it directly.
 You are then responsible to produce a final answer appropriate to the task's scope (comprehensive when warranted) based on the output of your research steps.
+
+Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
+Never assumed something didn't happen or that something will happen in the future without researching first.
 </primary_goal>`;
 
 const subAgentPrimaryGoal = `<primary_goal>
 You are an agent. Your primary role is to conduct research tasks.
 You must always cite your sources (web or company data) using the cite markdown directive when available.
-</primary_goal>`;
 
-const browserSummaryAgentPrimaryGoal = `<primary_goal>
-You are a web page summary agent. Your primary role is to summarize web page content.
-You are provided with a web page content and you must produce a high quality comprehensive summary of the content.
-Your goal is to remove the noise without altering meaning or removing important information. You may use a bullet-points-heavy format.
+Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
+Never assumed something didn't happen or that something will happen in the future without researching first.
 </primary_goal>`;
 
 const requestComplexityPrompt = `<request_complexity>
@@ -90,8 +90,10 @@ Do not use sub-agents for simple requests, unless you need to use a tool that is
 <complex_request_guidelines>
 For complex requests, act as a "coordinator" focused on planning.
 
-ALWAYS start by thinking of a plan. Immediately create a sub-agent task to review your plan: provide in your prompt to this sub-agent a clear, self-contained explanation of the goal, explaining clearly the assumptions you are making and all relevant context along with your plan. Insist that this sub-agent must only review and suggest improvements to the plan and NOT execute the plan.
-Then, heavily bias toward delegating small, well-scoped sub-tasks to the sub-agent and running tasks in parallel when possible. 
+ALWAYS start by thinking of a plan. Immediately ask the planning agent to review your plan: provide in your prompt to this agent a clear, self-contained explanation of the goal, explaining clearly the assumptions you are making and all relevant context along with your plan.
+This plan should make very clear what steps need to be taken, which ones can be parallelized and which ones must be executed sequentially.
+
+Then, begin delegating small, well-scoped sub-tasks to the sub-agent and running tasks in parallel when possible. 
 These tasks can be for web browsing, company data exploration, data warehouse queries or any kind of tool use.
 
 Delegation policy:
@@ -172,8 +174,23 @@ If you need a capability that is not available in the tools you have access to, 
 
 const offloadedBrowsingPrompt = `<web_browsing_guidelines>
 You can use the web tools to search the web and browse web pages.
-The browsing tool will return a summary of the content and a link to a file that contains the entire content of the web page in markdown format.
-You can read or search through the files contents to get access to the original, unaltered content, which can be crucial in some cases.
+
+Default approach for most web tasks:
+- First, use \`websearch\` to identify high-quality candidate sources (official docs, news, primary data, reputable analyses).
+- Then, use \`webbrowser\` on the most relevant links to gather details. Do not rely solely on search snippets for substantive answers.
+- For each key claim, policy detail, number, quote, code example, or step-by-step instruction, prefer reading the page content rather than inferring from summaries.
+
+When to browse directly (skip or minimize search):
+- You already have a URL, the request references a specific page/site, or the topic is niche and best answered from a known source.
+
+Reading page contents (files created by browsing):
+- The browsing tool returns a summary and creates a file (one per URL) with the full page content in markdown.
+- Use the \`conversation_files__cat\` tool with \`offset\` and \`limit\` to read by chunks of at most 10,000 characters. Target the relevant sections you need to reason and answer accurately; avoid dumping entire files.
+- If the fileId is visible in tool output, use \`conversation_files__cat\` directly with that id.
+
+Balance and depth:
+- If results conflict or lack detail, browse additional candidates.
+- Avoid over-browsing when unnecessary; favor precision: read just enough to be confident and accurate.
 </web_browsing_guidelines>
 `;
 
@@ -196,7 +213,22 @@ Exception for clarifications (very complex tasks only):
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}`;
-const browserSummaryAgentInstructions = `${browserSummaryAgentPrimaryGoal}`;
+const browserSummaryAgentInstructions = `<primary_goal>
+You are a web page summary agent. Your primary role is to summarize web page content.
+You are provided with a web page content and you must produce a high quality comprehensive summary of the content.
+Your goal is to remove the noise without altering meaning or removing important information. You may use a bullet-points-heavy format.
+Provide URLs for sub-pages that that are relevant to the summary.
+</primary_goal>`;
+const planningAgentInstructions = `<primary_goal>
+You are a research planning agent. Your primary role is to review and improve research plans provided to you by another agent.
+The plans you propose must be short and straight to the point.
+The plan must be composed by tasks that are as short and atomic as possible. The plan must be very clear about which tasks can be parallelized and which ones must be executed sequentially.
+Ensure that each task cannot be further decomposed into smaller tasks. This is crucial. The plan can contain loops (for each X do Y).
+The plan must not include any sections related to time estimates, real world validation benchmarks, setting up monitoring, gathering feedback or insights from real humans or any other speculative sections that the agent won't be able to execute by itself.
+The plan should not be prescriptive and you should assume that your own knowledge on the researched topic is limited or outdated.
+Insist that the agent should discover knowledge via research without relying on its own internal knowledge.
+Your role is NOT to execute the plan, but to review and improve it.
+</primary_goal>`;
 
 function getModelConfig(
   owner: WorkspaceType,
@@ -280,6 +312,25 @@ function getFastModelConfig(owner: WorkspaceType): {
     };
   }
   return getModelConfig(owner, "anthropic", false);
+}
+
+function getMaxReasoningModelConfig(owner: WorkspaceType): {
+  modelConfiguration: ModelConfigurationType;
+  reasoningEffort: AgentReasoningEffort;
+} | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return {
+      modelConfiguration: GPT_5_MODEL_CONFIG,
+      reasoningEffort: "high",
+    };
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return {
+      modelConfiguration: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+      reasoningEffort: "high",
+    };
+  }
+  return getModelConfig(owner, "anthropic");
 }
 
 function getCompanyDataAction(
@@ -513,6 +564,24 @@ export function _getDustDeepGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
     });
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-run-agent-dust-planning",
+      type: "mcp_server_configuration",
+      name: "planning_agent",
+      description:
+        "Run the dust-planning sub-agent for planning research tasks.",
+      mcpServerViewId: runAgentMCPServerView.sId,
+      internalMCPServerId: runAgentMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
   }
 
   // Add Slideshow tool.
@@ -640,7 +709,7 @@ export function _getDustTaskGlobalAgent(
     webSearchBrowseMCPServerView?.internalMCPServerId &&
     getInternalMCPServerNameFromSId(
       webSearchBrowseMCPServerView.internalMCPServerId
-    ) === "webtools_edge"
+    ) === "web_search_&_browse_with_summary"
   ) {
     const summaryAgent = _getBrowserSummaryAgent(auth, { settings });
     if (summaryAgent && summaryAgent.status === "active") {
@@ -675,6 +744,68 @@ export function _getDustTaskGlobalAgent(
   };
 }
 
+export function _getPlanningAgent(
+  auth: Authenticator,
+  { settings }: { settings: GlobalAgentSettings | null }
+): AgentConfigurationType | null {
+  const owner = auth.getNonNullableWorkspace();
+
+  const name = "dust-planning";
+  const description = "A agent that plans research tasks.";
+
+  const pictureUrl =
+    "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";
+
+  const planningAgent: Omit<
+    AgentConfigurationType,
+    "status" | "maxStepsPerRun" | "actions"
+  > = {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name,
+    description,
+    instructions: planningAgentInstructions,
+    pictureUrl,
+    scope: "global" as const,
+    userFavorite: false,
+    model: dummyModelConfiguration,
+    visualizationEnabled: false,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+
+  const modelConfig = getMaxReasoningModelConfig(owner);
+  if (!modelConfig || settings?.status === "disabled_by_admin") {
+    return {
+      ...planningAgent,
+      status: "disabled_by_admin",
+      actions: [],
+      maxStepsPerRun: 0,
+    };
+  }
+
+  const model: AgentModelConfigurationType = {
+    providerId: modelConfig.modelConfiguration.providerId,
+    modelId: modelConfig.modelConfiguration.modelId,
+    temperature: 1.0,
+    reasoningEffort: modelConfig.reasoningEffort,
+  };
+  planningAgent.model = model;
+
+  return {
+    ...planningAgent,
+    status: "active",
+    actions: [],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+  };
+}
+
 export function _getBrowserSummaryAgent(
   auth: Authenticator,
   { settings }: { settings: GlobalAgentSettings | null }
@@ -703,7 +834,7 @@ export function _getBrowserSummaryAgent(
     scope: "global" as const,
     userFavorite: false,
     model: dummyModelConfiguration,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],

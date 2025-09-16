@@ -28,6 +28,7 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -395,11 +396,17 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
                     workspaceId: action.workspaceId,
                   });
 
+                  const hidden =
+                    o.content.type === "resource" &&
+                    isToolGeneratedFile(o.content) &&
+                    o.content.resource.hidden === true;
+
                   return {
                     fileId: fileSid,
                     contentType: file.contentType,
                     title: file.fileName,
                     snippet: file.snippet,
+                    ...(hidden ? { hidden: true } : {}),
                   };
                 })
               ),

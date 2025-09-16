@@ -513,7 +513,9 @@ export function AgentMessage({
       (file) => isSupportedImageContentType(file.contentType)
     );
 
-    const generatedFiles = agentMessage.generatedFiles.filter(
+    const generatedFiles = agentMessage.generatedFiles
+      .filter((file) => !('hidden' in file && file.hidden))
+      .filter(
       (file) =>
         !isSupportedImageContentType(file.contentType) &&
         !isContentCreationFileContentType(file.contentType)

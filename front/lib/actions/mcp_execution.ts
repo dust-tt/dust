@@ -251,7 +251,6 @@ export async function processToolResults(
             if (file) {
               await uploadFileToConversationDataSource({ auth, file });
             }
-            const hidden = block.resource.hidden === true;
             return {
               content: {
                 type: block.type,
@@ -260,8 +259,7 @@ export async function processToolResults(
                   text: stripNullBytes(block.resource.text),
                 },
               },
-              // Exclude from aggregated generatedFiles if marked hidden.
-              file: hidden ? null : file,
+              file,
             };
           } else if (
             block.resource.mimeType &&
@@ -383,13 +381,23 @@ export async function processToolResults(
   );
 
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
-    cleanContent.map((c) => c.file)
-  ).map((f) => ({
-    contentType: f.contentType,
-    fileId: f.sId,
-    snippet: f.snippet,
-    title: f.fileName,
-  }));
+    cleanContent.map((c) => {
+      if (!c.file) {
+        return null;
+      }
+      const isHidden =
+        c.content.type === "resource" &&
+        isToolGeneratedFile(c.content) &&
+        c.content.resource.hidden === true;
+      return {
+        contentType: c.file.contentType,
+        fileId: c.file.sId,
+        snippet: c.file.snippet,
+        title: c.file.fileName,
+        ...(isHidden ? { hidden: true } : {}),
+      } satisfies ActionGeneratedFileType;
+    })
+  );
 
   return { outputItems, generatedFiles };
 }

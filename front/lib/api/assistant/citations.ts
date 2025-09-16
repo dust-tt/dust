@@ -135,6 +135,7 @@ export const getLightAgentMessageFromAgentMessage = (
         fileId: f.fileId,
         title: f.title,
         contentType: f.contentType,
+        ...(f.hidden ? { hidden: true } : {}),
       })),
   };
 };

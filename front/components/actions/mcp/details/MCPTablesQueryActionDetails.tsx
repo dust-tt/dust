@@ -28,7 +28,10 @@ export function MCPTablesQueryActionDetails({
   const sqlQueryBlocks =
     toolOutput?.filter(isSqlQueryOutput).map((o) => o.resource) ?? [];
   const generatedFiles =
-    toolOutput?.filter(isToolGeneratedFile).map((o) => o.resource) ?? [];
+    toolOutput?.
+      filter(isToolGeneratedFile)
+      .map((o) => o.resource)
+      .filter((r) => !("hidden" in r && r.hidden)) ?? [];
   const errorBlocks =
     toolOutput
       ?.filter(isExecuteTablesQueryErrorResourceType)

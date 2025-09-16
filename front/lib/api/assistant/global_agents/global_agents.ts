@@ -14,6 +14,7 @@ import {
   _getBrowserSummaryAgent,
   _getDustDeepGlobalAgent,
   _getDustTaskGlobalAgent,
+  _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
@@ -315,6 +316,11 @@ function getGlobalAgent({
         settings,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_PLANNING:
+      agentConfiguration = _getPlanningAgent(auth, {
+        settings,
+      });
+      break;
     default:
       return null;
   }
@@ -343,6 +349,7 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   // Hidden helper sub-agent, only invoked via run_agent by dust-deep
   GLOBAL_AGENTS_SID.DUST_TASK,
   GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+  GLOBAL_AGENTS_SID.DUST_PLANNING,
 ];
 
 export async function getGlobalAgents(
@@ -403,7 +410,7 @@ export async function getGlobalAgents(
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "webtools_edge"
+          "web_search_&_browse_with_summary"
         )
       : null,
     variant === "full"
@@ -468,9 +475,7 @@ export async function getGlobalAgents(
   const flags = await getFeatureFlags(owner);
   const getWebSearchBrowseViewFor = (sId: string | number) => {
     const useEdge =
-      sId === GLOBAL_AGENTS_SID.DUST_TASK &&
-      flags.includes("webtools_edge") &&
-      webtoolsEdgeMCPServerView;
+      sId === GLOBAL_AGENTS_SID.DUST_TASK && webtoolsEdgeMCPServerView;
     return useEdge ? webtoolsEdgeMCPServerView : webSearchBrowseMCPServerView;
   };
 
