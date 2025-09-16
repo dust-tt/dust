@@ -13,7 +13,9 @@ function createServer(): McpServer {
     "Echo back the provided message along with a configurable setting.",
     {
       message: z.string().describe("Message to echo back"),
-      setting: ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.STRING]
+      setting: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+      ]
         .describe("A configurable setting included in the response")
         .default({
           value: "default_setting_value",
@@ -38,5 +40,3 @@ function createServer(): McpServer {
 }
 
 export default createServer;
-
-

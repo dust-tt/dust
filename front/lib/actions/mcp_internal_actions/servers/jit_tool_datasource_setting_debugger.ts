@@ -37,5 +37,3 @@ function createServer(): McpServer {
 }
 
 export default createServer;
-
-
