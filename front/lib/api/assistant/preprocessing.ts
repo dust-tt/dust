@@ -387,11 +387,11 @@ export async function renderConversationForModel(
 }
 
 type Step = {
-  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
-  actions: Array<{
+  contents: Exclude<AgentContentItemType, ErrorContentType>[];
+  actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
-  }>;
+  }[];
 };
 
 function renderActionForMultiActionsModel(
