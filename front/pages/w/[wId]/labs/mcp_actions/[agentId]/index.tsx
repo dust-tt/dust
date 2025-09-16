@@ -221,6 +221,7 @@ export default function AgentMCPActions({
                       {actions.map((action) => (
                         <ContextItem
                           key={action.sId}
+                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                           title={action.functionCallName || "Unknown Action"}
                           visual={<Icon visual={ActionCodeBoxIcon} />}
                           action={

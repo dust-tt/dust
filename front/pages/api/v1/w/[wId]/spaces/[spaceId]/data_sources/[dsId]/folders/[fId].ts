@@ -173,7 +173,9 @@ async function handler(
         dataSourceId: dataSource.dustAPIDataSourceId,
         folderId: fId,
         timestamp: timestamp || null,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parentId: parentId || null,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: parents || [fId],
         title: title.trim() || "Untitled Folder",
         mimeType: mime_type,

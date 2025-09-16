@@ -93,6 +93,7 @@ function useVisualizationDataHandler({
       const resBuffer = await response.arrayBuffer();
 
       return new Blob([resBuffer], {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         type: response.headers.get("Content-Type") || undefined,
       });
     },

@@ -36,6 +36,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
 
   return (
     <ContentMessage
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       title={`${error.metadata?.errorTitle || "Agent error"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"

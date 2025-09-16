@@ -410,6 +410,7 @@ async function handler(
         newMessage = messageRes.value.userMessage;
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (newContentFragment || newMessage) {
         // If we created a user message or a content fragment (or both) we retrieve the
         // conversation. If a user message was posted, we know that the agent messages have been

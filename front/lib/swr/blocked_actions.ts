@@ -21,6 +21,7 @@ export function useBlockedActions({
   );
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     blockedActions: data?.blockedActions || emptyArray(),
     isLoading: !error && !data,
     isError: error,

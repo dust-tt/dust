@@ -193,6 +193,7 @@ export function useRemoveTriggerSubscriber({
   const sendNotification = useSendNotification();
   const { mutateTriggers: mutateAgentTriggers } = useAgentTriggers({
     workspaceId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentConfigurationId: agentConfigurationId || null,
     disabled: !agentConfigurationId,
   });
@@ -207,6 +208,7 @@ export function useRemoveTriggerSubscriber({
       triggerAgentConfigurationId?: string
     ): Promise<boolean> => {
       const targetAgentConfigurationId =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         triggerAgentConfigurationId || agentConfigurationId;
 
       try {

@@ -362,6 +362,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
         workspaceId: this.workspaceId,
       }),
       filter:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         m.parentsIn || m.parentsNotIn
           ? {
               parents: {
@@ -382,10 +383,12 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     const trackers = await this.baseFetchWithAuthorization(auth, {
       ...options,
       where: {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         ...(options?.where || {}),
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       includes: [
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         ...(options?.includes || []),
         {
           model: TrackerDataSourceConfigurationModel,

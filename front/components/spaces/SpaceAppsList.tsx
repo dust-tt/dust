@@ -161,6 +161,7 @@ export const SpaceAppsList = ({
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const { q: searchParam } = useQueryParams(["q"]);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const searchTerm = searchParam.value || "";
 
   const { apps, isAppsLoading } = useApps({ owner, space });

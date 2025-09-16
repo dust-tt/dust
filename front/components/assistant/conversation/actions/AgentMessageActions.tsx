@@ -44,6 +44,7 @@ export function AgentMessageActions({
     ? agentMessage.actions[agentMessage.actions.length - 1]
     : null;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const chainOfThought = agentMessage.chainOfThought || "";
 
   const firstRender = useRef<boolean>(true);

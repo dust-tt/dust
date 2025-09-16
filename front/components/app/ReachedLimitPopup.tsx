@@ -204,6 +204,7 @@ export function ReachedLimitPopup({
             rightButtonProps={{
               label: validateLabel,
               variant: "highlight",
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               onClick: onValidate || (() => onClose()),
             }}
           />

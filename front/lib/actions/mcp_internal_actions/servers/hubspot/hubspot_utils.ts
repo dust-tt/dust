@@ -61,6 +61,7 @@ export const convertObjectTypeToId = (objectTypeId: string): string => {
     return objectTypeId;
   }
   const convertedId = getObjectTypeId(objectTypeId);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return convertedId || objectTypeId; // Return original if conversion fails
 };
 

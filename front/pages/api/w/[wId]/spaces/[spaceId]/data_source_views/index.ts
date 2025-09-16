@@ -117,6 +117,7 @@ async function handler(
                     fetchConnectorError: false,
                     fetchConnectorErrorMessage: null,
                   },
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   usage: usages[dataSourceView.id] || {
                     count: 0,
                     agents: [],
@@ -129,6 +130,7 @@ async function handler(
               return {
                 ...dataSourceView,
                 dataSource: augmentedDataSource,
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 usage: usages[dataSourceView.id] || {
                   count: 0,
                   agents: [],

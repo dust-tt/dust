@@ -73,6 +73,7 @@ export function InputBarAttachments({
         contentType: blob.contentType,
         isUploading: blob.isUploading,
         onRemove: () => files.service.removeFile(blob.id),
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       })) || []
     );
   }, [files?.service]);
@@ -111,6 +112,7 @@ export function InputBarAttachments({
           visual,
           onRemove: () => nodes.onRemove(node),
         };
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       }) || []
     );
   }, [nodes, spacesMap]);

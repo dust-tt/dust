@@ -24,6 +24,7 @@ export function getSelectedToolLabel(
   dataVisualization?: ActionSpecification | null
 ): string {
   if (tool.type === "DATA_VISUALIZATION") {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return dataVisualization?.label || "";
   }
 

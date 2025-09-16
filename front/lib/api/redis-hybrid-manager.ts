@@ -282,6 +282,7 @@ class RedisHybridManager {
     const history: EventPayload[] = await this.getHistory(
       streamClient,
       streamName,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       lastEventId || "0-0"
     );
 

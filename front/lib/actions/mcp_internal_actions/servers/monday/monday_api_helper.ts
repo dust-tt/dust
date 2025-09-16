@@ -439,6 +439,7 @@ export const searchItems = async (
       );
       return peopleColumns.some((col) => {
         try {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const value = JSON.parse(col.value || "{}");
           const personsIds =
             value.personsAndTeams?.map((p: any) => p.id.toString()) || [];
@@ -482,7 +483,9 @@ export const searchItems = async (
           bVal = new Date(b.created_at).getTime();
           break;
         case "updated_at":
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           aVal = new Date(a.updated_at || a.created_at).getTime();
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           bVal = new Date(b.updated_at || b.created_at).getTime();
           break;
         case "name":

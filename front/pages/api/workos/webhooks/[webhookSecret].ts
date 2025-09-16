@@ -49,6 +49,7 @@ async function handler(
 
   // Validate the client IP address.
   const clientIp =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     getClientIpFromHeaders(req.headers) || req.socket.remoteAddress;
   if (typeof clientIp !== "string") {
     return apiError(req, res, {

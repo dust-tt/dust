@@ -159,7 +159,9 @@ export class AgentYAMLConverter {
                       .dataSourceConfigurations as DataSourceViewSelectionConfigurations
                   )
                 : undefined,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               time_frame: action.configuration.timeFrame || undefined,
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               json_schema: action.configuration.jsonSchema || undefined,
               reasoning_model: action.configuration.reasoningModel
                 ? {

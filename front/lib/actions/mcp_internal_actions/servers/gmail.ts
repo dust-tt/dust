@@ -418,6 +418,7 @@ const createServer = (): McpServer => {
       }
 
       const originalMessage: GmailMessage = await messageResponse.json();
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const headers = originalMessage.payload?.headers || [];
 
       // Extract header values
@@ -431,6 +432,7 @@ const createServer = (): McpServer => {
       const originalDate = getHeaderValue(headers, "Date");
 
       // Determine recipients
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
       const replyCc = cc?.length ? cc.join(", ") : originalCc;
       const replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
@@ -444,6 +446,7 @@ const createServer = (): McpServer => {
       // Create subject and headers
       const replySubject = originalSubject?.startsWith("Re:")
         ? originalSubject
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         : `Re: ${originalSubject || "No Subject"}`;
       const encodedSubject = `=?UTF-8?B?${Buffer.from(replySubject, "utf-8").toString("base64")}?=`;
       const threadingHeaders = createThreadingHeaders(
@@ -568,6 +571,7 @@ const createQuoteSection = (
   const separator =
     originalDate && originalFrom
       ? `On ${escapeHtml(originalDate)}, ${escapeHtml(originalFrom)} wrote:`
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       : `${escapeHtml(originalFrom || "Original sender")} wrote:`;
 
   const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escapeHtml(originalBody).replace(/\n/g, "<br>")}</blockquote>`;

@@ -28,6 +28,7 @@ export function MCPServerViewForm({
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
     defaultValues: {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       name: mcpServerView.name || mcpServerView.server.name,
       description: getMcpServerViewDescription(mcpServerView),
     },

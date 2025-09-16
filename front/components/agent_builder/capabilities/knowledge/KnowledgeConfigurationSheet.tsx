@@ -362,8 +362,10 @@ function KnowledgeConfigurationSheetContent({
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       title: config?.configPageTitle || "Configure Knowledge",
       description:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         config?.configPageDescription ||
         "Select knowledge type and configure settings",
       icon: config

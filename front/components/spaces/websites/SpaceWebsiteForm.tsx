@@ -200,6 +200,7 @@ export function SpaceWebsiteForm({
           />
           <Input
             placeholder={WEBCRAWLER_MAX_PAGES.toString()}
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             value={state.maxPages?.toString() || ""}
             onChange={(e) => {
               const parsed = parseInt(e.target.value);

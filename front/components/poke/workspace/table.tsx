@@ -161,9 +161,11 @@ export function WorkspaceInfoTable({
               <PokeTableCell>
                 <Chip
                   color={getStatusChipColor(
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     dsyncStatus?.status || "not_configured"
                   )}
                 >
+                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {asDisplayName(dsyncStatus?.status || "not_configured")}
                 </Chip>
               </PokeTableCell>

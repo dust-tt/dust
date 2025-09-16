@@ -91,6 +91,7 @@ export function makeColumnsForTriggers(
       },
       accessorFn: (row) => {
         const agent = agentConfigMap.get(row.agentConfigurationId);
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         return agent?.name || row.agentConfigurationId;
       },
     },

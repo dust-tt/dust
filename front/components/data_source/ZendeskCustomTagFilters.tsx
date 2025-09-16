@@ -54,6 +54,7 @@ export function ZendeskCustomFieldFilters({
     if (parsingResult.isErr()) {
       return [];
     }
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return (parsingResult.value || []) as CustomField[];
   }, [customFieldsConfigValue]);
 

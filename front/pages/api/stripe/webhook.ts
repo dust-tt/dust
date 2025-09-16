@@ -111,7 +111,9 @@ async function handler(
           const session = event.data.object as Stripe.Checkout.Session;
           const workspaceId = session.client_reference_id;
           const stripeSubscriptionId = session.subscription;
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const planCode = session?.metadata?.planCode || null;
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const userId = session?.metadata?.userId || null;
 
           if (session.status === "open" || session.status === "expired") {

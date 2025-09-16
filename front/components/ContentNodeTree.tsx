@@ -203,6 +203,7 @@ function ContentNodeTreeChildren({
       {!isResourcesLoading &&
         filteredNodes &&
         filteredNodes.length === 0 &&
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (emptyComponent || <Tree.Empty label="No documents" />)}
 
       {filteredNodes.map((n, i) => {
@@ -229,6 +230,7 @@ function ContentNodeTreeChildren({
               (n.preventSelection !== true || checkedState === "partial") &&
               selectedNodes
                 ? {
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
                     onCheckedChange: (v) => {

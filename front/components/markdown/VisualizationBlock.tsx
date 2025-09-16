@@ -29,6 +29,7 @@ export function VisualizationBlock({
 
   const visualizationRenderer = useMemo(() => {
     return (
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       customRenderer?.visualization ||
       (() => (
         <div className="pb-2 pt-4 font-medium text-warning">

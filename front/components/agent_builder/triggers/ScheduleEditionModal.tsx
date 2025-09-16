@@ -178,6 +178,7 @@ export function ScheduleEditionModal({
             <ContentMessage variant="info">
               You cannot edit this schedule. It is managed by{" "}
               <span className="font-semibold">
+                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                 {trigger.editorEmail || "another user"}
               </span>
               .

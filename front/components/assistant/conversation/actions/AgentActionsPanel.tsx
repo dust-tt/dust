@@ -118,6 +118,7 @@ function AgentActionsPanelContent({
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     const scrollUp =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       Number(el.scrollTop) < Number(el.dataset.lastScrollTop || 0);
 
     el.dataset.lastScrollTop = el.scrollTop.toString();

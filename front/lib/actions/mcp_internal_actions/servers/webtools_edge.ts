@@ -278,6 +278,7 @@ const createServer = (
             MAXED_OUTPUT_FILE_SNIPPET_LENGTH
           );
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const baseTitle = title || result.url;
           const fileTitle = `${baseTitle}`;
           const file = await generatePlainTextFile(auth, {

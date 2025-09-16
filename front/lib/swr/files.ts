@@ -39,6 +39,7 @@ export function useFileProcessedContent(
     disabled?: boolean;
   }
 ) {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const isDisabled = config?.disabled || fileId === null;
 
   const {

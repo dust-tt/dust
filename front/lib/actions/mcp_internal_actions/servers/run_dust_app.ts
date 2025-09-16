@@ -86,6 +86,7 @@ function convertDatasetSchemaToZodRawShape(
   const shape: ZodRawShape = {};
   if (datasetSchema) {
     for (const entry of datasetSchema) {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const desc = entry.description || "";
       switch (entry.type) {
         case "string":
@@ -122,6 +123,7 @@ async function prepareAppContext(
     logger.error(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
         groupIds: auth.groups().map((g) => g.sId),
@@ -142,6 +144,7 @@ async function prepareAppContext(
     logger.error(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
         groupIds: auth.groups().map((g) => g.sId),

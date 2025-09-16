@@ -113,6 +113,7 @@ export async function runActionStreamed(
     workspace: {
       sId: owner.sId,
       name: owner.name,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       plan_code: auth.plan()?.code || null,
     },
     action: actionName,
@@ -126,6 +127,7 @@ export async function runActionStreamed(
     `action:${actionName}`,
     `workspace:${owner.sId}`,
     `workspace_name:${owner.name}`,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     `workspace_plan_code:${auth.plan()?.code || null}`,
   ];
 
@@ -234,6 +236,7 @@ export async function runAction(
     workspace: {
       sId: owner.sId,
       name: owner.name,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       plan_code: auth.plan()?.code || null,
     },
     action: actionName,
@@ -246,6 +249,7 @@ export async function runAction(
     `action:${actionName}`,
     `workspace:${owner.sId}`,
     `workspace_name:${owner.name}`,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     `workspace_plan_code:${auth.plan()?.code || null}`,
   ];
 

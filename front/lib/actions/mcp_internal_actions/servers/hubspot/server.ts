@@ -972,6 +972,7 @@ const createServer = (): McpServer => {
       const csvContent = csvRows
         .map((row) =>
           input.propertiesToExport
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             .map((prop) => `"${String(row[prop] || "").replace(/"/g, '""')}"`)
             .join(",")
         )

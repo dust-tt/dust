@@ -123,6 +123,7 @@ function createServer(
               type: "resource",
               resource: {
                 uri: content.image_url.url,
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 mimeType: attachment?.contentType || "application/octet-stream",
                 text: `Image: ${title}`,
               },
@@ -132,6 +133,7 @@ function createServer(
       }
 
       return makeMCPToolTextError(
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         `File ${attachment?.title || fileId} of type ${attachment?.contentType || "unknown"} has no text or image content`
       );
     }
@@ -259,6 +261,7 @@ function createServer(
 
       // Apply offset and limit.
       if (offset !== undefined || limit !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const start = offset || 0;
         const end = limit !== undefined ? start + limit : undefined;
 

@@ -39,6 +39,7 @@ async function toFileLike(
   fallbackName = "audio.wav"
 ): Promise<FileLike> {
   const stream = fs.createReadStream(input.filepath);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const name = input.originalFilename || fallbackName;
   return toFile(stream, name);
 }

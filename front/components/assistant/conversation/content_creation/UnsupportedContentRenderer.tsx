@@ -23,6 +23,7 @@ export function UnsupportedContentRenderer({
       <ContentCreationHeader
         onClose={closePanel}
         subtitle={fileId}
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         title={fileName || "Unsupported Content"}
       />
 

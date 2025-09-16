@@ -76,6 +76,7 @@ export const slackSearch = async (
 
   const data: SlackSearchResponse = (await resp.json()) as SlackSearchResponse;
   if (!data.ok) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     throw new Error(data.error || "unknown_error");
   }
 
@@ -585,8 +586,11 @@ const createServer = async (
             );
 
             const getTextFromMatch = (match: SlackSearchMatch) => {
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               const author = match.author_name || "Unknown";
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               const channel = match.channel_name || "Unknown";
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               let content = match.content || "";
 
               // assistant.search.context wraps search words in \uE000 and \uE001,

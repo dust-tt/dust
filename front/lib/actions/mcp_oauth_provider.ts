@@ -82,6 +82,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     // We pass the metadata to the client to allow them to handle the oauth flow.
     throw new MCPOAuthRequiredError({
       client_id: clientInformation.client_id,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       client_secret: clientInformation.client_secret || "",
       token_endpoint: this.metadata.token_endpoint,
       authorization_endpoint: this.metadata.authorization_endpoint,

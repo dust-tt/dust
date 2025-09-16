@@ -47,6 +47,7 @@ function KnowledgeFooterItemReadablePath({
       ) : (
         <span className="text-xs">
           {item.type === "data_source" ? (
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             spaceName || ""
           ) : (
             <>

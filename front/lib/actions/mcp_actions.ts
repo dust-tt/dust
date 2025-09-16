@@ -135,6 +135,7 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
@@ -179,6 +180,7 @@ function makeServerSideMCPToolConfigurations(
     retryPolicy: tool.retryPolicy,
     mcpServerViewId: config.mcpServerViewId,
     internalMCPServerId: config.internalMCPServerId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
     tables: config.tables,
     availability: tool.availability,
@@ -822,7 +824,9 @@ export async function listToolsForServerSideMCPServer(
       toolServerId: connectionParams.mcpServerId,
       ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
       retryPolicy:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         toolsRetryPolicies?.[tool.name] ||
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         toolsRetryPolicies?.["default"] ||
         DEFAULT_MCP_TOOL_RETRY_POLICY,
     }));

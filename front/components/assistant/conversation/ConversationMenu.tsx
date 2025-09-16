@@ -50,6 +50,7 @@ export function ConversationMenu({
   const conversationParticipationOption = useConversationParticipationOption({
     ownerId: owner.sId,
     conversationId: activeConversationId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     userId: user?.sId || null,
     disabled: shouldWaitBeforeFetching,
   });
@@ -141,6 +142,7 @@ export function ConversationMenu({
         onClose={() => setShowRenameDialog(false)}
         ownerId={owner.sId}
         conversationId={activeConversationId}
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         currentTitle={conversation?.title || ""}
       />
       <DropdownMenu
@@ -187,6 +189,7 @@ export function ConversationMenu({
                         <Avatar
                           size="xs"
                           visual={user.pictureUrl}
+                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                           name={user.fullName || user.username}
                         />
                       }

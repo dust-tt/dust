@@ -100,6 +100,7 @@ export function useConnectorConfig({
   const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/config/${configKey}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     disabled: disabled || !dataSource,
   });
 
@@ -145,6 +146,7 @@ export function useConnector({
 
       return 0;
     },
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     disabled: disabled || !dataSource.connectorId,
   });
 

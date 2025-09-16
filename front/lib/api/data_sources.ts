@@ -389,6 +389,7 @@ export async function upsertDocument({
 > {
   // enforcing validation on the parents and parent_id
   const documentId = document_id;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const documentParents = parents || [documentId];
   const documentParentId = parent_id ?? null;
 
@@ -447,8 +448,10 @@ export async function upsertDocument({
           content: text,
           sections: [],
         }
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       : section || null;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const nonNullTags = tags || [];
 
   const titleInTags = nonNullTags
@@ -895,7 +898,9 @@ export async function createDataSourceFolder(
     dataSourceId: dataSource.dustAPIDataSourceId,
     folderId,
     mimeType,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     parentId: parentId || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     parents: parents || [folderId],
     projectId: dataSource.dustAPIProjectId,
     providerVisibility: "public",

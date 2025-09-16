@@ -286,8 +286,10 @@ export function InnerLogs({ trace }: { trace: TraceType }) {
             reasoning_tokens?: number;
           };
         }
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       | undefined) || null;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const logs = [...(meta?.logs || [])];
   if (meta && meta.provider_request_id) {
     logs.push({ provider_request_id: meta.provider_request_id });
@@ -430,6 +432,7 @@ export default function Output({
             (((t.meta as { logs: any[] }).logs &&
               (t.meta as { logs: any[] }).logs.length) ||
               (t.meta as { provider_request_id?: string })
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 .provider_request_id ||
               (
                 t.meta as {
@@ -480,6 +483,7 @@ export default function Output({
                         (e) =>
                           (e as { logs: any[] }).logs.length ||
                           (e as { provider_request_id?: string })
+                            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                             .provider_request_id ||
                           (
                             e as {

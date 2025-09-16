@@ -230,6 +230,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     },
     extractor: (url: URL): NodeCandidate => {
       // Try each type of extraction in order
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const node = extractThreadNodeId(url) || extractChannelNodeId(url);
       return node
         ? { node, provider: "slack" }

@@ -105,6 +105,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         Origin: req.headers.origin || "",
       },
       credentials: "include",

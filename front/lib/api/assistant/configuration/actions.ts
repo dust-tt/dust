@@ -189,6 +189,7 @@ async function createAgentDataSourcesConfiguration(
         parentsIn: dsConfig.filter.parents?.in,
         parentsNotIn: dsConfig.filter.parents?.not,
         dataSourceViewId: dataSourceView.id,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         mcpServerConfigurationId: mcpServerConfiguration?.id || null,
         tagsMode,
         tagsIn,

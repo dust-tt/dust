@@ -30,6 +30,7 @@ export function transformAgentConfigurationToFormData(
       slackChannels: [], // Will be populated reactively if needed
       tags: agentConfiguration.tags,
     },
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     instructions: agentConfiguration.instructions || "",
     generationSettings: {
       modelSettings: {
@@ -37,6 +38,7 @@ export function transformAgentConfigurationToFormData(
         providerId: agentConfiguration.model.providerId,
       },
       temperature: agentConfiguration.model.temperature,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
       responseFormat: agentConfiguration.model.responseFormat,
     },

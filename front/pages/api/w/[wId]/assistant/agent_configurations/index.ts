@@ -318,6 +318,7 @@ export async function createOrUpgradeAgentConfiguration({
         name: action.name,
         description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
         mcpServerViewId: action.mcpServerViewId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         dataSources: action.dataSources || null,
         reasoningModel: action.reasoningModel,
         tables: action.tables,

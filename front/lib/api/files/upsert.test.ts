@@ -182,6 +182,7 @@ describe("processAndUpsertToDataSource", () => {
 
       // Should contain both the existing table ID and the new one
       const generatedTables =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         updatedFile.useCaseMetadata?.generatedTables || [];
       expect(generatedTables).toContain(existingTableId);
       expect(generatedTables).toContain(file.sId);
@@ -276,6 +277,7 @@ id,category,description
       expect(updatedFile.useCaseMetadata).not.toBeNull();
 
       const generatedTables =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         updatedFile.useCaseMetadata?.generatedTables || [];
       expect(generatedTables).toContain(`${file.sId}-${slugify("Sheet1")}`);
       expect(generatedTables).toContain(`${file.sId}-${slugify("Sheet2")}`);
@@ -383,6 +385,7 @@ id,category,description
       expect(updatedFile.useCaseMetadata).not.toBeNull();
 
       const generatedTables =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         updatedFile.useCaseMetadata?.generatedTables || [];
       expect(generatedTables).toContain(`${file.sId}-${slugify("Sheet1")}`);
       expect(generatedTables).toContain(`${file.sId}-${slugify("Sheet2")}`);

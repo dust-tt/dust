@@ -411,6 +411,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                     type="password"
                     value={
                       "private_key_passphrase" in credentials
+                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                         ? credentials.private_key_passphrase || ""
                         : ""
                     }

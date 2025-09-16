@@ -77,6 +77,7 @@ const PlansPage = () => {
       (plan) => plan.code.trim() === editingPlan.code.trim()
     );
     if (
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (editingPlan.isNewPlan && plansWithSameCode.length > 0) ||
       (!editingPlan.isNewPlan && plansWithSameCode.length > 1)
     ) {
@@ -201,6 +202,7 @@ const PlansPage = () => {
               label="Create a new plan"
               variant="outline"
               onClick={() => createNewPlan()}
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               disabled={editingPlan?.isNewPlan || !!editingPlan}
             />
           </div>

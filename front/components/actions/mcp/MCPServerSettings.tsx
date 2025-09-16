@@ -71,6 +71,7 @@ export function MCPServerSettings({
     useState<MCPOAuthUseCase | null>();
 
   const useCase = useMemo(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     () => (selectedUseCase || mcpServerView.oAuthUseCase) as MCPOAuthUseCase,
     [selectedUseCase, mcpServerView.oAuthUseCase]
   );

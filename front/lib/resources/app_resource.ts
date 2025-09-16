@@ -313,6 +313,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
   }
 
   parseSavedSpecification() {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return JSON.parse(this.savedSpecification || "[]") as SpecificationType;
   }
 }

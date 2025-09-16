@@ -135,7 +135,9 @@ function makeExtractInformationFromDocumentsTool(
         model,
         dataSources,
         timeFrame,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tagsIn: tagsIn || undefined,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tagsNot: tagsNot || undefined,
       });
 
@@ -225,6 +227,7 @@ function createServer(
         agentLoopContext.listToolsContext.agentActionConfiguration
       ) &&
       agentLoopContext.listToolsContext.agentActionConfiguration.jsonSchema !==
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         null) ||
     (agentLoopContext?.runContext &&
       isLightServerSideMCPToolConfiguration(
@@ -238,6 +241,7 @@ function createServer(
         agentLoopContext.listToolsContext.agentActionConfiguration
       ) &&
       agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         null) ||
     (agentLoopContext?.runContext &&
       isLightServerSideMCPToolConfiguration(
@@ -377,7 +381,9 @@ async function getConfigForProcessDustApp({
     config,
     dataSourceConfigurations,
     dataSourceViewsMap,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tagsIn || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tagsNot || null
   );
 

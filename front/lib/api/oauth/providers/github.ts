@@ -43,6 +43,7 @@ export class GithubOAuthProvider implements BaseOAuthStrategyProvider {
     // OAuth flow returns "code", GitHub App installation returns "installation_id"
     // Both serve as authorization credentials for their respective flows
     return (
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       getStringFromQuery(query, "installation_id") ||
       getStringFromQuery(query, "code")
     );
