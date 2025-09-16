@@ -37,6 +37,10 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "content_creation", id: 23 },
       { name: "slideshow", id: 28 },
       { name: "deep_research", id: 29 },
+      {
+        name: "web_search_&_browse_with_summary",
+        id: 30,
+      },
       { name: "search", id: 1006 },
       { name: "run_agent", id: 1008 },
       { name: "reasoning", id: 1007 },
@@ -45,7 +49,6 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "agent_management", id: 1011 },
       { name: "data_warehouses", id: 1012 },
       { name: "toolsets", id: 1013 },
-      { name: "web_search_&_browse_with_summary", id: 1014 },
     ];
     expect(
       autoInternalTools,
