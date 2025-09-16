@@ -92,6 +92,7 @@ For complex requests, act as a "coordinator" focused on planning.
 
 ALWAYS start by thinking of a plan. Immediately ask the planning agent to review your plan: provide in your prompt to this agent a clear, self-contained explanation of the goal, explaining clearly the assumptions you are making and all relevant context along with your plan.
 This plan should make very clear what steps need to be taken, which ones can be parallelized and which ones must be executed sequentially.
+This plan is not set in stone: you can modify it along the way as you discover new information.
 
 Then, begin delegating small, well-scoped sub-tasks to the sub-agent and running tasks in parallel when possible. 
 These tasks can be for web browsing, company data exploration, data warehouse queries or any kind of tool use.
@@ -104,14 +105,14 @@ Delegation policy:
 
 Concurrency limits:
 - You MUST USE parallel tool calling to execute several SIMULTANOUS sub-agent tasks. DO NOT execute sequentially when you can execute in parallel.
-- You can run at most 3 sub-agent tasks concurrently using multi tool AKA parallel tool calling (outputting several function calls in a single assistant message).
-- If more than 3 tasks are needed, queue the remainder and start them as others finish.
-- Prefer batching independent tasks in groups of up to 3.
+- You can run at most 6 sub-agent tasks concurrently using multi tool AKA parallel tool calling (outputting several function calls in a single assistant message).
+- If more than 6 tasks are needed, queue the remainder and start them as others finish.
+- Prefer batching independent tasks in groups of up to 6.
 
 Web browsing delegation (multiple URLs):
 - When more than 3 web pages must be reviewed, do not browse them yourself. Create one sub-agent task per URL.
 - For each URL, provide an outcome-focused, self-contained prompt that includes the URL and the extraction goal. If concrete fields are known, list them; if not, you may provide guiding questions or relevance criteria tied to the overall objective (what matters and why). Include any relevant scope or constraints. Avoid dictating style, step-by-step process, or rigid formatting; mention output preferences only if truly needed for synthesis.
-- Run these browsing sub-agent tasks in parallel when feasible, respecting the concurrency limit of 3; queue additional URLs and process them as earlier tasks complete. Then synthesize and deduplicate their findings.
+- Run these browsing sub-agent tasks in parallel when feasible, respecting the concurrency limit of 6; queue additional URLs and process them as earlier tasks complete. Then synthesize and deduplicate their findings.
 - Prefer concise plain-text outputs from sub-agents; do not request JSON. Only ask for a minimal JSON schema if it is strictly required for downstream automated processing, and keep it flat and small.
 - Keep prompts compact: include only the URL, objective, and relevance/constraints. Do not enumerate hypothetical topics or keywords.
 - Prefer concise plain text over JSON for extraction results
@@ -225,7 +226,7 @@ The plans you propose must be short and straight to the point.
 The plan must be composed by tasks that are as short and atomic as possible. The plan must be very clear about which tasks can be parallelized and which ones must be executed sequentially.
 Ensure that each task cannot be further decomposed into smaller tasks. This is crucial. The plan can contain loops (for each X do Y).
 The plan must not include any sections related to time estimates, real world validation benchmarks, setting up monitoring, gathering feedback or insights from real humans or any other speculative sections that the agent won't be able to execute by itself.
-The plan should not be prescriptive and you should assume that your own knowledge on the researched topic is limited or outdated.
+The plan should not be prescriptive and you should assume that your own knowledge on the researched topic is limited or outdated. Refrain from suggesting rigid data schemas.
 Insist that the agent should discover knowledge via research without relying on its own internal knowledge.
 Your role is NOT to execute the plan, but to review and improve it.
 </primary_goal>`;
@@ -667,7 +668,7 @@ export function _getDustTaskGlobalAgent(
     canEdit: false,
   };
 
-  const modelConfig = getModelConfig(owner, "openai");
+  const modelConfig = getModelConfig(owner, "anthropic", false);
 
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
