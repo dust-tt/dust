@@ -283,27 +283,3 @@ export function throwIfInvalidAgentConfiguration(
     }
   }
 }
-
-// TODO: replace with a typeguard AgentMCPActionWithOutputType.
-function isMCPActionType(action: unknown): action is MCPActionType {
-  return (
-    typeof action === "object" &&
-    action !== null &&
-    "id" in action &&
-    typeof action.id === "number" &&
-    "agentMessageId" in action &&
-    typeof action.agentMessageId === "number" &&
-    "output" in action &&
-    "step" in action &&
-    typeof action.step === "number" &&
-    "citationsAllocated" in action &&
-    typeof action.citationsAllocated === "number"
-  );
-}
-
-// TODO: replace with a typeguard on AgentMCPActionWithOutputType.
-export function isAgentMCPActionArray(
-  actions: unknown
-): actions is MCPActionType[] {
-  return Array.isArray(actions) && actions.every(isMCPActionType);
-}
