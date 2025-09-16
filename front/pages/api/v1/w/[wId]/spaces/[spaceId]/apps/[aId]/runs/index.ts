@@ -317,6 +317,16 @@ async function handler(
 
       if (keyWorkspaceFlags.includes("use_openai_eu_key") && config.MODEL) {
         config.MODEL.use_openai_eu_key = true;
+        logger.info(
+          {
+            workspace: {
+              sId: owner.sId,
+              name: owner.name,
+            },
+            app: app.sId,
+          },
+          "Using OpenAI EU key for app run"
+        );
       }
 
       const runRes = await coreAPI.createRunStream(
