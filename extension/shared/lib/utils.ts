@@ -247,6 +247,15 @@ export function compareAgentsForSort(
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
 
+export const formatTimestring = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 export function getWeekBoundaries(date: Date): {
   startDate: Date;
   endDate: Date;

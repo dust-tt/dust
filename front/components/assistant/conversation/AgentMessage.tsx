@@ -53,6 +53,7 @@ import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/out
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
+import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
@@ -413,6 +414,7 @@ export function AgentMessage({
           isDisabled={isArchived}
         />
       )}
+      timestamp={formatTimestring(agentMessageToRender.created)}
       type="agent"
       citations={citations}
     >
