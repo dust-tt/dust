@@ -1,7 +1,15 @@
-import { EyeIcon, EyeSlashIcon, IconButton, Separator } from "@dust-tt/sparkle";
+import {
+  ClipboardIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  IconButton,
+  Separator,
+} from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 import { WebhookSourceViewForm } from "@app/components/triggers/WebhookSourceViewForm";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
@@ -56,11 +64,25 @@ export function WebhookSourceDetailsInfo({
   owner,
 }: WebhookSourceDetailsInfoProps) {
   const [isSecretVisible, setIsSecretVisible] = useState(false);
+  const sendNotification = useSendNotification();
 
   const editedLabel = useMemo(
     () => getEditedLabel(webhookSourceView),
     [webhookSourceView]
   );
+
+  const webhookUrl = useMemo(() => {
+    const { url } = config.getDustAPIConfig();
+    return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}`;
+  }, [owner.sId, webhookSourceView.webhookSource.sId]);
+
+  const copyWebhookUrl = async () => {
+    await navigator.clipboard.writeText(webhookUrl);
+    sendNotification({
+      type: "success",
+      title: "Webhook URL copied to clipboard",
+    });
+  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -79,6 +101,18 @@ export function WebhookSourceDetailsInfo({
       <div className="heading-lg">Webhook Source Details</div>
 
       <div className="space-y-6">
+        <div>
+          <Label>Webhook URL</Label>
+          <div className="flex items-center space-x-2">
+            <Value className="truncate font-mono">{webhookUrl}</Value>
+            <IconButton
+              icon={ClipboardIcon}
+              onClick={copyWebhookUrl}
+              size="xs"
+            />
+          </div>
+        </div>
+
         <div>
           <Label>Source Name</Label>
           <Value>{webhookSourceView.webhookSource.name}</Value>
