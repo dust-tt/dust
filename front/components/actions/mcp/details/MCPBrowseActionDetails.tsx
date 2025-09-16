@@ -59,7 +59,7 @@ export function MCPBrowseActionDetails({
                           {r.requestedUrl}
                         </span>
                         {r.text && (
-                          <span className="text-sm text-foreground dark:text-foreground-night whitespace-pre-wrap">
+                          <span className="whitespace-pre-wrap text-sm text-foreground dark:text-foreground-night">
                             {r.description ?? r.text.slice(0, 2048)}
                           </span>
                         )}

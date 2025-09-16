@@ -333,7 +333,7 @@ export function GenericActionDetails({
               <span className="heading-base">Generated Files</span>
               <div className="flex flex-col gap-1">
                 {action.generatedFiles
-                  .filter((file) => !("hidden" in file && file.hidden))
+                  .filter((file) => !file.hidden)
                   .map((file) => {
                     if (isSupportedImageContentType(file.contentType)) {
                       return (

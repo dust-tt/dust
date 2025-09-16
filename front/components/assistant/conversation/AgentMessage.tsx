@@ -514,12 +514,12 @@ export function AgentMessage({
     );
 
     const generatedFiles = agentMessage.generatedFiles
-      .filter((file) => !('hidden' in file && file.hidden))
+      .filter((file) => !file.hidden)
       .filter(
-      (file) =>
-        !isSupportedImageContentType(file.contentType) &&
-        !isContentCreationFileContentType(file.contentType)
-    );
+        (file) =>
+          !isSupportedImageContentType(file.contentType) &&
+          !isContentCreationFileContentType(file.contentType)
+      );
 
     return (
       <div className="flex flex-col gap-y-4">
