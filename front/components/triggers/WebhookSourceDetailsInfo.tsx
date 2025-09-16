@@ -1,9 +1,12 @@
 import { useMemo } from "react";
 
+import { WebhookSourceViewForm } from "@app/components/triggers/WebhookSourceViewForm";
+import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
   webhookSourceView: WebhookSourceViewType;
+  owner: LightWorkspaceType;
 };
 
 const getEditedLabel = (webhookSourceView: WebhookSourceViewType) => {
@@ -29,6 +32,7 @@ const getEditedLabel = (webhookSourceView: WebhookSourceViewType) => {
 
 export function WebhookSourceDetailsInfo({
   webhookSourceView,
+  owner,
 }: WebhookSourceDetailsInfoProps) {
   const editedLabel = useMemo(
     () => getEditedLabel(webhookSourceView),
@@ -42,6 +46,11 @@ export function WebhookSourceDetailsInfo({
           {editedLabel}
         </div>
       )}
+
+      <WebhookSourceViewForm
+        webhookSourceView={webhookSourceView}
+        owner={owner}
+      />
     </div>
   );
 }

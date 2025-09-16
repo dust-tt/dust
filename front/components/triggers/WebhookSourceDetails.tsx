@@ -14,15 +14,18 @@ import { useEffect, useState } from "react";
 
 import { WebhookSourceDetailsHeader } from "@app/components/triggers/WebhookSourceDetailsHeader";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
+import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsProps = {
+  owner: LightWorkspaceType;
   onClose: () => void;
   webhookSourceView: WebhookSourceViewType;
   isOpen: boolean;
 };
 
 export function WebhookSourceDetails({
+  owner,
   webhookSourceView,
   isOpen,
   onClose,
@@ -58,7 +61,10 @@ export function WebhookSourceDetails({
 
         <SheetContainer>
           {selectedTab === "info" && (
-            <WebhookSourceDetailsInfo webhookSourceView={webhookSourceView} />
+            <WebhookSourceDetailsInfo
+              webhookSourceView={webhookSourceView}
+              owner={owner}
+            />
           )}
         </SheetContainer>
       </SheetContent>

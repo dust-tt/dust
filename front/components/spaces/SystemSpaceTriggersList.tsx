@@ -34,6 +34,7 @@ export const SystemSpaceTriggersList = ({
     <>
       {selectedWebhookSourceView !== null && (
         <WebhookSourceDetails
+          owner={owner}
           webhookSourceView={selectedWebhookSourceView}
           onClose={() => setSelectedWebhookSourceView(null)}
           isOpen={selectedWebhookSourceView !== null}

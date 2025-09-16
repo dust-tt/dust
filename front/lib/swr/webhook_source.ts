@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -116,4 +116,52 @@ export function useCreateWebhookSource({
   };
 
   return createWebhookSource;
+}
+
+export function useUpdateWebhookSourceView({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const updateWebhookSourceView = useCallback(
+    async (
+      webhookSourceViewId: string,
+      updates: { name: string }
+    ): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/webhook_sources/views/${webhookSourceViewId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updates),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        sendNotification({
+          type: "success",
+          title: "Successfully updated webhook source view",
+        });
+
+        return true;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update webhook source view",
+        });
+        return false;
+      }
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return { updateWebhookSourceView };
 }
