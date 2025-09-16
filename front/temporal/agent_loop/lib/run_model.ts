@@ -1,4 +1,3 @@
-import { removeNulls } from "@dust-tt/client";
 import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
@@ -43,6 +42,7 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
+import { removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,

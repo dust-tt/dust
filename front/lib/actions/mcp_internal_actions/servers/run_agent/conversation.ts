@@ -2,9 +2,7 @@ import type {
   ConversationPublicType,
   DustAPI,
   PublicPostContentFragmentRequestBody,
-  Result,
 } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
@@ -15,7 +13,12 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType, ConversationType } from "@app/types";
+import type {
+  AgentConfigurationType,
+  ConversationType,
+  Result,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export async function getOrCreateConversation(
   api: DustAPI,
