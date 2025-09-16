@@ -375,20 +375,9 @@ export async function* tryCallMCPTool(
     // Tool is done now, wait for the actual result.
     const toolCallResult = await toolPromise;
 
-    // Do not raise an error here as it will break the conversation.
-    // Let the model decide what to do.
-    if (toolCallResult.isError) {
-      logger.error(
-        {
-          conversationId,
-          error: toolCallResult.content,
-          messageId,
-          toolName: toolConfiguration.originalName,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        `Error calling MCP tool in tryCallMCPTool().`
-      );
-    }
+    // We do not check toolCallResult.isError here and raise an error if true as this would break
+    // the conversation.
+    // Instead, we let the model decide what to do based on the content exposed.
 
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: CallToolResult["content"] = (toolCallResult.content ??
