@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
-
 import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
 import { redisClient } from "@app/lib/utils/redis_client";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -58,34 +56,48 @@ export async function rateLimiter({
   const redisKey = makeRateLimiterKey(key);
   const tags: string[] = [];
 
+  // Lua script for atomic rate limiting
+  const luaScript = `
+    local current_time = redis.call('TIME')
+    local key = KEYS[1]
+    local window = tonumber(ARGV[1])
+    local ttl = window + 60
+    local limit = tonumber(ARGV[2])
+
+    local trim_time = tonumber(current_time[1]) - window
+    redis.call('ZREMRANGEBYSCORE', key, 0, trim_time)
+    local request_count = redis.call('ZCARD', key)
+
+    if request_count < limit then
+      redis.call('ZADD', key, current_time[1], current_time[1] .. current_time[2])
+      redis.call('EXPIRE', key, ttl)
+      return limit - request_count;
+    else
+      return 0
+
+    end
+  `;
+
   let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
   try {
     redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const remaining = (await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [timeframeSeconds.toString(), maxPerTimeframe.toString()],
+    })) as number;
 
-    const zcountRes = await redis.zCount(
-      redisKey,
-      new Date().getTime() - timeframeSeconds * 1000,
-      "+inf"
-    );
-    const remaining = maxPerTimeframe - zcountRes;
-    if (remaining > 0) {
-      await redis.zAdd(redisKey, {
-        score: new Date().getTime(),
-        value: uuidv4(),
-      });
-      await redis.expire(redisKey, timeframeSeconds * 2);
-    } else {
-      statsDClient.increment("ratelimiter.exceeded.count", 1, tags);
-    }
     const totalTimeMs = new Date().getTime() - now.getTime();
-
     statsDClient.distribution(
       "ratelimiter.latency.distribution",
       totalTimeMs,
       tags
     );
 
-    return remaining > 0 ? remaining : 0;
+    if (remaining <= 0) {
+      statsDClient.increment("ratelimiter.exceeded.count", 1, tags);
+    }
+
+    return remaining;
   } catch (e) {
     statsDClient.increment("ratelimiter.error.count", 1, tags);
     logger.error(
@@ -97,9 +109,7 @@ export async function rateLimiter({
       },
       `RateLimiter error`
     );
-
-    // In case of error on our side, we allow the request.
-    return 1;
+    return 1; // Allow request if error is on our side
   }
 }
 
