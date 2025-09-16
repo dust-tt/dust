@@ -292,7 +292,7 @@ export function DataSourceList({
       className={cn("flex max-h-full flex-col overflow-auto pr-1", className)}
     >
       {showSelectAllHeader && (
-        <div className="flex items-center gap-3 p-3 font-medium text-muted-foreground dark:text-muted-foreground">
+        <div className="flex items-center gap-3 p-3 font-medium text-foreground dark:text-white">
           <Checkbox
             checked={selectAllState}
             onCheckedChange={handleSelectAll}
@@ -330,7 +330,7 @@ export function DataSourceList({
               )}
 
               {item.icon && <Icon size="sm" visual={item.icon} />}
-              <div className="flex-1 truncate text-sm text-muted-foreground dark:text-muted-foreground">
+              <div className="flex-1 truncate text-sm text-foreground dark:text-white">
                 {item.title}
               </div>
             </div>
