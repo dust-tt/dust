@@ -131,7 +131,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
           configurationNotObligatory: false,
-        configurable: true,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);

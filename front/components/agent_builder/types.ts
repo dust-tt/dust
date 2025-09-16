@@ -168,7 +168,7 @@ export const capabilityFormSchema = z
     return true;
   });
 
-export function getDefaultMCPxAction(
+export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
 ): AgentBuilderAction {
   const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);

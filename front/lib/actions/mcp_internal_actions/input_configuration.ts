@@ -716,7 +716,10 @@ export function getMCPServerToolsConfigurations(
     ),
   }));
 
-  const enumConfigurations: Record<string, { options: string[]; description?: string; default?: string }> = Object.fromEntries(
+  const enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string; default?: string }
+  > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -747,7 +750,15 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const listConfigurations: Record<string, { options: Record<string, string>; description?: string; values?: string[]; default?: string }> = Object.fromEntries(
+  const listConfigurations: Record<
+    string,
+    {
+      options: Record<string, string>;
+      description?: string;
+      values?: string[];
+      default?: string;
+    }
+  > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -811,31 +822,31 @@ export function getMCPServerToolsConfigurations(
     ).length > 0;
 
   // TODO: We'll handle the sources and tables later
-  const hasDefaultsForAllConfigurableValues = stringConfigurations.every(
-    (config) => config.default !== undefined
-  ) && numberConfigurations.every(
-    (config) => config.default !== undefined
-  ) && booleanConfigurations.every(
-    (config) => config.default !== undefined
-  ) && Object.values(enumConfigurations).every(
-    (config) => config.default !== undefined
-  ) && Object.values(listConfigurations).every(
-    (config) => config.default !== undefined
-  );
+  const hasDefaultsForAllConfigurableValues =
+    stringConfigurations.every((config) => config.default !== undefined) &&
+    numberConfigurations.every((config) => config.default !== undefined) &&
+    booleanConfigurations.every((config) => config.default !== undefined) &&
+    Object.values(enumConfigurations).every(
+      (config) => config.default !== undefined
+    ) &&
+    Object.values(listConfigurations).every(
+      (config) => config.default !== undefined
+    );
 
-  const configurable = mayRequireDataSourceConfiguration ||
-  mayRequireDataWarehouseConfiguration ||
-  mayRequireTableConfiguration ||
-  mayRequireChildAgentConfiguration ||
-  mayRequireReasoningConfiguration ||
-  mayRequireDustAppConfiguration ||
-  mayRequireTimeFrameConfiguration ||
-  mayRequireJsonSchemaConfiguration || 
-  stringConfigurations.length > 0 ||
-  numberConfigurations.length > 0 ||
-  booleanConfigurations.length > 0 ||
-  Object.keys(enumConfigurations).length > 0 ||
-  Object.keys(listConfigurations).length > 0;
+  const configurable =
+    mayRequireDataSourceConfiguration ||
+    mayRequireDataWarehouseConfiguration ||
+    mayRequireTableConfiguration ||
+    mayRequireChildAgentConfiguration ||
+    mayRequireReasoningConfiguration ||
+    mayRequireDustAppConfiguration ||
+    mayRequireTimeFrameConfiguration ||
+    mayRequireJsonSchemaConfiguration ||
+    stringConfigurations.length > 0 ||
+    numberConfigurations.length > 0 ||
+    booleanConfigurations.length > 0 ||
+    Object.keys(enumConfigurations).length > 0 ||
+    Object.keys(listConfigurations).length > 0;
 
   return {
     mayRequireDataSourceConfiguration,
@@ -851,7 +862,8 @@ export function getMCPServerToolsConfigurations(
     enumConfigurations,
     listConfigurations,
     mayRequireDustAppConfiguration,
-    configurationNotObligatory: !configurable || hasDefaultsForAllConfigurableValues,
+    configurationNotObligatory:
+      !configurable || hasDefaultsForAllConfigurableValues,
     configurable,
   };
 }
