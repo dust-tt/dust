@@ -697,28 +697,28 @@ impl OpenAILLM {
     }
 
     #[inline]
-    fn host(use_openai_eu_key: bool) -> &'static str {
-        if use_openai_eu_key {
+    fn host(use_openai_eu_host: bool) -> &'static str {
+        if use_openai_eu_host {
             "eu.api.openai.com"
         } else {
             "api.openai.com"
         }
     }
 
-    fn uri(&self, use_openai_eu_key: bool) -> Result<Uri> {
-        Ok(format!("https://{}/v1/completions", Self::host(use_openai_eu_key)).parse::<Uri>()?)
+    fn uri(&self, use_openai_eu_host: bool) -> Result<Uri> {
+        Ok(format!("https://{}/v1/completions", Self::host(use_openai_eu_host)).parse::<Uri>()?)
     }
 
-    fn chat_uri(&self, use_openai_eu_key: bool) -> Result<Uri> {
+    fn chat_uri(&self, use_openai_eu_host: bool) -> Result<Uri> {
         Ok(format!(
             "https://{}/v1/chat/completions",
-            Self::host(use_openai_eu_key)
+            Self::host(use_openai_eu_host)
         )
         .parse::<Uri>()?)
     }
 
-    fn responses_uri(&self, use_openai_eu_key: bool) -> Result<Uri> {
-        Ok(format!("https://{}/v1/responses", Self::host(use_openai_eu_key)).parse::<Uri>()?)
+    fn responses_uri(&self, use_openai_eu_host: bool) -> Result<Uri> {
+        Ok(format!("https://{}/v1/responses", Self::host(use_openai_eu_host)).parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
@@ -851,9 +851,9 @@ impl LLM for OpenAILLM {
             None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
         };
 
-        let use_openai_eu_key = match &extras {
+        let use_openai_eu_host = match &extras {
             None => false,
-            Some(v) => match v.get("use_openai_eu_key") {
+            Some(v) => match v.get("use_openai_eu_host") {
                 Some(Value::Bool(b)) => *b,
                 _ => false,
             },
@@ -866,7 +866,7 @@ impl LLM for OpenAILLM {
                 ))?;
             }
             streamed_completion(
-                self.uri(use_openai_eu_key)?,
+                self.uri(use_openai_eu_host)?,
                 api_key.clone(),
                 match &extras {
                     Some(ex) => match ex.get("openai_organization_id") {
@@ -911,7 +911,7 @@ impl LLM for OpenAILLM {
             .await?
         } else {
             completion(
-                self.uri(use_openai_eu_key)?,
+                self.uri(use_openai_eu_host)?,
                 api_key.clone(),
                 match &extras {
                     Some(e) => match e.get("openai_organization_id") {
@@ -1083,9 +1083,9 @@ impl LLM for OpenAILLM {
             None => true,
         };
 
-        let use_openai_eu_key = match &extras {
+        let use_openai_eu_host = match &extras {
             None => false,
-            Some(v) => match v.get("use_openai_eu_key") {
+            Some(v) => match v.get("use_openai_eu_host") {
                 Some(Value::Bool(b)) => *b,
                 _ => false,
             },
@@ -1094,7 +1094,7 @@ impl LLM for OpenAILLM {
         // Use response API only when function_call is not forced and when n == 1.
         if RESPONSES_API_ENABLED && is_auto_function_call && n == 1 && is_reasoning_model {
             openai_responses_api_completion(
-                self.responses_uri(use_openai_eu_key)?,
+                self.responses_uri(use_openai_eu_host)?,
                 self.id.clone(),
                 api_key,
                 &messages,
@@ -1109,7 +1109,7 @@ impl LLM for OpenAILLM {
             .await
         } else {
             openai_compatible_chat_completion(
-                self.chat_uri(use_openai_eu_key)?,
+                self.chat_uri(use_openai_eu_host)?,
                 self.id.clone(),
                 api_key,
                 &messages,
