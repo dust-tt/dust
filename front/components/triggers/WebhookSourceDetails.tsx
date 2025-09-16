@@ -6,7 +6,7 @@ import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsProps = {
   onClose: () => void;
-  webhookSourceView: WebhookSourceViewType | null;
+  webhookSourceView: WebhookSourceViewType;
   isOpen: boolean;
 };
 
@@ -22,9 +22,7 @@ export function WebhookSourceDetails({
           <VisuallyHidden>
             <SheetTitle />
           </VisuallyHidden>
-          {webhookSourceView !== null && (
-            <WebhookSourceDetailsHeader webhookSourceView={webhookSourceView} />
-          )}
+          <WebhookSourceDetailsHeader webhookSourceView={webhookSourceView} />
         </SheetHeader>
       </SheetContent>
     </Sheet>
