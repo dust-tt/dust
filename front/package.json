@@ -67,6 +67,7 @@
     "@types/cls-hooked": "^4.3.9",
     "@types/json-schema": "^7.0.15",
     "@uiw/react-textarea-code-editor": "^3.0.2",
+    "@virtuoso.dev/message-list": "^1.13.3",
     "@workos-inc/node": "^7.50.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",

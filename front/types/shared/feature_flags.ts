@@ -189,6 +189,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slack semantic search feature",
     stage: "on_demand",
   },
+  virtualized_conversations: {
+    description: "Use virtualized conversations display",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
