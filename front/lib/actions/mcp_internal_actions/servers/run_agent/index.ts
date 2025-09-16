@@ -456,9 +456,6 @@ ${query}`
           } else if (event.type === "agent_message_success") {
             if (isMCPActionArray(event.message.actions)) {
               refsFromAgent = getCitationsFromActions(event.message.actions);
-              // Option A: filter out hidden files from child agent so they are not returned
-              // to the parent conversation. Hidden files (e.g., webtools_edge browse files)
-              // remain available in the child conversation and to its conversation_files tools.
               files = event.message.actions.flatMap((action) =>
                 action.generatedFiles.filter((f) => !f.hidden)
               );

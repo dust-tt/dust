@@ -707,7 +707,6 @@ export function _getDustTaskGlobalAgent(
     })
   );
 
-  // If dust-task uses the webtools_edge server, preconfigure its browse tool summary agent
   if (
     webSearchBrowseMCPServerView?.internalMCPServerId &&
     getInternalMCPServerNameFromSId(
@@ -721,14 +720,12 @@ export function _getDustTaskGlobalAgent(
           a.sId === GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-action" &&
           "mcpServerViewId" in a
         ) {
-          // Configure via childAgentId so the AGENT input is auto-injected like run_agent
           a.childAgentId = summaryAgent.sId;
         }
       }
     }
   }
 
-  // Add data warehouses tool with all warehouses in global space (all remote DBs)
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
     dataWarehousesMCPServerView

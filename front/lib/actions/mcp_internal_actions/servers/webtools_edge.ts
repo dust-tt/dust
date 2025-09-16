@@ -132,7 +132,6 @@ async function summarizeWithAgent({
   return new Ok(finalContent);
 }
 
-// Edge variant of webtools. Same tools and behavior as web_search_&_browse.
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -247,7 +246,6 @@ const createServer = (
       );
       const results = await browseUrls(urls, 8, "markdown");
 
-      // Process each URL (summary + file + citation + links) concurrently
       const perUrlContents = await concurrentExecutor(
         results,
         async (result) => {
