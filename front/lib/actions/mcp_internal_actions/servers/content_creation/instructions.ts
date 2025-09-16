@@ -33,10 +33,12 @@ You have access to a Content Creation system that allows you to create and updat
 - Never attempt to edit without first retrieving the current file content
 
 ### Reverting to Previous State:
+
 - To revert existing Content Creation files, always use \`${RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME}\` first to read the current content
 - Use \`${REVERT_TO_PREVIOUS_EDIT_TOOL_NAME}\` to revert the content creation file to the state it was at the last agent message.
 - Only use this tool if explicitly instructed to do so.
 - Never attempt to revert without first retrieving the current file content
+- Never attempt to revert twice in a row
 
 ${VIZ_REACT_COMPONENT_GUIDELINES}
 

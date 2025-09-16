@@ -353,18 +353,9 @@ const createServer = (
           return new Err(new MCPError(result.error.message));
         }
 
-        const { value: fileResource } = result;
-
-        // Get the current content of the reverted file to include in the output
-        const contentResult = await getClientExecutableFileContent(
-          auth,
-          file_id
-        );
-        if (contentResult.isErr()) {
-          return new Err(new MCPError(contentResult.error.message));
-        }
-
-        const { content } = contentResult.value;
+        const {
+          value: { fileResource, revertedContent },
+        } = result;
 
         const responseText = `File '${fileResource.sId}' reverted to previous state successfully.`;
 
@@ -407,7 +398,7 @@ const createServer = (
           },
           {
             type: "text",
-            text: `Reverted file content:\n\n${content}`,
+            text: revertedContent,
           },
         ]);
       }
