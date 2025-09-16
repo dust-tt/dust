@@ -12,6 +12,7 @@ import { Op } from "sequelize";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -395,11 +396,17 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
                     workspaceId: action.workspaceId,
                   });
 
+                  const hidden =
+                    o.content.type === "resource" &&
+                    isToolGeneratedFile(o.content) &&
+                    o.content.resource.hidden === true;
+
                   return {
                     fileId: fileSid,
                     contentType: file.contentType,
                     title: file.fileName,
                     snippet: file.snippet,
+                    ...(hidden ? { hidden: true } : {}),
                   };
                 })
               ),

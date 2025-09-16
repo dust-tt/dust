@@ -42,6 +42,7 @@ import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_ac
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
+import { default as webtoolsEdgeServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools_edge";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -108,6 +109,8 @@ export async function getInternalMCPServer(
       return thinkServer();
     case "web_search_&_browse":
       return webtoolsServer(agentLoopContext);
+    case "web_search_&_browse_with_summary":
+      return webtoolsEdgeServer(auth, agentLoopContext);
     case "search":
       // If we are in advanced search mode, we use the data_sources_file_system server instead.
       if (isAdvancedSearchMode(agentLoopContext)) {

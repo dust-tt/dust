@@ -263,6 +263,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };
+    case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+        name: "dust-browser-summary",
+        description: "A agent that summarizes web page content.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_PLANNING:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+        name: "dust-planning",
+        description: "A agent that plans research tasks.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
     default:
       assertNever(sId);
   }

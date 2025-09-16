@@ -1608,6 +1608,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_DEEP = "dust-deep",
   DUST_DEEP_2 = "dust-deep-2",
   DUST_TASK = "dust-task",
+  DUST_BROWSER_SUMMARY = "dust-browser-summary",
+  DUST_PLANNING = "dust-planning",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",
