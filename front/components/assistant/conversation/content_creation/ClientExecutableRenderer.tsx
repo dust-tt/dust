@@ -53,7 +53,7 @@ function ExportContentDropdown({
     }
   };
 
-  const downloadAsFile = () => {
+  const downloadAsCode = () => {
     if (!fileContent || !fileName) {
       return;
     }
@@ -82,8 +82,8 @@ function ExportContentDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem onClick={exportAsPng}>Export as PNG</DropdownMenuItem>
-        <DropdownMenuItem onClick={downloadAsFile}>
-          Export file
+        <DropdownMenuItem onClick={downloadAsCode}>
+          Export as template
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
