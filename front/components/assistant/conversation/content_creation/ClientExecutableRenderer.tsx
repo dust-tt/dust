@@ -62,7 +62,7 @@ function ExportContentDropdown({
       // to cloud storage.
       window.open(downloadUrl, "_blank");
     } catch (error) {
-      console.error("Download failed:", error);
+      datadogLogs.logger.error({ err: error }, "Download failed");
       sendNotification({
         title: "Download Failed",
         type: "error",
