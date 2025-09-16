@@ -34,7 +34,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useReducer,
 } from "react";
@@ -249,41 +248,6 @@ export function DataSourceBuilderProvider({
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
     navigationHistory: [{ type: "root" }],
   });
-
-  const initializeNavigationFromSelections = useCallback(() => {
-    // just navigate to the first space we find in any selection
-    const allPaths = [...field.value.in, ...field.value.notIn];
-
-    for (const source of allPaths) {
-      const pathParts = source.path.split("/");
-      if (pathParts.length >= 2) {
-        const spaceId = pathParts[1];
-        const space = spaces.find((s) => s.sId === spaceId);
-
-        if (space) {
-          dispatch({ type: "NAVIGATION_SET_SPACE", payload: { space } });
-          return;
-        }
-      }
-    }
-  }, [field.value.in, field.value.notIn, spaces]);
-
-  // Call initialization on mount when there are existing selections and we're still at root
-  useEffect(() => {
-    if (
-      (field.value.in.length > 0 || field.value.notIn.length > 0) &&
-      state.navigationHistory.length === 1 &&
-      state.navigationHistory[0].type === "root"
-    ) {
-      initializeNavigationFromSelections();
-    }
-  }, [
-    field.value.in.length,
-    field.value.notIn.length,
-    state.navigationHistory.length,
-    state.navigationHistory,
-    initializeNavigationFromSelections,
-  ]);
 
   const selectNode: DataSourceBuilderState["selectNode"] = useCallback(
     (entry) => {
