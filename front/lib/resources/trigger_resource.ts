@@ -128,7 +128,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth, {
       where: {
         webhookSourceViewId,
-        workspaceId: auth.getNonNullableWorkspace().id,
         kind: "webhook",
       },
     });
