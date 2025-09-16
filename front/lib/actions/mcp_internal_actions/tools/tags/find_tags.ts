@@ -123,6 +123,15 @@ export function registerFindTagsTool(
           }
         }
 
+        if (result.value.tags.length === 0) {
+          return new Ok([
+            {
+              type: "text",
+              text: "No labels found matching the search criteria.",
+            },
+          ]);
+        }
+
         return new Ok([
           {
             type: "text",
