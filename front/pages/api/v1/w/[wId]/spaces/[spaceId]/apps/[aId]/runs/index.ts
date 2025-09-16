@@ -318,6 +318,7 @@ async function handler(
           },
           app: app.sId,
           useOpenAIEUKey,
+          userWorkspace: keyAuth.getNonNullableWorkspace().sId,
         },
         "App run creation"
       );
