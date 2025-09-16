@@ -315,6 +315,10 @@ async function handler(
         "App run creation"
       );
 
+      if (keyWorkspaceFlags.includes("use_openai_eu_key") && config.MODEL) {
+        config.MODEL.openai_hostname = "eu.api.openai.com";
+      }
+
       const runRes = await coreAPI.createRunStream(
         keyAuth.getNonNullableWorkspace(),
         keyWorkspaceFlags,

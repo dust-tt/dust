@@ -696,16 +696,19 @@ impl OpenAILLM {
         OpenAILLM { id, api_key: None }
     }
 
-    fn uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/completions",).parse::<Uri>()?)
+    fn uri(&self, hostname: Option<&str>) -> Result<Uri> {
+        let host = hostname.unwrap_or("api.openai.com");
+        Ok(format!("https://{}/v1/completions", host).parse::<Uri>()?)
     }
 
-    fn chat_uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/chat/completions",).parse::<Uri>()?)
+    fn chat_uri(&self, hostname: Option<&str>) -> Result<Uri> {
+        let host = hostname.unwrap_or("api.openai.com");
+        Ok(format!("https://{}/v1/chat/completions", host).parse::<Uri>()?)
     }
 
-    fn responses_uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/responses",).parse::<Uri>()?)
+    fn responses_uri(&self, hostname: Option<&str>) -> Result<Uri> {
+        let host = hostname.unwrap_or("api.openai.com");
+        Ok(format!("https://{}/v1/responses", host).parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
@@ -838,6 +841,15 @@ impl LLM for OpenAILLM {
             None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
         };
 
+        // Extract hostname from extras if provided
+        let hostname = match &extras {
+            Some(e) => match e.get("openai_hostname") {
+                Some(Value::String(h)) => Some(h.as_str()),
+                _ => None,
+            },
+            None => None,
+        };
+
         let (c, request_id) = if event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
@@ -845,7 +857,7 @@ impl LLM for OpenAILLM {
                 ))?;
             }
             streamed_completion(
-                self.uri()?,
+                self.uri(hostname)?,
                 api_key.clone(),
                 match &extras {
                     Some(ex) => match ex.get("openai_organization_id") {
@@ -890,7 +902,7 @@ impl LLM for OpenAILLM {
             .await?
         } else {
             completion(
-                self.uri()?,
+                self.uri(hostname)?,
                 api_key.clone(),
                 match &extras {
                     Some(e) => match e.get("openai_organization_id") {
@@ -1062,10 +1074,19 @@ impl LLM for OpenAILLM {
             None => true,
         };
 
+        // Extract hostname from extras if provided
+        let hostname = match &extras {
+            Some(e) => match e.get("openai_hostname") {
+                Some(Value::String(h)) => Some(h.as_str()),
+                _ => None,
+            },
+            None => None,
+        };
+
         // Use response API only when function_call is not forced and when n == 1.
         if RESPONSES_API_ENABLED && is_auto_function_call && n == 1 && is_reasoning_model {
             openai_responses_api_completion(
-                self.responses_uri()?,
+                self.responses_uri(hostname)?,
                 self.id.clone(),
                 api_key,
                 &messages,
@@ -1080,7 +1101,7 @@ impl LLM for OpenAILLM {
             .await
         } else {
             openai_compatible_chat_completion(
-                self.chat_uri()?,
+                self.chat_uri(hostname)?,
                 self.id.clone(),
                 api_key,
                 &messages,
