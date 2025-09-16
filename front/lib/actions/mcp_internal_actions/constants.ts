@@ -943,8 +943,10 @@ The directive should be used to display a clickable version of the agent name in
   deep_research: {
     id: 29,
     availability: "auto",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("deep_research_as_a_tool");
+    isRestricted: ({ featureFlags, isDustDeepDisabled }) => {
+      return (
+        !featureFlags.includes("deep_research_as_a_tool") || isDustDeepDisabled
+      );
     },
     allowMultipleInstances: false,
     isPreview: true,
@@ -1166,6 +1168,7 @@ The directive should be used to display a clickable version of the agent name in
       | ((params: {
           plan: PlanType;
           featureFlags: WhitelistableFeature[];
+          isDustDeepDisabled: boolean;
         }) => boolean)
       | undefined;
     isPreview: boolean;
