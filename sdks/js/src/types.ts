@@ -2703,7 +2703,6 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
-  | "openai"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<

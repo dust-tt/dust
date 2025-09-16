@@ -61,7 +61,7 @@ export const dustAppConfigurationSchema = z
   })
   .nullable();
 
-export const secretIdSchema = z.string().optional();
+export const secretNameSchema = z.string().optional();
 
 export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
 
@@ -133,7 +133,7 @@ export const mcpServerConfigurationSchema = z.object({
   timeFrame: mcpTimeFrameSchema,
   additionalConfiguration: additionalConfigurationSchema,
   dustAppConfiguration: dustAppConfigurationSchema,
-  secretName: secretIdSchema,
+  secretName: secretNameSchema,
   jsonSchema: jsonSchemaFieldSchema,
   reasoningModel: reasoningModelSchema,
   _jsonSchemaString: jsonSchemaStringSchema,
