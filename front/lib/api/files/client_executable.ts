@@ -9,7 +9,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -297,7 +296,7 @@ export async function revertClientExecutableFileToPreviousState(
   auth: Authenticator,
   params: {
     fileId: string;
-    conversationId: string;
+    conversationId: number;
     currentAgentMessage: AgentMessageType;
     revertedByAgentConfigurationId?: string;
   }
@@ -327,15 +326,6 @@ export async function revertClientExecutableFileToPreviousState(
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-
-    if (!conversation) {
-      return new Err(new Error(`Conversation not found: ${conversationId}`));
-    }
-
     const agentMessages = await AgentMessage.findAll({
       where: { workspaceId },
       include: [
@@ -343,7 +333,7 @@ export async function revertClientExecutableFileToPreviousState(
           model: Message,
           as: "message",
           where: {
-            conversationId: conversation.id,
+            conversationId,
             workspaceId,
           },
           required: true,
