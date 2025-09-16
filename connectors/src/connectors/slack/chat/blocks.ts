@@ -68,16 +68,12 @@ function makeContextSectionBlocks({
   conversationUrl,
   footnotes,
   workspaceId,
-  conversationId,
-  messageId,
 }: {
   state: "thinking" | "answered";
   assistantName: string;
   conversationUrl: string | null;
   footnotes: SlackMessageFootnotes | undefined;
   workspaceId: string;
-  conversationId?: string;
-  messageId?: string;
 }) {
   const blocks = [];
 
@@ -88,12 +84,7 @@ function makeContextSectionBlocks({
     }
   }
 
-  // Add feedback button blocks when the message is answered and we have the required IDs
-  if (state === "answered" && conversationId && messageId) {
-    blocks.push(
-      ...makeFeedbackButtonBlock({ conversationId, messageId, workspaceId })
-    );
-  }
+  // Feedback is shown in the ephemeral message
 
   blocks.push(
     makeFooterBlock({
@@ -119,15 +110,6 @@ export function makeFeedbackButtonBlock({
   workspaceId: string;
 }) {
   return [
-    {
-      type: "context",
-      elements: [
-        {
-          type: "mrkdwn",
-          text: "Was this answer helpful?",
-        },
-      ],
-    },
     {
       type: "actions",
       elements: [
@@ -202,32 +184,74 @@ function makeThinkingBlock({
 
 export function makeAssistantSelectionBlock(
   agentConfigurations: LightAgentConfigurationType[],
-  id: string
+  id: string,
+  feedbackParams?: {
+    conversationId: string;
+    messageId: string;
+    workspaceId: string;
+  }
 ) {
+  const elements: Array<Record<string, unknown>> = [];
+
+  // Add feedback buttons if parameters are provided
+  if (feedbackParams) {
+    elements.push(
+      {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "👍",
+          emoji: true,
+        },
+        action_id: LEAVE_FEEDBACK_UP,
+        value: JSON.stringify({
+          ...feedbackParams,
+          preselectedThumb: "up",
+        }),
+      },
+      {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: "👎",
+          emoji: true,
+        },
+        action_id: LEAVE_FEEDBACK_DOWN,
+        value: JSON.stringify({
+          ...feedbackParams,
+          preselectedThumb: "down",
+        }),
+      }
+    );
+  }
+
+  // Add agent selection dropdown if we have agent configurations
+  if (agentConfigurations.length > 0) {
+    elements.push({
+      type: "static_select",
+      placeholder: {
+        type: "plain_text",
+        text: "Ask another agent",
+        emoji: true,
+      },
+      options: agentConfigurations.map((ac) => {
+        return {
+          text: {
+            type: "plain_text",
+            text: ac.name,
+          },
+          value: ac.sId,
+        };
+      }),
+      action_id: STATIC_AGENT_CONFIG,
+    });
+  }
+
   return [
     {
       type: "actions",
       block_id: id,
-      elements: [
-        {
-          type: "static_select",
-          placeholder: {
-            type: "plain_text",
-            text: "Ask another agent",
-            emoji: true,
-          },
-          options: agentConfigurations.map((ac) => {
-            return {
-              text: {
-                type: "plain_text",
-                text: ac.name,
-              },
-              value: ac.sId,
-            };
-          }),
-          action_id: STATIC_AGENT_CONFIG,
-        },
-      ],
+      elements: elements,
     },
   ];
 }
@@ -300,15 +324,8 @@ export function makeMessageUpdateBlocksAndText(
   workspaceId: string,
   messageUpdate: SlackMessageUpdate
 ) {
-  const {
-    isThinking,
-    thinkingAction,
-    assistantName,
-    text,
-    footnotes,
-    conversationId,
-    messageId,
-  } = messageUpdate;
+  const { isThinking, thinkingAction, assistantName, text, footnotes } =
+    messageUpdate;
   const thinkingText = "Agent is thinking...";
   const thinkingTextWithAction = thinkingAction
     ? `${thinkingText}... (${thinkingAction})`
@@ -327,8 +344,6 @@ export function makeMessageUpdateBlocksAndText(
         conversationUrl,
         footnotes,
         workspaceId,
-        conversationId,
-        messageId,
       }),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
