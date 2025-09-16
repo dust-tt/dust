@@ -355,7 +355,8 @@ export const VisualizationActionIframe = forwardRef<
                   />
                 </div>
               )}
-              {isErrored && !retryClicked && (
+
+              {isErrored && !retryClicked && !isPublic && (
                 <div className="flex h-full w-full items-center justify-center p-6">
                   <ContentMessage
                     title="Visualization Error"
@@ -385,6 +386,27 @@ export const VisualizationActionIframe = forwardRef<
                       </div>
                     )}
                   </ContentMessage>
+                </div>
+              )}
+
+              {isErrored && isPublic && (
+                <div className="flex h-full w-full items-center justify-center p-6">
+                  <div className="flex flex-col gap-3 text-center">
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <ExclamationCircleIcon className="h-8 w-8" />
+                        <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+                          Visualization Error
+                        </p>
+                      </div>
+                      <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+                        This visualization encountered an error and cannot be
+                        displayed.
+                        <br /> Please contact the creator of this visualization
+                        for assistance.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
