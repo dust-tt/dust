@@ -9,7 +9,14 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   FormProvider,
   useForm,
@@ -18,7 +25,6 @@ import {
 } from "react-hook-form";
 
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
-import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
@@ -62,6 +68,8 @@ import {
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
+
+import { KnowledgeFooter } from "./KnowledgeFooter";
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
@@ -257,11 +265,7 @@ function KnowledgeConfigurationSheetContent({
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
-  const hasSourceSelection = useWatch({
-    compute: (formData: CapabilityFormData) => {
-      return formData.sources.in.length > 0;
-    },
-  });
+  const hasSourceSelection = true;
 
   const config = useMemo(() => {
     if (mcpServerView !== null) {
@@ -296,13 +300,16 @@ function KnowledgeConfigurationSheetContent({
     }
   }, [mcpServerView, isEditing, setValue, getValues]);
 
-  const handlePageChange = (pageId: string) => {
-    if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
-      setSheetPageId(pageId);
-    }
-  };
+  const handlePageChange = useCallback(
+    (pageId: string) => {
+      if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
+        setSheetPageId(pageId);
+      }
+    },
+    [setSheetPageId]
+  );
 
-  const getFooterButtons = () => {
+  const footerButtons = useMemo(() => {
     const isDataSourcePage =
       currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
     const isManageSelectionMode = isDataSourcePage && hasSourceSelection;
@@ -332,7 +339,7 @@ function KnowledgeConfigurationSheetContent({
         },
       },
     };
-  };
+  }, [currentPageId, hasSourceSelection, setSheetPageId, onCancel, onSave]);
 
   const pages: MultiPageSheetPage[] = [
     {
@@ -416,7 +423,7 @@ function KnowledgeConfigurationSheetContent({
       showHeaderNavigation={false}
       showNavigation={false}
       addFooterSeparator
-      {...getFooterButtons()}
+      {...footerButtons}
     />
   );
 }

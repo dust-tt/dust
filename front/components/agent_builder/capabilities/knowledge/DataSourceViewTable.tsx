@@ -1,13 +1,14 @@
-import { FolderIcon, ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
+import { FolderIcon, Spinner } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
   findCategoryFromNavigationHistory,
   findSpaceFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
-import type { DataSourceRowData } from "@app/components/data_source_view/hooks/useDataSourceColumns";
-import { useDataSourceColumns } from "@app/components/data_source_view/hooks/useDataSourceColumns";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
@@ -37,47 +38,50 @@ export function DataSourceViewTable({
       spaceId: space?.sId ?? "",
     });
 
-  const columns = useDataSourceColumns();
-  const rows: DataSourceRowData[] = spaceDataSourceViews
-    .filter((dsv) => {
-      if (dsv.dataSource.connectorProvider === "slack_bot") {
-        return false;
-      }
+  const listItems: DataSourceListItem[] = useMemo(
+    () =>
+      spaceDataSourceViews
+        .filter((dsv) => {
+          if (dsv.dataSource.connectorProvider === "slack_bot") {
+            return false;
+          }
 
-      switch (viewType) {
-        case "data_warehouse":
-          return isRemoteDatabase(dsv.dataSource);
-        case "table":
-          return !isRemoteDatabase(dsv.dataSource);
-        default:
-          return true;
-      }
-    })
-    .map((dsv) => {
-      const provider = dsv.dataSource.connectorProvider;
+          switch (viewType) {
+            case "data_warehouse":
+              return isRemoteDatabase(dsv.dataSource);
+            case "table":
+              return !isRemoteDatabase(dsv.dataSource);
+            default:
+              return true;
+          }
+        })
+        .map((dsv) => {
+          const provider = dsv.dataSource.connectorProvider;
 
-      const connectorProvider = provider
-        ? CONNECTOR_CONFIGURATIONS[provider]
-        : null;
+          const connectorProvider = provider
+            ? CONNECTOR_CONFIGURATIONS[provider]
+            : null;
 
-      const icon = provider
-        ? connectorProvider?.getLogoComponent(isDark) ??
-          CATEGORY_DETAILS[dsv.category].icon
-        : FolderIcon;
+          const icon = provider
+            ? connectorProvider?.getLogoComponent(isDark) ??
+              CATEGORY_DETAILS[dsv.category].icon
+            : FolderIcon;
 
-      return {
-        id: dsv.sId,
-        title: getDataSourceNameFromView(dsv),
-        onClick: () => setDataSourceViewEntry(dsv),
-        icon,
-        entry: {
-          type: "data_source",
-          dataSourceView: dsv,
-          tagsFilter: null,
-        },
-      } satisfies DataSourceRowData;
-    })
-    .toSorted((a, b) => a.title.localeCompare(b.title));
+          return {
+            id: dsv.sId,
+            title: getDataSourceNameFromView(dsv),
+            onClick: () => setDataSourceViewEntry(dsv),
+            icon,
+            entry: {
+              type: "data_source",
+              dataSourceView: dsv,
+              tagsFilter: null,
+            },
+          } satisfies DataSourceListItem;
+        })
+        .toSorted((a, b) => a.title.localeCompare(b.title)),
+    [spaceDataSourceViews, viewType, isDark, setDataSourceViewEntry]
+  );
 
   if (isSpaceDataSourceViewsLoading) {
     return (
@@ -87,12 +91,5 @@ export function DataSourceViewTable({
     );
   }
 
-  return (
-    <ScrollableDataTable
-      data={rows}
-      columns={columns}
-      getRowId={(row) => row.id}
-      maxHeight
-    />
-  );
+  return <DataSourceList items={listItems} />;
 }
