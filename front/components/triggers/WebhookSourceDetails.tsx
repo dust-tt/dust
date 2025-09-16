@@ -1,5 +1,15 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@dust-tt/sparkle";
+import {
+  InformationCircleIcon,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useEffect, useState } from "react";
 
 import { WebhookSourceDetailsHeader } from "@app/components/triggers/WebhookSourceDetailsHeader";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -15,6 +25,14 @@ export function WebhookSourceDetails({
   isOpen,
   onClose,
 }: WebhookSourceDetailsProps) {
+  const [selectedTab, setSelectedTab] = useState<string>("info");
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedTab("info");
+    }
+  }, [isOpen]);
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent size="lg">
@@ -23,6 +41,17 @@ export function WebhookSourceDetails({
             <SheetTitle />
           </VisuallyHidden>
           <WebhookSourceDetailsHeader webhookSourceView={webhookSourceView} />
+
+          <Tabs value={selectedTab}>
+            <TabsList border={false}>
+              <TabsTrigger
+                value="info"
+                label="Info"
+                icon={InformationCircleIcon}
+                onClick={() => setSelectedTab("info")}
+              />
+            </TabsList>
+          </Tabs>
         </SheetHeader>
       </SheetContent>
     </Sheet>
