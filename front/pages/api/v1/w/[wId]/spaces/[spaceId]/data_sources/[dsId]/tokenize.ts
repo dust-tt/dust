@@ -26,6 +26,8 @@ const PostDatasourceTokenizeBodySchema = t.type({
  * @ignoreswagger
  * This endpoint is not to be included in the public API docs.
  */
+const CORE_TOKENIZE_TIMEOUT_MS = 270000; // 4.5 minutes
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<TokenizeResponseType>>,
@@ -104,14 +106,18 @@ async function handler(
       }
       const text = bodyValidation.right.text;
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const coreTokenizeRes = await coreAPI.dataSourceTokenize({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        text,
-      });
+      const coreTokenizeRes = await coreAPI.dataSourceTokenize(
+        {
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          text,
+        },
+        { timeoutMs: CORE_TOKENIZE_TIMEOUT_MS }
+      );
       if (coreTokenizeRes.isErr()) {
+        const isTimeout = coreTokenizeRes.error.code === "request_timeout";
         return apiError(req, res, {
-          status_code: 500,
+          status_code: isTimeout ? 504 : 500,
           api_error: {
             type: "internal_server_error",
             message: `Error tokenizing text: ${coreTokenizeRes.error.message}`,

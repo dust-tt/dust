@@ -520,6 +520,8 @@ export async function renderPrefixSection({
   };
 }
 
+const TOKENIZE_TIMEOUT_MS = 270000; // 4.5 minutes to avoid 5min activity timeouts
+
 async function tokenize(text: string, ds: DataSourceConfig) {
   if (!text) {
     return [];
@@ -530,10 +532,14 @@ async function tokenize(text: string, ds: DataSourceConfig) {
     return [];
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TOKENIZE_TIMEOUT_MS);
   const tokensRes = await getDustAPI(ds).tokenize(
     sanitizedText,
-    ds.dataSourceId
+    ds.dataSourceId,
+    { signal: controller.signal }
   );
+  clearTimeout(timeoutId);
   if (tokensRes.isErr()) {
     logger.error(
       {
