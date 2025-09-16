@@ -33,11 +33,29 @@ function isParentOrSamePath(parentPath: string, childPath: string): boolean {
 }
 
 /**
- * Adds a path to the tree by adding it to the 'in' array and removing it from 'notIn' if present.
- * If a parent path is already included, don't add child paths to avoid redundancy.
- * When adding a parent path, removes any child paths from 'in' to avoid redundancy.
- *
- * @returns New tree with the node added
+ * Helper function to check if two paths are siblings (same parent, same depth)
+ */
+function areSiblingPaths(path1: string, path2: string): boolean {
+  const path1Parts = path1.split("/");
+  const path2Parts = path2.split("/");
+
+  // Must have same depth
+  if (path1Parts.length !== path2Parts.length) {
+    return false;
+  }
+
+  // All parts except the last one must match (same parent)
+  for (let i = 0; i < path1Parts.length - 1; i++) {
+    if (path1Parts[i] !== path2Parts[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Adds a path to the tree, handling parent-child relationships and "select all with exclusions" patterns.
  */
 export function addNodeToTree(
   tree: DataSourceBuilderTreeType,
@@ -63,6 +81,37 @@ export function addNodeToTree(
   }
 
   if (tree.notIn.map((el) => el.path).includes(path)) {
+    // Special case: if we're adding back the EXACT excluded item in "select all with exclusions" mode,
+    // and it's the last exclusion, restore the original "select all" selection
+    if (
+      tree.in.length === 0 &&
+      newNotIn.length === 0 &&
+      tree.notIn.length === 1
+    ) {
+      // Only trigger restoration if we're adding back the exact excluded path
+      const excludedPath = tree.notIn[0].path;
+      if (excludedPath === path) {
+        const pathParts = excludedPath.split("/");
+
+        // For document-level exclusions, the parent is likely the data source
+        // Remove the last segment (document id) to get the data source path
+        if (pathParts.length > 1) {
+          const parentPath = pathParts.slice(0, -1).join("/");
+
+          return {
+            in: [
+              {
+                ...item, // Preserve the original item structure
+                path: parentPath,
+                name: "All documents",
+              },
+            ],
+            notIn: [],
+          };
+        }
+      }
+    }
+
     return {
       in: tree.in,
       notIn: newNotIn,
@@ -74,6 +123,24 @@ export function addNodeToTree(
       in: tree.in,
       notIn: newNotIn,
     };
+  }
+
+  // Handle "select all with exclusions" scenario:
+  // If tree.in is empty but tree.notIn has exclusions, we're in a "select all" state
+  // Check if the item we're trying to add would be implicitly selected in this state
+  if (tree.in.length === 0 && tree.notIn.length > 0) {
+    // Check if this item would already be selected by the "select all" pattern
+    const wouldBeSelected = tree.notIn.some((notInPath) =>
+      areSiblingPaths(notInPath.path, path)
+    );
+
+    // If it already is selected, just remove it from exclusions
+    if (wouldBeSelected) {
+      return {
+        in: tree.in,
+        notIn: newNotIn,
+      };
+    }
   }
 
   const newIn = tree.in.filter(
@@ -89,11 +156,7 @@ export function addNodeToTree(
 }
 
 /**
- * Removes a node from the tree by adding it to the 'notIn' array and removing it from 'in' if present.
- * Also removes any child paths from 'in' that would be blocked by the exclusion.
- * If a parent path is already excluded, don't add redundant child exclusions.
- *
- * @returns New tree with the node removed
+ * Removes a node from the tree, handling exclusions and "select all with exclusions" patterns.
  */
 export function removeNodeFromTree(
   tree: DataSourceBuilderTreeType,
@@ -138,6 +201,29 @@ export function removeNodeFromTree(
     };
   }
 
+  // Handle "select all with exclusions" scenario:
+  // If tree.in is empty but tree.notIn has exclusions, we're in a "select all" state
+  // Check if the item we're trying to remove is implicitly selected (a sibling of excluded items)
+  if (tree.in.length === 0 && tree.notIn.length > 0) {
+    // Check if this item is a sibling of any excluded item
+    const isImplicitlySelected = tree.notIn.some((notInPath) =>
+      areSiblingPaths(notInPath.path, pathStr)
+    );
+
+    // If it's implicitly selected by the "select all" pattern, add it to exclusions
+    if (isImplicitlySelected) {
+      newNotIn.push({
+        path: pathStr,
+        ...opts,
+      });
+    }
+
+    return {
+      in: newIn,
+      notIn: newNotIn,
+    };
+  }
+
   // Add to notIn if:
   // 1. We removed children from notIn (hasChildExclusions) - replace them with parent exclusion
   // 2. OR the path would be included by a parent and we're not removing child inclusions
@@ -160,12 +246,7 @@ export function removeNodeFromTree(
 
 /**
  * Determines if a path should be selected based on tree configuration.
- * Returns:
- * - true: The path is fully selected (explicitly or through parent selection)
- * - false: The path is fully unselected (explicitly excluded or not included)
- * - 'partial': The path has mixed selection state (some children selected, some not)
- *
- * Optimized to use maximum 2 passes over the arrays.
+ * Returns true, false, or "partial" for mixed selection states.
  */
 export function isNodeSelected(
   tree: DataSourceBuilderTreeType,
@@ -199,13 +280,62 @@ export function isNodeSelected(
     }
   }
 
-  return isIncluded
-    ? hasChildExclusions
-      ? "partial"
-      : true
-    : hasChildInclusions
-      ? "partial"
-      : false;
+  // Handle explicit inclusions first
+  if (isIncluded) {
+    return hasChildExclusions ? "partial" : true;
+  }
+
+  // Handle partial selections from child inclusions
+  if (hasChildInclusions) {
+    return "partial";
+  }
+
+  // Handle "select all with exclusions" scenario:
+  // If there are no explicit inclusions anywhere in the tree, but there are exclusions,
+  // then we infer this was a "select all" scenario
+  if (tree.in.length === 0 && tree.notIn.length > 0) {
+    // If this path has child exclusions, it should be partial
+    if (hasChildExclusions) {
+      return "partial";
+    }
+
+    // For each exclusion, check if the current path is a sibling
+    for (const notInPath of tree.notIn) {
+      // If they are siblings and current path is not excluded, it should be selected
+      if (
+        areSiblingPaths(notInPath.path, pathStr) &&
+        notInPath.path !== pathStr
+      ) {
+        return true;
+      }
+    }
+
+    // Check if this path is a child of any implicitly selected path
+    // If Design is selected via sibling logic, then files inside Design should also be selected
+    for (const notInPath of tree.notIn) {
+      const currentPathParts = pathStr.split("/");
+      const notInPathParts = notInPath.path.split("/");
+
+      // Find all potential parent paths at the same depth as excluded items
+      for (
+        let depth = notInPathParts.length;
+        depth < currentPathParts.length;
+        depth++
+      ) {
+        const potentialParentPath = currentPathParts.slice(0, depth).join("/");
+
+        // If this potential parent is a sibling of the excluded item, then this child should be selected
+        if (
+          areSiblingPaths(notInPath.path, potentialParentPath) &&
+          notInPath.path !== potentialParentPath
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 export function getLastNavigationHistoryEntryId(
