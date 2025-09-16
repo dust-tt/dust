@@ -1,14 +1,14 @@
-import { ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
+import { Spinner } from "@dust-tt/sparkle";
+import React, { useCallback, useMemo } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
   findDataSourceViewFromNavigationHistory,
   getLatestNodeFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
-import type { DataSourceRowData } from "@app/components/data_source_view/hooks/useDataSourceColumns";
-import { useDataSourceColumns } from "@app/components/data_source_view/hooks/useDataSourceColumns";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type { ContentNodesViewType } from "@app/types";
@@ -46,14 +46,13 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     sorting: [{ field: "title", direction: "asc" }],
   });
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
     if (hasNextPage && !isLoadingMore) {
       await loadMore();
     }
-  };
+  }, [hasNextPage, isLoadingMore, loadMore]);
 
-  const columns = useDataSourceColumns();
-  const nodeRows: DataSourceRowData[] = useMemo(
+  const listItems: DataSourceListItem[] = useMemo(
     () =>
       childNodes.map((node) => {
         return {
@@ -80,13 +79,13 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   }
 
   return (
-    <ScrollableDataTable
-      data={nodeRows}
-      columns={columns}
-      getRowId={(row) => row.id}
+    <DataSourceList
+      items={listItems}
       onLoadMore={handleLoadMore}
+      hasMore={hasNextPage}
       isLoading={isLoadingMore}
-      maxHeight
+      showSelectAllHeader
+      headerTitle="Name"
     />
   );
 }
