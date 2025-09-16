@@ -28,7 +28,6 @@ export function AgentBuilderLeftPanel({
   isTriggersLoading,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleCancel = async () => {
     onCancel();
