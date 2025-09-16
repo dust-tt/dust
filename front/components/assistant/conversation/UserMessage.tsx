@@ -23,7 +23,7 @@ import {
   getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
-import { formatMessageTime } from "@app/lib/utils/timestamps";
+import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
 interface UserMessageProps {
@@ -62,7 +62,7 @@ export function UserMessage({
           pictureUrl={message.context.profilePictureUrl || message.user?.image}
           name={message.context.fullName ?? undefined}
           renderName={(name) => <div className="heading-base">{name}</div>}
-          timestamp={formatMessageTime(message.created)}
+          timestamp={formatTimestring(message.created)}
           infoChip={
             message.context.origin === "triggered" && (
               <TriggerChip message={message} />
@@ -91,49 +91,52 @@ export function UserMessage({
   );
 }
 
+function getChipDateFormat(date: Date) {
+  return date.toLocaleDateString("en-EN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function Label({ message }: { message?: UserMessageType }) {
+  if (message?.context.lastTriggerRunAt) {
+    return (
+      <div className="flex flex-col gap-1 text-sm">
+        <span className="font-bold">Scheduled and sent automatically</span>
+        {message?.created && (
+          <span>
+            <span className="font-semibold">Current execution</span>:{" "}
+            {getChipDateFormat(new Date(message?.created))}
+          </span>
+        )}
+        {message?.context.lastTriggerRunAt && (
+          <span>
+            <span className="font-semibold">Previous run</span>:{" "}
+            {getChipDateFormat(new Date(message?.context.lastTriggerRunAt))}
+          </span>
+        )}
+      </div>
+    );
+  } else {
+    return <span className="font-bold">Triggered and sent automatically</span>;
+  }
+}
+
 function TriggerChip({ message }: { message?: UserMessageType }) {
-  const getChipDateFormat = (date: Date) => {
-    return date.toLocaleDateString("en-EN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
-
-  const label = (function () {
-    if (message?.context.lastTriggerRunAt) {
-      return (
-        <div className="flex flex-col gap-1 text-sm">
-          <span className="font-bold">Scheduled and sent automatically</span>
-          {message?.created && (
-            <span>
-              <span className="font-semibold">Current execution</span>:{" "}
-              {getChipDateFormat(new Date(message?.created))}
-            </span>
-          )}
-          {message?.context.lastTriggerRunAt && (
-            <span>
-              <span className="font-semibold">Previous run</span>:{" "}
-              {getChipDateFormat(new Date(message?.context.lastTriggerRunAt))}
-            </span>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <span className="font-bold">Triggered and sent automatically</span>
-      );
-    }
-  })();
-
   const icon = message?.context.lastTriggerRunAt ? (
     <ClockIcon className="h-4 w-4" />
   ) : (
     <BellIcon className="h-4 w-4" />
   );
 
-  return <Tooltip label={label} trigger={<Avatar size="xs" visual={icon} />} />;
+  return (
+    <Tooltip
+      label={<Label message={message} />}
+      trigger={<Avatar size="xs" visual={icon} />}
+    />
+  );
 }

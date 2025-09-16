@@ -18,7 +18,7 @@ export const cleanTimestamp = (
   return null;
 };
 
-export const formatMessageTime = (timestamp: number): string => {
+export const formatTimestring = (timestamp: number): string => {
   const date = new Date(timestamp);
   return date.toLocaleTimeString("en-US", {
     hour12: false,

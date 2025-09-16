@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { formatMessageTime } from "@app/shared/lib/utils";
+import { formatTimestring } from "@app/shared/lib/utils";
 import { AgentSuggestion } from "@app/ui/components/conversation/AgentSuggestion";
 import {
   CiteBlock,
@@ -57,7 +57,7 @@ export function UserMessage({
           renderName={(name) => name}
           type="user"
           citations={citations}
-          timestamp={formatMessageTime(message.created)}
+          timestamp={formatTimestring(message.created)}
         >
           <div className="flex flex-col gap-4">
             <div>
