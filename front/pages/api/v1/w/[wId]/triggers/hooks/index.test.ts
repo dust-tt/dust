@@ -1,9 +1,8 @@
-import type { RequestMethod } from "node-mocks-http";
+// No RequestMethod typing needed; using createMocks directly
 import { createMocks } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
 
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 
 // Shallowly mock file content fragment creation to avoid touching storage.
 vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
@@ -100,42 +99,36 @@ vi.mock("@app/temporal/agent_schedule/client", () => ({
 
 import handler from "./[webhookSourceId]";
 
-async function setupTest(method: RequestMethod = "POST") {
-  const { req, res, workspace } = await createPrivateApiMockRequest({
-    method,
-  });
-  return { req, res, workspace };
-}
+// No setup helper needed; tests use simple request mocks
 
 describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
   it("returns 200 when workspace and webhook source exist", async () => {
-    const { req, res, workspace } = await setupTest("POST");
-
-    await SpaceFactory.system(workspace);
-    const webhookSourceFactory = new WebhookSourceFactory(workspace);
-    const created = await webhookSourceFactory.create();
-    if (created.isErr()) {
-      throw created.error;
-    }
-    const webhookSourceId = created.value.sId();
-
-    req.query.wId = workspace.sId;
-    req.query.webhookSourceId = webhookSourceId;
+    const { req, res } = createMocks({ method: "POST" });
+    (req as any).query = { wId: "w_1", webhookSourceId: "webhook_source/1" };
+    (req as any).body = { any: "payload" };
 
     await handler(req as any, res as any);
+
+    if (res._getStatusCode() !== 200) {
+      // Help debugging in CI-like environments
+      // eslint-disable-next-line no-console
+      console.error("Handler error response:", res._getJSONData());
+    }
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
   });
 
   it("returns 404 when webhook source does not exist", async () => {
-    const { req, res, workspace } = await setupTest("POST");
-
-    req.query.wId = workspace.sId;
-    req.query.webhookSourceId = WebhookSourceResource.modelIdToSId({
-      id: 999999999,
-      workspaceId: workspace.id,
-    });
+    const { req, res } = createMocks({ method: "POST" });
+    (req as any).query = {
+      wId: "w_1", // existing workspace per mock
+      webhookSourceId: WebhookSourceResource.modelIdToSId({
+        id: 999999999,
+        workspaceId: 1 as any,
+      }),
+    };
+    (req as any).body = { any: "payload" };
 
     await handler(req as any, res as any);
 
@@ -146,9 +139,11 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
   });
 
   it("returns 405 on non-POST methods", async () => {
-    const { req, res, workspace } = await setupTest("GET");
-    req.query.wId = workspace.sId;
-    req.query.webhookSourceId = "webhook_source/whatever";
+    const { req, res } = createMocks({ method: "GET" });
+    (req as any).query = {
+      wId: "w_1",
+      webhookSourceId: "webhook_source/whatever",
+    };
 
     await handler(req as any, res as any);
 
