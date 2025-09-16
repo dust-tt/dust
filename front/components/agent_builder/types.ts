@@ -168,7 +168,7 @@ export const capabilityFormSchema = z
     return true;
   });
 
-export function getDefaultMCPAction(
+export function getDefaultMCPxAction(
   mcpServerView?: MCPServerViewType
 ): AgentBuilderAction {
   const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
@@ -187,7 +187,7 @@ export function getDefaultMCPAction(
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: toolsConfigurations.noRequirement, // TODO : rename and change downstream
+    configurable: toolsConfigurations.configurable,
   };
 }
 
