@@ -35,7 +35,6 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
-  fileContent: string | undefined;
   fileName?: string;
   owner: LightWorkspaceType;
   fileId: string;
@@ -43,7 +42,6 @@ interface ExportContentDropdownProps {
 
 function ExportContentDropdown({
   iframeRef,
-  fileContent,
   fileName,
   owner,
   fileId,
@@ -60,7 +58,7 @@ function ExportContentDropdown({
   };
 
   const downloadAsCode = () => {
-    if (!fileContent || !fileName) {
+    if (!fileName) {
       return;
     }
 
@@ -248,7 +246,6 @@ export function ClientExecutableRenderer({
         />
         <ExportContentDropdown
           iframeRef={iframeRef}
-          fileContent={fileContent}
           fileName={fileName}
           owner={owner}
           fileId={fileId}
