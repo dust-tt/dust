@@ -1,5 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
-import React, { memo, useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
@@ -19,9 +19,7 @@ interface DataSourceNodeTableProps {
   viewType: ContentNodesViewType;
 }
 
-export const DataSourceNodeTable = memo(function DataSourceNodeTable({
-  viewType,
-}: DataSourceNodeTableProps) {
+export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const { owner } = useAgentBuilderContext();
   const { navigationHistory, addNodeEntry } = useDataSourceBuilderContext();
 
@@ -90,4 +88,4 @@ export const DataSourceNodeTable = memo(function DataSourceNodeTable({
       headerTitle="Name"
     />
   );
-});
+}
