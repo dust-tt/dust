@@ -28,6 +28,8 @@ makeScript({}, async ({ execute }, logger) => {
     {} as Record<number, TriggerModel[]>
   );
 
+  let affectedTriggersCount = 0;
+
   // For each workspace, process all triggers sequentially.
   for (const w of Object.keys(triggersByWorkspace)) {
     const workspace = await WorkspaceModel.findByPk(w);
@@ -38,7 +40,7 @@ makeScript({}, async ({ execute }, logger) => {
 
     // Fetch all triggers resources from sIds.
     const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
-    const sIds = triggersByWorkspace[w].map((t) =>
+    const sIds = triggersByWorkspace[workspace.id].map((t) =>
       TriggerResource.modelIdToSId({ id: t.id, workspaceId: t.workspaceId })
     );
     const triggers = await TriggerResource.fetchByIds(auth, sIds);
@@ -65,6 +67,7 @@ makeScript({}, async ({ execute }, logger) => {
           { triggerId: t.sId(), triggerName: t.name },
           "Trigger reset successful."
         );
+        affectedTriggersCount++;
         logger.info(
           "----------------------------------------------------------------------------------------"
         );
@@ -79,4 +82,8 @@ makeScript({}, async ({ execute }, logger) => {
       }
     }
   }
+
+  logger.info(
+    `Script completed. ${affectedTriggersCount} triggers were reset.`
+  );
 });
