@@ -334,6 +334,16 @@ function generateConfiguredInput({
       return { appId, mimeType };
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET: {
+      const secretName = actionConfiguration.secretName;
+
+      if (!secretName) {
+        throw new Error("Invalid Secret configuration");
+      }
+
+      return { secretName, mimeType };
+    }
+
     default:
       assertNever(mimeType);
   }
@@ -564,6 +574,7 @@ export interface MCPServerToolsConfigurations {
     }
   >;
   mayRequireDustAppConfiguration: boolean;
+  mayRequireSecretConfiguration: boolean;
   configurable: "no" | "optional" | "required";
 }
 
@@ -585,6 +596,7 @@ export function getMCPServerToolsConfigurations(
       enumConfigurations: {},
       listConfigurations: {},
       mayRequireDustAppConfiguration: false,
+      mayRequireSecretConfiguration: false,
       configurable: "optional",
     };
   }
@@ -863,6 +875,9 @@ export function getMCPServerToolsConfigurations(
     configurable = "no";
   }
 
+  const mayRequireSecretConfiguration =
+    mcpServerView.server.requiresSecret === true;
+
   return {
     mayRequireDataSourceConfiguration,
     mayRequireDataWarehouseConfiguration,
@@ -877,6 +892,7 @@ export function getMCPServerToolsConfigurations(
     enumConfigurations,
     listConfigurations,
     mayRequireDustAppConfiguration,
+    mayRequireSecretConfiguration,
     configurable,
   };
 }

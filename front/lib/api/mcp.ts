@@ -79,6 +79,7 @@ export type MCPServerType = {
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   documentationUrl: string | null;
+  requiresSecret?: boolean;
 };
 
 export type RemoteMCPServerType = MCPServerType & {

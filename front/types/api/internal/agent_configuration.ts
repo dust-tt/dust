@@ -149,6 +149,7 @@ const MCPServerActionConfigurationSchema = t.type({
     t.union([t.boolean, t.number, t.string, t.array(t.string), t.null])
   ),
   dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
+  secretName: t.union([t.string, t.null, t.undefined]),
 });
 
 const multiActionsCommonFields = {

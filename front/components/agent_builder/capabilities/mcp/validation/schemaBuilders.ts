@@ -69,6 +69,9 @@ export function createDynamicConfigurationFields(
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
+    secretName: requirements.mayRequireSecretConfiguration
+      ? z.string().min(1, VALIDATION_MESSAGES.secret.required)
+      : z.null(),
     additionalConfiguration: createAdditionalConfigurationSchema(requirements),
   };
 }

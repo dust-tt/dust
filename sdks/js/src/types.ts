@@ -657,6 +657,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
+  | "openai_usage_mcp"
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
@@ -2702,6 +2703,7 @@ const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "openai"
 >();
 
 const InternalAllowedIconSchema = FlexibleEnumSchema<
@@ -2736,6 +2738,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SlackLogo"
   | "StripeLogo"
+  | "OpenaiLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<

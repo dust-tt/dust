@@ -24,4 +24,8 @@ export const VALIDATION_MESSAGES = {
     required: "Description is required",
     tooLong: "Description too long",
   },
+  secret: {
+    required: "Secret selection is required",
+    invalid: "Please select a valid secret",
+  },
 } as const;
