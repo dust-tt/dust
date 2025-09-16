@@ -328,8 +328,7 @@ export function GenericActionDetails({
             />
           )}
 
-          {action.generatedFiles.filter((f) => !("hidden" in f && f.hidden))
-            .length > 0 && (
+          {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (
             <>
               <span className="heading-base">Generated Files</span>
               <div className="flex flex-col gap-1">
