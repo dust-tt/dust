@@ -15,7 +15,7 @@ export function computeBase64ByteSize(base64: string): number {
   return Math.ceil((base64.length * 3) / 4);
 }
 
-export const getMaxSize = (item: CallToolResult["content"][number]) => {
+export function getMaxSize(item: CallToolResult["content"][number]) {
   switch (item.type) {
     case "text":
       return MAX_TEXT_CONTENT_SIZE;
@@ -26,11 +26,11 @@ export const getMaxSize = (item: CallToolResult["content"][number]) => {
     default:
       return 1 * 1024 * 1024; // 1MB default
   }
-};
+}
 
-export const calculateContentSize = (
+export function calculateContentSize(
   item: CallToolResult["content"][number]
-): number => {
+): number {
   switch (item.type) {
     case "text":
       return computeTextByteSize(item.text);
@@ -53,10 +53,10 @@ export const calculateContentSize = (
     default:
       return 0;
   }
-};
+}
 
-export const isValidContentSize = (
+export function isValidContentSize(
   content: CallToolResult["content"]
-): boolean => {
+): boolean {
   return !content.some((item) => calculateContentSize(item) > getMaxSize(item));
-};
+}

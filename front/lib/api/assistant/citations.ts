@@ -113,6 +113,7 @@ export const getLightAgentMessageFromAgentMessage = (
   return {
     type: "agent_message",
     sId: agentMessage.sId,
+    created: agentMessage.created,
     version: agentMessage.version,
     parentMessageId: agentMessage.parentMessageId,
     content: agentMessage.content,

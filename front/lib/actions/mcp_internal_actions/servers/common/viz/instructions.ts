@@ -88,7 +88,6 @@ export const VIZ_LIBRARY_USAGE = `
 
 export const VIZ_MISCELLANEOUS_GUIDELINES = `
 - Miscellaneous:
-  - When creating content only use utf-8 characters and never render non-utf-8 characters.
   - Images from the web cannot be rendered or used in the visualization (no internet access).
   - When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.

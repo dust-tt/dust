@@ -17,7 +17,7 @@ import {
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useDeleteMetadata } from "@app/lib/swr/user";
+import { useDeleteMetadata, useUserApprovals } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -47,26 +47,30 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     owner,
     connectionType: "personal",
   });
+  const { approvals, isApprovalsLoading, mutateApprovals } =
+    useUserApprovals(owner);
   const { deleteMetadata } = useDeleteMetadata();
 
   const handleDeleteToolMetadata = useCallback(
     async (mcpServerId: string) => {
-      try {
-        await deleteMetadata(`toolsValidations:${mcpServerId}`);
-        sendNotification({
-          title: "Success!",
-          description: "Tool approbation history deleted.",
-          type: "success",
-        });
-      } catch (error) {
+      const response = await deleteMetadata(`toolsValidations:${mcpServerId}`);
+      if (response && !response.ok) {
         sendNotification({
           title: "Error",
           description: "Failed to delete tool approbation history.",
           type: "error",
         });
+        return;
       }
+
+      await mutateApprovals();
+      sendNotification({
+        title: "Success!",
+        description: "Tool approbation history deleted.",
+        type: "success",
+      });
     },
-    [sendNotification, deleteMetadata]
+    [sendNotification, deleteMetadata, mutateApprovals]
   );
 
   const { deleteMCPServerConnection } = useDeleteMCPServerConnection({
@@ -84,7 +88,17 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       (c) => c.internalMCPServerId ?? `${c.remoteMCPServerId}`
     );
 
+    const approvalServerIds = new Set(
+      approvals.map((approval) => approval.mcpServerId)
+    );
+
     return serverViews
+      .filter((serverView) => {
+        // Only include servers that have approvals OR have connections
+        const hasConnection = !!connectionsByServerId[serverView.server.sId];
+        const hasApproval = approvalServerIds.has(serverView.server.sId);
+        return hasConnection || hasApproval;
+      })
       .filter(
         (serverView) =>
           (serverView.name ?? serverView.server.name)
@@ -104,7 +118,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         onClick: () => {},
         moreMenuItems: [],
       }));
-  }, [serverViews, connections, searchQuery]);
+  }, [serverViews, connections, approvals, searchQuery]);
 
   // Define columns for the actions table
   const actionColumns = useMemo<ColumnDef<UserTableRow>[]>(
@@ -149,7 +163,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           <DataTable.MoreButton
             menuItems={[
               {
-                label: "Delete confirmation preferences",
+                label: "Clear confirmation preferences",
                 onClick: () =>
                   handleDeleteToolMetadata(row.original.serverView.server.sId),
                 kind: "item",
@@ -189,7 +203,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         />
       </div>
 
-      {isMCPServerViewsLoading || isConnectionsLoading ? (
+      {isMCPServerViewsLoading || isConnectionsLoading || isApprovalsLoading ? (
         <div className="flex justify-center p-6">
           <Spinner />
         </div>
@@ -201,7 +215,9 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         />
       ) : (
         <Label>
-          {searchQuery ? "No matching tools found" : "No tools available"}
+          {searchQuery
+            ? "No matching tools found"
+            : "You don't have any tool-specific settings yet."}
         </Label>
       )}
     </>

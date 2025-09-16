@@ -10,12 +10,14 @@ interface PublicClientExecutableRendererProps {
   fileId: string;
   fileName?: string;
   shareToken: string;
+  workspaceId: string;
 }
 
 export function PublicClientExecutableRenderer({
   fileId,
   fileName,
   shareToken,
+  workspaceId,
 }: PublicClientExecutableRendererProps) {
   const { fileContent, isFileLoading, isFileError } = usePublicFile({
     shareToken,
@@ -51,14 +53,15 @@ export function PublicClientExecutableRenderer({
           <VisualizationActionIframe
             agentConfigurationId={null}
             conversationId={null}
-            workspace={null}
+            workspaceId={workspaceId}
             visualization={{
               code: fileContent ?? "",
               complete: true,
               identifier: `viz-${fileId}`,
             }}
             key={`viz-${fileId}`}
-            isInDrawer={true}
+            isInDrawer
+            isPublic
           />
         </div>
       </div>

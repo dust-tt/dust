@@ -89,13 +89,13 @@ export const SpinnerExample = () => {
       </div>
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
-          <Spinner variant="color" size="xxl" />
+          <Spinner variant="color" size="2xl" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="mono" size="xxl" />
+          <Spinner variant="mono" size="2xl" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="rose300" size="xxl" />
+          <Spinner variant="rose300" size="2xl" />
         </div>
       </div>
     </div>

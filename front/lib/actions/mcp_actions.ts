@@ -44,11 +44,7 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  extractToolBlockedAwaitingInputResponse,
-  isToolBlockedAwaitingInputResponse,
-  ToolBlockedAwaitingInputError,
-} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -226,6 +222,25 @@ function makeClientSideMCPToolConfigurations(
   }));
 }
 
+function generateContentMetadata(content: CallToolResult["content"]): {
+  type: "text" | "image" | "resource" | "audio" | "resource_link";
+  byteSize: number;
+  maxSize: number;
+}[] {
+  const result = [];
+  for (const item of content) {
+    const byteSize = calculateContentSize(item);
+    const maxSize = getMaxSize(item);
+
+    result.push({ type: item.type, byteSize, maxSize });
+
+    if (byteSize > maxSize) {
+      break;
+    }
+  }
+  return result;
+}
+
 type MCPCallToolEvent =
   | {
       type: "notification";
@@ -233,13 +248,7 @@ type MCPCallToolEvent =
     }
   | {
       type: "result";
-      result: Result<
-        CallToolResult["content"],
-        | Error
-        | McpError
-        | MCPServerPersonalAuthenticationRequiredError
-        | ToolBlockedAwaitingInputError
-      >;
+      result: Result<CallToolResult["content"], Error | McpError>;
     };
 
 /**
@@ -298,6 +307,19 @@ export async function* tryCallMCPTool(
       agentLoopContext: { runContext: agentLoopRunContext },
     });
     if (r.isErr()) {
+      if (r.error instanceof MCPServerPersonalAuthenticationRequiredError) {
+        yield {
+          type: "result",
+          result: new Ok(
+            makePersonalAuthenticationError(
+              r.error.provider,
+              r.error.scope
+            ).content
+          ),
+        };
+        return;
+      }
+
       yield {
         type: "result",
         result: r,
@@ -372,69 +394,13 @@ export async function* tryCallMCPTool(
     // Tool is done now, wait for the actual result.
     const toolCallResult = await toolPromise;
 
+    // We do not check toolCallResult.isError here and raise an error if true as this would break
+    // the conversation.
+    // Instead, we let the model decide what to do based on the content exposed.
+
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: CallToolResult["content"] = (toolCallResult.content ??
       []) as CallToolResult["content"];
-
-    // Do not raise an error here as it will break the conversation.
-    // Let the model decide what to do.
-    if (toolCallResult.isError) {
-      // Check if MCP tool called for personal re-authentication
-      if (
-        Array.isArray(toolCallResult.content) &&
-        toolCallResult.content.length > 0
-      ) {
-        const jsonContent = toolCallResult.content[0];
-        if (jsonContent?.type === "text") {
-          try {
-            const parsed = JSON.parse(jsonContent.text);
-            if (
-              parsed?.__dust_auth_required &&
-              connectionParamsRes.value.type === "mcpServerId" &&
-              connectionParamsRes.value.oAuthUseCase === "personal_actions"
-            ) {
-              const authReq = parsed.__dust_auth_required;
-              yield {
-                type: "result",
-                result: new Err(
-                  new MCPServerPersonalAuthenticationRequiredError(
-                    connectionParamsRes.value.mcpServerId,
-                    authReq.provider
-                  )
-                ),
-              };
-              return;
-            } else if (isToolBlockedAwaitingInputResponse(parsed)) {
-              const { blockingEvents, state } =
-                extractToolBlockedAwaitingInputResponse(parsed);
-              const err = new ToolBlockedAwaitingInputError(
-                blockingEvents,
-                state
-              );
-
-              yield {
-                type: "result",
-                result: new Err(err),
-              };
-              return;
-            }
-          } catch {
-            // Not valid JSON, continue with normal processing
-          }
-        }
-      }
-
-      logger.error(
-        {
-          conversationId,
-          error: toolCallResult.content,
-          messageId,
-          toolName: toolConfiguration.originalName,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        `Error calling MCP tool in tryCallMCPTool().`
-      );
-    }
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
       yield {
@@ -447,38 +413,14 @@ export async function* tryCallMCPTool(
       };
     }
 
-    const generateContentMetadata = (
-      content: CallToolResult["content"]
-    ): {
-      type: "text" | "image" | "resource" | "audio" | "resource_link";
-      byteSize: number;
-      maxSize: number;
-    }[] => {
-      const result = [];
-      for (const item of content) {
-        const byteSize = calculateContentSize(item);
-        const maxSize = getMaxSize(item);
-        const metadata = { type: item.type, byteSize, maxSize };
-        result.push(metadata);
-
-        if (byteSize > maxSize) {
-          break;
-        }
-      }
-      return result;
-    };
-
-    const serverType = (() => {
-      if (isClientSideMCPToolConfiguration(toolConfiguration)) {
-        return "client";
-      }
-
-      if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-        return "internal";
-      }
-
-      return "remote";
-    })();
+    let serverType;
+    if (isClientSideMCPToolConfiguration(toolConfiguration)) {
+      serverType = "client";
+    } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+      serverType = "internal";
+    } else {
+      serverType = "remote";
+    }
 
     if (serverType === "remote") {
       const isValid = isValidContentSize(content);

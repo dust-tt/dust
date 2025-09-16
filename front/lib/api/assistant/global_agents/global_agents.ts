@@ -9,11 +9,11 @@ import {
   _getClaudeInstantGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
-import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust";
+import { _getDustGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   _getDustDeepGlobalAgent,
   _getDustTaskGlobalAgent,
-} from "@app/lib/api/assistant/global_agents/configurations/dust-deep";
+} from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
   _getHelperGlobalAgent,
@@ -73,6 +73,7 @@ function getGlobalAgent({
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
   slideshowMCPServerView,
+  deepResearchMCPServerView,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -88,6 +89,7 @@ function getGlobalAgent({
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
   slideshowMCPServerView: MCPServerViewResource | null;
+  deepResearchMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -280,6 +282,7 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
+        deepResearchMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_DEEP:
@@ -368,6 +371,7 @@ export async function getGlobalAgents(
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
     slideshowMCPServerView,
+    deepResearchMCPServerView,
   ] = await Promise.all([
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -428,6 +432,12 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "slideshow"
+        )
+      : null,
+    variant === "full"
+      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "deep_research"
         )
       : null,
   ]);
@@ -493,6 +503,7 @@ export async function getGlobalAgents(
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,
       slideshowMCPServerView,
+      deepResearchMCPServerView,
     })
   );
 

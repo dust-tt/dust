@@ -1078,10 +1078,21 @@ impl<'de> Deserialize<'de> for Row {
         let value = serde_json::Map::deserialize(deserializer)?;
 
         match value["value"].as_object() {
-            Some(subvalue) => Ok(Row::new_from_value(
-                value["row_id"].to_string(),
-                subvalue.clone(),
-            )),
+            Some(subvalue) => {
+                let row_id_val = value
+                    .get("row_id")
+                    .ok_or_else(|| D::Error::custom("Missing row_id in Row"))?;
+
+                let row_id = if let Some(s) = row_id_val.as_str() {
+                    s.to_string()
+                } else if let Some(i) = row_id_val.as_i64() {
+                    i.to_string()
+                } else {
+                    return Err(D::Error::custom("Invalid row_id type in Row"));
+                };
+
+                Ok(Row::new_from_value(row_id, subvalue.clone()))
+            }
             None => Err(D::Error::custom("Missing value in Row")),
         }
     }

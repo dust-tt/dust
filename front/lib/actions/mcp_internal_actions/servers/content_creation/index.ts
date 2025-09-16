@@ -4,7 +4,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { validateContent } from "@app/lib/actions/mcp_internal_actions/servers/common/viz/validation";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
@@ -20,8 +19,12 @@ import {
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import type { ContentCreationFileContentType } from "@app/types";
-import { clientExecutableContentType, Err, Ok } from "@app/types";
-import { CONTENT_CREATION_FILE_FORMATS } from "@app/types";
+import {
+  clientExecutableContentType,
+  CONTENT_CREATION_FILE_FORMATS,
+  Err,
+  Ok,
+} from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
@@ -82,13 +85,6 @@ const createServer = (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
       ) => {
-        const validationResult = validateContent(content);
-        if (validationResult.isErr()) {
-          return new Err(
-            new MCPError(validationResult.error.message, { tracked: false })
-          );
-        }
-
         const { conversation, agentConfiguration } =
           agentLoopContext?.runContext ?? {};
 
@@ -109,7 +105,11 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return new Err(new MCPError(result.error.message));
+          return new Err(
+            new MCPError(result.error.message, {
+              tracked: result.error.tracked,
+            })
+          );
         }
 
         const { value: fileResource } = result;
@@ -210,13 +210,6 @@ const createServer = (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
-        const validationResult = validateContent(new_string);
-        if (validationResult.isErr()) {
-          return new Err(
-            new MCPError(validationResult.error.message, { tracked: false })
-          );
-        }
-
         const { agentConfiguration } = agentLoopContext?.runContext ?? {};
 
         const result = await editClientExecutableFile(auth, {
@@ -229,7 +222,9 @@ const createServer = (
 
         if (result.isErr()) {
           return new Err(
-            new MCPError(result.error.message, { tracked: false })
+            new MCPError(result.error.message, {
+              tracked: result.error.tracked,
+            })
           );
         }
 

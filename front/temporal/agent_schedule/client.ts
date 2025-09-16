@@ -9,10 +9,13 @@ import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
-import { agentScheduleWorkflow } from "@app/temporal/agent_schedule/workflows";
+import { agentTriggerWorkflow } from "@app/temporal/agent_schedule/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
+import type {
+  ScheduleTriggerType,
+  TriggerType,
+} from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
 
 function getScheduleOptions(
@@ -23,7 +26,7 @@ function getScheduleOptions(
   return {
     action: {
       type: "startWorkflow",
-      workflowType: agentScheduleWorkflow,
+      workflowType: agentTriggerWorkflow,
       args: [
         auth.getNonNullableUser().sId,
         auth.getNonNullableWorkspace().sId,
@@ -142,4 +145,40 @@ export async function deleteAgentScheduleWorkflow({
     childLogger.error({ err }, "Failed to delete scheduled workflow.");
     return new Err(normalizeError(err));
   }
+}
+
+export async function launchAgentTriggerWorkflow({
+  auth,
+  trigger,
+}: {
+  auth: Authenticator;
+  trigger: TriggerResource;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForAgentNamespace();
+
+  const workflowId = makeAgentTriggerWorkflowId(
+    auth.getNonNullableUser().sId,
+    auth.getNonNullableWorkspace().sId,
+    trigger.toJSON()
+  );
+
+  await client.workflow.start(agentTriggerWorkflow, {
+    args: [
+      auth.getNonNullableUser().sId,
+      auth.getNonNullableWorkspace().sId,
+      trigger.toJSON(),
+    ],
+    taskQueue: QUEUE_NAME,
+    workflowId,
+  });
+
+  return new Ok(undefined);
+}
+
+function makeAgentTriggerWorkflowId(
+  userId: string,
+  workspaceId: string,
+  trigger: TriggerType
+): string {
+  return `agent-trigger-${trigger.kind}-${userId}-${workspaceId}-${trigger.id}`;
 }

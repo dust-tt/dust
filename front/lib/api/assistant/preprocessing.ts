@@ -177,13 +177,30 @@ export async function renderConversationForModel(
           return `@${name}`;
         }
       );
+
+      let systemContext = "";
+      if (m.context.origin === "triggered") {
+        const items = [];
+        if (m.created) {
+          items.push(`- Current date: ${new Date(m.created).toISOString()}`);
+        }
+        if (m.context.lastTriggerRunAt) {
+          items.push(
+            `- Last scheduled run: ${m.context.lastTriggerRunAt.toISOString()}`
+          );
+        }
+        if (items.length > 0) {
+          systemContext = `<dust_system>\n${items.join("\n")}\n</dust_system>\n\n`;
+        }
+      }
+
       messages.push({
         role: "user" as const,
         name: m.context.fullName || m.context.username,
         content: [
           {
             type: "text",
-            text: content,
+            text: systemContext + content,
           },
         ],
       });

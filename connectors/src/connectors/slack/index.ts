@@ -17,7 +17,7 @@ import {
 } from "@connectors/connectors/slack/auto_read_channel";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import {
-  getChannels,
+  getAllChannels,
   joinChannelWithRetries,
 } from "@connectors/connectors/slack/lib/channels";
 import { slackConfig } from "@connectors/connectors/slack/lib/config";
@@ -550,7 +550,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         const slackClient = await getSlackClient(connector.id);
 
         // Fetch all channels from Slack
-        const allChannels = await getChannels(slackClient, connector.id, false);
+        const allChannels = await getAllChannels(slackClient, connector.id);
 
         const results: Result<boolean, Error>[] = [];
 
@@ -817,7 +817,7 @@ async function getFilteredChannels(
     const slackClient = await getSlackClient(connectorId);
 
     const [remoteChannels, localChannels] = await Promise.all([
-      getChannels(slackClient, connectorId, false),
+      getAllChannels(slackClient, connectorId),
       SlackChannel.findAll({
         where: {
           connectorId,

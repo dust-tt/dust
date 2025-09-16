@@ -156,6 +156,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Activate second version of @research agent (dust only for evals).",
     stage: "dust_only",
   },
+  deep_research_as_a_tool: {
+    description: "Activate deep research as a tool",
+    stage: "dust_only",
+  },
   hootl: {
     description: "Display Triggers section in the Agent Builder",
     stage: "rolling_out",
@@ -185,6 +189,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   hootl_webhooks: {
     description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
     stage: "dust_only",
+  },
+  use_openai_eu_key: {
+    description: "Use OpenAI EU API key instead of the default OpenAI API key",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

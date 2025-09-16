@@ -31,7 +31,6 @@ import {
   isStoreResourceProgressOutput,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolBlockedAwaitingInputError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type {
   ActionGeneratedFileType,
@@ -82,13 +81,7 @@ export async function* executeMCPTool({
   agentMessage: AgentMessageType;
 }): AsyncGenerator<
   ToolNotificationEvent | MCPApproveExecutionEvent,
-  Result<
-    CallToolResult["content"],
-    | Error
-    | McpError
-    | MCPServerPersonalAuthenticationRequiredError
-    | ToolBlockedAwaitingInputError
-  > | null,
+  Result<CallToolResult["content"], Error | McpError> | null,
   unknown
 > {
   await action.updateStatus("running");

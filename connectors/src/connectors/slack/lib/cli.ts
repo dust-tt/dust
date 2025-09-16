@@ -3,8 +3,8 @@ import {
   findMatchingChannelPatterns,
 } from "@connectors/connectors/slack/auto_read_channel";
 import {
+  getAllChannels,
   getChannelById,
-  getChannels,
   joinChannel,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
@@ -368,7 +368,7 @@ export const slack = async ({
       const slackClient = await getSlackClient(connector.id);
 
       // Fetch all channels from Slack
-      const allChannels = await getChannels(slackClient, connector.id, false);
+      const allChannels = await getAllChannels(slackClient, connector.id);
       logger.info(
         { connectorId: connector.id, totalChannels: allChannels.length },
         "Fetched all channels from Slack"

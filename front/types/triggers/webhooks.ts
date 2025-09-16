@@ -1,7 +1,16 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
 import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
+
+export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
+  "sha1",
+  "sha256",
+  "sha512",
+] as const;
+
+export type WebhookSourceSignatureAlgorithm =
+  (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
 export type WebhookSourceType = {
   id: ModelId;
@@ -9,7 +18,7 @@ export type WebhookSourceType = {
   name: string;
   secret: string | null;
   signatureHeader: string | null;
-  signatureAlgorithm: "sha1" | "sha256" | "sha512" | null;
+  signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
   customHeaders: Record<string, string> | null;
   createdAt: number;
   updatedAt: number;
@@ -30,14 +39,13 @@ export type WebhookSourceWithViews = WebhookSourceType & {
   views: WebhookSourceViewType[];
 };
 
-export const WebhookSourceSchema = t.type({
-  name: t.string,
-  secret: t.string,
-  signatureHeader: t.string,
-  signatureAlgorithm: t.union([
-    t.literal("sha1"),
-    t.literal("sha256"),
-    t.literal("sha512"),
-  ]),
-  customHeaders: t.record(t.string, t.string),
+export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
+
+export const PostWebhookSourcesSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  secret: z.string().min(1, "Secret is required"),
+  signatureHeader: z.string().min(1, "Signature header is required"),
+  signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
+  customHeaders: z.record(z.string(), z.string()).nullable(),
+  includeGlobal: z.boolean().optional(),
 });

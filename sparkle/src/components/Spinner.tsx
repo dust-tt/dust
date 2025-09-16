@@ -13,7 +13,7 @@ import animLightLG from "@sparkle/lottie/spinnerLightLG";
 import animLightXS from "@sparkle/lottie/spinnerLightXS";
 
 type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
-const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "xxl"] as const;
+const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
 
 type SpinnerVariant =
   | "mono"
@@ -43,7 +43,7 @@ const pxSizeClasses: Record<SpinnerSizeType, string> = {
   md: "24",
   lg: "32",
   xl: "128",
-  xxl: "192",
+  "2xl": "192",
 };
 
 type LottieColorType = [number, number, number, number];
@@ -111,7 +111,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
         anim = animLightXS;
         break;
       case "xl":
-      case "xxl":
+      case "2xl":
         anim = animLightLG;
         break;
       default:
@@ -139,7 +139,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
         anim = animColorXS;
         break;
       case "xl":
-      case "xxl":
+      case "2xl":
         anim = animColorLG;
         break;
       default:
@@ -162,7 +162,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
         anim = animLightXS;
         break;
       case "xl":
-      case "xxl":
+      case "2xl":
         anim = animLightLG;
         break;
       default:
@@ -185,7 +185,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
         anim = animDarkXS;
         break;
       case "xl":
-      case "xxl":
+      case "2xl":
         anim = animDarkLG;
         break;
       default:
@@ -210,7 +210,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
       darkAnim = animDarkXS;
       break;
     case "xl":
-    case "xxl":
+    case "2xl":
       lightAnim = animLightLG;
       darkAnim = animDarkLG;
       break;

@@ -113,7 +113,10 @@ export async function getOrCreateConversation(
           email: null,
           profilePictureUrl: mainAgent.pictureUrl,
           // `run_agent` origin will skip adding the conversation to the user history.
-          origin: "run_agent",
+          origin:
+            mainConversation.sId !== conversationId
+              ? "run_agent"
+              : "agent_handover",
           selectedMCPServerViewIds: toolsetsToAdd,
         },
       },

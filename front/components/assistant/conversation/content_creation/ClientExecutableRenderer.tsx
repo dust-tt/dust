@@ -23,7 +23,7 @@ import { ShareContentCreationFilePopover } from "@app/components/assistant/conve
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { isFileUsingConversationFiles } from "@app/lib/files";
+import { isUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type {
@@ -124,8 +124,8 @@ export function ClientExecutableRenderer({
   });
   const { fileMetadata } = useFileMetadata({ fileId, owner });
 
-  const isUsingConversationFiles = React.useMemo(
-    () => (fileContent ? isFileUsingConversationFiles(fileContent) : false),
+  const isFileUsingConversationFiles = React.useMemo(
+    () => (fileContent ? isUsingConversationFiles(fileContent) : false),
     [fileContent]
   );
 
@@ -244,7 +244,7 @@ export function ClientExecutableRenderer({
         <ShareContentCreationFilePopover
           fileId={fileId}
           owner={owner}
-          isUsingConversationFiles={isUsingConversationFiles}
+          isUsingConversationFiles={isFileUsingConversationFiles}
         />
       </ContentCreationHeader>
 
@@ -263,7 +263,7 @@ export function ClientExecutableRenderer({
                 fileMetadata?.useCaseMetadata
                   .lastEditedByAgentConfigurationId ?? ""
               }
-              workspace={owner}
+              workspaceId={owner.sId}
               visualization={{
                 code: fileContent ?? "",
                 complete: true,

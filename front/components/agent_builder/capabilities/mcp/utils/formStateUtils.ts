@@ -4,7 +4,7 @@ import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderForm
 import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import logger from "@app/logger/logger";
+import datadogLogger from "@app/logger/datadogLogger";
 
 /**
  * Creates form reset function for different dialog modes
@@ -34,21 +34,29 @@ export function createFormResetHandler(
           configuration: configurationTool.configuration,
         });
       } else if (mcpServerView) {
-        // New configuration mode: reset with default values
-        const defaultValues = getDefaultFormValues(mcpServerView);
-        form.reset({
-          ...defaultValues,
-          configuration: {
-            ...defaultValues.configuration,
-            mcpServerViewId: mcpServerView.sId,
-          },
-        });
+        // New configuration mode: check if we need to reset
+        const currentValues = form.getValues();
+        const currentMcpServerViewId =
+          currentValues.configuration?.mcpServerViewId;
+
+        // Only reset if we're switching to a different MCP server or don't have the right ID
+        if (currentMcpServerViewId !== mcpServerView.sId) {
+          const defaultValues = getDefaultFormValues(mcpServerView);
+          const resetData = {
+            ...defaultValues,
+            configuration: {
+              ...defaultValues.configuration,
+              mcpServerViewId: mcpServerView.sId,
+            },
+          };
+          form.reset(resetData);
+        }
       } else {
         // No server view: reset to empty state
         form.reset(getDefaultFormValues(null));
       }
     } catch (error) {
-      logger.warn({ err: error }, "Form reset error");
+      datadogLogger.warn({ err: error }, "Form reset error");
       // Fallback: reset to default values
       form.reset(getDefaultFormValues(null));
     }

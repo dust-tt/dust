@@ -1,22 +1,37 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { WebhookSourceWithViews } from "@app/types/triggers/webhooks";
+import type {
+  WebhookSourceType,
+  WebhookSourceWithViews,
+} from "@app/types/triggers/webhooks";
+import { PostWebhookSourcesSchema } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
   webhookSourcesWithViews: WebhookSourceWithViews[];
 };
 
+export type PostWebhookSourcesResponseBody = {
+  success: true;
+  webhookSource: WebhookSourceType;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetWebhookSourcesResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      GetWebhookSourcesResponseBody | PostWebhookSourcesResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
@@ -60,12 +75,98 @@ async function handler(
         });
       }
     }
+
+    case "POST": {
+      const bodyValidation = PostWebhookSourcesSchema.safeParse(req.body);
+
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const {
+        name,
+        secret,
+        signatureHeader,
+        signatureAlgorithm,
+        customHeaders,
+        includeGlobal,
+      } = bodyValidation.data;
+
+      const workspace = auth.getNonNullableWorkspace();
+
+      try {
+        const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
+          workspaceId: workspace.id,
+          name,
+          secret,
+          signatureHeader,
+          signatureAlgorithm,
+          customHeaders,
+        });
+
+        if (webhookSourceRes.isErr()) {
+          throw new Error(webhookSourceRes.error.message);
+        }
+
+        const webhookSource = webhookSourceRes.value.toJSON();
+
+        if (includeGlobal) {
+          const systemView =
+            await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+              auth,
+              webhookSource.id
+            );
+
+          if (systemView === null) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Missing system view for webhook source, it should have been created when creating the webhook source.",
+              },
+            });
+          }
+
+          const globalSpace =
+            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+          await WebhookSourcesViewResource.create(auth, {
+            systemView,
+            space: globalSpace,
+          });
+        }
+
+        return res.status(201).json({
+          success: true,
+          webhookSource,
+        });
+      } catch (error) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to create webhook source.",
+          },
+        });
+      }
+    }
+
     default: {
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
     }

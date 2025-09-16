@@ -2,30 +2,25 @@ import { useEffect, useState } from "react";
 
 // Define breakpoints
 export const breakpoints = {
-  xs: 0,
+  xxs: 0,
+  xs: 512,
   sm: 640,
   md: 768,
   lg: 1024,
   xl: 1280,
-  xxl: 1536,
+  "2xl": 1536,
 };
 
 // Helper function to determine active breakpoint
 function getActiveBreakpoint(width: number): keyof typeof breakpoints {
-  if (width >= breakpoints.xxl) {
-    return "xxl";
-  }
-  if (width >= breakpoints.xl) {
-    return "xl";
-  }
-  if (width >= breakpoints.lg) {
-    return "lg";
-  }
-  if (width >= breakpoints.md) {
-    return "md";
-  }
-  if (width >= breakpoints.sm) {
-    return "sm";
+  const breakpointEntries = Object.entries(breakpoints) as [keyof typeof breakpoints, number][];
+  // Sort breakpoints from largest to smallest
+  const sortedBreakpoints = breakpointEntries.sort(([, a], [, b]) => b - a);
+  
+  for (const [breakpoint, minWidth] of sortedBreakpoints) {
+    if (width >= minWidth) {
+      return breakpoint;
+    }
   }
   return "xs";
 }
@@ -62,5 +57,3 @@ export function useWindowSize() {
 
   return windowSize;
 }
-
-export default useWindowSize;

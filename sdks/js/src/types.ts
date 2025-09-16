@@ -215,6 +215,14 @@ export const supportedAudioFileFormats = {
   "audio/webm": [".webm"],
 } as const;
 
+// Webhook trigger endpoint (skeleton) response type
+export const PostWebhookTriggerResponseSchema = z.object({
+  success: z.literal(true),
+});
+export type PostWebhookTriggerResponseType = z.infer<
+  typeof PostWebhookTriggerResponseSchema
+>;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 type AudioContentType = keyof typeof supportedAudioFileFormats;
@@ -295,10 +303,12 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
   | "run_agent"
+  | "agent_handover"
   | "excel"
   | "powerpoint"
 >()
@@ -623,6 +633,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
+  | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
@@ -658,6 +669,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
+  | "use_openai_eu_key"
   | "xai_feature"
   | "simple_audio_transcription"
 >();
@@ -890,6 +902,7 @@ const UserMessageContextSchema = z.object({
   origin: UserMessageOriginSchema,
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
+  lastTriggerRunAt: z.date().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({

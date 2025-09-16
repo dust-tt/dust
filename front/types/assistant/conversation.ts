@@ -82,12 +82,14 @@ export type UserMessageOrigin =
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
   | "excel"
   | "powerpoint"
-  | "run_agent";
+  | "run_agent"
+  | "agent_handover";
 
 export type UserMessageContext = {
   username: string;
@@ -96,6 +98,7 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
+  lastTriggerRunAt?: Date | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
 };
@@ -147,6 +150,7 @@ export type BaseAgentMessageType = {
   type: "agent_message";
   sId: string;
   version: number;
+  created: number;
   parentMessageId: string | null;
   status: AgentMessageStatus;
   content: string | null;
