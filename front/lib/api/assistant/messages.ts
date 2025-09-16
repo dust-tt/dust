@@ -68,8 +68,8 @@ export async function generateParsedContents(
   agentConfiguration: LightAgentConfigurationType,
   messageId: string,
   contents: { step: number; content: AgentContentItemType }[]
-): Promise<Record<number, Array<ParsedContentItem>>> {
-  const parsedContents: Record<number, Array<ParsedContentItem>> = {};
+): Promise<Record<number, ParsedContentItem[]>> {
+  const parsedContents: Record<number, ParsedContentItem[]> = {};
   const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
 
   for (const c of contents) {
@@ -112,7 +112,6 @@ export async function generateParsedContents(
       if (matchingAction) {
         parsedContents[step].push({ kind: "action", action: matchingAction });
       }
-      continue;
     }
   }
 
