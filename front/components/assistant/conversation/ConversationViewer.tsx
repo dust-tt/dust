@@ -1,5 +1,6 @@
 import { Spinner } from "@dust-tt/sparkle";
 import debounce from "lodash/debounce";
+import groupBy from "lodash/groupBy";
 import React, {
   useCallback,
   useEffect,
@@ -45,7 +46,6 @@ import {
   isContentFragmentType,
   isUserMessageType,
 } from "@app/types";
-import { groupBy } from "lodash";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
