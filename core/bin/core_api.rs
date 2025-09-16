@@ -13,7 +13,6 @@ use axum::{
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
-use parking_lot::Mutex;
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -28,6 +27,8 @@ use tokio::{
 use tokio_stream::Stream;
 use tracing::{error, info};
 
+use dust::api::api_state::APIState;
+use dust::api::projects;
 use dust::{
     api_keys::validate_api_key,
     app,
@@ -54,7 +55,7 @@ use dust::{
         DatasourceViewFilter, ElasticsearchSearchStore, NodeItem, NodesSearchFilter,
         NodesSearchOptions, SearchStore, TagsQueryType,
     },
-    sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
+    sqlite_workers::client::HEARTBEAT_INTERVAL_MS,
     stores::{
         postgres,
         store::{self, FolderUpsertParams, TableUpsertParams},
@@ -65,306 +66,10 @@ use dust::{
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-/// API State
-
-struct RunManager {
-    pending_apps: Vec<(app::App, run::Credentials, run::Secrets, bool)>,
-    pending_runs: Vec<String>,
-}
-
-struct APIState {
-    store: Box<dyn store::Store + Sync + Send>,
-    databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
-    qdrant_clients: QdrantClients,
-    search_store: Box<dyn SearchStore + Sync + Send>,
-    run_manager: Arc<Mutex<RunManager>>,
-}
-
-impl APIState {
-    fn new(
-        store: Box<dyn store::Store + Sync + Send>,
-        databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
-        qdrant_clients: QdrantClients,
-        search_store: Box<dyn SearchStore + Sync + Send>,
-    ) -> Self {
-        APIState {
-            store,
-            qdrant_clients,
-            databases_store,
-            search_store,
-            run_manager: Arc::new(Mutex::new(RunManager {
-                pending_apps: vec![],
-                pending_runs: vec![],
-            })),
-        }
-    }
-
-    fn run_app(
-        &self,
-        app: app::App,
-        credentials: run::Credentials,
-        secrets: run::Secrets,
-        store_blocks_results: bool,
-    ) {
-        let mut run_manager = self.run_manager.lock();
-        run_manager
-            .pending_apps
-            .push((app, credentials, secrets, store_blocks_results));
-    }
-
-    async fn stop_loop(&self) {
-        loop {
-            let pending_runs = {
-                let manager = self.run_manager.lock();
-                info!(
-                    pending_runs = manager.pending_runs.len(),
-                    "[GRACEFUL] stop_loop pending runs",
-                );
-                manager.pending_runs.len()
-            };
-            if pending_runs == 0 {
-                break;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
-        }
-    }
-
-    async fn run_loop(&self) -> Result<()> {
-        let mut loop_count = 0;
-
-        loop {
-            let apps: Vec<(app::App, run::Credentials, run::Secrets, bool)> = {
-                let mut manager = self.run_manager.lock();
-                let apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
-                apps.iter().for_each(|app| {
-                    manager
-                        .pending_runs
-                        .push(app.0.run_ref().unwrap().run_id().to_string());
-                });
-                apps
-            };
-            apps.into_iter().for_each(|mut app| {
-                let store = self.store.clone();
-                let databases_store = self.databases_store.clone();
-                let qdrant_clients = self.qdrant_clients.clone();
-                let manager = self.run_manager.clone();
-
-                // Start a task that will run the app in the background.
-                tokio::task::spawn(async move {
-                    let now = std::time::Instant::now();
-
-                    match app
-                        .0
-                        .run(
-                            app.1,
-                            app.2,
-                            store,
-                            databases_store,
-                            qdrant_clients,
-                            None,
-                            app.3,
-                        )
-                        .await
-                    {
-                        Ok(()) => {
-                            info!(
-                                run = app.0.run_ref().unwrap().run_id(),
-                                app_version = app.0.hash(),
-                                elapsed = now.elapsed().as_millis(),
-                                "Run finished"
-                            );
-                        }
-                        Err(e) => {
-                            error!(error = %e, "Run error");
-                        }
-                    }
-                    {
-                        let mut manager = manager.lock();
-                        manager
-                            .pending_runs
-                            .retain(|run_id| run_id != app.0.run_ref().unwrap().run_id());
-                    }
-                });
-            });
-            loop_count += 1;
-            tokio::time::sleep(std::time::Duration::from_millis(4)).await;
-            if loop_count % 1024 == 0 {
-                let manager = self.run_manager.lock();
-                let runs_count = manager.pending_runs.len();
-                if runs_count > 0 || loop_count % 65536 == 0 {
-                    info!(pending_runs = runs_count, "Pending runs {}", runs_count);
-                }
-            }
-            // Roughly every 4 minutes, cleanup dead SQLite workers if any.
-            if loop_count % 65536 == 0 {
-                let store = self.store.clone();
-                tokio::task::spawn(async move {
-                    match store
-                        .sqlite_workers_cleanup(client::HEARTBEAT_INTERVAL_MS)
-                        .await
-                    {
-                        Err(e) => {
-                            error!(error = %e, "Failed to cleanup SQLite workers");
-                        }
-                        Ok(_) => (),
-                    }
-                });
-            }
-        }
-    }
-}
-
 /// Index
 
 async fn index() -> &'static str {
     "dust_api server ready"
-}
-
-/// Create a new project (simply generates an id)
-
-async fn projects_create(State(state): State<Arc<APIState>>) -> (StatusCode, Json<APIResponse>) {
-    match state.store.create_project().await {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to create a new project",
-            Some(e),
-        ),
-        Ok(project) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "project": project,
-                })),
-            }),
-        ),
-    }
-}
-
-async fn projects_delete(
-    State(state): State<Arc<APIState>>,
-    Path(project_id): Path<i64>,
-) -> (StatusCode, Json<APIResponse>) {
-    let project = project::Project::new_from_id(project_id);
-
-    // Check if the project has data sources and raise if it does.
-    match state.store.has_data_sources(&project).await {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to check project has data sources before deletion",
-                Some(e),
-            )
-        }
-        Ok(has_data_sources) => {
-            if has_data_sources {
-                return error_response(
-                    StatusCode::BAD_REQUEST,
-                    "bad_request",
-                    "Cannot delete a project with data sources",
-                    None,
-                );
-            }
-        }
-    }
-
-    // Delete the project
-    match state.store.delete_project(&project).await {
-        Err(e) => error_response(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "internal_server_error",
-            "Failed to delete project",
-            Some(e),
-        ),
-        Ok(()) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "success": true
-                })),
-            }),
-        ),
-    }
-}
-
-/// Clones a project.
-/// Simply consists in cloning the latest dataset versions, as we don't copy runs and hence specs.
-
-async fn projects_clone(
-    State(state): State<Arc<APIState>>,
-    Path(project_id): Path<i64>,
-) -> (StatusCode, Json<APIResponse>) {
-    let cloned = project::Project::new_from_id(project_id);
-
-    // Create cloned project
-    let project = match state.store.create_project().await {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to create cloned project",
-                Some(e),
-            )
-        }
-        Ok(project) => project,
-    };
-
-    // Retrieve datasets
-    let datasets = match state.store.list_datasets(&cloned).await {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to list cloned project datasets",
-                Some(e),
-            )
-        }
-        Ok(datasets) => datasets,
-    };
-
-    // Load and register datasets
-    let store = state.store.clone();
-    match futures::future::join_all(datasets.iter().map(|(d, v)| async {
-        let dataset = match store
-            .load_dataset(&cloned, &d.clone(), &v[0].clone().0)
-            .await?
-        {
-            Some(dataset) => dataset,
-            None => Err(anyhow!(
-                "Could not find latest version of dataset {}",
-                d.clone()
-            ))?,
-        };
-        store.register_dataset(&project, &dataset).await?;
-        Ok::<(), anyhow::Error>(())
-    }))
-    .await
-    .into_iter()
-    .collect::<Result<Vec<_>>>()
-    {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to clone project datasets",
-                Some(e),
-            )
-        }
-        Ok(_) => (),
-    }
-
-    (
-        StatusCode::OK,
-        Json(APIResponse {
-            error: None,
-            response: Some(json!({
-                "project": project,
-            })),
-        }),
-    )
 }
 
 /// Check a specification
@@ -4281,9 +3986,9 @@ fn main() {
 
         let router = Router::new()
         // Projects
-        .route("/projects", post(projects_create))
-        .route("/projects/{project_id}", delete(projects_delete))
-        .route("/projects/{project_id}/clone", post(projects_clone))
+        .route("/projects", post(projects::projects_create))
+        .route("/projects/{project_id}", delete(projects::projects_delete))
+        .route("/projects/{project_id}/clone", post(projects::projects_clone))
         // Specifications
         .route(
             "/projects/{project_id}/specifications/check",
