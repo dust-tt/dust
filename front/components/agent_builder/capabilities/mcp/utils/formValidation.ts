@@ -33,7 +33,7 @@ export function validateMCPActionConfiguration(
   try {
     const toolsConfigurations = getMCPServerToolsConfigurations(serverView);
 
-    if (toolsConfigurations.noRequirement) {
+    if (!toolsConfigurations.configurable) {
       return { isValid: true };
     }
 

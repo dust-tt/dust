@@ -98,7 +98,8 @@ describe("getDefaultConfiguration", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
-        noRequirement: true,
+        noRequirement: false,
+        configurable: true,
       });
 
       const result = getDefaultConfiguration(mockMCPServerView);
@@ -130,6 +131,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+        configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -169,6 +171,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -195,7 +198,8 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: true,
+          noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -234,6 +238,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -272,6 +277,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -308,6 +314,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -349,6 +356,7 @@ describe("getDefaultConfiguration", () => {
           },
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -392,6 +400,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -426,6 +435,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -472,6 +482,7 @@ describe("getDefaultConfiguration", () => {
           },
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -543,6 +554,7 @@ describe("getDefaultConfiguration", () => {
           },
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -611,6 +623,7 @@ describe("getDefaultConfiguration", () => {
           },
           mayRequireDustAppConfiguration: false,
           noRequirement: false,
+          configurable: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -751,6 +764,7 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
         noRequirement: false,
+        configurable: true,
       });
 
       const result = getDefaultConfiguration(mockMCPServerView);

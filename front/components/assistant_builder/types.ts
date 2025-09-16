@@ -136,7 +136,7 @@ export function getDefaultMCPServerActionConfiguration(
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    noConfigurationRequired: toolsConfigurations.noRequirement,
+    noConfigurationRequired: toolsConfigurations.noRequirement, // TODO : rename and change downstream
   };
 }
 
