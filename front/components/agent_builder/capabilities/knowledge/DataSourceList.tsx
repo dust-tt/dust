@@ -1,7 +1,14 @@
-import { Button, Checkbox, Icon } from "@dust-tt/sparkle";
+import { Checkbox, Icon, Spinner } from "@dust-tt/sparkle";
 import { Separator } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
-import { memo, useCallback, useContext } from "react";
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+} from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -60,11 +67,32 @@ export const DataSourceList = memo(function DataSourceList({
   } = useDataSourceBuilderContext();
   const confirm = useContext(ConfirmContext);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const handleLoadMore = useCallback(async () => {
     if (hasMore && !isLoading && onLoadMore) {
       await onLoadMore();
     }
   }, [hasMore, isLoading, onLoadMore]);
+
+  // Infinite scroll implementation
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !hasMore || isLoading || !onLoadMore) {
+      return;
+    }
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // Trigger loading when we're within 100px of the bottom
+      if (scrollHeight - scrollTop - clientHeight < 100) {
+        void handleLoadMore();
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [hasMore, isLoading, onLoadMore, handleLoadMore]);
 
   const shouldHideCheckbox = useCallback(
     (item: DataSourceListItem): boolean => {
@@ -137,10 +165,8 @@ export const DataSourceList = memo(function DataSourceList({
 
   return (
     <div
-      className={cn(
-        "flex max-h-full flex-col gap-1 overflow-auto pr-1",
-        className
-      )}
+      ref={containerRef}
+      className={cn("flex max-h-full flex-col overflow-auto pr-1", className)}
     >
       <Separator />
       {items.map((item) => {
@@ -153,10 +179,9 @@ export const DataSourceList = memo(function DataSourceList({
           : !hideCheckbox;
 
         return (
-          <>
+          <Fragment key={item.id}>
             <div
-              key={item.id}
-              className="flex cursor-pointer items-center gap-3 rounded-md p-2 hover:bg-muted/60"
+              className="flex cursor-pointer items-center gap-3 rounded-md p-3 hover:bg-muted/60"
               onClick={() => item.onClick?.()}
             >
               {shouldShowCheckbox ? (
@@ -178,18 +203,14 @@ export const DataSourceList = memo(function DataSourceList({
               </div>
             </div>
             <Separator />
-          </>
+          </Fragment>
         );
       })}
 
-      {hasMore && (
-        <div className="flex justify-center p-2">
-          <Button
-            variant="outline"
-            label={isLoading ? "Loading..." : "Load more"}
-            onClick={() => void handleLoadMore()}
-            disabled={isLoading}
-          />
+      {/* Loading indicator at the bottom */}
+      {isLoading && hasMore && (
+        <div className="flex justify-center py-4">
+          <Spinner size="sm" />
         </div>
       )}
     </div>
