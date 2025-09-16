@@ -21,8 +21,8 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { isAgentMention } from "@dust-tt/client";
-import groupBy from "lodash/groupBy";
 import debounce from "lodash/debounce";
+import groupBy from "lodash/groupBy";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 const formatDateSeparator = (timestamp: number): string => {
