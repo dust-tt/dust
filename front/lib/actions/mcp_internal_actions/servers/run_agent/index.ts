@@ -31,7 +31,6 @@ import type {
 } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
-  isMCPActionArray,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
@@ -54,6 +53,7 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
+import { isAgentMCPActionWithOutputType } from "@app/types/actions";
 
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
 
@@ -634,7 +634,10 @@ ${query}`
               const errorMessage = `User message error: ${event.error.message}`;
               return new Err(new MCPError(errorMessage));
             } else if (event.type === "agent_message_success") {
-              if (isMCPActionArray(event.message.actions)) {
+              if (
+              Array.isArray(event.message.actions) &&
+              event.message.actions.every(isAgentMCPActionWithOutputType)
+            ) {
                 refsFromAgent = getCitationsFromActions(event.message.actions);
                 files = event.message.actions.flatMap((action) =>
                   action.generatedFiles.filter((f) => !f.hidden)

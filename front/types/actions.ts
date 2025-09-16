@@ -24,3 +24,48 @@ export type AgentMCPActionWithOutputType = AgentMCPActionType & {
   generatedFiles: ActionGeneratedFileType[];
   output: CallToolResult["content"] | null;
 };
+
+// TODO(2025-09-16 aubin): remove this typeguard, either replace with a zod schema or fix the
+//  public type to remove the reliance on this typeguard.
+function isAgentMCPActionType(action: unknown): action is AgentMCPActionType {
+  return (
+    typeof action === "object" &&
+    action !== null &&
+    "agentMessageId" in action &&
+    typeof action.agentMessageId === "number" &&
+    "citationsAllocated" in action &&
+    typeof action.citationsAllocated === "number" &&
+    "functionCallName" in action &&
+    typeof action.functionCallName === "string" &&
+    "functionCallId" in action &&
+    typeof action.functionCallId === "string" &&
+    "id" in action &&
+    typeof action.id === "number" &&
+    "internalMCPServerName" in action &&
+    (action.internalMCPServerName === null ||
+      typeof action.internalMCPServerName === "string") &&
+    "mcpServerId" in action &&
+    (action.mcpServerId === null || typeof action.mcpServerId === "string") &&
+    "params" in action &&
+    typeof action.params === "object" &&
+    action.params !== null &&
+    "status" in action &&
+    typeof action.status === "string" &&
+    "step" in action &&
+    typeof action.step === "number"
+  );
+}
+
+// TODO(2025-09-16 aubin): remove this typeguard, either replace with a zod schema or fix the
+//  public type to remove the reliance on this typeguard.
+export function isAgentMCPActionWithOutputType(
+  action: unknown
+): action is AgentMCPActionWithOutputType {
+  return (
+    isAgentMCPActionType(action) &&
+    "generatedFiles" in action &&
+    Array.isArray(action.generatedFiles) &&
+    "output" in action &&
+    (action.output === null || Array.isArray(action.output))
+  );
+}
