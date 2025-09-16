@@ -17,7 +17,11 @@ import { CoreAPI } from "@app/types";
 
 export const PostTagSearchBodySchema = t.type({
   query: t.string,
-  queryType: t.string,
+  queryType: t.union([
+    t.literal("exact"),
+    t.literal("prefix"),
+    t.literal("match"),
+  ]),
   dataSourceViewIds: t.array(t.string),
 });
 
