@@ -1,3 +1,4 @@
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   ArrowDownOnSquareIcon,
   Button,
@@ -46,7 +47,9 @@ function ExportContentDropdown({
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage({ type: `EXPORT_PNG` }, "*");
     } else {
-      console.log("No iframe content window found");
+      datadogLogs.logger.info(
+        "Failed to export content as PNG: No iframe content window found"
+      );
     }
   };
 
