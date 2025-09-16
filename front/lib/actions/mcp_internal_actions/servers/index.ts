@@ -33,6 +33,7 @@ import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
+import { default as singleToolDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/single_tool_debugger";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
@@ -98,6 +99,8 @@ export async function getInternalMCPServer(
       return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
+    case "single_tool_debugger":
+      return singleToolDebuggerServer();
     case "think":
       return thinkServer();
     case "web_search_&_browse":

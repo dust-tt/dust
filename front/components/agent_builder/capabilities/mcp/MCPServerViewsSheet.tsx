@@ -371,7 +371,7 @@ export function MCPServerViewsSheet({
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerToolsConfigurations(mcpServerView);
 
-    if (!requirement.noRequirement) {
+    if (requirement.configurable) {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.mayRequireReasoningConfiguration;
 

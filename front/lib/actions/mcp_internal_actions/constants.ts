@@ -87,6 +87,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
+  "single_tool_debugger",
   "reasoning",
   "run_agent",
   "run_dust_app",
@@ -1017,6 +1018,28 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description:
         "Demo server showing a basic interaction with various configurable blocks.",
+      icon: "ActionEmotionLaughIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  single_tool_debugger: {
+    id: 1014,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("dev_mcp_actions");
+    },
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "single_tool_debugger",
+      version: "1.0.0",
+      description:
+        "Demo server with a single tool and one configurable setting.",
       icon: "ActionEmotionLaughIcon",
       authorization: null,
       documentationUrl: null,
