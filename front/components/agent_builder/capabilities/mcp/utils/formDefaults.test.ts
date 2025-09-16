@@ -98,7 +98,7 @@ describe("getDefaultConfiguration", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
-        noRequirement: false,
+        configurationNotObligatory: false,
         configurable: true,
       });
 
@@ -130,7 +130,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
         configurable: true,
         });
 
@@ -170,7 +170,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -198,7 +198,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -237,7 +237,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -276,7 +276,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -313,7 +313,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -355,7 +355,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -399,7 +399,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -434,7 +434,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -481,7 +481,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -553,7 +553,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -622,7 +622,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
-          noRequirement: false,
+          configurationNotObligatory: false,
           configurable: true,
         });
 
@@ -763,7 +763,7 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
-        noRequirement: false,
+        configurationNotObligatory: false,
         configurable: true,
       });
 

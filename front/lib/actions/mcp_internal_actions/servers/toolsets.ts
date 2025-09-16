@@ -62,7 +62,7 @@ const createServer = (
         )
         .filter(
           (mcpServerView) =>
-            getMCPServerToolsConfigurations(mcpServerView).noRequirement
+            getMCPServerToolsConfigurations(mcpServerView).configurationNotObligatory
         )
         .filter(
           (mcpServerView) =>

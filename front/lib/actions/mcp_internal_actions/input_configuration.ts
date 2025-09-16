@@ -560,7 +560,7 @@ export interface MCPServerToolsConfigurations {
     }
   >;
   mayRequireDustAppConfiguration: boolean;
-  noRequirement: boolean;
+  configurationNotObligatory: boolean;
   configurable: boolean;
 }
 
@@ -582,7 +582,7 @@ export function getMCPServerToolsConfigurations(
       enumConfigurations: {},
       listConfigurations: {},
       mayRequireDustAppConfiguration: false,
-      noRequirement: false,
+      configurationNotObligatory: false,
       configurable: true,
     };
   }
@@ -851,7 +851,7 @@ export function getMCPServerToolsConfigurations(
     enumConfigurations,
     listConfigurations,
     mayRequireDustAppConfiguration,
-    noRequirement: !configurable && hasDefaultsForAllConfigurableValues,
+    configurationNotObligatory: !configurable || hasDefaultsForAllConfigurableValues,
     configurable,
   };
 }
