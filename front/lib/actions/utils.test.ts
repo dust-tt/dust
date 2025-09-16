@@ -20,7 +20,7 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: toolName,
       });
 
       // Verify the metadata was stored correctly
@@ -39,13 +39,13 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: tool1,
+        functionCallName: tool1,
       });
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: tool2,
+        functionCallName: tool2,
       });
 
       const tools = await user.getMetadataAsArray(
@@ -63,13 +63,13 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: toolName,
       });
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: toolName,
       });
 
       const tools = await user.getMetadataAsArray(
@@ -85,7 +85,7 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: toolName,
       });
 
       const metadata = await user.getMetadata(
@@ -103,7 +103,7 @@ describe("Tool validation utilities", () => {
         setUserAlwaysApprovedTool({
           user,
           mcpServerId,
-          toolName,
+          functionCallName: toolName,
         })
       ).rejects.toThrow("mcpServerId is required");
     });
@@ -116,7 +116,7 @@ describe("Tool validation utilities", () => {
         setUserAlwaysApprovedTool({
           user,
           mcpServerId,
-          toolName,
+          functionCallName: toolName,
         })
       ).rejects.toThrow("toolName is required");
     });
@@ -131,17 +131,17 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "other-tool",
+        functionCallName: "other-tool",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: toolName,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "another-tool",
+        functionCallName: "another-tool",
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -161,7 +161,7 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "*",
+        functionCallName: "*",
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -181,12 +181,12 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "other-tool",
+        functionCallName: "other-tool",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "another-tool",
+        functionCallName: "another-tool",
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -219,22 +219,22 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "tool-prefix",
+        functionCallName: "tool-prefix",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "prefix-tool",
+        functionCallName: "prefix-tool",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "tool", // Exact match
+        functionCallName: "tool", // Exact match
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "tool-suffix",
+        functionCallName: "tool-suffix",
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -254,17 +254,17 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "tool-prefix",
+        functionCallName: "tool-prefix",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "prefix-tool",
+        functionCallName: "prefix-tool",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "my-tool-name",
+        functionCallName: "my-tool-name",
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -283,17 +283,17 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "regular-tool",
+        functionCallName: "regular-tool",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: toolName,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "another-tool",
+        functionCallName: "another-tool",
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -314,7 +314,7 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId: server1,
-        toolName,
+        functionCallName: toolName,
       });
 
       const result1 = await hasUserAlwaysApprovedTool({
@@ -341,17 +341,17 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "other-tool",
+        functionCallName: "other-tool",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "*",
+        functionCallName: "*",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: toolName,
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -370,17 +370,17 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "mytool",
+        functionCallName: "mytool",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "MYTOOL",
+        functionCallName: "MYTOOL",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "MyTool", // Exact case match
+        functionCallName: "MyTool", // Exact case match
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -399,17 +399,17 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "mytool",
+        functionCallName: "mytool",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "MYTOOL",
+        functionCallName: "MYTOOL",
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: "myTool",
+        functionCallName: "myTool",
       });
 
       const result = await hasUserAlwaysApprovedTool({
@@ -431,7 +431,7 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: toolName,
       });
 
       // Then check if it's approved
@@ -454,12 +454,12 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: tool1,
+        functionCallName: tool1,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: tool2,
+        functionCallName: tool2,
       });
 
       // Check each tool
@@ -494,7 +494,7 @@ describe("Tool validation utilities", () => {
         await setUserAlwaysApprovedTool({
           user,
           mcpServerId: server1,
-          toolName: tool,
+          functionCallName: tool,
         });
       }
 
@@ -502,14 +502,14 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId: server2,
-        toolName: tools[0],
+        functionCallName: tools[0],
       });
 
       // Add wildcard for server2
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId: server2,
-        toolName: "*",
+        functionCallName: "*",
       });
 
       // Test server1 - all tools should be approved individually
@@ -558,7 +558,7 @@ describe("Tool validation utilities", () => {
         await setUserAlwaysApprovedTool({
           user,
           mcpServerId,
-          toolName: tools[i],
+          functionCallName: tools[i],
         });
 
         // Verify all previously added tools are still there
@@ -587,7 +587,7 @@ describe("Tool validation utilities", () => {
         await setUserAlwaysApprovedTool({
           user,
           mcpServerId,
-          toolName: tool,
+          functionCallName: tool,
         });
       }
 
