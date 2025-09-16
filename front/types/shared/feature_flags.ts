@@ -160,10 +160,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Activate deep research as a tool",
     stage: "dust_only",
   },
-  hootl: {
-    description: "Display Triggers section in the Agent Builder",
-    stage: "rolling_out",
-  },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",

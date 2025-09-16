@@ -49,7 +49,7 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
-          {hasFeature("hootl") && (
+          {hasFeature("hootl_subscriptions") && (
             <AgentBuilderTriggersBlock
               owner={owner}
               isTriggersLoading={isTriggersLoading}
