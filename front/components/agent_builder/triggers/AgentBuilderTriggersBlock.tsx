@@ -3,6 +3,7 @@ import {
   CardGrid,
   ClockIcon,
   EmptyCTA,
+  Hoverable,
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
@@ -90,7 +91,19 @@ export function AgentBuilderTriggersBlock({
   return (
     <AgentBuilderSectionContainer
       title="[BETA] Triggers"
-      description="Triggers agent execution based on events."
+      description={
+        <>
+          Triggers agent execution based on events. Need help? Check our{" "}
+          <Hoverable
+            variant="primary"
+            href="https://docs.dust.tt/docs/scheduling-your-agent-beta#/"
+            target="_blank"
+          >
+            guide
+          </Hoverable>
+          .
+        </>
+      }
       headerActions={
         triggers.length > 0 && (
           <Button
