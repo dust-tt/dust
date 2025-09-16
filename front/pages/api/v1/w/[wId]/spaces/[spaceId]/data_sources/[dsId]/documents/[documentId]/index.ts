@@ -441,8 +441,8 @@ async function handler(
               content: r.data.text,
               sections: [],
             }
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          : r.data.section || null;
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            r.data.section || null;
 
       if (!section) {
         return apiError(req, res, {

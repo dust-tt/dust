@@ -446,8 +446,8 @@ const createServer = (): McpServer => {
       // Create subject and headers
       const replySubject = originalSubject?.startsWith("Re:")
         ? originalSubject
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        : `Re: ${originalSubject || "No Subject"}`;
+        : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          `Re: ${originalSubject || "No Subject"}`;
       const encodedSubject = `=?UTF-8?B?${Buffer.from(replySubject, "utf-8").toString("base64")}?=`;
       const threadingHeaders = createThreadingHeaders(
         originalMessageId,
@@ -571,8 +571,8 @@ const createQuoteSection = (
   const separator =
     originalDate && originalFrom
       ? `On ${escapeHtml(originalDate)}, ${escapeHtml(originalFrom)} wrote:`
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      : `${escapeHtml(originalFrom || "Original sender")} wrote:`;
+      : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        `${escapeHtml(originalFrom || "Original sender")} wrote:`;
 
   const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escapeHtml(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
 

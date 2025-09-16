@@ -470,7 +470,7 @@ export async function searchIssues(
     nextPageToken,
     sortBy,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 
   const jql = createJQLFromSearchFilters(filters, sortBy);
@@ -533,7 +533,7 @@ export async function searchJiraIssuesUsingJql(
     nextPageToken,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
     fields = ["summary"],
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 
   const requestBody: z.infer<typeof JiraSearchRequestSchema> = {

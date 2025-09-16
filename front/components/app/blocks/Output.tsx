@@ -431,8 +431,8 @@ export default function Output({
             t.meta &&
             (((t.meta as { logs: any[] }).logs &&
               (t.meta as { logs: any[] }).logs.length) ||
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               (t.meta as { provider_request_id?: string })
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 .provider_request_id ||
               (
                 t.meta as {
@@ -482,8 +482,8 @@ export default function Output({
                       .some(
                         (e) =>
                           (e as { logs: any[] }).logs.length ||
+                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                           (e as { provider_request_id?: string })
-                            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                             .provider_request_id ||
                           (
                             e as {

@@ -455,7 +455,7 @@ export const TrackerBuilder = ({
                       label={
                         TRACKER_FREQUENCIES.find(
                           (f) => f.value === tracker.frequency
-                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                         )?.label || "Select Frequency"
                       }
                       variant="outline"

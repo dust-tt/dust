@@ -130,7 +130,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         })) || []
       );
     }
@@ -140,7 +140,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         })) || []
       );
     }
@@ -150,7 +150,7 @@ function generateConfiguredInput({
         actionConfiguration.tables?.map((config) => ({
           uri: getTableURI(config),
           mimeType,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         })) || []
       );
     }

@@ -36,8 +36,8 @@ export function formatHubSpotObject(
       case "contacts":
         return object.properties.firstname && object.properties.lastname
           ? `${object.properties.firstname} ${object.properties.lastname}`
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          : object.properties.email ||
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            object.properties.email ||
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               object.properties.firstname ||
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

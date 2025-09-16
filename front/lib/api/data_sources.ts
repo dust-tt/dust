@@ -448,8 +448,8 @@ export async function upsertDocument({
           content: text,
           sections: [],
         }
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      : section || null;
+      : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        section || null;
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const nonNullTags = tags || [];

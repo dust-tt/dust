@@ -50,7 +50,7 @@ const fetchAgentBuilderSuggestions = async (
               builderState?.actions?.map((action) => ({
                 name: action.name,
                 description: action.description,
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               })) || []
             ),
           },

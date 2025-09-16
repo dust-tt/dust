@@ -239,8 +239,8 @@ export default function AgentBuilder({
         isDraft: false,
         agentConfigurationId: duplicateAgentId
           ? null
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          : agentConfiguration?.sId || null,
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            agentConfiguration?.sId || null,
         areSlackChannelsChanged: form.getFieldState(
           "agentSettings.slackChannels"
         ).isDirty,

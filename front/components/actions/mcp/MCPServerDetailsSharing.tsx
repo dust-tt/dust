@@ -80,7 +80,7 @@ export function MCPServerDetailsSharing({
     mcpServerWithViews?.views.map((v) => ({
       ...v,
       space: spaces.find((space) => space.sId === v.spaceId),
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     })) || [];
 
   const globalView = views.find((view) => view.space?.kind === "global");

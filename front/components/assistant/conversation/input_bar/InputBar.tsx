@@ -109,7 +109,7 @@ export function AssistantInputBar({
     if (
       baseAgentConfigurations.find(
         (a) => a.sId === additionalAgentConfiguration?.sId
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ) ||
       !additionalAgentConfiguration
     ) {

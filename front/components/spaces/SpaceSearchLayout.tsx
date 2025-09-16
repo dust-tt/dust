@@ -198,7 +198,7 @@ function BackendSearch({
     debouncedValue: debouncedSearch,
     isDebouncing,
     setValue: setSearchValue,
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = useDebounce(searchParam.value || "", {
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
