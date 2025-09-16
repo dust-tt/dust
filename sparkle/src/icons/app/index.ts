@@ -93,6 +93,7 @@ export { default as LogoutIcon } from "./Logout";
 export { default as MagicIcon } from "./Magic";
 export { default as MagnifyingGlassIcon } from "./MagnifyingGlass";
 export { default as MenuIcon } from "./Menu";
+export { default as MicIcon } from "./Mic";
 export { default as MoonIcon } from "./Moon";
 export { default as MoreIcon } from "./More";
 export { default as MovingMailIcon } from "./MovingMail";
