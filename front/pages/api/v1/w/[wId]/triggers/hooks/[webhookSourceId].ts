@@ -1,6 +1,7 @@
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -13,7 +14,6 @@ import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Err } from "@app/types";
 
 /**
@@ -177,7 +177,7 @@ async function handler(
       }
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, wId);
-      return await launchAgentTriggerWorkflow({
+      return launchAgentTriggerWorkflow({
         auth,
         trigger,
         contentFragment: contentFragmentRes.value,
@@ -193,14 +193,14 @@ async function handler(
     return apiError(
       req,
       res,
+      // Safe casts below on errors, thanks to the .filter above.
       {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: `Error launching agent trigger workflows: ${errors.map((e) => e.error.message).join(", ")}`,
+          message: `Error launching agent trigger workflows: ${errors.map((e) => (e as Err<Error>).error.message).join(", ")}`,
         },
       },
-      // Safe cast thanks to the .filter above.
       (errors[0] as Err<Error>).error
     );
   }

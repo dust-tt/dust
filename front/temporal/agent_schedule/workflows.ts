@@ -1,8 +1,8 @@
 import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@app/temporal/agent_schedule/activities";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import type { ContentFragmentInputWithFileIdType } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 const { runTriggeredAgentsActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
