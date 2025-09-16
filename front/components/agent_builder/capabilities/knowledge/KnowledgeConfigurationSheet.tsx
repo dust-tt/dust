@@ -265,7 +265,12 @@ function KnowledgeConfigurationSheetContent({
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
-  const hasSourceSelection = true;
+
+  const hasSourceSelection = useWatch({
+    compute: (formData: CapabilityFormData) => {
+      return formData.sources.in.length > 0;
+    },
+  });
 
   const config = useMemo(() => {
     if (mcpServerView !== null) {

@@ -10,12 +10,19 @@ import {
   useRef,
 } from "react";
 
+import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import {
+  addNodeToTree,
+  computeNavigationPath,
   findDataSourceViewFromNavigationHistory,
+  getLastNavigationHistoryEntryId,
   getLatestNodeFromNavigationHistory,
+  navigationHistoryEntryTitle,
+  pathToString,
+  removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 
@@ -51,9 +58,6 @@ interface DataSourceListProps {
    * If true, show a "Select All" header checkbox
    */
   showSelectAllHeader?: boolean;
-  /**
-   * Title for the header (e.g., "Name", "Data Sources", etc.)
-   */
   headerTitle?: string;
 }
 
@@ -75,6 +79,7 @@ export function DataSourceList({
     removeNode,
     navigationHistory,
   } = useDataSourceBuilderContext();
+  const { field } = useSourcesFormController();
   const confirm = useContext(ConfirmContext);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -164,40 +169,76 @@ export function DataSourceList({
     isRowSelected,
   ]);
 
-  const handleSelectAll = useCallback(
-    async (state: boolean | "indeterminate") => {
-      const selectableItems = items.filter((item) => {
-        const hideCheckbox = shouldHideCheckbox(item);
-        return !hideCheckbox && isRowSelectable(item.id);
+  const handleSelectAll = useCallback(async () => {
+    const selectableItems = items.filter((item) => {
+      const hideCheckbox = shouldHideCheckbox(item);
+      return !hideCheckbox && isRowSelectable(item.id);
+    });
+
+    // Batch all operations into a single field update
+    let newTreeValue = field.value;
+
+    if (selectAllState === false) {
+      // Currently unchecked -> select all unselected items
+      const itemsToSelect = selectableItems.filter((item) => {
+        const selectionState = isRowSelected(item.id);
+        return selectionState !== true;
       });
 
-      if (state === true) {
-        // Select all unselected items
-        for (const item of selectableItems) {
-          const selectionState = isRowSelected(item.id);
-          if (selectionState !== true) {
-            selectNode(item.entry);
-          }
-        }
-      } else {
-        // Unselect all selected items (for false or indeterminate)
-        for (const item of selectableItems) {
-          const selectionState = isRowSelected(item.id);
-          if (selectionState === true || selectionState === "partial") {
-            removeNode(item.entry);
-          }
+      // Add each node to the tree
+      for (const item of itemsToSelect) {
+        const nodePath = computeNavigationPath(navigationHistory);
+        nodePath.push(getLastNavigationHistoryEntryId(item.entry));
+
+        newTreeValue = addNodeToTree(newTreeValue, {
+          path: pathToString(nodePath),
+          name: navigationHistoryEntryTitle(item.entry),
+          ...item.entry,
+        });
+      }
+    } else {
+      // Currently checked or partial -> unselect all selected items
+      const itemsToUnselect = selectableItems.filter((item) => {
+        const selectionState = isRowSelected(item.id);
+        return selectionState === true || selectionState === "partial";
+      });
+
+      if (itemsToUnselect.length > 0) {
+        const confirmed = await confirm({
+          title: "Are you sure?",
+          message: `Do you want to unselect all selected items?`,
+          validateLabel: "Unselect all",
+          validateVariant: "warning",
+        });
+
+        if (!confirmed) {
+          return;
         }
       }
-    },
-    [
-      items,
-      shouldHideCheckbox,
-      isRowSelectable,
-      isRowSelected,
-      selectNode,
-      removeNode,
-    ]
-  );
+
+      // Remove each node from the tree
+      for (const item of itemsToUnselect) {
+        const nodePath = computeNavigationPath(navigationHistory);
+        nodePath.push(getLastNavigationHistoryEntryId(item.entry));
+
+        newTreeValue = removeNodeFromTree(newTreeValue, {
+          path: pathToString(nodePath),
+          name: navigationHistoryEntryTitle(item.entry),
+          ...item.entry,
+        });
+      }
+    }
+    field.onChange(newTreeValue);
+  }, [
+    items,
+    shouldHideCheckbox,
+    isRowSelectable,
+    isRowSelected,
+    selectAllState,
+    field,
+    navigationHistory,
+    confirm,
+  ]);
 
   const handleSelectionChange = useCallback(
     async (item: DataSourceListItem, state: boolean | "indeterminate") => {
