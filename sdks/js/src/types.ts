@@ -2198,6 +2198,17 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   title: z.string().nullable().optional(),
 });
 
+export type PostDataSourceDocumentTranscriptRequestType = z.infer<
+  typeof PostDataSourceDocumentRequestSchema
+>;
+
+export const PostDataSourceDocumentTranscriptRequestSchema = z.object({
+  source_url: z.string().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  timestamp: z.number().nullable().optional(),
+  title: z.string().nullable().optional(),
+});
+
 export type PostDataSourceDocumentRequestType = z.infer<
   typeof PostDataSourceDocumentRequestSchema
 >;
