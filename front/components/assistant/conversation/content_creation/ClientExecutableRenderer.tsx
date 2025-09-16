@@ -31,18 +31,24 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import { useSendNotification } from "@app/hooks/useNotification";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
   fileContent: string | undefined;
   fileName?: string;
+  owner: LightWorkspaceType;
+  fileId: string;
 }
 
 function ExportContentDropdown({
   iframeRef,
   fileContent,
   fileName,
+  owner,
+  fileId,
 }: ExportContentDropdownProps) {
+  const sendNotification = useSendNotification();
   const exportAsPng = () => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage({ type: `EXPORT_PNG` }, "*");
@@ -56,6 +62,20 @@ function ExportContentDropdown({
   const downloadAsCode = () => {
     if (!fileContent || !fileName) {
       return;
+    }
+
+    try {
+      const downloadUrl = `/api/w/${owner.sId}/files/${fileId}?action=download`;
+      // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
+      // to cloud storage.
+      window.open(downloadUrl, "_blank");
+    } catch (error) {
+      console.error("Download failed:", error);
+      sendNotification({
+        title: "Download Failed",
+        type: "error",
+        description: "An error occurred while opening the download link.",
+      });
     }
 
     const blob = new Blob([fileContent], { type: "text/plain" });
@@ -240,6 +260,8 @@ export function ClientExecutableRenderer({
           iframeRef={iframeRef}
           fileContent={fileContent}
           fileName={fileName}
+          owner={owner}
+          fileId={fileId}
         />
         <ShareContentCreationFilePopover
           fileId={fileId}
