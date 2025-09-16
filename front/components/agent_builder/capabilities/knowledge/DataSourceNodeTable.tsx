@@ -13,7 +13,7 @@ import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type { ContentNodesViewType } from "@app/types";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
 
 interface DataSourceNodeTableProps {
   viewType: ContentNodesViewType;
