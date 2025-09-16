@@ -3,10 +3,10 @@ import { Separator } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import {
   Fragment,
-  memo,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
 } from "react";
 
@@ -47,9 +47,17 @@ interface DataSourceListProps {
     selectionState: boolean | "partial",
     state: boolean | "indeterminate"
   ) => Promise<void>;
+  /**
+   * If true, show a "Select All" header checkbox
+   */
+  showSelectAllHeader?: boolean;
+  /**
+   * Title for the header (e.g., "Name", "Data Sources", etc.)
+   */
+  headerTitle?: string;
 }
 
-export const DataSourceList = memo(function DataSourceList({
+export function DataSourceList({
   items,
   onLoadMore,
   hasMore = false,
@@ -57,6 +65,8 @@ export const DataSourceList = memo(function DataSourceList({
   className,
   showCheckboxOnlyForPartialSelection = false,
   onSelectionChange,
+  showSelectAllHeader = false,
+  headerTitle = "Name",
 }: DataSourceListProps) {
   const {
     isRowSelected,
@@ -117,6 +127,78 @@ export const DataSourceList = memo(function DataSourceList({
     [navigationHistory]
   );
 
+  // Calculate select all state
+  const selectAllState = useMemo(() => {
+    if (!showSelectAllHeader) {
+      return false;
+    }
+
+    const selectableItems = items.filter((item) => {
+      const hideCheckbox = shouldHideCheckbox(item);
+      return !hideCheckbox && isRowSelectable(item.id);
+    });
+
+    if (selectableItems.length === 0) {
+      return false;
+    }
+
+    const selectedCount = selectableItems.filter(
+      (item) => isRowSelected(item.id) === true
+    ).length;
+    const partialCount = selectableItems.filter(
+      (item) => isRowSelected(item.id) === "partial"
+    ).length;
+
+    if (selectedCount === selectableItems.length) {
+      return true;
+    }
+    if (selectedCount > 0 || partialCount > 0) {
+      return "partial";
+    }
+    return false;
+  }, [
+    showSelectAllHeader,
+    items,
+    shouldHideCheckbox,
+    isRowSelectable,
+    isRowSelected,
+  ]);
+
+  const handleSelectAll = useCallback(
+    async (state: boolean | "indeterminate") => {
+      const selectableItems = items.filter((item) => {
+        const hideCheckbox = shouldHideCheckbox(item);
+        return !hideCheckbox && isRowSelectable(item.id);
+      });
+
+      if (state === true) {
+        // Select all unselected items
+        for (const item of selectableItems) {
+          const selectionState = isRowSelected(item.id);
+          if (selectionState !== true) {
+            selectNode(item.entry);
+          }
+        }
+      } else {
+        // Unselect all selected items (for false or indeterminate)
+        for (const item of selectableItems) {
+          const selectionState = isRowSelected(item.id);
+          if (selectionState === true || selectionState === "partial") {
+            removeNode(item.entry);
+          }
+        }
+      }
+    },
+    [
+      items,
+      shouldHideCheckbox,
+      isRowSelectable,
+      isRowSelected,
+      selectNode,
+      removeNode,
+    ]
+  );
+
   const handleSelectionChange = useCallback(
     async (item: DataSourceListItem, state: boolean | "indeterminate") => {
       const selectionState = isRowSelected(item.id);
@@ -168,6 +250,15 @@ export const DataSourceList = memo(function DataSourceList({
       ref={containerRef}
       className={cn("flex max-h-full flex-col overflow-auto pr-1", className)}
     >
+      {showSelectAllHeader && (
+        <div className="flex items-center gap-3 p-3 font-medium text-muted-foreground">
+          <Checkbox
+            checked={selectAllState}
+            onCheckedChange={handleSelectAll}
+          />
+          {headerTitle && <div>{headerTitle}</div>}
+        </div>
+      )}
       <Separator />
       {items.map((item) => {
         const selectionState = isRowSelected(item.id);
@@ -215,4 +306,4 @@ export const DataSourceList = memo(function DataSourceList({
       )}
     </div>
   );
-});
+}

@@ -86,6 +86,8 @@ export const DataSourceNodeTable = memo(function DataSourceNodeTable({
       onLoadMore={handleLoadMore}
       hasMore={hasNextPage}
       isLoading={isLoadingMore}
+      showSelectAllHeader
+      headerTitle="Name"
     />
   );
 });

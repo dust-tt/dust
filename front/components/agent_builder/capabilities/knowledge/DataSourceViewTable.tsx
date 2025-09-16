@@ -91,5 +91,7 @@ export function DataSourceViewTable({
     );
   }
 
-  return <DataSourceList items={listItems} />;
+  return (
+    <DataSourceList items={listItems} showSelectAllHeader headerTitle="Name" />
+  );
 }
