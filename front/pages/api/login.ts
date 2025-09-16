@@ -91,8 +91,11 @@ async function handler(
     },
   });
 
+  const isInviteOnOtherWorkspace =
+    membershipInvite && membershipInvite.workspace.sId !== workspaceId;
+
   // Prioritize enterprise connections.
-  if (workspaceId && isSSO) {
+  if (workspaceId && isSSO && !isInviteOnOtherWorkspace) {
     const { flow, workspace } = await handleEnterpriseSignUpFlow(
       user,
       workspaceId
