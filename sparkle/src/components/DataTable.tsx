@@ -15,7 +15,13 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { ReactNode, useEffect, useRef, useState } from "react";
+import React, {
+  ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   Avatar,
@@ -339,6 +345,24 @@ export interface ScrollableDataTableProps<TData extends TBaseData>
 const COLUMN_HEIGHT = 48;
 const MIN_COLUMN_WIDTH = 40;
 
+// Helper function to compare column sizing objects
+function shallowEqualSizing(
+  a: Record<string, number>,
+  b: Record<string, number>
+) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+  for (const k of aKeys) {
+    if (a[k] !== b[k]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function ScrollableDataTable<TData extends TBaseData>({
   data,
   totalRowCount,
@@ -360,7 +384,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
 
-  // Monitor table width changes
+  // Monitor table width changes with guard against tiny changes
   useEffect(() => {
     if (!tableContainerRef.current) {
       return;
@@ -368,7 +392,8 @@ export function ScrollableDataTable<TData extends TBaseData>({
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setTableWidth(entry.contentRect.width);
+        const w = Math.round(entry.contentRect.width);
+        setTableWidth((prev) => (prev !== w ? w : prev)); // update only on real change
       }
     });
 
@@ -405,11 +430,19 @@ export function ScrollableDataTable<TData extends TBaseData>({
     getRowId,
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!tableContainerRef.current || !table || !tableWidth) {
       return;
     }
     const columns = table.getAllColumns();
+
+    // Skip sizing if no columns have ratios defined
+    const hasRatios = columns.some(
+      (c) => (c.columnDef.meta?.sizeRatio ?? 0) > 0
+    );
+    if (!hasRatios) {
+      return;
+    }
 
     // Calculate ideal widths and handle minimums
     const idealSizing = columns.reduce(
@@ -419,7 +452,8 @@ export function ScrollableDataTable<TData extends TBaseData>({
           Math.floor((ratio / 100) * tableWidth),
           MIN_COLUMN_WIDTH
         );
-        return { ...acc, [column.id]: calculated };
+        acc[column.id] = calculated;
+        return acc;
       },
       {} as Record<string, number>
     );
@@ -439,8 +473,13 @@ export function ScrollableDataTable<TData extends TBaseData>({
 
       idealSizing[adjustColumnId] += widthDifference;
     }
-    table.setColumnSizing(idealSizing);
-  }, [table, tableWidth]);
+
+    // Only set when sizing actually changes
+    const currentSizing = table.getState().columnSizing;
+    if (!shallowEqualSizing(idealSizing, currentSizing)) {
+      table.setColumnSizing(idealSizing);
+    }
+  }, [tableWidth]); // intentionally remove `table` from deps
 
   // Get the current column sizing from the table for rendering
   const columnSizing = table.getState().columnSizing;
