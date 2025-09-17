@@ -42,7 +42,9 @@ const stateVariantStyles: Record<InputStateType, string> = {
   disabled: cn(
     "disabled:s-cursor-not-allowed",
     "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night",
-    "disabled:s-border-border dark:disabled:s-border-border-night"
+    "disabled:s-border-border dark:disabled:s-border-border-night",
+    // Use muted background only when disabled
+    "s-bg-muted-background dark:s-bg-muted-background-night"
   ),
   error: cn(
     "s-border-border-warning/40 dark:s-border-border-warning-night/60",
@@ -66,7 +68,8 @@ const inputStyleClasses = cva(
   cn(
     "dark:s-text-primary-50",
     "s-text-sm s-rounded-xl s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
-    "s-bg-muted-background dark:s-bg-muted-background-night",
+    // Default to plain background; disabled state will override to muted
+    "s-bg-background dark:s-bg-background-night",
     "s-border focus-visible:s-ring",
     "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
     "placeholder:s-text-muted-foreground placeholder:s-italic dark:placeholder:s-text-muted-foreground-night"
