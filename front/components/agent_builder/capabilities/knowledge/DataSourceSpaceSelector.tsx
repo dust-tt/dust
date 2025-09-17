@@ -70,10 +70,13 @@ export function DataSourceSpaceSelector({
   );
 
   return (
-    <DataSourceList
-      items={spaceItems}
-      showCheckboxOnlyForPartialSelection
-      onSelectionChange={handleSpaceSelectionChange}
-    />
+    <>
+      <span className="text-sm font-medium">Select your space:</span>
+      <DataSourceList
+        items={spaceItems}
+        showCheckboxOnlyForPartialSelection
+        onSelectionChange={handleSpaceSelectionChange}
+      />
+    </>
   );
 }
