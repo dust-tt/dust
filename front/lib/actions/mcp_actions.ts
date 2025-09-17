@@ -366,9 +366,7 @@ export async function* tryCallMCPTool(
           break;
         }
 
-        if (isMCPProgressNotificationType(iteratorResult.value)) {
-          yield onToolNotification(iteratorResult.value);
-        }
+        yield onToolNotification(iteratorResult.value);
       }
     }
 
