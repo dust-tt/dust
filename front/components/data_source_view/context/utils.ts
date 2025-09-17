@@ -81,37 +81,58 @@ export function addNodeToTree(
   }
 
   if (tree.notIn.map((el) => el.path).includes(path)) {
-    // Special case: if we're adding back the EXACT excluded item in "select all with exclusions" mode,
-    // and it's the last exclusion, restore the original "select all" selection
-    if (
-      tree.in.length === 0 &&
-      newNotIn.length === 0 &&
-      tree.notIn.length === 1
-    ) {
-      // Only trigger restoration if we're adding back the exact excluded path
-      const excludedPath = tree.notIn[0].path;
-      if (excludedPath === path) {
-        const pathParts = excludedPath.split("/");
+    // Check if this is a "select all with exclusions" scenario (in: [], notIn: [items])
+    // We should ALWAYS restore to data source level when we have no inclusions and we're removing an exclusion
+    if (tree.in.length === 0 && tree.notIn.length > 0) {
+      // We need to restore the "select all" by adding the data source level
+      const pathParts = path.split("/");
 
-        // For document-level exclusions, the parent is likely the data source
-        // Remove the last segment (document id) to get the data source path
-        if (pathParts.length > 1) {
-          const parentPath = pathParts.slice(0, -1).join("/");
+      // Look for the data source level - typically the path up to the dsv_ identifier
+      let dataSourcePath = "";
+      for (let i = 0; i < pathParts.length; i++) {
+        if (pathParts[i].startsWith("dsv_")) {
+          dataSourcePath = pathParts.slice(0, i + 1).join("/");
+          break;
+        }
+      }
+
+      // Fallback: if no dsv_ found, just remove the last segment
+      if (!dataSourcePath && pathParts.length > 1) {
+        dataSourcePath = pathParts.slice(0, -1).join("/");
+      }
+
+      if (dataSourcePath) {
+        // We need to create a proper data source item, not a node item with a data source path
+        if (item.type === "node" && item.node) {
+          const restoredItem = {
+            type: "data_source" as const,
+            path: dataSourcePath,
+            name: "All documents",
+            dataSourceView: item.node.dataSourceView,
+            tagsFilter: null,
+          };
 
           return {
-            in: [
-              {
-                ...item, // Preserve the original item structure
-                path: parentPath,
-                name: "All documents",
-              },
-            ],
-            notIn: [],
+            in: [restoredItem],
+            notIn: newNotIn,
           };
         }
+
+        // Fallback to original logic for other types
+        const restoredItem = {
+          ...item,
+          path: dataSourcePath,
+          name: "All documents",
+        };
+
+        return {
+          in: [restoredItem],
+          notIn: [],
+        };
       }
     }
 
+    // Normal case: just remove from exclusions, keep existing inclusions
     return {
       in: tree.in,
       notIn: newNotIn,
@@ -299,38 +320,54 @@ export function isNodeSelected(
       return "partial";
     }
 
-    // For each exclusion, check if the current path is a sibling
+    // For each exclusion, check if the current path is a sibling of the exclusion OR any of its parents
     for (const notInPath of tree.notIn) {
-      // If they are siblings and current path is not excluded, it should be selected
-      if (
-        areSiblingPaths(notInPath.path, pathStr) &&
-        notInPath.path !== pathStr
-      ) {
+      const exclusionPathParts = notInPath.path.split("/");
+      const currentPathParts = pathStr.split("/");
+
+      // Check if current path is sibling of the exclusion itself
+      const isSibling = areSiblingPaths(notInPath.path, pathStr);
+      if (isSibling && notInPath.path !== pathStr) {
         return true;
       }
-    }
 
-    // Check if this path is a child of any implicitly selected path
-    // If Design is selected via sibling logic, then files inside Design should also be selected
-    for (const notInPath of tree.notIn) {
-      const currentPathParts = pathStr.split("/");
-      const notInPathParts = notInPath.path.split("/");
-
-      // Find all potential parent paths at the same depth as excluded items
+      // Check if current path is sibling of any parent of the exclusion
+      // This handles the case where exclusion is "folder/file" and current is sibling of "folder"
       for (
-        let depth = notInPathParts.length;
-        depth < currentPathParts.length;
-        depth++
+        let depth = exclusionPathParts.length - 1;
+        depth >= currentPathParts.length;
+        depth--
       ) {
-        const potentialParentPath = currentPathParts.slice(0, depth).join("/");
+        const parentPath = exclusionPathParts.slice(0, depth).join("/");
+        const isParentSibling = areSiblingPaths(parentPath, pathStr);
 
-        // If this potential parent is a sibling of the excluded item, then this child should be selected
-        if (
-          areSiblingPaths(notInPath.path, potentialParentPath) &&
-          notInPath.path !== potentialParentPath
-        ) {
+        if (isParentSibling) {
           return true;
         }
+      }
+    }
+  }
+
+  // Check if this path is a child of any implicitly selected path
+  // If Design is selected via sibling logic, then files inside Design should also be selected
+  for (const notInPath of tree.notIn) {
+    const currentPathParts = pathStr.split("/");
+    const notInPathParts = notInPath.path.split("/");
+
+    // Find all potential parent paths at the same depth as excluded items
+    for (
+      let depth = notInPathParts.length;
+      depth < currentPathParts.length;
+      depth++
+    ) {
+      const potentialParentPath = currentPathParts.slice(0, depth).join("/");
+
+      // If this potential parent is a sibling of the excluded item, then this child should be selected
+      if (
+        areSiblingPaths(notInPath.path, potentialParentPath) &&
+        notInPath.path !== potentialParentPath
+      ) {
+        return true;
       }
     }
   }

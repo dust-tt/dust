@@ -230,7 +230,7 @@ function KnowledgeConfigurationSheetForm({
 
   return (
     <FormProvider {...form}>
-      <DataSourceBuilderProvider spaces={spaces}>
+      <DataSourceBuilderProvider>
         <KnowledgePageProvider initialPageId={getInitialPageId(isEditing)}>
           <KnowledgeConfigurationSheetContent
             onSave={form.handleSubmit(handleSave)}
@@ -268,7 +268,12 @@ function KnowledgeConfigurationSheetContent({
 
   const hasSourceSelection = useWatch({
     compute: (formData: CapabilityFormData) => {
-      return formData.sources.in.length > 0;
+      // Check if we have actual selections: either explicit inclusions or "select all with exclusions"
+      const hasExplicitInclusions = formData.sources.in.length > 0;
+      const hasSelectAllWithExclusions =
+        formData.sources.in.length === 0 && formData.sources.notIn.length > 0;
+
+      return hasExplicitInclusions || hasSelectAllWithExclusions;
     },
   });
 
