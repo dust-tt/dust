@@ -20,10 +20,7 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  useMCPServerToolsSettings,
-  useUpdateMCPServerToolsSettings,
-} from "@app/lib/swr/mcp_servers";
+import { useUpdateMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isAdmin } from "@app/types";
 
@@ -52,10 +49,7 @@ export function ToolsList({
     () => mcpServerView.server.tools,
     [mcpServerView.server.tools]
   );
-  const { toolsSettings } = useMCPServerToolsSettings({
-    owner,
-    serverId: mcpServerView.server.sId,
-  });
+  const toolsMetadata = mcpServerView.toolsMetadata ?? [];
 
   const { updateToolSettings } = useUpdateMCPServerToolsSettings({
     owner,
@@ -88,14 +82,17 @@ export function ToolsList({
   };
 
   const getToolPermission = (toolName: string) => {
-    return toolsSettings[toolName]
-      ? toolsSettings[toolName].permission
-      : FALLBACK_MCP_TOOL_STAKE_LEVEL;
+    return (
+      toolsMetadata.find((tool) => tool.toolName === toolName)?.permission ??
+      FALLBACK_MCP_TOOL_STAKE_LEVEL
+    );
   };
 
   const getToolEnabled = (toolName: string) => {
     // Default tools to be enabled by default
-    return toolsSettings[toolName] ? toolsSettings[toolName].enabled : true;
+    return (
+      toolsMetadata.find((tool) => tool.toolName === toolName)?.enabled ?? true
+    );
   };
 
   const toolPermissionLabel: Record<string, string> = {

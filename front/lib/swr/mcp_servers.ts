@@ -740,7 +740,7 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
-export function useMCPServerToolsSettings({
+function useMCPServerToolsSettings({
   owner,
   serverId,
 }: {
