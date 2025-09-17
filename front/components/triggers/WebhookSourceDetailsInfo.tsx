@@ -4,8 +4,9 @@ import {
   EyeSlashIcon,
   IconButton,
   Separator,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { WebhookSourceViewForm } from "@app/components/triggers/WebhookSourceViewForm";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -71,18 +72,21 @@ export function WebhookSourceDetailsInfo({
     [webhookSourceView]
   );
 
+  const [isCopied, copy] = useCopyToClipboard();
+
+  useEffect(() => {
+    if (isCopied) {
+      sendNotification({
+        type: "success",
+        title: "Webhook URL copied to clipboard",
+      });
+    }
+  }, [isCopied, sendNotification]);
+
   const webhookUrl = useMemo(() => {
     const { url } = config.getDustAPIConfig();
     return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}`;
   }, [owner.sId, webhookSourceView.webhookSource.sId]);
-
-  const copyWebhookUrl = async () => {
-    await navigator.clipboard.writeText(webhookUrl);
-    sendNotification({
-      type: "success",
-      title: "Webhook URL copied to clipboard",
-    });
-  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -107,7 +111,7 @@ export function WebhookSourceDetailsInfo({
             <Value className="truncate font-mono">{webhookUrl}</Value>
             <IconButton
               icon={ClipboardIcon}
-              onClick={copyWebhookUrl}
+              onClick={() => copy(webhookUrl)}
               size="xs"
             />
           </div>
