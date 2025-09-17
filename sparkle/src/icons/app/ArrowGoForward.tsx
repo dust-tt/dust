@@ -10,7 +10,7 @@ const SvgArrowGoForward = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <path
-      fill="#000"
+      fill="currentColor"
       d="M16 7.036h-5c-3.314 0-6 2.7-6 6.032 0 3.33 2.686 6.031 6 6.031h9v2.01h-9c-4.418 0-8-3.6-8-8.041 0-4.442 3.582-8.042 8-8.042h5v-4.02l6 5.025-6 5.026v-4.02Z"
     />
   </svg>
