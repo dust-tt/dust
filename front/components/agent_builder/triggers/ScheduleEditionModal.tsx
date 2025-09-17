@@ -246,7 +246,7 @@ export function ScheduleEditionModal({
                             form.setValue("timezone", result.timezone);
                             setGeneratedTimezone(result.timezone);
                             setNaturalDescriptionToCronRuleStatus("idle");
-                          } catch (error: any) {
+                          } catch (error) {
                             setNaturalDescriptionToCronRuleStatus("error");
                             setCronErrorStatus(extractErrorType(error));
                             setGeneratedTimezone(null);
