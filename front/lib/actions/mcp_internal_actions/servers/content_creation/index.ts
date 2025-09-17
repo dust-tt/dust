@@ -324,21 +324,12 @@ const createServer = (
       auth,
       { toolName: REVERT_TO_PREVIOUS_EDIT_TOOL_NAME, agentLoopContext },
       async ({ file_id }, { sendNotification, _meta }) => {
-        const { conversation, agentMessage } =
-          agentLoopContext?.runContext ?? {};
+        const { conversation } = agentLoopContext?.runContext ?? {};
 
         if (!conversation) {
           return new Err(
             new MCPError(
               "Conversation ID is required to revert a client executable file."
-            )
-          );
-        }
-
-        if (!agentMessage) {
-          return new Err(
-            new MCPError(
-              "Agent message is required to revert a client executable file."
             )
           );
         }
