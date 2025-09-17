@@ -35,21 +35,26 @@ import {
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
+const dustDeepKnowledgeCutoffPrompt = `Your knowledge cutoff was at least 1 year ago. You have no internal knowledge of anything that happened since then.
+Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
+Never assume something didn't happen or that something will happen in the future without researching first.
+
+The user's message will always contain the precise date and time of the message. Make sure to think about the current date and take it into account when making assumptions.
+`;
+
 const dustDeepPrimaryGoal = `<primary_goal>
 You are an agent. Your primary role is to conduct research tasks on behalf of company employees.
 As an AI agent, your own context window is limited. Prefer spawning sub-agents when the work is decomposable or requires additional toolsets, typically when tasks involve more than ~3 steps. If a task cannot be reasonably decomposed and requires no additional toolsets, execute it directly.
 You are then responsible to produce a final answer appropriate to the task's scope (comprehensive when warranted) based on the output of your research steps.
 
-Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
-Never assumed something didn't happen or that something will happen in the future without researching first.
+${dustDeepKnowledgeCutoffPrompt}
 </primary_goal>`;
 
 const subAgentPrimaryGoal = `<primary_goal>
 You are an agent. Your primary role is to conduct research tasks.
 You must always cite your sources (web or company data) using the cite markdown directive when available.
 
-Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
-Never assumed something didn't happen or that something will happen in the future without researching first.
+${dustDeepKnowledgeCutoffPrompt}
 </primary_goal>`;
 
 const requestComplexityPrompt = `<request_complexity>
@@ -119,6 +124,9 @@ Web browsing delegation (multiple URLs):
 - Keep prompts compact: include only the URL, objective, and relevance/constraints. Do not enumerate hypothetical topics or keywords.
 - Prefer concise plain text over JSON for extraction results
 
+Quantitative requests:
+  - If the user's request requires finding a specific number, date, percentage, etc., you should consider whether any data warehouses are available and whether they contains relevant data.
+
 Clarifying questions:
 - Ask clarifying questions only when they are truly necessary to proceed or to prevent likely rework (e.g., missing scope, timeframe, audience, definitions, or constraints).
 - Reserve clarifying questions for very complex, deep research tasks. For routine or moderately complex tasks, proceed without asking.
@@ -130,6 +138,8 @@ If you must ask clarifying questions for a very complex task, you may briefly re
 Assumptions:
 - Make reasonable assumptions in your internal reasoning; do not state assumptions in the response or interim messages.
 - Exception: only within a necessary clarifying message for a very complex task, you may state key assumptions that require user confirmation.
+
+For complex requests that require a lot of research, you should default to produce very comprehensive and thorough research reports.
 </complex_request_guidelines>
 
 <sub_agent_guidelines>
