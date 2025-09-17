@@ -290,18 +290,20 @@ export async function getClientExecutableFileContent(
   }
 }
 
-function isCreateAugmentedInputs(
-  augmentedInputs: Record<string, unknown>
-): augmentedInputs is { content: string } {
-  return typeof augmentedInputs.content === "string";
+function isCreationAction(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel & { augmentedInputs: { content: string } } {
+  return typeof action.augmentedInputs.content === "string";
 }
 
-function isEditAugmentedInputs(
-  augmentedInputs: Record<string, unknown>
-): augmentedInputs is { old_string: string; new_string: string } {
+function isEditAction(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel & {
+  augmentedInputs: { old_string: string; new_string: string };
+} {
   return (
-    typeof augmentedInputs.old_string === "string" &&
-    typeof augmentedInputs.new_string === "string"
+    typeof action.augmentedInputs.old_string === "string" &&
+    typeof action.augmentedInputs.new_string === "string"
   );
 }
 
@@ -407,7 +409,7 @@ export async function revertClientExecutableFileToPreviousState(
     const fileIdFromInput = action.augmentedInputs.file_id;
 
     if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
-      if (!isCreateAugmentedInputs(action.augmentedInputs)) {
+      if (!isCreationAction(action)) {
         return false;
       }
 
@@ -498,7 +500,7 @@ export async function revertClientExecutableFileToPreviousState(
     const createAction = fileActions[createActionIndex];
     startIndex = createActionIndex;
 
-    if (!isCreateAugmentedInputs(createAction.augmentedInputs)) {
+    if (!isCreationAction(createAction)) {
       return new Err(
         new Error(
           `Invalid augmented inputs for create action for file '${fileId}'`
@@ -528,7 +530,7 @@ export async function revertClientExecutableFileToPreviousState(
       action.toolConfiguration.originalName ===
       EDIT_CONTENT_CREATION_FILE_TOOL_NAME
     ) {
-      if (!isEditAugmentedInputs(action.augmentedInputs)) {
+      if (!isEditAction(action)) {
         return new Err(
           new Error(
             `Invalid augmented inputs for edit action for file '${fileId}'`
