@@ -132,3 +132,24 @@ export function usePokeFeatureFlags({
     mutate,
   };
 }
+
+export function usePokeWorkOSDSyncStatus({
+  disabled,
+  owner,
+}: {
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+}) {
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/dsync`,
+    fetcher,
+    { disabled }
+  );
+
+  return {
+    dsyncStatus: data,
+    error,
+    isLoading: !error && !data,
+    mutate,
+  };
+}
