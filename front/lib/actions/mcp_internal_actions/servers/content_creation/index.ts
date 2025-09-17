@@ -346,7 +346,6 @@ const createServer = (
         const result = await revertClientExecutableFileToPreviousState(auth, {
           fileId: file_id,
           conversationId: conversation.id,
-          currentAgentMessage: agentMessage,
         });
 
         if (result.isErr()) {
