@@ -200,7 +200,7 @@ const createServer = async (
             has_more: hasMore,
             next_cursor: nextCursor,
             pagination_info: {
-              current_page_size: response.messages?.length || 0,
+              current_page_size: response.messages?.length ?? 0,
               has_more_pages: hasMore,
               next_cursor_for_pagination: nextCursor,
             },
@@ -267,18 +267,18 @@ const createServer = async (
 
         // First message is always the parent message
         const parentMessage = response.messages?.[0];
-        const threadReplies = response.messages?.slice(1) || [];
+        const threadReplies = response.messages?.slice(1) ?? [];
 
         return makeMCPToolJSONSuccess({
           message: `Retrieved thread with ${response.messages?.length} total messages (1 parent + ${threadReplies.length} replies)${hasMore ? ". More replies available." : ""}`,
           result: {
             parent_message: parentMessage,
             thread_replies: threadReplies,
-            total_messages: response.messages?.length || 0,
+            total_messages: response.messages?.length ?? 0,
             has_more: hasMore,
             next_cursor: nextCursor,
             pagination_info: {
-              current_page_size: response.messages?.length || 0,
+              current_page_size: response.messages?.length ?? 0,
               replies_in_this_page: threadReplies.length,
               has_more_pages: hasMore,
               next_cursor_for_pagination: nextCursor,
