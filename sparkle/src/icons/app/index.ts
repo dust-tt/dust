@@ -3,6 +3,8 @@ export { default as ArrowDownIcon } from "./ArrowDown";
 export { default as ArrowDownCircleIcon } from "./ArrowDownCircle";
 export { default as ArrowDownOnSquareIcon } from "./ArrowDownOnSquare";
 export { default as ArrowDownSIcon } from "./ArrowDownS";
+export { default as ArrowGoBackIcon } from "./ArrowGoBack";
+export { default as ArrowGoForwardIcon } from "./ArrowGoForward";
 export { default as ArrowLeftIcon } from "./ArrowLeft";
 export { default as ArrowLeftSIcon } from "./ArrowLeftS";
 export { default as ArrowPathIcon } from "./ArrowPath";
