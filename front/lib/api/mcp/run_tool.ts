@@ -8,8 +8,9 @@ import type {
   MCPSuccessEvent,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
+import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
-  executeMCPTool,
+  processToolNotification,
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
 import type {
@@ -88,35 +89,37 @@ export async function* runToolWithStreaming(
     toolConfiguration,
   };
 
-  const toolCallResult = yield* executeMCPTool({
+  const toolCallResult = yield* tryCallMCPTool(
     auth,
     inputs,
     agentLoopRunContext,
-    action,
-    agentConfiguration,
-    conversation,
-    agentMessage,
-  });
+    {
+      progressToken: action.id,
+      onToolNotification: (notification) =>
+        processToolNotification(notification, {
+          action,
+          agentConfiguration,
+          conversation,
+          agentMessage,
+        }),
+    }
+  );
 
-  // TODO(2025-09-17 aubin): the code path where toolCallResult is null is actually unreachable
-  //  but it's well covered in typing.
-  if (!toolCallResult || toolCallResult.isErr()) {
+  if (toolCallResult.isErr()) {
     statsDClient.increment("mcp_actions_error.count", 1, tags);
     localLogger.error(
       {
-        error: toolCallResult
-          ? toolCallResult.error.message
-          : "No tool call result",
+        error: toolCallResult.error.message,
       },
       "Error calling MCP tool on run."
     );
 
-    const { error: toolErr } = toolCallResult ?? {};
-
-    let errorMessage: string;
+    const { error: toolError } = toolCallResult;
 
     const isMCPTimeoutError =
-      toolErr && toolErr instanceof McpError && toolErr.code === -32001;
+      toolError instanceof McpError && toolError.code === -32001;
+
+    let errorMessage: string;
     if (isMCPTimeoutError) {
       errorMessage = `The execution of tool ${action.functionCallName} timed out.`;
 
@@ -126,13 +129,11 @@ export async function* runToolWithStreaming(
       const retryPolicy =
         getRetryPolicyFromToolConfiguration(toolConfiguration);
       if (retryPolicy === "retry_on_interrupt") {
-        errorMessage += "Error: " + JSON.stringify(toolErr);
+        errorMessage += "Error: " + JSON.stringify(toolError);
         throw new Error(errorMessage);
       }
     } else {
-      errorMessage = toolErr
-        ? `The tool ${action.functionCallName} failed with the following error: ${toolErr.message}`
-        : `The tool ${action.functionCallName} failed without returning any error information.`;
+      errorMessage = `The tool ${action.functionCallName} failed with the following error: ${toolError.message}`;
     }
 
     yield await handleMCPActionError({
