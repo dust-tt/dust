@@ -429,9 +429,9 @@ export default function Output({
         t.filter(
           (t) =>
             t.meta &&
+            /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
             (((t.meta as { logs: any[] }).logs &&
               (t.meta as { logs: any[] }).logs.length) ||
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               (t.meta as { provider_request_id?: string })
                 .provider_request_id ||
               (
@@ -444,6 +444,7 @@ export default function Output({
                   };
                 }
               ).token_usage)
+          /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
         ).length
       );
     }, 0);
@@ -481,8 +482,8 @@ export default function Output({
                       .map((t) => t.meta)
                       .some(
                         (e) =>
+                          /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
                           (e as { logs: any[] }).logs.length ||
-                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                           (e as { provider_request_id?: string })
                             .provider_request_id ||
                           (
@@ -495,6 +496,7 @@ export default function Output({
                               };
                             }
                           ).token_usage
+                        /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
                       )
                   ) {
                     return (
