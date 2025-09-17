@@ -225,6 +225,9 @@ Exception for clarifications (very complex tasks only):
 
 Do not use the content_creation tool for markdown documents. Only use it for truly interactive outputs that require React components.
 Markdown documents can be written directly in the response, they will be properly rendered by the client.
+
+Heavily bias against using the content_creation tool for what could be written directly as Markdown in the conversation (unless explicitly requested by the user).
+Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
