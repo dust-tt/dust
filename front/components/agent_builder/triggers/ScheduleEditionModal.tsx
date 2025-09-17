@@ -18,6 +18,7 @@ import cronstrue from "cronstrue";
 import uniqueId from "lodash/uniqueId";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
 import type {
   AgentBuilderScheduleTriggerType,
@@ -29,7 +30,6 @@ import { useUser } from "@app/lib/swr/user";
 import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
-import { z } from "zod";
 
 const scheduleFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),

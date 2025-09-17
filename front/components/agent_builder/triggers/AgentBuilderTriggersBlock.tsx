@@ -17,10 +17,10 @@ import type {
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
+import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
-import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
-import { TriggerKind } from "@app/types/assistant/triggers";
+import type { TriggerKind } from "@app/types/assistant/triggers";
 
 type DialogMode =
   | {

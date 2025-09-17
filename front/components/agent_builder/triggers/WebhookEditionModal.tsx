@@ -14,7 +14,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SliderToggle,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -86,6 +85,7 @@ export function WebhookEditionModal({
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
     useWebhookSourcesWithViews({ owner });
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const isEditor = !trigger?.editor || trigger?.editor === user?.id;
 
   const spaceById = useMemo(() => {
@@ -106,9 +106,9 @@ export function WebhookEditionModal({
         .forEach((view) => {
           options.push({
             value: view.sId,
-            label: view.customName || wsv.name,
+            label: view.customName ?? wsv.name,
             sourceName: wsv.name,
-            spaceName: spaceById.get(view.spaceId) || null,
+            spaceName: spaceById.get(view.spaceId) ?? null,
           });
         });
     });
@@ -163,7 +163,7 @@ export function WebhookEditionModal({
       configuration: {
         includePayload: data.includePayload,
       },
-      webhookSourceViewSId: data.webhookSourceViewSId || undefined,
+      webhookSourceViewSId: data.webhookSourceViewSId ?? undefined,
       editor,
       editorEmail,
     };
@@ -190,7 +190,7 @@ export function WebhookEditionModal({
             <ContentMessage variant="info">
               You cannot edit this trigger. It is managed by{" "}
               <span className="font-semibold">
-                {trigger.editorEmail || "another user"}
+                {trigger.editorEmail ?? "another user"}
               </span>
               .
             </ContentMessage>
