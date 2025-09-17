@@ -73,9 +73,9 @@ import {
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { DEFAULT_REASONING_MODEL_ID } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
-import { O4_MINI_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
   | {
@@ -85,7 +85,6 @@ export type SelectedTool =
     }
   | { type: "DATA_VISUALIZATION" };
 
-const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export type SheetMode =
   | { type: "add" }

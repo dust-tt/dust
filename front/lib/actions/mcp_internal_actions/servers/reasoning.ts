@@ -32,10 +32,12 @@ import {
   isModelProviderId,
   isProviderWhitelisted,
   isReasoningEffortId,
+  O4_MINI_MODEL_ID,
 } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
-
+export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
+const DEFAULT_REASONING_MODEL_PROVIDER_ID = "openai";
 const REASONING_GENERATION_TOKENS = 20480;
 
 function createServer(
@@ -51,7 +53,15 @@ function createServer(
       model:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
-        ],
+        ].default(
+          {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+            modelId: DEFAULT_REASONING_MODEL_ID,
+            providerId: DEFAULT_REASONING_MODEL_PROVIDER_ID,
+            temperature: null,
+            reasoningEffort: null,
+          }
+        ),
     },
     async (
       { model: { modelId, providerId, temperature, reasoningEffort } },
