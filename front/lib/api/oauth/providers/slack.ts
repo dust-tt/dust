@@ -8,6 +8,7 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
@@ -67,25 +68,32 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         }
         case "bot":
         case "platform_actions":
+          const scopes = [
+            "app_mentions:read",
+            "channels:history",
+            "channels:join",
+            "channels:read",
+            "chat:write",
+            "files:read",
+            "groups:history",
+            "groups:read",
+            "im:history",
+            "mpim:history",
+            "mpim:read",
+            "team:read",
+            "im:read",
+            "users:read",
+            "users:read.email",
+          ];
+
+          // TODO: This is temporary until our Slack app scope is approved.
+          if (extraConfig?.feature_flags?.includes("slack_bot_mcp")) {
+            scopes.push("reactions:read", "reactions:write");
+          }
+
           return {
             user_scopes: [],
-            bot_scopes: [
-              "app_mentions:read",
-              "channels:history",
-              "channels:join",
-              "channels:read",
-              "chat:write",
-              "files:read",
-              "groups:history",
-              "groups:read",
-              "im:history",
-              "mpim:history",
-              "mpim:read",
-              "team:read",
-              "im:read",
-              "users:read",
-              "users:read.email",
-            ],
+            bot_scopes: scopes,
           };
         case "labs_transcripts":
           assert(
@@ -202,6 +210,14 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           requested_team_name: teamName,
         };
       }
+    } else if (useCase === "platform_actions") {
+      const feature_flags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      return {
+        ...extraConfig,
+        feature_flags: JSON.stringify(feature_flags),
+      };
     }
 
     return extraConfig;
