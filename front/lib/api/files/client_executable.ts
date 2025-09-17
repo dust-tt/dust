@@ -302,6 +302,8 @@ function isEditAction(
   augmentedInputs: { old_string: string; new_string: string };
 } {
   return (
+    action.toolConfiguration.originalName ===
+      EDIT_CONTENT_CREATION_FILE_TOOL_NAME &&
     typeof action.augmentedInputs.old_string === "string" &&
     typeof action.augmentedInputs.new_string === "string"
   );
@@ -327,6 +329,120 @@ function isRevertActionOutput(
   return (
     output.content.type === "text" && typeof output.content.text === "string"
   );
+}
+
+async function getFileActions(
+  auth: Authenticator,
+  fileId: string,
+  conversationId: number
+): Promise<AgentMCPActionModel[]> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  // First, get all successful MCP actions in this conversation
+  // We still need to fetch all actions because we need to determine which create actions
+  // produced our target file by examining their output items
+  const allActions = await AgentMCPActionModel.findAll({
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+        include: [
+          {
+            model: Message,
+            as: "message",
+            required: true,
+            where: {
+              conversationId,
+              workspaceId,
+            },
+          },
+        ],
+      },
+    ],
+    where: {
+      workspaceId,
+      status: "succeeded",
+    },
+    order: [["createdAt", "ASC"]],
+  });
+
+  if (allActions.length === 0) {
+    return [];
+  }
+
+  // Filter to only file-related actions using optimized logic
+  return allActions.filter((action) => {
+    const toolName = action.toolConfiguration.originalName;
+
+    // For edit and revert actions, check if they target our file directly
+    if (
+      toolName === EDIT_CONTENT_CREATION_FILE_TOOL_NAME ||
+      toolName === REVERT_LAST_EDIT_TOOL_NAME
+    ) {
+      return action.augmentedInputs.file_id === fileId;
+    }
+
+    // For create actions, we need to check outputs
+    if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
+      return isCreationAction(action);
+    }
+
+    return false;
+  });
+}
+
+async function getOutputItemsForActions(
+  actionIds: number[],
+  workspaceId: number
+): Promise<Map<number, AgentMCPActionOutputItem[]>> {
+  if (actionIds.length === 0) {
+    return new Map();
+  }
+
+  const outputs = await AgentMCPActionOutputItem.findAll({
+    where: {
+      agentMCPActionId: { [Op.in]: actionIds },
+      workspaceId,
+    },
+    order: [["createdAt", "ASC"]],
+  });
+
+  // Build the map more efficiently using reduce
+  return outputs.reduce((map, output) => {
+    const existing = map.get(output.agentMCPActionId) || [];
+    existing.push(output);
+    map.set(output.agentMCPActionId, existing);
+    return map;
+  }, new Map<number, AgentMCPActionOutputItem[]>());
+}
+
+function filterActionsForFile(
+  actions: AgentMCPActionModel[],
+  outputItems: Map<number, AgentMCPActionOutputItem[]>,
+  fileId: string
+): AgentMCPActionModel[] {
+  return actions.filter((action) => {
+    const toolName = action.toolConfiguration.originalName;
+
+    // For create action is the output item for the file
+    if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
+      const resourceOutput = outputItems
+        .get(action.id)
+        ?.find((output) => isCreateResourceOutput(output));
+
+      if (!resourceOutput) {
+        return false;
+      }
+
+      return resourceOutput.content.resource.fileId === fileId;
+    }
+
+    return (
+      toolName === EDIT_CONTENT_CREATION_FILE_TOOL_NAME ||
+      toolName === REVERT_LAST_EDIT_TOOL_NAME
+    );
+  });
 }
 
 export async function revertClientExecutableFileToPreviousState(
@@ -358,103 +474,50 @@ export async function revertClientExecutableFileToPreviousState(
 
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  const allActions = await AgentMCPActionModel.findAll({
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-        include: [
-          {
-            model: Message,
-            as: "message",
-            required: true,
-            where: {
-              conversationId,
-              workspaceId,
-            },
-          },
-        ],
-      },
-    ],
-    where: {
-      workspaceId,
-      status: "succeeded",
-    },
-  });
+  const conversationActions = await getFileActions(
+    auth,
+    fileId,
+    conversationId
+  );
 
-  if (allActions.length === 0) {
+  if (conversationActions.length === 0) {
     return new Err(new Error("No MCP actions found for this conversation"));
   }
 
-  const outputItemsByActionId = new Map<number, AgentMCPActionOutputItem[]>();
-  if (allActions.length > 0) {
-    const outputs = await AgentMCPActionOutputItem.findAll({
-      where: {
-        agentMCPActionId: { [Op.in]: allActions.map((a) => a.id) },
-        workspaceId,
-      },
-      order: [["createdAt", "ASC"]],
-    });
-    for (const output of outputs) {
-      const arr = outputItemsByActionId.get(output.agentMCPActionId) ?? [];
-      arr.push(output);
-      outputItemsByActionId.set(output.agentMCPActionId, arr);
-    }
-  }
+  const outputItemsByActionId = await getOutputItemsForActions(
+    conversationActions.map((a) => a.id),
+    workspaceId
+  );
 
-  // Filter the actions to only include the ones that are related to the file
-  const fileActions = allActions.filter((action) => {
-    const toolName = action.toolConfiguration.originalName;
-    const fileIdFromInput = action.augmentedInputs.file_id;
-
-    if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
-      if (!isCreationAction(action)) {
-        return false;
-      }
-
-      const resourceOutput = outputItemsByActionId
-        .get(action.id)
-        ?.find((output) => output.content?.type === "resource");
-
-      if (!resourceOutput || !isCreateResourceOutput(resourceOutput)) {
-        return false;
-      }
-
-      const actionFileId = resourceOutput.content.resource.fileId;
-      return actionFileId === fileId;
-    }
-
-    if (toolName === EDIT_CONTENT_CREATION_FILE_TOOL_NAME) {
-      return fileIdFromInput === fileId;
-    }
-
-    if (toolName === REVERT_LAST_EDIT_TOOL_NAME) {
-      return fileIdFromInput === fileId;
-    }
-
-    return false;
-  });
+  // Only get actions related to the file
+  const fileActions = filterActionsForFile(
+    conversationActions,
+    outputItemsByActionId,
+    fileId
+  );
 
   if (fileActions.length === 0) {
     return new Err(new Error(`No MCP actions found for file '${fileId}'`));
   }
 
-  // Check if the most recent action is a revert, if true then return an error
+  // Validate that the most recent action is not already a revert
   const mostRecentAction = fileActions[fileActions.length - 1];
   if (
     mostRecentAction?.toolConfiguration.originalName ===
     REVERT_LAST_EDIT_TOOL_NAME
   ) {
     return new Err(
-      new Error(`Last action is a revert, cannot revert twice in a row`)
+      new Error("Last action is a revert, cannot revert twice in a row")
     );
   }
 
+  // Find most recent revert and create action indices in the history
   let lastRevertIndex = -1;
   let createActionIndex = -1;
 
-  // Find the index of the most recent revert action and the create action
+  // Search backwards through actions to find:
+  // - The most recent revert action (if any)
+  // - The create action (there should be exactly one)
   for (let i = fileActions.length - 1; i >= 0; i--) {
     const toolName = fileActions[i].toolConfiguration.originalName;
 
@@ -472,16 +535,14 @@ export async function revertClientExecutableFileToPreviousState(
     return new Err(new Error(`No create action found for file '${fileId}'`));
   }
 
-  // Determine starting content and starting index (exact action index)
   let startingContent: string;
   let startIndex: number;
 
-  // If there's a revert action, extract content from its output
+  // If there was a previous revert, use its output as our baseline
   if (lastRevertIndex !== -1) {
     const revertAction = fileActions[lastRevertIndex];
     startIndex = lastRevertIndex;
 
-    // Extract content from revert action's output items
     const revertItemOutput = outputItemsByActionId
       .get(revertAction.id)
       ?.find((output) => isRevertActionOutput(output));
@@ -496,7 +557,7 @@ export async function revertClientExecutableFileToPreviousState(
 
     startingContent = revertItemOutput.content.text;
   } else {
-    // Use original content from create action
+    // Otherwise, use the original content from file creation
     const createAction = fileActions[createActionIndex];
     startIndex = createActionIndex;
 
@@ -508,13 +569,14 @@ export async function revertClientExecutableFileToPreviousState(
       );
     }
 
-    const originalContent = createAction.augmentedInputs.content;
-
-    startingContent = originalContent;
+    startingContent = createAction.augmentedInputs.content;
   }
 
+  // Replay edit actions chronologically to reconstruct the previous valid state
   let revertedContent = startingContent;
 
+  // The cutoff point: we replay all actions up to (but not including) the current agent message
+  // This effectively undoes the most recent set of changes
   const cutoffAgentMessageId =
     fileActions[fileActions.length - 1].agentMessageId;
 
@@ -522,26 +584,21 @@ export async function revertClientExecutableFileToPreviousState(
     const action = fileActions[i];
 
     // Stop when we reach the first action of the last agent message
+    // This preserves all previous valid states while undoing the latest changes
     if (action.agentMessageId === cutoffAgentMessageId) {
       break;
     }
 
-    if (
-      action.toolConfiguration.originalName ===
-      EDIT_CONTENT_CREATION_FILE_TOOL_NAME
-    ) {
-      if (!isEditAction(action)) {
-        return new Err(
-          new Error(
-            `Invalid augmented inputs for edit action for file '${fileId}'`
-          )
-        );
-      }
-
-      const { old_string, new_string } = action.augmentedInputs;
-
-      revertedContent = revertedContent.replace(old_string, new_string);
+    if (!isEditAction(action)) {
+      return new Err(
+        new Error(
+          `Invalid augmented inputs for edit action for file '${fileId}'`
+        )
+      );
     }
+
+    const { old_string, new_string } = action.augmentedInputs;
+    revertedContent = revertedContent.replace(old_string, new_string);
   }
 
   await fileResource.setUseCaseMetadata({
