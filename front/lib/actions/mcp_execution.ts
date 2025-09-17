@@ -94,55 +94,51 @@ export async function* executeMCPTool({
   for await (const event of tryCallMCPTool(auth, inputs, agentLoopRunContext, {
     progressToken: action.id,
   })) {
-    switch (event.type) {
-      case "result": {
-        toolCallResult = event.result;
-        break;
-      }
-      case "notification": {
-        const { notification } = event;
-        if (isMCPProgressNotificationType(notification)) {
-          const output = notification.params.data.output;
+    if (event.type === "result") {
+      toolCallResult = event.result;
+    } else if (event.type === "notification") {
+      const { notification } = event;
+      if (isMCPProgressNotificationType(notification)) {
+        const output = notification.params.data.output;
 
-          // Handle store_resource notifications by creating output items immediately
-          if (isStoreResourceProgressOutput(output)) {
-            await AgentMCPActionOutputItem.bulkCreate(
-              output.contents.map((content) => ({
-                workspaceId: action.workspaceId,
-                agentMCPActionId: action.id,
-                content,
-              }))
-            );
-          }
-
-          // Specific handling for run_agent notifications indicating the tool has
-          // started and can be resumed: the action is updated to save the resumeState.
-          if (isRunAgentQueryProgressOutput(output)) {
-            await action.updateStepContext({
-              ...action.stepContext,
-              resumeState: {
-                userMessageId: output.userMessageId,
-                conversationId: output.conversationId,
-              },
-            });
-          }
-
-          // Regular notifications, we yield them as is with the type "tool_notification".
-          yield {
-            type: "tool_notification",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-            action: {
-              ...action.toJSON(),
-              // TODO(2025-08-29 aubin): cleanup as soon as the SDK type is updated.
-              output: null,
-              generatedFiles: [],
-            },
-            notification: notification.params,
-          };
+        // Handle store_resource notifications by creating output items immediately
+        if (isStoreResourceProgressOutput(output)) {
+          await AgentMCPActionOutputItem.bulkCreate(
+            output.contents.map((content) => ({
+              workspaceId: action.workspaceId,
+              agentMCPActionId: action.id,
+              content,
+            }))
+          );
         }
+
+        // Specific handling for run_agent notifications indicating the tool has
+        // started and can be resumed: the action is updated to save the resumeState.
+        if (isRunAgentQueryProgressOutput(output)) {
+          await action.updateStepContext({
+            ...action.stepContext,
+            resumeState: {
+              userMessageId: output.userMessageId,
+              conversationId: output.conversationId,
+            },
+          });
+        }
+
+        // Regular notifications, we yield them as is with the type "tool_notification".
+        yield {
+          type: "tool_notification",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          action: {
+            ...action.toJSON(),
+            // TODO(2025-08-29 aubin): cleanup as soon as the SDK type is updated.
+            output: null,
+            generatedFiles: [],
+          },
+          notification: notification.params,
+        };
       }
     }
   }
