@@ -289,8 +289,8 @@ const createServer = (
   server.tool(
     REVERT_LAST_EDIT_TOOL_NAME,
     "Reverts the content creation to the state it was at the last agent message. " +
-      "This tool can be used to restore the content creation file to its state before the current agent message. " +
-      "Use this when you need to undo changes made in the current agent message and return to the previous state.",
+      "This tool can be used to restore the content creation file to its state before the last agent message. " +
+      "Use this when you need to undo changes made in the last agent message and return to the previous state.",
     {
       file_id: z
         .string()
