@@ -245,15 +245,6 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.DUST_DEEP_2:
-      return {
-        sId: GLOBAL_AGENTS_SID.DUST_DEEP_2,
-        name: "dust-deep-2",
-        description:
-          "Deep research agent with company data, web search, browsing, Content Creation, and data warehouses.",
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.DUST_TASK:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_TASK,
