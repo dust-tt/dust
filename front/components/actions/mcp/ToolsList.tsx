@@ -11,7 +11,10 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import type { CustomRemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type {
+  CustomRemoteMCPToolStakeLevelType,
+  MCPToolStakeLevelType,
+} from "@app/lib/actions/constants";
 import {
   CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
@@ -49,7 +52,16 @@ export function ToolsList({
     () => mcpServerView.server.tools,
     [mcpServerView.server.tools]
   );
-  const toolsMetadata = mcpServerView.toolsMetadata ?? [];
+  const toolsMetadata = useMemo(() => {
+    const map: Record<
+      string,
+      { permission: MCPToolStakeLevelType; enabled: boolean }
+    > = {};
+    for (const tool of mcpServerView.toolsMetadata ?? []) {
+      map[tool.toolName] = tool;
+    }
+    return map;
+  }, [mcpServerView.toolsMetadata]);
 
   const { updateToolSettings } = useUpdateMCPServerToolsSettings({
     owner,
@@ -82,17 +94,12 @@ export function ToolsList({
   };
 
   const getToolPermission = (toolName: string) => {
-    return (
-      toolsMetadata.find((tool) => tool.toolName === toolName)?.permission ??
-      FALLBACK_MCP_TOOL_STAKE_LEVEL
-    );
+    return toolsMetadata[toolName]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL;
   };
 
   const getToolEnabled = (toolName: string) => {
     // Default tools to be enabled by default
-    return (
-      toolsMetadata.find((tool) => tool.toolName === toolName)?.enabled ?? true
-    );
+    return toolsMetadata[toolName]?.enabled ?? true;
   };
 
   const toolPermissionLabel: Record<string, string> = {
