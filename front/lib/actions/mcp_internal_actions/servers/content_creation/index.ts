@@ -31,6 +31,45 @@ import {
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
 /**
+ * Builds a progress notification for content creation file operations
+ */
+function buildContentCreationFileNotification(
+  progressToken: string | number,
+  fileResource: {
+    sId: string;
+    contentType: string;
+    fileName: string;
+    updatedAtMs: number;
+  },
+  operation: "create" | "update" | "revert"
+): MCPProgressNotificationType {
+  const operationLabels = {
+    create: "Creating Content Creation file...",
+    update: "Updating Content Creation file...",
+    revert: "Reverting Content Creation file...",
+  };
+
+  return {
+    method: "notifications/progress",
+    params: {
+      progress: 1,
+      total: 1,
+      progressToken,
+      data: {
+        label: operationLabels[operation],
+        output: {
+          type: "content_creation_file",
+          fileId: fileResource.sId,
+          mimeType: fileResource.contentType,
+          title: fileResource.fileName,
+          updatedAt: fileResource.updatedAtMs.toString(),
+        },
+      },
+    },
+  };
+}
+
+/**
  * Content Creation Server - Allows the model to create and update content creation files.
  * Content Creation includes any file that users can execute, run, or interact with directly.
  * Currently supports client-executable files, with plans to expand to other interactive formats.
@@ -121,24 +160,12 @@ const createServer = (
           : `File '${fileResource.sId}' created successfully.`;
 
         if (_meta?.progressToken) {
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 1,
-              total: 1,
-              progressToken: _meta?.progressToken,
-              data: {
-                label: "Creating Content Creation file...",
-                output: {
-                  type: "content_creation_file",
-                  fileId: fileResource.sId,
-                  mimeType: fileResource.contentType,
-                  title: fileResource.fileName,
-                  updatedAt: fileResource.updatedAtMs.toString(),
-                },
-              },
-            },
-          };
+          const notification: MCPProgressNotificationType =
+            buildContentCreationFileNotification(
+              _meta.progressToken,
+              fileResource,
+              "create"
+            );
 
           // Send a notification to the MCP Client, to display the Content Creation file.
           await sendNotification(notification);
@@ -238,24 +265,12 @@ const createServer = (
           `${replacementCount} replacement${pluralS}`;
 
         if (_meta?.progressToken) {
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 1,
-              total: 1,
-              progressToken: _meta?.progressToken,
-              data: {
-                label: "Updating Content Creation file...",
-                output: {
-                  type: "content_creation_file",
-                  fileId: fileResource.sId,
-                  mimeType: fileResource.contentType,
-                  title: fileResource.fileName,
-                  updatedAt: fileResource.updatedAtMs.toString(),
-                },
-              },
-            },
-          };
+          const notification: MCPProgressNotificationType =
+            buildContentCreationFileNotification(
+              _meta.progressToken,
+              fileResource,
+              "update"
+            );
 
           // Send a notification to the MCP Client, to refresh the Content Creation file.
           await sendNotification(notification);
@@ -313,24 +328,12 @@ const createServer = (
         } = result;
 
         if (_meta?.progressToken) {
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 1,
-              total: 1,
-              progressToken: _meta?.progressToken,
-              data: {
-                label: "Reverting Content Creation file...",
-                output: {
-                  type: "content_creation_file",
-                  fileId: fileResource.sId,
-                  mimeType: fileResource.contentType,
-                  title: fileResource.fileName,
-                  updatedAt: fileResource.updatedAtMs.toString(),
-                },
-              },
-            },
-          };
+          const notification: MCPProgressNotificationType =
+            buildContentCreationFileNotification(
+              _meta.progressToken,
+              fileResource,
+              "revert"
+            );
 
           // Send a notification to the MCP Client, to refresh the Content Creation file.
           await sendNotification(notification);
