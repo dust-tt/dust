@@ -29,7 +29,8 @@ import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
-type ScheduleFormData = Extract<TriggerFormData, { kind: "schedule" }>;
+// a ScheduleFormData must be a TriggerFormData with a cron field
+type ScheduleFormData = Extract<TriggerFormData, { cron: string }>;
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
@@ -62,7 +63,6 @@ export function ScheduleEditionModal({
 
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
-    kind: "schedule",
     cron: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     customPrompt: "",
