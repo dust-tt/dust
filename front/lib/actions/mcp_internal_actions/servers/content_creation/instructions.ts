@@ -36,7 +36,7 @@ You have access to a Content Creation system that allows you to create and updat
 
 - Use \`${REVERT_LAST_EDIT_TOOL_NAME}\` to revert the content creation file to the state it was at the last agent message.
 - Only use this tool if explicitly instructed to do so.
-- The revert tool can only be used to revert one change at a time
+- The revert tool can only be used after an edit has been made to the file.
 
 ${VIZ_REACT_COMPONENT_GUIDELINES}
 
