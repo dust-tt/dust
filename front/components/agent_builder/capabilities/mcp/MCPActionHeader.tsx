@@ -38,7 +38,7 @@ export function MCPActionHeader({
   };
 
   return (
-    <div className="flex w-full flex-row items-center justify-between">
+    <div className="flex w-full flex-col items-start gap-4">
       <div className="flex flex-col items-center gap-3 sm:flex-row">
         {getAvatar(mcpServerView.server, "md")}
         <div className="flex grow flex-col gap-0 pr-9">
@@ -51,31 +51,24 @@ export function MCPActionHeader({
         </div>
       </div>
       {allowNameEdit && (
-        <Popover
-          trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
-          popoverTriggerAsChild
-          onAnimationEnd={onClose}
-          content={
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col items-end gap-2">
-                <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
-                  Name of the tool
-                </div>
-              </div>
-              <Input
-                {...form.register("name", {
-                  onChange: () => {
-                    void form.trigger("name");
-                  },
-                })}
-                placeholder="My tool name…"
-                message={error?.message}
-                messageStatus="error"
-                className="text-sm"
-              />
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex flex-col items-end gap-2">
+            <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
+              Name of the tool
             </div>
-          }
-        />
+          </div>
+          <Input
+            {...form.register("name", {
+              onChange: () => {
+                void form.trigger("name");
+              },
+            })}
+            placeholder="My tool name…"
+            message={error?.message}
+            messageStatus="error"
+            className="text-sm"
+          />
+        </div>
       )}
     </div>
   );
