@@ -1,7 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-
-import { generateCronRule } from "@app/lib/api/assistant/configuration/triggers";
+import {
+  generateCronRule,
+  INVALID_TIMEZONE_MESSAGE,
+  TOO_FREQUENT_MESSAGE,
+} from "@app/lib/api/assistant/configuration/triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -50,11 +53,19 @@ async function handler(
       });
 
       if (r.isErr()) {
+        let message = "Failed to generate cron rule.";
+        if (r.error.message === INVALID_TIMEZONE_MESSAGE) {
+          message += " Invalid timezone provided.";
+        }
+        if (r.error.message === TOO_FREQUENT_MESSAGE) {
+          message += " Cron output is too frequent.";
+        }
+
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to generate cron rule.",
+            message,
           },
         });
       }

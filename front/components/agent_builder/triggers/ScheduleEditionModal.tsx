@@ -32,6 +32,7 @@ import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 const MIN_DESCRIPTION_LENGTH = 10;
+type ErrorType = "unknown" | "invalid_timezone" | "too_frequent";
 
 function formatTimezone(timezone: string): string {
   const parts = timezone.split("/");
@@ -40,6 +41,19 @@ function formatTimezone(timezone: string): string {
   }
   const city = parts[parts.length - 1].replace(/_/g, " ");
   return `${city} (${timezone})`;
+}
+
+function extractErrorType(error: unknown): ErrorType {
+  if (typeof error === "object" && error !== null && "error" in error) {
+    const message = (error as any).error.message.toLowerCase();
+    if (message.includes("invalid timezone")) {
+      return "invalid_timezone";
+    }
+    if (message.includes("too frequent")) {
+      return "too_frequent";
+    }
+  }
+  return "unknown";
 }
 
 interface ScheduleEditionModalProps {
@@ -77,6 +91,7 @@ export function ScheduleEditionModal({
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
   ] = useState<"idle" | "loading" | "error">("idle");
+  const [cronErrorStatus, setCronErrorStatus] = useState<ErrorType>("unknown");
   const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
     null
   );
@@ -117,7 +132,14 @@ export function ScheduleEditionModal({
       case "loading":
         return "Generating schedule...";
       case "error":
-        return "Unable to generate a schedule (note: it can't be more frequent than hourly). Try rephrasing.";
+        switch (cronErrorStatus) {
+          case "invalid_timezone":
+            return "Unable to generate a schedule due to an invalid timezone returned by the model. Valid timezones have the form 'Europe/Paris'. Please try rephrasing.";
+          case "too_frequent":
+            return "Unable to generate a schedule: it can't be more frequent than hourly. Please try rephrasing.";
+          case "unknown":
+            return "Unable to generate a schedule. Please try rephrasing.";
+        }
       case "idle":
         if (!cron) {
           return undefined;
@@ -224,8 +246,9 @@ export function ScheduleEditionModal({
                             form.setValue("timezone", result.timezone);
                             setGeneratedTimezone(result.timezone);
                             setNaturalDescriptionToCronRuleStatus("idle");
-                          } catch (error) {
+                          } catch (error: any) {
                             setNaturalDescriptionToCronRuleStatus("error");
+                            setCronErrorStatus(extractErrorType(error));
                             setGeneratedTimezone(null);
                           }
                         },
