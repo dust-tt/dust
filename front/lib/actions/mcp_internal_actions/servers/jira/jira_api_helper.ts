@@ -1192,6 +1192,6 @@ export async function getIssueAttachments({
     return result;
   }
 
-  const attachments = result.value.fields?.attachment || [];
+  const attachments = result.value.fields?.attachment ?? [];
   return new Ok(attachments);
 }
