@@ -1,7 +1,8 @@
-// Define tool names locally to avoid dependency cycles with action modules.
-const CREATE_CONTENT_CREATION_FILE_TOOL_NAME = "create_content_creation_file";
-const EDIT_CONTENT_CREATION_FILE_TOOL_NAME = "edit_content_creation_file";
-const REVERT_TO_PREVIOUS_EDIT_TOOL_NAME = "revert_to_previous_edit";
+import {
+  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  REVERT_TO_PREVIOUS_EDIT_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
@@ -378,6 +379,7 @@ export async function revertClientExecutableFileToPreviousState(
       ],
       where: {
         workspaceId,
+        status: "succeeded",
       },
     });
 
@@ -433,7 +435,6 @@ export async function revertClientExecutableFileToPreviousState(
 
         return false;
       })
-      .filter((action) => action.status === "succeeded")
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
     if (fileActions.length === 0) {
@@ -544,6 +545,16 @@ export async function revertClientExecutableFileToPreviousState(
       (action) => action.agentMessageId === currentAgentMessage.agentMessageId
     );
 
+    logger.info(
+      {
+        currentAgentMessageIndex,
+        startIndex,
+        fileActionsLength: fileActions.length,
+        startingAgentMessageId,
+      },
+      "Current agent message index"
+    );
+
     for (let i = startIndex + 1; i < fileActions.length; i++) {
       const action = fileActions[i];
 
@@ -565,6 +576,11 @@ export async function revertClientExecutableFileToPreviousState(
         }
 
         const { old_string, new_string } = action.augmentedInputs;
+        logger.info(
+          { old_string, new_string },
+          "Replacing string in reverted content"
+        );
+
         revertedContent = revertedContent.replace(new_string, old_string);
       }
     }
