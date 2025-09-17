@@ -290,13 +290,17 @@ export async function getClientExecutableFileContent(
   }
 }
 
-function isCreationAction(
+function isCreateFileAction(
   action: AgentMCPActionModel
 ): action is AgentMCPActionModel & { augmentedInputs: { content: string } } {
-  return typeof action.augmentedInputs.content === "string";
+  return (
+    action.toolConfiguration.originalName ===
+      CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
+    typeof action.augmentedInputs.content === "string"
+  );
 }
 
-function isEditAction(
+function isEditFileAction(
   action: AgentMCPActionModel
 ): action is AgentMCPActionModel & {
   augmentedInputs: { old_string: string; new_string: string };
@@ -309,7 +313,7 @@ function isEditAction(
   );
 }
 
-function isCreateResourceOutput(
+function isCreateFileResourceOutput(
   output: AgentMCPActionOutputItem
 ): output is AgentMCPActionOutputItem & {
   content: { type: "resource"; resource: { fileId: string } };
@@ -321,7 +325,7 @@ function isCreateResourceOutput(
   );
 }
 
-function isRevertActionOutput(
+function isRevertFileActionOutput(
   output: AgentMCPActionOutputItem
 ): output is AgentMCPActionOutputItem & {
   content: { type: "text"; text: string };
@@ -331,6 +335,7 @@ function isRevertActionOutput(
   );
 }
 
+// Returns create and edit/revert actions for a file
 async function getFileActions(
   auth: Authenticator,
   fileId: string,
@@ -338,10 +343,8 @@ async function getFileActions(
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  // First, get all successful MCP actions in this conversation
-  // We still need to fetch all actions because we need to determine which create actions
-  // produced our target file by examining their output items
-  const allActions = await AgentMCPActionModel.findAll({
+  // Get edit and revert actions for the file
+  const editOrRevertActions = await AgentMCPActionModel.findAll({
     include: [
       {
         model: AgentMessage,
@@ -363,33 +366,64 @@ async function getFileActions(
     where: {
       workspaceId,
       status: "succeeded",
+      [Op.and]: [
+        {
+          [Op.or]: [
+            {
+              "toolConfiguration.originalName":
+                EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+            },
+            { "toolConfiguration.originalName": REVERT_LAST_EDIT_TOOL_NAME },
+          ],
+        },
+        { "augmentedInputs.file_id": fileId },
+      ],
     },
     order: [["createdAt", "ASC"]],
   });
 
-  if (allActions.length === 0) {
-    return [];
-  }
-
-  // Filter to only file-related actions using optimized logic
-  return allActions.filter((action) => {
-    const toolName = action.toolConfiguration.originalName;
-
-    // For edit and revert actions, check if they target our file directly
-    if (
-      toolName === EDIT_CONTENT_CREATION_FILE_TOOL_NAME ||
-      toolName === REVERT_LAST_EDIT_TOOL_NAME
-    ) {
-      return action.augmentedInputs.file_id === fileId;
-    }
-
-    // For create actions, we need to check outputs
-    if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
-      return isCreationAction(action);
-    }
-
-    return false;
+  // Get create actions for the file
+  const createActions = await AgentMCPActionModel.findAll({
+    include: [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+        include: [
+          {
+            model: Message,
+            as: "message",
+            required: true,
+            where: {
+              conversationId,
+              workspaceId,
+            },
+          },
+        ],
+      },
+    ],
+    where: {
+      workspaceId,
+      status: "succeeded",
+      "toolConfiguration.originalName": CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+    order: [["createdAt", "ASC"]],
   });
+
+  // Find the create action that created our file
+  const fileCreationAction = await findCreateActionForFile(
+    createActions,
+    fileId,
+    workspaceId
+  );
+
+  const allFileActions = fileCreationAction
+    ? [...editOrRevertActions, fileCreationAction]
+    : editOrRevertActions;
+
+  return allFileActions.sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+  );
 }
 
 async function getOutputItemsForActions(
@@ -408,41 +442,71 @@ async function getOutputItemsForActions(
     order: [["createdAt", "ASC"]],
   });
 
-  // Build the map more efficiently using reduce
   return outputs.reduce((map, output) => {
-    const existing = map.get(output.agentMCPActionId) || [];
+    const existing = map.get(output.agentMCPActionId) ?? [];
     existing.push(output);
     map.set(output.agentMCPActionId, existing);
     return map;
   }, new Map<number, AgentMCPActionOutputItem[]>());
 }
 
-function filterActionsForFile(
-  actions: AgentMCPActionModel[],
-  outputItems: Map<number, AgentMCPActionOutputItem[]>,
-  fileId: string
-): AgentMCPActionModel[] {
-  return actions.filter((action) => {
-    const toolName = action.toolConfiguration.originalName;
+async function getOutputForAction(
+  actionId: number,
+  workspaceId: number
+): Promise<
+  | (AgentMCPActionOutputItem & { content: { type: "text"; text: string } })
+  | null
+> {
+  const outputs = await AgentMCPActionOutputItem.findAll({
+    where: {
+      agentMCPActionId: actionId,
+      workspaceId,
+    },
+    order: [["createdAt", "ASC"]],
+  });
 
-    // For create action is the output item for the file
-    if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
-      const resourceOutput = outputItems
-        .get(action.id)
-        ?.find((output) => isCreateResourceOutput(output));
+  const revertOutput = outputs.find((output) =>
+    isRevertFileActionOutput(output)
+  );
+  return revertOutput
+    ? (revertOutput as AgentMCPActionOutputItem & {
+        content: { type: "text"; text: string };
+      })
+    : null;
+}
+
+async function findCreateActionForFile(
+  createActions: AgentMCPActionModel[],
+  fileId: string,
+  workspaceId: number
+): Promise<AgentMCPActionModel | null> {
+  if (createActions.length === 0) {
+    return null;
+  }
+
+  // Get output items for create actions to check which one created our file
+  const outputItems = await getOutputItemsForActions(
+    createActions.map((action) => action.id),
+    workspaceId
+  );
+
+  return (
+    createActions.find((action) => {
+      const resourceOutput = outputItems.get(action.id)?.find(
+        (
+          output
+        ): output is AgentMCPActionOutputItem & {
+          content: { type: "resource"; resource: { fileId: string } };
+        } => isCreateFileResourceOutput(output)
+      );
 
       if (!resourceOutput) {
         return false;
       }
 
       return resourceOutput.content.resource.fileId === fileId;
-    }
-
-    return (
-      toolName === EDIT_CONTENT_CREATION_FILE_TOOL_NAME ||
-      toolName === REVERT_LAST_EDIT_TOOL_NAME
-    );
-  });
+    }) ?? null
+  );
 }
 
 export async function revertClientExecutableFileToPreviousState(
@@ -474,30 +538,10 @@ export async function revertClientExecutableFileToPreviousState(
 
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  const conversationActions = await getFileActions(
-    auth,
-    fileId,
-    conversationId
-  );
-
-  if (conversationActions.length === 0) {
-    return new Err(new Error("No MCP actions found for this conversation"));
-  }
-
-  const outputItemsByActionId = await getOutputItemsForActions(
-    conversationActions.map((a) => a.id),
-    workspaceId
-  );
-
-  // Only get actions related to the file
-  const fileActions = filterActionsForFile(
-    conversationActions,
-    outputItemsByActionId,
-    fileId
-  );
+  const fileActions = await getFileActions(auth, fileId, conversationId);
 
   if (fileActions.length === 0) {
-    return new Err(new Error(`No MCP actions found for file '${fileId}'`));
+    return new Err(new Error("No MCP actions found for this file"));
   }
 
   // Validate that the most recent action is not already a revert
@@ -511,7 +555,6 @@ export async function revertClientExecutableFileToPreviousState(
     );
   }
 
-  // Find most recent revert and create action indices in the history
   let lastRevertIndex = -1;
   let createActionIndex = -1;
 
@@ -543,9 +586,10 @@ export async function revertClientExecutableFileToPreviousState(
     const revertAction = fileActions[lastRevertIndex];
     startIndex = lastRevertIndex;
 
-    const revertItemOutput = outputItemsByActionId
-      .get(revertAction.id)
-      ?.find((output) => isRevertActionOutput(output));
+    const revertItemOutput = await getOutputForAction(
+      revertAction.id,
+      workspaceId
+    );
 
     if (!revertItemOutput) {
       return new Err(
@@ -561,7 +605,7 @@ export async function revertClientExecutableFileToPreviousState(
     const createAction = fileActions[createActionIndex];
     startIndex = createActionIndex;
 
-    if (!isCreationAction(createAction)) {
+    if (!isCreateFileAction(createAction)) {
       return new Err(
         new Error(
           `Invalid augmented inputs for create action for file '${fileId}'`
@@ -572,24 +616,20 @@ export async function revertClientExecutableFileToPreviousState(
     startingContent = createAction.augmentedInputs.content;
   }
 
-  // Replay edit actions chronologically to reconstruct the previous valid state
   let revertedContent = startingContent;
 
-  // The cutoff point: we replay all actions up to (but not including) the current agent message
-  // This effectively undoes the most recent set of changes
   const cutoffAgentMessageId =
     fileActions[fileActions.length - 1].agentMessageId;
 
+  // Reapply edit actions chronologically to reconstruct the previous valid state
   for (let i = startIndex + 1; i < fileActions.length; i++) {
     const action = fileActions[i];
 
-    // Stop when we reach the first action of the last agent message
-    // This preserves all previous valid states while undoing the latest changes
     if (action.agentMessageId === cutoffAgentMessageId) {
       break;
     }
 
-    if (!isEditAction(action)) {
+    if (!isEditFileAction(action)) {
       return new Err(
         new Error(
           `Invalid augmented inputs for edit action for file '${fileId}'`
