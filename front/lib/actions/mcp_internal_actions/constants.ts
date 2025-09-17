@@ -94,6 +94,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "slack",
+  "slack_bot",
   "think",
   "toolsets",
   "web_search_&_browse",
@@ -983,6 +984,41 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       documentationUrl: null,
       instructions: null,
+    },
+  },
+  slack_bot: {
+    id: 31,
+    availability: "manual" as const,
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slack_bot_mcp");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_public_channels: "never_ask" as const,
+      list_users: "never_ask" as const,
+      get_user: "never_ask" as const,
+      post_message: "low" as const,
+      read_channel_history: "never_ask" as const,
+      read_thread_messages: "never_ask" as const,
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slack_bot",
+      version: "1.0.0",
+      description:
+        "Slack tools using workspace bot credentials. Messages and actions will appear as coming from the Dust Slack bot rather than your personal account.",
+      authorization: {
+        provider: "slack" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "SlackLogo",
+      documentationUrl: null,
+      instructions:
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
     },
   },
   [SEARCH_SERVER_NAME]: {

@@ -72,13 +72,8 @@ export function DataSourceList({
   showSelectAllHeader = false,
   headerTitle = "Name",
 }: DataSourceListProps) {
-  const {
-    isRowSelected,
-    isRowSelectable,
-    selectNode,
-    removeNode,
-    navigationHistory,
-  } = useDataSourceBuilderContext();
+  const { isRowSelected, selectNode, removeNode, navigationHistory } =
+    useDataSourceBuilderContext();
   const { field } = useSourcesFormController();
   const confirm = useContext(ConfirmContext);
 
@@ -140,7 +135,7 @@ export function DataSourceList({
 
     const selectableItems = items.filter((item) => {
       const hideCheckbox = shouldHideCheckbox(item);
-      return !hideCheckbox && isRowSelectable(item.id);
+      return !hideCheckbox;
     });
 
     if (selectableItems.length === 0) {
@@ -161,18 +156,12 @@ export function DataSourceList({
       return "partial";
     }
     return false;
-  }, [
-    showSelectAllHeader,
-    items,
-    shouldHideCheckbox,
-    isRowSelectable,
-    isRowSelected,
-  ]);
+  }, [showSelectAllHeader, items, shouldHideCheckbox, isRowSelected]);
 
   const handleSelectAll = useCallback(async () => {
     const selectableItems = items.filter((item) => {
       const hideCheckbox = shouldHideCheckbox(item);
-      return !hideCheckbox && isRowSelectable(item.id);
+      return !hideCheckbox;
     });
 
     // Batch all operations into a single field update
@@ -232,7 +221,6 @@ export function DataSourceList({
   }, [
     items,
     shouldHideCheckbox,
-    isRowSelectable,
     isRowSelected,
     selectAllState,
     field,
@@ -304,7 +292,6 @@ export function DataSourceList({
       {items.map((item) => {
         const selectionState = isRowSelected(item.id);
         const hideCheckbox = shouldHideCheckbox(item);
-        const disabled = hideCheckbox || !isRowSelectable(item.id);
 
         const shouldShowCheckbox = showCheckboxOnlyForPartialSelection
           ? selectionState === "partial"
@@ -319,7 +306,7 @@ export function DataSourceList({
               {shouldShowCheckbox ? (
                 <Checkbox
                   checked={selectionState}
-                  disabled={disabled}
+                  disabled={hideCheckbox}
                   onClick={(e) => e.stopPropagation()}
                   onCheckedChange={(state) =>
                     handleSelectionChange(item, state)

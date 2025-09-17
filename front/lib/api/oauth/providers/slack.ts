@@ -27,7 +27,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     const { user_scopes, bot_scopes } = (() => {
       switch (useCase) {
         case "personal_actions":
-        case "platform_actions":
           return {
             user_scopes: [
               "channels:read",
@@ -66,7 +65,8 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
             ],
           };
         }
-        case "bot": {
+        case "bot":
+        case "platform_actions":
           return {
             user_scopes: [],
             bot_scopes: [
@@ -87,7 +87,6 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
               "users:read.email",
             ],
           };
-        }
         case "labs_transcripts":
           assert(
             "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
@@ -104,14 +103,13 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     const clientId = (() => {
       switch (useCase) {
         case "personal_actions":
-        case "platform_actions":
           return config.getOAuthSlackToolsClientId();
         case "connection": {
           return config.getOAuthSlackClientId();
         }
-        case "bot": {
+        case "bot":
+        case "platform_actions":
           return config.getOAuthSlackBotClientId();
-        }
         case "labs_transcripts":
           assert(
             "Unreachable provider `labs_transcripts` in SlackOAuthProvider"

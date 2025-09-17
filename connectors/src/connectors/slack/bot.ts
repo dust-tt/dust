@@ -4,6 +4,7 @@ import type {
   ConversationPublicType,
   LightAgentConfigurationType,
   PublicPostContentFragmentRequestBody,
+  PublicPostMessagesRequestBody,
   Result,
   SupportedFileContentType,
   UserMessageType,
@@ -545,12 +546,14 @@ async function answerMessage(
   }
 
   let requestedGroups: string[] | undefined = undefined;
-
+  let skipToolsValidation = false;
   if (slackUserInfo.is_bot) {
     const isBotAllowedRes = await isBotAllowed(connector, slackUserInfo);
     if (isBotAllowedRes.isErr()) {
       return isBotAllowedRes;
     }
+    // If the bot is allowed, we skip tools validation as we have no users to rely on for permissions.
+    skipToolsValidation = true;
   } else {
     const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
       connector,
@@ -894,7 +897,7 @@ async function answerMessage(
     message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
   }
 
-  const messageReqBody = {
+  const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
     mentions: [{ configurationId: mention.assistantId }],
     context: {
@@ -906,6 +909,7 @@ async function answerMessage(
       profilePictureUrl: slackChatBotMessage.slackAvatar || null,
       origin: "slack" as const,
     },
+    skipToolsValidation,
   };
 
   // Await the promise to get the content fragment.

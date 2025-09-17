@@ -147,11 +147,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Activate @research agent.",
     stage: "dust_only",
   },
-  research_agent_2: {
-    description:
-      "Activate second version of @research agent (dust only for evals).",
-    stage: "dust_only",
-  },
   deep_research_as_a_tool: {
     description: "Activate deep research as a tool",
     stage: "dust_only",
@@ -184,6 +179,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   use_openai_eu_key: {
     description: "Use OpenAI EU API key instead of the default OpenAI API key",
+    stage: "on_demand",
+  },
+  slack_bot_mcp: {
+    description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
