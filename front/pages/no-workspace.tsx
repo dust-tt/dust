@@ -86,7 +86,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 
     if (res.isErr()) {
       logger.error(
-        { flow, userId: user.id, panic: true },
+        { flow, userId: user.id, panic: true, error: res.error },
         "Unreachable: workspace not found."
       );
       throw new Error("Workspace not found.");
