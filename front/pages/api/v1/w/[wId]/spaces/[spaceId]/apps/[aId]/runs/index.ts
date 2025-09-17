@@ -276,7 +276,7 @@ async function handler(
       // When this is on, two things happen:
       // 1) We use the OpenAI EU endpoint (in Core)
       // 2) We use the DUST_MANAGED_OPENAI_API_KEY_EU env as the key
-      const useOpenAIEUKey =
+      let useOpenAIEUKey =
         keyWorkspaceFlags.includes("use_openai_eu_key") &&
         !!process.env.DUST_MANAGED_OPENAI_API_KEY_EU;
 
@@ -286,6 +286,9 @@ async function handler(
         credentials = dustManagedCredentials({ useOpenAIEU: useOpenAIEUKey });
       } else {
         credentials = credentialsFromProviders(providers);
+
+        // We never want to use the EU hostname with provider credentials.
+        useOpenAIEUKey = false;
       }
 
       if (!auth.isSystemKey()) {
