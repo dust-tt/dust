@@ -292,6 +292,34 @@ export async function getClientExecutableFileContent(
   }
 }
 
+function isCreateAugmentedInputs(
+  augmentedInputs: Record<string, unknown>
+): augmentedInputs is { content: string } {
+  return typeof augmentedInputs.content === "string";
+}
+
+function isEditAugmentedInputs(
+  augmentedInputs: Record<string, unknown>
+): augmentedInputs is { old_string: string; new_string: string } {
+  return (
+    typeof augmentedInputs.old_string === "string" &&
+    typeof augmentedInputs.new_string === "string"
+  );
+}
+
+function isCreateResourceOutput(
+  output: AgentMCPActionOutputItem
+): output is AgentMCPActionOutputItem & {
+  content: { type: "resource"; resource: { fileId: string } };
+} {
+  return (
+    typeof output.content === "object" &&
+    output.content.type === "resource" &&
+    output.content.resource &&
+    typeof output.content.resource.fileId === "string"
+  );
+}
+
 export async function revertClientExecutableFileToPreviousState(
   auth: Authenticator,
   params: {
@@ -371,16 +399,30 @@ export async function revertClientExecutableFileToPreviousState(
     const fileActions = allActions
       .filter((action) => {
         const toolName = action.toolConfiguration.originalName;
-        const fileIdFromInput = (action.augmentedInputs as any)?.file_id;
+        const fileIdFromInput = action.augmentedInputs?.file_id;
 
         if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
+          if (!isCreateAugmentedInputs(action.augmentedInputs)) {
+            return new Err(
+              new Error(
+                `Invalid augmented inputs for create action for file '${fileId}'`
+              )
+            );
+          }
+
           const resourceOutput = outputItemsByActionId
             .get(action.id)
             ?.find((o) => o.content?.type === "resource");
 
-          const actionFileId = (
-            resourceOutput?.content.resource as { fileId: string }
-          )?.fileId;
+          if (!resourceOutput || !isCreateResourceOutput(resourceOutput)) {
+            return new Err(
+              new Error(
+                `Invalid resource output for create action for file '${fileId}'`
+              )
+            );
+          }
+
+          const actionFileId = resourceOutput?.content.resource.fileId;
           const isFileCreateAction = actionFileId === fileId;
           return isFileCreateAction;
         }
@@ -460,30 +502,31 @@ export async function revertClientExecutableFileToPreviousState(
         );
       }
 
-      if (!revertItemOutput.content) {
+      if (
+        !revertItemOutput.content ||
+        revertItemOutput.content.type !== "text"
+      ) {
         return new Err(
           new Error(
             `Could not find reverted content in revert action for file '${fileId}'`
           )
         );
       }
-      startingContent = (
-        revertItemOutput.content as { type: "text"; text: string }
-      ).text;
+
+      startingContent = revertItemOutput.content.text;
     } else {
       // Use original content from create action
       const createAction = fileActions[createActionIndex];
       startingAgentMessageId = createAction.agentMessageId;
-      const originalContent =
-        (createAction.augmentedInputs?.content as string) ?? "";
-
-      if (!originalContent) {
+      if (!isCreateAugmentedInputs(createAction.augmentedInputs)) {
         return new Err(
           new Error(
-            `No original content found in create action for file '${fileId}'`
+            `Invalid augmented inputs for create action for file '${fileId}'`
           )
         );
       }
+
+      const originalContent = createAction.augmentedInputs.content;
 
       startingContent = originalContent;
     }
@@ -517,11 +560,15 @@ export async function revertClientExecutableFileToPreviousState(
         action.toolConfiguration.originalName ===
         EDIT_CONTENT_CREATION_FILE_TOOL_NAME
       ) {
-        const { old_string, new_string } = action.augmentedInputs as {
-          new_string: string;
-          old_string: string;
-        };
+        if (!isEditAugmentedInputs(action.augmentedInputs)) {
+          return new Err(
+            new Error(
+              `Invalid augmented inputs for edit action for file '${fileId}'`
+            )
+          );
+        }
 
+        const { old_string, new_string } = action.augmentedInputs;
         revertedContent = revertedContent.replace(new_string, old_string);
       }
     }
