@@ -2,7 +2,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  MAX_MCP_REQUEST_TIMEOUT_MS,
+  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -1048,7 +1048,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
+    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",
