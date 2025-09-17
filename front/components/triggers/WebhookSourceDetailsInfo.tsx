@@ -1,5 +1,6 @@
 import {
   ClipboardIcon,
+  cn,
   EyeIcon,
   EyeSlashIcon,
   IconButton,
@@ -108,9 +109,9 @@ export function WebhookSourceDetailsInfo({
             <Page.H variant="h6">Secret</Page.H>
             <div className="flex items-center space-x-2">
               <div
-                className={`font-mono ${
-                  isSecretVisible ? "" : "select-none blur-sm"
-                }`}
+                className={cn("font-mono", {
+                  "select-none blur-sm": !isSecretVisible,
+                })}
               >
                 <Page.P>{webhookSourceView.webhookSource.secret}</Page.P>
               </div>
