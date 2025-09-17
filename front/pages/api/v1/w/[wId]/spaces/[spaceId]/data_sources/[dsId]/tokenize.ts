@@ -26,7 +26,8 @@ const PostDatasourceTokenizeBodySchema = t.type({
  * @ignoreswagger
  * This endpoint is not to be included in the public API docs.
  */
-const CORE_TOKENIZE_TIMEOUT_MS = 270000; // 4.5 minutes
+// At 5mn, likeliness of connection close increases significantly. The timeout is set at 4mn30.
+const CORE_TOKENIZE_TIMEOUT_MS = 270000;
 
 async function handler(
   req: NextApiRequest,

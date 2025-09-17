@@ -520,7 +520,8 @@ export async function renderPrefixSection({
   };
 }
 
-const TOKENIZE_TIMEOUT_MS = 270000; // 4.5 minutes to avoid 5min activity timeouts
+// At 5mn, likeliness of connection close increases significantly. The timeout is set at 4mn30.
+const TOKENIZE_TIMEOUT_MS = 270000;
 
 async function tokenize(text: string, ds: DataSourceConfig) {
   if (!text) {
