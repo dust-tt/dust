@@ -2330,6 +2330,43 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        // Safety sweep for leftover tables/folders and their nodes.
+        // In normal flow, tables and folders are deleted earlier (via DataSource::delete),
+        // but orphan rows can remain (eg. if list queries skipped them). Ensure removal here
+        // to avoid FK violations when deleting the data source row.
+
+        // Delete any remaining table nodes then tables for this data source.
+        {
+            // Remove nodes referencing tables first to satisfy FK(dsn.table -> tables.id).
+            let stmt = c
+                .prepare(
+                    "DELETE FROM data_sources_nodes WHERE data_source = $1 AND \"table\" IS NOT NULL",
+                )
+                .await?;
+            let _ = c.query(&stmt, &[&data_source_row_id]).await?;
+
+            // Remove any remaining tables rows for this data source.
+            let stmt = c
+                .prepare("DELETE FROM tables WHERE data_source = $1")
+                .await?;
+            let _ = c.query(&stmt, &[&data_source_row_id]).await?;
+        }
+
+        // Delete any remaining folder nodes then folders for this data source.
+        {
+            let stmt = c
+                .prepare(
+                    "DELETE FROM data_sources_nodes WHERE data_source = $1 AND folder IS NOT NULL",
+                )
+                .await?;
+            let _ = c.query(&stmt, &[&data_source_row_id]).await?;
+
+            let stmt = c
+                .prepare("DELETE FROM data_sources_folders WHERE data_source = $1")
+                .await?;
+            let _ = c.query(&stmt, &[&data_source_row_id]).await?;
+        }
+
         // Data source documents can be numerous so we want to avoid any transaction that could
         // potentially hurt the performance of the database. Also we delete documents in small
         // batches to avoid long running operations.
