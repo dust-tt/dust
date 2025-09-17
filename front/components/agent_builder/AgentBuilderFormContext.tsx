@@ -191,11 +191,9 @@ const scheduleConfigSchema = z.object({
   timezone: z.string(),
 });
 
-const webhookConfigSchema = z
-  .object({
-    includePayload: z.boolean().catch(false),
-  })
-  .catch({ includePayload: false });
+const webhookConfigSchema = z.object({
+  includePayload: z.boolean(),
+});
 
 const webhookTriggerSchema = z.object({
   sId: z.string().optional(),
