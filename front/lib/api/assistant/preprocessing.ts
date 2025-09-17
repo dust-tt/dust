@@ -178,20 +178,43 @@ export async function renderConversationForModel(
         }
       );
 
-      let systemContext = "";
+      const metadataItems: string[] = [];
+
+      const identityTokens: string[] = [];
+      if (m.context.fullName) {
+        identityTokens.push(m.context.fullName);
+      }
+      if (m.context.username) {
+        const usernameToken = m.context.fullName
+          ? `(@${m.context.username})`
+          : `@${m.context.username}`;
+        identityTokens.push(usernameToken);
+      }
+      if (m.context.email) {
+        identityTokens.push(`<${m.context.email}>`);
+      }
+      if (identityTokens.length > 0) {
+        metadataItems.push(`- Sender: ${identityTokens.join(" ")}`);
+      }
+
+      if (m.created) {
+        metadataItems.push(`- Sent at: ${new Date(m.created).toISOString()}`);
+      }
+
       if (m.context.origin === "triggered") {
-        const items = [];
-        if (m.created) {
-          items.push(`- Current date: ${new Date(m.created).toISOString()}`);
-        }
+        metadataItems.push("- Source: Scheduled trigger");
         if (m.context.lastTriggerRunAt) {
-          items.push(
-            `- Last scheduled run: ${m.context.lastTriggerRunAt.toISOString()}`
+          metadataItems.push(
+            `- Previous scheduled run: ${m.context.lastTriggerRunAt.toISOString()}`
           );
         }
-        if (items.length > 0) {
-          systemContext = `<dust_system>\n${items.join("\n")}\n</dust_system>\n\n`;
-        }
+      } else if (m.context.origin) {
+        metadataItems.push(`- Source: ${m.context.origin}`);
+      }
+
+      let systemContext = "";
+      if (metadataItems.length > 0) {
+        systemContext = `<dust_system>\n${metadataItems.join("\n")}\n</dust_system>\n\n`;
       }
 
       messages.push({
