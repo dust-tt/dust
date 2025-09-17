@@ -213,6 +213,17 @@ async function checkRawSqlRegistry(filePaths: string[]) {
   }
 }
 
+/**
+ * Triggers related checks based on modified files
+ */
+async function warnTriggersWorkflowChanges() {
+  warn(
+    `Files in \`front/temporal/agent_schedules/\` have been modified.
+    Be careful modifying workflows/activities signatures.
+    This may break running schedules. If so, soft reset them from prodbox.`
+  );
+}
+
 async function checkDiffFiles() {
   const diffFiles = danger.git.modified_files
     .concat(danger.git.created_files)
@@ -283,6 +294,14 @@ async function checkDiffFiles() {
 
   if (modifiedPackageJsonFiles.length > 0) {
     await checkSparkleVersionConsistency();
+  }
+
+  // Triggers workflow files
+  const modifiedWorkflowFiles = diffFiles.filter((path) => {
+    return path.startsWith("front/temporal/agent_schedules/");
+  });
+  if (modifiedWorkflowFiles.length > 0) {
+    await warnTriggersWorkflowChanges();
   }
 }
 
