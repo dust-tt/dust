@@ -178,7 +178,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
       throw new Error("Unexpected `auth` without `workspace`.");
     }
     if (!auth.isUser()) {
-      throw new Error("Unexpected `auth` without `user`.");
+      throw new Error("Unexpected `auth` without `user` permissions.");
     }
 
     const globalAgentIds = agentIds.filter(isGlobalAgentId);

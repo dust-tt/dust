@@ -142,6 +142,8 @@ const createConversationForAgentConfiguration = async ({
   return newConversation;
 };
 
+class TriggerNonRetryableError extends Error {}
+
 export async function runTriggeredAgentsActivity({
   userId,
   workspaceId,
@@ -159,7 +161,15 @@ export async function runTriggeredAgentsActivity({
   );
 
   if (!auth.workspace() || !auth.user()) {
-    throw new Error("Invalid authentication. Missing workspaceId or userId.");
+    throw new TriggerNonRetryableError(
+      "Invalid authentication. Missing workspaceId or userId."
+    );
+  }
+
+  if (!auth.isUser()) {
+    throw new TriggerNonRetryableError(
+      "Invalid authentication. Missing user permissions."
+    );
   }
 
   const agentConfiguration = await getAgentConfiguration(auth, {
