@@ -398,10 +398,11 @@ async function streamAgentAnswerToSlack(
             { adhereToRateLimit: false }
           );
         }
+        // Post ephemeral message with feedback buttons and agent selection
         if (
           slackUserId &&
           !slackUserInfo.is_bot &&
-          agentConfigurations.length > 0
+          (agentConfigurations.length > 0 || (conversation.sId && messageId))
         ) {
           const blockId = SlackBlockIdStaticAgentConfigSchema.encode({
             slackChatBotMessageId: slackChatBotMessage.id,
@@ -409,14 +410,27 @@ async function streamAgentAnswerToSlack(
             messageTs: mainMessage.message?.ts,
             botId: mainMessage.message?.bot_id,
           });
+
+          const feedbackParams =
+            conversation.sId && messageId
+              ? {
+                  conversationId: conversation.sId,
+                  messageId,
+                  workspaceId: connector.workspaceId,
+                }
+              : undefined;
+
+          const ephemeralBlocks = makeAssistantSelectionBlock(
+            agentConfigurations,
+            JSON.stringify(blockId),
+            feedbackParams
+          );
+
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
             user: slackUserId,
-            text: "You can use another agent by using the dropdown in slack.",
-            blocks: makeAssistantSelectionBlock(
-              agentConfigurations,
-              JSON.stringify(blockId)
-            ),
+            text: "Feedback and agent selection",
+            blocks: ephemeralBlocks,
             thread_ts: slackMessageTs,
           });
         }
