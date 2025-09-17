@@ -45,7 +45,6 @@ import { ProcessingMethodSection } from "@app/components/agent_builder/capabilit
 import { SelectedDataSources } from "@app/components/agent_builder/capabilities/shared/SelectedDataSources";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   AgentBuilderAction,
   CapabilityFormData,
@@ -154,7 +153,6 @@ function KnowledgeConfigurationSheetForm({
   onCancel,
   setIsDirty,
 }: KnowledgeConfigurationSheetFormProps) {
-  const { spaces } = useSpacesContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const handleSave = (formData: CapabilityFormData) => {

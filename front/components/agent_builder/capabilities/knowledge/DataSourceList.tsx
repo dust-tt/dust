@@ -72,12 +72,8 @@ export function DataSourceList({
   showSelectAllHeader = false,
   headerTitle = "Name",
 }: DataSourceListProps) {
-  const {
-    isRowSelected,
-    selectNode,
-    removeNode,
-    navigationHistory,
-  } = useDataSourceBuilderContext();
+  const { isRowSelected, selectNode, removeNode, navigationHistory } =
+    useDataSourceBuilderContext();
   const { field } = useSourcesFormController();
   const confirm = useContext(ConfirmContext);
 
@@ -160,12 +156,7 @@ export function DataSourceList({
       return "partial";
     }
     return false;
-  }, [
-    showSelectAllHeader,
-    items,
-    shouldHideCheckbox,
-    isRowSelected,
-  ]);
+  }, [showSelectAllHeader, items, shouldHideCheckbox, isRowSelected]);
 
   const handleSelectAll = useCallback(async () => {
     const selectableItems = items.filter((item) => {
