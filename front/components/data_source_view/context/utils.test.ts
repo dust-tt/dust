@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  DataSourceBuilderTreeItemType,
-} from "@app/components/data_source_view/context/types";
+import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
   addNodeToTree,
   isNodeSelected,
