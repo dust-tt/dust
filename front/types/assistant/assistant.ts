@@ -298,6 +298,8 @@ export const isModelId = (modelId: string): modelId is ModelIdType =>
 
 export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
 
+export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
+
 /**
  * MODEL CONFIGURATIONS
  */
