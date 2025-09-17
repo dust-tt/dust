@@ -173,8 +173,16 @@ export function ScheduleTriggerSubForm({
         id="trigger-cron"
         {...form.register("cron")}
         placeholder="e.g., 0 9 * * 1-5 (weekdays at 9 AM)"
-        isError={!!('cron' in form.formState.errors ? form.formState.errors.cron : false)}
-        message={'cron' in form.formState.errors ? form.formState.errors.cron?.message : undefined}
+        isError={
+          !!("cron" in form.formState.errors
+            ? form.formState.errors.cron
+            : false)
+        }
+        message={
+          "cron" in form.formState.errors
+            ? form.formState.errors.cron?.message
+            : undefined
+        }
         messageStatus="error"
         className="hidden"
       />
@@ -183,8 +191,16 @@ export function ScheduleTriggerSubForm({
         id="trigger-timezone"
         {...form.register("timezone")}
         placeholder="e.g., America/New_York, Europe/Paris"
-        isError={!!('timezone' in form.formState.errors ? form.formState.errors.timezone : false)}
-        message={'timezone' in form.formState.errors ? form.formState.errors.timezone?.message : undefined}
+        isError={
+          !!("timezone" in form.formState.errors
+            ? form.formState.errors.timezone
+            : false)
+        }
+        message={
+          "timezone" in form.formState.errors
+            ? form.formState.errors.timezone?.message
+            : undefined
+        }
         messageStatus="error"
         className="hidden"
       />
