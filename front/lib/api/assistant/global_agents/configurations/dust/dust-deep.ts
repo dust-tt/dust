@@ -699,13 +699,9 @@ export function _getDustTaskGlobalAgent(
   if (companyDataAction) {
     actions.push(companyDataAction);
   }
-  console.log(
-    "\n\nwebSearchBrowseWithSummaryMCPServerView",
-    webSearchBrowseWithSummaryMCPServerView,
-    "\n\n"
-  );
+
   const summaryAgent = _getBrowserSummaryAgent(auth, { settings });
-  console.log("\n\nsummaryAgent", summaryAgent, "\n\n");
+
   if (webSearchBrowseWithSummaryMCPServerView && summaryAgent) {
     actions.push({
       id: -1,

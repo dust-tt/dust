@@ -319,7 +319,7 @@ const createServer = (
 
           return contentBlocks;
         },
-        { concurrency: 3 }
+        { concurrency: 8 }
       );
 
       return { isError: false, content: perUrlContents.flat() };
