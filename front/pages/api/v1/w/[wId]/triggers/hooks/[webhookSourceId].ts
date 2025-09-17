@@ -18,7 +18,6 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { Err } from "@app/types";
-import type { WebhookConfig } from "@app/types/assistant/triggers";
 
 /**
  * @swagger

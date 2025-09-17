@@ -1,11 +1,7 @@
 import {
-  ClockIcon,
   ContentMessage,
   Input,
   Label,
-  RadioGroup,
-  RadioGroupCustomItem,
-  ServerIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -168,7 +164,7 @@ export function TriggerEditionModal({
       }
       setSelectedKind("webhook");
     }
-  }, [defaultValues, form, isOpen, trigger, triggerKind]);
+  }, [defaultValues, form, isOpen, trigger, triggerKind, selectedKind]);
 
   const handleCancel = () => {
     form.reset(defaultValues);
