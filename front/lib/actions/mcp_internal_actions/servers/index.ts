@@ -151,7 +151,7 @@ export async function getInternalMCPServer(
     case "conversation_files":
       return conversationFilesServer(auth, agentLoopContext);
     case "jira":
-      return jiraServer();
+      return jiraServer(auth, agentLoopContext);
     case "monday":
       return mondayServer();
     case "slack":

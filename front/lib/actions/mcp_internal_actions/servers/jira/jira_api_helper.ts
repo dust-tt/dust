@@ -23,12 +23,14 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   ADFDocumentSchema,
+  JiraAttachmentsResultSchema,
   JiraCommentSchema,
   JiraCreateMetaSchema,
   JiraFieldsSchema,
   JiraIssueLinkTypeSchema,
   JiraIssueSchema,
   JiraIssueTypeSchema,
+  JiraIssueWithAttachmentsSchema,
   JiraProjectSchema,
   JiraProjectVersionSchema,
   JiraResourceSchema,
@@ -45,6 +47,8 @@ import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/util
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+
+import { sanitizeFilename } from "../../utils/file_utils";
 
 // Type guard to check if a value is an ADFDocument
 function isADFDocument(value: unknown): value is ADFDocument {
@@ -1067,4 +1071,127 @@ function logAndReturnError({
     `[JIRA MCP Server] ${message}`
   );
   return makeMCPToolTextError(normalizeError(error).message);
+}
+
+function logAndReturnApiError<T>({
+  error,
+  message,
+}: {
+  error: unknown;
+  message: string;
+}): Result<T, string> {
+  logger.error(`[JIRA MCP Server] ${message}`);
+  return new Err(normalizeError(error).message);
+}
+
+export async function uploadAttachmentsToJira(
+  baseUrl: string,
+  accessToken: string,
+  issueKey: string,
+  files: Array<{
+    buffer: Buffer;
+    filename: string;
+    contentType: string;
+  }>
+): Promise<
+  Result<z.infer<typeof JiraAttachmentsResultSchema>, JiraErrorResult>
+> {
+  try {
+    const boundary = `----formdata-dust-${Date.now()}-${Math.random().toString(36)}`;
+    const parts: Buffer[] = [];
+
+    for (const file of files) {
+      const safeFilename = sanitizeFilename(file.filename);
+      parts.push(Buffer.from(`--${boundary}\r\n`));
+      parts.push(
+        Buffer.from(
+          `Content-Disposition: form-data; name="file"; filename="${safeFilename}"\r\n`
+        )
+      );
+      parts.push(Buffer.from(`Content-Type: ${file.contentType}\r\n\r\n`));
+      parts.push(file.buffer);
+      parts.push(Buffer.from("\r\n"));
+    }
+
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+
+    const response = await fetch(
+      `${baseUrl}/rest/api/2/issue/${issueKey}/attachments`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "X-Atlassian-Token": "no-check", // Required to prevent CSRF blocking
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment upload failed",
+      });
+    }
+
+    const responseText = await response.text();
+    if (!responseText) {
+      return logAndReturnApiError({
+        error: new Error("Empty response from JIRA attachment upload"),
+        message: "JIRA attachment upload returned empty response",
+      });
+    }
+
+    const rawData = JSON.parse(responseText);
+    const parseResult = JiraAttachmentsResultSchema.safeParse(rawData);
+
+    if (!parseResult.success) {
+      const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment upload response format invalid",
+      });
+    }
+
+    return new Ok(parseResult.data);
+  } catch (error: unknown) {
+    return logAndReturnApiError({
+      error,
+      message: "JIRA API call failed for attachment upload",
+    });
+  }
+}
+
+export async function getIssueAttachments({
+  baseUrl,
+  accessToken,
+  issueKey,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  issueKey: string;
+}): Promise<
+  Result<z.infer<typeof JiraAttachmentsResultSchema>, JiraErrorResult>
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/2/issue/${issueKey}?fields=attachment`,
+      accessToken,
+    },
+    JiraIssueWithAttachmentsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const attachments = result.value.fields?.attachment || [];
+  return new Ok(attachments);
 }
