@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 // Define tool names locally to avoid dependency cycles with action modules.
 const CREATE_CONTENT_CREATION_FILE_TOOL_NAME = "create_content_creation_file";
 const EDIT_CONTENT_CREATION_FILE_TOOL_NAME = "edit_content_creation_file";
@@ -354,46 +352,44 @@ export async function revertClientExecutableFileToPreviousState(
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const agentMessages = await AgentMessage.findAll({
-      where: { workspaceId },
+    const allActions = await AgentMCPActionModel.findAll({
       include: [
         {
-          model: Message,
-          as: "message",
-          where: {
-            conversationId,
-            workspaceId,
-          },
+          model: AgentMessage,
+          as: "agentMessage",
           required: true,
+          include: [
+            {
+              model: Message,
+              as: "message",
+              required: true,
+              where: {
+                conversationId,
+                workspaceId,
+              },
+            },
+          ],
+        },
+        {
+          model: AgentMCPActionOutputItem,
+          as: "outputItems",
+          required: false,
         },
       ],
-      attributes: ["id"],
-    });
-
-    if (agentMessages.length === 0) {
-      return new Err(new Error("No MCP actions found for this conversation"));
-    }
-
-    const agentMessageIds = agentMessages.map((msg) => msg.id);
-
-    const allActions = await AgentMCPActionModel.findAll({
       where: {
         workspaceId,
-        agentMessageId: { [Op.in]: agentMessageIds },
       },
     });
 
-    // Attach output items to actions for easy access
-    const actionIds = allActions.map((action) => action.id);
-    const outputItems = await AgentMCPActionOutputItem.findAll({
-      where: { workspaceId, agentMCPActionId: { [Op.in]: actionIds } },
-    });
+    if (allActions.length === 0) {
+      return new Err(new Error("No MCP actions found for this conversation"));
+    }
 
     const outputItemsByActionId = new Map<number, AgentMCPActionOutputItem[]>();
-    for (const item of outputItems) {
-      const items = outputItemsByActionId.get(item.agentMCPActionId) || [];
-      items.push(item);
-      outputItemsByActionId.set(item.agentMCPActionId, items);
+    for (const action of allActions) {
+      if (action.outputItems && action.outputItems.length > 0) {
+        outputItemsByActionId.set(action.id, action.outputItems);
+      }
     }
 
     const fileActions = allActions
