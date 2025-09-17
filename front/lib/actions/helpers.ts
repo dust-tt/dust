@@ -92,7 +92,7 @@ export async function callAction<V extends t.Mixed>(
       ...prodCredentials,
       extraHeaders: {
         ...getHeaderFromGroupIds(requestedGroupIds),
-        ...getHeaderFromRole(auth.role()),
+        ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
       },
     },
     logger
