@@ -191,14 +191,18 @@ const scheduleConfigSchema = z.object({
   timezone: z.string(),
 });
 
-const webhookConfigSchema = z.record(z.never());
+const webhookConfigSchema = z
+  .object({
+    includePayload: z.boolean().catch(false),
+  })
+  .catch({ includePayload: false });
 
 const webhookTriggerSchema = z.object({
   sId: z.string().optional(),
   name: z.string(),
   kind: z.enum(["webhook"]),
   customPrompt: z.string().nullable(),
-  configuration: z.union([webhookConfigSchema, z.null()]),
+  configuration: webhookConfigSchema,
   editor: z.number().nullable(),
   webhookSourceViewSId: z.string().nullable().optional(),
   editorEmail: z.string().optional(),
@@ -249,14 +253,6 @@ export const agentBuilderFormSchema = z.object({
     .min(1, "Max steps per run must be at least 1")
     .default(8),
 });
-
-export const scheduleFormSchema = z.object({
-  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
-  cron: z.string().min(9, "Cron expression is required"),
-  timezone: z.string().min(1, "Timezone is required"),
-  customPrompt: z.string(),
-});
-export type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
