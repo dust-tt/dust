@@ -357,8 +357,6 @@ const createServer = (
           value: { fileResource, revertedContent },
         } = result;
 
-        const responseText = `File '${fileResource.sId}' reverted to previous state successfully.`;
-
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType = {
             method: "notifications/progress",
@@ -384,18 +382,6 @@ const createServer = (
         }
 
         return new Ok([
-          {
-            type: "resource",
-            resource: {
-              contentType: fileResource.contentType,
-              fileId: fileResource.sId,
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              snippet: fileResource.snippet,
-              text: responseText,
-              title: fileResource.fileName,
-              uri: fileResource.getPublicUrl(auth),
-            },
-          },
           {
             type: "text",
             text: revertedContent,
