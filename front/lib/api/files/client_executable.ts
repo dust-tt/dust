@@ -10,12 +10,7 @@ import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp"
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type {
-  AgentMessageType,
-  ContentCreationFileContentType,
-  ModelId,
-  Result,
-} from "@app/types";
+import type { ContentCreationFileContentType, Result } from "@app/types";
 import {
   clientExecutableContentType,
   CONTENT_CREATION_FILE_FORMATS,
@@ -324,18 +319,12 @@ export async function revertClientExecutableFileToPreviousState(
   params: {
     fileId: string;
     conversationId: number;
-    currentAgentMessage: AgentMessageType;
     revertedByAgentConfigurationId?: string;
   }
 ): Promise<
   Result<{ fileResource: FileResource; revertedContent: string }, Error>
 > {
-  const {
-    fileId,
-    conversationId,
-    currentAgentMessage,
-    revertedByAgentConfigurationId,
-  } = params;
+  const { fileId, conversationId, revertedByAgentConfigurationId } = params;
 
   try {
     const fileResource = await FileResource.fetchById(auth, fileId);
@@ -477,14 +466,14 @@ export async function revertClientExecutableFileToPreviousState(
       return new Err(new Error(`No create action found for file '${fileId}'`));
     }
 
-    // Determine starting content and starting agent message
+    // Determine starting content and starting index (exact action index)
     let startingContent: string;
-    let startingAgentMessageId: ModelId;
+    let startIndex: number;
 
     // If there's a revert action, extract content from its output
     if (lastRevertActionIndex !== -1) {
       const revertAction = fileActions[lastRevertActionIndex];
-      startingAgentMessageId = revertAction.agentMessageId;
+      startIndex = lastRevertActionIndex;
 
       // Extract content from revert action's output items
       const revertItemOutput = outputItemsByActionId
@@ -514,7 +503,7 @@ export async function revertClientExecutableFileToPreviousState(
     } else {
       // Use original content from create action
       const createAction = fileActions[createActionIndex];
-      startingAgentMessageId = createAction.agentMessageId;
+      startIndex = createActionIndex;
       if (!isCreateAugmentedInputs(createAction.augmentedInputs)) {
         return new Err(
           new Error(
@@ -528,38 +517,16 @@ export async function revertClientExecutableFileToPreviousState(
       startingContent = originalContent;
     }
 
-    // Find the starting point
-    const startIndex = fileActions.findIndex(
-      (action) => action.agentMessageId === startingAgentMessageId
-    );
-
-    if (startIndex === -1) {
-      return new Err(
-        new Error("Could not find starting agent message for revert")
-      );
-    }
-
     let revertedContent = startingContent;
 
-    const currentAgentMessageIndex = fileActions.findIndex(
-      (action) => action.agentMessageId === currentAgentMessage.agentMessageId
-    );
-
-    logger.info(
-      {
-        currentAgentMessageIndex,
-        startIndex,
-        fileActionsLength: fileActions.length,
-        startingAgentMessageId,
-      },
-      "Current agent message index"
-    );
+    const cutoffAgentMessageId =
+      fileActions[fileActions.length - 1].agentMessageId;
 
     for (let i = startIndex + 1; i < fileActions.length; i++) {
       const action = fileActions[i];
 
-      // Stop when we reach the previous agent message
-      if (i >= currentAgentMessageIndex - 1) {
+      // Stop when we reach the first action of the last agent message
+      if (action.agentMessageId === cutoffAgentMessageId) {
         break;
       }
 
@@ -576,10 +543,6 @@ export async function revertClientExecutableFileToPreviousState(
         }
 
         const { old_string, new_string } = action.augmentedInputs;
-        logger.info(
-          { old_string, new_string },
-          "Replacing string in reverted content"
-        );
 
         revertedContent = revertedContent.replace(new_string, old_string);
       }
