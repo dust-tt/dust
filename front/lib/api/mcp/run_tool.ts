@@ -2,7 +2,6 @@
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 
 import type {
-  ActionBaseParams,
   MCPApproveExecutionEvent,
   MCPErrorEvent,
   MCPParamsEvent,
@@ -44,13 +43,11 @@ export async function* runToolWithStreaming(
   auth: Authenticator,
   {
     action,
-    actionBaseParams,
     agentConfiguration,
     agentMessage,
     conversation,
   }: {
     action: AgentMCPActionResource;
-    actionBaseParams: ActionBaseParams;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationType;
@@ -119,7 +116,7 @@ export async function* runToolWithStreaming(
     // We don't want to expose the MCP full error message to the user.
     if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
       // MCP Error -32001: Request timed out.
-      errorMessage = `The tool ${actionBaseParams.functionCallName} timed out. `;
+      errorMessage = `The tool ${action.functionCallName} timed out. `;
 
       // If the tool should be retried on interrupt, we throw an error so the workflow retries the
       // `runTool` activity. If the tool should not be retried on interrupt, the error is returned to
@@ -131,7 +128,7 @@ export async function* runToolWithStreaming(
         throw new Error(errorMessage);
       }
     } else {
-      errorMessage = `The tool ${actionBaseParams.functionCallName} returned an error. `;
+      errorMessage = `The tool ${action.functionCallName} returned an error. `;
     }
 
     errorMessage +=
@@ -160,7 +157,6 @@ export async function* runToolWithStreaming(
   const agentPauseEvents = await getExitOrPauseEvents({
     outputItems,
     action,
-    actionBaseParams,
     agentConfiguration,
     agentMessage,
     conversation,

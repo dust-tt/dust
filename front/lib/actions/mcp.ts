@@ -248,8 +248,6 @@ export type ToolNotificationEvent = {
   notification: ProgressNotificationContentType;
 };
 
-export type ActionBaseParams = Omit<MCPActionBlob, "id" | "type" | "output">;
-
 export type AgentActionRunningEvents =
   | MCPParamsEvent
   | MCPApproveExecutionEvent
