@@ -1,6 +1,6 @@
+import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   DUST_DEEP_DESCRIPTION,
   DUST_DEEP_NAME,
@@ -626,13 +626,13 @@ export function _getDustTaskGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    webSearchBrowseMCPServerView,
+    webSearchBrowseWithSummaryMCPServerView,
     dataSourcesFileSystemMCPServerView,
     dataWarehousesMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseWithSummaryMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
   }
@@ -662,7 +662,7 @@ export function _getDustTaskGlobalAgent(
     scope: "global" as const,
     userFavorite: false,
     model: dummyModelConfiguration,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -699,31 +699,32 @@ export function _getDustTaskGlobalAgent(
   if (companyDataAction) {
     actions.push(companyDataAction);
   }
-
-  actions.push(
-    ..._getDefaultWebActionsForGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.DUST_TASK,
-      webSearchBrowseMCPServerView,
-    })
+  console.log(
+    "\n\nwebSearchBrowseWithSummaryMCPServerView",
+    webSearchBrowseWithSummaryMCPServerView,
+    "\n\n"
   );
-
-  if (
-    webSearchBrowseMCPServerView?.internalMCPServerId &&
-    getInternalMCPServerNameFromSId(
-      webSearchBrowseMCPServerView.internalMCPServerId
-    ) === "web_search_&_browse_with_summary"
-  ) {
-    const summaryAgent = _getBrowserSummaryAgent(auth, { settings });
-    if (summaryAgent && summaryAgent.status === "active") {
-      for (const a of actions) {
-        if (
-          a.sId === GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-action" &&
-          "mcpServerViewId" in a
-        ) {
-          a.childAgentId = summaryAgent.sId;
-        }
-      }
-    }
+  const summaryAgent = _getBrowserSummaryAgent(auth, { settings });
+  console.log("\n\nsummaryAgent", summaryAgent, "\n\n");
+  if (webSearchBrowseWithSummaryMCPServerView && summaryAgent) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-with-summaryaction",
+      type: "mcp_server_configuration",
+      name: "webtools",
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      mcpServerViewId: webSearchBrowseWithSummaryMCPServerView.sId,
+      internalMCPServerId:
+        webSearchBrowseWithSummaryMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: summaryAgent.sId,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+    });
   }
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
