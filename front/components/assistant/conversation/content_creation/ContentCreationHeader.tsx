@@ -1,4 +1,4 @@
-import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
