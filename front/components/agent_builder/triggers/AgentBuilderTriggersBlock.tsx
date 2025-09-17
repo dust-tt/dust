@@ -4,6 +4,7 @@ import {
   ClockIcon,
   EmptyCTA,
   Hoverable,
+  ServerIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
@@ -14,14 +15,18 @@ import type {
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
+import { TriggerEditionModal } from "@app/components/agent_builder/triggers/TriggerEditionModal";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
+import type { TriggerKind } from "@app/types/assistant/triggers";
 
 type DialogMode =
   | {
       type: "add";
+      triggerKind?: TriggerKind;
     }
   | {
       type: "edit";
@@ -49,10 +54,17 @@ export function AgentBuilderTriggersBlock({
 
   const sendNotification = useSendNotification();
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const { webhookSourcesWithViews } = useWebhookSourcesWithViews({ owner });
+  
+  const hasWebhookSources = webhookSourcesWithViews.length > 0;
+  const hasWebhookFeature = hasFeature("hootl_webhooks");
 
-  const handleCreateTrigger = () => {
+  const handleCreateTrigger = (triggerKind?: TriggerKind) => {
     setDialogMode({
       type: "add",
+      triggerKind,
     });
   };
 
@@ -106,13 +118,24 @@ export function AgentBuilderTriggersBlock({
       }
       headerActions={
         triggers.length > 0 && (
-          <Button
-            label="Add Schedule"
-            variant="outline"
-            icon={ClockIcon}
-            onClick={handleCreateTrigger}
-            type="button"
-          />
+          <div className="flex gap-2">
+            <Button
+              label="Add Schedule"
+              variant="outline"
+              icon={ClockIcon}
+              onClick={() => handleCreateTrigger("schedule")}
+              type="button"
+            />
+            {hasWebhookFeature && hasWebhookSources && (
+              <Button
+                label="Add Webhook"
+                variant="outline"
+                icon={ServerIcon}
+                onClick={() => handleCreateTrigger("webhook")}
+                type="button"
+              />
+            )}
+          </div>
         )
       }
     >
@@ -124,13 +147,24 @@ export function AgentBuilderTriggersBlock({
         ) : triggers.length === 0 ? (
           <EmptyCTA
             action={
-              <Button
-                label="Add Schedule"
-                variant="outline"
-                icon={ClockIcon}
-                onClick={handleCreateTrigger}
-                type="button"
-              />
+              <div className="flex gap-2">
+                <Button
+                  label="Add Schedule"
+                  variant="outline"
+                  icon={ClockIcon}
+                  onClick={() => handleCreateTrigger("schedule")}
+                  type="button"
+                />
+                {hasWebhookFeature && hasWebhookSources && (
+                  <Button
+                    label="Add Webhook"
+                    variant="outline"
+                    icon={ServerIcon}
+                    onClick={() => handleCreateTrigger("webhook")}
+                    type="button"
+                  />
+                )}
+              </div>
             }
             className="py-4"
           />
@@ -149,10 +183,11 @@ export function AgentBuilderTriggersBlock({
         )}
       </div>
 
-      {/* Create/Edit Schedule Modal */}
-      <ScheduleEditionModal
+      {/* Create/Edit Trigger Modal */}
+      <TriggerEditionModal
         owner={owner}
         trigger={dialogMode?.type === "edit" ? dialogMode.trigger : undefined}
+        triggerKind={dialogMode?.type === "add" ? dialogMode.triggerKind : undefined}
         isOpen={dialogMode !== null}
         onClose={handleCloseModal}
         onSave={handleTriggerSave}
