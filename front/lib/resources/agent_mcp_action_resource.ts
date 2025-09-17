@@ -466,9 +466,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const agentMessageIds = agentMessages.map((m) => m.id);
 
     const statusWhere = options?.statuses
-      ? options.statuses.length === 1
-        ? { status: options.statuses[0] as ToolExecutionStatus }
-        : { status: { [Op.in]: options.statuses } as any }
+      ? { status: { [Op.in]: options.statuses } }
       : undefined;
 
     return this.baseFetch(auth, {
