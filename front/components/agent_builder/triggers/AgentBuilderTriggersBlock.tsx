@@ -1,10 +1,10 @@
 import {
+  BellIcon,
   Button,
   CardGrid,
   ClockIcon,
   EmptyCTA,
   Hoverable,
-  ServerIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
@@ -15,18 +15,17 @@ import type {
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/ScheduleEditionModal";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
-import { TriggerEditionModal } from "@app/components/agent_builder/triggers/TriggerEditionModal";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
-import type { TriggerKind } from "@app/types/assistant/triggers";
+import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
+import { TriggerKind } from "@app/types/assistant/triggers";
 
 type DialogMode =
   | {
       type: "add";
-      triggerKind?: TriggerKind;
+      kind: TriggerKind;
     }
   | {
       type: "edit";
@@ -54,17 +53,11 @@ export function AgentBuilderTriggersBlock({
 
   const sendNotification = useSendNotification();
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
-  
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const { webhookSourcesWithViews } = useWebhookSourcesWithViews({ owner });
-  
-  const hasWebhookSources = webhookSourcesWithViews.length > 0;
-  const hasWebhookFeature = hasFeature("hootl_webhooks");
 
-  const handleCreateTrigger = (triggerKind?: TriggerKind) => {
+  const handleCreateTrigger = (kind: TriggerKind) => {
     setDialogMode({
       type: "add",
-      triggerKind,
+      kind,
     });
   };
 
@@ -118,7 +111,7 @@ export function AgentBuilderTriggersBlock({
       }
       headerActions={
         triggers.length > 0 && (
-          <div className="flex gap-2">
+          <>
             <Button
               label="Add Schedule"
               variant="outline"
@@ -126,16 +119,14 @@ export function AgentBuilderTriggersBlock({
               onClick={() => handleCreateTrigger("schedule")}
               type="button"
             />
-            {hasWebhookFeature && hasWebhookSources && (
-              <Button
-                label="Add Webhook"
-                variant="outline"
-                icon={ServerIcon}
-                onClick={() => handleCreateTrigger("webhook")}
-                type="button"
-              />
-            )}
-          </div>
+            <Button
+              label="Add Webhook"
+              variant="outline"
+              icon={BellIcon}
+              onClick={() => handleCreateTrigger("webhook")}
+              type="button"
+            />
+          </>
         )
       }
     >
@@ -147,7 +138,7 @@ export function AgentBuilderTriggersBlock({
         ) : triggers.length === 0 ? (
           <EmptyCTA
             action={
-              <div className="flex gap-2">
+              <div className="flex space-x-2">
                 <Button
                   label="Add Schedule"
                   variant="outline"
@@ -155,15 +146,13 @@ export function AgentBuilderTriggersBlock({
                   onClick={() => handleCreateTrigger("schedule")}
                   type="button"
                 />
-                {hasWebhookFeature && hasWebhookSources && (
-                  <Button
-                    label="Add Webhook"
-                    variant="outline"
-                    icon={ServerIcon}
-                    onClick={() => handleCreateTrigger("webhook")}
-                    type="button"
-                  />
-                )}
+                <Button
+                  label="Add Webhook"
+                  variant="outline"
+                  icon={BellIcon}
+                  onClick={() => handleCreateTrigger("webhook")}
+                  type="button"
+                />
               </div>
             }
             className="py-4"
@@ -183,12 +172,35 @@ export function AgentBuilderTriggersBlock({
         )}
       </div>
 
-      {/* Create/Edit Trigger Modal */}
-      <TriggerEditionModal
+      {/* Create/Edit Schedule Modal */}
+      <ScheduleEditionModal
         owner={owner}
-        trigger={dialogMode?.type === "edit" ? dialogMode.trigger : undefined}
-        triggerKind={dialogMode?.type === "add" ? dialogMode.triggerKind : undefined}
-        isOpen={dialogMode !== null}
+        trigger={
+          dialogMode?.type === "edit" && dialogMode.trigger.kind === "schedule"
+            ? dialogMode.trigger
+            : undefined
+        }
+        isOpen={
+          (dialogMode?.type === "add" && dialogMode.kind === "schedule") ||
+          (dialogMode?.type === "edit" &&
+            dialogMode.trigger.kind === "schedule")
+        }
+        onClose={handleCloseModal}
+        onSave={handleTriggerSave}
+      />
+
+      {/* Create/Edit Webhook Modal */}
+      <WebhookEditionModal
+        owner={owner}
+        trigger={
+          dialogMode?.type === "edit" && dialogMode.trigger.kind === "webhook"
+            ? dialogMode.trigger
+            : undefined
+        }
+        isOpen={
+          (dialogMode?.type === "add" && dialogMode.kind === "webhook") ||
+          (dialogMode?.type === "edit" && dialogMode.trigger.kind === "webhook")
+        }
         onClose={handleCloseModal}
         onSave={handleTriggerSave}
       />
