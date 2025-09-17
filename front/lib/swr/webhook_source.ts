@@ -6,6 +6,7 @@ import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
 import type { GetWebhookSourcesResponseBody } from "@app/pages/api/w/[wId]/webhook_sources";
 import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
+import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type {
   PostWebhookSourcesBody,
@@ -232,5 +233,29 @@ export function useDeleteWebhookSource({
   return {
     deleteWebhookSource,
     isDeleting,
+  };
+}
+
+export function useWebhookSourceViewsByWebhookSource({
+  owner,
+  webhookSourceId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  webhookSourceId: string;
+  disabled?: boolean;
+}) {
+  const configFetcher: Fetcher<GetSpecificWebhookSourceViewsResponseBody> =
+    fetcher;
+  const url = `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}/views`;
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
+
+  return {
+    webhookSourceViews: data?.views ?? [],
+    isWebhookSourceViewsLoading: !error && !data && !disabled,
+    isWebhookSourceViewsError: error,
+    mutateWebhookSourceViews: mutate,
   };
 }
