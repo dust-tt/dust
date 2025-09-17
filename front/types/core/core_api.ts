@@ -2292,9 +2292,10 @@ export class CoreAPI {
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
-      const isAbort = (init && init.signal && (init.signal as AbortSignal).aborted) ||
+      const isAbort =
+        (init && init.signal && (init.signal as AbortSignal).aborted) ||
         // Some environments throw an AbortError with name property.
-        ((e as any)?.name === "AbortError");
+        (e as any)?.name === "AbortError";
       const err: CoreAPIError = isAbort
         ? {
             code: "request_timeout",
