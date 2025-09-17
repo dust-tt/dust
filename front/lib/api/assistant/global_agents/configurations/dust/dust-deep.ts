@@ -222,6 +222,9 @@ Exception for clarifications (very complex tasks only):
   - Numbered lists only for true sequences or procedures.
   - Tables or code blocks only when they improve clarity; otherwise avoid.
   - NEVER use filler openers ("Here is...", "Summary:"). Write directly.
+
+Do not use the content_creation tool for markdown documents. Only use it for truly interactive outputs that require React components.
+Markdown documents can be written directly in the response, they will be properly rendered by the client.
 </output_guidelines>`;
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
