@@ -84,7 +84,7 @@ export const Demo = () => {
                     return "unread";
                   }
                   if (idx % 3 === 0) {
-                    return "pending";
+                    return "blocked";
                   }
                   return "idle";
                 };
@@ -124,7 +124,7 @@ export const Demo = () => {
                     return "unread";
                   }
                   if (idx % 3 === 0) {
-                    return "pending";
+                    return "blocked";
                   }
                   return "idle";
                 };

@@ -70,7 +70,7 @@ interface NavigationListItemProps
   label?: string;
   icon?: React.ComponentType;
   moreMenu?: React.ReactNode;
-  status?: "idle" | "unread" | "pending";
+  status?: "idle" | "unread" | "blocked";
 }
 
 const NavigationListItem = React.forwardRef<
@@ -106,14 +106,14 @@ const NavigationListItem = React.forwardRef<
       switch (status) {
         case "unread":
           return "s-bg-highlight-500 dark:s-bg-highlight-500-night";
-        case "pending":
+        case "blocked":
           return "s-bg-warning-500 dark:s-bg-warning-500-night";
         default:
           return "";
       }
     };
 
-    const shouldShowStatusDot = status === "unread" || status === "pending";
+    const shouldShowStatusDot = status === "unread" || status === "blocked";
 
     return (
       <div
