@@ -1,4 +1,4 @@
-import { Button, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -14,7 +14,7 @@ export function ContentCreationHeader({
 }: ContentCreationHeaderProps) {
   return (
     <AppLayoutTitle className="bg-gray-50 @container dark:bg-gray-900">
-      <div className="flex h-full min-w-0 max-w-full items-center justify-end gap-2">
+      <div className="flex h-full min-w-0 max-w-full items-center justify-end">
         {/* Actions - always visible and right-aligned. */}
         <div className="flex shrink-0 items-center gap-2">
           {children}

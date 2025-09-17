@@ -95,14 +95,12 @@ function ExportContentDropdown({
 interface ClientExecutableRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
-  fileName?: string;
   owner: LightWorkspaceType;
 }
 
 export function ClientExecutableRenderer({
   conversation,
   fileId,
-  fileName,
   owner,
 }: ClientExecutableRendererProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
