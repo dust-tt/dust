@@ -53,7 +53,10 @@ export function WebhookSourceDetails({
         owner={owner}
         webhookSource={webhookSourceView.webhookSource}
         isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          onClose();
+        }}
       />
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent size="lg">
