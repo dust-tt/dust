@@ -188,7 +188,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
-    stage: "rolling_out",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
