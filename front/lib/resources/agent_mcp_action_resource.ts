@@ -441,7 +441,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     return {
       agentMessageId: this.agentMessageId,
-      functionCallName: this.stepContent.value.value.name,
+      functionCallName: this.functionCallName,
       id: this.id,
       internalMCPServerName: this.metadata.internalMCPServerName,
       mcpServerId: this.metadata.mcpServerId,

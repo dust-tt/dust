@@ -133,7 +133,7 @@ export async function validateAction(
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId: action.toolConfiguration.toolServerId,
-        functionCallName: action.stepContent.value.value.name,
+        functionCallName: action.functionCallName,
       });
     }
   }
