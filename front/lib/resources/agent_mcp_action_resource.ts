@@ -32,9 +32,18 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
-import { isString, removeNulls } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
+import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
+
+function isFunctionCallStepContent(
+  stepContent: AgentStepContentModel
+): stepContent is AgentStepContentModel & {
+  value: FunctionCallContentType;
+} {
+  return isFunctionCallContent(stepContent.value);
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -51,7 +60,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     model: ModelStaticWorkspaceAware<AgentMCPActionModel>,
     blob: Attributes<AgentMCPActionModel>,
     // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
-    readonly stepContent: NonAttribute<AgentStepContentModel>,
+    readonly stepContent: NonAttribute<
+      AgentStepContentModel & { value: FunctionCallContentType }
+    >,
     readonly metadata: {
       internalMCPServerName: InternalMCPServerNameType | null;
       mcpServerId: string;
@@ -91,8 +102,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions.map((a) => {
       const stepContent = stepContentsMap.get(a.stepContentId);
 
-      // Each action must have a step content.
+      // Each action must have a function call step content.
       assert(stepContent, "Step content not found.");
+      assert(
+        isFunctionCallStepContent(stepContent),
+        "Step content is not a function call."
+      );
+
       const internalMCPServerName = a.toolConfiguration.toolServerId
         ? getInternalMCPServerNameFromSId(a.toolConfiguration.toolServerId)
         : null;
@@ -130,6 +146,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       transaction,
     });
     assert(stepContent, "Step content not found.");
+    assert(
+      isFunctionCallStepContent(stepContent),
+      "Step content is not a function call."
+    );
 
     return new this(this.model, action.get(), stepContent, {
       internalMCPServerName,
@@ -378,7 +398,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async listByAgentMessageIds(
     auth: Authenticator,
-    agentMessageIds: Array<ModelId>
+    agentMessageIds: ModelId[]
   ): Promise<AgentMCPActionResource[]> {
     return this.baseFetch(auth, {
       where: { agentMessageId: { [Op.in]: agentMessageIds } },
@@ -449,7 +469,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async deleteByAgentMessageId(
     auth: Authenticator,
     params: {
-      agentMessageIds: Array<ModelId>;
+      agentMessageIds: ModelId[];
       transaction?: Transaction;
     }
   ): Promise<Result<undefined, Error>> {
@@ -503,5 +523,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       id,
       workspaceId,
     });
+  }
+
+  get functionCalldId(): string {
+    return this.stepContent.value.value.id;
+  }
+
+  get functionCallName(): string {
+    return this.stepContent.value.value.name;
   }
 }

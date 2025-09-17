@@ -36,7 +36,11 @@ import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
-import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentStepContentType,
+  FunctionCallContentType,
+} from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -291,6 +295,12 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           agentMCPActions: content.agentMCPActions,
         })
     );
+  }
+
+  isFunctionCallContent(): this is AgentStepContentResource & {
+    value: FunctionCallContentType;
+  } {
+    return isFunctionCallContent(this.value);
   }
 
   async delete(
