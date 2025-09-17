@@ -478,7 +478,7 @@ export async function revertClientExecutableFileToPreviousState(
       // Extract content from revert action's output items
       const revertItemOutput = outputItemsByActionId
         .get(revertAction.id)
-        ?.find((o) => o.content?.type === "text");
+        ?.find((output) => output.content?.type === "text");
 
       if (!revertItemOutput) {
         return new Err(
@@ -544,7 +544,7 @@ export async function revertClientExecutableFileToPreviousState(
 
         const { old_string, new_string } = action.augmentedInputs;
 
-        revertedContent = revertedContent.replace(new_string, old_string);
+        revertedContent = revertedContent.replace(old_string, new_string);
       }
     }
 
