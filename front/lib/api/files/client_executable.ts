@@ -1,7 +1,7 @@
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_TO_PREVIOUS_EDIT_TOOL_NAME,
+  REVERT_LAST_EDIT_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -416,7 +416,7 @@ export async function revertClientExecutableFileToPreviousState(
           return fileIdFromInput === fileId;
         }
 
-        if (toolName === REVERT_TO_PREVIOUS_EDIT_TOOL_NAME) {
+        if (toolName === REVERT_LAST_EDIT_TOOL_NAME) {
           return fileIdFromInput === fileId;
         }
 
@@ -432,7 +432,7 @@ export async function revertClientExecutableFileToPreviousState(
     const mostRecentAction = fileActions[fileActions.length - 1];
     if (
       mostRecentAction?.toolConfiguration.originalName ===
-      REVERT_TO_PREVIOUS_EDIT_TOOL_NAME
+      REVERT_LAST_EDIT_TOOL_NAME
     ) {
       return new Err(
         new Error(`Last action is a revert, cannot revert twice in a row`)
@@ -447,7 +447,7 @@ export async function revertClientExecutableFileToPreviousState(
       const toolName = fileActions[i].toolConfiguration.originalName;
 
       if (
-        toolName === REVERT_TO_PREVIOUS_EDIT_TOOL_NAME &&
+        toolName === REVERT_LAST_EDIT_TOOL_NAME &&
         lastRevertActionIndex === -1
       ) {
         lastRevertActionIndex = i;
