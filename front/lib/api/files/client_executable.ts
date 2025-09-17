@@ -335,16 +335,14 @@ function isRevertFileActionOutput(
   );
 }
 
-// Returns create and edit/revert actions for a file
-async function getFileActions(
+async function fetchEditOrRevertActionsForFile(
   auth: Authenticator,
   fileId: string,
   conversationId: number
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  // Get edit and revert actions for the file
-  const editOrRevertActions = await AgentMCPActionModel.findAll({
+  return AgentMCPActionModel.findAll({
     include: [
       {
         model: AgentMessage,
@@ -381,9 +379,15 @@ async function getFileActions(
     },
     order: [["createdAt", "ASC"]],
   });
+}
 
-  // Get create actions for the file
-  const createActions = await AgentMCPActionModel.findAll({
+async function fetchCreateActionsForConversation(
+  auth: Authenticator,
+  conversationId: number
+): Promise<AgentMCPActionModel[]> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  return AgentMCPActionModel.findAll({
     include: [
       {
         model: AgentMessage,
@@ -409,6 +413,27 @@ async function getFileActions(
     },
     order: [["createdAt", "ASC"]],
   });
+}
+
+async function getFileActions(
+  auth: Authenticator,
+  fileId: string,
+  conversationId: number
+): Promise<AgentMCPActionModel[]> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  // Get edit and revert actions for the file
+  const editOrRevertActions = await fetchEditOrRevertActionsForFile(
+    auth,
+    fileId,
+    conversationId
+  );
+
+  // Get create actions for the file
+  const createActions = await fetchCreateActionsForConversation(
+    auth,
+    conversationId
+  );
 
   // Find the create action that created our file
   const fileCreationAction = await findCreateActionForFile(
