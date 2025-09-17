@@ -8,7 +8,7 @@ import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_TO_PREVIOUS_EDIT_TOOL_NAME,
+  REVERT_LAST_EDIT_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -309,7 +309,7 @@ const createServer = (
   );
 
   server.tool(
-    REVERT_TO_PREVIOUS_EDIT_TOOL_NAME,
+    REVERT_LAST_EDIT_TOOL_NAME,
     "Reverts the content creation to the state it was at the last agent message. " +
       "This tool restores the content creation file to its previous state before the current agent message. " +
       "Use this when you need to undo changes made in the current agent message and return to the previous state.",
@@ -322,17 +322,17 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: REVERT_TO_PREVIOUS_EDIT_TOOL_NAME, agentLoopContext },
+      { toolName: REVERT_LAST_EDIT_TOOL_NAME, agentLoopContext },
       async ({ file_id }, { sendNotification, _meta }) => {
-        const { conversation } = agentLoopContext?.runContext ?? {};
-
-        if (!conversation) {
+        if (!agentLoopContext?.runContext) {
           return new Err(
             new MCPError(
-              "Conversation ID is required to revert a client executable file."
+              "Could not access Agent Loop Context from revert last edit tool."
             )
           );
         }
+
+        const { conversation } = agentLoopContext.runContext;
 
         const result = await revertClientExecutableFileToPreviousState(auth, {
           fileId: file_id,
