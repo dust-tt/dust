@@ -82,7 +82,7 @@ export function WebhookSourceDetails({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                       <DropdownMenuItem
-                        key="remove-mcp-server"
+                        key="remove-webhook-source"
                         icon={TrashIcon}
                         label="Remove"
                         variant="warning"
