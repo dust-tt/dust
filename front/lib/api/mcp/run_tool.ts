@@ -98,6 +98,8 @@ export async function* runToolWithStreaming(
     agentMessage,
   });
 
+  // TODO(2025-09-17 aubin): the code path where toolCallResult is null is actually unreachable
+  //  but it's well covered in typing.
   if (!toolCallResult || toolCallResult.isErr()) {
     statsDClient.increment("mcp_actions_error.count", 1, tags);
     localLogger.error(
@@ -113,10 +115,10 @@ export async function* runToolWithStreaming(
 
     let errorMessage: string;
 
-    // We don't want to expose the MCP full error message to the user.
-    if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
-      // MCP Error -32001: Request timed out.
-      errorMessage = `The tool ${action.functionCallName} timed out. `;
+    const isMCPTimeoutError =
+      toolErr && toolErr instanceof McpError && toolErr.code === -32001;
+    if (isMCPTimeoutError) {
+      errorMessage = `The execution of tool ${action.functionCallName} timed out.`;
 
       // If the tool should be retried on interrupt, we throw an error so the workflow retries the
       // `runTool` activity. If the tool should not be retried on interrupt, the error is returned to
@@ -128,11 +130,10 @@ export async function* runToolWithStreaming(
         throw new Error(errorMessage);
       }
     } else {
-      errorMessage = `The tool ${action.functionCallName} returned an error. `;
+      errorMessage = toolErr
+        ? `The tool ${action.functionCallName} failed with the following error: ${toolErr.message}`
+        : `The tool ${action.functionCallName} failed without returning any error information.`;
     }
-
-    errorMessage +=
-      "An error occurred while executing the tool. You can inform the user of this issue.";
 
     yield await handleMCPActionError({
       action,
