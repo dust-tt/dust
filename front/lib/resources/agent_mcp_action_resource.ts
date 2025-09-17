@@ -20,10 +20,7 @@ import type { StepContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -434,75 +431,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
 
     return actions;
-  }
-
-  static async listSuccessActionsByConversationId(
-    auth: Authenticator,
-    conversationId: ModelId,
-    options?: { statuses?: ToolExecutionStatus[] }
-  ): Promise<AgentMCPActionResource[]> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const agentMessages = await AgentMessage.findAll({
-      include: [
-        {
-          model: Message,
-          as: "message",
-          required: true,
-          where: {
-            conversationId,
-            workspaceId,
-          },
-        },
-      ],
-      attributes: ["id"],
-      order: [["createdAt", "ASC"]],
-    });
-
-    if (agentMessages.length === 0) {
-      return [];
-    }
-
-    const agentMessageIds = agentMessages.map((m) => m.id);
-
-    const statusWhere = options?.statuses
-      ? { status: { [Op.in]: options.statuses } }
-      : undefined;
-
-    return this.baseFetch(auth, {
-      where: {
-        agentMessageId: { [Op.in]: agentMessageIds },
-        ...(statusWhere ?? {}),
-      },
-    });
-  }
-
-  static async fetchOutputItemsByActionIds(
-    auth: Authenticator,
-    actionIds: ModelId[]
-  ): Promise<Map<ModelId, AgentMCPActionOutputItem[]>> {
-    if (actionIds.length === 0) {
-      return new Map();
-    }
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const outputs = await AgentMCPActionOutputItem.findAll({
-      where: {
-        agentMCPActionId: { [Op.in]: actionIds },
-        workspaceId,
-      },
-      order: [["createdAt", "ASC"]],
-    });
-
-    const map = new Map<ModelId, AgentMCPActionOutputItem[]>();
-    for (const output of outputs) {
-      const key = output.agentMCPActionId as ModelId;
-      const arr = map.get(key) ?? [];
-      arr.push(output);
-      map.set(key, arr);
-    }
-
-    return map;
   }
 
   toJSON(): AgentMCPActionType {
