@@ -50,18 +50,15 @@ function createServer(
     "advanced_reasoning",
     "Offload a reasoning-heavy task to a powerful reasoning model. The reasoning model does not have access to any tools.",
     {
-      model:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
-        ].default(
-          {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-            modelId: DEFAULT_REASONING_MODEL_ID,
-            providerId: DEFAULT_REASONING_MODEL_PROVIDER_ID,
-            temperature: null,
-            reasoningEffort: null,
-          }
-        ),
+      model: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
+      ].default({
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+        modelId: DEFAULT_REASONING_MODEL_ID,
+        providerId: DEFAULT_REASONING_MODEL_PROVIDER_ID,
+        temperature: null,
+        reasoningEffort: null,
+      }),
     },
     async (
       { model: { modelId, providerId, temperature, reasoningEffort } },
