@@ -287,7 +287,7 @@ async function handler(
       } else {
         credentials = credentialsFromProviders(providers);
 
-        // We never want to use the EU key using provider credentials.
+        // We never want to use the EU hostname with provider credentials.
         useOpenAIEUKey = false;
       }
 
