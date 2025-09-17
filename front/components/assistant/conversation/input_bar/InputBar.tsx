@@ -329,7 +329,8 @@ export function AssistantInputBar({
         className={classNames(
           "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
           "rounded-2xl transition-all",
-          "bg-muted-background dark:bg-muted-background-night",
+          "bg-white dark:bg-muted-background-night",
+          "shadow-[0_1px_6px_0_rgba(0,0,0,0.09)]",
           "border",
           "border-border-dark dark:border-border-dark-night",
           "sm:border-border-dark/50 sm:focus-within:border-border-dark",
