@@ -31,7 +31,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       heartbeat();
 
       // Retrieve all documents from the connector (first) in batches using an id cursor
-      const BATCH_SIZE = 5_000;
+      const BATCH_SIZE = 1_000;
       let lastId = 0;
       const connectorDocuments: { id: number; coreDocumentId: string }[] = [];
       let fetched = 0;
