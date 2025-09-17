@@ -105,6 +105,9 @@ export async function* runToolWithStreaming(
     }
   );
 
+  // Err here means an exception ahead of calling the tool, like a connection error, an input
+  // validation error, or any other kind of error from MCP, but not a tool error, which are returned
+  // as content.
   if (toolCallResult.isErr()) {
     statsDClient.increment("mcp_actions_error.count", 1, tags);
     localLogger.error(
