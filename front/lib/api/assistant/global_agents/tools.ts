@@ -51,8 +51,6 @@ export function _getDefaultWebActionsForGlobalAgent({
       sId: agentId + "-websearch-browse-action",
       type: "mcp_server_configuration",
       name: DEFAULT_WEBSEARCH_ACTION_NAME satisfies InternalMCPServerNameType,
-      // Putting a description here is important as it prevents the global agent being detected as
-      // a legacy agent (see isLegacyAgent) and being capped to 1 action.
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
