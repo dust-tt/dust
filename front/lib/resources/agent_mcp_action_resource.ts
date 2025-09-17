@@ -436,7 +436,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
-  static async listByConversationId(
+  static async listSuccessActionsByConversationId(
     auth: Authenticator,
     conversationId: ModelId,
     options?: { statuses?: ToolExecutionStatus[] }
