@@ -197,15 +197,34 @@ export async function renderConversationForModel(
         metadataItems.push(`- Sender: ${identityTokens.join(" ")}`);
       }
 
+      const timeZone =
+        m.context.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const formatWithTimeZone = (date: Date) =>
+        date.toLocaleString(undefined, {
+          timeZone,
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          timeZoneName: "short",
+          hour12: false,
+        });
+
       if (m.created) {
-        metadataItems.push(`- Sent at: ${new Date(m.created).toISOString()}`);
+        metadataItems.push(
+          `- Sent at: ${formatWithTimeZone(new Date(m.created))}`
+        );
       }
 
       if (m.context.origin === "triggered") {
         metadataItems.push("- Source: Scheduled trigger");
         if (m.context.lastTriggerRunAt) {
           metadataItems.push(
-            `- Previous scheduled run: ${m.context.lastTriggerRunAt.toISOString()}`
+            `- Previous scheduled run: ${formatWithTimeZone(
+              new Date(m.context.lastTriggerRunAt)
+            )}`
           );
         }
       } else if (m.context.origin) {
