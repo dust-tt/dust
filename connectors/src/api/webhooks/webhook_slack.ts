@@ -516,7 +516,7 @@ const _webhookSlackAPIHandler = async (
             });
             await slackClient.chat.postMessage({
               channel: event.channel,
-              text: "You can now talk to Dust in this channel. ⚠️  If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
+              text: "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
             });
           }
 
