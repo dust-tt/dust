@@ -4,7 +4,6 @@ import type {
 } from "@app/lib/actions/mcp_icons";
 
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
-export const MAX_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 // Stored in a separate file to prevent a circular dependency issue.
 
