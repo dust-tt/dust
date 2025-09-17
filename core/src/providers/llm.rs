@@ -327,7 +327,7 @@ impl LLMRequest {
                 Ok(c)
             }
             Err(e) => Err(anyhow!(
-                "Error querying `{}:{}`: error={}",
+                "LLM: Error querying `{}:{}`: error={}",
                 self.provider_id.to_string(),
                 self.model_id,
                 e.to_string(),
@@ -584,7 +584,7 @@ impl LLMChatRequest {
                 Ok(c)
             }
             Err(e) => Err(anyhow!(
-                "Error querying `{}:{}`: error={}",
+                "LLMChat: Error querying `{}:{}`: error={}",
                 self.provider_id.to_string(),
                 self.model_id,
                 e.to_string(),
