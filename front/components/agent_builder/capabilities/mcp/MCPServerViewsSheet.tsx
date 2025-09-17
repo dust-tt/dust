@@ -73,9 +73,9 @@ import {
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { DEFAULT_REASONING_CONFIGURATION } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
+import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
   | {
@@ -387,7 +387,7 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) => model.modelId === DEFAULT_REASONING_CONFIGURATION.modelId
+            (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
           ) ?? reasoningModels[0];
 
         configuredAction = {
