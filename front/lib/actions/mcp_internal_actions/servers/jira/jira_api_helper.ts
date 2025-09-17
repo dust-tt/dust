@@ -48,6 +48,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
+import { sanitizeFilename } from "../../utils/file_utils";
+
 // Type guard to check if a value is an ADFDocument
 function isADFDocument(value: unknown): value is ADFDocument {
   return ADFDocumentSchema.safeParse(value).success;
@@ -1091,10 +1093,11 @@ export async function uploadAttachmentsToJira(
     const parts: Buffer[] = [];
 
     for (const file of files) {
+      const safeFilename = sanitizeFilename(file.filename);
       parts.push(Buffer.from(`--${boundary}\r\n`));
       parts.push(
         Buffer.from(
-          `Content-Disposition: form-data; name="file"; filename="${file.filename}"\r\n`
+          `Content-Disposition: form-data; name="file"; filename="${safeFilename}"\r\n`
         )
       );
       parts.push(Buffer.from(`Content-Type: ${file.contentType}\r\n\r\n`));

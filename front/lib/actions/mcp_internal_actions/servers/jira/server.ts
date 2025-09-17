@@ -816,86 +816,90 @@ const createServer = (
     async ({ issueKey, attachment }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          try {
-            let fileToUpload: {
-              buffer: Buffer;
-              filename: string;
-              contentType: string;
-            };
+          let fileToUpload: {
+            buffer: Buffer;
+            filename: string;
+            contentType: string;
+          };
 
-            if (attachment.type === "conversation_file") {
-              if (!auth || !agentLoopContext) {
-                return makeMCPToolTextError(
-                  "Authentication and conversation context required for conversation file attachments"
-                );
-              }
-
-              const fileResult = await getFileFromConversationAttachment(
-                auth,
-                attachment.fileId,
-                agentLoopContext
+          if (attachment.type === "conversation_file") {
+            if (!auth || !agentLoopContext) {
+              return makeMCPToolTextError(
+                "Authentication and conversation context required for conversation file attachments"
               );
-
-              if (fileResult.isErr()) {
-                return makeMCPToolTextError(
-                  `Failed to get conversation file ${attachment.fileId}: ${fileResult.error}`
-                );
-              }
-
-              fileToUpload = fileResult.value;
-            } else if (attachment.type === "external_file") {
-              try {
-                const buffer = Buffer.from(attachment.base64Data, "base64");
-                fileToUpload = {
-                  buffer,
-                  filename: attachment.filename,
-                  contentType: attachment.contentType,
-                };
-              } catch (error) {
-                return makeMCPToolTextError(
-                  `Failed to decode base64 data for ${attachment.filename}: ${normalizeError(error).message}`
-                );
-              }
-            } else {
-              return makeMCPToolTextError("Invalid attachment type");
             }
 
-            const uploadResult = await uploadAttachmentsToJira(
-              baseUrl,
-              accessToken,
-              issueKey,
-              [fileToUpload]
+            const fileResult = await getFileFromConversationAttachment(
+              auth,
+              attachment.fileId,
+              agentLoopContext
             );
 
-            if (uploadResult.isErr()) {
+            if (fileResult.isErr()) {
               return makeMCPToolTextError(
-                `Failed to upload attachment: ${uploadResult.error}`
+                `Failed to get conversation file ${attachment.fileId}: ${fileResult.error}`
               );
             }
 
-            const uploadedAttachment = uploadResult.value[0];
+            fileToUpload = fileResult.value;
+          } else if (attachment.type === "external_file") {
+            // Validate base64 data size to prevent memory exhaustion (100MB limit)
+            const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+            const estimatedSize = (attachment.base64Data.length * 3) / 4; // Base64 to bytes estimation
 
-            return makeMCPToolJSONSuccess({
-              message: `Successfully uploaded attachment to issue ${issueKey}`,
-              result: {
-                issueKey,
-                attachment: {
-                  id: uploadedAttachment.id,
-                  filename: uploadedAttachment.filename,
-                  size: uploadedAttachment.size,
-                  mimeType: uploadedAttachment.mimeType,
-                  created: uploadedAttachment.created,
-                  author:
-                    uploadedAttachment.author.displayName ||
-                    uploadedAttachment.author.accountId,
-                },
-              },
-            });
-          } catch (error: unknown) {
+            if (estimatedSize > MAX_FILE_SIZE_BYTES) {
+              return makeMCPToolTextError(
+                `File ${attachment.filename} is too large. Maximum size allowed is ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`
+              );
+            }
+
+            try {
+              const buffer = Buffer.from(attachment.base64Data, "base64");
+              fileToUpload = {
+                buffer,
+                filename: attachment.filename,
+                contentType: attachment.contentType,
+              };
+            } catch (error) {
+              return makeMCPToolTextError(
+                `Failed to decode base64 data for ${attachment.filename}: ${normalizeError(error).message}`
+              );
+            }
+          } else {
+            return makeMCPToolTextError("Invalid attachment type");
+          }
+
+          const uploadResult = await uploadAttachmentsToJira(
+            baseUrl,
+            accessToken,
+            issueKey,
+            [fileToUpload]
+          );
+
+          if (uploadResult.isErr()) {
             return makeMCPToolTextError(
-              `Error uploading attachment: ${normalizeError(error).message}`
+              `Failed to upload attachment: ${uploadResult.error}`
             );
           }
+
+          const uploadedAttachment = uploadResult.value[0];
+
+          return makeMCPToolJSONSuccess({
+            message: `Successfully uploaded attachment to issue ${issueKey}`,
+            result: {
+              issueKey,
+              attachment: {
+                id: uploadedAttachment.id,
+                filename: uploadedAttachment.filename,
+                size: uploadedAttachment.size,
+                mimeType: uploadedAttachment.mimeType,
+                created: uploadedAttachment.created,
+                author:
+                  uploadedAttachment.author.displayName ||
+                  uploadedAttachment.author.accountId,
+              },
+            },
+          });
         },
         authInfo,
       });
