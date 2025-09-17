@@ -307,7 +307,6 @@ function isCreateResourceOutput(
   content: { type: "resource"; resource: { fileId: string } };
 } {
   return (
-    typeof output.content === "object" &&
     output.content.type === "resource" &&
     output.content.resource &&
     typeof output.content.resource.fileId === "string"
@@ -386,7 +385,7 @@ export async function revertClientExecutableFileToPreviousState(
     const fileActions = allActions
       .filter((action) => {
         const toolName = action.toolConfiguration.originalName;
-        const fileIdFromInput = action.augmentedInputs?.file_id;
+        const fileIdFromInput = action.augmentedInputs.file_id;
 
         if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
           if (!isCreateAugmentedInputs(action.augmentedInputs)) {
@@ -409,9 +408,8 @@ export async function revertClientExecutableFileToPreviousState(
             );
           }
 
-          const actionFileId = resourceOutput?.content.resource.fileId;
-          const isFileCreateAction = actionFileId === fileId;
-          return isFileCreateAction;
+          const actionFileId = resourceOutput.content.resource.fileId;
+          return actionFileId === fileId;
         }
 
         if (toolName === EDIT_CONTENT_CREATION_FILE_TOOL_NAME) {
@@ -441,7 +439,6 @@ export async function revertClientExecutableFileToPreviousState(
       );
     }
 
-    // Find the most recent revert action and the create action
     let lastRevertActionIndex = -1;
     let createActionIndex = -1;
 
@@ -483,7 +480,7 @@ export async function revertClientExecutableFileToPreviousState(
       if (!revertItemOutput) {
         return new Err(
           new Error(
-            `Could not find reverted content in revert action for file '${fileId}'`
+            `Could not find reverted content in revert output for file '${fileId}'`
           )
         );
       }
@@ -504,6 +501,7 @@ export async function revertClientExecutableFileToPreviousState(
       // Use original content from create action
       const createAction = fileActions[createActionIndex];
       startIndex = createActionIndex;
+
       if (!isCreateAugmentedInputs(createAction.augmentedInputs)) {
         return new Err(
           new Error(
