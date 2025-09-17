@@ -433,37 +433,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
-  static async listByConversationId(
-    auth: Authenticator,
-    conversationId: ModelId
-  ): Promise<AgentMCPActionResource[]> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const actions = await this.model.findAll({
-      include: [
-        {
-          model: AgentMessage,
-          as: "agentMessage",
-          required: true,
-          include: [
-            {
-              model: Message,
-              as: "message",
-              required: true,
-              where: {
-                conversationId,
-                workspaceId,
-              },
-            },
-          ],
-        },
-      ],
-      where: {
-        workspaceId,
-      },
-    });
-  }
-
   toJSON(): AgentMCPActionType {
     assert(
       this.stepContent.value.type === "function_call",
