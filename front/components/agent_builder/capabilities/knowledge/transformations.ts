@@ -13,13 +13,10 @@ import type {
 /**
  * Transforms DataSourceBuilderTreeType to DataSourceViewSelectionConfigurations
  *
- * Handles three selection patterns:
- * 1. Full data source selection: isSelectAll=true, no exclusions
- * 2. Partial selection: specific nodes selected, no exclusions
- * 3. "Select all with exclusions": isSelectAll=true with excluded resources
- *
- * The third pattern is detected when we have exclusions but no explicit inclusions,
- * indicating the user selected the entire data source then excluded specific items.
+ * This creates a simplified transformation that works with the path structure
+ * used in the tree. For paths that represent full data source selections,
+ * we set isSelectAll=true. For specific node selections, we create minimal
+ * resource entries that will be expanded on the backend.
  */
 export function transformTreeToSelectionConfigurations(
   tree: DataSourceBuilderTreeType,
@@ -114,32 +111,16 @@ export function transformTreeToSelectionConfigurations(
     }
   }
 
-  // Post-process configurations to detect "select all with exclusions" patterns
-  // When we have exclusions but no selected resources, this indicates a
-  // "select all except..." scenario that should be marked as isSelectAll=true
-  for (const config of Object.values(configurations)) {
-    const hasExclusions = config.excludedResources.length > 0;
-    const hasSelectedResources = config.selectedResources.length > 0;
-    const currentIsSelectAll = config.isSelectAll;
-
-    if (hasExclusions && !hasSelectedResources && !currentIsSelectAll) {
-      config.isSelectAll = true;
-    }
-  }
-
   return configurations;
 }
 
 /**
  * Transforms DataSourceViewSelectionConfigurations to DataSourceBuilderTreeType
  *
- * Converts saved configurations back to UI tree structure with in/notIn arrays.
- * Handles the three selection patterns:
- * 1. Full selection: adds data source to 'in', no 'notIn' items
- * 2. Partial selection: adds specific nodes to 'in'
- * 3. "Select all with exclusions": adds data source to 'in' AND excluded nodes to 'notIn'
+ * This function converts node-based selection configurations back to
+ * path-based selection (in/notIn arrays).
  *
- * Path structure: root/spaceId/category/dataSourceId/nodeId1/nodeId2/...
+ * The path structure is: root.spaceId.category.dataSourceId.nodeId1.nodeId2...
  */
 export function transformSelectionConfigurationsToTree(
   configurations: DataSourceViewSelectionConfigurations
@@ -151,15 +132,8 @@ export function transformSelectionConfigurationsToTree(
     const { dataSourceView } = config;
     const baseParts = buildDataSourcePath(dataSourceView);
 
-    // Handle data source level selections
-    const shouldAddDataSource =
-      config.isSelectAll || config.excludedResources.length > 0;
-    const hasPartialSelection =
-      config.selectedResources.length > 0 &&
-      config.excludedResources.length > 0;
-
-    if (shouldAddDataSource && !hasPartialSelection) {
-      // Add the full data source for "select all" scenarios
+    // If all nodes are selected, just add the data source path
+    if (config.isSelectAll) {
       inPaths.push({
         path: baseParts,
         name: dataSourceView.dataSource.name,
@@ -167,11 +141,7 @@ export function transformSelectionConfigurationsToTree(
         dataSourceView,
         tagsFilter: config.tagsFilter,
       });
-
-      // For "select all" without exclusions, skip individual resource processing
-      if (config.isSelectAll && config.excludedResources.length === 0) {
-        continue;
-      }
+      continue;
     }
 
     if (config.selectedResources.length > 0) {
@@ -209,6 +179,7 @@ export function transformSelectionConfigurationsToTree(
 
     // Process excluded resources and add them to notInPaths
     if (config.excludedResources.length > 0) {
+      // Add paths for excluded resources
       for (const node of config.excludedResources) {
         if (node.parentInternalId) {
           const pathParts = [
@@ -240,10 +211,12 @@ export function transformSelectionConfigurationsToTree(
     }
   }
 
-  return {
+  const res = {
     in: deduplicatePaths(inPaths),
     notIn: deduplicatePaths(notInPaths),
   };
+
+  return res;
 }
 
 /**

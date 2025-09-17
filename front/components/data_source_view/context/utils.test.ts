@@ -13,6 +13,7 @@ const createTreeItem = (
   name?: string
 ): DataSourceBuilderTreeItemType => ({
   path,
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   name: name || path.split("/").pop() || path,
   type: "root",
 });
@@ -263,142 +264,6 @@ describe("DataSourceBuilder utilities", () => {
       expect(result).toEqual({
         in: [createTreeItem("root/a", "a")],
         notIn: [],
-      });
-    });
-
-    it("should handle adding to 'select all with exclusions' state correctly", () => {
-      // Scenario: User selected all, excluded "Syncing", now wants to add another item from same parent
-      const tree = {
-        in: [],
-        notIn: [
-          createTreeItem("root/Company Data/Connected Data/Notion/Syncing"),
-        ],
-      };
-
-      // Adding "Design" should just remove it from exclusions (it's already implicitly selected)
-      const result = addNodeToTree(tree, {
-        path: "root/Company Data/Connected Data/Notion/Design",
-        name: "Design",
-        type: "root",
-      });
-
-      expect(result).toEqual({
-        in: [], // Should remain empty (still in "select all" mode)
-        notIn: [
-          createTreeItem("root/Company Data/Connected Data/Notion/Syncing"),
-        ], // Syncing still excluded
-      });
-    });
-
-    it("should handle adding unrelated item to 'select all with exclusions' state", () => {
-      // Scenario: User selected all from Notion, excluded "Syncing", now wants to add item from different data source
-      const tree = {
-        in: [],
-        notIn: [
-          createTreeItem("root/Company Data/Connected Data/Notion/Syncing"),
-        ],
-      };
-
-      // Adding item from different data source should add to inclusions
-      const result = addNodeToTree(tree, {
-        path: "root/Company Data/Connected Data/Slack/General",
-        name: "General",
-        type: "root",
-      });
-
-      expect(result).toEqual({
-        in: [
-          createTreeItem(
-            "root/Company Data/Connected Data/Slack/General",
-            "General"
-          ),
-        ],
-        notIn: [
-          createTreeItem("root/Company Data/Connected Data/Notion/Syncing"),
-        ],
-      });
-    });
-
-    it("should handle user's exact scenario: select entire data source, exclude file, then re-add file", () => {
-      // Initial: User selected entire Notion data source
-      const initialTree = {
-        in: [createTreeItem("root/Company Data/Connected Data/Notion")],
-        notIn: [],
-      };
-
-      // User unchecks one specific file (e.g., Design.md)
-      const treeWithExclusion = removeNodeFromTree(initialTree, {
-        path: "root/Company Data/Connected Data/Notion/Design.md",
-        name: "Design.md",
-        type: "root",
-      });
-
-      // Should still have the data source selected but with file excluded
-      expect(treeWithExclusion).toEqual({
-        in: [createTreeItem("root/Company Data/Connected Data/Notion")],
-        notIn: [
-          createTreeItem(
-            "root/Company Data/Connected Data/Notion/Design.md",
-            "Design.md"
-          ),
-        ],
-      });
-
-      // User re-selects the excluded file (should remove from exclusions, keep parent selection)
-      const finalTree = addNodeToTree(treeWithExclusion, {
-        path: "root/Company Data/Connected Data/Notion/Design.md",
-        name: "Design.md",
-        type: "root",
-      });
-
-      // Should be back to original state: entire data source selected, no exclusions
-      expect(finalTree).toEqual({
-        in: [createTreeItem("root/Company Data/Connected Data/Notion")],
-        notIn: [], // Back to no exclusions
-      });
-
-      // Double-check: what if user tries to add multiple files back?
-      const treeWithMultipleExclusions = {
-        in: [createTreeItem("root/Company Data/Connected Data/Notion")],
-        notIn: [
-          createTreeItem(
-            "root/Company Data/Connected Data/Notion/Design.md",
-            "Design.md"
-          ),
-          createTreeItem(
-            "root/Company Data/Connected Data/Notion/Syncing.md",
-            "Syncing.md"
-          ),
-        ],
-      };
-
-      // Re-add first file
-      const afterFirstAdd = addNodeToTree(treeWithMultipleExclusions, {
-        path: "root/Company Data/Connected Data/Notion/Design.md",
-        name: "Design.md",
-        type: "root",
-      });
-
-      expect(afterFirstAdd).toEqual({
-        in: [createTreeItem("root/Company Data/Connected Data/Notion")],
-        notIn: [
-          createTreeItem(
-            "root/Company Data/Connected Data/Notion/Syncing.md",
-            "Syncing.md"
-          ),
-        ],
-      });
-
-      // Re-add second file
-      const afterSecondAdd = addNodeToTree(afterFirstAdd, {
-        path: "root/Company Data/Connected Data/Notion/Syncing.md",
-        name: "Syncing.md",
-        type: "root",
-      });
-
-      expect(afterSecondAdd).toEqual({
-        in: [createTreeItem("root/Company Data/Connected Data/Notion")],
-        notIn: [], // All exclusions removed
       });
     });
   });
@@ -692,34 +557,6 @@ describe("DataSourceBuilder utilities", () => {
         notIn: [createTreeItem("root/a")],
       });
     });
-
-    it("should handle removing implicitly selected item in 'select all with exclusions' state", () => {
-      // Scenario: User selected all from Notion, excluded "Syncing", now wants to uncheck "Design" (currently showing as checked)
-      const tree = {
-        in: [],
-        notIn: [
-          createTreeItem("root/Company Data/Connected Data/Notion/Syncing"),
-        ],
-      };
-
-      // Removing "Design" should add it to exclusions (it was implicitly selected as sibling of excluded item)
-      const result = removeNodeFromTree(tree, {
-        path: "root/Company Data/Connected Data/Notion/Design",
-        name: "Design",
-        type: "root",
-      });
-
-      expect(result).toEqual({
-        in: [],
-        notIn: [
-          createTreeItem("root/Company Data/Connected Data/Notion/Syncing"),
-          createTreeItem(
-            "root/Company Data/Connected Data/Notion/Design",
-            "Design"
-          ),
-        ],
-      });
-    });
   });
 
   describe("isNodeSelected", () => {
@@ -855,7 +692,16 @@ describe("DataSourceBuilder utilities", () => {
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
     });
 
-
+    it("should handle tree with only exclusions", () => {
+      const tree = {
+        in: [],
+        notIn: [createTreeItem("root/a"), createTreeItem("docs/temp")],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
+      expect(isNodeSelected(tree, ["docs", "temp"])).toBe(false);
+      expect(isNodeSelected(tree, ["other"])).toBe(false);
+    });
 
     it("should handle multiple root level paths", () => {
       const tree = {
@@ -870,6 +716,155 @@ describe("DataSourceBuilder utilities", () => {
       expect(isNodeSelected(tree, ["docs"])).toBe(true);
       expect(isNodeSelected(tree, ["src"])).toBe(true);
       expect(isNodeSelected(tree, ["other"])).toBe(false);
+    });
+
+    it("should handle deeply nested exclusions", () => {
+      const tree = {
+        in: [createTreeItem("root")],
+        notIn: [createTreeItem("root/a/b/c/d/e")],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a", "b"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a", "b", "c"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a", "b", "c", "d"])).toBe(
+        "partial"
+      );
+      expect(isNodeSelected(tree, ["root", "a", "b", "c", "d", "e"])).toBe(
+        false
+      );
+      expect(isNodeSelected(tree, ["root", "a", "b", "c", "d", "f"])).toBe(
+        true
+      );
+    });
+
+    it("should handle multiple siblings with mixed states", () => {
+      const tree = {
+        in: [createTreeItem("root/a"), createTreeItem("root/c")],
+        notIn: [createTreeItem("root/b"), createTreeItem("root/d")],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "c"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "d"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "e"])).toBe(false);
+    });
+
+    it("should handle cross-branch scenarios", () => {
+      const tree = {
+        in: [createTreeItem("docs/api"), createTreeItem("src/components")],
+        notIn: [createTreeItem("docs/temp"), createTreeItem("src/tests")],
+      };
+      expect(isNodeSelected(tree, ["docs"])).toBe("partial");
+      expect(isNodeSelected(tree, ["docs", "api"])).toBe(true);
+      expect(isNodeSelected(tree, ["docs", "temp"])).toBe(false);
+      expect(isNodeSelected(tree, ["docs", "other"])).toBe(false);
+      expect(isNodeSelected(tree, ["src"])).toBe("partial");
+      expect(isNodeSelected(tree, ["src", "components"])).toBe(true);
+      expect(isNodeSelected(tree, ["src", "tests"])).toBe(false);
+      expect(isNodeSelected(tree, ["src", "utils"])).toBe(false);
+    });
+
+    it("should handle single character path segments", () => {
+      const tree = {
+        in: [createTreeItem("a")],
+        notIn: [createTreeItem("b/c")],
+      };
+      expect(isNodeSelected(tree, ["a"])).toBe(true);
+      expect(isNodeSelected(tree, ["a", "x"])).toBe(true);
+      expect(isNodeSelected(tree, ["b"])).toBe(false);
+      expect(isNodeSelected(tree, ["b", "c"])).toBe(false);
+      expect(isNodeSelected(tree, ["b", "d"])).toBe(false);
+      expect(isNodeSelected(tree, ["c"])).toBe(false);
+    });
+
+    it("should handle complex nested inclusion with partial exclusions", () => {
+      const tree = {
+        in: [createTreeItem("root"), createTreeItem("other/branch")],
+        notIn: [
+          createTreeItem("root/excluded/deeply/nested"),
+          createTreeItem("root/temp"),
+          createTreeItem("other/branch/cache"),
+        ],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "excluded"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "excluded", "deeply"])).toBe(
+        "partial"
+      );
+      expect(
+        isNodeSelected(tree, ["root", "excluded", "deeply", "nested"])
+      ).toBe(false);
+      expect(isNodeSelected(tree, ["root", "excluded", "other"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "temp"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "allowed"])).toBe(true);
+      expect(isNodeSelected(tree, ["other"])).toBe("partial");
+      expect(isNodeSelected(tree, ["other", "branch"])).toBe("partial");
+      expect(isNodeSelected(tree, ["other", "branch", "cache"])).toBe(false);
+      expect(isNodeSelected(tree, ["other", "branch", "files"])).toBe(true);
+    });
+
+    it("should handle edge case with parent and child both in arrays", () => {
+      const tree = {
+        in: [createTreeItem("root"), createTreeItem("root/a")],
+        notIn: [createTreeItem("root/b")],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "c"])).toBe(true);
+    });
+
+    it("should handle conflicting parent-child relationships", () => {
+      const tree = {
+        in: [createTreeItem("root/a/b")],
+        notIn: [createTreeItem("root/a")],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "a", "b"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "a", "c"])).toBe(false);
+    });
+
+    it("should handle multiple levels of partial selection", () => {
+      const tree = {
+        in: [createTreeItem("a/b/c/d"), createTreeItem("a/x/y/z")],
+        notIn: [],
+      };
+      expect(isNodeSelected(tree, ["a"])).toBe("partial");
+      expect(isNodeSelected(tree, ["a", "b"])).toBe("partial");
+      expect(isNodeSelected(tree, ["a", "b", "c"])).toBe("partial");
+      expect(isNodeSelected(tree, ["a", "b", "c", "d"])).toBe(true);
+      expect(isNodeSelected(tree, ["a", "b", "c", "e"])).toBe(false);
+      expect(isNodeSelected(tree, ["a", "x"])).toBe("partial");
+      expect(isNodeSelected(tree, ["a", "x", "y"])).toBe("partial");
+      expect(isNodeSelected(tree, ["a", "x", "y", "z"])).toBe(true);
+      expect(isNodeSelected(tree, ["a", "m"])).toBe(false);
+    });
+
+    it("should handle large tree with many branches", () => {
+      const tree = {
+        in: [createTreeItem("app"), createTreeItem("docs/guides")],
+        notIn: [
+          createTreeItem("app/cache"),
+          createTreeItem("app/temp/logs"),
+          createTreeItem("docs/temp"),
+          createTreeItem("config/secrets"),
+        ],
+      };
+      expect(isNodeSelected(tree, ["app"])).toBe("partial");
+      expect(isNodeSelected(tree, ["app", "src"])).toBe(true);
+      expect(isNodeSelected(tree, ["app", "cache"])).toBe(false);
+      expect(isNodeSelected(tree, ["app", "temp"])).toBe("partial");
+      expect(isNodeSelected(tree, ["app", "temp", "logs"])).toBe(false);
+      expect(isNodeSelected(tree, ["app", "temp", "other"])).toBe(true);
+      expect(isNodeSelected(tree, ["docs"])).toBe("partial");
+      expect(isNodeSelected(tree, ["docs", "guides"])).toBe(true);
+      expect(isNodeSelected(tree, ["docs", "temp"])).toBe(false);
+      expect(isNodeSelected(tree, ["config"])).toBe(false);
+      expect(isNodeSelected(tree, ["config", "secrets"])).toBe(false);
+      expect(isNodeSelected(tree, ["config", "app"])).toBe(false);
     });
   });
 });
