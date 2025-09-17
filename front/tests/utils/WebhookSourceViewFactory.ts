@@ -1,5 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { WorkspaceType } from "@app/types";
 
@@ -34,27 +34,15 @@ export class WebhookSourceViewFactory {
       webhookSourceId = webhookSourceResult.value.id;
     }
 
-    const customName = options.customName || null;
-
-    // First create a system space view (required for creation)
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-    let systemView =
+    const systemView =
       await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
         auth,
         webhookSourceId
       );
 
-    // If no system view exists, create one using the private makeNew method
+    // System view should be created on webhookSourceFactory.create();
     if (!systemView) {
-      systemView = await (WebhookSourcesViewResource as any).makeNew(
-        auth,
-        {
-          webhookSourceId,
-          customName,
-        },
-        systemSpace,
-        auth.user() ?? undefined
-      );
+      throw new Error("System view for webhook source not found");
     }
 
     // If the requested space is system space, return the system view
