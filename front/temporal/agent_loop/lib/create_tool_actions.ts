@@ -147,11 +147,10 @@ async function createActionForTool(
     `Step content not found for stepContentId: ${stepContentId}`
   );
 
-  if (!stepContent.isFunctionCallContent()) {
-    throw new Error(
-      `Expected step content to be a function call, got: ${stepContent.value.type}`
-    );
-  }
+  assert(
+    stepContent.isFunctionCallContent(),
+    `Expected step content to be a function call, got: ${stepContent.value.type}`
+  );
 
   const rawInputs = JSON.parse(stepContent.value.value.arguments);
 
