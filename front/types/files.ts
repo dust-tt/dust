@@ -442,7 +442,7 @@ export function isAllSupportedFileContentType(
 export function isPubliclySupportedUseCase(
   useCase: string
 ): useCase is FileUseCase {
-  return ["conversation"].includes(useCase);
+  return ["conversation", "folders_document"].includes(useCase);
 }
 
 export function isSupportedImageContentType(
