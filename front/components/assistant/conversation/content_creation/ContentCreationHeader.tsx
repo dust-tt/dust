@@ -1,4 +1,4 @@
-import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -6,38 +6,15 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 interface ContentCreationHeaderProps {
   children?: React.ReactNode;
   onClose?: () => void;
-  subtitle?: string;
-  title: string;
 }
 
 export function ContentCreationHeader({
   children,
   onClose,
-  subtitle,
-  title,
 }: ContentCreationHeaderProps) {
   return (
     <AppLayoutTitle className="bg-gray-50 @container dark:bg-gray-900">
-      <div className="flex h-full min-w-0 max-w-full items-center justify-between gap-2">
-        {/* Progressive content visibility based on container width. */}
-        <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-          {/* Title - visible from xxxs container width. */}
-          <span
-            className={cn(
-              "hidden min-w-0 truncate text-sm font-normal @xxxs:inline",
-              "text-primary dark:text-primary-night"
-            )}
-          >
-            {title}
-          </span>
-          {/* Subtitle - visible from xs container width. */}
-          {subtitle && (
-            <span className="text-element-700 hidden shrink-0 text-xs @xs:inline">
-              {subtitle}
-            </span>
-          )}
-        </div>
-
+      <div className="flex h-full min-w-0 max-w-full items-center justify-end gap-2">
         {/* Actions - always visible and right-aligned. */}
         <div className="flex shrink-0 items-center gap-2">
           {children}
