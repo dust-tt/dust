@@ -19,17 +19,18 @@ import uniqueId from "lodash/uniqueId";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
-import type {
-  AgentBuilderTriggerType,
-  ScheduleFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
-import { scheduleFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { TriggerFormData } from "@app/components/agent_builder/triggers/triggerFormSchema";
+import { triggerFormSchema } from "@app/components/agent_builder/triggers/triggerFormSchema";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
 import { useUser } from "@app/lib/swr/user";
 import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
+
+// a ScheduleFormData must be a TriggerFormData with a cron field
+type ScheduleFormData = Extract<TriggerFormData, { cron: string }>;
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
@@ -68,7 +69,7 @@ export function ScheduleEditionModal({
   };
 
   const form = useForm<ScheduleFormData>({
-    resolver: zodResolver(scheduleFormSchema),
+    resolver: zodResolver(triggerFormSchema),
     defaultValues,
     disabled: !isEditor,
   });
