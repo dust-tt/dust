@@ -410,7 +410,7 @@ export async function revertClientExecutableFileToPreviousState(
 
           const resourceOutput = outputItemsByActionId
             .get(action.id)
-            ?.find((o) => o.content?.type === "resource");
+            ?.find((output) => output.content?.type === "resource");
 
           if (!resourceOutput || !isCreateResourceOutput(resourceOutput)) {
             return new Err(
