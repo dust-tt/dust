@@ -272,46 +272,9 @@ const createServer = (
   );
 
   server.tool(
-    RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Retrieve the current content of an existing Content Creation file by its file ID. " +
-      "Use this to read back the content of Content Creation files you have previously created or " +
-      `updated. Use this tool before calling ${EDIT_CONTENT_CREATION_FILE_TOOL_NAME} to ` +
-      "understand the current file state and identify the exact text to replace.",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the Content Creation file to retrieve (e.g., 'fil_abc123')"
-        ),
-    },
-    withToolLogging(
-      auth,
-      { toolName: RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
-      async ({ file_id }) => {
-        const result = await getClientExecutableFileContent(auth, file_id);
-
-        if (result.isErr()) {
-          return new Err(new MCPError(result.error.message));
-        }
-
-        const { fileResource, content } = result.value;
-
-        return new Ok([
-          {
-            type: "text",
-            text:
-              `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
-              `successfully. Content:\n\n${content}`,
-          },
-        ]);
-      }
-    )
-  );
-
-  server.tool(
     REVERT_LAST_EDIT_TOOL_NAME,
     "Reverts the content creation to the state it was at the last agent message. " +
-      "This tool restores the content creation file to its previous state before the current agent message. " +
+      "This tool can be used to restore the content creation file to its state before the current agent message. " +
       "Use this when you need to undo changes made in the current agent message and return to the previous state.",
     {
       file_id: z
@@ -332,11 +295,13 @@ const createServer = (
           );
         }
 
-        const { conversation } = agentLoopContext.runContext;
+        const { conversation, agentConfiguration } =
+          agentLoopContext.runContext;
 
         const result = await revertClientExecutableFileToPreviousState(auth, {
           fileId: file_id,
           conversationId: conversation.id,
+          revertedByAgentConfigurationId: agentConfiguration.sId,
         });
 
         if (result.isErr()) {
@@ -375,6 +340,43 @@ const createServer = (
           {
             type: "text",
             text: revertedContent,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
+    "Retrieve the current content of an existing Content Creation file by its file ID. " +
+      "Use this to read back the content of Content Creation files you have previously created or " +
+      `updated. Use this tool before calling ${EDIT_CONTENT_CREATION_FILE_TOOL_NAME} to ` +
+      "understand the current file state and identify the exact text to replace.",
+    {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Content Creation file to retrieve (e.g., 'fil_abc123')"
+        ),
+    },
+    withToolLogging(
+      auth,
+      { toolName: RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
+      async ({ file_id }) => {
+        const result = await getClientExecutableFileContent(auth, file_id);
+
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error.message));
+        }
+
+        const { fileResource, content } = result.value;
+
+        return new Ok([
+          {
+            type: "text",
+            text:
+              `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
+              `successfully. Content:\n\n${content}`,
           },
         ]);
       }
