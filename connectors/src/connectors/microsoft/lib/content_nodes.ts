@@ -113,10 +113,13 @@ export function getChannelAsContentNode(
   if (nodeType !== "team") {
     throw new Error(`Invalid parent nodeType: ${nodeType}`);
   }
+  // Extract the team GUID from the parent team internal ID
+  const teamGuid =
+    typeAndPathFromInternalId(parentInternalId).itemAPIPath.split("/")[2];
 
   return {
     internalId: internalIdFromTypeAndPath({
-      itemAPIPath: `/teams/${parentInternalId}/channels/${channel.id}`,
+      itemAPIPath: `/teams/${teamGuid}/channels/${channel.id}`,
       nodeType: "channel",
     }),
     parentInternalId,
@@ -179,11 +182,11 @@ export function getMicrosoftNodeAsContentNode(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" &&
       expandWorksheet);
   let type: ContentNodeType;
-  if (["drive", "folder"].includes(node.nodeType)) {
+  if (["drive", "folder", "team", "channel"].includes(node.nodeType)) {
     type = "folder";
   } else if (node.nodeType === "worksheet") {
     type = expandWorksheet ? "table" : "document";
-  } else if (node.nodeType === "file") {
+  } else if (["file", "message"].includes(node.nodeType)) {
     type = "document";
   } else {
     throw new Error(`Unsupported nodeType ${node.nodeType}.`);

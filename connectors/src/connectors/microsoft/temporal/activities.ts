@@ -3,6 +3,7 @@ import { removeNulls } from "@dust-tt/client";
 import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
+import type { Channel } from "@microsoft/microsoft-graph-types";
 import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -10,6 +11,7 @@ import {
   clientApiPost,
   extractPath,
   getAllPaginatedEntities,
+  getChannels,
   getDeltaResults,
   getDriveInternalIdFromItem,
   getDriveItemInternalId,
@@ -17,6 +19,7 @@ import {
   getFilesAndFolders,
   getFullDeltaResults,
   getItem,
+  getMessages,
   getParentReferenceInternalId,
   getSiteAPIPath,
   getSites,
@@ -45,7 +48,10 @@ import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mi
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  upsertDataSourceDocument,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
@@ -55,9 +61,10 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 import { isDevelopment } from "@connectors/types";
+
 
 // Delta data stored in GCS for Microsoft incremental sync batch processing
 interface DeltaDataInGCS {
@@ -92,27 +99,46 @@ export async function getRootNodesToSyncFromResources(
   const logger = getActivityLogger(connector);
   const client = await getClient(connector.connectionId);
 
-  // get root folders and drives and drill down site-root and sites to their
-  // child drives (converted to MicrosoftNode types)
-  const rootFolderAndDriveNodes = removeNulls(
+  console.log("rootResources", rootResources);
+
+  // get root folders, drives, teams, and channels (converted to MicrosoftNode types)
+  const rootFolderDriveTeamAndChannelNodes = removeNulls(
     await Promise.all(
       rootResources
         .filter(
           (resource) =>
-            resource.nodeType === "folder" || resource.nodeType === "drive"
+            resource.nodeType === "folder" ||
+            resource.nodeType === "drive" ||
+            resource.nodeType === "team" ||
+            resource.nodeType === "channel"
         )
         .map(async (resource) => {
           try {
+            console.log("==============resource", resource);
+            console.log(
+              "==============resource",
+              typeAndPathFromInternalId(resource.internalId)
+            );
             const item = await getItem(
               logger,
               client,
               typeAndPathFromInternalId(resource.internalId).itemAPIPath
             );
 
-            const node = itemToMicrosoftNode(
-              resource.nodeType as "folder" | "drive",
-              item
-            );
+            let node;
+            if (resource.nodeType === "channel") {
+              // For channels, we need to extract the teamId from the internal ID
+              const teamGuid = typeAndPathFromInternalId(resource.internalId).itemAPIPath.split("/")[2];
+              node = itemToMicrosoftNode(
+                resource.nodeType,
+                { ...item, teamId: teamGuid } as Channel & { teamId: string }
+              );
+            } else {
+              node = itemToMicrosoftNode(
+                resource.nodeType as "folder" | "drive" | "team",
+                item
+              );
+            }
             return {
               ...node,
               name: `${node.name} (${extractPath(item)})`,
@@ -179,17 +205,17 @@ export async function getRootNodesToSyncFromResources(
   ).flat();
 
   // remove duplicates
-  const allNodes = [...siteDriveNodes, ...rootFolderAndDriveNodes].reduce(
-    (acc, current) => {
-      const x = acc.find((item) => item.internalId === current.internalId);
-      if (!x) {
-        return acc.concat([current]);
-      } else {
-        return acc;
-      }
-    },
-    [] as MicrosoftNode[]
-  );
+  const allNodes = [
+    ...siteDriveNodes,
+    ...rootFolderDriveTeamAndChannelNodes,
+  ].reduce((acc, current) => {
+    const x = acc.find((item) => item.internalId === current.internalId);
+    if (!x) {
+      return acc.concat([current]);
+    } else {
+      return acc;
+    }
+  }, [] as MicrosoftNode[]);
 
   // for all folders, check if a parent folder or drive is already in the list,
   // in which case remove it. This can happen because when a user selects a
@@ -201,6 +227,7 @@ export async function getRootNodesToSyncFromResources(
   // files' parents array will be incomplete, thus the need to prune the list
   const nodesToSync = [];
   for (const node of allNodes) {
+    // Only check for parent relationships for folders - teams and channels have different hierarchies
     if (
       !(
         node.nodeType === "folder" &&
@@ -242,10 +269,33 @@ export async function getRootNodesToSyncFromResources(
 }
 
 export async function groupRootItemsByDriveId(nodeIds: string[]) {
-  const itemsWithDrive = nodeIds.map((id) => ({
-    drive: getDriveInternalIdFromItemId(id),
-    folder: id,
-  }));
+  const itemsWithDrive = nodeIds
+    .map((id) => {
+      const { nodeType } = typeAndPathFromInternalId(id);
+      
+      // Only drive-based items (folders, drives, files) have drive IDs
+      if (nodeType === "folder" || nodeType === "drive" || nodeType === "file") {
+        return {
+          drive: getDriveInternalIdFromItemId(id),
+          folder: id,
+        };
+      }
+      
+      // For teams and channels, group by the node itself since they don't have drives
+      if (nodeType === "team" || nodeType === "channel") {
+        return {
+          drive: id, // Use the node ID itself as the grouping key
+          folder: id,
+        };
+      }
+      
+      // For other node types, also group by themselves
+      return {
+        drive: id,
+        folder: id,
+      };
+    });
+    
   return itemsWithDrive.reduce(
     (acc, current) => ({
       ...acc,
@@ -266,26 +316,34 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
   const client = await getClient(connector.connectionId);
 
   for (const [driveId, nodeIds] of Object.entries(groupedItems)) {
-    const { deltaLink } = await getDeltaResults({
-      logger,
-      client,
-      parentInternalId: driveId,
-      token: "latest",
-    });
+    // Check if this is actually a drive ID (delta functionality only applies to drives)
+    const { nodeType } = typeAndPathFromInternalId(driveId);
+    
+    if (nodeType === "drive") {
+      const { deltaLink } = await getDeltaResults({
+        logger,
+        client,
+        parentInternalId: driveId,
+        token: "latest",
+      });
 
-    logger.info({ nodeIds, deltaLink }, "Populating deltas");
+      logger.info({ nodeIds, deltaLink }, "Populating deltas for drive");
 
-    for (const nodeId of nodeIds) {
-      const node = await MicrosoftNodeResource.fetchByInternalId(
-        connectorId,
-        nodeId
-      );
+      for (const nodeId of nodeIds) {
+        const node = await MicrosoftNodeResource.fetchByInternalId(
+          connectorId,
+          nodeId
+        );
 
-      if (!node) {
-        logger.warn({ nodeId }, `Node not found while saving delta, skipping`);
-      } else {
-        await node.update({ deltaLink });
+        if (!node) {
+          logger.warn({ nodeId }, `Node not found while saving delta, skipping`);
+        } else {
+          await node.update({ deltaLink });
+        }
       }
+    } else {
+      // For teams, channels, and other non-drive items, skip delta population
+      logger.info({ nodeIds, nodeType }, "Skipping delta population for non-drive items");
     }
   }
 }
@@ -383,7 +441,7 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
 }
 
 /**
- * Given a drive or folder, sync files under it and returns a list of folders to sync
+ * Given a drive, folder, team, or channel, sync files/messages under it and returns a list of child nodes to sync
  */
 export async function syncFiles({
   connectorId,
@@ -424,9 +482,9 @@ export async function syncFiles({
     };
   }
 
-  if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
+  if (!["folder", "drive", "team", "channel"].includes(parent.nodeType)) {
     throw new Error(
-      `Unexpected: parent node is not a folder or drive: ${parent.nodeType}`
+      `Unexpected: parent node type not supported for sync: ${parent.nodeType}`
     );
   }
 
@@ -444,46 +502,97 @@ export async function syncFiles({
       connectorId,
       parent,
     },
-    `[SyncFiles] Start sync`
+    `[SyncFiles] Start sync for ${parent.nodeType}`
   );
   const client = await getClient(connector.connectionId);
 
-  // TODO(pr): handle pagination
-  const childrenResult = await getFilesAndFolders(
-    logger,
-    client,
-    parent.internalId,
-    nextPageLink
-  );
+  let children: any[] = [];
+  let nextLink: string | undefined = undefined;
+  let count = 0;
 
-  const children = childrenResult.results;
+  if (parent.nodeType === "folder" || parent.nodeType === "drive") {
+    // Handle files and folders
+    const childrenResult = await getFilesAndFolders(
+      logger,
+      client,
+      parent.internalId,
+      nextPageLink
+    );
 
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    csvEnabled: providerConfig.csvEnabled || false,
-  });
-  const filesToSync = children.filter(
-    (item) =>
-      item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
-  );
+    children = childrenResult.results;
+    nextLink = childrenResult.nextLink;
 
-  // sync files
-  const results = await concurrentExecutor(
-    filesToSync,
-    async (child) =>
-      syncOneFile({
-        connectorId,
-        dataSourceConfig,
-        providerConfig,
-        file: child,
-        parentInternalId,
-        startSyncTs,
-        heartbeat,
-      }),
-    { concurrency: FILES_SYNC_CONCURRENCY }
-  );
+    const mimeTypesToSync = await getMimeTypesToSync({
+      pdfEnabled: providerConfig.pdfEnabled || false,
+      csvEnabled: providerConfig.csvEnabled || false,
+    });
+    const filesToSync = children.filter(
+      (item) =>
+        item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
+    );
 
-  const count = results.filter((r) => r).length;
+    // sync files
+    const results = await concurrentExecutor(
+      filesToSync,
+      async (child) =>
+        syncOneFile({
+          connectorId,
+          dataSourceConfig,
+          providerConfig,
+          file: child,
+          parentInternalId,
+          startSyncTs,
+          heartbeat,
+        }),
+      { concurrency: FILES_SYNC_CONCURRENCY }
+    );
+
+    count = results.filter((r) => r).length;
+  } else if (parent.nodeType === "team") {
+    // Handle channels within a team
+    const channelsResult = await getChannels(
+      logger,
+      client,
+      parent.internalId,
+      nextPageLink
+    );
+
+    children = channelsResult.results;
+    nextLink = channelsResult.nextLink;
+
+    // No direct sync needed for channels, they will be handled as child nodes
+    count = 0;
+  } else if (parent.nodeType === "channel") {
+    // Handle messages within a channel
+    const messagesResult = await getMessages(
+      logger,
+      client,
+      parent.internalId,
+      nextPageLink
+    );
+
+    const messages = messagesResult.results;
+    nextLink = messagesResult.nextLink;
+
+    // Sync messages
+    const results = await concurrentExecutor(
+      messages,
+      async (message) =>
+        syncOneMessage({
+          connectorId,
+          dataSourceConfig,
+          message,
+          channelInternalId: parent.internalId,
+          startSyncTs,
+        }),
+      { concurrency: 5 }
+    );
+
+    count = results.filter((r) => r).length;
+
+    // Messages don't have children to return
+    children = [];
+  }
 
   logger.info(
     {
@@ -495,47 +604,89 @@ export async function syncFiles({
     `[SyncFiles] Successful sync.`
   );
 
-  // do not update folders that were already seen
-  const folderResources = await MicrosoftNodeResource.fetchByInternalIds(
+  // Identify child nodes to process (folders or channels)
+  let childNodesToProcess: any[] = [];
+
+  if (parent.nodeType === "folder" || parent.nodeType === "drive") {
+    // Process folders
+    childNodesToProcess = children.filter((item) => item.folder);
+  } else if (parent.nodeType === "team") {
+    // Process channels
+    childNodesToProcess = children; // All children from getChannels are channels
+  }
+
+  // Get internal IDs for the child nodes
+  const childInternalIds = childNodesToProcess.map((item) => {
+    if (parent.nodeType === "folder" || parent.nodeType === "drive") {
+      return getDriveItemInternalId(item);
+    } else if (parent.nodeType === "team") {
+      // For channels, create the internal ID
+      const teamGuid = typeAndPathFromInternalId(parent.internalId).itemAPIPath.split("/")[2];
+      return internalIdFromTypeAndPath({
+        nodeType: "channel",
+        itemAPIPath: `/teams/${teamGuid}/channels/${item.id}`,
+      });
+    }
+    return "";
+  });
+
+  // Fetch existing resources for these child nodes
+  const childResources = await MicrosoftNodeResource.fetchByInternalIds(
     connectorId,
-    children
-      .filter((item) => item.folder)
-      .map((item) => getDriveItemInternalId(item))
+    childInternalIds
   );
 
-  // compute folders that were already seen
+  // compute resources that were already seen
   const alreadySeenResourcesById: Record<string, MicrosoftNodeResource> = {};
-  folderResources.forEach((f) => {
+  childResources.forEach((resource) => {
     if (
       isAlreadySeenItem({
-        driveItemResource: f,
+        driveItemResource: resource,
         startSyncTs,
       })
     ) {
-      alreadySeenResourcesById[f.internalId] = f;
+      alreadySeenResourcesById[resource.internalId] = resource;
     }
   });
 
   const alreadySeenResources = Object.values(alreadySeenResourcesById);
 
+  // Create or update new child nodes
+  const nodesToCreate: MicrosoftNode[] = [];
+
+  for (const item of childNodesToProcess) {
+    let internalId: string;
+    let nodeType: "folder" | "channel";
+
+    if (parent.nodeType === "folder" || parent.nodeType === "drive") {
+      internalId = getDriveItemInternalId(item);
+      nodeType = "folder";
+
+      if (!alreadySeenResourcesById[internalId]) {
+        nodesToCreate.push({
+          ...itemToMicrosoftNode(nodeType, item),
+          parentInternalId,
+        });
+      }
+    } else if (parent.nodeType === "team") {
+      const teamGuid = typeAndPathFromInternalId(parent.internalId).itemAPIPath.split("/")[2];
+      internalId = internalIdFromTypeAndPath({
+        nodeType: "channel",
+        itemAPIPath: `/teams/${teamGuid}/channels/${item.id}`,
+      });
+      nodeType = "channel";
+
+      if (!alreadySeenResourcesById[internalId]) {
+        nodesToCreate.push({
+          ...itemToMicrosoftNode(nodeType, { ...item, teamId: teamGuid }),
+          parentInternalId,
+        });
+      }
+    }
+  }
+
   const createdOrUpdatedResources =
-    await MicrosoftNodeResource.batchUpdateOrCreate(
-      connectorId,
-      children
-        .filter(
-          (item) =>
-            item.folder &&
-            // only create/update if resource unseen
-            !alreadySeenResourcesById[getDriveInternalIdFromItem(item)]
-        )
-        .map(
-          (item): MicrosoftNode => ({
-            ...itemToMicrosoftNode("folder", item),
-            // add parent information to new node resources
-            parentInternalId,
-          })
-        )
-    );
+    await MicrosoftNodeResource.batchUpdateOrCreate(connectorId, nodesToCreate);
 
   const parentsOfParent = await getParents({
     connectorId: parent.connectorId,
@@ -545,16 +696,22 @@ export async function syncFiles({
 
   await concurrentExecutor(
     createdOrUpdatedResources,
-    async (createdOrUpdatedResource) =>
-      upsertDataSourceFolder({
+    async (createdOrUpdatedResource) => {
+      const title =
+        createdOrUpdatedResource.nodeType === "channel"
+          ? createdOrUpdatedResource.name ?? "Untitled Channel"
+          : createdOrUpdatedResource.name ?? "Untitled Folder";
+
+      await upsertDataSourceFolder({
         dataSourceConfig,
         folderId: createdOrUpdatedResource.internalId,
         parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
         parentId: parentsOfParent[0],
-        title: createdOrUpdatedResource.name ?? "Untitled Folder",
+        title,
         mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
         sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
-      }),
+      });
+    },
     { concurrency: 5 }
   );
 
@@ -565,7 +722,7 @@ export async function syncFiles({
     childNodes: [...createdOrUpdatedResources, ...alreadySeenResources].map(
       (r) => r.internalId
     ),
-    nextLink: childrenResult.nextLink,
+    nextLink,
   };
 }
 
@@ -2030,4 +2187,179 @@ export async function processDeltaChangesFromGCS({
     nextCursor,
     processedCount: currentBatch.length,
   };
+}
+
+export async function syncOneMessage({
+  connectorId,
+  dataSourceConfig,
+  message,
+  channelInternalId,
+  startSyncTs,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  message: any; // ChatMessage type
+  channelInternalId: string;
+  startSyncTs: number;
+}): Promise<boolean> {
+  if (!message.id || !message.body?.content) {
+    return false; // Skip messages without content
+  }
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+
+  try {
+    // Extract team and channel IDs from the channel internal ID
+    const channelPath = typeAndPathFromInternalId(channelInternalId);
+    const pathParts = channelPath.itemAPIPath.split("/");
+
+    logger.info(
+      {
+        channelInternalId,
+        channelPath,
+        pathParts,
+      },
+      "Extracting team and channel IDs for message sync"
+    );
+
+    // pathParts structure: ['', 'teams', 'teamGuid', 'channels', 'channelGuid']
+    const teamId = pathParts[2]; // This should already be the GUID
+    const channelId = pathParts[4]; // This should already be the GUID
+    
+    logger.info(
+      {
+        teamId,
+        channelId,
+        pathParts,
+      },
+      "Extracted team and channel IDs"
+    );
+
+    if (!teamId || !channelId) {
+      logger.error(
+        {
+          channelInternalId,
+          teamId,
+          channelId,
+          pathParts,
+        },
+        "Failed to extract valid team or channel ID"
+      );
+      return false;
+    }
+
+    // Create message node
+    const messageNode = itemToMicrosoftNode("message", {
+      ...message,
+      channelIdentity: {
+        teamId,
+        channelId,
+      },
+    });
+
+    // Check if message was already synced
+    const existingResource = await MicrosoftNodeResource.fetchByInternalId(
+      connectorId,
+      messageNode.internalId
+    );
+
+    if (
+      existingResource &&
+      isAlreadySeenItem({
+        driveItemResource: existingResource,
+        startSyncTs,
+      })
+    ) {
+      return false; // Already synced
+    }
+
+    // Create or update message resource
+    const messageResource = await MicrosoftNodeResource.updateOrCreate(
+      connectorId,
+      {
+        ...messageNode,
+        parentInternalId: channelInternalId,
+      }
+    );
+
+    // Get parents for the message
+    const parents = await getParents({
+      connectorId,
+      internalId: channelInternalId,
+      startSyncTs,
+    });
+
+    // Prepare content for upsertion
+    const content = message.body?.content || "";
+    const author = message.from?.user?.displayName || "Unknown";
+    const title = message.subject || `Message from ${author}`;
+    const createdAt = message.createdDateTime
+      ? new Date(message.createdDateTime)
+      : new Date();
+
+    // Upsert message document
+    await upsertDataSourceDocument({
+      dataSourceConfig,
+      documentId: messageResource.internalId,
+      documentContent: {
+        prefix: `Teams Message: ${title}`,
+        content,
+        sections: [
+          {
+            prefix: "Author",
+            content: author,
+            sections: [],
+          },
+          {
+            prefix: "Created",
+            content: createdAt.toISOString(),
+            sections: [],
+          },
+        ],
+      },
+      documentUrl: messageResource.webUrl || undefined,
+      timestampMs: createdAt.getTime(),
+      parents: [messageResource.internalId, ...parents],
+      parentId: parents[0] || null,
+      title,
+      mimeType: "text/html",
+      async: false,
+      upsertContext: {
+        sync_type: "batch",
+      },
+    });
+
+    // Update last seen timestamp
+    await messageResource.update({
+      lastSeenTs: new Date(),
+    });
+
+    logger.info(
+      {
+        connectorId,
+        channelInternalId,
+        messageId: message.id,
+        title,
+      },
+      "Message synced successfully"
+    );
+
+    return true;
+  } catch (error) {
+    logger.error(
+      {
+        connectorId,
+        channelInternalId,
+        messageId: message.id,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      "Failed to sync message"
+    );
+    return false;
+  }
 }

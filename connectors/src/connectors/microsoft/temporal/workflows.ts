@@ -10,12 +10,14 @@ import { uniq } from "lodash";
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
+import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/utils";
 import type * as sync_status from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 
 const {
   getRootNodesToSync,
   syncFiles,
+  syncOneMessage,
   markNodeAsSeen,
   populateDeltas,
   groupRootItemsByDriveId,
@@ -91,7 +93,7 @@ export async function fullSyncWorkflow({
   // Temp to clean up the running workflows state
   nodeIdsToSync = uniq(nodeIdsToSync);
   nodeIdsToDelete = uniq(nodeIdsToDelete);
-
+  console.log("==============nodeIdsToSync", nodeIdsToSync);
   if (totalCount === 0) {
     // Only populate deltas if we're starting a full sync, not for continueAsNew
     await populateDeltas(connectorId, nodeIdsToSync);
@@ -210,6 +212,16 @@ export async function incrementalSyncWorkflowV2({
 
   const startSyncTs = new Date().getTime();
   for (const nodeId of Object.keys(groupedItems)) {
+    // Check if this is a drive node - delta sync only applies to drives
+    const { nodeType } = typeAndPathFromInternalId(nodeId);
+    
+    if (nodeType !== "drive") {
+      // For non-drive items (teams, channels, etc.), skip delta processing
+      // These will be handled by the regular full sync instead
+      console.log(`Skipping delta processing for non-drive node ${nodeId} (type: ${nodeType})`);
+      continue;
+    }
+    
     // Step 1: Fetch delta data and upload to GCS
     const { gcsFilePath } = await fetchDeltaForRootNodesInDrive({
       connectorId,

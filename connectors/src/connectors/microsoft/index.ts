@@ -17,7 +17,9 @@ import {
   getFolderAsContentNode,
   getMicrosoftNodeAsContentNode,
   getSiteAsContentNode,
+  getSitesRootAsContentNode,
   getTeamAsContentNode,
+  getTeamsRootAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
   clientApiGet,
@@ -266,7 +268,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     // user facing
     if (!parentInternalId) {
       parentInternalId = internalIdFromTypeAndPath({
-        nodeType: "sites-root",
+        nodeType: "root",
         itemAPIPath: "",
       });
     }
@@ -275,6 +277,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     try {
       switch (nodeType) {
+        case "root": {
+          nodes.push(getSitesRootAsContentNode());
+          nodes.push(getTeamsRootAsContentNode());
+          break;
+        }
         case "sites-root": {
           const sites = await getAllPaginatedEntities((nextLink) =>
             getSites(logger, client, nextLink)

@@ -363,7 +363,7 @@ export async function getChannels(
 ): Promise<{ results: Channel[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
-
+  console.log("==============parentResourcePath1", parentResourcePath);
   if (nodeType !== "team") {
     throw new Error(
       `Invalid node type: ${nodeType} for getChannels, expected team`
@@ -398,10 +398,12 @@ export async function getMessages(
       `Invalid node type: ${nodeType} for getMessages, expected channel`
     );
   }
+  console.log("==============parentResourcePath2", parentResourcePath);
 
+  const messagesPath = `${parentResourcePath}/messages`;
   const res = nextLink
     ? await clientApiGet(logger, client, nextLink)
-    : await clientApiGet(logger, client, parentResourcePath);
+    : await clientApiGet(logger, client, messagesPath);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -517,9 +519,62 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
         webUrl: item.webUrl ?? null,
       };
     }
-    case "team":
-    case "channel":
-    case "message":
+    case "team": {
+      const item = itemRaw as Team;
+      return {
+        nodeType,
+        name: item.displayName ?? null,
+        internalId: internalIdFromTypeAndPath({
+          nodeType,
+          itemAPIPath: `/teams/${item.id}`,
+        }),
+        parentInternalId: null,
+        mimeType: null,
+        webUrl: item.webUrl ?? null,
+      };
+    }
+    case "channel": {
+      const item = itemRaw as Channel & { teamId?: string };
+      if (!item.id) {
+        throw new Error("Channel id is required");
+      }
+      const teamId = item.teamId || "unknown-team";
+      console.log("==============teamId", item);
+
+      return {
+        nodeType,
+        name: item.displayName ?? null,
+        internalId: internalIdFromTypeAndPath({
+          nodeType,
+          itemAPIPath: `/teams/${teamId}/channels/${item.id}`,
+        }),
+        parentInternalId: null,
+        mimeType: null,
+        webUrl: item.webUrl ?? null,
+      };
+    }
+    case "message": {
+      const item = itemRaw as ChatMessage;
+      if (!item.id) {
+        throw new Error("Message id is required");
+      }
+      console.log("==============teamId2", item.channelIdentity?.teamId);
+
+      return {
+        nodeType,
+        name:
+          item.subject ??
+          item.body?.content?.substring(0, 100) ??
+          "Untitled Message",
+        internalId: internalIdFromTypeAndPath({
+          nodeType,
+          itemAPIPath: `/teams/${item.channelIdentity?.teamId}/channels/${item.channelIdentity?.channelId}/messages/${item.id}`,
+        }),
+        parentInternalId: null,
+        mimeType: "text/html",
+        webUrl: item.webUrl ?? null,
+      };
+    }
     case "worksheet":
     case "page":
       throw new Error("Not implemented");
