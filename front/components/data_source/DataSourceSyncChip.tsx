@@ -27,6 +27,7 @@ export default function ConnectorSyncingChip({
     dataSource,
   });
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const connector = refreshedConnector || initialState;
   if (!connector) {
     if (isConnectorError) {

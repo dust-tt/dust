@@ -15,7 +15,9 @@ if (process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
     clientToken: process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
     env: process.env.NODE_ENV === "production" ? "prod" : "dev",
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     service: `${process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"}-browser`,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     version: process.env.NEXT_PUBLIC_COMMIT_HASH || "",
     site: "datadoghq.eu",
     forwardErrorsToLogs: true,

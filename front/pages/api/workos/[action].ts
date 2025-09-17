@@ -303,6 +303,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const returnTo = req.query.returnTo || config.getClientFacingUrl();
 
   const session = await getSession(req, res);

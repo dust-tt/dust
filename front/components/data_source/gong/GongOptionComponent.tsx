@@ -53,6 +53,7 @@ export function GongOptionComponent({
   const trackersEnabled = trackersConfigValue === "true";
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     retentionPeriodConfigValue || ""
   );
 

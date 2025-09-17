@@ -399,13 +399,16 @@ const createServer = (): McpServer => {
             items: [{ id: email }],
           },
         });
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const busySlots = res.data.calendars?.[email]?.busy || [];
         const available = busySlots.length === 0;
         return makeMCPToolJSONSuccess({
           result: {
             available,
             busySlots: busySlots.map((slot) => ({
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               start: slot.start || "",
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               end: slot.end || "",
             })),
           },

@@ -37,6 +37,7 @@ export function useMCPActions({
   const mcpActionsFetcher: Fetcher<GetMCPActionsResult> = fetcher;
 
   // For the current page, we need the cursor from our cache
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const cursor = cursors[currentPage] || null;
   const url = cursor
     ? `/api/w/${owner.sId}/labs/mcp_actions/${agentId}?limit=${pageSize}&cursor=${cursor}`
@@ -76,7 +77,9 @@ export function useMCPActions({
   const canGoPrevious = currentPage > 0;
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     actions: data?.actions || [],
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     totalCount: data?.totalCount || 0,
     currentPage,
     totalPages,

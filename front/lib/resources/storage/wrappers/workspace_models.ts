@@ -152,6 +152,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
           // }
         }
       },
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ...(restOptions.hooks || {}),
     };
 
@@ -243,6 +244,7 @@ export class SoftDeletableWorkspaceAwareModel<
     const updateOptions: UpdateOptions<Attributes<M>> = {
       ...options,
       fields: ["deletedAt"],
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       where: options?.where || {},
     };
 

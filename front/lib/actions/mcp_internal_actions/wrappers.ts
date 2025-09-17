@@ -46,6 +46,7 @@ export function withToolLogging<T>(
     > = {
       workspace: {
         sId: owner.sId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         plan_code: auth.plan()?.code || null,
       },
       toolName,
@@ -74,6 +75,7 @@ export function withToolLogging<T>(
     const tags = [
       `tool:${toolName}`,
       `workspace:${owner.sId}`,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       `workspace_plan_code:${auth.plan()?.code || null}`,
     ];
 

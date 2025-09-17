@@ -317,6 +317,7 @@ export function useInfiniteDataSourceViewContentNodes({
       (_pageIndex, previousPageData) => {
         // If we reached the end, stop fetching
         if (
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           (previousPageData && !previousPageData.nextPageCursor) ||
           !dataSourceView
         ) {
@@ -362,11 +363,14 @@ export function useInfiniteDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     nodesError: error,
     nodes,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: lastPage?.nextPageCursor || null,
     hasNextPage,
     loadMore,
     mutate,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     totalNodesCount: lastPage?.total || 0,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     totalNodesCountIsAccurate: lastPage?.totalIsAccurate || true,
     isLoadingMore:
       isLoading || (size > 0 && data && typeof data[size - 1] === "undefined"),

@@ -72,9 +72,12 @@ export function MCPRunAgentActionDetails({
     disabled: addedMCPServerViewIds.length === 0,
   });
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const queryResource = toolOutput?.find(isRunAgentQueryResourceType) || null;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const resultResource = toolOutput?.find(isRunAgentResultResourceType) || null;
   const handoverResource =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     toolOutput?.find(isAgentPauseOutputResourceType) || null;
 
   const generatedFiles =
@@ -268,6 +271,7 @@ export function MCPRunAgentActionDetails({
                 </ContentMessage>
               </div>
             )}
+            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {childAgent && (chainOfThought || response) && (
               <CollapsibleComponent
                 rootProps={{ defaultOpen: true }}
@@ -341,6 +345,7 @@ export function MCPRunAgentActionDetails({
                                           : undefined
                                       }
                                       tooltip={
+                                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                                         document.description || document.title
                                       }
                                     >

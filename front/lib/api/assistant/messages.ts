@@ -155,6 +155,7 @@ async function batchRenderUserMessages(
     }
     const userMessage = message.userMessage;
     const messageMentions = mentions.filter((m) => m.messageId === message.id);
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const user = users.find((u) => u.id === userMessage.userId) || null;
 
     const m = {
@@ -205,6 +206,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
 > {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
   const agentMessageIds = removeNulls(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentMessages.map((m) => m.agentMessageId || null)
   );
   const [agentConfigurations, agentMCPActions] = await Promise.all([

@@ -142,6 +142,7 @@ export function BlockedActionsProvider({
   conversation,
   children,
 }: BlockedActionsProviderProps) {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const conversationId = conversation?.sId || null;
 
   const { blockedActions } = useBlockedActions({

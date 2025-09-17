@@ -23,6 +23,7 @@ module.exports = {
         checksVoidReturn: false,
       },
     ],
+    "@typescript-eslint/prefer-nullish-coalescing": "error",
     "jsx-a11y/alt-text": 0,
     "no-restricted-syntax": [
       "error",

@@ -116,9 +116,11 @@ export async function createClientSideMCPServerConfigurations(
     id: -1, // Default ID for client-side MCP servers.
     clientSideMcpServerId: serverId,
     name:
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       metadata.find((m) => m?.serverId === serverId)?.serverName ||
       `MCP Server ${serverId}`,
     mcpServerName:
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       metadata.find((m) => m?.serverId === serverId)?.serverName || null,
     sId: serverId,
     type: "mcp_server_configuration",

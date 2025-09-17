@@ -87,6 +87,7 @@ async function handler(
         user: user.toJSON(),
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         content: bodyValidation.right.feedbackContent || "",
         isConversationShared: bodyValidation.right.isConversationShared,
       });

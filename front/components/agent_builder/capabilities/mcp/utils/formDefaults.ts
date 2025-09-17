@@ -50,6 +50,7 @@ export function getDefaultConfiguration(
     set(
       additionalConfig,
       key,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       defaultValue !== undefined ? defaultValue : false
     );
   }

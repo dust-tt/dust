@@ -147,6 +147,7 @@ async function handler(
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
       } else if ("allowContentCreationFileSharing" in body) {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const previousMetadata = owner.metadata || {};
         const newMetadata = {
           ...previousMetadata,

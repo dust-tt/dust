@@ -196,6 +196,7 @@ export async function renderConversationForModel(
 
       messages.push({
         role: "user" as const,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         name: m.context.fullName || m.context.username,
         content: [
           {

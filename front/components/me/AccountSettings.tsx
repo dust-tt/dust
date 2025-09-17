@@ -21,7 +21,9 @@ export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
   const { register, handleSubmit, reset, formState } =
     useForm<AccountSettingsType>({
       defaultValues: {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         firstName: user?.firstName || "",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         lastName: user?.lastName || "",
       },
     });
@@ -33,6 +35,7 @@ export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
     if (user) {
       reset({
         firstName: user.firstName,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         lastName: user.lastName || "",
       });
     }
@@ -112,7 +115,9 @@ export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
                 variant="ghost"
                 onClick={() =>
                   reset({
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     firstName: user?.firstName || "",
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     lastName: user?.lastName || "",
                   })
                 }

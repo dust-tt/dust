@@ -63,6 +63,7 @@ function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
       ) &&
       agentLoopContext.runContext.toolConfiguration.additionalConfiguration[
         ADVANCED_SEARCH_SWITCH
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ] === true) ||
     (agentLoopContext?.listToolsContext &&
       isServerSideMCPServerConfiguration(

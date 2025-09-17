@@ -249,6 +249,7 @@ export function AgentMessage({
   );
 
   async function handleCopyToClipboard() {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const messageContent = agentMessageToRender.content || "";
     let footnotesMarkdown = "";
     let footnotesHtml = "";
@@ -482,6 +483,7 @@ export function AgentMessage({
       return (
         <ErrorMessage
           error={
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentMessage.error || {
               message: "Unexpected Error",
               code: "unexpected_error",

@@ -164,6 +164,7 @@ const InputBarContainer = ({
         }
       : {
           // TextSearchParams
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           search: nodeOrUrlCandidate?.url || "",
           searchSourceUrls: true,
           includeDataSources: false,

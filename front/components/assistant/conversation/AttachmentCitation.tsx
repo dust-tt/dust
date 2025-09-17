@@ -131,6 +131,7 @@ export function AttachmentCitation({
           {attachmentCitation.type === "node" && (
             <CitationDescription className="truncate text-ellipsis">
               <span>
+                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                 {attachmentCitation.path || attachmentCitation.spaceName}
               </span>
             </CitationDescription>

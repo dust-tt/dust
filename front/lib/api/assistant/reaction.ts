@@ -48,6 +48,7 @@ export async function getMessageReactions(
   return new Ok(
     messages.map((m) => ({
       messageId: m.sId,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       reactions: _renderMessageReactions(m.reactions || []),
     }))
   );

@@ -13,6 +13,7 @@ const createTreeItem = (
   name?: string
 ): DataSourceBuilderTreeItemType => ({
   path,
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   name: name || path.split("/").pop() || path,
   type: "root",
 });

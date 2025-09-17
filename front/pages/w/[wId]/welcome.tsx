@@ -65,6 +65,7 @@ export default function Welcome({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const [lastName, setLastName] = useState<string>(user.lastName || "");
   const [jobType, setJobType] = useState<JobType | undefined>(undefined);
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
@@ -86,11 +87,13 @@ export default function Welcome({
 
     // GTM signup event tracking: only fire after successful submit
     if (typeof window !== "undefined") {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         event: "signup_completed",
         user_email: user.email,
         company_name: owner.name,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         gclid: sessionStorage.getItem("gclid") || null,
       });
     }
@@ -161,6 +164,7 @@ export default function Welcome({
                   variant="outline"
                   className="justify-between text-muted-foreground"
                   label={
+                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     jobTypes.find((t) => t.value === jobType)?.label ||
                     "Select job type"
                   }
@@ -169,6 +173,7 @@ export default function Welcome({
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
                 <DropdownMenuRadioGroup
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   value={jobType || ""}
                   onValueChange={(value) => {
                     if (isJobType(value)) {

@@ -550,6 +550,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     parentsToAdd: string[] = [],
     parentsToRemove: string[] = []
   ): Promise<Result<undefined, Error>> {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const currentParents = this.parentsIn || [];
 
     if (this.kind === "default") {

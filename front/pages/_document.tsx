@@ -44,14 +44,23 @@ class MyDocument extends Document {
                d=o.createElement(u);d.async=1;d.src=n
                n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
              })(window,document,'script','https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js','DD_RUM')
-             '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || ""}' && window.DD_RUM.onReady(function() {
+             '${
+               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+               process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || ""
+             }' && window.DD_RUM.onReady(function() {
                window.DD_RUM.init({
                  clientToken: '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN}',
                  applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
                  site: 'datadoghq.eu',
-                 service: '${process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"}-browser',
+                 service: '${
+                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                   process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"
+                 }-browser',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
-                 version: '${process.env.NEXT_PUBLIC_COMMIT_HASH || ""}',
+                 version: '${
+                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                   process.env.NEXT_PUBLIC_COMMIT_HASH || ""
+                 }',
                  allowedTracingUrls: [
                    "https://dust.tt",
                    "https://eu.dust.tt",

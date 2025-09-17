@@ -147,6 +147,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       includes: [
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         ...(options.includes || []),
         {
           model: UserModel,

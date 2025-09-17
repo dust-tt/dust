@@ -172,6 +172,7 @@ function BackendSearch({
     React.useState<DataSourceViewType | null>(null);
   const [effectiveContentNode, setEffectiveContentNode] =
     React.useState<LightContentNode | null>(null);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = React.useState<
     UrlCandidate | NodeCandidate | null
@@ -197,6 +198,7 @@ function BackendSearch({
     debouncedValue: debouncedSearch,
     isDebouncing,
     setValue: setSearchValue,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = useDebounce(searchParam.value || "", {
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
@@ -442,6 +444,7 @@ function FrontendSearch({
   parentId,
 }: FullFrontendSearchProps) {
   const { q: searchParam } = useQueryParams(["q"]);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const searchTerm = searchParam.value || "";
 
   return (

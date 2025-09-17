@@ -224,6 +224,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       includes: [
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         ...(options.includes || []),
         {
           model: UserModel,
@@ -786,6 +787,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
       ),
       toolsMetadata:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         this.internalToolsMetadata || this.remoteToolsMetadata || [],
     };
   }

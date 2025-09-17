@@ -168,6 +168,7 @@ export function useSuggestedAgentConfigurations({
       disabled: inCache || disabled,
     });
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const dataToUse = cachedData || data;
 
   return {

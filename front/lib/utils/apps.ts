@@ -117,6 +117,7 @@ async function updateDatasets(
       const coreDataset = await coreAPI.createDataset({
         projectId: app.dustAPIProjectId,
         datasetId: datasetToImport.name,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         data: datasetToImport.data || [],
       });
       if (coreDataset.isErr()) {

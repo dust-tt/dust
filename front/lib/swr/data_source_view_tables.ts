@@ -96,6 +96,7 @@ export function useDataSourceViewTables({
 
   return {
     tables: data?.tables ?? emptyArray(),
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
     isTablesLoading: !isDisabled && !error && !data,
     isTablesError: error,

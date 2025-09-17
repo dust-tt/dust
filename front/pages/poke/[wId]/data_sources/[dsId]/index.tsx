@@ -856,8 +856,10 @@ function NotionUrlCheckOrFind({
                 }
                 return "Not found";
               })()}
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               color={urlDetails.page || urlDetails.db ? "success" : "warning"}
             />
+            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {(urlDetails.page || urlDetails.db) && (
               <div>
                 <span>

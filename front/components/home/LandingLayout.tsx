@@ -215,6 +215,7 @@ const CookieBanner = ({
         "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-4 border-t border-border bg-blue-100 p-6 shadow-2xl md:flex-row",
         "s-transition-opacity s-duration-300 s-ease-in-out",
         isVisible ? "s-opacity-100" : "s-opacity-0",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         className || ""
       )}
     >

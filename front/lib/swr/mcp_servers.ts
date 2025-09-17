@@ -126,6 +126,7 @@ export function useMCPServer({
   }
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     server: data?.server || null,
     isMCPServerLoading: !error && !data && !disabled,
     isMCPServerError: !!error,

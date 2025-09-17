@@ -101,10 +101,13 @@ export class Authenticator {
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
   }) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._user = user || null;
     this._groups = groups;
     this._role = role;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
     this._key = key;
     if (user) {
@@ -671,6 +674,7 @@ export class Authenticator {
           sId: this._workspace.sId,
           name: this._workspace.name,
           role: this._role,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           segmentation: this._workspace.segmentation || null,
           ssoEnforced: this._workspace.ssoEnforced,
           workOSOrganizationId: this._workspace.workOSOrganizationId,
@@ -965,6 +969,7 @@ export async function getSession(
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
   const workOsSession = await getWorkOSSession(req, res);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return workOsSession || null;
 }
 

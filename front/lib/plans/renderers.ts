@@ -65,11 +65,16 @@ export function renderSubscriptionFromModels({
   return {
     status: activeSubscription?.status ?? "active",
     trialing: activeSubscription?.trialing === true,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     sId: activeSubscription?.sId || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     startDate: activeSubscription?.startDate?.getTime() || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     endDate: activeSubscription?.endDate?.getTime() || null,
     paymentFailingSince:
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       activeSubscription?.paymentFailingSince?.getTime() || null,
     plan: renderPlanFromModel({ plan }),
     requestCancelAt: activeSubscription?.requestCancelAt?.getTime() ?? null,

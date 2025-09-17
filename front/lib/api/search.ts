@@ -182,6 +182,7 @@ export async function handleSearch(
     : allDatasourceViews;
 
   const excludedNodeMimeTypes =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
 
   const searchFilterRes = getSearchFilterFromDataSourceViews(

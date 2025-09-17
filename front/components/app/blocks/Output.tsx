@@ -286,8 +286,10 @@ export function InnerLogs({ trace }: { trace: TraceType }) {
             reasoning_tokens?: number;
           };
         }
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       | undefined) || null;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const logs = [...(meta?.logs || [])];
   if (meta && meta.provider_request_id) {
     logs.push({ provider_request_id: meta.provider_request_id });
@@ -427,6 +429,7 @@ export default function Output({
         t.filter(
           (t) =>
             t.meta &&
+            /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
             (((t.meta as { logs: any[] }).logs &&
               (t.meta as { logs: any[] }).logs.length) ||
               (t.meta as { provider_request_id?: string })
@@ -441,6 +444,7 @@ export default function Output({
                   };
                 }
               ).token_usage)
+          /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
         ).length
       );
     }, 0);
@@ -478,6 +482,7 @@ export default function Output({
                       .map((t) => t.meta)
                       .some(
                         (e) =>
+                          /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
                           (e as { logs: any[] }).logs.length ||
                           (e as { provider_request_id?: string })
                             .provider_request_id ||
@@ -491,6 +496,7 @@ export default function Output({
                               };
                             }
                           ).token_usage
+                        /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
                       )
                   ) {
                     return (

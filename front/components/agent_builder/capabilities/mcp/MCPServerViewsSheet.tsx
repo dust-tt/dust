@@ -471,6 +471,7 @@ export function MCPServerViewsSheet({
             configurable: false,
           };
         } else {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           return tool.configuredAction || getDefaultMCPAction(tool.view);
         }
       })
@@ -584,6 +585,7 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       title: mcpServerView?.name || "Configure Tool",
       description: "",
       icon: undefined,
@@ -660,6 +662,7 @@ export function MCPServerViewsSheet({
         mode?.type === "info" ? mode.action : null
       ),
       content:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         infoMCPServerView ||
         (mode?.type === "info" &&
           mode.action?.type === "DATA_VISUALIZATION") ? (

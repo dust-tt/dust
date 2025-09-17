@@ -225,6 +225,7 @@ export function SelectedDataSources() {
   );
 
   const isTableOrWarehouseServer = tablesServer.includes(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     internalMcpServerView?.server.name || ""
   );
 

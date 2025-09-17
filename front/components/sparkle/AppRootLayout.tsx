@@ -25,6 +25,7 @@ export default function AppRootLayout({
   useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {
       // Identify the user with GTM
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         userId: user.sId,

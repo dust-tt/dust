@@ -140,6 +140,7 @@ export function DustAppSection() {
           <div className="flex flex-col gap-1">
             <div className="text-sm font-medium">{row.original.name}</div>
             <div className="line-clamp-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
               {row.original.description || "No description available"}
             </div>
           </div>

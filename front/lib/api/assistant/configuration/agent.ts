@@ -402,6 +402,7 @@ export async function createAgentConfiguration(
         userFavorite = userRelation?.favorite ?? false;
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
 
       // Create Agent config.

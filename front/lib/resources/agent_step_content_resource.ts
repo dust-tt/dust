@@ -547,6 +547,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       : null;
 
     const actions = actualStepContents.flatMap((stepContent) =>
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (stepContent.agentMCPActions || []).map((action) => {
         assert(
           stepContent.agentMessage?.message?.conversation,

@@ -205,6 +205,7 @@ export function AgentBuilderInstructionsEditor({
       }
 
       const currentText = plainTextFromTipTapContent(editor.getJSON());
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const compareText = compareVersion.instructions || "";
 
       editor.commands.applyDiff(compareText, currentText);

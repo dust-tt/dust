@@ -217,6 +217,7 @@ export function SlackSettingsSheet({
   useEffect(() => {
     setLocalSlackChannels([...(slackChannels || [])]);
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
   }, [slackChannels]);
@@ -225,6 +226,7 @@ export function SlackSettingsSheet({
     if (isOpen) {
       setLocalSlackChannels([...(slackChannels || [])]);
       const currentAutoRespondWithoutMention =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (slackChannels || [])[0]?.autoRespondWithoutMention || false;
       setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     }
@@ -248,6 +250,7 @@ export function SlackSettingsSheet({
   const handleClose = () => {
     setLocalSlackChannels([...(slackChannels || [])]);
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     onOpenChange();
@@ -270,6 +273,7 @@ export function SlackSettingsSheet({
     );
 
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     const autoRespondWithoutMentionChanged =
       autoRespondWithoutMentionEnabled !== currentAutoRespondWithoutMention;

@@ -142,6 +142,7 @@ export class CoEditionTransport implements Transport {
 
     const params = new URLSearchParams();
     params.set("serverId", this.serverId);
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     params.set("lastEventId", this.lastEventId || "");
 
     this.eventSource = new EventSource(

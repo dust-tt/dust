@@ -62,6 +62,7 @@ export function ZendeskConfigView({
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
   const [retentionInput, setRetentionInput] = useState(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     retentionPeriodDays?.toString() || ""
   );
 

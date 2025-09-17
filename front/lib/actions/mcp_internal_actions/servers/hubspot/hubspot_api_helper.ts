@@ -211,11 +211,15 @@ export const searchOwners = async (
   const query = searchQuery.toLowerCase();
 
   const filteredOwners = allOwners.filter((owner) => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const emailMatch = owner.email?.toLowerCase().includes(query) || false;
     const firstNameMatch =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       owner.firstName?.toLowerCase().includes(query) || false;
     const lastNameMatch =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       owner.lastName?.toLowerCase().includes(query) || false;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const fullNameMatch = `${owner.firstName || ""} ${owner.lastName || ""}`
       .toLowerCase()
       .includes(query);
