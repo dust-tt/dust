@@ -147,11 +147,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Activate @research agent.",
     stage: "dust_only",
   },
-  research_agent_2: {
-    description:
-      "Activate second version of @research agent (dust only for evals).",
-    stage: "dust_only",
-  },
   deep_research_as_a_tool: {
     description: "Activate deep research as a tool",
     stage: "dust_only",
