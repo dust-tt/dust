@@ -3,6 +3,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
   IconButton,
+  Page,
   Separator,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -13,26 +14,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-
-const Label = ({ children }: { children: React.ReactNode }) => (
-  <label className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
-    {children}
-  </label>
-);
-
-const Value = ({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <p
-    className={`text-sm text-foreground dark:text-foreground-night ${className}`}
-  >
-    {children}
-  </p>
-);
 
 type WebhookSourceDetailsInfoProps = {
   webhookSourceView: WebhookSourceViewType;
@@ -102,13 +83,13 @@ export function WebhookSourceDetailsInfo({
       />
 
       <Separator className="mb-4 mt-4" />
-      <div className="heading-lg">Webhook Source Details</div>
+      <Page.H variant="h4">Webhook Source Details</Page.H>
 
       <div className="space-y-6">
         <div>
-          <Label>Webhook URL</Label>
+          <Page.H variant="h6">Webhook URL</Page.H>
           <div className="flex items-center space-x-2">
-            <Value className="truncate font-mono">{webhookUrl}</Value>
+            <Page.P>{webhookUrl}</Page.P>
             <IconButton
               icon={ClipboardIcon}
               onClick={() => copy(webhookUrl)}
@@ -118,21 +99,21 @@ export function WebhookSourceDetailsInfo({
         </div>
 
         <div>
-          <Label>Source Name</Label>
-          <Value>{webhookSourceView.webhookSource.name}</Value>
+          <Page.H variant="h6">Source Name</Page.H>
+          <Page.P>{webhookSourceView.webhookSource.name}</Page.P>
         </div>
 
         {webhookSourceView.webhookSource.secret && (
           <div>
-            <Label>Secret</Label>
+            <Page.H variant="h6">Secret</Page.H>
             <div className="flex items-center space-x-2">
-              <Value
+              <div
                 className={`font-mono ${
                   isSecretVisible ? "" : "select-none blur-sm"
                 }`}
               >
-                {webhookSourceView.webhookSource.secret}
-              </Value>
+                <Page.P>{webhookSourceView.webhookSource.secret}</Page.P>
+              </div>
               <IconButton
                 icon={isSecretVisible ? EyeSlashIcon : EyeIcon}
                 onClick={() => setIsSecretVisible((prev) => !prev)}
@@ -145,15 +126,15 @@ export function WebhookSourceDetailsInfo({
         {webhookSourceView.webhookSource.signatureHeader && (
           <>
             <div>
-              <Label>Signature Header</Label>
-              <Value>{webhookSourceView.webhookSource.signatureHeader}</Value>
+              <Page.H variant="h6">Signature Header</Page.H>
+              <Page.P>{webhookSourceView.webhookSource.signatureHeader}</Page.P>
             </div>
 
             <div>
-              <Label>Signature Algorithm</Label>
-              <Value>
+              <Page.H variant="h6">Signature Algorithm</Page.H>
+              <Page.P>
                 {webhookSourceView.webhookSource.signatureAlgorithm}
-              </Value>
+              </Page.P>
             </div>
           </>
         )}
@@ -162,7 +143,7 @@ export function WebhookSourceDetailsInfo({
           Object.keys(webhookSourceView.webhookSource.customHeaders).length >
             0 && (
             <div>
-              <Label>Custom Headers</Label>
+              <Page.H variant="h6">Custom Headers</Page.H>
               <div className="mt-2 space-y-1">
                 {Object.entries(
                   webhookSourceView.webhookSource.customHeaders
