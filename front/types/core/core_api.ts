@@ -1,7 +1,9 @@
+import type { ContentBlock } from "@dust-tt/client/src/raw_mcp_types";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { ModelProviderIdType, TextContent } from "@app/types";
 import { dustManagedCredentials } from "@app/types/api/credentials";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/assistant";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
@@ -365,6 +367,119 @@ function topKSortedDocuments(
   result.splice(topK);
 
   return result;
+}
+
+export type CoreAPILlmChatContentTextResponse = { value: string };
+export type CoreAPILlmChatContentFunctionCallResponse = {
+  value: {
+    arguments: string;
+    id: string;
+    name: string;
+  };
+};
+export type CoreAPILlmChatContentReasoningResponse = {
+  value: { reasoning?: string; metadata: string };
+};
+
+export type CoreAPILlmChatContentResponse =
+  | CoreAPILlmChatContentTextResponse
+  | CoreAPILlmChatContentFunctionCallResponse
+  | CoreAPILlmChatContentReasoningResponse;
+
+export interface CoreAPILlmChatResponse {
+  created: number;
+  completions: {
+    content?: string;
+    function_call?: {
+      arguments: string;
+      id: string;
+      name: string;
+    };
+    function_calls?: {
+      arguments: string;
+      id: string;
+      name: string;
+    }[];
+    name?: string;
+    role: "system" | "user" | "assistant" | "function";
+    contents?: CoreAPILlmChatContentResponse[];
+    usage?: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      cached_tokens?: number;
+      reasoning_tokens?: number;
+    };
+    logprobs?: {
+      token: string;
+      logprob: number;
+      top_logprobs?: {
+        token: string;
+        logprob: number;
+      }[];
+    }[];
+  };
+}
+
+export type ChatMessage =
+  | AssistantChatMessage
+  | FunctionChatMessage
+  | UserChatMessage
+  | SystemChatMessage;
+
+export type AssistantChatMessage = {
+  content?: string;
+  function_call?: {
+    arguments: string;
+    id: string;
+    name: string;
+  };
+  function_calls?: {
+    arguments: string;
+    id: string;
+    name: string;
+  }[];
+  name?: string;
+  role: "assistant";
+  contents?: AssistantContentItem[];
+};
+
+export interface FunctionCall {
+  value: {
+    arguments: string;
+    id: string;
+    name: string;
+  };
+}
+export interface Reasoning {
+  value: {
+    reasoning?: string;
+    metadata: string;
+  };
+}
+export type AssistantContentItem = TextContent | FunctionCall | Reasoning;
+
+export type FunctionChatMessage = {
+  content: ContentBlock;
+  functionCallId: string;
+  name?: string;
+  role: "function";
+};
+
+export type UserChatMessage = {
+  content: ContentBlock;
+  name?: string;
+  role: "user";
+};
+
+export type SystemChatMessage = {
+  content: string;
+  role: "system";
+};
+
+export interface ChatFunction {
+  name: string;
+  description: string;
+  parameters: Record<string, any>;
 }
 
 export class CoreAPI {
@@ -2231,6 +2346,77 @@ export class CoreAPI {
 
     return this._resultFromResponse(response);
   }
+
+  async llmChat({
+    runId,
+    providerId,
+    modelId,
+    messages,
+    temperature,
+    credentials,
+    functions,
+    functionCall,
+    topP,
+    n,
+    stop,
+    maxTokens,
+    presencePenalty,
+    frequencyPenalty,
+    logprobs,
+    topLogprobs,
+    extras,
+  }: {
+    runId: string;
+    providerId: ModelProviderIdType;
+    modelId: string;
+    messages: ChatMessage[];
+    temperature: number;
+    credentials: Record<string, string>;
+    functions?: ChatFunction[];
+    functionCall?: string;
+    topP?: number;
+    n?: number;
+    stop?: string[];
+    maxTokens?: number;
+    presencePenalty?: number;
+    frequencyPenalty?: number;
+    logprobs?: boolean;
+    topLogprobs?: number;
+    extras?: Record<string, any>;
+  }): Promise<
+    CoreAPIResponse<{
+      response: CoreAPILlmChatResponse;
+    }>
+  > {
+    const response = await this._fetchWithError(`${this._url}/llm/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        run_id: runId,
+        provider_id: providerId,
+        model_id: modelId,
+        messages,
+        temperature,
+        credentials,
+        functions,
+        function_call: functionCall,
+        top_p: topP,
+        n,
+        stop,
+        max_tokens: maxTokens,
+        presence_penalty: presencePenalty,
+        frequency_penalty: frequencyPenalty,
+        logprobs,
+        top_logprobs: topLogprobs,
+        extras,
+      }),
+    });
+
+    return this._resultFromResponse(response);
+  }
+
   private async _fetchWithError(
     url: string,
     init?: RequestInit

@@ -501,7 +501,7 @@ impl App {
 
             let block_status = Arc::new(Mutex::new(block_status));
 
-            // We flatten the envs for concurrent and parrallel execution of the block which
+            // We flatten the envs for concurrent and parallel execution of the block, which
             // requires us to keep track of the potential input and map indices of each Env,
             // depending on the state of ExecutionEnvs.
             let e = stream::iter(

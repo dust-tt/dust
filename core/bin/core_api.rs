@@ -8,7 +8,7 @@ use axum::{
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use dust::api::api_state::APIState;
 use dust::api::{
-    data_sources, databases, datasets, folders, nodes, projects, runs, specifications,
+    data_sources, databases, datasets, folders, llm, nodes, projects, runs, specifications,
     sqlite_workers, tables, tags, tokenize,
 };
 use dust::{
@@ -79,7 +79,7 @@ fn main() {
         let password =
             std::env::var("ELASTICSEARCH_PASSWORD").expect("ELASTICSEARCH_PASSWORD must be set");
 
-        let search_store : Box<dyn SearchStore + Sync + Send> = Box::new(ElasticsearchSearchStore::new(&url, &username, &password).await?);
+        let search_store: Box<dyn SearchStore + Sync + Send> = Box::new(ElasticsearchSearchStore::new(&url, &username, &password).await?);
 
         let state = Arc::new(APIState::new(
             store,
@@ -89,221 +89,226 @@ fn main() {
         ));
 
         let router = Router::new()
-        // Projects
-        .route("/projects", post(projects::projects_create))
-        .route("/projects/{project_id}", delete(projects::projects_delete))
-        .route("/projects/{project_id}/clone", post(projects::projects_clone))
-        // Specifications
-        .route(
-            "/projects/{project_id}/specifications/check",
-            post(specifications::specifications_check),
-        )
-        .route(
-            "/projects/{project_id}/specifications/{hash}",
-            get(specifications::specifications_retrieve),
-        )
-        .route(
-            "/projects/{project_id}/specifications",
-            get(specifications::specifications_get),
-        )
-        .route(
-            "/projects/{project_id}/specifications",
-            post(specifications::specifications_post),
-        )
+            // Projects
+            .route("/projects", post(projects::projects_create))
+            .route("/projects/{project_id}", delete(projects::projects_delete))
+            .route("/projects/{project_id}/clone", post(projects::projects_clone))
+            // Specifications
+            .route(
+                "/projects/{project_id}/specifications/check",
+                post(specifications::specifications_check),
+            )
+            .route(
+                "/projects/{project_id}/specifications/{hash}",
+                get(specifications::specifications_retrieve),
+            )
+            .route(
+                "/projects/{project_id}/specifications",
+                get(specifications::specifications_get),
+            )
+            .route(
+                "/projects/{project_id}/specifications",
+                post(specifications::specifications_post),
+            )
 
-        // Datasets
-        .route("/projects/{project_id}/datasets", post(datasets::datasets_register))
-        .route("/projects/{project_id}/datasets", get(datasets::datasets_list))
-        .route(
-            "/projects/{project_id}/datasets/{dataset_id}/{hash}",
-            get(datasets::datasets_retrieve),
-        )
-        // Runs
-        .route("/projects/{project_id}/runs", post(runs::runs_create))
-        .route(
-            "/projects/{project_id}/runs/stream",
-            post(runs::runs_create_stream),
-        )
-        .route("/projects/{project_id}/runs", get(runs::runs_list))
-        .route(
-            "/projects/{project_id}/runs/batch",
-            post(runs::runs_retrieve_batch),
-        )
-        .route("/projects/{project_id}/runs/{run_id}", get(runs::runs_retrieve))
-        .route(
-            "/projects/{project_id}/runs/{run_id}",
-            delete(runs::runs_delete),
-        )
-        .route(
-            "/projects/{project_id}/runs/{run_id}/cancel",
-            post(runs::runs_cancel),
-        )
-        .route(
-            "/projects/{project_id}/runs/{run_id}/blocks/{block_type}/{block_name}",
-            get(runs::runs_retrieve_block),
-        )
-        .route(
-            "/projects/{project_id}/runs/{run_id}/status",
-            get(runs::runs_retrieve_status),
-        )
-        // DataSources
-        .route(
-            "/projects/{project_id}/data_sources",
-            post(data_sources::data_sources_register),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}",
-            patch(data_sources::data_sources_update),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}",
-            get(data_sources::data_sources_retrieve),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tokenize",
-            post(data_sources::data_sources_tokenize),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/versions",
-            get(data_sources::data_sources_documents_versions_list),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents",
-            post(data_sources::data_sources_documents_upsert),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/blob",
-            get(data_sources::data_sources_documents_retrieve_blob),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/tags",
-            patch(data_sources::data_sources_documents_update_tags),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/parents",
-            patch(data_sources::data_sources_documents_update_parents),
-        )
-        // Provided by the data_source block.
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/search",
-            post(data_sources::data_sources_search),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents",
-            get(data_sources::data_sources_documents_list),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}",
-            get(data_sources::data_sources_documents_retrieve),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/text",
-            get(data_sources::data_sources_documents_retrieve_text),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}",
-            delete(data_sources::data_sources_documents_delete),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/scrub_deleted_versions",
-            post(data_sources::data_sources_documents_scrub_deleted_versions),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}",
-            delete(data_sources::data_sources_delete),
-        )
-        // Databases
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/validate_csv_content",
-            post(tables::tables_validate_csv_content),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables",
-            post(tables::tables_upsert),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/parents",
-            patch(tables::tables_update_parents),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}",
-            get(tables::tables_retrieve),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables",
-            get(tables::tables_list),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}",
-            delete(tables::tables_delete),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/blob",
-            get(tables::tables_retrieve_blob),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows",
-            post(tables::tables_rows_upsert),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/csv",
-            post(tables::tables_csv_upsert),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows/{row_id}",
-            get(tables::tables_rows_retrieve),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows/{row_id}",
-            delete(tables::tables_rows_delete),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows",
-            get(tables::tables_rows_list),
-        )
-        .route(
-            "/query_database",
-            post(databases::databases_query_run),
-        )
-        .route(
-            "/database_schema",
-            post(databases::databases_schema_retrieve),
-        )
-        .route("/sqlite_workers", delete(sqlite_workers::sqlite_workers_delete))
+            // Datasets
+            .route("/projects/{project_id}/datasets", post(datasets::datasets_register))
+            .route("/projects/{project_id}/datasets", get(datasets::datasets_list))
+            .route(
+                "/projects/{project_id}/datasets/{dataset_id}/{hash}",
+                get(datasets::datasets_retrieve),
+            )
+            // Runs
+            .route("/projects/{project_id}/runs", post(runs::runs_create))
+            .route(
+                "/projects/{project_id}/runs/stream",
+                post(runs::runs_create_stream),
+            )
+            .route("/projects/{project_id}/runs", get(runs::runs_list))
+            .route(
+                "/projects/{project_id}/runs/batch",
+                post(runs::runs_retrieve_batch),
+            )
+            .route("/projects/{project_id}/runs/{run_id}", get(runs::runs_retrieve))
+            .route(
+                "/projects/{project_id}/runs/{run_id}",
+                delete(runs::runs_delete),
+            )
+            .route(
+                "/projects/{project_id}/runs/{run_id}/cancel",
+                post(runs::runs_cancel),
+            )
+            .route(
+                "/projects/{project_id}/runs/{run_id}/blocks/{block_type}/{block_name}",
+                get(runs::runs_retrieve_block),
+            )
+            .route(
+                "/projects/{project_id}/runs/{run_id}/status",
+                get(runs::runs_retrieve_status),
+            )
+            // DataSources
+            .route(
+                "/projects/{project_id}/data_sources",
+                post(data_sources::data_sources_register),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}",
+                patch(data_sources::data_sources_update),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}",
+                get(data_sources::data_sources_retrieve),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tokenize",
+                post(data_sources::data_sources_tokenize),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/versions",
+                get(data_sources::data_sources_documents_versions_list),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents",
+                post(data_sources::data_sources_documents_upsert),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/blob",
+                get(data_sources::data_sources_documents_retrieve_blob),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/tags",
+                patch(data_sources::data_sources_documents_update_tags),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/parents",
+                patch(data_sources::data_sources_documents_update_parents),
+            )
+            // Provided by the data_source block.
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/search",
+                post(data_sources::data_sources_search),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents",
+                get(data_sources::data_sources_documents_list),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}",
+                get(data_sources::data_sources_documents_retrieve),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/text",
+                get(data_sources::data_sources_documents_retrieve_text),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}",
+                delete(data_sources::data_sources_documents_delete),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/scrub_deleted_versions",
+                post(data_sources::data_sources_documents_scrub_deleted_versions),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}",
+                delete(data_sources::data_sources_delete),
+            )
+            // Databases
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/validate_csv_content",
+                post(tables::tables_validate_csv_content),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables",
+                post(tables::tables_upsert),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/parents",
+                patch(tables::tables_update_parents),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}",
+                get(tables::tables_retrieve),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables",
+                get(tables::tables_list),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}",
+                delete(tables::tables_delete),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/blob",
+                get(tables::tables_retrieve_blob),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows",
+                post(tables::tables_rows_upsert),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/csv",
+                post(tables::tables_csv_upsert),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows/{row_id}",
+                get(tables::tables_rows_retrieve),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows/{row_id}",
+                delete(tables::tables_rows_delete),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows",
+                get(tables::tables_rows_list),
+            )
+            .route(
+                "/query_database",
+                post(databases::databases_query_run),
+            )
+            .route(
+                "/database_schema",
+                post(databases::databases_schema_retrieve),
+            )
+            .route("/sqlite_workers", delete(sqlite_workers::sqlite_workers_delete))
 
-        // Folders
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/folders",
-            post(folders::folders_upsert),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/folders/{folder_id}",
-            get(folders::folders_retrieve),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/folders",
-            get(folders::folders_list),
-        )
-        .route(
-            "/projects/{project_id}/data_sources/{data_source_id}/folders/{folder_id}",
-            delete(folders::folders_delete),
-        )
+            // Folders
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/folders",
+                post(folders::folders_upsert),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/folders/{folder_id}",
+                get(folders::folders_retrieve),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/folders",
+                get(folders::folders_list),
+            )
+            .route(
+                "/projects/{project_id}/data_sources/{data_source_id}/folders/{folder_id}",
+                delete(folders::folders_delete),
+            )
 
-        //Search
-        .route("/nodes/search", post(nodes::nodes_search))
-        .route("/stats", post(data_sources::data_sources_stats))
-        .route("/tags/search", post(tags::tags_search))
+            //Search
+            .route("/nodes/search", post(nodes::nodes_search))
+            .route("/stats", post(data_sources::data_sources_stats))
+            .route("/tags/search", post(tags::tags_search))
 
-        // Misc
-        .route("/tokenize", post(tokenize::tokenize))
-        .route("/tokenize/batch", post(tokenize::tokenize_batch))
-        .layer(OtelInResponseLayer::default())
-        // Start OpenTelemetry trace on incoming request.
-        .layer(OtelAxumLayer::default())
-        // Extensions
-        .layer(DefaultBodyLimit::disable())
-        .layer(from_fn(validate_api_key))
-        .with_state(state.clone());
+            // Misc
+            .route("/tokenize", post(tokenize::tokenize))
+            .route("/tokenize/batch", post(tokenize::tokenize_batch))
+
+
+            //llm
+            .route("/llm/chat", post(llm::chat))
+
+            .layer(OtelInResponseLayer::default())
+            // Start OpenTelemetry trace on incoming request.
+            .layer(OtelAxumLayer::default())
+            // Extensions
+            .layer(DefaultBodyLimit::disable())
+            .layer(from_fn(validate_api_key))
+            .with_state(state.clone());
 
         let sqlite_heartbeat_router = Router::new()
             .route("/sqlite_workers", post(sqlite_workers::sqlite_workers_heartbeat))
@@ -328,9 +333,9 @@ fn main() {
             TcpListener::bind::<std::net::SocketAddr>("[::]:3001".parse().unwrap()).await?,
             app.into_make_service(),
         )
-        .with_graceful_shutdown(async {
-            rx1.await.ok();
-        });
+            .with_graceful_shutdown(async {
+                rx1.await.ok();
+            });
 
         tokio::spawn(async move {
             if let Err(e) = srv.await {

@@ -180,6 +180,7 @@ pub mod api {
     pub mod databases;
     pub mod datasets;
     pub mod folders;
+    pub mod llm;
     pub mod nodes;
     pub mod projects;
     pub(crate) mod run_manager;

@@ -24,7 +24,7 @@ use crate::{
 };
 
 #[derive(Clone, serde::Deserialize)]
-struct Secret {
+pub struct Secret {
     name: String,
     value: String,
 }
