@@ -118,7 +118,7 @@ export const Demo = () => {
               <NavigationListLabel label={section.label} isSticky />
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
-                // Add status based on index for demonstration
+                // Add status based on index for demonstration.
                 const getStatus = (idx: number) => {
                   if (idx % 5 === 0) {
                     return "unread";
