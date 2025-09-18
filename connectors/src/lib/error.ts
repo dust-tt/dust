@@ -67,8 +67,8 @@ export class ProviderTransientError extends ProviderWorkflowError {
   constructor(
     provider: ConnectorProvider,
     message: string,
-    originalError?: Error | APIError,
-    readonly retryAfterMs?: number
+    originalError: Error | APIError | undefined,
+    readonly retryAfterMs: number
   ) {
     super(
       provider,

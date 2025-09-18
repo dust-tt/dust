@@ -129,9 +129,9 @@ export class ActivityInboundLogInterceptor
       error = err;
 
       // Convert provider-marked transient upstream errors into ApplicationFailures
-      // with a fixed retry delay to avoid hot-looping.
+      // with the provided retry delay to avoid hot-looping.
       if (err instanceof ProviderTransientError) {
-        const delayMs = err.retryAfterMs ?? 30 * 60 * 1000;
+        const delayMs = err.retryAfterMs;
         throw ApplicationFailure.create({
           message: `${err.message}. Retry after ${Math.floor(delayMs / 1000)}s`,
           type: err.type, // "transient_upstream_activity_error"
@@ -232,9 +232,8 @@ export class ActivityInboundLogInterceptor
             "Activity failed"
           );
         } else if (error instanceof ApplicationFailure) {
-          // ApplicationFailure can carry a custom type; use it for metrics/logs.
-          // This preserves upstream classification when interceptors override retry delays.
-          // Default to unhandled if type is missing.
+          // Keep a dedicated branch: ApplicationFailure carries a custom type that
+          // we want to reflect in logs/metrics instead of classifying as "unhandled".
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const appFailure: any = error;
           errorType = appFailure.type ?? "unhandled_internal_activity_error";
