@@ -4,6 +4,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
@@ -12,22 +13,25 @@ import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import {
   browseUrls,
   isBrowseScrapeSuccessResponse,
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
+import { Err, Ok } from "@app/types";
 
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 
-const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
+const createServer = (
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer => {
   const server = makeInternalMCPServer(DEFAULT_WEBSEARCH_ACTION_NAME);
 
   server.tool(
@@ -50,50 +54,51 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
             " to go deeper into the search results for a specific query."
         ),
     },
-    async ({ query, page }) => {
-      if (!agentLoopContext?.runContext) {
-        throw new Error(
-          "agentLoopRunContext is required where the tool is called."
-        );
-      }
+    withToolLogging(
+      auth,
+      { toolName: WEBSEARCH_TOOL_NAME, agentLoopContext },
+      async ({ query, page }) => {
+        if (!agentLoopContext?.runContext) {
+          throw new Error(
+            "agentLoopRunContext is required where the tool is called."
+          );
+        }
 
-      const agentLoopRunContext = agentLoopContext.runContext;
+        const agentLoopRunContext = agentLoopContext.runContext;
 
-      const { websearchResultCount, citationsOffset } =
-        agentLoopRunContext.stepContext;
+        const { websearchResultCount, citationsOffset } =
+          agentLoopRunContext.stepContext;
 
-      const websearchRes = await webSearch({
-        provider: "serpapi",
-        query,
-        page,
-        num: websearchResultCount,
-      });
-
-      if (websearchRes.isErr()) {
-        return makeMCPToolTextError(
-          `Failed to search: ${websearchRes.error.message}`
-        );
-      }
-
-      const refs = getRefs().slice(
-        citationsOffset,
-        citationsOffset + websearchResultCount
-      );
-
-      const results: WebsearchResultResourceType[] = [];
-      for (const result of websearchRes.value) {
-        results.push({
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
-          title: result.title,
-          text: result.snippet,
-          uri: result.link,
-          reference: refs.shift() as string,
+        const websearchRes = await webSearch({
+          provider: "serpapi",
+          query,
+          page,
+          num: websearchResultCount,
         });
-      }
 
-      return {
-        isError: false,
-        content: [
+        if (websearchRes.isErr()) {
+          return new Err(
+            new MCPError(`Failed to search: ${websearchRes.error.message}`)
+          );
+        }
+
+        const refs = getRefs().slice(
+          citationsOffset,
+          citationsOffset + websearchResultCount
+        );
+
+        const results: WebsearchResultResourceType[] = [];
+        for (const result of websearchRes.value) {
+          results.push({
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
+            title: result.title,
+            text: result.snippet,
+            uri: result.link,
+            reference: refs.shift() as string,
+          });
+        }
+
+        return new Ok([
           ...results.map((result) => ({
             type: "resource" as const,
             resource: result,
@@ -106,9 +111,9 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
               uri: "",
             },
           },
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   server.tool(
@@ -131,170 +136,175 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .optional()
         .describe("If true, also retrieve outgoing links from the page."),
     },
-    async ({ urls, format = "markdown", screenshotMode = "none", links }) => {
-      const results = await browseUrls(urls, 8, format, {
-        screenshotMode,
-        links,
-      });
-
-      const toolContent: CallToolResult["content"] = [];
-      for (const result of results) {
-        if (!isBrowseScrapeSuccessResponse(result)) {
-          const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
-          toolContent.push({
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-              requestedUrl: result.url,
-              uri: result.url,
-              text: errText,
-              responseCode: result.status.toString(),
-              errorMessage: result.error,
-            },
-          });
-          continue;
-        }
-
-        const {
-          markdown,
-          html,
-          title,
-          description,
-          screenshots: allScreenshots,
-          links: outLinks,
-        } = result;
-        const contentText = format === "html" ? html : markdown;
-
-        const tokensRes = await tokenCountForTexts([contentText ?? ""], {
-          providerId: "openai",
-          modelId: "gpt-4o",
+    withToolLogging(
+      auth,
+      { toolName: WEBBROWSER_TOOL_NAME, agentLoopContext },
+      async ({ urls, format = "markdown", screenshotMode = "none", links }) => {
+        const results = await browseUrls(urls, 8, format, {
+          screenshotMode,
+          links,
         });
 
-        if (tokensRes.isErr()) {
-          toolContent.push({
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-              requestedUrl: result.url,
-              uri: result.url,
-              text: "There was an error while browsing the website.",
-              title: title,
-              description: description,
-              responseCode: result.status.toString(),
-              errorMessage: tokensRes.error.message,
-            },
-          });
-          continue;
-        }
-
-        const tokensCount = tokensRes.value[0];
-        const avgCharactersPerToken = (contentText?.length ?? 0) / tokensCount;
-        const maxCharacters = BROWSE_MAX_TOKENS_LIMIT * avgCharactersPerToken;
-        let truncatedContent = contentText?.slice(0, maxCharacters);
-
-        if (truncatedContent?.length !== contentText?.length) {
-          truncatedContent += `\n\n[...output truncated to ${BROWSE_MAX_TOKENS_LIMIT} tokens]`;
-        }
-
-        const browseResult: BrowseResultResourceType = {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-          requestedUrl: result.url,
-          uri: result.url,
-          text:
-            truncatedContent ??
-            "There was an error while browsing the website.",
-          title: title,
-          description: description,
-          responseCode: result.status.toString(),
-        };
-
-        // Include HTML content when format is HTML
-        if (format === "html" && html) {
-          browseResult.html = html.slice(0, maxCharacters);
-        }
-
-        toolContent.push({
-          type: "resource" as const,
-          resource: browseResult,
-        });
-
-        if (Array.isArray(outLinks) && outLinks.length > 0) {
-          toolContent.push({
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-              requestedUrl: result.url,
-              uri: result.url,
-              text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
-              title,
-              description,
-              responseCode: result.status.toString(),
-            },
-          });
-        }
-
-        if (Array.isArray(allScreenshots) && allScreenshots.length > 0) {
-          for (const raw of allScreenshots) {
-            const isUrl = /^https?:\/\//i.test(raw);
-            let base64 = raw;
-            if (raw.startsWith("data:image")) {
-              base64 = raw.split(",")[1] ?? "";
-            }
-            base64 = base64.replace(/\s+/g, "");
-            const isValidBase64 =
-              base64.length > 0 &&
-              base64.length % 4 === 0 &&
-              /^[A-Za-z0-9+/]+={0,2}$/.test(base64);
-
-            if (isValidBase64) {
-              toolContent.push({
-                type: "image",
-                mimeType: "image/png",
-                data: base64,
-              });
-            } else if (isUrl) {
-              toolContent.push({
-                type: "resource",
-                resource: {
-                  mimeType: "image/png",
-                  uri: raw,
-                  text: "Screenshot (remote URL)",
-                },
-              });
-            } else if (screenshotMode !== "none") {
-              toolContent.push({
-                type: "resource",
-                resource: {
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-                  requestedUrl: result.url,
-                  uri: result.url,
-                  text: "Screenshot returned but not valid base64 or URL; skipping upload.",
-                  title,
-                  description,
-                  responseCode: result.status.toString(),
-                },
-              });
-            }
+        const toolContent: CallToolResult["content"] = [];
+        for (const result of results) {
+          if (!isBrowseScrapeSuccessResponse(result)) {
+            const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
+            toolContent.push({
+              type: "resource" as const,
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+                requestedUrl: result.url,
+                uri: result.url,
+                text: errText,
+                responseCode: result.status.toString(),
+                errorMessage: result.error,
+              },
+            });
+            continue;
           }
-        } else if (screenshotMode !== "none") {
-          // If screenshot was requested but not returned, surface a diagnostic message
+
+          const {
+            markdown,
+            html,
+            title,
+            description,
+            screenshots: allScreenshots,
+            links: outLinks,
+          } = result;
+          const contentText = format === "html" ? html : markdown;
+
+          const tokensRes = await tokenCountForTexts([contentText ?? ""], {
+            providerId: "openai",
+            modelId: "gpt-4o",
+          });
+
+          if (tokensRes.isErr()) {
+            toolContent.push({
+              type: "resource" as const,
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+                requestedUrl: result.url,
+                uri: result.url,
+                text: "There was an error while browsing the website.",
+                title: title,
+                description: description,
+                responseCode: result.status.toString(),
+                errorMessage: tokensRes.error.message,
+              },
+            });
+            continue;
+          }
+
+          const tokensCount = tokensRes.value[0];
+          const avgCharactersPerToken =
+            (contentText?.length ?? 0) / tokensCount;
+          const maxCharacters = BROWSE_MAX_TOKENS_LIMIT * avgCharactersPerToken;
+          let truncatedContent = contentText?.slice(0, maxCharacters);
+
+          if (truncatedContent?.length !== contentText?.length) {
+            truncatedContent += `\n\n[...output truncated to ${BROWSE_MAX_TOKENS_LIMIT} tokens]`;
+          }
+
+          const browseResult: BrowseResultResourceType = {
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+            requestedUrl: result.url,
+            uri: result.url,
+            text:
+              truncatedContent ??
+              "There was an error while browsing the website.",
+            title: title,
+            description: description,
+            responseCode: result.status.toString(),
+          };
+
+          // Include HTML content when format is HTML
+          if (format === "html" && html) {
+            browseResult.html = html.slice(0, maxCharacters);
+          }
+
           toolContent.push({
             type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
-              requestedUrl: result.url,
-              uri: result.url,
-              text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
-              title,
-              description,
-              responseCode: result.status.toString(),
-            },
+            resource: browseResult,
           });
-        }
-      }
 
-      return { isError: false, content: toolContent };
-    }
+          if (Array.isArray(outLinks) && outLinks.length > 0) {
+            toolContent.push({
+              type: "resource" as const,
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+                requestedUrl: result.url,
+                uri: result.url,
+                text: `Links (first 50):\n${outLinks.slice(0, 50).join("\n")}`,
+                title,
+                description,
+                responseCode: result.status.toString(),
+              },
+            });
+          }
+
+          if (Array.isArray(allScreenshots) && allScreenshots.length > 0) {
+            for (const raw of allScreenshots) {
+              const isUrl = /^https?:\/\//i.test(raw);
+              let base64 = raw;
+              if (raw.startsWith("data:image")) {
+                base64 = raw.split(",")[1] ?? "";
+              }
+              base64 = base64.replace(/\s+/g, "");
+              const isValidBase64 =
+                base64.length > 0 &&
+                base64.length % 4 === 0 &&
+                /^[A-Za-z0-9+/]+={0,2}$/.test(base64);
+
+              if (isValidBase64) {
+                toolContent.push({
+                  type: "image",
+                  mimeType: "image/png",
+                  data: base64,
+                });
+              } else if (isUrl) {
+                toolContent.push({
+                  type: "resource",
+                  resource: {
+                    mimeType: "image/png",
+                    uri: raw,
+                    text: "Screenshot (remote URL)",
+                  },
+                });
+              } else if (screenshotMode !== "none") {
+                toolContent.push({
+                  type: "resource",
+                  resource: {
+                    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+                    requestedUrl: result.url,
+                    uri: result.url,
+                    text: "Screenshot returned but not valid base64 or URL; skipping upload.",
+                    title,
+                    description,
+                    responseCode: result.status.toString(),
+                  },
+                });
+              }
+            }
+          } else if (screenshotMode !== "none") {
+            // If screenshot was requested but not returned, surface a diagnostic message
+            toolContent.push({
+              type: "resource" as const,
+              resource: {
+                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+                requestedUrl: result.url,
+                uri: result.url,
+                text: `Screenshot requested (mode=${screenshotMode}) but none was returned by Firecrawl.`,
+                title,
+                description,
+                responseCode: result.status.toString(),
+              },
+            });
+          }
+        }
+
+        return new Ok(toolContent);
+      }
+    )
   );
 
   return server;

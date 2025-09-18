@@ -110,7 +110,7 @@ export async function getInternalMCPServer(
     case "think":
       return thinkServer();
     case "web_search_&_browse":
-      return webtoolsServer(agentLoopContext);
+      return webtoolsServer(auth, agentLoopContext);
     case "web_search_&_browse_with_summary":
       return webtoolsEdgeServer(auth, agentLoopContext);
     case "search":
