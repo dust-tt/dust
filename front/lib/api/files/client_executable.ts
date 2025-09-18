@@ -553,19 +553,21 @@ export async function revertClientExecutableFileToPreviousState(
     revertedByAgentConfigurationId: string;
   }
 ): Promise<
-  Result<{ fileResource: FileResource; revertedContent: string }, Error>
+  Result<
+    { fileResource: FileResource; revertedContent: string },
+    { tracked: boolean; message: string }
+  >
 > {
   const fileResource = await FileResource.fetchById(auth, fileId);
   if (!fileResource) {
-    return new Err(new Error(`File not found: ${fileId}`));
+    return new Err({ message: `File not found: ${fileId}`, tracked: true });
   }
 
   if (fileResource.contentType !== clientExecutableContentType) {
-    return new Err(
-      new Error(
-        `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`
-      )
-    );
+    return new Err({
+      message: `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`,
+      tracked: true,
+    });
   }
 
   const workspaceId = auth.getNonNullableWorkspace().id;
@@ -573,7 +575,10 @@ export async function revertClientExecutableFileToPreviousState(
   const fileActions = await getFileActions(auth, fileId, conversationId);
 
   if (fileActions.length === 0) {
-    return new Err(new Error("No MCP actions found for this file"));
+    return new Err({
+      message: "No MCP actions found for this file",
+      tracked: true,
+    });
   }
 
   // Validate that the most recent action is not already a revert
@@ -583,18 +588,20 @@ export async function revertClientExecutableFileToPreviousState(
     mostRecentAction?.toolConfiguration.originalName ===
     CREATE_CONTENT_CREATION_FILE_TOOL_NAME
   ) {
-    return new Err(
-      new Error("Last action is a create, cannot revert to a create")
-    );
+    return new Err({
+      message: "Last action is a create, cannot revert to a create",
+      tracked: false,
+    });
   }
 
   if (
     mostRecentAction?.toolConfiguration.originalName ===
     REVERT_LAST_EDIT_TOOL_NAME
   ) {
-    return new Err(
-      new Error("Last action is a revert, cannot revert twice in a row")
-    );
+    return new Err({
+      message: "Last action is a revert, cannot revert twice in a row",
+      tracked: false,
+    });
   }
 
   let lastRevertIndex = -1;
@@ -617,7 +624,10 @@ export async function revertClientExecutableFileToPreviousState(
   }
 
   if (createActionIndex === -1) {
-    return new Err(new Error(`No create action found for file '${fileId}'`));
+    return new Err({
+      message: `No create action found for file '${fileId}'`,
+      tracked: false,
+    });
   }
 
   let startingContent: string;
@@ -634,11 +644,10 @@ export async function revertClientExecutableFileToPreviousState(
     );
 
     if (!revertItemOutput) {
-      return new Err(
-        new Error(
-          `Could not find reverted content in revert action for file '${fileId}'`
-        )
-      );
+      return new Err({
+        message: `Could not find reverted content in revert action for file '${fileId}'`,
+        tracked: false,
+      });
     }
 
     startingContent = revertItemOutput.content.text;
@@ -648,11 +657,10 @@ export async function revertClientExecutableFileToPreviousState(
     startIndex = createActionIndex;
 
     if (!isCreateFileAction(createAction)) {
-      return new Err(
-        new Error(
-          `Invalid augmented inputs for create action for file '${fileId}'`
-        )
-      );
+      return new Err({
+        message: `Invalid augmented inputs for create action for file '${fileId}'`,
+        tracked: false,
+      });
     }
 
     startingContent = createAction.augmentedInputs.content;
@@ -672,11 +680,10 @@ export async function revertClientExecutableFileToPreviousState(
     }
 
     if (!isEditFileAction(action)) {
-      return new Err(
-        new Error(
-          `Invalid augmented inputs for edit action for file '${fileId}'`
-        )
-      );
+      return new Err({
+        message: `Invalid augmented inputs for edit action for file '${fileId}'`,
+        tracked: false,
+      });
     }
 
     const { old_string, new_string } = action.augmentedInputs;

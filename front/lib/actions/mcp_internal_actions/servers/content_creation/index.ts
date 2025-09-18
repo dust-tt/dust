@@ -320,7 +320,11 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return new Err(new MCPError(result.error.message));
+          return new Err(
+            new MCPError(result.error.message, {
+              tracked: result.error.tracked,
+            })
+          );
         }
 
         const {
