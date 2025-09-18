@@ -2,7 +2,12 @@ import { Page, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { useWebhookSourceViewsByWebhookSource } from "@app/lib/swr/webhook_source";
+import {
+  useAddWebhookSourceViewToSpace,
+  useRemoveWebhookSourceViewFromSpace,
+  useWebhookSourcesWithViews,
+  useWebhookSourceViewsByWebhookSource,
+} from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 
@@ -20,13 +25,16 @@ export function WebhookSourceDetailsSharing({
     workspaceId: owner.sId,
     disabled: false,
   });
-  const { webhookSourceViews, isWebhookSourceViewsLoading } =
-    useWebhookSourceViewsByWebhookSource({
-      owner,
-      webhookSourceId: webhookSource.sId,
-    });
+  const {
+    webhookSourceViews,
+    isWebhookSourceViewsLoading,
+    mutateWebhookSourceViews,
+  } = useWebhookSourceViewsByWebhookSource({
+    owner,
+    webhookSourceId: webhookSource.sId,
+  });
 
-  const globalSpace = spaces.find((space) => space.kind === "global");
+  const globalSpace = spaces.find((space) => space.kind === "global") ?? null;
   const webhookSourceViewsWithSpace = webhookSourceViews.map((view) => ({
     ...view,
     space: spaces.find((space) => space.sId === view.spaceId) ?? null,
@@ -35,6 +43,26 @@ export function WebhookSourceDetailsSharing({
     webhookSourceViewsWithSpace.find((view) => view.space?.kind === "global") ??
     null;
   const isRestricted = globalView === null;
+
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    owner,
+    disabled: true,
+  });
+
+  const { addToSpace } = useAddWebhookSourceViewToSpace({
+    owner,
+    callback: async () => {
+      await mutateWebhookSourceViews();
+      await mutateWebhookSourcesWithViews();
+    },
+  });
+  const { removeFromSpace } = useRemoveWebhookSourceViewFromSpace({
+    owner,
+    callback: async () => {
+      await mutateWebhookSourceViews();
+      await mutateWebhookSourcesWithViews();
+    },
+  });
 
   return (
     <div className="flex flex-col gap-2">
@@ -47,8 +75,14 @@ export function WebhookSourceDetailsSharing({
             onClick={async () => {
               if (globalSpace !== null) {
                 setLoading(true);
-                // if it's restricted, we add the global view
-                // if it's not restricted, we remove the global view
+                if (!isRestricted) {
+                  await removeFromSpace({
+                    webhookSourceView: globalView,
+                    space: globalSpace,
+                  });
+                } else {
+                  await addToSpace({ space: globalSpace, webhookSource });
+                }
                 setLoading(false);
               }
             }}
