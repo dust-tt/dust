@@ -98,6 +98,10 @@ export function getRoleFromHeaders(
   return undefined;
 }
 
+/**
+ * Pass the user's role to the API - only use for route which have allowUserOutsideCurrentWorkspace set to
+ * true (runApp or runAppStreamed). Other API calls will always require builder/admin role.
+ */
 export function getHeaderFromRole(role: RoleType | undefined) {
   if (!role) {
     return undefined;

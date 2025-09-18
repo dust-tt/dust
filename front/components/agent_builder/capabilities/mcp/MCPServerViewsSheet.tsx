@@ -75,7 +75,7 @@ import {
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
-import { O4_MINI_MODEL_ID } from "@app/types";
+import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
   | {
@@ -84,8 +84,6 @@ export type SelectedTool =
       configuredAction?: AgentBuilderAction;
     }
   | { type: "DATA_VISUALIZATION" };
-
-const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export type SheetMode =
   | { type: "add" }
@@ -192,7 +190,7 @@ export function MCPServerViewsSheet({
       );
 
       if (selectedAction) {
-        return selectedAction.noConfigurationRequired; // Should filter out if not configurable
+        return !selectedAction.configurable; // Should filter out if not configurable
       }
 
       return false;
@@ -371,7 +369,7 @@ export function MCPServerViewsSheet({
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerToolsConfigurations(mcpServerView);
 
-    if (!requirement.noRequirement) {
+    if (requirement.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.mayRequireReasoningConfiguration;
 
@@ -468,9 +466,10 @@ export function MCPServerViewsSheet({
             configuration: null,
             name: DEFAULT_DATA_VISUALIZATION_NAME,
             description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-            noConfigurationRequired: true,
+            configurable: false,
           };
         } else {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           return tool.configuredAction || getDefaultMCPAction(tool.view);
         }
       })
@@ -584,6 +583,7 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       title: mcpServerView?.name || "Configure Tool",
       description: "",
       icon: undefined,
@@ -598,7 +598,7 @@ export function MCPServerViewsSheet({
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
-                  allowNameEdit={!configurationTool.noConfigurationRequired}
+                  allowNameEdit={configurationTool.configurable}
                 />
 
                 {toolsConfigurations.mayRequireReasoningConfiguration && (
@@ -660,6 +660,7 @@ export function MCPServerViewsSheet({
         mode?.type === "info" ? mode.action : null
       ),
       content:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         infoMCPServerView ||
         (mode?.type === "info" &&
           mode.action?.type === "DATA_VISUALIZATION") ? (

@@ -13,7 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
-import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
+import { getHeaderFromGroupIds } from "@app/types/groups";
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
 const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
@@ -37,7 +37,6 @@ const createServer = (auth: Authenticator): McpServer => {
           ...prodCredentials,
           extraHeaders: {
             ...getHeaderFromGroupIds(requestedGroupIds),
-            ...getHeaderFromRole(auth.role()),
           },
         },
         logger
@@ -99,7 +98,6 @@ const createServer = (auth: Authenticator): McpServer => {
           ...prodCredentials,
           extraHeaders: {
             ...getHeaderFromGroupIds(requestedGroupIds),
-            ...getHeaderFromRole(auth.role()),
           },
         },
         logger
@@ -132,6 +130,7 @@ const createServer = (auth: Authenticator): McpServer => {
       const formattedSuggestedAgents = suggestedAgents
         .filter((agent) => agent.sId !== "dust")
         .map((agent) => {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const instructions = agent.instructions || "";
           const truncatedInstructions =
             instructions.length > MAX_INSTRUCTIONS_LENGTH

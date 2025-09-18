@@ -445,6 +445,7 @@ export async function triggerFromEmail({
       return {
         agentConfiguration,
         agentMessage,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         html: sanitizeHtml(await marked.parse(agentMessage.content || ""), {
           // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
           allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),

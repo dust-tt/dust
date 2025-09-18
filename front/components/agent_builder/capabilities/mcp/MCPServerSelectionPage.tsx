@@ -55,7 +55,7 @@ function MCPServerCard({
   onToolInfoClick,
 }: MCPServerCardProps) {
   const requirement = getMCPServerToolsConfigurations(view);
-  const canAdd = requirement.noRequirement ? !isSelected : true;
+  const canAdd = requirement.configurable !== "no" ? true : !isSelected;
 
   const icon = isCustomServerIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
@@ -96,6 +96,7 @@ function MCPServerCard({
         onClick={onClick}
         cardContainerClassName="h-36"
         mountPortal
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
         toolInfo={{
           label: "More info",
@@ -144,6 +145,7 @@ export function MCPServerSelectionPage({
   const hasDefaultViews = defaultMcpServerViews.length > 0;
   const hasNonDefaultViews = nonDefaultMcpServerViews.length > 0;
   const hasAnyResults =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     hasDataVisualization || hasDefaultViews || hasNonDefaultViews;
 
   if (!hasAnyResults) {
@@ -164,6 +166,7 @@ export function MCPServerSelectionPage({
   return (
     <>
       <div className="flex flex-col gap-4 py-2">
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         {((dataVisualization && onDataVisualizationClick) ||
           defaultMcpServerViews) && (
           <span className="text-lg font-semibold">Top tools</span>

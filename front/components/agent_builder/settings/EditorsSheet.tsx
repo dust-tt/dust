@@ -122,6 +122,7 @@ export function EditorsSheet() {
         sId: editor.sId,
         fullName: editor.fullName,
         email: editor.email,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         image: editor.image || "",
         isEditor: true,
         onToggleEditor: () => onRemoveEditor(editor),
@@ -134,6 +135,7 @@ export function EditorsSheet() {
           sId: member.sId,
           fullName: member.fullName,
           email: member.email,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           image: member.image || "",
           isEditor: localEditorsSet.has(member.sId),
           onToggleEditor: localEditorsSet.has(member.sId)

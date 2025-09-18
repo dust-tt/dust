@@ -315,17 +315,24 @@ export async function getAgentDataSourceConfigurations(
             dataSourceViewId: dataSourceViewSId,
             filter: {
               parents:
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 agentConfig.parentsIn || agentConfig.parentsNotIn
                   ? {
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       in: agentConfig.parentsIn || [],
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       not: agentConfig.parentsNotIn || [],
                     }
                   : null,
               tags:
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 agentConfig.tagsIn || agentConfig.tagsNotIn
                   ? {
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       in: agentConfig.tagsIn || [],
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       not: agentConfig.tagsNotIn || [],
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       mode: agentConfig.tagsMode || "custom",
                     }
                   : undefined,
@@ -478,11 +485,15 @@ export async function getCoreSearchArgs(
         dataSourceId: dataSource.dustAPIDataSourceId,
         filter: {
           tags: {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             in: config.filter.tags?.in || null,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             not: config.filter.tags?.not || null,
           },
           parents: {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             in: config.filter.parents?.in || null,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             not: config.filter.parents?.not || null,
           },
         },

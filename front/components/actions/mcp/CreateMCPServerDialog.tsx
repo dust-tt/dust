@@ -503,6 +503,7 @@ export function CreateMCPServerDialog({
             },
             disabled:
               !isOAuthFormValid ||
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               (authorization && !useCase) ||
               (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
               (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||

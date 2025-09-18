@@ -130,6 +130,7 @@ async function handler(
         timeFrameDuration: body.timeFrameDuration
           ? parseInt(body.timeFrameDuration)
           : null,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         timeFrameUnit: body.timeFrameUnit || null,
         presetDescription: null,
         presetInstructions: body.presetInstructions ?? null,

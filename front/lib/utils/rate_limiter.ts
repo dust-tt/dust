@@ -17,6 +17,7 @@ async function getRedisClient({
   origin: RedisUsageTagsType;
   redisUri?: string;
 }) {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const REDIS_URI = redisUri || process.env.REDIS_URI;
   if (!REDIS_URI) {
     throw new Error("REDIS_URI is not defined");

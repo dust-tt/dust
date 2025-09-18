@@ -56,12 +56,14 @@ async function handler(
             auth,
             validation.mcpServerId
           );
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           serverName = server?.toJSON().name || "Unknown Internal Server";
         } else if (serverType === "remote") {
           const server = await RemoteMCPServerResource.fetchById(
             auth,
             validation.mcpServerId
           );
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           serverName = server?.toJSON().name || "Unknown Remote Server";
         }
       } catch (error) {

@@ -208,6 +208,7 @@ export function AgentBuilderPreview() {
       // Update existing draft if agent name changed (with debouncing)
       // Normalize names for comparison (empty string becomes "Preview")
       const normalizedCurrentName = agentName?.trim() || "Preview";
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const normalizedDraftName = draftAgent?.name?.trim() || "Preview";
 
       if (draftAgent && normalizedCurrentName !== normalizedDraftName) {

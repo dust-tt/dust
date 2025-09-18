@@ -249,6 +249,7 @@ export function AgentMessage({
   );
 
   async function handleCopyToClipboard() {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const messageContent = agentMessageToRender.content || "";
     let footnotesMarkdown = "";
     let footnotesHtml = "";
@@ -482,6 +483,7 @@ export function AgentMessage({
       return (
         <ErrorMessage
           error={
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentMessage.error || {
               message: "Unexpected Error",
               code: "unexpected_error",
@@ -513,11 +515,13 @@ export function AgentMessage({
       (file) => isSupportedImageContentType(file.contentType)
     );
 
-    const generatedFiles = agentMessage.generatedFiles.filter(
-      (file) =>
-        !isSupportedImageContentType(file.contentType) &&
-        !isContentCreationFileContentType(file.contentType)
-    );
+    const generatedFiles = agentMessage.generatedFiles
+      .filter((file) => !file.hidden)
+      .filter(
+        (file) =>
+          !isSupportedImageContentType(file.contentType) &&
+          !isContentCreationFileContentType(file.contentType)
+      );
 
     return (
       <div className="flex flex-col gap-y-4">

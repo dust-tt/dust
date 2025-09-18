@@ -139,12 +139,10 @@ type DataSourceFilterItem = {
 
 type DataSourceTreeItemProps = {
   item: DataSourceFilterItem;
-  isExclusionItem?: boolean;
 };
 
 function DataSourceTreeItem({
   item: { dataSourceView, selectedSources },
-  isExclusionItem = false,
 }: DataSourceTreeItemProps) {
   const { isDark } = useTheme();
   const { spaces } = useSpacesContext();
@@ -164,18 +162,6 @@ function DataSourceTreeItem({
   const actions = spaceName ? (
     <span className="text-xs text-muted-foreground">{spaceName}</span>
   ) : undefined;
-
-  // If this is an exclusion item, always show as non-expandable leaf
-  if (isExclusionItem) {
-    return (
-      <Tree.Item
-        label={displayName}
-        visual={providerLogo}
-        type="leaf"
-        actions={actions}
-      />
-    );
-  }
 
   // If entire data source is selected and no specific nodes, show as leaf
   if (hasDataSourceSelection && nodeItems.length === 0) {
@@ -225,26 +211,38 @@ export function SelectedDataSources() {
   );
 
   const isTableOrWarehouseServer = tablesServer.includes(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     internalMcpServerView?.server.name || ""
   );
 
-  const dataSourceViewsWithExclusion = useMemo(() => {
-    return groupSourcesByDataSource(sources.notIn);
-  }, [sources.notIn]);
-
   const dataSourceViews = useMemo(() => {
-    const views = groupSourcesByDataSource(sources.in);
-    // Remove keys that exist in dataSourceViewsWithExclusion
-    Object.keys(dataSourceViewsWithExclusion).forEach((key) => {
-      delete views[key];
+    // Combine both inclusions and exclusions for unified display
+    // The navigation initialization and selection state logic now handle the "select all with exclusions" case
+    const inclusionViews = groupSourcesByDataSource(sources.in);
+    const exclusionViews = groupSourcesByDataSource(sources.notIn);
+
+    // Merge exclusion views into inclusion views
+    // If a data source has exclusions but no inclusions, it represents a "select all with exclusions" case
+    Object.entries(exclusionViews).forEach(([key, exclusionView]) => {
+      if (!inclusionViews[key]) {
+        // This data source has exclusions but no explicit inclusions - it's a "select all" case
+        inclusionViews[key] = {
+          dataSourceView: exclusionView.dataSourceView,
+          selectedSources: [
+            {
+              id: exclusionView.dataSourceView.id.toString(),
+              name: "All documents",
+              type: "data_source",
+            },
+          ],
+        };
+      }
     });
-    return views;
-  }, [sources.in, dataSourceViewsWithExclusion]);
 
-  const isSelectAllWithExclusions = sources.notIn.length > 0;
+    return inclusionViews;
+  }, [sources.in, sources.notIn]);
 
-  const hasDataSources =
-    Object.values(dataSourceViews).length > 0 || isSelectAllWithExclusions;
+  const hasDataSources = Object.values(dataSourceViews).length > 0;
 
   if (!hasDataSources) {
     return (
@@ -295,14 +293,6 @@ export function SelectedDataSources() {
         <div className="rounded-xl bg-muted p-2 dark:bg-muted-night">
           <div className="max-h-60 overflow-y-auto">
             <Tree>
-              {isSelectAllWithExclusions &&
-                Object.values(dataSourceViewsWithExclusion).map((item) => (
-                  <DataSourceTreeItem
-                    key={item.dataSourceView.id}
-                    item={item}
-                    isExclusionItem
-                  />
-                ))}
               {Object.values(dataSourceViews).map((item) => (
                 <DataSourceTreeItem key={item.dataSourceView.id} item={item} />
               ))}

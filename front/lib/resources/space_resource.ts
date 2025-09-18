@@ -97,6 +97,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       includeConversationsSpace: true,
     });
     const systemSpace =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isSystem()) ||
       (await SpaceResource.makeNew(
         {
@@ -109,6 +110,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ));
 
     const globalSpace =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isGlobal()) ||
       (await SpaceResource.makeNew(
         {
@@ -121,6 +123,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ));
 
     const conversationsSpace =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isConversations()) ||
       (await SpaceResource.makeNew(
         {
@@ -174,6 +177,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         model: GroupResource.model,
       },
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ...(includes || []),
     ];
 

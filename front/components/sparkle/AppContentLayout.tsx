@@ -80,6 +80,7 @@ export default function AppContentLayout({
   return (
     <div className="flex h-full flex-row">
       <Head>
+        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         <title>{pageTitle || `Dust - ${owner.name}`}</title>
       </Head>
       <Navigation

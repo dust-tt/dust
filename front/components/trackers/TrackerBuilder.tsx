@@ -392,6 +392,7 @@ export const TrackerBuilder = ({
             <div className="md:col-span-1">
               <Input
                 label="Name"
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={tracker.name || ""}
                 onChange={(e) => {
                   setTracker((t) => ({
@@ -412,6 +413,7 @@ export const TrackerBuilder = ({
             <div className="md:col-span-2">
               <Input
                 label="Description"
+                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={tracker.description || ""}
                 onChange={(e) => {
                   setTracker((t) => ({
@@ -453,6 +455,7 @@ export const TrackerBuilder = ({
                       label={
                         TRACKER_FREQUENCIES.find(
                           (f) => f.value === tracker.frequency
+                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                         )?.label || "Select Frequency"
                       }
                       variant="outline"
@@ -543,6 +546,7 @@ export const TrackerBuilder = ({
             <Label className="mb-1">Instructions</Label>
             <TextArea
               placeholder="Describe what changes or updates you want to track (be as specific as possible)."
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               value={tracker.prompt || ""}
               onChange={(e) => {
                 setTracker((t) => ({

@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
 import type { GetWebhookSourcesResponseBody } from "@app/pages/api/w/[wId]/webhook_sources";
+import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type {
   PostWebhookSourcesBody,
@@ -116,4 +117,120 @@ export function useCreateWebhookSource({
   };
 
   return createWebhookSource;
+}
+
+export function useUpdateWebhookSourceView({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const updateWebhookSourceView = useCallback(
+    async (
+      webhookSourceViewId: string,
+      updates: { name: string }
+    ): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/webhook_sources/views/${webhookSourceViewId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updates),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        sendNotification({
+          type: "success",
+          title: "Successfully updated webhook source view",
+        });
+
+        return true;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update webhook source view",
+        });
+        return false;
+      }
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return { updateWebhookSourceView };
+}
+
+export function useDeleteWebhookSource({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    disabled: true,
+    owner,
+  });
+
+  const sendNotification = useSendNotification();
+
+  const deleteWebhookSource = useCallback(
+    async (webhookSourceId: string): Promise<boolean> => {
+      if (isDeleting) {
+        return false;
+      }
+
+      setIsDeleting(true);
+
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const result: DeleteWebhookSourceResponseBody = await response.json();
+
+        if (result.success) {
+          sendNotification({
+            type: "success",
+            title: "Successfully deleted webhook source",
+          });
+
+          void mutateWebhookSourcesWithViews();
+          return true;
+        } else {
+          throw new Error("Delete operation failed");
+        }
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to delete webhook source",
+        });
+        return false;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [owner.sId, isDeleting, mutateWebhookSourcesWithViews, sendNotification]
+  );
+
+  return {
+    deleteWebhookSource,
+    isDeleting,
+  };
 }

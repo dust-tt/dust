@@ -1,10 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { WebClient } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
-import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import uniqBy from "lodash/uniqBy";
-import slackifyMarkdown from "slackify-markdown";
 import { z } from "zod";
 
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
@@ -14,17 +10,21 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
+  executeGetUser,
+  executeListPublicChannels,
+  executeListUsers,
+  executePostMessage,
+  getSlackClient,
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
+import {
   makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
   makeMCPToolTextError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { removeDiacritics } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
@@ -76,6 +76,7 @@ export const slackSearch = async (
 
   const data: SlackSearchResponse = (await resp.json()) as SlackSearchResponse;
   if (!data.ok) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     throw new Error(data.error || "unknown_error");
   }
 
@@ -89,76 +90,6 @@ export const slackSearch = async (
 
   return matches;
 };
-
-const getSlackClient = async (accessToken?: string) => {
-  if (!accessToken) {
-    throw new Error("No access token provided");
-  }
-
-  return new WebClient(accessToken, {
-    timeout: 10000,
-    rejectRateLimitedCalls: false,
-    retryConfig: {
-      retries: 1,
-      factor: 1,
-    },
-  });
-};
-
-type GetPublicChannelsArgs = {
-  mcpServerId: string;
-  slackClient: WebClient;
-};
-
-type ChannelWithIdAndName = Omit<Channel, "id" | "name"> & {
-  id: string;
-  name: string;
-};
-
-const _getPublicChannels = async ({
-  slackClient,
-}: GetPublicChannelsArgs): Promise<ChannelWithIdAndName[]> => {
-  const channels: Channel[] = [];
-
-  let cursor: string | undefined = undefined;
-  do {
-    const response = await slackClient.conversations.list({
-      cursor,
-      limit: 100,
-      exclude_archived: true,
-      types: "public_channel",
-    });
-    if (!response.ok) {
-      throw new Error(response.error);
-    }
-    channels.push(...(response.channels ?? []));
-    cursor = response.response_metadata?.next_cursor;
-
-    // We can't handle a huge list of channels, and even if we could, it would be unusable
-    // in the UI. So we arbitrarily cap it to 500 channels.
-    if (channels.length >= 500) {
-      logger.warn("Channel list truncated after reaching over 500 channels.");
-      break;
-    }
-  } while (cursor);
-
-  return channels
-    .filter((c) => !!c.id && !!c.name)
-    .map((c) => ({
-      ...c,
-      id: c.id!,
-      name: c.name!,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-};
-
-const getCachedPublicChannels = cacheWithRedis(
-  _getPublicChannels,
-  ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
-  {
-    ttlMs: 60 * 10 * 1000, // 10 minutes
-  }
-);
 
 function makeQueryResource(
   keywords: string[],
@@ -585,8 +516,11 @@ const createServer = async (
             );
 
             const getTextFromMatch = (match: SlackSearchMatch) => {
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               const author = match.author_name || "Unknown";
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               const channel = match.channel_name || "Unknown";
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               let content = match.content || "";
 
               // assistant.search.context wraps search words in \uE000 and \uE001,
@@ -804,35 +738,23 @@ const createServer = async (
     },
     async ({ to, message, threadTs }, { authInfo }) => {
       const accessToken = authInfo?.token;
-      const slackClient = await getSlackClient(accessToken);
-
-      const originalMessage = message;
+      if (!accessToken) {
+        throw new Error("Access token not found");
+      }
 
       if (!agentLoopContext?.runContext) {
         throw new Error("Unreachable: missing agentLoopRunContext.");
       }
 
       try {
-        const agentUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/new?assistantDetails=${agentLoopContext.runContext.agentConfiguration.sId}`;
-        message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext.agentConfiguration.name} Agent> on Dust_`;
-
-        const response = await slackClient.chat.postMessage({
-          channel: to,
-          text: message,
-          mrkdwn: true,
-          thread_ts: threadTs,
-        });
-
-        if (!response.ok) {
-          return makeMCPToolTextError(
-            `Error posting message: ${response.error}`
-          );
-        }
-
-        return makeMCPToolJSONSuccess({
-          message: `Message posted to ${to}`,
-          result: response,
-        });
+        return await executePostMessage(
+          to,
+          message,
+          threadTs,
+          accessToken,
+          agentLoopContext,
+          auth
+        );
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
           return makePersonalAuthenticationError("slack");
@@ -853,62 +775,12 @@ const createServer = async (
     },
     async ({ nameFilter }, { authInfo }) => {
       const accessToken = authInfo?.token;
-      const slackClient = await getSlackClient(accessToken);
+      if (!accessToken) {
+        throw new Error("Access token not found");
+      }
 
       try {
-        const users: Member[] = [];
-
-        let cursor: string | undefined = undefined;
-        do {
-          const response = await slackClient.users.list({
-            cursor,
-            limit: 100,
-          });
-          if (!response.ok) {
-            return makeMCPToolTextError(
-              `Error listing users: ${response.error}`
-            );
-          }
-          users.push(
-            ...(response.members ?? []).filter((member) => !member.is_bot)
-          );
-          cursor = response.response_metadata?.next_cursor;
-
-          if (nameFilter) {
-            const normalizedNameFilter = removeDiacritics(
-              nameFilter.toLowerCase()
-            );
-            const filteredUsers = users.filter(
-              (user) =>
-                removeDiacritics(user.name?.toLowerCase() ?? "").includes(
-                  normalizedNameFilter
-                ) ||
-                removeDiacritics(user.real_name?.toLowerCase() ?? "").includes(
-                  normalizedNameFilter
-                )
-            );
-
-            // Early return if we found a user
-            if (filteredUsers.length > 0) {
-              return makeMCPToolJSONSuccess({
-                message: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
-                result: filteredUsers,
-              });
-            }
-          }
-        } while (cursor);
-
-        if (nameFilter) {
-          return makeMCPToolJSONSuccess({
-            message: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
-            result: users,
-          });
-        }
-
-        return makeMCPToolJSONSuccess({
-          message: `The workspace has ${users.length} users`,
-          result: users,
-        });
+        return await executeListUsers(nameFilter, accessToken);
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
           return makePersonalAuthenticationError("slack");
@@ -928,21 +800,12 @@ const createServer = async (
     },
     async ({ userId }, { authInfo }) => {
       const accessToken = authInfo?.token;
-      const slackClient = await getSlackClient(accessToken);
+      if (!accessToken) {
+        throw new Error("Access token not found");
+      }
 
       try {
-        const response = await slackClient.users.info({ user: userId });
-
-        if (!response.ok || !response.user) {
-          return makeMCPToolTextError(
-            `Error retrieving user info: ${response.error ?? "Unknown error"}`
-          );
-        }
-
-        return makeMCPToolJSONSuccess({
-          message: `Retrieved user information for ${userId}`,
-          result: response.user,
-        });
+        return await executeGetUser(userId, accessToken);
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
           return makePersonalAuthenticationError("slack");
@@ -963,47 +826,16 @@ const createServer = async (
     },
     async ({ nameFilter }, { authInfo }) => {
       const accessToken = authInfo?.token;
-      const slackClient = await getSlackClient(accessToken);
+      if (!accessToken) {
+        throw new Error("Access token not found");
+      }
 
       try {
-        const channels = await getCachedPublicChannels({
-          mcpServerId,
-          slackClient,
-        });
-
-        if (nameFilter) {
-          const normalizedNameFilter = removeDiacritics(
-            nameFilter.toLowerCase()
-          );
-          const filteredChannels = channels.filter(
-            (channel) =>
-              removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-                normalizedNameFilter
-              ) ||
-              removeDiacritics(
-                channel.topic?.value?.toLowerCase() ?? ""
-              ).includes(normalizedNameFilter)
-          );
-
-          // Early return if we found a channel
-          if (filteredChannels.length > 0) {
-            return makeMCPToolJSONSuccess({
-              message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
-              result: filteredChannels,
-            });
-          }
-        }
-        if (nameFilter) {
-          return makeMCPToolJSONSuccess({
-            message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
-            result: channels,
-          });
-        }
-
-        return makeMCPToolJSONSuccess({
-          message: `The workspace has ${channels.length} channels`,
-          result: channels,
-        });
+        return await executeListPublicChannels(
+          nameFilter,
+          accessToken,
+          mcpServerId
+        );
       } catch (error) {
         if (isSlackTokenRevoked(error)) {
           return makePersonalAuthenticationError("slack");

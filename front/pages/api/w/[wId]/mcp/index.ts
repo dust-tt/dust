@@ -132,6 +132,7 @@ async function handler(
         }
 
         // Default to the shared secret if it exists.
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         let bearerToken = sharedSecret || null;
         let authorization: AuthorizationInfo | null = null;
 
@@ -185,20 +186,24 @@ async function handler(
           (config) => config.url === url
         );
 
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const name = defaultConfig?.name || metadata.name;
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
           workspaceId: auth.getNonNullableWorkspace().id,
           url: url,
           cachedName: name,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           cachedDescription: defaultConfig?.description || metadata.description,
           cachedTools: metadata.tools,
           icon:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             defaultConfig?.icon ||
             (isCustomServerIconType(metadata.icon)
               ? metadata.icon
               : DEFAULT_MCP_SERVER_ICON),
           version: metadata.version,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           sharedSecret: sharedSecret || null,
           authorization,
           oAuthUseCase: body.useCase ?? null,

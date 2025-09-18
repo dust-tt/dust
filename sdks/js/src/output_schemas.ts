@@ -14,6 +14,7 @@ const ToolGeneratedFileSchema = z.object({
   title: z.string(),
   contentType: z.string(),
   snippet: z.string().nullable(),
+  hidden: z.boolean().optional(),
 });
 
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;

@@ -12,6 +12,7 @@ import { Op } from "sequelize";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -36,7 +37,11 @@ import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
-import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentStepContentType,
+  FunctionCallContentType,
+} from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -293,6 +298,12 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
+  isFunctionCallContent(): this is AgentStepContentResource & {
+    value: FunctionCallContentType;
+  } {
+    return isFunctionCallContent(this.value);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -395,11 +406,17 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
                     workspaceId: action.workspaceId,
                   });
 
+                  const hidden =
+                    o.content.type === "resource" &&
+                    isToolGeneratedFile(o.content) &&
+                    o.content.resource.hidden === true;
+
                   return {
                     fileId: fileSid,
                     contentType: file.contentType,
                     title: file.fileName,
                     snippet: file.snippet,
+                    ...(hidden ? { hidden: true } : {}),
                   };
                 })
               ),
@@ -540,6 +557,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       : null;
 
     const actions = actualStepContents.flatMap((stepContent) =>
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (stepContent.agentMCPActions || []).map((action) => {
         assert(
           stepContent.agentMessage?.message?.conversation,

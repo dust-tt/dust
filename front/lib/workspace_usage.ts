@@ -683,6 +683,7 @@ export async function getFeedbackUsageData(
       agentConfigurationId: jsonFeedback.agentConfigurationId,
       agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
       thumb: jsonFeedback.thumbDirection,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       content: jsonFeedback.content?.replace(/\r?\n/g, "\\n") || null,
       conversationUrl:
         jsonFeedback.conversationId && jsonFeedback.isConversationShared
@@ -750,5 +751,6 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     },
   });
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return hasDataSource || hasCreatedAssistant || hasRecentConversation;
 }

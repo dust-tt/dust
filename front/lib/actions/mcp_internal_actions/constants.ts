@@ -2,7 +2,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  MAX_MCP_REQUEST_TIMEOUT_MS,
+  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -87,14 +87,18 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
+  "jit_tool_string_setting_debugger",
+  "jit_tool_datasource_setting_debugger",
   "reasoning",
   "run_agent",
   "run_dust_app",
   "salesforce",
   "slack",
+  "slack_bot",
   "think",
   "toolsets",
   "web_search_&_browse",
+  "web_search_&_browse_with_summary",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -706,10 +710,8 @@ The directive should be used to display a clickable version of the agent name in
     id: 22,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("jira_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       // Read operations - never ask (no side effects)
       get_issue: "never_ask",
@@ -725,6 +727,7 @@ The directive should be used to display a clickable version of the agent name in
       get_connection_info: "never_ask",
       get_issue_link_types: "never_ask",
       get_users: "never_ask",
+      get_attachments: "never_ask",
 
       // Update operations - low stakes
       create_comment: "low",
@@ -733,6 +736,7 @@ The directive should be used to display a clickable version of the agent name in
       update_issue: "low",
       create_issue_link: "low",
       delete_issue_link: "low",
+      upload_attachment: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -963,6 +967,60 @@ The directive should be used to display a clickable version of the agent name in
       instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
     },
   },
+  "web_search_&_browse_with_summary": {
+    id: 30,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: true,
+    tools_stakes: undefined,
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "web_search_&_browse_with_summary",
+      version: "1.0.0",
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      icon: "ActionGlobeAltIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  slack_bot: {
+    id: 31,
+    availability: "manual" as const,
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slack_bot_mcp");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_public_channels: "never_ask" as const,
+      list_users: "never_ask" as const,
+      get_user: "never_ask" as const,
+      post_message: "low" as const,
+      read_channel_history: "never_ask" as const,
+      read_thread_messages: "never_ask" as const,
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slack_bot",
+      version: "1.0.0",
+      description:
+        "Slack tools using workspace bot credentials. Messages and actions will appear as coming from the Dust Slack bot rather than your personal account.",
+      authorization: {
+        provider: "slack" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "SlackLogo",
+      documentationUrl: null,
+      instructions:
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+    },
+  },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
@@ -990,7 +1048,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
+    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",
@@ -1017,6 +1075,50 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description:
         "Demo server showing a basic interaction with various configurable blocks.",
+      icon: "ActionEmotionLaughIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  jit_tool_string_setting_debugger: {
+    id: 1014,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("dev_mcp_actions");
+    },
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "jit_tool_string_setting_debugger",
+      version: "1.0.0",
+      description:
+        "Demo server to test if can be added to JIT even with configurable settings.",
+      icon: "ActionEmotionLaughIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  jit_tool_datasource_setting_debugger: {
+    id: 1015,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("dev_mcp_actions");
+    },
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "jit_tool_datasource_setting_debugger",
+      version: "1.0.0",
+      description:
+        "Demo server to test if can be added to JIT even with configurable settings.",
       icon: "ActionEmotionLaughIcon",
       authorization: null,
       documentationUrl: null,

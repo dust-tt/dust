@@ -1,4 +1,4 @@
-import { ActionMicIcon, Button } from "@dust-tt/sparkle";
+import { Button, cn, MicIcon, SquareIcon } from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -36,6 +36,7 @@ export function VoicePicker({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
   const [level, setLevel] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   // Track pointer press to distinguish click (<150ms) vs hold (>=150ms).
   const pressStartRef = useRef<number | null>(null);
@@ -171,6 +172,25 @@ export function VoicePicker({
       pressTimeoutRef.current = null;
     }
   };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (isRecording) {
+      interval = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      // Reset timer when not recording
+      setElapsedSeconds(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isRecording]);
 
   // ----- Recording flow -------------------------------------------------------
 
@@ -338,24 +358,31 @@ export function VoicePicker({
     }
   };
 
-  // ----- Render ---------------------------------------------------------------
-
-  // Use a dynamic recording icon that reflects the input level when recording.
-  const RecordingIcon = () => <VoiceLevelIcon level={level} />;
-
   return (
-    <Button
-      icon={isRecording ? RecordingIcon : ActionMicIcon}
-      isLoading={isTranscribing}
-      variant="ghost-secondary"
-      size="xs"
-      tooltip={computeTooltip(mode, isRecording, isTranscribing)}
-      disabled={disabled}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerLeave}
-      onClick={handlePointerClick}
-    />
+    <>
+      <div
+        className={cn(
+          "duration-600 flex items-center justify-end gap-2 overflow-hidden px-2 transition-all ease-in-out",
+          isRecording ? "w-32 opacity-100" : "w-8 opacity-0"
+        )}
+      >
+        <div className="heading-xs font-mono">{formatTime(elapsedSeconds)}</div>
+        <VoiceLevelDisplay level={level} />
+      </div>
+      <Button
+        size="xs"
+        icon={isRecording ? SquareIcon : MicIcon}
+        isLoading={isTranscribing}
+        variant={isRecording ? "highlight" : "ghost-secondary"}
+        tooltip={computeTooltip(mode, isRecording, isTranscribing)}
+        label={isRecording ? "Stop" : undefined}
+        disabled={disabled}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
+        onClick={handlePointerClick}
+      />
+    </>
   );
 }
 
@@ -411,54 +438,51 @@ const computeTooltip = (
   if (isTranscribing) {
     return "Transcribing...";
   }
-  if (mode === "hold") {
-    return isRecording ? "Release to stop" : "Hold to record";
+  if (mode === "hold" && isRecording) {
+    return "Release to stop";
   }
-  return isRecording ? "Click to stop" : "Click to record";
+  return isRecording ? "Stop recording" : "Click, or Press & Hold to record";
 };
 
 interface VoiceLevelIconProps {
   level: number; // Expected in [0, 1].
 }
 
-// Sparkle-consistent dynamic icon that visualizes the input level using bars.
-// - Uses currentColor for fill, so it inherits Button color.
-// - Sized with 1em so it matches the icon size expected by Button.
-// - Bars heights are smoothly mapped from the provided level.
-const VoiceLevelIcon = ({ level }: VoiceLevelIconProps) => {
-  // Clamp to [0,1] to be safe.
-  const l = Math.max(0, Math.min(1, level * 1.5));
+const VoiceLevelDisplay = ({ level }: VoiceLevelIconProps) => {
+  // Clamp and ease the level a bit for smoother visuals.
+  const l = Math.max(0, Math.min(1, level * 1.2));
+  const eased = Math.pow(l, 0.8);
 
-  // Compute heights for 5 bars with slight variance.
-  const base = 3; // Minimum bar height.
-  const max = 16; // Additional height available.
-  const factors = [0.4, 0.7, 1.0, 0.7, 0.4];
-  const heights = factors.map((f) => base + max * Math.pow(l, 0.7) * f);
+  // Base shape (percent heights) taken from the template.
+  const base = [22, 33, 18, 64, 98, 56, 6, 34, 76, 46, 12, 22];
 
-  // X positions for the bars in the 24x24 viewBox.
-  const xs = [5, 9, 13, 17, 21];
-  const bottom = 21; // Bottom baseline (y coordinate).
-  const width = 2; // Bar width.
+  // Minimal visible heights to keep subtle motion when quiet.
+  const minHeights = base.map((b) => Math.max(6, Math.round(b * 0.3)));
+
+  // Interpolate between minimal and base depending on current level.
+  const heights = base.map((b, i) =>
+    Math.max(
+      1,
+      Math.min(100, Math.round(minHeights[i] + (b - minHeights[i]) * eased))
+    )
+  );
 
   return (
-    <svg
-      width="1em"
-      height="1em"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-      focusable="false"
-    >
+    <div className="flex h-5 items-center gap-0.5">
       {heights.map((h, i) => (
-        <rect
+        <div
+          // Only the height varies according to the level; rest matches the template.
           key={i}
-          x={xs[i] - width / 2}
-          width={width}
-          y={bottom - h}
-          height={h}
-          rx={1}
+          className="min-h-1 w-0.5 rounded-full bg-muted-foreground"
+          style={{ height: `${h}%` }}
         />
       ))}
-    </svg>
+    </div>
   );
+};
+
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 };

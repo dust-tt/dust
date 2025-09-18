@@ -188,6 +188,7 @@ export default function AgentBuilder({
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         editors: agentConfiguration || editors.length > 0 ? editors : [user],
         slackChannels: agentSlackChannels,
       },
@@ -238,7 +239,8 @@ export default function AgentBuilder({
         isDraft: false,
         agentConfigurationId: duplicateAgentId
           ? null
-          : agentConfiguration?.sId || null,
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            agentConfiguration?.sId || null,
         areSlackChannelsChanged: form.getFieldState(
           "agentSettings.slackChannels"
         ).isDirty,
@@ -257,6 +259,7 @@ export default function AgentBuilder({
       }
 
       const createdAgent = result.value;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const isCreatingNew = duplicateAgentId || !agentConfiguration;
 
       // Check if there's a warning about Slack channel linking
@@ -384,6 +387,7 @@ export default function AgentBuilder({
                 onClick: handleSave,
                 disabled: isSaveDisabled,
               }}
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               agentConfigurationId={agentConfiguration?.sId || null}
               isActionsLoading={isActionsLoading}
               isTriggersLoading={isTriggersLoading}

@@ -333,6 +333,7 @@ export async function listEvents(
       urlParams.append("$skip", skip.toString());
     }
 
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (startTime || endTime) {
       const filters = [];
       if (startTime) {
@@ -565,6 +566,7 @@ export async function updateEvent(
   }
   if (body !== undefined) {
     event.body = {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       contentType: contentType || "text",
       content: body,
     };
@@ -572,12 +574,14 @@ export async function updateEvent(
   if (startDateTime !== undefined) {
     event.start = {
       dateTime: startDateTime,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       timeZone: timeZone || "UTC",
     };
   }
   if (endDateTime !== undefined) {
     event.end = {
       dateTime: endDateTime,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       timeZone: timeZone || "UTC",
     };
   }

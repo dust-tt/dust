@@ -269,6 +269,7 @@ export async function submitAgentBuilderForm({
       description: formData.agentSettings.description,
       instructions: formData.instructions,
       pictureUrl:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         formData.agentSettings.pictureUrl ||
         "https://dust.tt/static/assistants/logo.svg",
       status: isDraft ? "draft" : "active",

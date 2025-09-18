@@ -15,7 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { getHeaderFromGroupIds, getHeaderFromRole, Ok } from "@app/types";
+import { getHeaderFromGroupIds, Ok } from "@app/types";
 
 const createServer = (
   auth: Authenticator,
@@ -43,7 +43,6 @@ const createServer = (
           ...prodCredentials,
           extraHeaders: {
             ...getHeaderFromGroupIds(requestedGroupIds),
-            ...getHeaderFromRole(auth.role()),
           },
         },
         logger,
@@ -62,7 +61,8 @@ const createServer = (
         )
         .filter(
           (mcpServerView) =>
-            getMCPServerToolsConfigurations(mcpServerView).noRequirement
+            getMCPServerToolsConfigurations(mcpServerView).configurable !==
+            "required"
         )
         .filter(
           (mcpServerView) =>

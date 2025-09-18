@@ -16,7 +16,7 @@ const createMockAction = (
   configuration: null,
   name,
   description: `Description for ${name}`,
-  noConfigurationRequired: true,
+  configurable: false,
 });
 
 const createMockMCPAction = (
@@ -31,6 +31,7 @@ const createMockMCPAction = (
   name,
   description: `Description for ${name}`,
   configuration: {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     mcpServerViewId: mcpServerViewId || "",
     dataSourceConfigurations: dataSourceConfigurations || null,
     tablesConfigurations: tablesConfigurations || null,
@@ -42,7 +43,7 @@ const createMockMCPAction = (
     jsonSchema: null,
     _jsonSchemaString: null,
   },
-  noConfigurationRequired: false,
+  configurable: true,
 });
 
 const createMockMCPServerView = (

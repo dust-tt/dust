@@ -1,6 +1,7 @@
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import type { NextApiResponse } from "next";
 
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -12,7 +13,10 @@ import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchAgentTriggerWorkflow } from "@app/temporal/agent_schedule/client";
-import type { WithAPIErrorResponse } from "@app/types";
+import type {
+  ContentFragmentInputWithFileIdType,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { Err } from "@app/types";
 
 /**
@@ -139,20 +143,69 @@ async function handler(
     )
   ).flat();
 
+  // Check if any of the triggers requires the payload.
+  const triggersWithMetadata = triggers.map((t) => {
+    const trigger = t.toJSON();
+    const includePayload =
+      trigger.kind === "webhook" && trigger.configuration.includePayload;
+    return { t, includePayload };
+  });
+
+  const requiresPayload = triggersWithMetadata.some(
+    (metadata) => metadata.includePayload
+  );
+
+  // If we need the payload, create a content fragment for it.
+  let contentFragment: ContentFragmentInputWithFileIdType | undefined;
+  if (requiresPayload) {
+    const contentFragmentRes = await toFileContentFragment(auth, {
+      contentFragment: {
+        contentType: "application/json",
+        content: JSON.stringify(req.body),
+        title: `Webhook body (source id: ${webhookSource.id}, date: ${new Date().toISOString()})`,
+      },
+      fileName: `webhook_body_${webhookSource.id}_${Date.now()}.json`,
+    });
+
+    if (contentFragmentRes.isErr()) {
+      logger.error(
+        { contentFragment: contentFragmentRes },
+        "Error creating file content fragment."
+      );
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Error creating file content fragment.",
+        },
+      });
+    }
+
+    contentFragment = contentFragmentRes.value;
+  }
+
+  // Launch all the workflows concurrently.
   const results = await concurrentExecutor(
-    triggers,
-    // Run every trigger.
-    async (trigger) => {
+    triggersWithMetadata,
+    async ({ t, includePayload }) => {
       // Get the trigger's user and create a new authenticator
-      const user = await UserResource.fetchByModelId(trigger.editor);
+      const user = await UserResource.fetchByModelId(t.editor);
 
       if (!user) {
-        logger.error({ triggerId: trigger.id }, "Trigger editor not found.");
+        logger.error({ triggerId: t.id }, "Trigger editor not found.");
         return new Err(new Error("Trigger editor not found."));
       }
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, wId);
-      return launchAgentTriggerWorkflow({ auth, trigger });
+      if (includePayload && !contentFragment) {
+        logger.error({ triggerId: t.id }, "Webhook payload fragment missing.");
+        return new Err(new Error("Webhook payload fragment missing"));
+      }
+      return launchAgentTriggerWorkflow({
+        auth,
+        trigger: t,
+        contentFragment: includePayload ? contentFragment : undefined,
+      });
     },
     { concurrency: 10 }
   );
@@ -164,14 +217,14 @@ async function handler(
     return apiError(
       req,
       res,
+      // Safe casts below on errors, thanks to the .filter above.
       {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "Error launching agent trigger workflows.",
+          message: `Error launching agent trigger workflows: ${errors.map((e) => (e as Err<Error>).error.message).join(", ")}`,
         },
       },
-      // Safe cast thanks to the .filter above.
       (errors[0] as Err<Error>).error
     );
   }

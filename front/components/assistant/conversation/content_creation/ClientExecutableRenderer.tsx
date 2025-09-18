@@ -1,9 +1,14 @@
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   ArrowDownOnSquareIcon,
   ArrowGoBackIcon,
   Button,
   CodeBlock,
   CommandLineIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EyeIcon,
   FullscreenExitIcon,
   FullscreenIcon,
@@ -19,6 +24,7 @@ import { ShareContentCreationFilePopover } from "@app/components/assistant/conve
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useVisualizationRevert } from "@app/lib/swr/conversations";
 import { useFileContent } from "@app/lib/swr/files";
@@ -31,38 +37,66 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
+  owner: LightWorkspaceType;
+  fileId: string;
 }
 
-function ExportContentDropdown({ iframeRef }: ExportContentDropdownProps) {
-  const exportVisualization = React.useCallback(
-    (format: "png" | "svg") => {
-      if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(
-          { type: `EXPORT_${format.toUpperCase()}` },
-          "*"
-        );
-      } else {
-        console.log("No iframe content window found");
-      }
-    },
-    [iframeRef]
-  );
+function ExportContentDropdown({
+  iframeRef,
+  owner,
+  fileId,
+}: ExportContentDropdownProps) {
+  const sendNotification = useSendNotification();
+  const exportAsPng = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: `EXPORT_PNG` }, "*");
+    } else {
+      datadogLogs.logger.info(
+        "Failed to export content as PNG: No iframe content window found"
+      );
+    }
+  };
+
+  const downloadAsCode = () => {
+    try {
+      const downloadUrl = `/api/w/${owner.sId}/files/${fileId}?action=download`;
+      // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
+      // to cloud storage.
+      window.open(downloadUrl, "_blank");
+    } catch (error) {
+      console.error("Download failed:", error);
+      sendNotification({
+        title: "Download Failed",
+        type: "error",
+        description: "An error occurred while opening the download link.",
+      });
+    }
+  };
 
   return (
-    <Button
-      icon={ArrowDownOnSquareIcon}
-      size="xs"
-      tooltip="Export as PNG"
-      variant="ghost"
-      onClick={() => exportVisualization("png")}
-    />
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          icon={ArrowDownOnSquareIcon}
+          isSelect
+          size="xs"
+          tooltip="Export content"
+          variant="ghost"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={exportAsPng}>Export as PNG</DropdownMenuItem>
+        <DropdownMenuItem onClick={downloadAsCode}>
+          Export as template
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
 interface ClientExecutableRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
-  fileName?: string;
   owner: LightWorkspaceType;
   lastEditedByAgentConfigurationId?: string;
 }
@@ -70,7 +104,6 @@ interface ClientExecutableRendererProps {
 export function ClientExecutableRenderer({
   conversation,
   fileId,
-  fileName,
   owner,
   lastEditedByAgentConfigurationId,
 }: ClientExecutableRendererProps) {
@@ -197,11 +230,7 @@ export function ClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <ContentCreationHeader
-        title={fileName || "Client Executable"}
-        subtitle={fileId}
-        onClose={onClosePanel}
-      >
+      <ContentCreationHeader onClose={onClosePanel}>
         <Button
           variant="ghost"
           size="xs"
@@ -224,7 +253,11 @@ export function ClientExecutableRenderer({
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
           variant="ghost"
         />
-        <ExportContentDropdown iframeRef={iframeRef} />
+        <ExportContentDropdown
+          iframeRef={iframeRef}
+          owner={owner}
+          fileId={fileId}
+        />
         <ShareContentCreationFilePopover
           fileId={fileId}
           owner={owner}

@@ -31,6 +31,7 @@ export const WorkspacePickerRadioGroup = ({
           return (
             <DropdownMenuRadioItem
               key={org.id}
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               value={org.externalId || ""}
               onClick={async () => {
                 if (org.externalId && org.externalId !== workspace.sId) {

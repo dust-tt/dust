@@ -31,6 +31,8 @@ async function countActiveUsersForPeriodInWorkspace({
     INNER JOIN mentions ON mentions."messageId" = messages.id
     WHERE messages."workspaceId" = :workspaceId
     AND "user_messages"."userId" IS NOT NULL
+    AND "user_messages"."userContextOrigin" != 'run_agent'
+    AND "user_messages"."userContextOrigin" != 'agent_handover'
     AND "mentions"."createdAt" BETWEEN :startDate AND :endDate
     GROUP BY "user_messages"."userId"
     HAVING COUNT(mentions.*) >= :minNumberOfRows

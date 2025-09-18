@@ -164,6 +164,7 @@ const InputBarContainer = ({
         }
       : {
           // TextSearchParams
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           search: nodeOrUrlCandidate?.url || "",
           searchSourceUrls: true,
           includeDataSources: false,
@@ -330,6 +331,9 @@ const InputBarContainer = ({
                 disabled={disableTextInput}
               />
             )}
+          </div>
+          <div className="grow" />
+          <div className="flex items-center gap-2 md:gap-1">
             {featureFlags.hasFeature("simple_audio_transcription") &&
               actions.includes("voice") && (
                 <VoicePicker
@@ -341,24 +345,24 @@ const InputBarContainer = ({
                   disabled={disableTextInput}
                 />
               )}
+            <Button
+              size="xs"
+              isLoading={disableSendButton}
+              icon={ArrowUpIcon}
+              variant="highlight"
+              disabled={editorService.isEmpty() || disableSendButton}
+              onClick={async () => {
+                onEnterKeyDown(
+                  editorService.isEmpty(),
+                  editorService.getMarkdownAndMentions(),
+                  () => {
+                    editorService.clearEditor();
+                  },
+                  editorService.setLoading
+                );
+              }}
+            />
           </div>
-          <Button
-            size="xs"
-            isLoading={disableSendButton}
-            icon={ArrowUpIcon}
-            variant="highlight"
-            disabled={editorService.isEmpty() || disableSendButton}
-            onClick={async () => {
-              onEnterKeyDown(
-                editorService.isEmpty(),
-                editorService.getMarkdownAndMentions(),
-                () => {
-                  editorService.clearEditor();
-                },
-                editorService.setLoading
-              );
-            }}
-          />
         </div>
       </div>
 

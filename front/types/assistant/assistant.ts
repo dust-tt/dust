@@ -298,6 +298,8 @@ export const isModelId = (modelId: string): modelId is ModelIdType =>
 
 export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
 
+export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
+
 /**
  * MODEL CONFIGURATIONS
  */
@@ -1606,8 +1608,9 @@ export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
   DUST_DEEP = "dust-deep",
-  DUST_DEEP_2 = "dust-deep-2",
   DUST_TASK = "dust-task",
+  DUST_BROWSER_SUMMARY = "dust-browser-summary",
+  DUST_PLANNING = "dust-planning",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",
@@ -1676,7 +1679,6 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.DUST_DEEP,
-  GLOBAL_AGENTS_SID.DUST_DEEP_2,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.O3_MINI,
@@ -1723,13 +1725,6 @@ export function compareAgentsForSort(
     return -1;
   }
   if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
-    return 1;
-  }
-
-  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP_2) {
-    return -1;
-  }
-  if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP_2) {
     return 1;
   }
 

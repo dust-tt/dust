@@ -304,6 +304,7 @@ export default function WorkspaceAssistants({
         <AssistantDetails
           owner={owner}
           user={user}
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           assistantId={showDetails?.sId || null}
           onClose={() => setShowDetails(null)}
         />

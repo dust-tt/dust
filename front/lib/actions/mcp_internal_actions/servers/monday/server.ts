@@ -168,6 +168,7 @@ const createServer = (): McpServer => {
         orderDirection,
       };
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (timeframeStart || timeframeEnd) {
         filters.timeframe = {
           start: timeframeStart ? new Date(timeframeStart) : undefined,
@@ -346,6 +347,7 @@ const createServer = (): McpServer => {
       const board = await createBoard(
         accessToken,
         boardName,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         boardKind || "public",
         workspaceId,
         description

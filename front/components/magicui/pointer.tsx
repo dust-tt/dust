@@ -90,6 +90,7 @@ export function Pointer({
             }}
             {...props}
           >
+            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {children || (
               <svg
                 stroke="currentColor"

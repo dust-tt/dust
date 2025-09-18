@@ -64,7 +64,6 @@ export function ContentCreationContainer({
       return (
         <UnsupportedContentRenderer
           fileName={fileMetadata.fileName}
-          fileId={contentId}
           contentType={fileMetadata.contentType}
         />
       );
@@ -89,7 +88,6 @@ export function ContentCreationContainer({
         return (
           <UnsupportedContentRenderer
             fileName={fileMetadata.fileName}
-            fileId={contentId}
             contentType={fileMetadata.contentType}
           />
         );

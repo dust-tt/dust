@@ -130,6 +130,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         })) || []
       );
     }
@@ -139,6 +140,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         })) || []
       );
     }
@@ -148,6 +150,7 @@ function generateConfiguredInput({
         actionConfiguration.tables?.map((config) => ({
           uri: getTableURI(config),
           mimeType,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         })) || []
       );
     }
@@ -340,7 +343,7 @@ function generateConfiguredInput({
  * Returns all paths in a server's tools' inputSchemas that match the schema for the specified mimeType.
  * @returns A record of paths where the schema matches the specified mimeType
  */
-function findPathsToConfiguration({
+export function findPathsToConfiguration({
   mcpServerView,
   mimeType,
 }: {
@@ -360,9 +363,10 @@ function findPathsToConfiguration({
     }
 
     if (tool.inputSchema) {
+      const inlinedSchema = inlineAllRefs(tool.inputSchema);
       matches = {
         ...matches,
-        ...findMatchingSubSchemas(tool.inputSchema, mimeType),
+        ...findMatchingSubSchemas(inlinedSchema, mimeType),
       };
     }
   }
@@ -560,7 +564,7 @@ export interface MCPServerToolsConfigurations {
     }
   >;
   mayRequireDustAppConfiguration: boolean;
-  noRequirement: boolean;
+  configurable: "no" | "optional" | "required";
 }
 
 export function getMCPServerToolsConfigurations(
@@ -581,7 +585,7 @@ export function getMCPServerToolsConfigurations(
       enumConfigurations: {},
       listConfigurations: {},
       mayRequireDustAppConfiguration: false,
-      noRequirement: false,
+      configurable: "optional",
     };
   }
   const { server } = mcpServerView;
@@ -714,7 +718,10 @@ export function getMCPServerToolsConfigurations(
     ),
   }));
 
-  const enumConfigurations = Object.fromEntries(
+  const enumConfigurations: Record<
+    string,
+    { options: string[]; description?: string; default?: string }
+  > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -734,10 +741,11 @@ export function getMCPServerToolsConfigurations(
       return [
         key,
         {
-          options:
-            valueProperty.enum?.filter(
-              (v): v is string => typeof v === "string"
-            ) ?? [],
+          options: Array.isArray(valueProperty.enum)
+            ? valueProperty.enum.filter(
+                (v): v is string => typeof v === "string"
+              )
+            : [],
           description: schema.description,
           default: defaultValue,
         },
@@ -745,7 +753,15 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const listConfigurations = Object.fromEntries(
+  const listConfigurations: Record<
+    string,
+    {
+      options: Record<string, string>;
+      description?: string;
+      values?: string[];
+      default?: string;
+    }
+  > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
         mcpServerView,
@@ -808,6 +824,45 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
+  // TODO: We'll handle the sources and tables later
+  const hasDefaultsForAllConfigurableValues =
+    stringConfigurations.every((config) => config.default !== undefined) &&
+    numberConfigurations.every((config) => config.default !== undefined) &&
+    booleanConfigurations.every((config) => config.default !== undefined) &&
+    Object.values(enumConfigurations).every(
+      (config) => config.default !== undefined
+    ) &&
+    Object.values(listConfigurations).every(
+      (config) => config.default !== undefined
+    );
+
+  let configurable: "no" | "optional" | "required" = "no";
+
+  const isConfigurable =
+    mayRequireDataSourceConfiguration ||
+    mayRequireDataWarehouseConfiguration ||
+    mayRequireTableConfiguration ||
+    mayRequireChildAgentConfiguration ||
+    mayRequireReasoningConfiguration ||
+    mayRequireDustAppConfiguration ||
+    mayRequireTimeFrameConfiguration ||
+    mayRequireJsonSchemaConfiguration ||
+    stringConfigurations.length > 0 ||
+    numberConfigurations.length > 0 ||
+    booleanConfigurations.length > 0 ||
+    Object.keys(enumConfigurations).length > 0 ||
+    Object.keys(listConfigurations).length > 0;
+
+  if (isConfigurable) {
+    if (hasDefaultsForAllConfigurableValues) {
+      configurable = "optional";
+    } else {
+      configurable = "required";
+    }
+  } else {
+    configurable = "no";
+  }
+
   return {
     mayRequireDataSourceConfiguration,
     mayRequireDataWarehouseConfiguration,
@@ -822,19 +877,7 @@ export function getMCPServerToolsConfigurations(
     enumConfigurations,
     listConfigurations,
     mayRequireDustAppConfiguration,
-    noRequirement:
-      !mayRequireDataSourceConfiguration &&
-      !mayRequireDataWarehouseConfiguration &&
-      !mayRequireTableConfiguration &&
-      !mayRequireChildAgentConfiguration &&
-      !mayRequireReasoningConfiguration &&
-      !mayRequireDustAppConfiguration &&
-      !mayRequireTimeFrameConfiguration &&
-      stringConfigurations.length <= 0 &&
-      numberConfigurations.length <= 0 &&
-      booleanConfigurations.length <= 0 &&
-      Object.keys(enumConfigurations).length <= 0 &&
-      Object.keys(listConfigurations).length <= 0,
+    configurable,
   };
 }
 
@@ -886,6 +929,7 @@ function isSchemaConfigurable(
 /**
  * Recursively finds all property keys and subschemas match a specific sub-schema.
  * This function handles nested objects and arrays.
+ * @param inputSchema The schema to find matching subschemas in: it is expected to be inlined. (I.e. without $ref pointers)
  * @returns A record of property keys that match the schema comparison.
  * Empty record if no matches are found.
  */
@@ -906,15 +950,6 @@ export function findMatchingSubSchemas(
         // Check if this property's schema matches the target
         if (isSchemaConfigurable(propSchema, mimeType)) {
           matches[key] = propSchema;
-        }
-
-        // Following references within the main schema.
-        // zodToJsonSchema generates references if the same subSchema is repeated.
-        if (propSchema.$ref) {
-          const refSchema = followInternalRef(inputSchema, propSchema.$ref);
-          if (refSchema && isSchemaConfigurable(refSchema, mimeType)) {
-            matches[key] = refSchema;
-          }
         }
 
         // Recursively check this property's schema
@@ -994,4 +1029,80 @@ export function findMatchingSubSchemas(
   // since we entirely hide the configuration from the agent.
 
   return matches;
+}
+
+function recursiveInlineAllRefs(
+  schema: JSONSchema,
+  rootSchema: JSONSchema
+): JSONSchema {
+  let outputSchema: JSONSchema = { ...schema };
+
+  // If this schema is a direct reference, resolve it fully and continue inlining recursively
+  if (schema.$ref) {
+    const refSchema = followInternalRef(rootSchema, schema.$ref);
+    if (refSchema && isJSONSchemaObject(refSchema)) {
+      return recursiveInlineAllRefs(refSchema, rootSchema);
+    }
+    return schema;
+  }
+
+  if (schema.properties) {
+    outputSchema.properties = {};
+    for (const [key, propSchema] of Object.entries(schema.properties)) {
+      if (isJSONSchemaObject(propSchema)) {
+        outputSchema.properties[key] = recursiveInlineAllRefs(
+          propSchema,
+          rootSchema
+        );
+      } else {
+        outputSchema.properties[key] = propSchema;
+      }
+    }
+  }
+
+  if (schema.type == "array" && schema.items) {
+    if (isJSONSchemaObject(schema.items)) {
+      outputSchema.items = recursiveInlineAllRefs(schema.items, rootSchema);
+    } else if (Array.isArray(schema.items)) {
+      outputSchema.items = schema.items.map((item) =>
+        isJSONSchemaObject(item)
+          ? recursiveInlineAllRefs(item, rootSchema)
+          : item
+      );
+    }
+  }
+
+  // Handle all other keys
+  for (const [key, value] of Object.entries(schema)) {
+    // Skip properties and items as they are handled separately above
+    if (
+      key === "properties" ||
+      key === "required" ||
+      key === "anyOf" ||
+      key === "enum" ||
+      key === "type" ||
+      (key === "items" && outputSchema.type === "array")
+    ) {
+      continue;
+    }
+    if (isJSONSchemaObject(value)) {
+      outputSchema = {
+        ...outputSchema,
+        [key]: recursiveInlineAllRefs(value, rootSchema),
+      };
+    } else {
+      outputSchema = { ...outputSchema, [key]: value };
+    }
+  }
+
+  return outputSchema;
+}
+
+/**
+ * Inlines all references in a schema.
+ * @param schema The schema to inline references in.
+ * @returns The schema with all references inlined.
+ */
+export function inlineAllRefs(schema: JSONSchema): JSONSchema {
+  return recursiveInlineAllRefs(schema, schema);
 }

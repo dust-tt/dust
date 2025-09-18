@@ -251,6 +251,7 @@ export const InstructionBlockExtension =
         type: {
           default: "instructions",
           parseHTML: (element) =>
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             element.getAttribute("data-instruction-type") || "instructions",
           renderHTML: (attributes) => ({
             "data-instruction-type": attributes.type,
@@ -860,6 +861,7 @@ export const InstructionBlockExtension =
                 } else if (child.type.name === "paragraph") {
                   parts.push(child.textContent);
                 } else if (child.isText) {
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   parts.push(child.text || "");
                 } else {
                   parts.push(child.textBetween(0, child.content.size, "\n"));

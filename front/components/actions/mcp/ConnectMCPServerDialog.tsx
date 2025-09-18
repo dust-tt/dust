@@ -232,6 +232,7 @@ export function ConnectMCPServerDialog({
                 void handleSave();
               }
             },
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             disabled: !isFormValid || (authorization && !useCase) || isLoading,
           }}
         />

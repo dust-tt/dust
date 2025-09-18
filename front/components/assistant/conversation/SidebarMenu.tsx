@@ -300,6 +300,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         isDeleting={isDeleting}
         onClose={() => setShowDeleteDialog(null)}
         onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
@@ -504,6 +505,7 @@ const RenderConversation = ({
 }) => {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
   const conversationLabel =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversation.title ||
     (moment(conversation.created).isSame(moment(), "day")
       ? "New Conversation"

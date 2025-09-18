@@ -44,6 +44,7 @@ export const SpaceActionsList = ({
   space,
 }: SpaceActionsListProps) => {
   const { q: searchParam } = useQueryParams(["q"]);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const searchTerm = searchParam.value || "";
 
   const { serverViews, isMCPServerViewsLoading, mutateMCPServerViews } =

@@ -10,7 +10,7 @@ import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/agent_schedule/config";
 import { agentTriggerWorkflow } from "@app/temporal/agent_schedule/workflows";
-import type { Result } from "@app/types";
+import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import type {
   ScheduleTriggerType,
@@ -150,9 +150,11 @@ export async function deleteAgentScheduleWorkflow({
 export async function launchAgentTriggerWorkflow({
   auth,
   trigger,
+  contentFragment,
 }: {
   auth: Authenticator;
   trigger: TriggerResource;
+  contentFragment?: ContentFragmentInputWithFileIdType;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForAgentNamespace();
 
@@ -167,6 +169,7 @@ export async function launchAgentTriggerWorkflow({
       auth.getNonNullableUser().sId,
       auth.getNonNullableWorkspace().sId,
       trigger.toJSON(),
+      contentFragment,
     ],
     taskQueue: QUEUE_NAME,
     workflowId,

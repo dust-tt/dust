@@ -5,6 +5,7 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
+  postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
@@ -14,7 +15,10 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { makeScheduleId } from "@app/temporal/agent_schedule/client";
-import type { AgentConfigurationType } from "@app/types";
+import type {
+  AgentConfigurationType,
+  ContentFragmentInputWithFileIdType,
+} from "@app/types";
 import { assertNever } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
@@ -70,12 +74,19 @@ async function shouldCreateIndividualConversations(
   return false;
 }
 
-const createConversationForAgentConfiguration = async (
-  auth: Authenticator,
-  agentConfiguration: AgentConfigurationType,
-  trigger: TriggerType,
-  lastRunAt: Date | null = null
-) => {
+const createConversationForAgentConfiguration = async ({
+  auth,
+  agentConfiguration,
+  trigger,
+  lastRunAt,
+  contentFragment,
+}: {
+  auth: Authenticator;
+  agentConfiguration: AgentConfigurationType;
+  trigger: TriggerType;
+  lastRunAt: Date | null;
+  contentFragment?: ContentFragmentInputWithFileIdType;
+}) => {
   const newConversation = await createConversation(auth, {
     title: `@${agentConfiguration.name} triggered (${trigger.kind}) - ${new Date().toLocaleDateString(
       "en-US",
@@ -100,6 +111,10 @@ const createConversationForAgentConfiguration = async (
     origin: "triggered" as const,
     lastTriggerRunAt: lastRunAt,
   };
+
+  if (contentFragment) {
+    await postNewContentFragment(auth, newConversation, contentFragment, null);
+  }
 
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
@@ -127,18 +142,34 @@ const createConversationForAgentConfiguration = async (
   return newConversation;
 };
 
-export async function runTriggeredAgentsActivity(
-  userId: string,
-  workspaceId: string,
-  trigger: TriggerType
-) {
+class TriggerNonRetryableError extends Error {}
+
+export async function runTriggeredAgentsActivity({
+  userId,
+  workspaceId,
+  trigger,
+  contentFragment,
+}: {
+  userId: string;
+  workspaceId: string;
+  trigger: TriggerType;
+  contentFragment?: ContentFragmentInputWithFileIdType;
+}) {
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     userId,
     workspaceId
   );
 
   if (!auth.workspace() || !auth.user()) {
-    throw new Error("Invalid authentication. Missing workspaceId or userId.");
+    throw new TriggerNonRetryableError(
+      "Invalid authentication. Missing workspaceId or userId."
+    );
+  }
+
+  if (!auth.isUser()) {
+    throw new TriggerNonRetryableError(
+      "Invalid authentication. Missing user permissions."
+    );
   }
 
   const agentConfiguration = await getAgentConfiguration(auth, {
@@ -213,12 +244,13 @@ export async function runTriggeredAgentsActivity(
     // Create conversations for the editor and all the subscribers
     for (const tempAuth of [auth, ...subscribersAuths]) {
       try {
-        await createConversationForAgentConfiguration(
-          tempAuth,
+        await createConversationForAgentConfiguration({
+          auth: tempAuth,
           agentConfiguration,
           trigger,
-          lastRunAt
-        );
+          lastRunAt,
+          contentFragment,
+        });
       } catch (error) {
         // Might happen if a subscriber do not have the right permissions to use the agent
         logger.error(
@@ -234,12 +266,13 @@ export async function runTriggeredAgentsActivity(
     }
   } else {
     // Create a single conversation for the editor
-    const conversation = await createConversationForAgentConfiguration(
+    const conversation = await createConversationForAgentConfiguration({
       auth,
       agentConfiguration,
       trigger,
-      lastRunAt
-    );
+      lastRunAt,
+      contentFragment,
+    });
     if (!conversation) {
       throw new Error("Error creating conversation.");
     }

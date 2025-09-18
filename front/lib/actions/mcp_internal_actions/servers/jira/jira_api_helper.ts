@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { markdownToAdf } from "marklassian";
@@ -25,12 +23,14 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   ADFDocumentSchema,
+  JiraAttachmentsResultSchema,
   JiraCommentSchema,
   JiraCreateMetaSchema,
   JiraFieldsSchema,
   JiraIssueLinkTypeSchema,
   JiraIssueSchema,
   JiraIssueTypeSchema,
+  JiraIssueWithAttachmentsSchema,
   JiraProjectSchema,
   JiraProjectVersionSchema,
   JiraResourceSchema,
@@ -45,7 +45,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
+
+import { sanitizeFilename } from "../../utils/file_utils";
 
 // Type guard to check if a value is an ADFDocument
 function isADFDocument(value: unknown): value is ADFDocument {
@@ -81,6 +84,7 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
 ): Promise<Result<z.infer<T>, JiraErrorResult>> {
   try {
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       method: options.method || "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -166,6 +170,7 @@ export async function listUsers(
   let cursor = startAt;
   const results: z.infer<typeof JiraUsersSearchResultSchema> = [];
   const hasName = !!name && name.trim().length > 0;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const normalizedName = (name || "").trim().toLowerCase();
 
   while (results.length < maxResults) {
@@ -378,6 +383,7 @@ export async function getJiraBaseUrl(
   accessToken: string
 ): Promise<string | null> {
   const resourceInfo = await getJiraResourceInfo(accessToken);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const cloudId = resourceInfo?.id || null;
   if (cloudId) {
     return `https://api.atlassian.com/ex/jira/${cloudId}`;
@@ -411,6 +417,7 @@ export async function createComment(
     body: {
       type: adfBody.type,
       version: adfBody.version,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       content: adfBody.content || [],
     },
   };
@@ -467,6 +474,7 @@ export async function searchIssues(
     nextPageToken,
     sortBy,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 
   const jql = createJQLFromSearchFilters(filters, sortBy);
@@ -529,6 +537,7 @@ export async function searchJiraIssuesUsingJql(
     nextPageToken,
     maxResults = SEARCH_ISSUES_MAX_RESULTS,
     fields = ["summary"],
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   } = options || {};
 
   const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
@@ -726,6 +735,7 @@ export async function getAllFields(
   > = {};
 
   for (const field of result.value) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const fieldKey = field.key || field.id;
     fieldsMetadata[fieldKey] = {
       schema: field.schema
@@ -1002,6 +1012,7 @@ export async function searchUsersByEmailExact(
     for (const u of page) {
       if (
         u.accountType === "atlassian" &&
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (u.emailAddress || "").toLowerCase() === normalized
       ) {
         matches.push(u);
@@ -1060,4 +1071,127 @@ function logAndReturnError({
     `[JIRA MCP Server] ${message}`
   );
   return makeMCPToolTextError(normalizeError(error).message);
+}
+
+function logAndReturnApiError<T>({
+  error,
+  message,
+}: {
+  error: unknown;
+  message: string;
+}): Result<T, string> {
+  logger.error(`[JIRA MCP Server] ${message}`);
+  return new Err(normalizeError(error).message);
+}
+
+export async function uploadAttachmentsToJira(
+  baseUrl: string,
+  accessToken: string,
+  issueKey: string,
+  files: Array<{
+    buffer: Buffer;
+    filename: string;
+    contentType: string;
+  }>
+): Promise<
+  Result<z.infer<typeof JiraAttachmentsResultSchema>, JiraErrorResult>
+> {
+  try {
+    const boundary = `----formdata-dust-${Date.now()}-${Math.random().toString(36)}`;
+    const parts: Buffer[] = [];
+
+    for (const file of files) {
+      const safeFilename = sanitizeFilename(file.filename);
+      parts.push(Buffer.from(`--${boundary}\r\n`));
+      parts.push(
+        Buffer.from(
+          `Content-Disposition: form-data; name="file"; filename="${safeFilename}"\r\n`
+        )
+      );
+      parts.push(Buffer.from(`Content-Type: ${file.contentType}\r\n\r\n`));
+      parts.push(file.buffer);
+      parts.push(Buffer.from("\r\n"));
+    }
+
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+
+    const response = await fetch(
+      `${baseUrl}/rest/api/2/issue/${issueKey}/attachments`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          "X-Atlassian-Token": "no-check", // Required to prevent CSRF blocking
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment upload failed",
+      });
+    }
+
+    const responseText = await response.text();
+    if (!responseText) {
+      return logAndReturnApiError({
+        error: new Error("Empty response from JIRA attachment upload"),
+        message: "JIRA attachment upload returned empty response",
+      });
+    }
+
+    const rawData = JSON.parse(responseText);
+    const parseResult = JiraAttachmentsResultSchema.safeParse(rawData);
+
+    if (!parseResult.success) {
+      const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment upload response format invalid",
+      });
+    }
+
+    return new Ok(parseResult.data);
+  } catch (error: unknown) {
+    return logAndReturnApiError({
+      error,
+      message: "JIRA API call failed for attachment upload",
+    });
+  }
+}
+
+export async function getIssueAttachments({
+  baseUrl,
+  accessToken,
+  issueKey,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  issueKey: string;
+}): Promise<
+  Result<z.infer<typeof JiraAttachmentsResultSchema>, JiraErrorResult>
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/2/issue/${issueKey}?fields=attachment`,
+      accessToken,
+    },
+    JiraIssueWithAttachmentsSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const attachments = result.value.fields?.attachment ?? [];
+  return new Ok(attachments);
 }

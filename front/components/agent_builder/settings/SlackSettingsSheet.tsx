@@ -217,6 +217,7 @@ export function SlackSettingsSheet({
   useEffect(() => {
     setLocalSlackChannels([...(slackChannels || [])]);
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
   }, [slackChannels]);
@@ -225,6 +226,7 @@ export function SlackSettingsSheet({
     if (isOpen) {
       setLocalSlackChannels([...(slackChannels || [])]);
       const currentAutoRespondWithoutMention =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (slackChannels || [])[0]?.autoRespondWithoutMention || false;
       setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     }
@@ -248,6 +250,7 @@ export function SlackSettingsSheet({
   const handleClose = () => {
     setLocalSlackChannels([...(slackChannels || [])]);
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     onOpenChange();
@@ -270,6 +273,7 @@ export function SlackSettingsSheet({
     );
 
     const currentAutoRespondWithoutMention =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     const autoRespondWithoutMentionChanged =
       autoRespondWithoutMentionEnabled !== currentAutoRespondWithoutMention;
@@ -341,7 +345,7 @@ export function SlackSettingsSheet({
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    Enhanced Default Agent
+                    Respond to all messages in channel
                   </span>
                   <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     Agent will automatically respond to all messages and thread

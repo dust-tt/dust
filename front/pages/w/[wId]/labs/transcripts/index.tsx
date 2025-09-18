@@ -162,6 +162,7 @@ export default function LabsTranscriptsIndex({
           onClose={() => setIsDeleteProviderDialogOpened(false)}
           onConfirm={async () => {
             await handleDisconnectProvider(
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               transcriptsConfiguration?.sId || null
             );
           }}
