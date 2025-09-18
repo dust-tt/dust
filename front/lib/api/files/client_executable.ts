@@ -435,6 +435,13 @@ async function getOutputForRevertAction(
   return revertOutput ?? null;
 }
 
+/**
+ * Reverts the content creation file to the previous state.
+ *
+ * This reconstructs the previous valid state by replaying edit operations chronologically
+ * from a known baseline (either the original create action or the most recent revert).
+ * This ensures consistent state reconstruction
+ */
 export async function revertClientExecutableFileToPreviousState(
   auth: Authenticator,
   {
