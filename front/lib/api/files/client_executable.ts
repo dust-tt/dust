@@ -1,9 +1,7 @@
-import { Op } from "sequelize";
-
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -338,7 +336,7 @@ function isRevertFileActionOutput(
   return (
     output.agentMCPActionId === action.id &&
     action.toolConfiguration.originalName ===
-      REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME &&
+      REVERT_CONTENT_CREATION_FILE_TOOL_NAME &&
     typeof output.content.resource === "object" &&
     output.content.resource !== null &&
     "text" in output.content.resource &&
@@ -386,7 +384,7 @@ async function fetchEditOrRevertActionsForFile(
       (action.toolConfiguration.originalName ===
         EDIT_CONTENT_CREATION_FILE_TOOL_NAME ||
         action.toolConfiguration.originalName ===
-          REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME)
+          REVERT_CONTENT_CREATION_FILE_TOOL_NAME)
   );
 }
 
@@ -460,30 +458,6 @@ async function getFileActions(
   return allFileActions.sort(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
   );
-}
-
-async function getOutputItemsForActions(
-  actionIds: number[],
-  workspaceId: number
-): Promise<Map<number, AgentMCPActionOutputItem[]>> {
-  if (actionIds.length === 0) {
-    return new Map();
-  }
-
-  const outputs = await AgentMCPActionOutputItem.findAll({
-    where: {
-      agentMCPActionId: { [Op.in]: actionIds },
-      workspaceId,
-    },
-    order: [["createdAt", "ASC"]],
-  });
-
-  return outputs.reduce((map, output) => {
-    const existing = map.get(output.agentMCPActionId) ?? [];
-    existing.push(output);
-    map.set(output.agentMCPActionId, existing);
-    return map;
-  }, new Map<number, AgentMCPActionOutputItem[]>());
 }
 
 async function getOutputForRevertAction(
@@ -603,7 +577,7 @@ export async function revertClientExecutableFileToPreviousState(
 
   if (
     mostRecentAction?.toolConfiguration.originalName ===
-    REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
   ) {
     return new Err({
       message: "Last action is a revert, cannot revert twice in a row",
@@ -622,7 +596,7 @@ export async function revertClientExecutableFileToPreviousState(
     const toolName = fileActions[i].toolConfiguration.originalName;
 
     if (
-      toolName === REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME &&
+      toolName === REVERT_CONTENT_CREATION_FILE_TOOL_NAME &&
       lastRevertAction === null
     ) {
       // Set the start index as soon as we find a revert action
