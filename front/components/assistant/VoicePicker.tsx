@@ -72,13 +72,13 @@ export function VoicePicker({
         await voiceTranscriberService.startRecording();
         return;
       }
-      await voiceTranscriberService.stopRecording("click");
+      await voiceTranscriberService.stopRecording("attachment");
       return;
     }
 
     // Hold mode: release stops the recording if active.
     if (voiceTranscriberService.isRecording) {
-      await voiceTranscriberService.stopRecording("hold");
+      await voiceTranscriberService.stopRecording("transcribe");
     }
   };
 
@@ -87,7 +87,7 @@ export function VoicePicker({
       return;
     }
     if (voiceTranscriberService.isRecording) {
-      await voiceTranscriberService.stopRecording("hold");
+      await voiceTranscriberService.stopRecording("transcribe");
     }
   };
 
@@ -96,7 +96,7 @@ export function VoicePicker({
       return;
     }
     if (voiceTranscriberService.isRecording) {
-      await voiceTranscriberService.stopRecording("click");
+      await voiceTranscriberService.stopRecording("attachment");
     }
   };
 

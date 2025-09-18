@@ -12,6 +12,8 @@ interface UseVoiceTranscriberServiceParams {
   fileUploaderService: FileUploaderService;
 }
 
+export type Mode = "transcribe" | "attachment";
+
 export function useVoiceTranscriberService({
   owner,
   onTranscribeDelta,
@@ -209,7 +211,7 @@ export function useVoiceTranscriberService({
   );
 
   const stopAndFinalize = useCallback(
-    async (reason: "hold" | "click") => {
+    async (mode: Mode) => {
       setIsRecording(false);
       setIsTranscribing(true);
 
@@ -217,7 +219,7 @@ export function useVoiceTranscriberService({
         const file = buildAudioFile(chunksRef.current);
         chunksRef.current = [];
 
-        if (reason === "hold") {
+        if (mode === "transcribe") {
           await finalizeRecordingHold(file);
         } else {
           await finalizeRecordingClick(file);
@@ -245,7 +247,7 @@ export function useVoiceTranscriberService({
   );
 
   const stopRecording = useCallback(
-    async (reason: "hold" | "click") => {
+    async (mode: Mode) => {
       const recorder = mediaRecorderRef.current;
       if (!recorder || recorder.state === "inactive") {
         return;
@@ -257,7 +259,7 @@ export function useVoiceTranscriberService({
 
       recorder.stop();
       await stopped;
-      await stopAndFinalize(reason);
+      await stopAndFinalize(mode);
     },
     [stopAndFinalize]
   );
