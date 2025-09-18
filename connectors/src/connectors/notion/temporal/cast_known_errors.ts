@@ -8,8 +8,6 @@ import type {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-// no ApplicationFailure here; we cast to ProviderTransientError and let
-// the monitoring interceptor handle retry delay.
 
 import { ProviderTransientError, ProviderWorkflowError } from "@connectors/lib/error";
 
