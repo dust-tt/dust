@@ -129,7 +129,7 @@ export function VoicePicker({
       form.append("file", file);
 
       const resp = await fetch(
-        `/api/w/${owner.sId}/services/transcribe?stream=false`,
+        `/api/w/${owner.sId}/services/transcribe?stream=true`,
         { method: "POST", body: form }
       );
 
@@ -143,8 +143,19 @@ export function VoicePicker({
         return;
       }
 
-      const res = (await resp.json()) as { text: string };
-      onTranscribeDelta(res.text);
+      // Stream Server-Sent Events and forward deltas.
+      const body = resp.body;
+      if (!body) {
+        sendNotification({
+          type: "error",
+          title: "Transcription failed.",
+          description: "Empty response while streaming transcription.",
+        });
+        return;
+      }
+
+      await readSSEFromPostRequest({ body, onTranscribeDelta });
+
       sendNotification({
         type: "success",
         title: "Voice recorded.",
@@ -485,4 +496,82 @@ const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+// There is no built-in SSE support in the Fetch API for POST, so we manually parse the stream.
+const readSSEFromPostRequest = async ({
+  body,
+  onTranscribeDelta,
+}: {
+  body: ReadableStream<Uint8Array>;
+  onTranscribeDelta: (delta: string) => void;
+}) => {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let doneStreaming = false;
+
+  try {
+    // Read until the server signals completion with a \n\n separator after a done event
+    // or the stream ends.
+    while (!doneStreaming) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE frames are separated by double newlines. Support both \n\n and \r\n\r\n.
+      // Process as many complete events as available.
+      while (!doneStreaming) {
+        const nn = buffer.indexOf("\n\n");
+        const rr = buffer.indexOf("\r\n\r\n");
+        if (nn === -1 && rr === -1) {
+          break;
+        }
+        const useNn = nn !== -1 && (rr === -1 || nn < rr);
+        const sep = useNn ? nn : rr;
+        const delimLen = useNn ? 2 : 4;
+        const eventChunk = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + delimLen);
+
+        // Extract the data line(s). Our server sends single-line data payloads.
+        const lines = eventChunk.split(/\r?\n/);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            continue;
+          }
+          if (!trimmed.startsWith("data:")) {
+            continue;
+          }
+          const payload = trimmed.slice(5).trim();
+          if (payload === "done") {
+            doneStreaming = true;
+            break;
+          }
+          try {
+            const parsed = JSON.parse(payload) as
+              | { type: "delta"; delta: string }
+              | { type: "fullTranscript"; fullTranscript: string };
+
+            if (parsed.type === "delta") {
+              onTranscribeDelta(parsed.delta);
+            } else if (parsed.type === "fullTranscript") {
+              // We already sent deltas; consider this completion signal.
+              doneStreaming = true;
+            }
+          } catch {
+            // Ignore malformed payloads and continue.
+          }
+        }
+      }
+    }
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // ignore
+    }
+  }
 };
