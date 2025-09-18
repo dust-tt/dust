@@ -159,44 +159,6 @@ export type CoreAPIRow = {
   value: Record<string, CoreAPIRowValue>;
 };
 
-export function isRowMatchingSchema(
-  row: CoreAPIRow,
-  schema: CoreAPITableSchema
-) {
-  for (const [k, v] of Object.entries(row.value)) {
-    if (v === null) {
-      continue;
-    }
-    if (typeof v === "string" && v.trim().length === 0) {
-      continue;
-    }
-    const schemaEntry = schema.find((s) => s.name === k);
-    if (!schemaEntry) {
-      return false;
-    }
-
-    if (schemaEntry.value_type === "int" && typeof v !== "number") {
-      return false;
-    } else if (schemaEntry.value_type === "float" && typeof v !== "number") {
-      return false;
-    } else if (schemaEntry.value_type === "text" && typeof v !== "string") {
-      return false;
-    } else if (schemaEntry.value_type === "bool" && typeof v !== "boolean") {
-      return false;
-    } else if (
-      schemaEntry.value_type === "datetime" &&
-      (typeof v !== "object" ||
-        !v ||
-        typeof v.epoch !== "number" ||
-        (v.string_value && typeof v.string_value !== "string"))
-    ) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 export type CoreAPIQueryResult = {
   value: Record<string, string | number | boolean | null | undefined>;
 };
@@ -1036,21 +998,15 @@ export class CoreAPI {
     const searchResults = await concurrentExecutor(
       searches,
       async (search) => {
-        const result = await this.searchDataSource(
-          search.projectId,
-          search.dataSourceId,
-          {
-            query: query,
-            topK: topK,
-            filter: search.filter,
-            view_filter: search.view_filter,
-            fullText: fullText,
-            credentials: credentials,
-            target_document_tokens: target_document_tokens,
-          }
-        );
-
-        return result;
+        return this.searchDataSource(search.projectId, search.dataSourceId, {
+          query: query,
+          topK: topK,
+          filter: search.filter,
+          view_filter: search.view_filter,
+          fullText: fullText,
+          credentials: credentials,
+          target_document_tokens: target_document_tokens,
+        });
       },
       { concurrency: 10 }
     );
@@ -1819,7 +1775,7 @@ export class CoreAPI {
         },
         body: JSON.stringify({
           rows,
-          truncate: truncate || false,
+          truncate: truncate ?? false,
         }),
       }
     );
@@ -1860,7 +1816,7 @@ export class CoreAPI {
         body: JSON.stringify({
           bucket,
           bucket_csv_path: bucketCSVPath,
-          truncate: truncate || false,
+          truncate: truncate ?? false,
         }),
       }
     );
@@ -2293,6 +2249,7 @@ export class CoreAPI {
     } catch (e) {
       const duration = Date.now() - now;
       const isAbort =
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (init && init.signal && (init.signal as AbortSignal).aborted) ||
         // Some environments throw an AbortError with name property.
         (e as any)?.name === "AbortError";
