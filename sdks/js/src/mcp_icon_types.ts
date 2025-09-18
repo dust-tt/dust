@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const MCPInternalActionIconSchema = z.enum([
-  "ActionAtomIcon",
   "ActionBrainIcon",
   "ActionCloudArrowLeftRightIcon",
   "ActionDocumentTextIcon",
