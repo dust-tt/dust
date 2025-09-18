@@ -57,7 +57,6 @@ export function isToolGeneratedFile(
 ): outputBlock is { type: "resource"; resource: ToolGeneratedFileType } {
   return (
     outputBlock.type === "resource" &&
-    outputBlock.resource.mimeType === INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE &&
     ToolGeneratedFileSchema.safeParse(outputBlock.resource).success
   );
 }
