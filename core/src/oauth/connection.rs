@@ -1,7 +1,8 @@
 use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
-        confluence::ConfluenceConnectionProvider, freshservice::FreshserviceConnectionProvider,
+        confluence::ConfluenceConnectionProvider, confluence_tools::ConfluenceToolsConnectionProvider,
+        freshservice::FreshserviceConnectionProvider,
         github::GithubConnectionProvider, gmail::GmailConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
         hubspot::HubspotConnectionProvider, intercom::IntercomConnectionProvider,
@@ -92,6 +93,7 @@ impl std::error::Error for ConnectionError {}
 #[serde(rename_all = "snake_case")]
 pub enum ConnectionProvider {
     Confluence,
+    ConfluenceTools,
     Freshservice,
     Github,
     Gong,
@@ -233,6 +235,7 @@ pub trait Provider {
 pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
+        ConnectionProvider::ConfluenceTools => Box::new(ConfluenceToolsConnectionProvider::new()),
         ConnectionProvider::Freshservice => Box::new(FreshserviceConnectionProvider::new()),
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
