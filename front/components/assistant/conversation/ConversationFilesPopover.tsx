@@ -171,13 +171,15 @@ export function ConversationFilesPopover({
   owner,
 }: ConversationFilesPopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [shouldDisableConversationFiles, setShouldDisableConversationFiles] =
+    React.useState(true);
 
   const { conversationFiles, isConversationFilesLoading } =
     useConversationFiles({
       conversationId,
       owner,
       options: {
-        disabled: !isOpen,
+        disabled: shouldDisableConversationFiles,
       },
     });
 
@@ -205,7 +207,17 @@ export function ConversationFilesPopover({
   }
 
   return (
-    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+    <PopoverRoot
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        // If we're opening, we enable the hook right away.
+        if (open) {
+          setShouldDisableConversationFiles(false);
+        }
+        // If we're closing, we don't disable the file hook immediately to prevent flickering.
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           size="sm"
@@ -218,6 +230,11 @@ export function ConversationFilesPopover({
         className="flex w-96 flex-col gap-3"
         align="end"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onAnimationEnd={() => {
+          if (!isOpen) {
+            setShouldDisableConversationFiles(true);
+          }
+        }}
       >
         <ScrollArea className="flex flex-col gap-3">
           <div className="heading-lg text-primary dark:text-primary-night">
