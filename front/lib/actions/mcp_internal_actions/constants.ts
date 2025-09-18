@@ -1026,7 +1026,7 @@ The directive should be used to display a clickable version of the agent name in
     },
   },
   openai_usage: {
-    id: 31,
+    id: 32,
     availability: "manual",
     allowMultipleInstances: false,
     isPreview: true,

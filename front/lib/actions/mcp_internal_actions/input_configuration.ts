@@ -836,6 +836,9 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
+  const mayRequireSecretConfiguration =
+    mcpServerView.server.requiresSecret === true;
+
   // TODO: We'll handle the sources and tables later
   const hasDefaultsForAllConfigurableValues =
     stringConfigurations.every((config) => config.default !== undefined) &&
@@ -859,6 +862,7 @@ export function getMCPServerToolsConfigurations(
     mayRequireDustAppConfiguration ||
     mayRequireTimeFrameConfiguration ||
     mayRequireJsonSchemaConfiguration ||
+    mayRequireSecretConfiguration ||
     stringConfigurations.length > 0 ||
     numberConfigurations.length > 0 ||
     booleanConfigurations.length > 0 ||
@@ -874,9 +878,6 @@ export function getMCPServerToolsConfigurations(
   } else {
     configurable = "no";
   }
-
-  const mayRequireSecretConfiguration =
-    mcpServerView.server.requiresSecret === true;
 
   return {
     mayRequireDataSourceConfiguration,
