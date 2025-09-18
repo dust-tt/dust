@@ -430,11 +430,15 @@ async function getFileActions(
     conversationId
   );
 
+  logger.info({ editOrRevertActions }, "Edit or revert actions");
+
   // Get create actions for the file
   const createActions = await fetchCreateActionsForConversation(
     auth,
     conversationId
   );
+
+  logger.info({ createActions }, "Create actions");
 
   // Find the create action that created our file
   const fileCreationAction = await findCreateActionForFile(
@@ -446,6 +450,8 @@ async function getFileActions(
   const allFileActions = fileCreationAction
     ? [...editOrRevertActions, fileCreationAction]
     : editOrRevertActions;
+
+  logger.info({ allFileActions }, "All file actions");
 
   return allFileActions.sort(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
@@ -568,6 +574,27 @@ export async function revertClientExecutableFileToPreviousState(
 
   if (fileActions.length === 0) {
     return new Err(new Error("No MCP actions found for this file"));
+  }
+
+  // Validate that the most recent action is not already a revert
+  const mostRecentAction = fileActions[fileActions.length - 1];
+
+  if (
+    mostRecentAction?.toolConfiguration.originalName ===
+    CREATE_CONTENT_CREATION_FILE_TOOL_NAME
+  ) {
+    return new Err(
+      new Error("Last action is a create, cannot revert to a create")
+    );
+  }
+
+  if (
+    mostRecentAction?.toolConfiguration.originalName ===
+    REVERT_LAST_EDIT_TOOL_NAME
+  ) {
+    return new Err(
+      new Error("Last action is a revert, cannot revert twice in a row")
+    );
   }
 
   let lastRevertIndex = -1;
