@@ -14,10 +14,10 @@ import type {
   ChildAgentBlob,
   RunAgentBlockingEvent,
 } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import { makeToolBlockedAwaitingInputResponse } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import {
   makeInternalMCPServer,
   makeMCPToolExit,
-  makeToolBlockedAwaitingInputResponse,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type {
