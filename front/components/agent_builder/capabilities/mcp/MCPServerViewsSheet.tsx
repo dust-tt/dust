@@ -53,6 +53,7 @@ import { AdditionalConfigurationSection } from "@app/components/agent_builder/ca
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
+import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -598,8 +599,15 @@ export function MCPServerViewsSheet({
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
-                  allowNameEdit={configurationTool.configurable}
                 />
+
+                {configurationTool.configurable && (
+                  <NameSection
+                    title="Name"
+                    placeholder="My tool name…"
+                    triggerValidationOnChange
+                  />
+                )}
 
                 {toolsConfigurations.mayRequireReasoningConfiguration && (
                   <ReasoningModelSection />
