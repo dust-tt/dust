@@ -38,6 +38,7 @@ export const MCPExternalActionIconSchema = z.enum([
   "ActionArmchairIcon",
   "ActionArrowDownOnSquareIcon",
   "ActionArrowUpOnSquareIcon",
+  "ActionAtomIcon",
   "ActionAttachmentIcon",
   "ActionBankIcon",
   "ActionBarcodeIcon",
