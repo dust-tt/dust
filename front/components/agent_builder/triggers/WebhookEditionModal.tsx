@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   Input,
   Label,
@@ -50,8 +51,6 @@ interface WebhookEditionModalProps {
 type WebhookOption = {
   value: string;
   label: string;
-  sourceName: string;
-  spaceName: string | null;
 };
 
 export function WebhookEditionModal({
@@ -85,8 +84,7 @@ export function WebhookEditionModal({
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
     useWebhookSourcesWithViews({ owner });
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const isEditor = !trigger?.editor || trigger?.editor === user?.id;
+  const isEditor = trigger?.editor ? trigger?.editor === user?.id : false;
 
   const spaceById = useMemo(() => {
     return new Map(spaces.map((space) => [space.sId, space.name]));
@@ -107,8 +105,6 @@ export function WebhookEditionModal({
           options.push({
             value: view.sId,
             label: view.customName ?? wsv.name,
-            sourceName: wsv.name,
-            spaceName: spaceById.get(view.spaceId) ?? null,
           });
         });
     });
@@ -127,12 +123,7 @@ export function WebhookEditionModal({
       return;
     }
 
-    const includePayload =
-      trigger.configuration &&
-      "includePayload" in trigger.configuration &&
-      typeof trigger.configuration.includePayload === "boolean"
-        ? trigger.configuration.includePayload
-        : false;
+    const includePayload = trigger.configuration.includePayload;
 
     form.reset({
       name: trigger.name,
@@ -142,7 +133,7 @@ export function WebhookEditionModal({
     });
   }, [defaultValues, form, isOpen, trigger]);
 
-  const handleCancel = () => {
+  const handleClose = () => {
     form.reset(defaultValues);
     onClose();
   };
@@ -169,11 +160,11 @@ export function WebhookEditionModal({
     };
 
     onSave(triggerData);
-    handleCancel();
+    handleClose();
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
+    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
@@ -227,6 +218,7 @@ export function WebhookEditionModal({
                       <Button
                         id="webhook-source"
                         variant="outline"
+                        isSelect
                         className="w-fit"
                         disabled={!isEditor}
                         label={
@@ -239,28 +231,13 @@ export function WebhookEditionModal({
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuItem
-                        key="none"
-                        disabled
-                        label="Select webhook source"
-                        onClick={() => {
-                          if (!isEditor) {
-                            return;
-                          }
-                          form.setValue("webhookSourceViewSId", "", {
-                            shouldValidate: true,
-                          });
-                        }}
-                      />
+                      <DropdownMenuLabel label="Select webhook source" />
                       {webhookOptions.map((option) => (
                         <DropdownMenuItem
                           key={option.value}
                           label={option.label}
-                          description={option.sourceName}
+                          disabled={!isEditor}
                           onClick={() => {
-                            if (!isEditor) {
-                              return;
-                            }
                             form.setValue(
                               "webhookSourceViewSId",
                               option.value,
@@ -320,7 +297,7 @@ export function WebhookEditionModal({
               ? {
                   label: "Cancel",
                   variant: "outline",
-                  onClick: handleCancel,
+                  onClick: handleClose,
                 }
               : undefined
           }
@@ -331,7 +308,7 @@ export function WebhookEditionModal({
                 : "Close"
               : "Add Webhook",
             variant: "primary",
-            onClick: isEditor ? form.handleSubmit(onSubmit) : handleCancel,
+            onClick: isEditor ? form.handleSubmit(onSubmit) : handleClose,
             disabled: form.formState.isSubmitting,
           }}
         />

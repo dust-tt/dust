@@ -68,7 +68,8 @@ export function ScheduleEditionModal({
   onSave,
 }: ScheduleEditionModalProps) {
   const { user } = useUser();
-  const isEditor = !trigger?.editor || trigger?.editor === user?.id;
+
+  const isEditor = trigger?.editor ? trigger?.editor === user?.id : false;
 
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
