@@ -12,7 +12,7 @@ interface NameSectionProps {
   triggerValidationOnChange?: boolean;
 }
 
-const DEFAULT_FIELD_NAME = "name";
+export const NAME_FIELD_NAME = "name";
 
 export const NameSection = forwardRef<HTMLInputElement, NameSectionProps>(
   (
@@ -27,11 +27,11 @@ export const NameSection = forwardRef<HTMLInputElement, NameSectionProps>(
     ref
   ) => {
     return (
-      <BaseFormFieldSection<HTMLInputElement>
+      <BaseFormFieldSection
         title={title}
         description={description}
         helpText={helpText}
-        fieldName={DEFAULT_FIELD_NAME}
+        fieldName={NAME_FIELD_NAME}
         triggerValidationOnChange={triggerValidationOnChange}
       >
         {({ registerRef, registerProps, onChange, errorMessage, hasError }) => {

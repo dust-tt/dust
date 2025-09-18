@@ -1,4 +1,5 @@
 import { TextArea } from "@dust-tt/sparkle";
+
 import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
 
 interface DescriptionSectionProps {
@@ -7,11 +8,10 @@ interface DescriptionSectionProps {
   label?: string;
   placeholder: string;
   maxLength?: number;
-  fieldName?: string; // defaults to "description"
   triggerValidationOnChange?: boolean;
 }
 
-const DEFAULT_FIELD_NAME = "description" as const;
+const DESCRIPTION_FIELD_NAME = "description";
 
 export function DescriptionSection({
   title,
@@ -19,14 +19,13 @@ export function DescriptionSection({
   label,
   placeholder,
   maxLength,
-  fieldName = DEFAULT_FIELD_NAME,
   triggerValidationOnChange = false,
 }: DescriptionSectionProps) {
   return (
-    <BaseFormFieldSection<HTMLTextAreaElement>
+    <BaseFormFieldSection
       title={title}
       description={description}
-      fieldName={fieldName}
+      fieldName={DESCRIPTION_FIELD_NAME}
       triggerValidationOnChange={triggerValidationOnChange}
     >
       {({ registerRef, registerProps, onChange, errorMessage }) => (
@@ -37,7 +36,7 @@ export function DescriptionSection({
             placeholder={placeholder}
             rows={4}
             maxLength={maxLength}
-            showErrorLabel={true}
+            showErrorLabel
             error={errorMessage}
             onChange={onChange}
             {...registerProps}
