@@ -600,7 +600,7 @@ export async function runModelActivity(
             cached_tokens?: number;
           };
         } | null;
-        const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
+        const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
 
         // Determine the region based on feature flag and current region
         let region = "us";
