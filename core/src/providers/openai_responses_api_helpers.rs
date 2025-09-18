@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::info;
+use tracing::{info, warn};
 
 use super::{
     chat_messages::{
@@ -220,6 +220,7 @@ fn strip_null_chars(s: &str) -> String {
 fn responses_api_input_from_chat_messages(
     messages: &Vec<ChatMessage>,
     transform_system_messages: TransformSystemMessages,
+    use_openai_eu_host: bool,
 ) -> Result<Vec<OpenAIResponseInputItem>> {
     let mut input_items = Vec::new();
 
@@ -274,6 +275,27 @@ fn responses_api_input_from_chat_messages(
                 for item in assistant_msg.contents.as_ref().unwrap_or(&vec![]) {
                     match item {
                         AssistantContentItem::Reasoning { value } => {
+                            // The encrypted content is only usable if it was generated in the same region
+                            // as the one being used to call the API, since OpenAI uses different keys per region.
+                            // So if we find a mismatch, we skip adding this reasoning item to the input.
+                            // This might degrade the quality, but it's better than blowing up.
+                            let region = value.region.as_deref();
+                            let is_mismatch = match (use_openai_eu_host, region) {
+                                // We treat no region as US
+                                (true, Some("us")) | (true, None) => true,
+                                (false, Some("eu")) => true,
+                                _ => false,
+                            };
+
+                            if is_mismatch {
+                                warn!(
+                                    region,
+                                    use_openai_eu_host,
+                                    "Skipping reasoning metadata due to region mismatch. This is expected if a conversation was started with OpenAI US and is now being continued with OpenAI EU, or vice versa."
+                                );
+                                continue;
+                            }
+
                             // Parse metadata JSON to extract ID and encrypted content
                             let metadata: Value =
                                 serde_json::from_str(&value.metadata).map_err(|e| {
@@ -376,6 +398,7 @@ fn assistant_chat_message_from_responses_api_output(
                     value: ReasoningContent {
                         reasoning,
                         metadata: metadata.to_string(),
+                        region: None,
                     },
                 });
             }
@@ -445,6 +468,7 @@ pub async fn openai_responses_api_completion(
     event_sender: Option<UnboundedSender<Value>>,
     transform_system_messages: TransformSystemMessages,
     provider_name: String,
+    use_openai_eu_host: bool,
 ) -> Result<LLMChatGeneration> {
     let is_reasoning_model = model_id.starts_with("o3")
         || model_id.starts_with("o1")
@@ -487,7 +511,11 @@ pub async fn openai_responses_api_completion(
         ),
     };
 
-    let input = responses_api_input_from_chat_messages(messages, transform_system_messages)?;
+    let input = responses_api_input_from_chat_messages(
+        messages,
+        transform_system_messages,
+        use_openai_eu_host,
+    )?;
 
     let tools: Vec<OpenAIResponseAPITool> = functions
         .iter()
@@ -1192,7 +1220,7 @@ mod tests {
 
         let messages = vec![user_message];
         let result =
-            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
                 .unwrap();
 
         assert_eq!(result.len(), 1);
@@ -1230,7 +1258,7 @@ mod tests {
 
         let messages = vec![user_message];
         let result =
-            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
                 .unwrap();
 
         assert_eq!(result.len(), 1);
@@ -1286,7 +1314,7 @@ mod tests {
         ];
 
         let result =
-            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep)
+            responses_api_input_from_chat_messages(&messages, TransformSystemMessages::Keep, false)
                 .unwrap();
 
         assert_eq!(result.len(), 2);
