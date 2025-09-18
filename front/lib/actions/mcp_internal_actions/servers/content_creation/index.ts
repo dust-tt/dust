@@ -8,7 +8,7 @@ import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_LAST_EDIT_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -20,6 +20,7 @@ import {
   revertClientExecutableFileToPreviousState,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { ContentCreationFileContentType } from "@app/types";
 import {
   clientExecutableContentType,
@@ -35,20 +36,9 @@ const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
  */
 function buildContentCreationFileNotification(
   progressToken: string | number,
-  fileResource: {
-    sId: string;
-    contentType: string;
-    fileName: string;
-    updatedAtMs: number;
-  },
-  operation: "create" | "update" | "revert"
+  fileResource: FileResource,
+  label: string
 ): MCPProgressNotificationType {
-  const operationLabels = {
-    create: "Creating Content Creation file...",
-    update: "Updating Content Creation file...",
-    revert: "Reverting Content Creation file...",
-  };
-
   return {
     method: "notifications/progress",
     params: {
@@ -56,7 +46,7 @@ function buildContentCreationFileNotification(
       total: 1,
       progressToken,
       data: {
-        label: operationLabels[operation],
+        label,
         output: {
           type: "content_creation_file",
           fileId: fileResource.sId,
@@ -164,7 +154,7 @@ const createServer = (
             buildContentCreationFileNotification(
               _meta.progressToken,
               fileResource,
-              "create"
+              "Creating Content Creation file..."
             );
 
           // Send a notification to the MCP Client, to display the Content Creation file.
@@ -269,7 +259,7 @@ const createServer = (
             buildContentCreationFileNotification(
               _meta.progressToken,
               fileResource,
-              "update"
+              "Updating Content Creation file..."
             );
 
           // Send a notification to the MCP Client, to refresh the Content Creation file.
@@ -278,8 +268,16 @@ const createServer = (
 
         return new Ok([
           {
-            type: "text",
-            text: responseText,
+            type: "resource",
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_CREATION_RESULT,
+              fileId: fileResource.sId,
+              title: fileResource.fileName,
+              contentType: fileResource.contentType,
+              snippet: fileResource.snippet,
+              uri: fileResource.getPublicUrl(auth),
+              text: responseText,
+            },
           },
         ]);
       }
@@ -287,7 +285,7 @@ const createServer = (
   );
 
   server.tool(
-    REVERT_LAST_EDIT_TOOL_NAME,
+    REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME,
     "Reverts the content creation to the state it was at the last agent message. " +
       "This tool can be used to restore the content creation file to its state before the last agent message. " +
       "Use this when you need to undo changes made in the last agent message and return to the previous state.",
@@ -300,7 +298,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: REVERT_LAST_EDIT_TOOL_NAME, agentLoopContext },
+      {
+        toolName: REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME,
+        agentLoopContext,
+      },
       async ({ file_id }, { sendNotification, _meta }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(
@@ -336,7 +337,7 @@ const createServer = (
             buildContentCreationFileNotification(
               _meta.progressToken,
               fileResource,
-              "revert"
+              "Reverting Content Creation file..."
             );
 
           // Send a notification to the MCP Client, to refresh the Content Creation file.

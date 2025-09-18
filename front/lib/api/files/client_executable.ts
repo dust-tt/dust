@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_LAST_EDIT_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,7 +14,11 @@ import {
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { ContentCreationFileContentType, Result } from "@app/types";
+import type {
+  ContentCreationFileContentType,
+  ModelId,
+  Result,
+} from "@app/types";
 import {
   clientExecutableContentType,
   CONTENT_CREATION_FILE_FORMATS,
@@ -326,23 +330,28 @@ function isCreateFileResourceOutput(
 }
 
 function isRevertFileActionOutput(
-  output: AgentMCPActionOutputItem
+  output: AgentMCPActionOutputItem,
+  action: AgentMCPActionModel
 ): output is AgentMCPActionOutputItem & {
   content: { type: "text"; text: string };
 } {
   return (
-    output.content.type === "text" && typeof output.content.text === "string"
+    output.agentMCPActionId === action.id &&
+    action.toolConfiguration.originalName ===
+      REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME &&
+    output.content.type === "text" &&
+    typeof output.content.text === "string"
   );
 }
 
 async function fetchEditOrRevertActionsForFile(
   auth: Authenticator,
   fileId: string,
-  conversationId: number
+  conversationId: ModelId
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  // TODO (content-creation): Use AgentMCPActionResource instead of AgentMCPActionModel
+  // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
   return AgentMCPActionModel.findAll({
     include: [
       {
@@ -372,7 +381,10 @@ async function fetchEditOrRevertActionsForFile(
               "toolConfiguration.originalName":
                 EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
             },
-            { "toolConfiguration.originalName": REVERT_LAST_EDIT_TOOL_NAME },
+            {
+              "toolConfiguration.originalName":
+                REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME,
+            },
           ],
         },
         { "augmentedInputs.file_id": fileId },
@@ -384,11 +396,11 @@ async function fetchEditOrRevertActionsForFile(
 
 async function fetchCreateActionsForConversation(
   auth: Authenticator,
-  conversationId: number
+  conversationId: ModelId
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  // TODO (content-creation): Use AgentMCPActionResource instead of AgentMCPActionModel
+  // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
   return AgentMCPActionModel.findAll({
     include: [
       {
@@ -420,7 +432,7 @@ async function fetchCreateActionsForConversation(
 async function getFileActions(
   auth: Authenticator,
   fileId: string,
-  conversationId: number
+  conversationId: ModelId
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -477,8 +489,8 @@ async function getOutputItemsForActions(
   }, new Map<number, AgentMCPActionOutputItem[]>());
 }
 
-async function getOutputForAction(
-  actionId: number,
+async function getOutputForRevertAction(
+  action: AgentMCPActionModel,
   workspaceId: number
 ): Promise<
   | (AgentMCPActionOutputItem & { content: { type: "text"; text: string } })
@@ -486,15 +498,16 @@ async function getOutputForAction(
 > {
   const outputs = await AgentMCPActionOutputItem.findAll({
     where: {
-      agentMCPActionId: actionId,
+      agentMCPActionId: action.id,
       workspaceId,
     },
     order: [["createdAt", "ASC"]],
   });
 
   const revertOutput = outputs.find((output) =>
-    isRevertFileActionOutput(output)
+    isRevertFileActionOutput(output, action)
   );
+
   return revertOutput
     ? (revertOutput as AgentMCPActionOutputItem & {
         content: { type: "text"; text: string };
@@ -544,7 +557,7 @@ export async function revertClientExecutableFileToPreviousState(
     revertedByAgentConfigurationId,
   }: {
     fileId: string;
-    conversationId: number;
+    conversationId: ModelId;
     revertedByAgentConfigurationId: string;
   }
 ): Promise<
@@ -591,7 +604,7 @@ export async function revertClientExecutableFileToPreviousState(
 
   if (
     mostRecentAction?.toolConfiguration.originalName ===
-    REVERT_LAST_EDIT_TOOL_NAME
+    REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME
   ) {
     return new Err({
       message: "Last action is a revert, cannot revert twice in a row",
@@ -608,7 +621,10 @@ export async function revertClientExecutableFileToPreviousState(
   for (let i = fileActions.length - 1; i >= 0; i--) {
     const toolName = fileActions[i].toolConfiguration.originalName;
 
-    if (toolName === REVERT_LAST_EDIT_TOOL_NAME && lastRevertIndex === -1) {
+    if (
+      toolName === REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME &&
+      lastRevertIndex === -1
+    ) {
       lastRevertIndex = i;
     }
 
@@ -633,8 +649,8 @@ export async function revertClientExecutableFileToPreviousState(
     const revertAction = fileActions[lastRevertIndex];
     startIndex = lastRevertIndex;
 
-    const revertItemOutput = await getOutputForAction(
-      revertAction.id,
+    const revertItemOutput = await getOutputForRevertAction(
+      revertAction,
       workspaceId
     );
 
