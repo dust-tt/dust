@@ -85,7 +85,7 @@ function generateConfiguredInput({
         keyPath.split(".")
       );
       if (propSchema) {
-        // Handle both object-level default {value, mimeType} and property-level default
+        // Handle both object-level default {value, mimeType}
         if (
           propSchema.default &&
           typeof propSchema.default === "object" &&
@@ -98,19 +98,6 @@ function generateConfiguredInput({
             // Invalid object-level default type - throw specific error
             throw new Error(
               `Expected ${expectedType} value for key ${keyPath}, got ${typeof propSchema.default.value}`
-            );
-          }
-        } else if (
-          propSchema.properties?.value &&
-          isJSONSchemaObject(propSchema.properties.value) &&
-          propSchema.properties.value.default !== undefined
-        ) {
-          if (typeGuard(propSchema.properties.value.default)) {
-            value = propSchema.properties.value.default;
-          } else {
-            // Invalid property-level default type - throw specific error
-            throw new Error(
-              `Expected ${expectedType} value for key ${keyPath}, got ${typeof propSchema.properties.value.default}`
             );
           }
         }
@@ -265,7 +252,7 @@ function generateConfiguredInput({
           keyPath.split(".")
         );
         if (propSchema) {
-          // Handle both object-level default {values, mimeType} and property-level default
+          // Handle both object-level default {values, mimeType}
           if (
             propSchema.default &&
             typeof propSchema.default === "object" &&
@@ -286,27 +273,6 @@ function generateConfiguredInput({
                   Array.isArray(propSchema.default.values)
                     ? "array with non-string elements"
                     : typeof propSchema.default.values
-                }`
-              );
-            }
-          } else if (
-            propSchema.properties?.values &&
-            isJSONSchemaObject(propSchema.properties.values)
-          ) {
-            if (
-              Array.isArray(propSchema.properties.values.default) &&
-              propSchema.properties.values.default.every(
-                (v): v is string => typeof v === "string"
-              )
-            ) {
-              values = propSchema.properties.values.default;
-            } else {
-              // Invalid property-level default type - throw specific error
-              throw new Error(
-                `Expected array of string values for key ${keyPath}, got ${
-                  Array.isArray(propSchema.properties.values.default)
-                    ? "array with non-string elements"
-                    : typeof propSchema.properties.values.default
                 }`
               );
             }
@@ -611,13 +577,37 @@ export function getMCPServerToolsConfigurations(
       return schema.default.value;
     }
 
-    // Try property-level default: { properties: { value: { default: T } } }
-    if (
-      schema.properties?.value &&
-      isJSONSchemaObject(schema.properties.value) &&
-      typeGuard(schema.properties.value.default)
+    return undefined;
+  }
+
+  function extractSchemaDefaultArray<T>(
+    schema: JSONSchema,
+    typeGuard: (value: unknown) => value is T
+  ): T[] | undefined {
+
+    // findPathsToConfiguration returns an empty object if the schema default is an empty Array
+    if (schema.default &&
+      typeof schema.default === "object" &&
+      Object.keys(schema.default).length === 0
     ) {
-      return schema.properties.value.default;
+      return [];
+    }
+
+    // Try object-level default first: { default: T[] }
+    if (
+      schema.default &&
+      typeof schema.default === "object" &&
+      schema.default !== null
+    ) {
+      const defaults: T[] = [];
+      Object.entries(schema.default).map(
+        ([index, value]) => {
+          if (typeof index === "string" && Number.isInteger(Number(index)) && typeGuard(value)) {
+            defaults.push(value);
+          }
+        }
+      )
+      return defaults;
     }
 
     return undefined;
@@ -635,19 +625,26 @@ export function getMCPServerToolsConfigurations(
     return Object.values(config).length > 0 ? Object.values(config).every((c) => c.default !== undefined) ? "optional": "required" : "no";
   }
 
-  const dataSourceConfiguration =
+  const dataSourceConfigurationPaths =
     Object.values(
       findPathsToConfiguration({
         mcpServerView,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
       })
-    ).map((schema) => ({
+    );
+
+    console.log("dataSourceConfigurationPaths", dataSourceConfigurationPaths);
+    
+    const dataSourceConfiguration = dataSourceConfigurationPaths.map((schema) => ({
       description: schema.description,
-      default: extractSchemaDefault(
+      default: extractSchemaDefaultArray(
         schema,
-        (v: unknown): v is { uri: string }[] => Array.isArray(v) && v.every((v) => typeof v === "object" && "uri" in v)
+        (v: unknown): v is { uri: string } => v !== null && typeof v === "object" && "uri" in v
       ),
     })).at(0);
+
+
+    console.log("dataSourceConfiguration", dataSourceConfiguration);
   
 
   const dataWarehouseConfiguration =
@@ -658,9 +655,9 @@ export function getMCPServerToolsConfigurations(
       })
     ).map((schema) => ({
       description: schema.description,
-      default: extractSchemaDefault(
+      default: extractSchemaDefaultArray(
         schema,
-        (v: unknown): v is { uri: string }[] => Array.isArray(v) && v.every((v) => typeof v === "object" && "uri" in v)
+        (v: unknown): v is { uri: string } => v !== null && typeof v === "object" && "uri" in v,
       ),
     })).at(0);
 
@@ -673,9 +670,9 @@ export function getMCPServerToolsConfigurations(
       })
     ).map((schema) => ({
       description: schema.description,
-      default: extractSchemaDefault(
+      default: extractSchemaDefaultArray(
         schema,
-        (v: unknown): v is { uri: string }[] => Array.isArray(v) && v.every((v) => typeof v === "object" && "uri" in v)
+        (v: unknown): v is { uri: string } => v !== null && typeof v === "object" && "uri" in v
       ),
     })).at(0);
 
@@ -694,6 +691,14 @@ export function getMCPServerToolsConfigurations(
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
       })
     ).length > 0;
+
+
+    console.log("reasoning_config_path", Object.entries(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+      })
+    ));
 
   // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
   const disabledToolNames =
@@ -874,7 +879,7 @@ export function getMCPServerToolsConfigurations(
       configurableRecord(listConfigurations),
     ]
 
-    const configurable = configurables.every((c) => c === "no") ? "no" : configurables.every((c) => c === "optional") ? "optional" : "required";
+    const configurable = configurables.every((c) => c === "no") ? "no" : configurables.every((c) => c === "optional" || c === "no") ? "optional" : "required";
 
 
   return {
