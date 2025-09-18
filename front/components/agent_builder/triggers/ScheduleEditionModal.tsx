@@ -157,7 +157,12 @@ export function ScheduleEditionModal({
       default:
         assertNever(naturalDescriptionToCronRuleStatus);
     }
-  }, [naturalDescriptionToCronRuleStatus, cron, generatedTimezone, cronErrorMessage]);
+  }, [
+    naturalDescriptionToCronRuleStatus,
+    cron,
+    generatedTimezone,
+    cronErrorMessage,
+  ]);
 
   const handleCancel = () => {
     onClose();
