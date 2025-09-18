@@ -369,17 +369,13 @@ export function useVisualizationRevert({
   workspaceId,
   conversationId,
   agentConfigurationId,
-  fileName,
-  fileId,
 }: {
   workspaceId: string | null;
   conversationId: string | null;
   agentConfigurationId: string | null;
-  fileName?: string;
-  fileId: string
 }) {
   const handleVisualizationRevert = useCallback(
-    async (): Promise<boolean> => {
+    async (fileId: string, fileName?: string): Promise<boolean> => {
       try {
         const response = await fetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,

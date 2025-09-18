@@ -136,8 +136,6 @@ export function ClientExecutableRenderer({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
     agentConfigurationId: lastEditedByAgentConfigurationId ?? null,
-    fileName,
-    fileId,
   });
 
   const isFileUsingConversationFiles = React.useMemo(
@@ -238,7 +236,7 @@ export function ClientExecutableRenderer({
           size="xs"
           icon={ArrowGoBackIcon}
           tooltip={"Revert the last change"}
-          onClick={handleVisualizationRevert}
+          onClick={() => handleVisualizationRevert(fileId, fileName)}
         />
         <Button
           icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
