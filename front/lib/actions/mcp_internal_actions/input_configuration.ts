@@ -528,9 +528,18 @@ The "mayRequire" properties are true in one of two cases:
   2. There is a property with a default value that may still be changed by the user.
 */
 export interface MCPServerToolsConfigurations {
-  mayRequireDataSourceConfiguration: boolean;
-  mayRequireDataWarehouseConfiguration: boolean;
-  mayRequireTableConfiguration: boolean;
+  dataSourceConfiguration?: {
+    description?: string;
+    default?: { uri: string}[];
+  }
+  dataWarehouseConfiguration?: {
+    description?: string;
+    default?: { uri: string}[];
+  }
+  tableConfiguration?: {
+    description?: string;
+    default?: { uri: string}[];
+  }
   mayRequireChildAgentConfiguration: boolean;
   mayRequireReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
@@ -572,9 +581,6 @@ export function getMCPServerToolsConfigurations(
 ): MCPServerToolsConfigurations {
   if (!mcpServerView) {
     return {
-      mayRequireDataSourceConfiguration: false,
-      mayRequireDataWarehouseConfiguration: false,
-      mayRequireTableConfiguration: false,
       mayRequireChildAgentConfiguration: false,
       mayRequireReasoningConfiguration: false,
       mayRequireTimeFrameConfiguration: false,
@@ -590,29 +596,88 @@ export function getMCPServerToolsConfigurations(
   }
   const { server } = mcpServerView;
 
-  const mayRequireDataSourceConfiguration =
-    Object.keys(
+  function extractSchemaDefault<T>(
+    schema: JSONSchema,
+    typeGuard: (value: unknown) => value is T
+  ): T | undefined {
+    // Try object-level default first: { value: T, mimeType: "..." }
+    if (
+      schema.default &&
+      typeof schema.default === "object" &&
+      schema.default !== null &&
+      "value" in schema.default &&
+      typeGuard(schema.default.value)
+    ) {
+      return schema.default.value;
+    }
+
+    // Try property-level default: { properties: { value: { default: T } } }
+    if (
+      schema.properties?.value &&
+      isJSONSchemaObject(schema.properties.value) &&
+      typeGuard(schema.properties.value.default)
+    ) {
+      return schema.properties.value.default;
+    }
+
+    return undefined;
+  }
+
+  function configurableOptional<T extends { default?: unknown }>(config?: T): "no" | "optional" | "required" {
+    return config !== undefined ? config.default === undefined ? "required": "optional" : "no";
+  }
+
+  function configurableArray<T extends { default?: unknown }>(config: T[]): "no" | "optional" | "required" {
+    return config.length > 0 ? config.every((c) => c.default !== undefined) ? "optional": "required" : "no";
+  }
+
+  function configurableRecord<T extends { default?: unknown }>(config: Record<string, T>): "no" | "optional" | "required" {
+    return Object.values(config).length > 0 ? Object.values(config).every((c) => c.default !== undefined) ? "optional": "required" : "no";
+  }
+
+  const dataSourceConfiguration =
+    Object.values(
       findPathsToConfiguration({
         mcpServerView,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
       })
-    ).length > 0;
+    ).map((schema) => ({
+      description: schema.description,
+      default: extractSchemaDefault(
+        schema,
+        (v: unknown): v is { uri: string }[] => Array.isArray(v) && v.every((v) => typeof v === "object" && "uri" in v)
+      ),
+    })).at(0);
+  
 
-  const mayRequireDataWarehouseConfiguration =
-    Object.keys(
+  const dataWarehouseConfiguration =
+    Object.values(
       findPathsToConfiguration({
         mcpServerView,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
       })
-    ).length > 0;
+    ).map((schema) => ({
+      description: schema.description,
+      default: extractSchemaDefault(
+        schema,
+        (v: unknown): v is { uri: string }[] => Array.isArray(v) && v.every((v) => typeof v === "object" && "uri" in v)
+      ),
+    })).at(0);
 
-  const mayRequireTableConfiguration =
-    Object.keys(
+
+  const tableConfiguration =
+    Object.values(
       findPathsToConfiguration({
         mcpServerView,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
       })
-    ).length > 0;
+    ).map((schema) => ({
+      description: schema.description,
+      default: extractSchemaDefault(
+        schema,
+        (v: unknown): v is { uri: string }[] => Array.isArray(v) && v.every((v) => typeof v === "object" && "uri" in v)
+      ),
+    })).at(0);
 
   const mayRequireChildAgentConfiguration =
     Object.keys(
@@ -648,33 +713,6 @@ export function getMCPServerToolsConfigurations(
   const mayRequireJsonSchemaConfiguration = enabledTools.some(
     (tool) => tool.inputSchema?.properties?.jsonSchema
   );
-
-  function extractSchemaDefault<T>(
-    schema: JSONSchema,
-    typeGuard: (value: unknown) => value is T
-  ): T | undefined {
-    // Try object-level default first: { value: T, mimeType: "..." }
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      schema.default !== null &&
-      "value" in schema.default &&
-      typeGuard(schema.default.value)
-    ) {
-      return schema.default.value;
-    }
-
-    // Try property-level default: { properties: { value: { default: T } } }
-    if (
-      schema.properties?.value &&
-      isJSONSchemaObject(schema.properties.value) &&
-      typeGuard(schema.properties.value.default)
-    ) {
-      return schema.properties.value.default;
-    }
-
-    return undefined;
-  }
 
   const stringConfigurations = Object.entries(
     findPathsToConfiguration({
@@ -824,49 +862,25 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
-  // TODO: We'll handle the sources and tables later
-  const hasDefaultsForAllConfigurableValues =
-    stringConfigurations.every((config) => config.default !== undefined) &&
-    numberConfigurations.every((config) => config.default !== undefined) &&
-    booleanConfigurations.every((config) => config.default !== undefined) &&
-    Object.values(enumConfigurations).every(
-      (config) => config.default !== undefined
-    ) &&
-    Object.values(listConfigurations).every(
-      (config) => config.default !== undefined
-    );
 
-  let configurable: "no" | "optional" | "required" = "no";
+    const configurables = [
+      configurableOptional(dataSourceConfiguration),
+      configurableOptional(dataWarehouseConfiguration),
+      configurableOptional(tableConfiguration),
+      configurableArray(stringConfigurations),
+      configurableArray(numberConfigurations),
+      configurableArray(booleanConfigurations),
+      configurableRecord(enumConfigurations),
+      configurableRecord(listConfigurations),
+    ]
 
-  const isConfigurable =
-    mayRequireDataSourceConfiguration ||
-    mayRequireDataWarehouseConfiguration ||
-    mayRequireTableConfiguration ||
-    mayRequireChildAgentConfiguration ||
-    mayRequireReasoningConfiguration ||
-    mayRequireDustAppConfiguration ||
-    mayRequireTimeFrameConfiguration ||
-    mayRequireJsonSchemaConfiguration ||
-    stringConfigurations.length > 0 ||
-    numberConfigurations.length > 0 ||
-    booleanConfigurations.length > 0 ||
-    Object.keys(enumConfigurations).length > 0 ||
-    Object.keys(listConfigurations).length > 0;
+    const configurable = configurables.every((c) => c === "no") ? "no" : configurables.every((c) => c === "optional") ? "optional" : "required";
 
-  if (isConfigurable) {
-    if (hasDefaultsForAllConfigurableValues) {
-      configurable = "optional";
-    } else {
-      configurable = "required";
-    }
-  } else {
-    configurable = "no";
-  }
 
   return {
-    mayRequireDataSourceConfiguration,
-    mayRequireDataWarehouseConfiguration,
-    mayRequireTableConfiguration,
+    dataSourceConfiguration,
+    dataWarehouseConfiguration,
+    tableConfiguration,
     mayRequireChildAgentConfiguration,
     mayRequireReasoningConfiguration,
     mayRequireTimeFrameConfiguration,
