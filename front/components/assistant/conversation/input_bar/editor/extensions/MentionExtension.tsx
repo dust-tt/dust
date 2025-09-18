@@ -1,3 +1,4 @@
+import type { NodeViewProps } from "@tiptap/core";
 import Mention from "@tiptap/extension-mention";
 import type { PasteRuleMatch } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
@@ -22,8 +23,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer((props: any) => (
-      <MentionComponent node={props.node} owner={this.options.owner} />
+    return ReactNodeViewRenderer((props: NodeViewProps) => (
+      <MentionComponent
+        node={{ attrs: props.node.attrs as { id: string; label: string } }}
+        owner={this.options.owner}
+      />
     ));
   },
 
@@ -58,8 +62,8 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
         return results;
       },
       type: this.type,
-      getAttributes: (match: Record<string, any>) => {
-        return { label: match.data["label"], id: match.data["id"] };
+      getAttributes: (match: { data: { label: string; id: string } }) => {
+        return { label: match.data.label, id: match.data.id };
       },
     });
 
