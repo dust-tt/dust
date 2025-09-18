@@ -84,7 +84,7 @@ export function WebhookEditionModal({
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
     useWebhookSourcesWithViews({ owner });
 
-  const isEditor = trigger?.editor ? trigger?.editor === user?.id : false;
+  const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
   const spaceById = useMemo(() => {
     return new Map(spaces.map((space) => [space.sId, space.name]));
