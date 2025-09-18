@@ -12,14 +12,17 @@ import { getDefaultConfiguration } from "@app/components/agent_builder/capabilit
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { DESCRIPTION_MAX_LENGTH } from "@app/components/agent_builder/types";
 import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
+import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
   TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { parseDataSourceConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { TemplateActionPreset } from "@app/types";
+import type { DataSourceViewSelectionConfigurations, DataSourceViewType, TemplateActionPreset } from "@app/types";
 
 export interface CapabilityConfig {
   icon: React.ComponentType;
@@ -112,19 +115,61 @@ type GetKnowledgeDefaultValuesOptions = {
   action: AgentBuilderAction | null;
   mcpServerViews: MCPServerViewType[];
   presetActionData?: TemplateActionPreset;
+  supportedDataSourceViews: DataSourceViewType[];
   isEditing: boolean;
 };
+
+
+function convertDefaultURIsToDataSourceTree(
+  defaultURIs: { uri: string }[],
+  supportedDataSourceViews: DataSourceViewType[]
+): DataSourceBuilderTreeType {
+  if (defaultURIs.length === 0) {
+    return { in: [], notIn: [] };
+  }
+
+  const configurations: DataSourceViewSelectionConfigurations = {};
+
+  for (const { uri }of defaultURIs) {
+    const configInfoRes = parseDataSourceConfigurationURI(uri);
+    if (configInfoRes.isErr()) {
+      continue;
+    }
+
+    const configInfo = configInfoRes.value;
+    const dataSourceSId = configInfo.type == "database" ? configInfo.sId : configInfo.configuration.dataSourceViewId;
+
+    const dataSourceView = supportedDataSourceViews.find(
+      (view) => view.sId === dataSourceSId
+    );
+    if (!dataSourceView) {
+      continue;
+    }
+
+    configurations[dataSourceView.sId] = {
+      dataSourceView,
+      selectedResources: [],
+      excludedResources: [],
+      isSelectAll: false,
+      tagsFilter: null,
+    };
+  }
+
+  return transformSelectionConfigurationsToTree(configurations);
+  
+}
+
 
 export function getKnowledgeDefaultValues({
   action,
   mcpServerViews,
   presetActionData,
+  supportedDataSourceViews,
   isEditing,
 }: GetKnowledgeDefaultValuesOptions) {
   const dataSourceConfigurations =
     action?.configuration?.dataSourceConfigurations;
   const tablesConfigurations = action?.configuration?.tablesConfigurations;
-
   // Use either data source or tables configurations - they're mutually exclusive
   const configurationToUse = isEmpty(dataSourceConfigurations)
     ? isEmpty(tablesConfigurations)
@@ -132,10 +177,11 @@ export function getKnowledgeDefaultValues({
       : tablesConfigurations
     : dataSourceConfigurations;
 
-  const dataSourceTree =
-    configurationToUse && action
-      ? transformSelectionConfigurationsToTree(configurationToUse)
-      : { in: [], notIn: [] };
+  let dataSourceTree: DataSourceBuilderTreeType;
+
+  if (configurationToUse && action) {
+    dataSourceTree = transformSelectionConfigurationsToTree(configurationToUse);
+  }
 
   const selectedMCPServerView = (() => {
     if (isEditing && action?.type === "MCP") {
@@ -155,6 +201,18 @@ export function getKnowledgeDefaultValues({
     // processing method when landing on the configuration page
     return null;
   })();
+
+  const toolsConfigurations = selectedMCPServerView ? getMCPServerToolsConfigurations(selectedMCPServerView) : null;
+
+  const defaultURIs = toolsConfigurations?.dataSourceConfiguration?.default ?? 
+    toolsConfigurations?.dataWarehouseConfiguration?.default ?? 
+    toolsConfigurations?.tableConfiguration?.default;
+
+  if (defaultURIs) {
+    dataSourceTree = convertDefaultURIsToDataSourceTree(defaultURIs, supportedDataSourceViews);
+  }
+  
+  dataSourceTree = { in: [], notIn: [] };
 
   const storedName =
     action?.name ??

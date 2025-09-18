@@ -207,9 +207,10 @@ function KnowledgeConfigurationSheetForm({
       action,
       mcpServerViews,
       isEditing,
+      supportedDataSourceViews,
       presetActionData,
     });
-  }, [action, mcpServerViews, isEditing, presetActionData]);
+  }, [action, mcpServerViews, isEditing, presetActionData, supportedDataSourceViews]);
 
   const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),

@@ -210,7 +210,7 @@ export function MCPServerViewsSheet({
 
     return filteredList.filter(
       (view) =>
-        !getMCPServerToolsConfigurations(view).mayRequireReasoningConfiguration
+        !getMCPServerToolsConfigurations(view).reasoningConfiguration
     );
   }, [
     defaultMCPServerViews,
@@ -368,11 +368,11 @@ export function MCPServerViewsSheet({
 
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const requirement = getMCPServerToolsConfigurations(mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
-    if (requirement.configurable !== "no") {
+    if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = requirement.mayRequireReasoningConfiguration;
+      const isReasoning = toolsConfigurations.reasoningConfiguration ? true : false;
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -388,8 +388,11 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
+            (model) => model.modelId === toolsConfigurations.reasoningConfiguration?.default?.modelId
+          ) ?? reasoningModels.find(
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ?? reasoningModels[0];
+          ) ??
+          reasoningModels[0];
 
         configuredAction = {
           ...action,
@@ -609,11 +612,11 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {toolsConfigurations.mayRequireReasoningConfiguration && (
+                {toolsConfigurations.reasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.mayRequireChildAgentConfiguration && (
+                {toolsConfigurations.childAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 

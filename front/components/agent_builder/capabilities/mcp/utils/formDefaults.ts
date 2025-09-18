@@ -24,7 +24,7 @@ export function getDefaultConfiguration(
     dataSourceConfigurations: null,
     tablesConfigurations: null,
     childAgentId: null,
-    reasoningModel: null,
+    reasoningModel: toolsConfigurations?.reasoningConfiguration?.default?.modelId,
     timeFrame: null,
     additionalConfiguration: {},
     dustAppConfiguration: null,
@@ -37,6 +37,9 @@ export function getDefaultConfiguration(
   }
 
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
+
+
+  //const childAgentId = toolsConfigurations.childAgentConfiguration?.default ?? null;
 
   // Set default values for all configuration types when available
   // This provides better UX by pre-filling known defaults while still allowing
