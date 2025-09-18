@@ -22,16 +22,10 @@ async function setupTest(
       method,
     });
 
-  // Create a system space to hold the Webhook sources - only if admin role
-  if (role === "admin") {
-    await SpaceFactory.defaults(authenticator);
-  } else {
-    // For non-admin roles, we need to set up spaces with an admin authenticator
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    await SpaceFactory.defaults(adminAuth);
-  }
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  await SpaceFactory.defaults(adminAuth);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
