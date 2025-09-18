@@ -42,12 +42,21 @@ function formatTimezone(timezone: string): string {
   return `${city} (${timezone})`;
 }
 
+function isErrorWithMessage(err: unknown): err is { error: { message: string } } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "error" in err &&
+    typeof (err as any).error === "object" &&
+    (err as any).error !== null &&
+    "message" in (err as any).error &&
+    typeof (err as any).error.message === "string"
+  );
+}
+
 function extractErrorMessage(error: unknown): string {
-  if (typeof error === "object" && error !== null && "error" in error) {
-    const innerError = error.error;
-    if (typeof innerError === "object" && innerError !== null && "message" in innerError) {
-      return innerError.message as string;
-    }
+  if (isErrorWithMessage(error)) {
+    return error.error.message;
   }
   return "Unable to generate a schedule. Please try rephrasing.";
 }
