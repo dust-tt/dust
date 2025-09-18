@@ -343,6 +343,7 @@ async function fetchEditOrRevertActionsForFile(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // TODO (content-creation): Use AgentMCPActionResource instead of AgentMCPActionModel
+  // TODO in an other PR as it's causing a circular dependency and requires careful refactoring
   return AgentMCPActionModel.findAll({
     include: [
       {
@@ -388,6 +389,7 @@ async function fetchCreateActionsForConversation(
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
+  // TODO (content-creation): Use AgentMCPActionResource instead of AgentMCPActionModel
   return AgentMCPActionModel.findAll({
     include: [
       {
@@ -430,15 +432,11 @@ async function getFileActions(
     conversationId
   );
 
-  logger.info({ editOrRevertActions }, "Edit or revert actions");
-
   // Get create actions for the file
   const createActions = await fetchCreateActionsForConversation(
     auth,
     conversationId
   );
-
-  logger.info({ createActions }, "Create actions");
 
   // Find the create action that created our file
   const fileCreationAction = await findCreateActionForFile(
@@ -450,8 +448,6 @@ async function getFileActions(
   const allFileActions = fileCreationAction
     ? [...editOrRevertActions, fileCreationAction]
     : editOrRevertActions;
-
-  logger.info({ allFileActions }, "All file actions");
 
   return allFileActions.sort(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
