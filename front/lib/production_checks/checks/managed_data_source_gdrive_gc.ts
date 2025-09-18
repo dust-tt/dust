@@ -37,7 +37,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       const connectorDocuments: { id: number; coreDocumentId: string }[] = [];
       let fetched = 0;
       do {
-        // There is a risk of "cancelling statement due to confilct with recovery" errors
+        // There is a risk of "cancelling statement due to conflict with recovery" errors
         // relatively benign in the context of this check, thus the retry policy.
         const batch = (await withRetries(
           logger,
