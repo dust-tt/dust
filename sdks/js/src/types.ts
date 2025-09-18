@@ -215,6 +215,14 @@ export const supportedAudioFileFormats = {
   "audio/webm": [".webm"],
 } as const;
 
+// Webhook trigger endpoint (skeleton) response type
+export const PostWebhookTriggerResponseSchema = z.object({
+  success: z.literal(true),
+});
+export type PostWebhookTriggerResponseType = z.infer<
+  typeof PostWebhookTriggerResponseSchema
+>;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 type AudioContentType = keyof typeof supportedAudioFileFormats;
@@ -295,6 +303,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "n8n"
   | "raycast"
   | "slack"
+  | "triggered"
   | "web"
   | "zapier"
   | "zendesk"
@@ -624,6 +633,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
+  | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
@@ -634,12 +644,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_ai_studio_experimental_models_feature"
   | "google_drive_tool"
   | "google_sheets_tool"
-  | "hootl"
   | "hootl_subscriptions"
   | "hootl_webhooks"
   | "index_private_slack_channel"
   | "interactive_content_server"
-  | "jira_tool"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
@@ -650,15 +658,16 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "research_agent"
-  | "research_agent_2"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
   | "slack_semantic_search"
+  | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
+  | "use_openai_eu_key"
   | "xai_feature"
   | "simple_audio_transcription"
 >();
@@ -891,6 +900,7 @@ const UserMessageContextSchema = z.object({
   origin: UserMessageOriginSchema,
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
+  lastTriggerRunAt: z.date().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -2733,6 +2743,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionArrowDownOnSquareIcon"
   | "ActionArrowUpOnSquareIcon"
   | "ActionAttachmentIcon"
+  | "ActionAtomIcon"
   | "ActionBankIcon"
   | "ActionBarcodeIcon"
   | "ActionBeerIcon"

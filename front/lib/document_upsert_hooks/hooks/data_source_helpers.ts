@@ -61,6 +61,7 @@ export async function getDiffBetweenDocumentVersions({
     if (res.isErr()) {
       throw res.error;
     }
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return res.value.document.text || "";
   }
 

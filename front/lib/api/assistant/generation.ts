@@ -213,6 +213,7 @@ export async function constructPromptMultiActions(
   // Replacement if instructions include "{USER_FULL_NAME}".
   instructions = instructions.replaceAll(
     "{USER_FULL_NAME}",
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     userMessage.context.fullName || "Unknown user"
   );
 

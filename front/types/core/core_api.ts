@@ -1533,15 +1533,26 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async dataSourceTokenize({
-    text,
-    projectId,
-    dataSourceId,
-  }: {
-    text: string;
-    projectId: string;
-    dataSourceId: string;
-  }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
+  async dataSourceTokenize(
+    {
+      text,
+      projectId,
+      dataSourceId,
+    }: {
+      text: string;
+      projectId: string;
+      dataSourceId: string;
+    },
+    opts?: { signal?: AbortSignal; timeoutMs?: number }
+  ): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
+    // Support optional timeout via AbortController to avoid excessively long calls.
+    let signal: AbortSignal | undefined = opts?.signal;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (!signal && opts?.timeoutMs && opts.timeoutMs > 0) {
+      const controller = new AbortController();
+      signal = controller.signal;
+      timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs);
+    }
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
@@ -1552,8 +1563,12 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ text }),
+        signal,
       }
     );
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
     return this._resultFromResponse(response);
   }
 
@@ -2140,7 +2155,7 @@ export class CoreAPI {
     limit,
   }: {
     query?: string;
-    queryType?: string;
+    queryType?: "exact" | "prefix" | "match";
     dataSourceViews: DataSourceViewType[];
     limit?: number;
   }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
@@ -2277,10 +2292,19 @@ export class CoreAPI {
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
-      const err: CoreAPIError = {
-        code: "unexpected_network_error",
-        message: `Unexpected network error from CoreAPI: ${e}`,
-      };
+      const isAbort =
+        (init && init.signal && (init.signal as AbortSignal).aborted) ||
+        // Some environments throw an AbortError with name property.
+        (e as any)?.name === "AbortError";
+      const err: CoreAPIError = isAbort
+        ? {
+            code: "request_timeout",
+            message: `CoreAPI request aborted due to timeout`,
+          }
+        : {
+            code: "unexpected_network_error",
+            message: `Unexpected network error from CoreAPI: ${e}`,
+          };
       this._logger.error(
         {
           url,

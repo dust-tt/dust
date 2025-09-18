@@ -19,7 +19,7 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio_stream::{self as stream};
+use tokio_stream as stream;
 use tracing::{error, info};
 
 /// An App is a collection of versioned Blocks.
@@ -352,7 +352,7 @@ impl App {
             project: project.clone(),
             store: store.clone(),
             databases_store: databases_store.clone(),
-            qdrant_clients: qdrant_clients,
+            qdrant_clients,
             credentials: credentials.clone(),
             secrets: secrets.clone(),
             run_id: run_id.clone(),
@@ -400,7 +400,7 @@ impl App {
             if block.block_type() == BlockType::While {
                 match current_while {
                     Some(w) => {
-                        assert!(w == block_idx);
+                        assert_eq!(w, block_idx);
                         current_while_iteration = Some(current_while_iteration.unwrap() + 1);
                     }
                     None => {
@@ -412,7 +412,7 @@ impl App {
                 envs = envs
                     .iter()
                     .map(|map_envs| {
-                        assert!(map_envs.len() == 1);
+                        assert_eq!(map_envs.len(), 1);
                         let mut env = map_envs[0].clone();
                         env.map = Some(MapState {
                             name: name.clone(),
@@ -679,7 +679,7 @@ impl App {
                     t.1.iter_mut()
                         .zip(current_skips.as_ref().unwrap().iter())
                         .for_each(|(m, skipped)| {
-                            assert!(m.len() == 1);
+                            assert_eq!(m.len(), 1);
                             if *skipped {
                                 m.pop();
                             }
@@ -904,7 +904,7 @@ impl App {
                 envs = envs
                     .iter()
                     .map(|map_envs| {
-                        assert!(map_envs.len() == 1);
+                        assert_eq!(map_envs.len(), 1);
                         let env = map_envs[0].clone();
                         match env.state.get(name) {
                             None => unreachable!(), // Checked at map block execution.
@@ -935,7 +935,7 @@ impl App {
                 current_skips = Some(
                     envs.iter()
                         .map(|map_envs| {
-                            assert!(map_envs.len() == 1);
+                            assert_eq!(map_envs.len(), 1);
                             match map_envs[0].state.get(name) {
                                 Some(Value::Array(arr)) => {
                                     assert!(arr.len() > 0);
@@ -965,7 +965,7 @@ impl App {
                         envs = envs
                             .iter()
                             .map(|map_envs| {
-                                assert!(map_envs.len() == 1);
+                                assert_eq!(map_envs.len(), 1);
                                 let mut env = map_envs[0].clone();
                                 env.map = None;
                                 vec![env]

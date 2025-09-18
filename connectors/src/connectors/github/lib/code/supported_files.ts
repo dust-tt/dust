@@ -8,6 +8,7 @@ const EXTENSION_WHITELIST = [
   ".jsx",
   ".py",
   ".rb",
+  ".exs", // Elixir script
   ".rs",
   ".go",
   ".swift",

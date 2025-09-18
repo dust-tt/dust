@@ -178,7 +178,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
       throw new Error("Unexpected `auth` without `workspace`.");
     }
     if (!auth.isUser()) {
-      throw new Error("Unexpected `auth` without `user`.");
+      throw new Error("Unexpected `auth` without `user` permissions.");
     }
 
     const globalAgentIds = agentIds.filter(isGlobalAgentId);
@@ -402,6 +402,7 @@ export async function createAgentConfiguration(
         userFavorite = userRelation?.favorite ?? false;
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
 
       // Create Agent config.

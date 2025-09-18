@@ -39,6 +39,7 @@ async function toFileLike(
   fallbackName = "audio.wav"
 ): Promise<FileLike> {
   const stream = fs.createReadStream(input.filepath);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const name = input.originalFilename || fallbackName;
   return toFile(stream, name);
 }
@@ -100,12 +101,13 @@ export async function transcribeStream(
         // Two possible event types: transcript.text.delta and transcript.text.done
         switch (ev.type) {
           case "transcript.text.delta":
-            yield { delta: ev.delta } as TranscriptionDeltaEvent;
+            yield { delta: ev.delta, type: "delta" };
             break;
           case "transcript.text.done":
             yield {
               fullTranscript: ev.text,
-            } as TranscriptionFullTranscriptEvent;
+              type: "fullTranscript",
+            };
             return;
         }
       }

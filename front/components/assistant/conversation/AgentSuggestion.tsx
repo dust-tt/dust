@@ -211,10 +211,7 @@ function sortAgents(
   } else if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
     return 1;
   }
-  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP_2) {
-    return -1;
-  } else if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP_2) {
-    return 1;
-  }
+
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0);
 }

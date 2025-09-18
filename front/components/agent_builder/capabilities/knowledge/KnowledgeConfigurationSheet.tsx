@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   FormProvider,
   useForm,
@@ -18,7 +18,6 @@ import {
 } from "react-hook-form";
 
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
-import { KnowledgeFooter } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeFooter";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
@@ -34,12 +33,14 @@ import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/util
 import { CustomCheckboxSection } from "@app/components/agent_builder/capabilities/shared/CustomCheckboxSection";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
-import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
+import {
+  NAME_FIELD_NAME,
+  NameSection,
+} from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ProcessingMethodSection } from "@app/components/agent_builder/capabilities/shared/ProcessingMethodSection";
 import { SelectedDataSources } from "@app/components/agent_builder/capabilities/shared/SelectedDataSources";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   AgentBuilderAction,
   CapabilityFormData,
@@ -62,6 +63,8 @@ import {
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
+
+import { KnowledgeFooter } from "./KnowledgeFooter";
 
 interface KnowledgeConfigurationSheetProps {
   onSave: (action: AgentBuilderAction) => void;
@@ -146,7 +149,6 @@ function KnowledgeConfigurationSheetForm({
   onCancel,
   setIsDirty,
 }: KnowledgeConfigurationSheetFormProps) {
-  const { spaces } = useSpacesContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const handleSave = (formData: CapabilityFormData) => {
@@ -222,7 +224,7 @@ function KnowledgeConfigurationSheetForm({
 
   return (
     <FormProvider {...form}>
-      <DataSourceBuilderProvider spaces={spaces}>
+      <DataSourceBuilderProvider>
         <KnowledgePageProvider initialPageId={getInitialPageId(isEditing)}>
           <KnowledgeConfigurationSheetContent
             onSave={form.handleSubmit(handleSave)}
@@ -250,16 +252,22 @@ function KnowledgeConfigurationSheetContent({
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
-  const nameSectionRef = useRef<HTMLInputElement>(null);
-  const { setValue, getValues } = useFormContext<CapabilityFormData>();
+  const { setValue, getValues, setFocus } =
+    useFormContext<CapabilityFormData>();
   const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
   });
+
   const hasSourceSelection = useWatch({
     compute: (formData: CapabilityFormData) => {
-      return formData.sources.in.length > 0;
+      // Check if we have actual selections: either explicit inclusions or "select all with exclusions"
+      const hasExplicitInclusions = formData.sources.in.length > 0;
+      const hasSelectAllWithExclusions =
+        formData.sources.in.length === 0 && formData.sources.notIn.length > 0;
+
+      return hasExplicitInclusions || hasSelectAllWithExclusions;
     },
   });
 
@@ -277,9 +285,12 @@ function KnowledgeConfigurationSheetContent({
   // Focus NameSection input when navigating to CONFIGURATION page
   useEffect(() => {
     if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION) {
-      nameSectionRef.current?.focus();
+      const t = setTimeout(() => {
+        setFocus(NAME_FIELD_NAME);
+      }, 250);
+      return () => clearTimeout(t);
     }
-  }, [currentPageId]);
+  }, [currentPageId, setFocus]);
 
   // Prefill name field with processing method display name when mcpServerView changes
   useEffect(() => {
@@ -296,13 +307,16 @@ function KnowledgeConfigurationSheetContent({
     }
   }, [mcpServerView, isEditing, setValue, getValues]);
 
-  const handlePageChange = (pageId: string) => {
-    if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
-      setSheetPageId(pageId);
-    }
-  };
+  const handlePageChange = useCallback(
+    (pageId: string) => {
+      if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
+        setSheetPageId(pageId);
+      }
+    },
+    [setSheetPageId]
+  );
 
-  const getFooterButtons = () => {
+  const footerButtons = useMemo(() => {
     const isDataSourcePage =
       currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
     const isManageSelectionMode = isDataSourcePage && hasSourceSelection;
@@ -332,7 +346,7 @@ function KnowledgeConfigurationSheetContent({
         },
       },
     };
-  };
+  }, [currentPageId, hasSourceSelection, setSheetPageId, onCancel, onSave]);
 
   const pages: MultiPageSheetPage[] = [
     {
@@ -350,8 +364,10 @@ function KnowledgeConfigurationSheetContent({
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       title: config?.configPageTitle || "Configure Knowledge",
       description:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         config?.configPageDescription ||
         "Select knowledge type and configure settings",
       icon: config
@@ -361,11 +377,7 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-6">
           <ProcessingMethodSection />
 
-          <NameSection
-            ref={nameSectionRef}
-            title="Name"
-            placeholder="Name ..."
-          />
+          <NameSection title="Name" placeholder="Name ..." />
 
           {toolsConfigurations.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
@@ -416,7 +428,7 @@ function KnowledgeConfigurationSheetContent({
       showHeaderNavigation={false}
       showNavigation={false}
       addFooterSeparator
-      {...getFooterButtons()}
+      {...footerButtons}
     />
   );
 }

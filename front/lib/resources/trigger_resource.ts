@@ -121,6 +121,18 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth);
   }
 
+  static async listByWebhookSourceViewId(
+    auth: Authenticator,
+    webhookSourceViewId: ModelId
+  ) {
+    return this.baseFetch(auth, {
+      where: {
+        webhookSourceViewId,
+        kind: "webhook",
+      },
+    });
+  }
+
   static async listByUserEditor(auth: Authenticator) {
     const user = auth.getNonNullableUser();
 
@@ -248,8 +260,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           trigger: this,
         });
       case "webhook":
-        // TODO: Implement webhook workflow when ready.
-        throw new Error("Webhook trigger workflows not yet implemented");
+        return new Ok(undefined);
       default:
         assertNever(this.kind);
     }
@@ -265,8 +276,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           trigger: this,
         });
       case "webhook":
-        // TODO: Implement webhook workflow when ready.
-        throw new Error("Webhook workflow removal not yet implemented");
+        return new Ok(undefined);
       default:
         assertNever(this.kind);
     }

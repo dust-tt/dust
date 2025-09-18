@@ -50,6 +50,7 @@ export function RemoteMCPForm({
     resolver: zodResolver(MCPFormSchema),
     defaultValues: {
       icon: mcpServer.icon,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       sharedSecret: mcpServer.sharedSecret || "",
     },
   });

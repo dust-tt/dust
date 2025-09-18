@@ -64,6 +64,7 @@ export function dustAppRunInputsToInputSchema(
 export function inputSchemaToDustAppRunInputs(
   inputSchema: JSONSchema
 ): DustAppRunInputType[] {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return Object.entries(inputSchema.properties || {}).map(
     ([name, property]) => {
       let type: DustAppRunInputType["type"] = "string";

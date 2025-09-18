@@ -125,6 +125,7 @@ export function useDraftConversation({
   const [conversationId, setConversationId] = useState<string | null>(null);
 
   const { conversation } = useConversation({
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversationId: conversationId || "",
     workspaceId: owner.sId,
     options: {
@@ -227,6 +228,7 @@ export function useDraftConversation({
   }, []);
 
   const setConversation = (newConversation: ConversationType | null) => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     setConversationId(newConversation?.sId || null);
   };
 

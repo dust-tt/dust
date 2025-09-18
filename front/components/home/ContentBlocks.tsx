@@ -597,6 +597,7 @@ export const ImgContent: React.FC<ImgContentProps> = ({ images }) => {
           <img
             key={index}
             src={image.src}
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             alt={image.alt || `Image ${index + 1}`}
             className={classNames(
               "max-w-40 max-h-32 object-contain",

@@ -33,6 +33,7 @@ import type {
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
+  ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
@@ -135,6 +136,7 @@ export function getToolExtraFields(
       return r;
     }
     const serverName = r.value.name;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     toolsStakes = INTERNAL_MCP_SERVERS[serverName].tools_stakes || {};
     toolsRetryPolicies = INTERNAL_MCP_SERVERS[serverName].tools_retry_policies;
     serverTimeoutMs = INTERNAL_MCP_SERVERS[serverName]?.timeoutMs;
@@ -179,6 +181,7 @@ function makeServerSideMCPToolConfigurations(
     retryPolicy: tool.retryPolicy,
     mcpServerViewId: config.mcpServerViewId,
     internalMCPServerId: config.internalMCPServerId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     dataSources: config.dataSources || [], // Ensure dataSources is always an array
     tables: config.tables,
     availability: tool.availability,
@@ -222,20 +225,30 @@ function makeClientSideMCPToolConfigurations(
   }));
 }
 
-type MCPCallToolEvent =
-  | {
-      type: "notification";
-      notification: MCPProgressNotificationType;
+function generateContentMetadata(content: CallToolResult["content"]): {
+  type: "text" | "image" | "resource" | "audio" | "resource_link";
+  byteSize: number;
+  maxSize: number;
+}[] {
+  const result = [];
+  for (const item of content) {
+    const byteSize = calculateContentSize(item);
+    const maxSize = getMaxSize(item);
+
+    result.push({ type: item.type, byteSize, maxSize });
+
+    if (byteSize > maxSize) {
+      break;
     }
-  | {
-      type: "result";
-      result: Result<CallToolResult["content"], Error | McpError>;
-    };
+  }
+  return result;
+}
 
 /**
  * Try to call an MCP tool.
  *
  * May fail when connecting to remote/client-side servers.
+ * In case of an error, the error content is bubbled up to expose it to the model.
  */
 export async function* tryCallMCPTool(
   auth: Authenticator,
@@ -243,23 +256,23 @@ export async function* tryCallMCPTool(
   agentLoopRunContext: AgentLoopRunContextType,
   {
     progressToken,
+    makeToolNotificationEvent,
   }: {
     progressToken: ModelId;
+    makeToolNotificationEvent: (
+      notification: MCPProgressNotificationType
+    ) => Promise<ToolNotificationEvent>;
   }
-): AsyncGenerator<MCPCallToolEvent, void> {
+): AsyncGenerator<
+  ToolNotificationEvent,
+  Result<CallToolResult["content"], Error | McpError>
+> {
   const { toolConfiguration } = agentLoopRunContext;
 
   if (!isMCPToolConfiguration(toolConfiguration)) {
-    yield {
-      type: "result",
-      result: new Err(
-        new Error(
-          "Invalid action configuration: not an MCP action configuration"
-        )
-      ),
-    };
-
-    return;
+    return new Err(
+      new Error("Invalid action configuration: not an MCP action configuration")
+    );
   }
 
   const conversationId = agentLoopRunContext.conversation.sId;
@@ -274,40 +287,31 @@ export async function* tryCallMCPTool(
     }
   );
   if (connectionParamsRes.isErr()) {
-    yield {
-      type: "result",
-      result: connectionParamsRes,
-    };
-    return;
+    return connectionParamsRes;
   }
 
   let mcpClient;
   try {
-    const r = await connectToMCPServer(auth, {
+    const connectionResult = await connectToMCPServer(auth, {
       params: connectionParamsRes.value,
       agentLoopContext: { runContext: agentLoopRunContext },
     });
-    if (r.isErr()) {
-      if (r.error instanceof MCPServerPersonalAuthenticationRequiredError) {
-        yield {
-          type: "result",
-          result: new Ok(
-            makePersonalAuthenticationError(
-              r.error.provider,
-              r.error.scope
-            ).content
-          ),
-        };
-        return;
-      } else {
-        yield {
-          type: "result",
-          result: r,
-        };
+    if (connectionResult.isErr()) {
+      if (
+        connectionResult.error instanceof
+        MCPServerPersonalAuthenticationRequiredError
+      ) {
+        return new Ok(
+          makePersonalAuthenticationError(
+            connectionResult.error.provider,
+            connectionResult.error.scope
+          ).content
+        );
       }
-      return;
+
+      return connectionResult;
     }
-    mcpClient = r.value;
+    mcpClient = connectionResult.value;
 
     const emitter = new EventEmitter();
 
@@ -365,78 +369,37 @@ export async function* tryCallMCPTool(
           break;
         }
 
-        yield {
-          type: "notification",
-          notification: iteratorResult.value,
-        };
+        yield makeToolNotificationEvent(iteratorResult.value);
       }
     }
 
     // Tool is done now, wait for the actual result.
     const toolCallResult = await toolPromise;
 
-    // Do not raise an error here as it will break the conversation.
-    // Let the model decide what to do.
-    if (toolCallResult.isError) {
-      logger.error(
-        {
-          conversationId,
-          error: toolCallResult.content,
-          messageId,
-          toolName: toolConfiguration.originalName,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        `Error calling MCP tool in tryCallMCPTool().`
-      );
-    }
+    // We do not check toolCallResult.isError here and raise an error if true as this would break
+    // the conversation.
+    // Instead, we let the model decide what to do based on the content exposed.
 
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: CallToolResult["content"] = (toolCallResult.content ??
       []) as CallToolResult["content"];
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
-      yield {
-        type: "result",
-        result: new Err(
-          new Error(
-            `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
-          )
-        ),
-      };
+      return new Err(
+        new Error(
+          `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
+        )
+      );
     }
 
-    const generateContentMetadata = (
-      content: CallToolResult["content"]
-    ): {
-      type: "text" | "image" | "resource" | "audio" | "resource_link";
-      byteSize: number;
-      maxSize: number;
-    }[] => {
-      const result = [];
-      for (const item of content) {
-        const byteSize = calculateContentSize(item);
-        const maxSize = getMaxSize(item);
-        const metadata = { type: item.type, byteSize, maxSize };
-        result.push(metadata);
-
-        if (byteSize > maxSize) {
-          break;
-        }
-      }
-      return result;
-    };
-
-    const serverType = (() => {
-      if (isClientSideMCPToolConfiguration(toolConfiguration)) {
-        return "client";
-      }
-
-      if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-        return "internal";
-      }
-
-      return "remote";
-    })();
+    let serverType;
+    if (isClientSideMCPToolConfiguration(toolConfiguration)) {
+      serverType = "client";
+    } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+      serverType = "internal";
+    } else {
+      serverType = "remote";
+    }
 
     if (serverType === "remote") {
       const isValid = isValidContentSize(content);
@@ -448,17 +411,11 @@ export async function* tryCallMCPTool(
           "information on MCP tool result"
         );
 
-        yield {
-          type: "result",
-          result: new Err(new Error(`MCP tool result content size too large.`)),
-        };
+        return new Err(new Error("MCP tool result content size too large."));
       }
     }
 
-    yield {
-      type: "result",
-      result: new Ok(content),
-    };
+    return new Ok(content);
   } catch (error) {
     logger.error(
       {
@@ -471,10 +428,7 @@ export async function* tryCallMCPTool(
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
-    yield {
-      type: "result",
-      result: new Err(normalizeError(error)),
-    };
+    return new Err(normalizeError(error));
   } finally {
     await mcpClient?.close();
   }
@@ -838,7 +792,9 @@ export async function listToolsForServerSideMCPServer(
       toolServerId: connectionParams.mcpServerId,
       ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
       retryPolicy:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         toolsRetryPolicies?.[tool.name] ||
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         toolsRetryPolicies?.["default"] ||
         DEFAULT_MCP_TOOL_RETRY_POLICY,
     }));

@@ -211,13 +211,36 @@ export function SelectedDataSources() {
   );
 
   const isTableOrWarehouseServer = tablesServer.includes(
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     internalMcpServerView?.server.name || ""
   );
 
-  const dataSourceViews = useMemo(
-    () => groupSourcesByDataSource(sources.in),
-    [sources.in]
-  );
+  const dataSourceViews = useMemo(() => {
+    // Combine both inclusions and exclusions for unified display
+    // The navigation initialization and selection state logic now handle the "select all with exclusions" case
+    const inclusionViews = groupSourcesByDataSource(sources.in);
+    const exclusionViews = groupSourcesByDataSource(sources.notIn);
+
+    // Merge exclusion views into inclusion views
+    // If a data source has exclusions but no inclusions, it represents a "select all with exclusions" case
+    Object.entries(exclusionViews).forEach(([key, exclusionView]) => {
+      if (!inclusionViews[key]) {
+        // This data source has exclusions but no explicit inclusions - it's a "select all" case
+        inclusionViews[key] = {
+          dataSourceView: exclusionView.dataSourceView,
+          selectedSources: [
+            {
+              id: exclusionView.dataSourceView.id.toString(),
+              name: "All documents",
+              type: "data_source",
+            },
+          ],
+        };
+      }
+    });
+
+    return inclusionViews;
+  }, [sources.in, sources.notIn]);
 
   const hasDataSources = Object.values(dataSourceViews).length > 0;
 

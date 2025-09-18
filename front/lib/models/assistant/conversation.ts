@@ -194,6 +194,7 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
   declare userContextOrigin: UserMessageOrigin | null;
+  declare userContextLastTriggerRunAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 }
@@ -248,6 +249,11 @@ UserMessage.init(
     userContextOrigin: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    userContextLastTriggerRunAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

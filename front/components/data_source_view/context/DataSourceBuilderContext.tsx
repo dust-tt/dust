@@ -110,14 +110,6 @@ type DataSourceBuilderState = StateType & {
   isRowSelected: (rowId: string) => NodeSelectionState;
 
   /**
-   * Check if the row is selectable.
-   * For now it's to check if the space it's in is selectable.
-   * We can select the Company Space + 1 other space.
-   * Use the current navigationHistory to deduced the full row path.
-   */
-  isRowSelectable: (rowId?: string) => boolean;
-
-  /**
    * Use the current navigationHistory entry and check its selection status
    */
   isCurrentNavigationEntrySelected: () => NodeSelectionState;
@@ -238,10 +230,8 @@ function dataSourceBuilderReducer(
 }
 
 export function DataSourceBuilderProvider({
-  spaces,
   children,
 }: {
-  spaces: SpaceType[];
   children: React.ReactNode;
 }) {
   const { field } = useSourcesFormController();
@@ -329,41 +319,6 @@ export function DataSourceBuilderProvider({
     [field.value, state.navigationHistory]
   );
 
-  const nonCompanySpacesSelected = useMemo(() => {
-    return new Set(
-      spaces
-        .filter(
-          (space) =>
-            space.kind !== "global" &&
-            isNodeSelected(field.value, ["root", space.sId])
-        )
-        .map((s) => s.sId)
-    );
-  }, [field.value, spaces]);
-
-  const isRowSelectable: DataSourceBuilderState["isRowSelectable"] =
-    useCallback(
-      (rowId) => {
-        if (nonCompanySpacesSelected.size <= 0) {
-          return true;
-        }
-
-        const nodePath = computeNavigationPath(state.navigationHistory);
-        if (rowId) {
-          nodePath.push(rowId);
-        }
-
-        const currentSpaceId = nodePath[1];
-
-        if (currentSpaceId == null) {
-          return true;
-        }
-
-        return nonCompanySpacesSelected.has(currentSpaceId);
-      },
-      [nonCompanySpacesSelected, state.navigationHistory]
-    );
-
   const isCurrentNavigationEntrySelected: DataSourceBuilderState["isCurrentNavigationEntrySelected"] =
     useCallback(() => {
       const nodePath = computeNavigationPath(state.navigationHistory);
@@ -432,6 +387,7 @@ export function DataSourceBuilderProvider({
           in: field.value.in.map((source) => {
             if ("tagsFilter" in source) {
               // Initialize tagsFilter if null
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               const currentTagsFilter = source.tagsFilter || {
                 in: [],
                 not: [],
@@ -463,7 +419,6 @@ export function DataSourceBuilderProvider({
       removeNodeWithPath,
       removeCurrentNavigationEntry,
       isRowSelected,
-      isRowSelectable,
       isCurrentNavigationEntrySelected,
       setSpaceEntry,
       setCategoryEntry,
@@ -478,7 +433,6 @@ export function DataSourceBuilderProvider({
       addNodeEntry,
       isCurrentNavigationEntrySelected,
       isRowSelected,
-      isRowSelectable,
       navigateTo,
       removeCurrentNavigationEntry,
       removeNode,

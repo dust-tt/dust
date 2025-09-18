@@ -18,7 +18,7 @@ import type {
   MCPServerConnectionConnectionType,
   MCPServerConnectionType,
 } from "@app/lib/resources/mcp_server_connection_resource";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { GetMCPServersResponseBody } from "@app/pages/api/w/[wId]/mcp";
@@ -30,7 +30,6 @@ import type {
   PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
-import type { GetMCPServerToolsSettingsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
 import type {
   PatchMCPServerToolsPermissionsResponseBody,
   UpdateMCPToolSettingsBodyType,
@@ -126,6 +125,7 @@ export function useMCPServer({
   }
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     server: data?.server || null,
     isMCPServerLoading: !error && !data && !disabled,
     isMCPServerError: !!error,
@@ -739,41 +739,22 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
-export function useMCPServerToolsSettings({
-  owner,
-  serverId,
-}: {
-  owner: LightWorkspaceType;
-  serverId: string;
-}) {
-  const toolsFetcher: Fetcher<GetMCPServerToolsSettingsResponseBody> = fetcher;
-
-  const url = `/api/w/${owner.sId}/mcp/${serverId}/tools`;
-
-  const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher);
-
-  const toolsSettings = useMemo(() => (data ? data.toolsSettings : {}), [data]);
-
-  return {
-    toolsSettings,
-    isToolsSettingsLoading: !error && !data,
-    isToolsSettingsError: error,
-    mutateToolsSettings: mutate,
-  };
-}
-
 export function useUpdateMCPServerToolsSettings({
   owner,
-  serverId,
+  mcpServerView,
 }: {
   owner: LightWorkspaceType;
-  serverId: string;
+  mcpServerView: MCPServerViewType;
 }) {
-  const { mutateToolsSettings: mutateToolsSettings } =
-    useMCPServerToolsSettings({
-      owner,
-      serverId,
-    });
+  const space = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: mcpServerView.spaceId,
+  });
+  const { mutateMCPServerViews } = useMCPServerViews({
+    owner,
+    space: space.spaceInfo ?? undefined,
+    disabled: true,
+  });
 
   const sendNotification = useSendNotification();
 
@@ -791,7 +772,7 @@ export function useUpdateMCPServerToolsSettings({
       enabled,
     };
     const response = await fetch(
-      `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,
+      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}/tools/${toolName}`,
       {
         method: "PATCH",
         headers: {
@@ -813,7 +794,7 @@ export function useUpdateMCPServerToolsSettings({
       description: `The settings for ${toolName} have been updated.`,
     });
 
-    void mutateToolsSettings();
+    void mutateMCPServerViews();
     return response.json();
   };
 

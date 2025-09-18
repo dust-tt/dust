@@ -22,7 +22,6 @@ import { withLogging } from "@connectors/logger/withlogging";
 export const STATIC_AGENT_CONFIG = "static_agent_config";
 export const APPROVE_TOOL_EXECUTION = "approve_tool_execution";
 export const REJECT_TOOL_EXECUTION = "reject_tool_execution";
-export const LEAVE_FEEDBACK = "leave_feedback";
 export const LEAVE_FEEDBACK_UP = "leave_feedback_up";
 export const LEAVE_FEEDBACK_DOWN = "leave_feedback_down";
 
@@ -339,25 +338,50 @@ const _webhookSlackBotInteractionsAPIHandler = async (
         action.action_id === LEAVE_FEEDBACK_DOWN
       ) {
         // Handle feedback button click - open modal
+        logger.info(
+          {
+            action_id: action.action_id,
+            block_id: action.block_id,
+            value: action.value,
+            type: action.type,
+            trigger_id: payload.trigger_id,
+          },
+          "[Slack] Feedback button clicked"
+        );
+
         const feedbackAction = action as t.TypeOf<typeof FeedbackActionSchema>;
         const buttonData = JSON.parse(feedbackAction.value || "{}");
         const { conversationId, messageId, workspaceId, preselectedThumb } =
           buttonData;
 
         if (payload.trigger_id) {
-          // Open the feedback modal
-          await openFeedbackModal({
-            slackClient: await getSlackClientForTeam(payload.team.id),
-            triggerId: payload.trigger_id,
-            conversationId,
-            messageId,
-            workspaceId,
-            slackUserId: payload.user.id,
-            preselectedThumb,
-            slackChannelId: payload.container.channel_id,
-            slackMessageTs: payload.container.message_ts,
-            slackThreadTs: payload.container.thread_ts,
-          });
+          try {
+            // Open the feedback modal
+            await openFeedbackModal({
+              slackClient: await getSlackClientForTeam(payload.team.id),
+              triggerId: payload.trigger_id,
+              conversationId,
+              messageId,
+              workspaceId,
+              slackUserId: payload.user.id,
+              preselectedThumb,
+              slackChannelId: payload.container.channel_id,
+              slackMessageTs: payload.container.message_ts,
+              slackThreadTs: payload.container.thread_ts,
+            });
+          } catch (error) {
+            logger.error(
+              {
+                error,
+                conversationId,
+                messageId,
+                workspaceId,
+              },
+              "Failed to open feedback modal"
+            );
+          }
+        } else {
+          logger.warn("No trigger_id available for feedback modal");
         }
       }
     }

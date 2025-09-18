@@ -177,13 +177,73 @@ export async function renderConversationForModel(
           return `@${name}`;
         }
       );
+
+      const metadataItems: string[] = [];
+
+      const identityTokens: string[] = [];
+      if (m.context.fullName) {
+        identityTokens.push(m.context.fullName);
+      }
+      if (m.context.username) {
+        const usernameToken = m.context.fullName
+          ? `(@${m.context.username})`
+          : `@${m.context.username}`;
+        identityTokens.push(usernameToken);
+      }
+      if (m.context.email) {
+        identityTokens.push(`<${m.context.email}>`);
+      }
+      if (identityTokens.length > 0) {
+        metadataItems.push(`- Sender: ${identityTokens.join(" ")}`);
+      }
+
+      const timeZone =
+        m.context.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const formatWithTimeZone = (date: Date) =>
+        date.toLocaleString(undefined, {
+          timeZone,
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          timeZoneName: "short",
+          hour12: false,
+        });
+
+      if (m.created) {
+        metadataItems.push(
+          `- Sent at: ${formatWithTimeZone(new Date(m.created))}`
+        );
+      }
+
+      if (m.context.origin === "triggered") {
+        metadataItems.push("- Source: Scheduled trigger");
+        if (m.context.lastTriggerRunAt) {
+          metadataItems.push(
+            `- Previous scheduled run: ${formatWithTimeZone(
+              new Date(m.context.lastTriggerRunAt)
+            )}`
+          );
+        }
+      } else if (m.context.origin) {
+        metadataItems.push(`- Source: ${m.context.origin}`);
+      }
+
+      let systemContext = "";
+      if (metadataItems.length > 0) {
+        systemContext = `<dust_system>\n${metadataItems.join("\n")}\n</dust_system>\n\n`;
+      }
+
       messages.push({
         role: "user" as const,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         name: m.context.fullName || m.context.username,
         content: [
           {
             type: "text",
-            text: content,
+            text: systemContext + content,
           },
         ],
       });

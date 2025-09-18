@@ -10,7 +10,6 @@ import type {
   TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
@@ -166,14 +165,12 @@ export const makeMCPToolJSONSuccess = ({
 export const getExitOrPauseEvents = async ({
   outputItems,
   action,
-  actionBaseParams,
   agentConfiguration,
   agentMessage,
   conversation,
 }: {
   outputItems: AgentMCPActionOutputItem[];
   action: AgentMCPActionResource;
-  actionBaseParams: ActionBaseParams;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
@@ -222,7 +219,7 @@ export const getExitOrPauseEvents = async ({
         const { provider, scope } = exitOutputItem;
 
         const authErrorMessage =
-          `The tool ${actionBaseParams.functionCallName} requires personal ` +
+          `The tool ${action.functionCallName} requires personal ` +
           `authentication, please authenticate to use it.`;
 
         // Update the action to mark it as blocked because of a personal authentication error.
@@ -238,7 +235,7 @@ export const getExitOrPauseEvents = async ({
             authError: {
               mcpServerId: action.toolConfiguration.toolServerId,
               provider: provider,
-              toolName: actionBaseParams.functionCallName ?? "unknown",
+              toolName: action.functionCallName ?? "unknown",
               message: authErrorMessage,
               ...(scope && {
                 scope,

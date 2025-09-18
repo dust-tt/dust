@@ -73,6 +73,7 @@ export default function SettingsView({
   const [appName, setAppName] = useState(app.name);
   const [appNameError, setAppNameError] = useState<boolean>(false);
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const [appDescription, setAppDescription] = useState(app.description || "");
 
   const [isDeleting, setIsDeleting] = useState(false);

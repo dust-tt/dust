@@ -268,12 +268,27 @@ async function handler(
         }
       }
 
+      // Fetch the feature flags for the owner of the run.
+      const keyWorkspaceFlags = await getFeatureFlags(
+        keyAuth.getNonNullableWorkspace()
+      );
+
+      // When this is on, two things happen:
+      // 1) We use the OpenAI EU endpoint (in Core)
+      // 2) We use the DUST_MANAGED_OPENAI_API_KEY_EU env as the key
+      let useOpenAIEUKey =
+        keyWorkspaceFlags.includes("use_openai_eu_key") &&
+        !!apiConfig.getDustManagedOpenAIAPIKeyEU();
+
       let credentials: CredentialsType | null = null;
       if (auth.isSystemKey() && !useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
-        credentials = dustManagedCredentials();
+        credentials = dustManagedCredentials({ useOpenAIEU: useOpenAIEUKey });
       } else {
         credentials = credentialsFromProviders(providers);
+
+        // We never want to use the EU hostname with provider credentials.
+        useOpenAIEUKey = false;
       }
 
       if (!auth.isSystemKey()) {
@@ -298,11 +313,6 @@ async function handler(
       const flags = await getFeatureFlags(owner);
       const storeBlocksResults = !flags.includes("disable_run_logs");
 
-      // Fetch the feature flags for the owner of the run.
-      const keyWorkspaceFlags = await getFeatureFlags(
-        keyAuth.getNonNullableWorkspace()
-      );
-
       logger.info(
         {
           workspace: {
@@ -310,9 +320,15 @@ async function handler(
             name: owner.name,
           },
           app: app.sId,
+          useOpenAIEUKey,
+          userWorkspace: keyAuth.getNonNullableWorkspace().sId,
         },
         "App run creation"
       );
+
+      if (useOpenAIEUKey && config.MODEL) {
+        config.MODEL.use_openai_eu_host = true;
+      }
 
       const runRes = await coreAPI.createRunStream(
         keyAuth.getNonNullableWorkspace(),

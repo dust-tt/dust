@@ -67,6 +67,7 @@ export function DataSourceViewTagsFilterDropdown() {
             continue;
           }
 
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           let newTagsFilter: TagsFilter = source.tagsFilter || {
             in: [],
             not: [],

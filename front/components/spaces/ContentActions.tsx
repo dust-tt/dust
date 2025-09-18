@@ -49,6 +49,7 @@ export type ContentAction = {
 const isUploadOrEditAction = (
   action: ContentActionKey | undefined
 ): action is UploadOrEditContentActionKey =>
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   ["DocumentUploadOrEdit", "TableUploadOrEdit"].includes(action || "");
 
 type ContentActionsProps = {

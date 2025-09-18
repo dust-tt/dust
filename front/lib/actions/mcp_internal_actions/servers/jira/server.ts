@@ -8,6 +8,7 @@ import {
   deleteIssueLink,
   getConnectionInfo,
   getIssue,
+  getIssueAttachments,
   getIssueFields,
   getIssueLinkTypes,
   getIssueTypes,
@@ -22,6 +23,7 @@ import {
   searchUsersByEmailExact,
   transitionIssue,
   updateIssue,
+  uploadAttachmentsToJira,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
@@ -37,8 +39,15 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { normalizeError } from "@app/types";
 
-const createServer = (): McpServer => {
+const createServer = (
+  auth?: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer => {
   const server = makeInternalMCPServer("jira");
 
   server.tool(
@@ -762,6 +771,182 @@ const createServer = (): McpServer => {
             result: {
               users: result.value.users,
               nextStartAt: result.value.nextStartAt,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "upload_attachment",
+    "Upload a file attachment to a Jira issue. Supports two types of file sources: conversation files (from current Dust conversation) and external files (base64 encoded). The attachment must specify its type and corresponding fields. IMPORTANT: The 'type' field must be exactly 'conversation_file' or 'external_file', not a MIME type like 'image/png'.",
+    {
+      issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
+      attachment: z.union([
+        z.object({
+          type: z
+            .literal("conversation_file")
+            .describe("Use this for files already in the Dust conversation"),
+          fileId: z
+            .string()
+            .describe(
+              "The fileId from conversation attachments (use conversation_list_files to get available files)"
+            ),
+        }),
+        z.object({
+          type: z
+            .literal("external_file")
+            .describe("Use this for new files provided as base64 data"),
+          filename: z
+            .string()
+            .describe(
+              "The filename for the attachment (e.g., 'document.pdf', 'image.png')"
+            ),
+          contentType: z
+            .string()
+            .describe(
+              "MIME type of the file (e.g., 'image/png', 'application/pdf', 'text/plain')"
+            ),
+          base64Data: z.string().describe("Base64 encoded file data"),
+        }),
+      ]),
+    },
+    async ({ issueKey, attachment }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          let fileToUpload: {
+            buffer: Buffer;
+            filename: string;
+            contentType: string;
+          };
+
+          if (attachment.type === "conversation_file") {
+            if (!auth || !agentLoopContext) {
+              return makeMCPToolTextError(
+                "Authentication and conversation context required for conversation file attachments"
+              );
+            }
+
+            const fileResult = await getFileFromConversationAttachment(
+              auth,
+              attachment.fileId,
+              agentLoopContext
+            );
+
+            if (fileResult.isErr()) {
+              return makeMCPToolTextError(
+                `Failed to get conversation file ${attachment.fileId}: ${fileResult.error}`
+              );
+            }
+
+            fileToUpload = fileResult.value;
+          } else if (attachment.type === "external_file") {
+            // Validate base64 data size to prevent memory exhaustion (100MB limit)
+            const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+            const estimatedSize = (attachment.base64Data.length * 3) / 4; // Base64 to bytes estimation
+
+            if (estimatedSize > MAX_FILE_SIZE_BYTES) {
+              return makeMCPToolTextError(
+                `File ${attachment.filename} is too large. Maximum size allowed is ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`
+              );
+            }
+
+            try {
+              const buffer = Buffer.from(attachment.base64Data, "base64");
+              fileToUpload = {
+                buffer,
+                filename: attachment.filename,
+                contentType: attachment.contentType,
+              };
+            } catch (error) {
+              return makeMCPToolTextError(
+                `Failed to decode base64 data for ${attachment.filename}: ${normalizeError(error).message}`
+              );
+            }
+          } else {
+            return makeMCPToolTextError("Invalid attachment type");
+          }
+
+          const uploadResult = await uploadAttachmentsToJira(
+            baseUrl,
+            accessToken,
+            issueKey,
+            [fileToUpload]
+          );
+
+          if (uploadResult.isErr()) {
+            return makeMCPToolTextError(
+              `Failed to upload attachment: ${uploadResult.error}`
+            );
+          }
+
+          const uploadedAttachment = uploadResult.value[0];
+
+          return makeMCPToolJSONSuccess({
+            message: `Successfully uploaded attachment to issue ${issueKey}`,
+            result: {
+              issueKey,
+              attachment: {
+                id: uploadedAttachment.id,
+                filename: uploadedAttachment.filename,
+                size: uploadedAttachment.size,
+                mimeType: uploadedAttachment.mimeType,
+                created: uploadedAttachment.created,
+                author:
+                  uploadedAttachment.author.displayName ??
+                  uploadedAttachment.author.accountId,
+              },
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_attachments",
+    "Retrieve all attachments for a Jira issue, including metadata like filename, size, MIME type, and download URLs.",
+    {
+      issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
+    },
+    async ({ issueKey }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const attachmentsResult = await getIssueAttachments({
+            baseUrl,
+            accessToken,
+            issueKey,
+          });
+
+          if (attachmentsResult.isErr()) {
+            return makeMCPToolTextError(attachmentsResult.error);
+          }
+
+          const attachments = attachmentsResult.value;
+          const attachmentSummary = attachments.map((att) => ({
+            id: att.id,
+            filename: att.filename,
+            size: att.size,
+            mimeType: att.mimeType,
+            created: att.created,
+            author: att.author?.displayName ?? att.author?.accountId,
+            content: att.content,
+            thumbnail: att.thumbnail,
+          }));
+
+          return makeMCPToolJSONSuccess({
+            message: `Found ${attachments.length} attachment(s) for issue ${issueKey}`,
+            result: {
+              issueKey,
+              attachments: attachmentSummary,
+              totalAttachments: attachments.length,
+              totalSize: attachments.reduce(
+                (sum, att) => sum + (att.size || 0),
+                0
+              ),
             },
           });
         },

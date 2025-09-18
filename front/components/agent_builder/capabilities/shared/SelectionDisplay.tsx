@@ -24,6 +24,7 @@ export function SelectionDisplay({
         items.push({
           id: resource.internalId,
           title: resource.title,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           path: resource.parentTitle || "Root",
           dataSourceViewName: config.dataSourceView.dataSource.name,
         });

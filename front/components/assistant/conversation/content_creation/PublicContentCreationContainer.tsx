@@ -53,7 +53,6 @@ export function PublicContentCreationContainer({
         return (
           <UnsupportedContentRenderer
             fileName={fileMetadata.fileName}
-            fileId={fileMetadata.sId}
             contentType={fileMetadata.contentType}
           />
         );

@@ -171,6 +171,7 @@ export function messageReducer(
           break;
         case "tokens":
           newState.message.content =
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             (newState.message.content || "") + event.text;
           newState.agentState = "writing";
           break;
@@ -180,6 +181,7 @@ export function messageReducer(
             newState.message.chainOfThought = "";
           } else {
             newState.message.chainOfThought =
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               (newState.message.chainOfThought || "") + event.text;
           }
           newState.agentState = "thinking";

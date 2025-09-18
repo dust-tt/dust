@@ -112,6 +112,7 @@ const config = {
         EnvironmentConfig.getOptionalEnvVariable("DUST_PROD_API") ??
         PRODUCTION_DUST_API,
       nodeEnv:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
     };
   },
@@ -269,6 +270,11 @@ const config = {
   getUntrustedEgressProxyPort: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "UNTRUSTED_EGRESS_PROXY_PORT"
+    );
+  },
+  getDustManagedOpenAIAPIKeyEU: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "DUST_MANAGED_OPENAI_API_KEY_EU"
     );
   },
 };

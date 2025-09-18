@@ -53,6 +53,7 @@ import { AdditionalConfigurationSection } from "@app/components/agent_builder/ca
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
+import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -75,7 +76,7 @@ import {
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
-import { O4_MINI_MODEL_ID } from "@app/types";
+import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
   | {
@@ -84,8 +85,6 @@ export type SelectedTool =
       configuredAction?: AgentBuilderAction;
     }
   | { type: "DATA_VISUALIZATION" };
-
-const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export type SheetMode =
   | { type: "add" }
@@ -167,45 +166,65 @@ export function MCPServerViewsSheet({
 
   const hasReasoningModel = reasoningModels.length > 0;
 
-  // You cannot select the same tool twice unless it's configurable.
-  const selectableDefaultMCPServerViews = useMemo(() => {
-    const filteredList = defaultMCPServerViews.filter((view) => {
+  // Utility function to check if a server view should be filtered out based on allowMultipleInstances
+  const shouldFilterServerView = useCallback(
+    (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
+      // For servers that don't allow multiple instances, check if any action is using this server type
+      if (!view.server.allowMultipleInstances) {
+        const serverAlreadyUsed = actions.some((action) => {
+          // Check if this is an MCP action with the same server ID
+          return (
+            action.type === "MCP" &&
+            action.configuration &&
+            action.configuration.mcpServerViewId === view.sId
+          );
+        });
+
+        if (serverAlreadyUsed) {
+          return true;
+        }
+      }
+
+      // Legacy check for backward compatibility - tools can still be filtered by name/configurability
       const selectedAction = actions.find(
         (action) => action.name === view.server.name
       );
 
       if (selectedAction) {
-        return !selectedAction.noConfigurationRequired;
+        return !selectedAction.configurable; // Should filter out if not configurable
       }
 
-      return true;
-    });
+      return false;
+    },
+    []
+  );
+
+  const selectableDefaultMCPServerViews = useMemo(() => {
+    const filteredList = defaultMCPServerViews.filter(
+      (view) => !shouldFilterServerView(view, actions)
+    );
 
     if (hasReasoningModel) {
       return filteredList;
     }
 
-    // You should not be able to select Reasoning if there is no reasoning model available.
     return filteredList.filter(
       (view) =>
         !getMCPServerToolsConfigurations(view).mayRequireReasoningConfiguration
     );
-  }, [defaultMCPServerViews, actions, hasReasoningModel]);
+  }, [
+    defaultMCPServerViews,
+    actions,
+    hasReasoningModel,
+    shouldFilterServerView,
+  ]);
 
   const selectableNonDefaultMCPServerViews = useMemo(
     () =>
-      nonDefaultMCPServerViews.filter((view) => {
-        const selectedAction = actions.find(
-          (action) => action.name === view.server.name
-        );
-
-        if (selectedAction) {
-          return !selectedAction.noConfigurationRequired;
-        }
-
-        return true;
-      }),
-    [nonDefaultMCPServerViews, actions]
+      nonDefaultMCPServerViews.filter(
+        (view) => !shouldFilterServerView(view, actions)
+      ),
+    [nonDefaultMCPServerViews, actions, shouldFilterServerView]
   );
 
   const filteredViews = useMemo(() => {
@@ -351,7 +370,7 @@ export function MCPServerViewsSheet({
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const requirement = getMCPServerToolsConfigurations(mcpServerView);
 
-    if (!requirement.noRequirement) {
+    if (requirement.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = requirement.mayRequireReasoningConfiguration;
 
@@ -448,9 +467,10 @@ export function MCPServerViewsSheet({
             configuration: null,
             name: DEFAULT_DATA_VISUALIZATION_NAME,
             description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-            noConfigurationRequired: true,
+            configurable: false,
           };
         } else {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           return tool.configuredAction || getDefaultMCPAction(tool.view);
         }
       })
@@ -564,6 +584,7 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       title: mcpServerView?.name || "Configure Tool",
       description: "",
       icon: undefined,
@@ -578,8 +599,15 @@ export function MCPServerViewsSheet({
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
-                  allowNameEdit={!configurationTool.noConfigurationRequired}
                 />
+
+                {configurationTool.configurable && (
+                  <NameSection
+                    title="Name"
+                    placeholder="My tool name…"
+                    triggerValidationOnChange
+                  />
+                )}
 
                 {toolsConfigurations.mayRequireReasoningConfiguration && (
                   <ReasoningModelSection />
@@ -640,6 +668,7 @@ export function MCPServerViewsSheet({
         mode?.type === "info" ? mode.action : null
       ),
       content:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         infoMCPServerView ||
         (mode?.type === "info" &&
           mode.action?.type === "DATA_VISUALIZATION") ? (

@@ -7,7 +7,7 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
+import { DEFAULT_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
@@ -23,6 +23,8 @@ import type {
   RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
 
+const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
+
 const logMetricsActivities = proxyActivities<
   typeof logAgentLoopMetricsActivities
 >({
@@ -36,22 +38,17 @@ const activities: AgentLoopActivities = {
     startToCloseTimeout: "10 minutes",
   }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
-    // The activity timeout should be slightly longer than the max timeout of
-    // the tool, to avoid the activity being killed before the tool timeout.
-    startToCloseTimeout: `${
-      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
-    } minutes`,
+    // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
+    startToCloseTimeout: toolActivityStartToCloseTimeout,
     retry: {
       // Do not retry tool activities. Those are not idempotent.
       maximumAttempts: 1,
     },
   }).runToolActivity,
   runRetryableToolActivity: proxyActivities<typeof runToolActivities>({
-    startToCloseTimeout: `${
-      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1
-    } minutes`,
+    startToCloseTimeout: toolActivityStartToCloseTimeout,
     retry: {
-      maximumAttempts: 5,
+      maximumAttempts: 15,
     },
   }).runToolActivity,
   publishDeferredEventsActivity: proxyActivities<

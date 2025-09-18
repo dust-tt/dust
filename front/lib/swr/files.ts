@@ -39,6 +39,7 @@ export function useFileProcessedContent(
     disabled?: boolean;
   }
 ) {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const isDisabled = config?.disabled || fileId === null;
 
   const {
@@ -157,12 +158,19 @@ export function useFileMetadata({
 export function useFileContent({
   fileId,
   owner,
+  cacheKey,
 }: {
   fileId: string;
   owner: LightWorkspaceType;
+  cacheKey?: string;
 }) {
+  // Include cacheKey in the SWR key if provided to force cache invalidation.
+  const swrKey = cacheKey
+    ? `/api/w/${owner.sId}/files/${fileId}?action=view&v=${cacheKey}`
+    : `/api/w/${owner.sId}/files/${fileId}?action=view`;
+
   const { data, error, mutate } = useSWRWithDefaults<string, string>(
-    `/api/w/${owner.sId}/files/${fileId}?action=view`,
+    swrKey,
     async (url: string) => {
       // Use custom fetcher to parse as text.
       const response = await fetch(url);

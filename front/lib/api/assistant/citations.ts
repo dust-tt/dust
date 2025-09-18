@@ -113,6 +113,7 @@ export const getLightAgentMessageFromAgentMessage = (
   return {
     type: "agent_message",
     sId: agentMessage.sId,
+    created: agentMessage.created,
     version: agentMessage.version,
     parentMessageId: agentMessage.parentMessageId,
     content: agentMessage.content,
@@ -134,6 +135,7 @@ export const getLightAgentMessageFromAgentMessage = (
         fileId: f.fileId,
         title: f.title,
         contentType: f.contentType,
+        ...(f.hidden ? { hidden: true } : {}),
       })),
   };
 };

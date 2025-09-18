@@ -116,6 +116,7 @@ export function ChangeMemberModal({
                       Role:
                     </div>
                     <RoleDropDown
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       selectedRole={selectedRole || role}
                       onChange={setSelectedRole}
                       disabled={hasActiveRoleProvisioningGroups()}

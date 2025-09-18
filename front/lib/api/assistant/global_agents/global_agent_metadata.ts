@@ -245,21 +245,28 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.DUST_DEEP_2:
-      return {
-        sId: GLOBAL_AGENTS_SID.DUST_DEEP_2,
-        name: "dust-deep-2",
-        description:
-          "Deep research agent with company data, web search, browsing, Content Creation, and data warehouses.",
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.DUST_TASK:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_TASK,
         name: "dust-task",
         description:
           "Task sub-agent for focused research using company data, web search, browsing, and data warehouses.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+        name: "dust-browser-summary",
+        description: "A agent that summarizes web page content.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.DUST_PLANNING:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
+        name: "dust-planning",
+        description: "A agent that plans research tasks.",
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };

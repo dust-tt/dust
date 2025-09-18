@@ -242,8 +242,9 @@ export async function deleteOrLeaveConversation(
   if (leaveRes.isErr()) {
     return new Err(leaveRes.error);
   }
-  // If the conversation is empty after the leave, soft-delete it.
-  if (leaveRes.value.affectedCount > 0 && leaveRes.value.isConversationEmpty) {
+
+  // If the user was the last member, soft-delete the conversation.
+  if (leaveRes.value.affectedCount === 0 && leaveRes.value.wasLastMember) {
     await conversation.updateVisibilityToDeleted();
   }
   return new Ok({ success: true });
@@ -544,6 +545,7 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
+                  userContextLastTriggerRunAt: context.lastTriggerRunAt,
                   userId: user
                     ? user.id
                     : (
@@ -989,6 +991,8 @@ export async function editUserMessage(
                   userContextProfilePictureUrl:
                     userMessageRow.userContextProfilePictureUrl,
                   userContextOrigin: userMessageRow.userContextOrigin,
+                  userContextLastTriggerRunAt:
+                    userMessageRow.userContextLastTriggerRunAt,
                   userId: userMessageRow.userId
                     ? userMessageRow.userId
                     : (

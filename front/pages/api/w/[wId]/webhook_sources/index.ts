@@ -3,6 +3,7 @@ import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -96,6 +97,7 @@ async function handler(
         signatureHeader,
         signatureAlgorithm,
         customHeaders,
+        includeGlobal,
       } = bodyValidation.data;
 
       const workspace = auth.getNonNullableWorkspace();
@@ -115,6 +117,33 @@ async function handler(
         }
 
         const webhookSource = webhookSourceRes.value.toJSON();
+
+        if (includeGlobal) {
+          const systemView =
+            await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+              auth,
+              webhookSource.id
+            );
+
+          if (systemView === null) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Missing system view for webhook source, it should have been created when creating the webhook source.",
+              },
+            });
+          }
+
+          const globalSpace =
+            await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+          await WebhookSourcesViewResource.create(auth, {
+            systemView,
+            space: globalSpace,
+          });
+        }
 
         return res.status(201).json({
           success: true,

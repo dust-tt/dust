@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -7,7 +8,9 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
+import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -38,10 +41,31 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     blob: CreationAttributes<WebhookSourceModel>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WebhookSourceResource, Error>> {
+    assert(
+      await SpaceResource.canAdministrateSystemSpace(auth),
+      "The user is not authorized to create a webhook source"
+    );
+
     try {
       const webhookSource = await WebhookSourceModel.create(blob, {
         transaction,
       });
+
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+      // Immediately create a view for the webhook source in the system space.
+      await WebhookSourcesViewModel.create(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          vaultId: systemSpace.id,
+          editedAt: new Date(),
+          editedByUserId: auth.user()?.id,
+          webhookSourceId: webhookSource.id,
+        },
+        {
+          transaction,
+        }
+      );
 
       return new Ok(new this(WebhookSourceModel, webhookSource.get()));
     } catch (error) {
@@ -121,9 +145,27 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
   ): Promise<Result<undefined, Error>> {
+    assert(
+      await SpaceResource.canAdministrateSystemSpace(auth),
+      "The user is not authorized to delete a webhook source"
+    );
+
     const owner = auth.getNonNullableWorkspace();
 
     try {
+      // Directly delete the WebhookSourceViewModel to avoid a circular dependency.
+      await WebhookSourcesViewModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          webhookSourceId: this.id,
+        },
+        // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+        // bypassing the soft deletion in place.
+        hardDelete: true,
+        transaction,
+      });
+
+      // Then delete the webhook source itself
       await WebhookSourceModel.destroy({
         where: {
           id: this.id,

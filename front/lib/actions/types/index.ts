@@ -23,6 +23,7 @@ export type ActionGeneratedFileType = {
   title: string;
   contentType: AllSupportedFileContentType;
   snippet: string | null;
+  hidden?: boolean;
 };
 
 export type AgentLoopRunContextType = {

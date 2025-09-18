@@ -1,10 +1,14 @@
 import { datadogLogs } from "@datadog/browser-logs";
 
+import localLogger from "@app/logger/logger";
+
 // Keep the exported Logger type for compatibility with existing imports.
 export type { Logger } from "pino";
 
 // Pino-like levels we expose
 type Level = "trace" | "debug" | "info" | "warn" | "error";
+
+const IS_DEV = process.env.NODE_ENV === "development";
 
 // Type guard to check if value is a plain object (not null, not array)
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -50,14 +54,30 @@ function makeLogger(baseBindings?: LogContext) {
     };
 
     try {
-      // Datadog supports: debug, info, warn, error. Map trace->debug.
+      if (IS_DEV) {
+        // In dev, use the local pino logger so logs appear locally and pretty-printed.
+        const hasCtx = Object.keys(mergedContext).length > 0;
+        // Pino signature: logger[level](obj?, msg?)
+        if (hasCtx && message !== undefined) {
+          // Prefer structured + message
+          localLogger[level](mergedContext, message);
+        } else if (hasCtx) {
+          localLogger[level](mergedContext);
+        } else if (message !== undefined) {
+          localLogger[level](message);
+        } else {
+          localLogger[level]("");
+        }
+        return;
+      }
+      // In non-dev, forward to Datadog. Datadog supports: debug, info, warn, error. Map trace->debug.
       const ddLevel = level === "trace" ? "debug" : level;
       datadogLogs.logger[ddLevel](
         message ?? "",
         Object.keys(mergedContext).length ? mergedContext : undefined
       );
     } catch {
-      // Fail-safe: avoid throwing if datadog is not ready; optionally console.* here in dev.
+      // Fail-safe: avoid throwing if the logging backend is not ready.
     }
   };
 

@@ -28,6 +28,7 @@ function prepareFeatureFlagsForDisplay(
         description: WHITELISTABLE_FEATURES_CONFIG[ff].description,
         stage: WHITELISTABLE_FEATURES_CONFIG[ff].stage,
         enabled: !!enabledFlag,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         enabledAt: enabledFlag?.createdAt || null,
       };
     })

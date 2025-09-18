@@ -56,6 +56,7 @@ export function CreateWebhookSourceDialog({
     const apiData = {
       ...data,
       customHeaders: parsedCustomHeaders?.parsed ?? null,
+      includeGlobal: true,
     };
 
     await createWebhookSource(apiData);

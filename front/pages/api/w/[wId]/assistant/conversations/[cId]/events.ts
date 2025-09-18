@@ -35,6 +35,7 @@ async function handler(
 
   const conversation = conversationRes.value;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const lastEventId = req.query.lastEventId || null;
   if (lastEventId && typeof lastEventId !== "string") {
     return apiError(req, res, {

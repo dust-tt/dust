@@ -59,8 +59,11 @@ const parseSendgridWebhookContent = async (
     }
 
     return new Ok({
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       subject: subject || "(no subject)",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       text: text || "",
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       auth: { SPF: SPF || "", dkim: dkim || "" },
       envelope: {
         to: envelope.to || [],

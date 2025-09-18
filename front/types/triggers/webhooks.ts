@@ -47,4 +47,13 @@ export const PostWebhookSourcesSchema = z.object({
   signatureHeader: z.string().min(1, "Signature header is required"),
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
   customHeaders: z.record(z.string(), z.string()).nullable(),
+  includeGlobal: z.boolean().optional(),
+});
+
+export type PatchWebhookSourceViewBody = z.infer<
+  typeof patchWebhookSourceViewBodySchema
+>;
+
+export const patchWebhookSourceViewBodySchema = z.object({
+  name: z.string().min(1, "Name is required."),
 });

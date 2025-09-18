@@ -68,6 +68,7 @@ export default function ModelPicker({
       if (result.models) {
         setProviderModels((prev) => ({
           ...prev,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           [providerId]: result.models || [], // Ensure we never set undefined
         }));
       }

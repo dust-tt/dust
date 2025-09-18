@@ -659,7 +659,9 @@ export async function processAndStoreFromUrl(
 
     const contentLength = response.headers.get("content-length");
     const finalContentType =
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       contentType ||
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       response.headers.get("content-type") ||
       "application/octet-stream";
 
@@ -675,6 +677,7 @@ export async function processAndStoreFromUrl(
       workspaceId: auth.getNonNullableWorkspace().id,
       userId: auth.user()?.id ?? null,
       contentType: finalContentType,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       fileName: fileName || new URL(url).pathname.split("/").pop() || "file",
       fileSize: contentLength ? parseInt(contentLength) : 1024 * 1024 * 10, // Default 10MB if no content-length
       useCase,

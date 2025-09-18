@@ -875,27 +875,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async leaveConversation(
     auth: Authenticator
-  ): Promise<
-    Result<{ isConversationEmpty: boolean; affectedCount: number }, Error>
-  > {
+  ): Promise<Result<{ wasLastMember: boolean; affectedCount: number }, Error>> {
     const user = auth.user();
     if (!user) {
       return new Err(new Error("user_not_authenticated"));
     }
-    const affectedCount = await ConversationParticipantModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: this.id,
-        userId: user.id,
-      },
-    });
     const remaining = await ConversationParticipantModel.count({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
       },
     });
-    return new Ok({ isConversationEmpty: remaining === 0, affectedCount });
+
+    let affectedCount = 0;
+    if (remaining > 1) {
+      affectedCount = await ConversationParticipantModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: this.id,
+          userId: user.id,
+        },
+      });
+    }
+
+    return new Ok({ wasLastMember: remaining <= 1, affectedCount });
   }
 
   async delete(

@@ -216,6 +216,20 @@ async function handler(
             });
           }
         }
+
+        const isRunAgent =
+          message.context.origin === "run_agent" ||
+          message.context.origin === "agent_handover";
+        if (isRunAgent && !auth.isSystemKey()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Messages from run_agent or agent_handover must come from a system key.",
+            },
+          });
+        }
       }
 
       if (depth && depth >= MAX_CONVERSATION_DEPTH) {
@@ -410,6 +424,7 @@ async function handler(
         newMessage = messageRes.value.userMessage;
       }
 
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (newContentFragment || newMessage) {
         // If we created a user message or a content fragment (or both) we retrieve the
         // conversation. If a user message was posted, we know that the agent messages have been

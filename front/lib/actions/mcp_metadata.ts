@@ -479,6 +479,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
     }
     return {
       name: tool.name,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       description: tool.description || "",
       inputSchema,
     };

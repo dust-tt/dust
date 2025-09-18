@@ -138,6 +138,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
           ...restConfig,
           requested_notion_workspace_id: notionWorkspaceId,
           requested_notion_workspace_name:
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             notionWorkspaceName || "Unknown Workspace",
         };
 
@@ -192,6 +193,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
             "You must connect to the Notion workspace configured by your admin (" +
             requestedNotionWorkspaceName +
             "), instead of the current workspace (" +
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             (currentNotionWorkspaceName || "Unknown") +
             ").",
         });

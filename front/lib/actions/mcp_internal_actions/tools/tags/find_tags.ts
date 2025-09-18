@@ -16,7 +16,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
-const DEFAULT_SEARCH_LABELS_LIMIT = 10;
+const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
 
 export const findTagsSchema = {
   query: z
@@ -40,7 +40,10 @@ export function registerFindTagsTool(
   const baseDescription =
     `Find exact matching labels (also called tags).` +
     "Restricting or excluding content succeeds only with existing labels. " +
-    "Searching without verifying labels first typically returns no results.";
+    "Searching without verifying labels first typically returns no results." +
+    "The output of this tool can typically be used in `tagsIn` (if we want " +
+    "to restrict the search to specific tags) or `tagsNot` (if we want to " +
+    "exclude specific tags) parameters.";
   const toolDescription = extraDescription
     ? baseDescription + "\n" + extraDescription
     : baseDescription;
@@ -93,16 +96,40 @@ export function registerFindTagsTool(
           );
         }
 
+        const dataSourceViews = coreSearchArgs.map((arg) => arg.dataSourceView);
+
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-        const result = await coreAPI.searchTags({
-          dataSourceViews: coreSearchArgs.map((arg) => arg.dataSourceView),
-          limit: DEFAULT_SEARCH_LABELS_LIMIT,
+        let result = await coreAPI.searchTags({
+          dataSourceViews,
           query,
           queryType: "match",
         });
 
         if (result.isErr()) {
           return new Err(new MCPError("Error searching for labels"));
+        }
+
+        if (result.value.tags.length === 0) {
+          // Performing an additional search with a higher limit to catch uncommon tags.
+          result = await coreAPI.searchTags({
+            dataSourceViews,
+            limit: DEFAULT_SEARCH_LABELS_UPPER_LIMIT,
+            query,
+            queryType: "match",
+          });
+
+          if (result.isErr()) {
+            return new Err(new MCPError("Error searching for labels"));
+          }
+        }
+
+        if (result.value.tags.length === 0) {
+          return new Ok([
+            {
+              type: "text",
+              text: "No labels found matching the search criteria.",
+            },
+          ]);
         }
 
         return new Ok([
