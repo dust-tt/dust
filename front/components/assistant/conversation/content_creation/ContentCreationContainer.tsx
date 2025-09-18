@@ -76,6 +76,10 @@ export function ContentCreationContainer({
           <ClientExecutableRenderer
             conversation={conversation}
             fileId={contentId}
+            fileName={fileMetadata.fileName}
+            lastEditedByAgentConfigurationId={
+              fileMetadata.useCaseMetadata.lastEditedByAgentConfigurationId
+            }
             owner={owner}
           />
         );
