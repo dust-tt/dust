@@ -1105,6 +1105,7 @@ impl LLM for OpenAILLM {
                 event_sender,
                 transform_system_messages,
                 provider_name,
+                use_openai_eu_host,
             )
             .await
         } else {
