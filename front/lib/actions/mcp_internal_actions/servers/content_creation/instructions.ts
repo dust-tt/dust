@@ -12,7 +12,7 @@ import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_LAST_EDIT_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 
 export const CONTENT_CREATION_INSTRUCTIONS = `\
@@ -34,8 +34,7 @@ You have access to a Content Creation system that allows you to create and updat
 
 ### Reverting to Previous State:
 
-- Use \`${REVERT_LAST_EDIT_TOOL_NAME}\` to revert the content creation file to the state it was at the last agent message.
-- Only use this tool if explicitly instructed to do so.
+- Use \`${REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME}\` to revert the changes made to the Content Creation file in the last agent message.
 - The revert tool can only be used after an edit has been made to the file.
 
 ${VIZ_REACT_COMPONENT_GUIDELINES}
