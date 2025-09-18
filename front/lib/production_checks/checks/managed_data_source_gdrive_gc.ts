@@ -7,6 +7,7 @@ import {
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withRetries } from "@app/types";
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,
@@ -36,18 +37,28 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       const connectorDocuments: { id: number; coreDocumentId: string }[] = [];
       let fetched = 0;
       do {
-        const batch = (await connectorsReplica.query(
-          // eslint-disable-next-line dust/no-raw-sql -- Legit
-          'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId AND id > :lastId ORDER BY id ASC LIMIT :batchSize',
+        // There is a risk of "cancelling statement due to confilct with recovery" errors
+        // relatively benign in the context of this check, thus the retry policy.
+        const batch = (await withRetries(
+          logger,
+          async () =>
+            connectorsReplica.query(
+              // eslint-disable-next-line dust/no-raw-sql -- Legit
+              'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId AND id > :lastId ORDER BY id ASC LIMIT :batchSize',
+              {
+                replacements: {
+                  connectorId: ds.connectorId,
+                  lastId,
+                  batchSize: BATCH_SIZE,
+                },
+                type: QueryTypes.SELECT,
+              }
+            ),
           {
-            replacements: {
-              connectorId: ds.connectorId,
-              lastId,
-              batchSize: BATCH_SIZE,
-            },
-            type: QueryTypes.SELECT,
+            retries: 10,
+            delayBetweenRetriesMs: 5000,
           }
-        )) as { id: number; coreDocumentId: string }[];
+        )({})) as { id: number; coreDocumentId: string }[];
 
         fetched = batch.length;
         if (fetched > 0) {
