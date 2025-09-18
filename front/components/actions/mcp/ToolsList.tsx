@@ -65,7 +65,7 @@ export function ToolsList({
 
   const { updateToolSettings } = useUpdateMCPServerToolsSettings({
     owner,
-    serverId: mcpServerView.server.sId,
+    mcpServerView,
   });
 
   const getAvailableStakeLevelsForTool = (toolName: string) => {

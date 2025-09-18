@@ -278,7 +278,7 @@ async function handler(
       // 2) We use the DUST_MANAGED_OPENAI_API_KEY_EU env as the key
       let useOpenAIEUKey =
         keyWorkspaceFlags.includes("use_openai_eu_key") &&
-        !!process.env.DUST_MANAGED_OPENAI_API_KEY_EU;
+        !!apiConfig.getDustManagedOpenAIAPIKeyEU();
 
       let credentials: CredentialsType | null = null;
       if (auth.isSystemKey() && !useWorkspaceCredentials) {
