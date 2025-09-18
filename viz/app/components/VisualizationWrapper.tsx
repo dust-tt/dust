@@ -68,15 +68,9 @@ function validateTailwindCode(code: string): void {
   }
 }
 
-function parseAllowedOrigins(allowed: string | undefined): string[] {
-  return allowed ? allowed
-    .split(",")
-    .map((s) => s.trim()): [];
-}
-
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
-  { allowedVisualizationOrigin }: { allowedVisualizationOrigin?: string }
+  { allowedOrigins }: { allowedOrigins: string[] }
 ) {
   const [error, setError] = useState<Error | null>(null);
 
@@ -114,9 +108,7 @@ export function useVisualizationAPI(
         return null;
       }
 
-      const file = new File([blob], "fileId", { type: blob.type });
-
-      return file;
+      return new File([blob], "fileId", { type: blob.type });
     },
     [sendCrossDocumentMessage]
   );
@@ -144,11 +136,6 @@ export function useVisualizationAPI(
   const displayCode = useCallback(async () => {
     await sendCrossDocumentMessage("displayCode", null);
   }, [sendCrossDocumentMessage]);
-
-  const allowedOrigins = useMemo(
-    () => parseAllowedOrigins(allowedVisualizationOrigin),
-    [allowedVisualizationOrigin]
-  );
 
   const addEventListener = useCallback(
     (
@@ -244,23 +231,23 @@ interface RunnerParams {
 
 export function VisualizationWrapperWithErrorBoundary({
   identifier,
-  allowedVisualizationOrigin,
+  allowedOrigins,
   isFullHeight = false,
 }: {
   identifier: string;
-  allowedVisualizationOrigin: string | undefined;
+  allowedOrigins: string[];
   isFullHeight?: boolean;
 }) {
   const sendCrossDocumentMessage = useMemo(
     () =>
       makeSendCrossDocumentMessage({
         identifier,
-        allowedVisualizationOrigin,
+        allowedOrigins,
       }),
-    [identifier, allowedVisualizationOrigin]
+    [identifier, allowedOrigins]
   );
   const api = useVisualizationAPI(sendCrossDocumentMessage, {
-    allowedVisualizationOrigin,
+    allowedOrigins,
   });
 
   return (
@@ -484,13 +471,11 @@ export function VisualizationWrapper({
 
 export function makeSendCrossDocumentMessage({
   identifier,
-  allowedVisualizationOrigin,
+  allowedOrigins,
 }: {
   identifier: string;
-  allowedVisualizationOrigin: string | undefined;
+  allowedOrigins: string[];
 }) {
-  const allowedOrigins = parseAllowedOrigins(allowedVisualizationOrigin);
-
   return <T extends VisualizationRPCCommand>(
     command: T,
     params: VisualizationRPCRequestMap[T]
