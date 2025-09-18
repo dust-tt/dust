@@ -3,22 +3,107 @@ import type {
   DustAPI,
   PublicPostContentFragmentRequestBody,
 } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
+import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import {
+  isMCPConfigurationForInternalSearch,
+  isServerSideMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   ConversationType,
   Result,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { DATA_SOURCE_NODE_ID, Err, Ok } from "@app/types";
+
+function getDataSourceURI(config: DataSourceConfiguration): string {
+  const { workspaceId, sId, dataSourceViewId, filter } = config;
+  if (sId) {
+    return `data_source_configuration://dust/w/${workspaceId}/data_source_configurations/${sId}`;
+  }
+  const encodedFilter = encodeURIComponent(JSON.stringify(filter));
+  return `data_source_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/filter/${encodedFilter}`;
+}
+
+export async function createContentFragmentsFromDataSources(
+  auth: Authenticator,
+  mainAgent: AgentConfigurationType
+): Promise<Result<PublicPostContentFragmentRequestBody[], Error>> {
+  const searchActions = mainAgent.actions.filter(
+    isServerSideMCPServerConfiguration
+  );
+
+  const allDataSources = searchActions.flatMap(
+    (action) => action.dataSources ?? []
+  );
+
+  // Convert DataSourceConfiguration to DataSourcesToolConfigurationType format
+  const dataSourceToolConfigurations = allDataSources.map((dataSource) => ({
+    uri: getDataSourceURI(dataSource),
+    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+  }));
+
+  // Resolve data source configurations to get actual data source IDs
+  const resolvedDataSourcesResult = await getAgentDataSourceConfigurations(
+    auth,
+    dataSourceToolConfigurations
+  );
+
+  if (resolvedDataSourcesResult.isErr()) {
+    return resolvedDataSourcesResult;
+  }
+
+  const resolvedDataSources = resolvedDataSourcesResult.value;
+
+  const contentFragments: PublicPostContentFragmentRequestBody[] = [];
+
+  for (const dataSource of resolvedDataSources) {
+    if (
+      dataSource.filter.parents?.in &&
+      dataSource.filter.parents.in.length > 0
+    ) {
+      // If there are specific parent filters, create content fragments for each parent node
+      for (const parentNodeId of dataSource.filter.parents.in) {
+        contentFragments.push({
+          title: `Node: ${parentNodeId}`,
+          nodeId: parentNodeId, // Use the specific parent node ID
+          nodeDataSourceViewId: dataSource.dataSourceViewId,
+          url: null,
+          content: null,
+          contentType: null,
+          context: null,
+          supersededContentFragmentId: null,
+        });
+      }
+    } else {
+      // If no parent filters, create a content fragment for the entire data source
+      contentFragments.push({
+        title: `Data Source: ${dataSource.dataSource.name}`,
+        nodeId: DATA_SOURCE_NODE_ID, // Use the constant directly for data source nodes
+        nodeDataSourceViewId: dataSource.dataSourceViewId,
+        url: null,
+        content: null,
+        contentType: null,
+        context: null,
+        supersededContentFragmentId: null,
+      });
+    }
+  }
+
+  return new Ok(contentFragments);
+}
 
 export async function getOrCreateConversation(
   api: DustAPI,

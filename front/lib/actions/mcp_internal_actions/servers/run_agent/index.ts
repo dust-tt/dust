@@ -54,83 +54,6 @@ import {
   Ok,
 } from "@app/types";
 
-function getDataSourceURI(config: DataSourceConfiguration): string {
-  const { workspaceId, sId, dataSourceViewId, filter } = config;
-  if (sId) {
-    return `data_source_configuration://dust/w/${workspaceId}/data_source_configurations/${sId}`;
-  }
-  const encodedFilter = encodeURIComponent(JSON.stringify(filter));
-  return `data_source_configuration://dust/w/${workspaceId}/data_source_views/${dataSourceViewId}/filter/${encodedFilter}`;
-}
-
-async function createContentFragmentsFromDataSources(
-  auth: Authenticator,
-  mainAgent: AgentConfigurationType
-): Promise<Result<PublicPostContentFragmentRequestBody[], Error>> {
-  const searchActions = mainAgent.actions.filter(
-    isMCPConfigurationForInternalSearch
-  );
-
-  const allDataSources = searchActions.flatMap(
-    (action) => action.dataSources || []
-  );
-
-  // Convert DataSourceConfiguration to DataSourcesToolConfigurationType format
-  const dataSourceToolConfigurations = allDataSources.map((dataSource) => ({
-    uri: getDataSourceURI(dataSource),
-    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-  }));
-
-  // Resolve data source configurations to get actual data source IDs
-  const resolvedDataSourcesResult = await getAgentDataSourceConfigurations(
-    auth,
-    dataSourceToolConfigurations
-  );
-
-  if (resolvedDataSourcesResult.isErr()) {
-    return resolvedDataSourcesResult;
-  }
-
-  const resolvedDataSources = resolvedDataSourcesResult.value;
-
-  const contentFragments: PublicPostContentFragmentRequestBody[] = [];
-
-  for (const dataSource of resolvedDataSources) {
-    if (
-      dataSource.filter.parents?.in &&
-      dataSource.filter.parents.in.length > 0
-    ) {
-      // If there are specific parent filters, create content fragments for each parent node
-      for (const parentNodeId of dataSource.filter.parents.in) {
-        contentFragments.push({
-          title: `Node: ${parentNodeId}`,
-          nodeId: parentNodeId, // Use the specific parent node ID
-          nodeDataSourceViewId: dataSource.dataSourceViewId,
-          url: null,
-          content: null,
-          contentType: null,
-          context: null,
-          supersededContentFragmentId: null,
-        });
-      }
-    } else {
-      // If no parent filters, create a content fragment for the entire data source
-      contentFragments.push({
-        title: `Data Source: ${dataSource.dataSource.name}`,
-        nodeId: DATA_SOURCE_NODE_ID, // Use the constant directly for data source nodes
-        nodeDataSourceViewId: dataSource.dataSourceViewId,
-        url: null,
-        content: null,
-        contentType: null,
-        context: null,
-        supersededContentFragmentId: null,
-      });
-    }
-  }
-
-  return new Ok(contentFragments);
-}
-
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
   if (!match) {
@@ -330,20 +253,6 @@ export default async function createServer(
         logger
       );
 
-      // Create content fragments for configured data sources
-      const contentFragmentsRes = await createContentFragmentsFromDataSources(
-        auth,
-        mainAgent
-      );
-
-      if (contentFragmentsRes.isErr()) {
-        return makeMCPToolTextError(
-          `Failed to resolve data source configurations: ${contentFragmentsRes.error.message}`
-        );
-      }
-
-      const contentFragments = contentFragmentsRes.value;
-
       const isHandover = conversationId === mainConversation.sId;
       const instructions =
         agentLoopContext.runContext.agentConfiguration.instructions;
@@ -395,7 +304,7 @@ ${query}`
           toolsetsToAdd: toolsetsToAdd ?? null,
           fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
           conversationId: conversationId ?? null,
-          contentFragments,
+          contentFragments: null,
         }
       );
 
