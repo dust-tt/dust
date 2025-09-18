@@ -91,7 +91,7 @@ export class WavRecorder {
         float32Array = new Float32Array(audioData);
       } else {
         throw new Error(
-          `"audioData" must be one of: Blob, Float32Arrray, Int16Array, ArrayBuffer, Array<number>`
+          `"audioData" must be one of: Blob, Float32Array, Int16Array, ArrayBuffer, Array<number>`
         );
       }
       if (fromSampleRate === -1) {

@@ -63,6 +63,8 @@ async function handler(
   const file = maybeFiles[0];
   const streamResponse = req.query.stream === "true" || false;
 
+  logger.info("file path " + file.filepath);
+
   try {
     if (!streamResponse) {
       const r = await transcribeFile(file);

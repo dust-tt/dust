@@ -4,7 +4,7 @@ import { Readable } from "stream";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { transcribeFromReadable } from "@app/lib/utils/transcribe_service";
+import { streamTranscribeStream } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -51,10 +51,7 @@ async function handler(
       req.on("close", () => controller.abort());
 
       // Prepare a Readable stream to feed audio bytes into the transcriber.
-      const audioReadable = new Readable({
-        // No-op _read; we'll push as data arrives from Redis.
-        read() {},
-      });
+      const audioReadable = new Readable({ encoding: "ascii" });
 
       const { iterator, unsubscribe } =
         await getRedisHybridManager().subscribeAsAsyncIterator<AudioChunkEvent>(
@@ -67,38 +64,38 @@ async function handler(
         );
 
       // Bridge Redis audio events to the Readable stream.
-      (async () => {
-        try {
-          for await (const ev of iterator) {
-            if (signal.aborted) {
-              break;
-            }
-            if (ev.type === "audio" && ev.data) {
-              const buf = Buffer.from(ev.data, "base64");
-              if (buf.length > 0) {
-                audioReadable.push(buf);
-              }
-            } else if (ev.type === "end") {
-              audioReadable.push(null);
-              break;
-            }
+      // void (async () => {
+      try {
+        for await (const ev of iterator) {
+          logger.info("Received audio event: " + ev.data?.length);
+          logger.info("Received audio event: " + ev.data?.slice(0, 30));
+          if (signal.aborted) {
+            break;
           }
-        } catch (e) {
-          logger.error(
-            { err: e },
-            "Error while reading audio events from Redis"
-          );
-        } finally {
-          try {
+          if (ev.type === "audio" && ev.data) {
+            const buf = Buffer.from(ev.data, "ascii");
+            if (buf.length > 0) {
+              audioReadable.push(buf);
+            }
+          } else if (ev.type === "end") {
             audioReadable.push(null);
-          } catch (e) {
-            // Ignore double-end.
+            await getRedisHybridManager().clearStream(channel);
+            break;
           }
         }
-      })();
+      } catch (e) {
+        logger.error({ err: e }, "Error while reading audio events from Redis");
+      } finally {
+        try {
+          audioReadable.push(null);
+        } catch (e) {
+          // Ignore double-end.
+        }
+      }
+      // })();
 
       try {
-        const transcript = await transcribeFromReadable(audioReadable);
+        const transcript = await streamTranscribeStream(audioReadable);
         for await (const t of transcript) {
           if (signal.aborted) {
             break;
