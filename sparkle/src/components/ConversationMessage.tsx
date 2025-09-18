@@ -222,8 +222,6 @@ export const ConversationMessageHeader = React.forwardRef<
           >
             {renderName(name)}
             {infoChip}
-          </div>
-          <div>
             <span className="s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
               {timestamp}
             </span>
