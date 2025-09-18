@@ -25,6 +25,7 @@ import { syncFailed } from "./sync_status";
 import { getConnectorId } from "./temporal";
 
 const TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS = [145];
+const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 10;
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -130,12 +131,16 @@ export class ActivityInboundLogInterceptor
 
       // Convert provider-marked transient upstream errors into ApplicationFailures
       // with the provided retry delay to avoid hot-looping.
-      if (err instanceof ProviderTransientError) {
-        const delayMs = err.retryAfterMs;
+      if (
+        err instanceof ProviderTransientError &&
+        this.context.info.attempt > TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS
+      ) {
         throw ApplicationFailure.create({
-          message: `${err.message}. Retry after ${Math.floor(delayMs / 1000)}s`,
+          message: `${err.message}. Retry after ${Math.floor(
+            err.retryAfterMs / 1000
+          )}s`,
           type: err.type, // "transient_upstream_activity_error"
-          nextRetryDelay: delayMs,
+          nextRetryDelay: err.retryAfterMs,
         });
       }
 
