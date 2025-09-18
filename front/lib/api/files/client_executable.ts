@@ -306,16 +306,26 @@ function isEditFileAction(
 }
 
 function isRevertFileActionOutput(
-  output: AgentMCPActionOutputItem,
-  action: AgentMCPActionModel
+  action: AgentMCPActionModel,
+  output: AgentMCPActionOutputItem
 ): output is AgentMCPActionOutputItem & {
   content: { type: "text"; text: string };
 } {
   return (
-    output.agentMCPActionId === action.id &&
     action.toolConfiguration.originalName ===
       REVERT_CONTENT_CREATION_FILE_TOOL_NAME &&
     typeof output.content.text === "string"
+  );
+}
+
+async function isCreateOrRevertFileAction(
+  action: AgentMCPActionModel
+): Promise<boolean> {
+  return (
+    action.toolConfiguration.originalName ===
+      CREATE_CONTENT_CREATION_FILE_TOOL_NAME ||
+    action.toolConfiguration.originalName ===
+      REVERT_CONTENT_CREATION_FILE_TOOL_NAME
   );
 }
 
@@ -339,14 +349,7 @@ async function isCreateFileAction(
   });
 
   const resourceOutput = outputItems.find(
-    (
-      output
-    ): output is AgentMCPActionOutputItem & {
-      content: { type: "resource"; resource: { fileId: string } };
-    } =>
-      output.content.type === "resource" &&
-      output.content.resource &&
-      typeof output.content.resource.fileId === "string"
+    (output) => output.content.type === "resource"
   );
 
   return resourceOutput !== undefined;
@@ -388,10 +391,7 @@ async function getFileActions(
   const editOrRevertActions = conversationActions.filter(
     (action) =>
       action.augmentedInputs.file_id === fileId &&
-      (action.toolConfiguration.originalName ===
-        EDIT_CONTENT_CREATION_FILE_TOOL_NAME ||
-        action.toolConfiguration.originalName ===
-          REVERT_CONTENT_CREATION_FILE_TOOL_NAME)
+      isCreateOrRevertFileAction(action)
   );
 
   const fileCreateAction = conversationActions.filter((action) =>
@@ -428,7 +428,7 @@ async function getOutputForRevertAction(
     ): output is AgentMCPActionOutputItem & {
       content: { type: "text"; text: string };
     } =>
-      isRevertFileActionOutput(output, action) &&
+      isRevertFileActionOutput(action, output) &&
       output.content.text.startsWith("content:")
   );
 
