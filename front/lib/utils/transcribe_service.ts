@@ -1,7 +1,11 @@
 // Transcribe service using OpenAI Whisper.
-// This module exposes two methods:
-// 1) transcribeFile: Takes an audio file/blob/buffer/stream and returns the full transcript.
-// 2) transcribeStream: Takes a Node.js FsReadStream and returns a readable stream of transcript events from OpenAI.
+// This module exposes two methods (plus a helper):
+// 1) transcribeFile: Takes a formidable file-like (filepath + originalFilename) and returns the
+//    full transcript.
+// 2) transcribeStream: Takes a formidable file-like and returns a readable stream of transcript
+//    events from OpenAI.
+// Helper: transcribeFromReadable: Takes a Node.js Readable of audio bytes and returns the same
+//    transcript event stream (used for live audio ingestion, e.g., Redis-based streams).
 //
 // Notes:
 // - This implementation targets Node.js environment where we can pass Readable streams to the
@@ -15,6 +19,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import type { FileLike } from "openai/uploads";
 import { toFile } from "openai/uploads";
+import type { Readable } from "stream";
 
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -82,7 +87,7 @@ export type TranscriptionStreamEvent =
   | TranscriptionFullTranscriptEvent;
 
 export async function transcribeStream(
-  input: formidable.File
+  input: FormidableFileLike
 ): Promise<AsyncIterable<TranscriptionStreamEvent>> {
   const openai = await getOpenAI();
   const file = await toFileLike(input);
@@ -108,6 +113,39 @@ export async function transcribeStream(
               fullTranscript: ev.text,
               type: "fullTranscript",
             };
+            return;
+        }
+      }
+    })();
+  } catch (err) {
+    const e = normalizeError(err);
+    logger.error(
+      { err: e },
+      `Failed to start streaming transcription with ${_TRANSCRIBE_MODEL}`
+    );
+    throw e;
+  }
+}
+
+export async function transcribeFromReadable(
+  input: Readable
+): Promise<AsyncIterable<TranscriptionStreamEvent>> {
+  const openai = await getOpenAI();
+  const file = await toFile(input, "live.wav");
+  try {
+    const evtStream = await openai.audio.transcriptions.create({
+      file,
+      model: _TRANSCRIBE_MODEL,
+      stream: true,
+    });
+    return (async function* () {
+      for await (const ev of evtStream) {
+        switch (ev.type) {
+          case "transcript.text.delta":
+            yield { type: "delta", delta: ev.delta };
+            break;
+          case "transcript.text.done":
+            yield { type: "fullTranscript", fullTranscript: ev.text };
             return;
         }
       }

@@ -135,37 +135,138 @@ export function VoicePicker({
   }, [stopLevelMetering]);
 
   const finalizeRecordingHold = useCallback(
-    async (file: File) => {
-      const form = new FormData();
-      form.append("file", file);
+    async (blob: Blob) => {
+      // Open SSE connection to the live transcription handler, then POST the
+      // full audio file as a single chunk to the live ingestion endpoint.
+      await new Promise<void>((resolve) => {
+        let resolved = false;
+        const done = () => {
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        };
 
-      const resp = await fetch(
-        `/api/w/${owner.sId}/services/transcribe?stream=true`,
-        { method: "POST", body: form }
-      );
+        // 1) Start listening to transcription SSE events.
+        const es = new EventSource(
+          `/api/w/${owner.sId}/me/audio/transcription`
+        );
 
-      if (!resp.ok) {
-        const msg = await resp.text();
-        sendNotification({
-          type: "error",
-          title: "Voice upload failed.",
-          description: msg || "Failed to send audio for transcription.",
+        const filename = `voice-${new Date().toISOString()}.wav`;
+        const file = new File([blob], filename, {
+          type: blob.type || "audio/wav",
         });
-        return;
-      }
+        const form = new FormData();
+        form.append("file", file);
 
-      // Stream Server-Sent Events and forward deltas.
-      const body = resp.body;
-      if (!body) {
-        sendNotification({
-          type: "error",
-          title: "Transcription failed.",
-          description: "Empty response while streaming transcription.",
-        });
-        return;
-      }
+        es.onmessage = (ev) => {
+          const data = ev.data;
+          if (data === "done") {
+            es.close();
+            done();
+            return;
+          }
+          try {
+            const parsed = JSON.parse(data) as
+              | { type: "delta"; delta: string }
+              | { type: "full_transcript"; text: string }
+              | { type: "error"; message: string };
 
-      await readSSEFromPostRequest({ body, onTranscribeDelta });
+            if (parsed.type === "delta") {
+              onTranscribeDelta(parsed.delta);
+            } else if (parsed.type === "full_transcript") {
+              // We already sent deltas; this signals completion.
+              es.close();
+              done();
+            } else if (parsed.type === "error") {
+              es.close();
+              sendNotification({
+                type: "error",
+                title: "Transcription failed.",
+                description: parsed.message,
+              });
+              done();
+            }
+          } catch {
+            // Ignore non-JSON messages (if any) except for "done" handled above.
+          }
+        };
+
+        es.onerror = () => {
+          es.close();
+          sendNotification({
+            type: "error",
+            title: "Transcription connection error.",
+            description: "Could not connect to live transcription.",
+          });
+          done();
+        };
+        // 2) Send the audio to the live ingestion endpoint as JSON events.
+        // We send a start marker, one audio event with base64 payload, and an end marker.
+        fetch(`/api/w/${owner.sId}/services/transcribe?stream=false`, {
+          method: "POST",
+          body: form,
+        })
+          .then((res) => res.json())
+          .then((res) => {
+            console.log("Transcription service response:", res);
+          })
+          .then(() =>
+            fetch(`/api/w/${owner.sId}/me/audio/live`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ type: "start" }),
+            })
+          )
+          .then(() => {
+            return blobToBase64v2(blob);
+          })
+          .then((b64) =>
+            fetch(`/api/w/${owner.sId}/me/audio/live`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ type: "audio", data: b64 }),
+            })
+          )
+          .then(() =>
+            fetch(`/api/w/${owner.sId}/me/audio/live`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ type: "end" }),
+            })
+          )
+          .then(async (resp) => {
+            if (!resp.ok) {
+              const msg = await resp.text();
+              sendNotification({
+                type: "error",
+                title: "Voice upload failed.",
+                description: msg || "Failed to send audio for transcription.",
+              });
+              // Still resolve to unblock UI; SSE will likely end without results.
+              es.close();
+              done();
+            } else {
+              // Success uploading. The SSE stream will complete on its own; do nothing here.
+            }
+          })
+          .catch(() => {
+            sendNotification({
+              type: "error",
+              title: "Voice upload failed.",
+              description:
+                "Network error while sending audio for transcription.",
+            });
+            es.close();
+            done();
+          });
+      });
 
       sendNotification({
         type: "success",
@@ -270,9 +371,7 @@ export function VoicePicker({
         const file = buildAudioFile(chunksRef.current);
         chunksRef.current = [];
 
-        if (reason === "hold") {
-          await finalizeRecordingHold(file);
-        } else {
+        if (reason === "click") {
           await finalizeRecordingClick(file);
         }
       } catch (e) {
@@ -289,12 +388,7 @@ export function VoicePicker({
         streamRef.current = null;
       }
     },
-    [
-      finalizeRecordingHold,
-      finalizeRecordingClick,
-      sendNotification,
-      stopLevelMetering,
-    ]
+    [finalizeRecordingClick, sendNotification, stopLevelMetering]
   );
 
   const stopRecording = useCallback(
@@ -308,11 +402,11 @@ export function VoicePicker({
             throw new Error("Recorder not initialized");
           }
           const { blob } = await wr.end();
-          const filename = `voice-${new Date().toISOString()}.wav`;
-          const file = new File([blob], filename, {
-            type: blob.type || "audio/wav",
-          });
-          await finalizeRecordingHold(file);
+          // const filename = `voice-${new Date().toISOString()}.wav`;
+          // const file = new File([blob], filename, {
+          //   type: blob.type || "audio/wav",
+          // });
+          await finalizeRecordingHold(blob);
         } catch (e) {
           sendNotification({
             type: "error",
@@ -565,80 +659,17 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
-// There is no built-in SSE support in the Fetch API for POST, so we manually parse the stream.
-const readSSEFromPostRequest = async ({
-  body,
-  onTranscribeDelta,
-}: {
-  body: ReadableStream<Uint8Array>;
-  onTranscribeDelta: (delta: string) => void;
-}) => {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let doneStreaming = false;
-
-  try {
-    // Read until the server signals completion with a \n\n separator after a done event
-    // or the stream ends.
-    while (!doneStreaming) {
-      const { value, done } = await reader.read();
-      if (done) {
-        break;
-      }
-      buffer += decoder.decode(value, { stream: true });
-
-      // SSE frames are separated by double newlines. Support both \n\n and \r\n\r\n.
-      // Process as many complete events as available.
-      while (!doneStreaming) {
-        const nn = buffer.indexOf("\n\n");
-        const rr = buffer.indexOf("\r\n\r\n");
-        if (nn === -1 && rr === -1) {
-          break;
-        }
-        const useNn = nn !== -1 && (rr === -1 || nn < rr);
-        const sep = useNn ? nn : rr;
-        const delimLen = useNn ? 2 : 4;
-        const eventChunk = buffer.slice(0, sep);
-        buffer = buffer.slice(sep + delimLen);
-
-        // Extract the data line(s). Our server sends single-line data payloads.
-        const lines = eventChunk.split(/\r?\n/);
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) {
-            continue;
-          }
-          if (!trimmed.startsWith("data:")) {
-            continue;
-          }
-          const payload = trimmed.slice(5).trim();
-          if (payload === "done") {
-            doneStreaming = true;
-            break;
-          }
-          try {
-            const parsed = JSON.parse(payload) as
-              | { type: "delta"; delta: string }
-              | { type: "fullTranscript"; fullTranscript: string };
-
-            if (parsed.type === "delta") {
-              onTranscribeDelta(parsed.delta);
-            } else if (parsed.type === "fullTranscript") {
-              // We already sent deltas; consider this completion signal.
-              doneStreaming = true;
-            }
-          } catch {
-            // Ignore malformed payloads and continue.
-          }
-        }
-      }
-    }
-  } finally {
-    try {
-      reader.releaseLock();
-    } catch {
-      // ignore
-    }
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
   }
-};
+  return btoa(binary);
+}
+
+// Usage with Blob:
+async function blobToBase64v2(blob: Blob): Promise<string> {
+  return blob.arrayBuffer().then(arrayBufferToBase64);
+}
