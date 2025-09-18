@@ -49,7 +49,7 @@ import {
   stripNullBytes,
 } from "@app/types";
 
-export async function processToolNotification(
+export async function* processToolNotification(
   notification: MCPProgressNotificationType,
   {
     action,
@@ -62,7 +62,7 @@ export async function processToolNotification(
     conversation: ConversationType;
     agentMessage: AgentMessageType;
   }
-): Promise<ToolNotificationEvent> {
+): AsyncGenerator<ToolNotificationEvent> {
   const output = notification.params.data.output;
 
   // Handle store_resource notifications by creating output items immediately
@@ -89,7 +89,7 @@ export async function processToolNotification(
   }
 
   // Regular notifications, we yield them as is with the type "tool_notification".
-  return {
+  yield {
     type: "tool_notification",
     created: Date.now(),
     configurationId: agentConfiguration.sId,
