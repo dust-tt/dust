@@ -21,6 +21,7 @@ import { WebhookEditionModal } from "@app/components/agent_builder/triggers/Webh
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
 import type { TriggerKind } from "@app/types/assistant/triggers";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type DialogMode =
   | {
@@ -50,6 +51,8 @@ export function AgentBuilderTriggersBlock({
   } = useFieldArray<AgentBuilderFormData, "triggers">({
     name: "triggers",
   });
+
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const sendNotification = useSendNotification();
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
@@ -119,13 +122,15 @@ export function AgentBuilderTriggersBlock({
               onClick={() => handleCreateTrigger("schedule")}
               type="button"
             />
-            <Button
-              label="Add Webhook"
-              variant="outline"
-              icon={BellIcon}
-              onClick={() => handleCreateTrigger("webhook")}
-              type="button"
-            />
+            {hasFeature("hootl_webhooks") && (
+              <Button
+                label="Add Webhook"
+                variant="outline"
+                icon={BellIcon}
+                onClick={() => handleCreateTrigger("webhook")}
+                type="button"
+              />
+            )}
           </>
         )
       }
@@ -146,13 +151,15 @@ export function AgentBuilderTriggersBlock({
                   onClick={() => handleCreateTrigger("schedule")}
                   type="button"
                 />
-                <Button
-                  label="Add Webhook"
-                  variant="outline"
-                  icon={BellIcon}
-                  onClick={() => handleCreateTrigger("webhook")}
-                  type="button"
-                />
+                {hasFeature("hootl_webhooks") && (
+                  <Button
+                    label="Add Webhook"
+                    variant="outline"
+                    icon={BellIcon}
+                    onClick={() => handleCreateTrigger("webhook")}
+                    type="button"
+                  />
+                )}
               </div>
             }
             className="py-4"
