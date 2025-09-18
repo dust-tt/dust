@@ -21,7 +21,7 @@ interface MentionComponentProps {
       label: string;
     };
   };
-  owner: WorkspaceType;
+  owner?: WorkspaceType;
 }
 
 export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
@@ -32,6 +32,9 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
   const { id: agentSId, label: agentName } = node.attrs;
 
   const handleStartConversation = async () => {
+    if (!owner) {
+      return;
+    }
     await router.push(`/w/${owner.sId}/assistant/new?assistant=${agentSId}`);
   };
 

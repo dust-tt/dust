@@ -1,4 +1,5 @@
 import type { NodeViewProps } from "@tiptap/core";
+import type { MentionOptions } from "@tiptap/extension-mention";
 import Mention from "@tiptap/extension-mention";
 import type { PasteRuleMatch } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
@@ -10,15 +11,14 @@ import type { WorkspaceType } from "@app/types";
 
 import { MentionComponent } from "../MentionComponent";
 
-interface MentionExtensionOptions {
-  owner: WorkspaceType;
+interface MentionExtensionOptions extends MentionOptions {
+  owner?: WorkspaceType;
 }
 
 export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   addOptions() {
     return {
       ...this.parent?.(),
-      owner: {} as WorkspaceType,
     };
   },
 
