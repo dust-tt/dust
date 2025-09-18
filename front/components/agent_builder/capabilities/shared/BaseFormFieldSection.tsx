@@ -39,7 +39,6 @@ export function BaseFormFieldSection<
   } = register(fieldName);
 
   const registerRefCallback = (e: E | null) => {
-    // The ref provided by react-hook-form accepts any instance; providing E | null is safe.
     registerRef(e);
   };
 
