@@ -993,14 +993,17 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("slack_bot_mcp");
     },
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       list_public_channels: "never_ask" as const,
       list_users: "never_ask" as const,
       get_user: "never_ask" as const,
-      post_message: "low" as const,
       read_channel_history: "never_ask" as const,
       read_thread_messages: "never_ask" as const,
+
+      post_message: "low" as const,
+      add_reaction: "low" as const,
+      remove_reaction: "low" as const,
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
