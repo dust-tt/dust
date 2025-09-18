@@ -389,11 +389,9 @@ async function fetchEditOrRevertActionsForFile(
 }
 
 async function fetchCreateActionsForConversation(
-  auth: Authenticator,
+  workspaceId: number,
   conversationId: ModelId
 ): Promise<AgentMCPActionModel[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
-
   // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
   const allActions = await AgentMCPActionModel.findAll({
     include: [
@@ -431,23 +429,15 @@ async function getFileActions(
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  // Get edit and revert actions for the file
   const editOrRevertActions = await fetchEditOrRevertActionsForFile(
     auth,
     fileId,
     conversationId
   );
 
-  // Get create actions for the file
-  const createActions = await fetchCreateActionsForConversation(
-    auth,
-    conversationId
-  );
-
-  // Find the create action that created our file
   const fileCreationAction = await findCreateActionForFile(
-    createActions,
     fileId,
+    conversationId,
     workspaceId
   );
 
@@ -489,10 +479,15 @@ async function getOutputForRevertAction(
 }
 
 async function findCreateActionForFile(
-  createActions: AgentMCPActionModel[],
   fileId: string,
+  conversationId: ModelId,
   workspaceId: number
 ): Promise<AgentMCPActionModel | null> {
+  const createActions = await fetchCreateActionsForConversation(
+    workspaceId,
+    conversationId
+  );
+
   if (createActions.length === 0) {
     return null;
   }
