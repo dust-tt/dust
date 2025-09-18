@@ -289,8 +289,13 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
   static async getWebhookSourceViewForSystemSpace(
     auth: Authenticator,
-    webhookSourceId: ModelId
+    webhookSourceSId: string
   ): Promise<WebhookSourcesViewResource | null> {
+    const webhookSourceId = getResourceIdFromSId(webhookSourceSId);
+    if (!webhookSourceId) {
+      return null;
+    }
+
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     const views = await this.baseFetch(auth, {
