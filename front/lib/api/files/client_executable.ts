@@ -309,16 +309,13 @@ function isRevertFileActionOutput(
   output: AgentMCPActionOutputItem,
   action: AgentMCPActionModel
 ): output is AgentMCPActionOutputItem & {
-  content: { type: "resource"; resource: { text: string } };
+  content: { type: "text"; text: string };
 } {
   return (
     output.agentMCPActionId === action.id &&
     action.toolConfiguration.originalName ===
       REVERT_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof output.content.resource === "object" &&
-    output.content.resource !== null &&
-    "text" in output.content.resource &&
-    typeof output.content.resource.text === "string"
+    typeof output.content.text === "string"
   );
 }
 
@@ -413,7 +410,7 @@ async function getOutputForRevertAction(
   workspaceId: number
 ): Promise<
   | (AgentMCPActionOutputItem & {
-      content: { type: "resource"; resource: { text: string } };
+      content: { type: "text"; text: string };
     })
   | null
 > {
@@ -425,15 +422,17 @@ async function getOutputForRevertAction(
     order: [["createdAt", "ASC"]],
   });
 
-  const revertOutput = outputs.find(
+  const [revertOutput] = outputs.filter(
     (
       output
     ): output is AgentMCPActionOutputItem & {
-      content: { type: "resource"; resource: { text: string } };
-    } => isRevertFileActionOutput(output, action)
+      content: { type: "text"; text: string };
+    } =>
+      isRevertFileActionOutput(output, action) &&
+      output.content.text.startsWith("content:")
   );
 
-  return revertOutput ? revertOutput : null;
+  return revertOutput ?? null;
 }
 
 export async function revertClientExecutableFileToPreviousState(
@@ -555,7 +554,7 @@ export async function revertClientExecutableFileToPreviousState(
       });
     }
 
-    startingContent = revertItemOutput.content.resource.text;
+    startingContent = revertItemOutput.content.text.replace("content:", "");
   } else if (typeof createAction.augmentedInputs.content === "string") {
     // Otherwise, use the original content from file creation;
     startingContent = createAction.augmentedInputs.content;
