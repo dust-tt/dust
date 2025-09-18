@@ -279,7 +279,7 @@ export async function getExecutionStatusFromConfig(
         (await hasUserAlwaysApprovedTool({
           user,
           mcpServerId: actionConfiguration.toolServerId,
-          toolName: actionConfiguration.name,
+          functionCallName: actionConfiguration.name,
         }))
       ) {
         return { status: "ready_allowed_implicitly" };
@@ -308,7 +308,7 @@ export async function setUserAlwaysApprovedTool({
   functionCallName: string;
 }) {
   if (!functionCallName) {
-    throw new Error("toolName is required");
+    throw new Error("functionCallName is required");
   }
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
@@ -323,24 +323,25 @@ export async function setUserAlwaysApprovedTool({
 export async function hasUserAlwaysApprovedTool({
   user,
   mcpServerId,
-  toolName,
+  functionCallName,
 }: {
   user: UserResource;
   mcpServerId: string;
-  toolName: string;
+  functionCallName: string;
 }) {
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
   }
 
-  if (!toolName) {
-    throw new Error("toolName is required");
+  if (!functionCallName) {
+    throw new Error("functionCallName is required");
   }
 
   const metadata = await user.getMetadataAsArray(
     getToolsValidationKey(mcpServerId)
   );
   return (
-    metadata.includes(toolName) || metadata.includes(TOOLS_VALIDATION_WILDCARD)
+    metadata.includes(functionCallName) ||
+    metadata.includes(TOOLS_VALIDATION_WILDCARD)
   );
 }

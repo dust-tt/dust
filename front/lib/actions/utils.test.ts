@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
@@ -14,13 +15,13 @@ describe("Tool validation utilities", () => {
 
   describe("setUserAlwaysApprovedTool", () => {
     it("should store tool approval in user metadata", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "test-tool";
+      const mcpServerId = "ims_1234";
+      const functionCallName = `test-server${TOOL_NAME_SEPARATOR}test-tool`;
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: toolName,
+        functionCallName,
       });
 
       // Verify the metadata was stored correctly
@@ -28,104 +29,105 @@ describe("Tool validation utilities", () => {
         `toolsValidations:${mcpServerId}`
       );
       expect(metadata).toBeTruthy();
-      expect(metadata!.value).toBe(toolName);
+      expect(metadata!.value).toBe(functionCallName);
     });
 
     it("should handle multiple tool approvals for same server", async () => {
-      const mcpServerId = "multi-tool-server";
-      const tool1 = "tool-1";
-      const tool2 = "tool-2";
+      const mcpServerId = "ims_1234";
+      const mcpServerName = "multi-tool-server";
+      const functionCallName1 = `${mcpServerName}${TOOL_NAME_SEPARATOR}tool-1`;
+      const functionCallName2 = `${mcpServerName}${TOOL_NAME_SEPARATOR}tool-2`;
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: tool1,
+        functionCallName: functionCallName1,
       });
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: tool2,
+        functionCallName: functionCallName2,
       });
 
       const tools = await user.getMetadataAsArray(
         `toolsValidations:${mcpServerId}`
       );
-      expect(tools).toContain(tool1);
-      expect(tools).toContain(tool2);
+      expect(tools).toContain(functionCallName1);
+      expect(tools).toContain(functionCallName2);
       expect(tools).toHaveLength(2);
     });
 
     it("should not duplicate tool approvals", async () => {
-      const mcpServerId = "duplicate-server";
-      const toolName = "duplicate-tool";
+      const mcpServerId = "ims_1234";
+      const functionCallName = `duplicate-server${TOOL_NAME_SEPARATOR}duplicate-tool`;
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: toolName,
+        functionCallName,
       });
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: toolName,
+        functionCallName,
       });
 
       const tools = await user.getMetadataAsArray(
         `toolsValidations:${mcpServerId}`
       );
-      expect(tools).toEqual([toolName]);
+      expect(tools).toEqual([functionCallName]);
     });
 
     it("should handle special characters in server ID and tool name", async () => {
-      const mcpServerId = "server-with@special#chars";
-      const toolName = "tool-with@special#chars";
+      const mcpServerId = "ims_1234";
+      const functionCallName = `server-with@special#chars${TOOL_NAME_SEPARATOR}tool-with@special#chars`;
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: toolName,
+        functionCallName,
       });
 
       const metadata = await user.getMetadata(
         `toolsValidations:${mcpServerId}`
       );
       expect(metadata).toBeTruthy();
-      expect(metadata!.value).toBe(toolName);
+      expect(metadata!.value).toBe(functionCallName);
     });
 
     it("should throw error if mcpServerId is empty", async () => {
       const mcpServerId = "";
-      const toolName = "test-tool";
+      const functionCallName = "test-function";
 
       await expect(
         setUserAlwaysApprovedTool({
           user,
           mcpServerId,
-          functionCallName: toolName,
+          functionCallName,
         })
       ).rejects.toThrow("mcpServerId is required");
     });
 
-    it("should throw error if toolName is empty", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "";
+    it("should throw error if functionCallName is empty", async () => {
+      const mcpServerId = "ims_1234";
+      const functionCallName = "";
 
       await expect(
         setUserAlwaysApprovedTool({
           user,
           mcpServerId,
-          functionCallName: toolName,
+          functionCallName,
         })
-      ).rejects.toThrow("toolName is required");
+      ).rejects.toThrow("functionCallName is required");
     });
   });
 
   describe("hasUserAlwaysApprovedTool", () => {
-    it("should return true when tool name is found in metadata", async () => {
+    it("should return true when function call name is found in metadata", async () => {
       const mcpServerId = "test-server";
-      const toolName = "test-tool";
+      const functionCallName = "test-function";
 
       // First add some tools to metadata
       await setUserAlwaysApprovedTool({
@@ -136,7 +138,7 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: toolName,
+        functionCallName,
       });
       await setUserAlwaysApprovedTool({
         user,
@@ -147,15 +149,15 @@ describe("Tool validation utilities", () => {
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName,
       });
 
       expect(result).toBe(true);
     });
 
     it("should return true when wildcard is found in metadata", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "test-tool";
+      const mcpServerId = "ims_1234";
+      const functionCallName = `test-server${TOOL_NAME_SEPARATOR}test-tool`;
 
       // Add wildcard approval
       await setUserAlwaysApprovedTool({
@@ -167,166 +169,168 @@ describe("Tool validation utilities", () => {
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName,
       });
 
       expect(result).toBe(true);
     });
 
-    it("should return false when tool name is not found and no wildcard", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "test-tool";
+    it("should return false when the function call name is not found and no wildcard", async () => {
+      const mcpServerId = "ims_1234";
+      const mcpServerName = "test-server";
+      const functionCallName = `${mcpServerName}${TOOL_NAME_SEPARATOR}test-tool`;
 
       // Add some other tools but not the one we're looking for
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "other-tool",
+        functionCallName: `${mcpServerName}${TOOL_NAME_SEPARATOR}other-tool`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "another-tool",
+        functionCallName: `${mcpServerName}${TOOL_NAME_SEPARATOR}another-tool`,
       });
 
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName,
       });
 
       expect(result).toBe(false);
     });
 
     it("should return false when metadata is empty", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "test-tool";
+      const mcpServerId = "ims_1234";
+      const functionCallName = `test-server${TOOL_NAME_SEPARATOR}test-tool`;
 
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName,
       });
 
       expect(result).toBe(false);
     });
 
-    it("should handle exact tool name match among similar names", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "tool";
+    it("should handle exact name match among similar names", async () => {
+      const mcpServerId = "ims_1234";
+      const functionCallName = `server${TOOL_NAME_SEPARATOR}tool`;
 
       // Add similar tool names
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "tool-prefix",
+        functionCallName: `server${TOOL_NAME_SEPARATOR}tool-prefix`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "prefix-tool",
+        functionCallName: `server${TOOL_NAME_SEPARATOR}prefix-tool`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "tool", // Exact match
+        functionCallName, // Exact match
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "tool-suffix",
+        functionCallName: `server${TOOL_NAME_SEPARATOR}tool-suffix`,
       });
 
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName,
       });
 
       expect(result).toBe(true);
     });
 
     it("should return false for partial matches without exact match", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "tool";
+      const mcpServerId = "ims_1234";
+      const functionCallName = `server${TOOL_NAME_SEPARATOR}tool`;
 
       // Add similar tool names but no exact match
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "tool-prefix",
+        functionCallName: `server${TOOL_NAME_SEPARATOR}tool-prefix`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "prefix-tool",
+        functionCallName: `server${TOOL_NAME_SEPARATOR}prefix-tool`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "my-tool-name",
+        functionCallName: `server${TOOL_NAME_SEPARATOR}my-tool-name`,
       });
 
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName,
       });
 
       expect(result).toBe(false);
     });
 
-    it("should handle special characters in tool name lookup", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "tool@with#special$chars";
+    it("should handle special characters in name lookup", async () => {
+      const mcpServerId = "ims_1234";
+      const functionCallName = `server${TOOL_NAME_SEPARATOR}tool-with@special#chars`;
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "regular-tool",
+        functionCallName: `server${TOOL_NAME_SEPARATOR}regular-tool`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: toolName,
+        functionCallName,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "another-tool",
+        functionCallName: `server${TOOL_NAME_SEPARATOR}another-tool`,
       });
 
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName,
       });
 
       expect(result).toBe(true);
     });
 
     it("should work with different server IDs independently", async () => {
-      const server1 = "server-1";
-      const server2 = "server-2";
-      const toolName = "shared-tool";
+      const mcpServerId1 = "ims_server_1";
+      const mcpServerId2 = "ims_server_2";
+      const serverName = "shared-server";
+      const functionCallName = `${serverName}${TOOL_NAME_SEPARATOR}shared-tool`;
 
-      // Approve tool for server1 only
+      // Approve function call for the first server only
       await setUserAlwaysApprovedTool({
         user,
-        mcpServerId: server1,
-        functionCallName: toolName,
+        mcpServerId: mcpServerId1,
+        functionCallName,
       });
 
       const result1 = await hasUserAlwaysApprovedTool({
         user,
-        mcpServerId: server1,
-        toolName,
+        mcpServerId: mcpServerId1,
+        functionCallName,
       });
 
       const result2 = await hasUserAlwaysApprovedTool({
         user,
-        mcpServerId: server2,
-        toolName,
+        mcpServerId: mcpServerId2,
+        functionCallName,
       });
 
       expect(result1).toBe(true);
@@ -334,14 +338,16 @@ describe("Tool validation utilities", () => {
     });
 
     it("should prioritize wildcard over specific tool names", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "specific-tool";
+      const mcpServerId = "ims_1234";
+      const serverName = "test-server";
+      const specificFunctionCallName = `${serverName}${TOOL_NAME_SEPARATOR}specific-tool`;
+      const otherFunctionCallName = `${serverName}${TOOL_NAME_SEPARATOR}other-tool`;
 
-      // Add both wildcard and specific tool
+      // Add both wildcard and specific function call
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "other-tool",
+        functionCallName: otherFunctionCallName,
       });
       await setUserAlwaysApprovedTool({
         user,
@@ -351,71 +357,73 @@ describe("Tool validation utilities", () => {
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: toolName,
+        functionCallName: specificFunctionCallName,
       });
 
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: specificFunctionCallName,
       });
 
       expect(result).toBe(true);
     });
 
     it("should handle case sensitivity correctly", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "MyTool";
+      const mcpServerId = "ims_case_sensitive";
+      const serverName = "test-server";
+      const expectedFunctionCallName = `${serverName}${TOOL_NAME_SEPARATOR}MyTool`;
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "mytool",
+        functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}mytool`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "MYTOOL",
+        functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}MYTOOL`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "MyTool", // Exact case match
+        functionCallName: expectedFunctionCallName, // Exact case match
       });
 
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: expectedFunctionCallName,
       });
 
       expect(result).toBe(true);
     });
 
     it("should return false for case mismatch when exact match not found", async () => {
-      const mcpServerId = "test-server";
-      const toolName = "MyTool";
+      const mcpServerId = "ims_case_mismatch";
+      const serverName = "test-server";
+      const expectedFunctionCallName = `${serverName}${TOOL_NAME_SEPARATOR}MyTool`;
 
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "mytool",
+        functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}mytool`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "MYTOOL",
+        functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}MYTOOL`,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: "myTool",
+        functionCallName: `${serverName}${TOOL_NAME_SEPARATOR}myTool`,
       });
 
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName: expectedFunctionCallName,
       });
 
       expect(result).toBe(false);
@@ -424,59 +432,61 @@ describe("Tool validation utilities", () => {
 
   describe("integration scenarios", () => {
     it("should work correctly when setting and then checking approval", async () => {
-      const mcpServerId = "integration-server";
-      const toolName = "integration-tool";
+      const mcpServerId = "ims_integration";
+      const serverName = "integration-server";
+      const functionCallName = `${serverName}${TOOL_NAME_SEPARATOR}integration-tool`;
 
-      // First, set the tool as approved
+      // First, set the function call as approved
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: toolName,
+        functionCallName,
       });
 
       // Then check if it's approved
       const result = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName,
+        functionCallName,
       });
 
       expect(result).toBe(true);
     });
 
     it("should handle multiple tools for the same server", async () => {
-      const mcpServerId = "multi-tool-server";
-      const tool1 = "tool-1";
-      const tool2 = "tool-2";
-      const tool3 = "tool-3";
+      const mcpServerId = "ims_multi_tool";
+      const serverName = "multi-tool-server";
+      const functionCallName1 = `${serverName}${TOOL_NAME_SEPARATOR}tool-1`;
+      const functionCallName2 = `${serverName}${TOOL_NAME_SEPARATOR}tool-2`;
+      const functionCallName3 = `${serverName}${TOOL_NAME_SEPARATOR}tool-3`;
 
-      // Set multiple tools as approved
+      // Set multiple function calls as approved
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: tool1,
+        functionCallName: functionCallName1,
       });
       await setUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        functionCallName: tool2,
+        functionCallName: functionCallName2,
       });
 
-      // Check each tool
+      // Check each function call
       const result1 = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: tool1,
+        functionCallName: functionCallName1,
       });
       const result2 = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: tool2,
+        functionCallName: functionCallName2,
       });
       const result3 = await hasUserAlwaysApprovedTool({
         user,
         mcpServerId,
-        toolName: tool3,
+        functionCallName: functionCallName3,
       });
 
       expect(result1).toBe(true);
@@ -485,80 +495,94 @@ describe("Tool validation utilities", () => {
     });
 
     it("should handle complex workflow with multiple servers and tools", async () => {
-      const server1 = "server-alpha";
-      const server2 = "server-beta";
-      const tools = ["read-file", "write-file", "execute-command"];
+      const mcpServerId1 = "ims_alpha";
+      const mcpServerId2 = "ims_beta";
+      const serverName1 = "server-alpha";
+      const serverName2 = "server-beta";
+      const toolNames = ["read-file", "write-file", "execute-command"];
+      const server1FunctionCallNames = toolNames.map(
+        (tool) => `${serverName1}${TOOL_NAME_SEPARATOR}${tool}`
+      );
+      const server2FunctionCallNames = toolNames.map(
+        (tool) => `${serverName2}${TOOL_NAME_SEPARATOR}${tool}`
+      );
 
-      // Approve all tools for server1
-      for (const tool of tools) {
+      // Approve all function calls for the first server
+      for (const functionCallName of server1FunctionCallNames) {
         await setUserAlwaysApprovedTool({
           user,
-          mcpServerId: server1,
-          functionCallName: tool,
+          mcpServerId: mcpServerId1,
+          functionCallName,
         });
       }
 
-      // Approve only first tool for server2
+      // Approve only first function call for the second server
       await setUserAlwaysApprovedTool({
         user,
-        mcpServerId: server2,
-        functionCallName: tools[0],
+        mcpServerId: mcpServerId2,
+        functionCallName: server2FunctionCallNames[0],
       });
 
-      // Add wildcard for server2
+      // Add wildcard for the second server
       await setUserAlwaysApprovedTool({
         user,
-        mcpServerId: server2,
+        mcpServerId: mcpServerId2,
         functionCallName: "*",
       });
 
-      // Test server1 - all tools should be approved individually
-      for (const tool of tools) {
+      // Test first server - all function calls should be approved individually
+      for (const functionCallName of server1FunctionCallNames) {
         const result = await hasUserAlwaysApprovedTool({
           user,
-          mcpServerId: server1,
-          toolName: tool,
+          mcpServerId: mcpServerId1,
+          functionCallName,
         });
         expect(result).toBe(true);
       }
 
-      // Test server2 - all tools should be approved due to wildcard
-      for (const tool of tools) {
+      // Test second server - all function calls should be approved due to wildcard
+      for (const functionCallName of server2FunctionCallNames) {
         const result = await hasUserAlwaysApprovedTool({
           user,
-          mcpServerId: server2,
-          toolName: tool,
+          mcpServerId: mcpServerId2,
+          functionCallName,
         });
         expect(result).toBe(true);
       }
 
-      // Test unknown tool on server2 - should be approved due to wildcard
+      // Test unknown function call on the second server - should be approved due to wildcard
+      const unknownFunctionCallName = `${serverName2}${TOOL_NAME_SEPARATOR}unknown-tool`;
       const unknownResult = await hasUserAlwaysApprovedTool({
         user,
-        mcpServerId: server2,
-        toolName: "unknown-tool",
+        mcpServerId: mcpServerId2,
+        functionCallName: unknownFunctionCallName,
       });
       expect(unknownResult).toBe(true);
 
       // Test unknown server - should be false
       const unknownServerResult = await hasUserAlwaysApprovedTool({
         user,
-        mcpServerId: "unknown-server",
-        toolName: tools[0],
+        mcpServerId: "ims_unknown_server",
+        functionCallName: server1FunctionCallNames[0],
       });
       expect(unknownServerResult).toBe(false);
     });
 
     it("should maintain data integrity across multiple operations", async () => {
-      const mcpServerId = "integrity-test-server";
-      const tools = ["tool-a", "tool-b", "tool-c"];
+      const mcpServerId = "ims_1234";
+      const mcpServerName = "integrity-test-server";
+      const functionCallNames = [
+        `${mcpServerName}${TOOL_NAME_SEPARATOR}tool-a`,
+        `${mcpServerName}${TOOL_NAME_SEPARATOR}tool-b`,
+        `${mcpServerName}${TOOL_NAME_SEPARATOR}tool-c`,
+      ];
 
       // Add tools one by one and verify each addition
-      for (let i = 0; i < tools.length; i++) {
+      for (let i = 0; i < functionCallNames.length; i++) {
         await setUserAlwaysApprovedTool({
           user,
           mcpServerId,
-          functionCallName: tools[i],
+          functionCallName: functionCallNames[i],
         });
 
         // Verify all previously added tools are still there
@@ -566,24 +590,24 @@ describe("Tool validation utilities", () => {
           const result = await hasUserAlwaysApprovedTool({
             user,
             mcpServerId,
-            toolName: tools[j],
+            functionCallName: functionCallNames[j],
           });
           expect(result).toBe(true);
         }
 
         // Verify tools not yet added are not there
-        for (let k = i + 1; k < tools.length; k++) {
+        for (let k = i + 1; k < functionCallNames.length; k++) {
           const result = await hasUserAlwaysApprovedTool({
             user,
             mcpServerId,
-            toolName: tools[k],
+            functionCallName: functionCallNames[k],
           });
           expect(result).toBe(false);
         }
       }
 
       // Try to add duplicates and verify no changes
-      for (const tool of tools) {
+      for (const tool of functionCallNames) {
         await setUserAlwaysApprovedTool({
           user,
           mcpServerId,
@@ -591,13 +615,13 @@ describe("Tool validation utilities", () => {
         });
       }
 
-      // All tools should still be approved exactly once
-      const allTools = await user.getMetadataAsArray(
+      // All function calls should still be approved exactly once
+      const allFunctionCalls = await user.getMetadataAsArray(
         `toolsValidations:${mcpServerId}`
       );
-      expect(allTools).toHaveLength(tools.length);
-      for (const tool of tools) {
-        expect(allTools.filter((t) => t === tool)).toHaveLength(1);
+      expect(allFunctionCalls).toHaveLength(functionCallNames.length);
+      for (const name of functionCallNames) {
+        expect(allFunctionCalls.filter((f) => f === name)).toHaveLength(1);
       }
     });
   });
