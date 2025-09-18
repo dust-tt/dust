@@ -5,6 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   InformationCircleIcon,
+  LockIcon,
   MoreIcon,
   Sheet,
   SheetContainer,
@@ -22,6 +23,7 @@ import { useEffect, useState } from "react";
 import { DeleteWebhookSourceDialog } from "@app/components/triggers/DeleteWebhookSourceDialog";
 import { WebhookSourceDetailsHeader } from "@app/components/triggers/WebhookSourceDetailsHeader";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
+import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
@@ -74,6 +76,12 @@ export function WebhookSourceDetails({
                   icon={InformationCircleIcon}
                   onClick={() => setSelectedTab("info")}
                 />
+                <TabsTrigger
+                  value="sharing"
+                  label="Sharing"
+                  icon={LockIcon}
+                  onClick={() => setSelectedTab("sharing")}
+                />
                 <>
                   <div className="grow" />
                   <DropdownMenu>
@@ -101,6 +109,12 @@ export function WebhookSourceDetails({
             {selectedTab === "info" && (
               <WebhookSourceDetailsInfo
                 webhookSourceView={webhookSourceView}
+                owner={owner}
+              />
+            )}
+            {selectedTab === "sharing" && (
+              <WebhookSourceDetailsSharing
+                webhookSource={webhookSourceView.webhookSource}
                 owner={owner}
               />
             )}

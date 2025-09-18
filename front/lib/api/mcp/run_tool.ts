@@ -132,8 +132,8 @@ export async function* runToolWithStreaming(
       const retryPolicy =
         getRetryPolicyFromToolConfiguration(toolConfiguration);
       if (retryPolicy === "retry_on_interrupt") {
-        errorMessage += "Error: " + JSON.stringify(toolError);
-        throw new Error(errorMessage);
+        errorMessage += `Error: ${toolError.message}`;
+        throw new Error(errorMessage, { cause: toolError });
       }
     } else {
       errorMessage = `The tool ${action.functionCallName} failed with the following error: ${toolError.message}`;

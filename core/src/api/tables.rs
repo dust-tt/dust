@@ -13,7 +13,7 @@ use crate::{
     databases::table::{LocalTable, Row},
     project,
     search_filter::{Filterable, SearchFilter},
-    search_stores::search_store::{NodeItem, SearchStore},
+    search_stores::search_store::NodeItem,
     stores::store::TableUpsertParams,
     utils::{self, error_response, APIError, APIResponse},
 };

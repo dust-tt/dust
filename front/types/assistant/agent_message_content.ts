@@ -15,6 +15,7 @@ export type ReasoningContentType = {
     metadata: string;
     tokens: number;
     provider: ModelProviderIdType;
+    region?: string | null;
   };
 };
 

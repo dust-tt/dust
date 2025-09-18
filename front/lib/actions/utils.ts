@@ -279,7 +279,7 @@ export async function getExecutionStatusFromConfig(
         (await hasUserAlwaysApprovedTool({
           user,
           mcpServerId: actionConfiguration.toolServerId,
-          toolName: actionConfiguration.name,
+          functionCallName: actionConfiguration.name,
         }))
       ) {
         return { status: "ready_allowed_implicitly" };
@@ -298,6 +298,8 @@ const TOOLS_VALIDATION_WILDCARD = "*";
 const getToolsValidationKey = (mcpServerId: string) =>
   `toolsValidations:${mcpServerId}`;
 
+// The function call name is scoped by MCP servers so that the same tool name on different servers
+// does not conflict, which is why we use it here instead of the tool name.
 export async function setUserAlwaysApprovedTool({
   user,
   mcpServerId,
@@ -308,7 +310,7 @@ export async function setUserAlwaysApprovedTool({
   functionCallName: string;
 }) {
   if (!functionCallName) {
-    throw new Error("toolName is required");
+    throw new Error("functionCallName is required");
   }
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
@@ -323,24 +325,25 @@ export async function setUserAlwaysApprovedTool({
 export async function hasUserAlwaysApprovedTool({
   user,
   mcpServerId,
-  toolName,
+  functionCallName,
 }: {
   user: UserResource;
   mcpServerId: string;
-  toolName: string;
+  functionCallName: string;
 }) {
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
   }
 
-  if (!toolName) {
-    throw new Error("toolName is required");
+  if (!functionCallName) {
+    throw new Error("functionCallName is required");
   }
 
   const metadata = await user.getMetadataAsArray(
     getToolsValidationKey(mcpServerId)
   );
   return (
-    metadata.includes(toolName) || metadata.includes(TOOLS_VALIDATION_WILDCARD)
+    metadata.includes(functionCallName) ||
+    metadata.includes(TOOLS_VALIDATION_WILDCARD)
   );
 }
