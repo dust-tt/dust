@@ -189,10 +189,11 @@ export default function AgentBuilder({
         ...baseValues.agentSettings,
         slackProvider,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        editors:
-          duplicateAgentId || editors.length === 0 || !agentConfiguration
-            ? [user]
-            : editors,
+        editors: duplicateAgentId
+          ? [user]
+          : agentConfiguration || editors.length > 0
+            ? editors
+            : [user],
         slackChannels: agentSlackChannels,
       },
     };
