@@ -612,8 +612,9 @@ export async function revertClientExecutableFileToPreviousState(
     });
   }
 
-  let lastRevertIndex = -1;
-  let createActionIndex = -1;
+  let lastRevertAction: AgentMCPActionModel | null = null;
+  let createAction: AgentMCPActionModel | null = null;
+  let startIndex: number = -1;
 
   // Search backwards through actions to find:
   // - The most recent revert action (if any)
@@ -623,18 +624,26 @@ export async function revertClientExecutableFileToPreviousState(
 
     if (
       toolName === REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME &&
-      lastRevertIndex === -1
+      lastRevertAction === null
     ) {
-      lastRevertIndex = i;
+      // Set the start index as soon as we find a revert action
+      if (startIndex === -1) {
+        startIndex = i;
+      }
+      lastRevertAction = fileActions[i];
     }
 
     if (toolName === CREATE_CONTENT_CREATION_FILE_TOOL_NAME) {
-      createActionIndex = i;
+      // Only set the start index if we haven't already found a revert action
+      if (startIndex === -1) {
+        startIndex = i;
+      }
+      createAction = fileActions[i];
       break;
     }
   }
 
-  if (createActionIndex === -1) {
+  if (createAction === null) {
     return new Err({
       message: `No create action found for file '${fileId}'`,
       tracked: false,
@@ -642,12 +651,10 @@ export async function revertClientExecutableFileToPreviousState(
   }
 
   let startingContent: string;
-  let startIndex: number;
 
   // If there was a previous revert, use its output as our baseline
-  if (lastRevertIndex !== -1) {
-    const revertAction = fileActions[lastRevertIndex];
-    startIndex = lastRevertIndex;
+  if (lastRevertAction !== null) {
+    const revertAction = lastRevertAction;
 
     const revertItemOutput = await getOutputForRevertAction(
       revertAction,
@@ -663,10 +670,7 @@ export async function revertClientExecutableFileToPreviousState(
 
     startingContent = revertItemOutput.content.resource.text;
   } else {
-    // Otherwise, use the original content from file creation
-    const createAction = fileActions[createActionIndex];
-    startIndex = createActionIndex;
-
+    // Otherwise, use the original content from file creation;
     if (!isCreateFileAction(createAction)) {
       return new Err({
         message: `Invalid augmented inputs for create action for file '${fileId}'`,
