@@ -292,16 +292,6 @@ export async function getClientExecutableFileContent(
   }
 }
 
-function isCreateFileAction(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & { augmentedInputs: { content: string } } {
-  return (
-    action.toolConfiguration.originalName ===
-      CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.content === "string"
-  );
-}
-
 function isEditFileAction(
   action: AgentMCPActionModel
 ): action is AgentMCPActionModel & {
@@ -312,18 +302,6 @@ function isEditFileAction(
       EDIT_CONTENT_CREATION_FILE_TOOL_NAME &&
     typeof action.augmentedInputs.old_string === "string" &&
     typeof action.augmentedInputs.new_string === "string"
-  );
-}
-
-function isCreateFileResourceOutput(
-  output: AgentMCPActionOutputItem
-): output is AgentMCPActionOutputItem & {
-  content: { type: "resource"; resource: { fileId: string } };
-} {
-  return (
-    output.content.type === "resource" &&
-    output.content.resource &&
-    typeof output.content.resource.fileId === "string"
   );
 }
 
@@ -344,15 +322,47 @@ function isRevertFileActionOutput(
   );
 }
 
-async function fetchEditOrRevertActionsForFile(
+async function isCreateFileAction(
+  action: AgentMCPActionModel,
+  workspaceId: number
+): Promise<boolean> {
+  if (
+    action.toolConfiguration.originalName !==
+    CREATE_CONTENT_CREATION_FILE_TOOL_NAME
+  ) {
+    return false;
+  }
+
+  const outputItems = await AgentMCPActionOutputItem.findAll({
+    where: {
+      agentMCPActionId: action.id,
+      workspaceId,
+    },
+    order: [["createdAt", "ASC"]],
+  });
+
+  const resourceOutput = outputItems.find(
+    (
+      output
+    ): output is AgentMCPActionOutputItem & {
+      content: { type: "resource"; resource: { fileId: string } };
+    } =>
+      output.content.type === "resource" &&
+      output.content.resource &&
+      typeof output.content.resource.fileId === "string"
+  );
+
+  return resourceOutput !== undefined;
+}
+
+async function getFileActions(
   auth: Authenticator,
   fileId: string,
   conversationId: ModelId
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
-  const allActions = await AgentMCPActionModel.findAll({
+  const conversationActions = await AgentMCPActionModel.findAll({
     include: [
       {
         model: AgentMessage,
@@ -378,7 +388,7 @@ async function fetchEditOrRevertActionsForFile(
     order: [["createdAt", "ASC"]],
   });
 
-  return allActions.filter(
+  const editOrRevertActions = conversationActions.filter(
     (action) =>
       action.augmentedInputs.file_id === fileId &&
       (action.toolConfiguration.originalName ===
@@ -386,64 +396,12 @@ async function fetchEditOrRevertActionsForFile(
         action.toolConfiguration.originalName ===
           REVERT_CONTENT_CREATION_FILE_TOOL_NAME)
   );
-}
 
-async function fetchCreateActionsForConversation(
-  workspaceId: number,
-  conversationId: ModelId
-): Promise<AgentMCPActionModel[]> {
-  // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
-  const allActions = await AgentMCPActionModel.findAll({
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-        include: [
-          {
-            model: Message,
-            as: "message",
-            required: true,
-            where: {
-              conversationId,
-              workspaceId,
-            },
-          },
-        ],
-      },
-    ],
-    order: [["createdAt", "ASC"]],
-  });
-
-  return allActions.filter(
-    (action) =>
-      action.toolConfiguration.originalName ===
-      CREATE_CONTENT_CREATION_FILE_TOOL_NAME
-  );
-}
-
-async function getFileActions(
-  auth: Authenticator,
-  fileId: string,
-  conversationId: ModelId
-): Promise<AgentMCPActionModel[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
-
-  const editOrRevertActions = await fetchEditOrRevertActionsForFile(
-    auth,
-    fileId,
-    conversationId
+  const fileCreateAction = conversationActions.filter((action) =>
+    isCreateFileAction(action, workspaceId)
   );
 
-  const fileCreationAction = await findCreateActionForFile(
-    fileId,
-    conversationId,
-    workspaceId
-  );
-
-  const allFileActions = fileCreationAction
-    ? [...editOrRevertActions, fileCreationAction]
-    : editOrRevertActions;
+  const allFileActions = [...editOrRevertActions, ...fileCreateAction];
 
   return allFileActions.sort(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
@@ -476,45 +434,6 @@ async function getOutputForRevertAction(
   );
 
   return revertOutput ? revertOutput : null;
-}
-
-async function findCreateActionForFile(
-  fileId: string,
-  conversationId: ModelId,
-  workspaceId: number
-): Promise<AgentMCPActionModel | null> {
-  const createActions = await fetchCreateActionsForConversation(
-    workspaceId,
-    conversationId
-  );
-
-  if (createActions.length === 0) {
-    return null;
-  }
-
-  for (const action of createActions) {
-    const outputItems = await AgentMCPActionOutputItem.findAll({
-      where: {
-        agentMCPActionId: action.id,
-        workspaceId,
-      },
-      order: [["createdAt", "ASC"]],
-    });
-
-    const resourceOutput = outputItems.find(
-      (
-        output
-      ): output is AgentMCPActionOutputItem & {
-        content: { type: "resource"; resource: { fileId: string } };
-      } => isCreateFileResourceOutput(output)
-    );
-
-    if (resourceOutput && resourceOutput.content.resource.fileId === fileId) {
-      return action;
-    }
-  }
-
-  return null;
 }
 
 export async function revertClientExecutableFileToPreviousState(
@@ -637,16 +556,14 @@ export async function revertClientExecutableFileToPreviousState(
     }
 
     startingContent = revertItemOutput.content.resource.text;
-  } else {
+  } else if (typeof createAction.augmentedInputs.content === "string") {
     // Otherwise, use the original content from file creation;
-    if (!isCreateFileAction(createAction)) {
-      return new Err({
-        message: `Invalid augmented inputs for create action for file '${fileId}'`,
-        tracked: false,
-      });
-    }
-
     startingContent = createAction.augmentedInputs.content;
+  } else {
+    return new Err({
+      message: `Invalid augmented inputs for create action for file '${fileId}'`,
+      tracked: false,
+    });
   }
 
   let revertedContent = startingContent;
