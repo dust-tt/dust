@@ -89,7 +89,7 @@ export async function* runToolWithStreaming(
     toolConfiguration,
   };
 
-  const toolCallResult = await tryCallMCPTool(
+  const toolCallResult = yield* tryCallMCPTool(
     auth,
     inputs,
     agentLoopRunContext,

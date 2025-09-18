@@ -250,7 +250,7 @@ function generateContentMetadata(content: CallToolResult["content"]): {
  * May fail when connecting to remote/client-side servers.
  * In case of an error, the error content is bubbled up to expose it to the model.
  */
-export async function tryCallMCPTool(
+export async function* tryCallMCPTool(
   auth: Authenticator,
   inputs: Record<string, unknown> | undefined,
   agentLoopRunContext: AgentLoopRunContextType,
@@ -261,9 +261,12 @@ export async function tryCallMCPTool(
     progressToken: ModelId;
     onToolNotification: (
       notification: MCPProgressNotificationType
-    ) => AsyncGenerator<ToolNotificationEvent>;
+    ) => Promise<ToolNotificationEvent>;
   }
-): Promise<Result<CallToolResult["content"], Error | McpError>> {
+): AsyncGenerator<
+  ToolNotificationEvent,
+  Result<CallToolResult["content"], Error | McpError>
+> {
   const { toolConfiguration } = agentLoopRunContext;
 
   if (!isMCPToolConfiguration(toolConfiguration)) {
@@ -366,7 +369,7 @@ export async function tryCallMCPTool(
           break;
         }
 
-        onToolNotification(iteratorResult.value);
+        yield onToolNotification(iteratorResult.value);
       }
     }
 
