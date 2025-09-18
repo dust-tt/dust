@@ -70,7 +70,7 @@ export function MCPServerDetails({
 
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent size="lg">
-          <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
+          <SheetHeader className="flex flex-col gap-5 pb-0 text-foreground dark:text-foreground-night">
             <VisuallyHidden>
               <SheetTitle />
             </VisuallyHidden>

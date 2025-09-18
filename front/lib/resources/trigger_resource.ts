@@ -260,8 +260,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           trigger: this,
         });
       case "webhook":
-        // TODO: Implement webhook workflow when ready.
-        throw new Error("Webhook trigger workflows not yet implemented");
+        return new Ok(undefined);
       default:
         assertNever(this.kind);
     }
@@ -277,8 +276,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           trigger: this,
         });
       case "webhook":
-        // TODO: Implement webhook workflow when ready.
-        throw new Error("Webhook workflow removal not yet implemented");
+        return new Ok(undefined);
       default:
         assertNever(this.kind);
     }
