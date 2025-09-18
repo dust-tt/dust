@@ -42,15 +42,17 @@ function formatTimezone(timezone: string): string {
   return `${city} (${timezone})`;
 }
 
-function isErrorWithMessage(err: unknown): err is { error: { message: string } } {
+function isErrorWithMessage(
+  err: unknown
+): err is { error: { message: string } } {
   return (
     typeof err === "object" &&
     err !== null &&
     "error" in err &&
-    typeof (err as any).error === "object" &&
-    (err as any).error !== null &&
-    "message" in (err as any).error &&
-    typeof (err as any).error.message === "string"
+    typeof err.error === "object" &&
+    err.error !== null &&
+    "message" in err.error &&
+    typeof err.error.message === "string"
   );
 }
 
