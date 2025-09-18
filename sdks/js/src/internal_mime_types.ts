@@ -260,8 +260,6 @@ const TOOL_MIME_TYPES = {
       "REASONING_SUCCESS",
       // Content of a SQL query formulated by the model.
       "SQL_QUERY",
-      // Content creation
-      "CONTENT_CREATION_REVERT_RESULT",
       // Error when executing a query.
       "EXECUTE_TABLES_QUERY_ERROR",
       // Generic thinking tokens.
