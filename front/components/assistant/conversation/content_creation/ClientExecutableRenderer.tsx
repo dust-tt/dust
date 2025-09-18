@@ -96,12 +96,14 @@ interface ClientExecutableRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
   owner: LightWorkspaceType;
+  contentHash?: string | null;
 }
 
 export function ClientExecutableRenderer({
   conversation,
   fileId,
   owner,
+  contentHash,
 }: ClientExecutableRendererProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
@@ -121,7 +123,9 @@ export function ClientExecutableRenderer({
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
     owner,
+    cacheKey: contentHash,
   });
+
   const { fileMetadata } = useFileMetadata({ fileId, owner });
 
   const isFileUsingConversationFiles = React.useMemo(

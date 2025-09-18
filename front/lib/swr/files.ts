@@ -158,12 +158,19 @@ export function useFileMetadata({
 export function useFileContent({
   fileId,
   owner,
+  cacheKey,
 }: {
   fileId: string;
   owner: LightWorkspaceType;
+  cacheKey?: string | null;
 }) {
+  // Include cacheKey in the SWR key if provided to force cache invalidation.
+  const swrKey = cacheKey
+    ? `/api/w/${owner.sId}/files/${fileId}?action=view&v=${cacheKey}`
+    : `/api/w/${owner.sId}/files/${fileId}?action=view`;
+
   const { data, error, mutate } = useSWRWithDefaults<string, string>(
-    `/api/w/${owner.sId}/files/${fileId}?action=view`,
+    swrKey,
     async (url: string) => {
       // Use custom fetcher to parse as text.
       const response = await fetch(url);
