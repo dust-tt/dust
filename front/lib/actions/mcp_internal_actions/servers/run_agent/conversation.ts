@@ -9,10 +9,7 @@ import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/serve
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import {
-  isMCPConfigurationForInternalSearch,
-  isServerSideMCPServerConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import {
   isContentNodeAttachmentType,

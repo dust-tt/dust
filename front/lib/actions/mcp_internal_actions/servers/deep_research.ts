@@ -69,9 +69,7 @@ const createServer = (
         );
 
         if (contentFragmentsRes.isErr()) {
-          return makeMCPToolTextError(
-            `Failed to resolve data source configurations: ${contentFragmentsRes.error.message}`
-          );
+          return new Err(new MCPError(contentFragmentsRes.error.message));
         }
 
         const contentFragments = contentFragmentsRes.value;
