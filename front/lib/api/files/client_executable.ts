@@ -661,7 +661,7 @@ export async function revertClientExecutableFileToPreviousState(
       });
     }
 
-    startingContent = revertItemOutput.content.text;
+    startingContent = revertItemOutput.content.resource.text;
   } else {
     // Otherwise, use the original content from file creation
     const createAction = fileActions[createActionIndex];
