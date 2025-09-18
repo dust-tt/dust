@@ -496,16 +496,16 @@ The "mayRequire" properties are true in one of two cases:
 export interface MCPServerToolsConfigurations {
   dataSourceConfiguration?: {
     description?: string;
-    default?: { uri: string}[];
-  }
+    default?: { uri: string }[];
+  };
   dataWarehouseConfiguration?: {
     description?: string;
-    default?: { uri: string}[];
-  }
+    default?: { uri: string }[];
+  };
   tableConfiguration?: {
     description?: string;
-    default?: { uri: string}[];
-  }
+    default?: { uri: string }[];
+  };
   mayRequireChildAgentConfiguration: boolean;
   mayRequireReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
@@ -584,9 +584,9 @@ export function getMCPServerToolsConfigurations(
     schema: JSONSchema,
     typeGuard: (value: unknown) => value is T
   ): T[] | undefined {
-
     // findPathsToConfiguration returns an empty object if the schema default is an empty Array
-    if (schema.default &&
+    if (
+      schema.default &&
       typeof schema.default === "object" &&
       Object.keys(schema.default).length === 0
     ) {
@@ -600,74 +600,98 @@ export function getMCPServerToolsConfigurations(
       schema.default !== null
     ) {
       const defaults: T[] = [];
-      Object.entries(schema.default).map(
-        ([index, value]) => {
-          if (typeof index === "string" && Number.isInteger(Number(index)) && typeGuard(value)) {
-            defaults.push(value);
-          }
+      Object.entries(schema.default).map(([index, value]) => {
+        if (
+          typeof index === "string" &&
+          Number.isInteger(Number(index)) &&
+          typeGuard(value)
+        ) {
+          defaults.push(value);
         }
-      )
+      });
       return defaults;
     }
 
     return undefined;
   }
 
-  function configurableOptional<T extends { default?: unknown }>(config?: T): "no" | "optional" | "required" {
-    return config !== undefined ? config.default === undefined ? "required": "optional" : "no";
+  function configurableOptional<T extends { default?: unknown }>(
+    config?: T
+  ): "no" | "optional" | "required" {
+    return config !== undefined
+      ? config.default === undefined
+        ? "required"
+        : "optional"
+      : "no";
   }
 
-  function configurableArray<T extends { default?: unknown }>(config: T[]): "no" | "optional" | "required" {
-    return config.length > 0 ? config.every((c) => c.default !== undefined) ? "optional": "required" : "no";
+  function configurableArray<T extends { default?: unknown }>(
+    config: T[]
+  ): "no" | "optional" | "required" {
+    return config.length > 0
+      ? config.every((c) => c.default !== undefined)
+        ? "optional"
+        : "required"
+      : "no";
   }
 
-  function configurableRecord<T extends { default?: unknown }>(config: Record<string, T>): "no" | "optional" | "required" {
-    return Object.values(config).length > 0 ? Object.values(config).every((c) => c.default !== undefined) ? "optional": "required" : "no";
+  function configurableRecord<T extends { default?: unknown }>(
+    config: Record<string, T>
+  ): "no" | "optional" | "required" {
+    return Object.values(config).length > 0
+      ? Object.values(config).every((c) => c.default !== undefined)
+        ? "optional"
+        : "required"
+      : "no";
   }
 
-  const dataSourceConfiguration =
-    Object.values(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-      })
-    ).map((schema) => ({
+  const dataSourceConfiguration = Object.values(
+    findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+    })
+  )
+    .map((schema) => ({
       description: schema.description,
       default: extractSchemaDefaultArray(
         schema,
-        (v: unknown): v is { uri: string } => v !== null && typeof v === "object" && "uri" in v
+        (v: unknown): v is { uri: string } =>
+          v !== null && typeof v === "object" && "uri" in v
       ),
-    })).at(0);
-  
+    }))
+    .at(0);
 
-  const dataWarehouseConfiguration =
-    Object.values(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
-      })
-    ).map((schema) => ({
+  const dataWarehouseConfiguration = Object.values(
+    findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
+    })
+  )
+    .map((schema) => ({
       description: schema.description,
       default: extractSchemaDefaultArray(
         schema,
-        (v: unknown): v is { uri: string } => v !== null && typeof v === "object" && "uri" in v,
+        (v: unknown): v is { uri: string } =>
+          v !== null && typeof v === "object" && "uri" in v
       ),
-    })).at(0);
+    }))
+    .at(0);
 
-
-  const tableConfiguration =
-    Object.values(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-      })
-    ).map((schema) => ({
+  const tableConfiguration = Object.values(
+    findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+    })
+  )
+    .map((schema) => ({
       description: schema.description,
       default: extractSchemaDefaultArray(
         schema,
-        (v: unknown): v is { uri: string } => v !== null && typeof v === "object" && "uri" in v
+        (v: unknown): v is { uri: string } =>
+          v !== null && typeof v === "object" && "uri" in v
       ),
-    })).at(0);
+    }))
+    .at(0);
 
   const mayRequireChildAgentConfiguration =
     Object.keys(
@@ -684,7 +708,6 @@ export function getMCPServerToolsConfigurations(
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
       })
     ).length > 0;
-
 
   // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
   const disabledToolNames =
@@ -853,20 +876,22 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
+  const configurables = [
+    configurableOptional(dataSourceConfiguration),
+    configurableOptional(dataWarehouseConfiguration),
+    configurableOptional(tableConfiguration),
+    configurableArray(stringConfigurations),
+    configurableArray(numberConfigurations),
+    configurableArray(booleanConfigurations),
+    configurableRecord(enumConfigurations),
+    configurableRecord(listConfigurations),
+  ];
 
-    const configurables = [
-      configurableOptional(dataSourceConfiguration),
-      configurableOptional(dataWarehouseConfiguration),
-      configurableOptional(tableConfiguration),
-      configurableArray(stringConfigurations),
-      configurableArray(numberConfigurations),
-      configurableArray(booleanConfigurations),
-      configurableRecord(enumConfigurations),
-      configurableRecord(listConfigurations),
-    ]
-
-    const configurable = configurables.every((c) => c === "no") ? "no" : configurables.every((c) => c === "optional" || c === "no") ? "optional" : "required";
-
+  const configurable = configurables.every((c) => c === "no")
+    ? "no"
+    : configurables.every((c) => c === "optional" || c === "no")
+      ? "optional"
+      : "required";
 
   return {
     dataSourceConfiguration,
