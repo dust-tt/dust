@@ -87,7 +87,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           ];
 
           // TODO: This is temporary until our Slack app scope is approved.
-          if (extraConfig?.feature_flags?.includes("slack_bot_mcp")) {
+          if (extraConfig?.slack_bot_mcp_feature_flag) {
             scopes.push("reactions:read", "reactions:write");
           }
 
@@ -214,10 +214,11 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       const feature_flags = await getFeatureFlags(
         auth.getNonNullableWorkspace()
       );
-      return {
-        ...extraConfig,
-        feature_flags: JSON.stringify(feature_flags),
-      };
+      const config = { ...extraConfig };
+      if (feature_flags.includes("slack_bot_mcp")) {
+        config.slack_bot_mcp_feature_flag = "true";
+      }
+      return config;
     }
 
     return extraConfig;
