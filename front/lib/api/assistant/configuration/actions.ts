@@ -65,6 +65,7 @@ export async function createAgentActionConfiguration(
         singleToolDescriptionOverride:
           serverDescription !== action.description ? action.description : null,
         appId: action.dustAppConfiguration?.appId ?? null,
+        secretName: action.secretName,
       },
       { transaction: t }
     );
@@ -114,6 +115,7 @@ export async function createAgentActionConfiguration(
       timeFrame: action.timeFrame,
       additionalConfiguration: action.additionalConfiguration,
       dustAppConfiguration: action.dustAppConfiguration,
+      secretName: action.secretName,
       jsonSchema: action.jsonSchema,
     });
   });
