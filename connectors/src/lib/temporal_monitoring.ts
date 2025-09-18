@@ -231,20 +231,6 @@ export class ActivityInboundLogInterceptor
             },
             "Activity failed"
           );
-        } else if (error instanceof ApplicationFailure) {
-          // Keep a dedicated branch: ApplicationFailure carries a custom type that
-          // we want to reflect in logs/metrics instead of classifying as "unhandled".
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const appFailure: any = error;
-          errorType = appFailure.type ?? "unhandled_internal_activity_error";
-          this.logger.error(
-            {
-              error,
-              durationMs,
-              attempt: this.context.info.attempt,
-            },
-            "Activity failed"
-          );
         } else {
           // Unknown error type.
           this.logger.error(
