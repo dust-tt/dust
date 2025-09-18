@@ -294,10 +294,10 @@ export function AssistantBrowser({
 
   // Auto-pick the most popular tag if tags exists but no tags are selected.
   useEffect(() => {
-    if (!noTagsDefined && selectedTags.length === 0) {
+    if (!noTagsDefined) {
       setSelectedTags([MOST_POPULAR_TAG.sId]);
     }
-  }, [noTagsDefined, selectedTags.length]);
+  }, [noTagsDefined]);
 
   const handleMoreClick = (agent: LightAgentConfigurationType) => {
     setQueryParam(router, "assistantDetails", agent.sId);
@@ -454,27 +454,25 @@ export function AssistantBrowser({
           <div className="mb-2 flex flex-wrap gap-2">
             {noTagsDefined
               ? null
-              : uniqueTags
-                  .filter((tag) => tag.sId !== MOST_POPULAR_TAG.sId)
-                  .map((tag) => (
-                    <Button
-                      size="xs"
-                      variant={
-                        selectedTags.includes(tag.sId) ? "primary" : "outline"
+              : uniqueTags.map((tag) => (
+                  <Button
+                    size="xs"
+                    variant={
+                      selectedTags.includes(tag.sId) ? "primary" : "outline"
+                    }
+                    key={tag.sId}
+                    label={tag.name}
+                    onClick={() => {
+                      if (selectedTags.includes(tag.sId)) {
+                        setSelectedTags(
+                          selectedTags.filter((t) => t !== tag.sId)
+                        );
+                      } else {
+                        setSelectedTags([...selectedTags, tag.sId]);
                       }
-                      key={tag.sId}
-                      label={tag.name}
-                      onClick={() => {
-                        if (selectedTags.includes(tag.sId)) {
-                          setSelectedTags(
-                            selectedTags.filter((t) => t !== tag.sId)
-                          );
-                        } else {
-                          setSelectedTags([...selectedTags, tag.sId]);
-                        }
-                      }}
-                    />
-                  ))}
+                    }}
+                  />
+                ))}
           </div>
 
           <div className="flex flex-col gap-4">
