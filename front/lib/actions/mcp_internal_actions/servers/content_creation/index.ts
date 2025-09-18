@@ -268,16 +268,8 @@ const createServer = (
 
         return new Ok([
           {
-            type: "resource",
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_CREATION_RESULT,
-              fileId: fileResource.sId,
-              title: fileResource.fileName,
-              contentType: fileResource.contentType,
-              snippet: fileResource.snippet,
-              uri: fileResource.getPublicUrl(auth),
-              text: responseText,
-            },
+            type: "text",
+            text: responseText,
           },
         ]);
       }
@@ -346,8 +338,13 @@ const createServer = (
 
         return new Ok([
           {
-            type: "text",
-            text: revertedContent,
+            type: "resource",
+            resource: {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.CONTENT_CREATION_REVERT_RESULT,
+              uri: fileResource.getPublicUrl(auth),
+              text: revertedContent,
+            },
           },
         ]);
       }
