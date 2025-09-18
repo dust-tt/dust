@@ -342,6 +342,7 @@ async function fetchEditOrRevertActionsForFile(
 ): Promise<AgentMCPActionModel[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
+  // TODO (content-creation): Use AgentMCPActionResource instead of AgentMCPActionModel
   return AgentMCPActionModel.findAll({
     include: [
       {
@@ -567,17 +568,6 @@ export async function revertClientExecutableFileToPreviousState(
 
   if (fileActions.length === 0) {
     return new Err(new Error("No MCP actions found for this file"));
-  }
-
-  // Validate that the most recent action is not already a revert
-  const mostRecentAction = fileActions[fileActions.length - 1];
-  if (
-    mostRecentAction?.toolConfiguration.originalName ===
-    REVERT_LAST_EDIT_TOOL_NAME
-  ) {
-    return new Err(
-      new Error("Last action is a revert, cannot revert twice in a row")
-    );
   }
 
   let lastRevertIndex = -1;
