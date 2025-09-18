@@ -68,6 +68,12 @@ function validateTailwindCode(code: string): void {
   }
 }
 
+function parseAllowedOrigins(allowed: string | undefined): string[] {
+  return allowed ? allowed
+    .split(",")
+    .map((s) => s.trim()): [];
+}
+
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
   { allowedVisualizationOrigin }: { allowedVisualizationOrigin?: string }
@@ -139,18 +145,20 @@ export function useVisualizationAPI(
     await sendCrossDocumentMessage("displayCode", null);
   }, [sendCrossDocumentMessage]);
 
+  const allowedOrigins = useMemo(
+    () => parseAllowedOrigins(allowedVisualizationOrigin),
+    [allowedVisualizationOrigin]
+  );
+
   const addEventListener = useCallback(
     (
       eventType: SupportedEventType,
       handler: (data: SupportedMessage) => void
     ): (() => void) => {
       const messageHandler = (event: MessageEvent) => {
-        if (
-          allowedVisualizationOrigin &&
-          event.origin !== allowedVisualizationOrigin
-        ) {
+        if (!allowedOrigins.includes(event.origin)) {
           console.log(
-            `Ignored message from unauthorized origin: ${event.origin}, expected: ${allowedVisualizationOrigin}`
+            `Ignored message from unauthorized origin: ${event.origin}, expected one of: ${allowedOrigins.join(", ")}`
           );
           return;
         }
@@ -173,7 +181,7 @@ export function useVisualizationAPI(
       // Return cleanup function
       return () => window.removeEventListener("message", messageHandler);
     },
-    [allowedVisualizationOrigin]
+    [allowedOrigins]
   );
 
   return {
@@ -481,6 +489,8 @@ export function makeSendCrossDocumentMessage({
   identifier: string;
   allowedVisualizationOrigin: string | undefined;
 }) {
+  const allowedOrigins = parseAllowedOrigins(allowedVisualizationOrigin);
+
   return <T extends VisualizationRPCCommand>(
     command: T,
     params: VisualizationRPCRequestMap[T]
@@ -488,11 +498,8 @@ export function makeSendCrossDocumentMessage({
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
-        if (event.origin !== allowedVisualizationOrigin) {
-          console.log(
-            `Ignored message from unauthorized origin: ${event.origin}`
-          );
-
+        if (!allowedOrigins.includes(event.origin)) {
+          console.log(`Ignored message from unauthorized origin: ${event.origin}`);
           // Simply ignore messages from unauthorized origins.
           return;
         }
