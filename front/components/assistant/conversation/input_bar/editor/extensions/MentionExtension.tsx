@@ -1,11 +1,32 @@
 import Mention from "@tiptap/extension-mention";
 import type { PasteRuleMatch } from "@tiptap/react";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";
 import escapeRegExp from "lodash/escapeRegExp";
 
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { WorkspaceType } from "@app/types";
 
-export const MentionWithPasteExtension = Mention.extend({
+import { MentionComponent } from "../MentionComponent";
+
+interface MentionExtensionOptions {
+  owner: WorkspaceType;
+}
+
+export const MentionExtension = Mention.extend<MentionExtensionOptions>({
+  addOptions() {
+    return {
+      ...this.parent?.(),
+      owner: {} as WorkspaceType,
+    };
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer((props: any) => (
+      <MentionComponent node={props.node} owner={this.options.owner} />
+    ));
+  },
+
   addPasteRules() {
     const pasteRule = nodePasteRule({
       find: (text) => {

@@ -123,6 +123,7 @@ const InputBarContainer = ({
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
+    owner,
   });
 
   // Update the editor ref when the editor is created.
