@@ -365,6 +365,62 @@ export function useAddDeleteConversationTool({
   return { addTool, deleteTool };
 }
 
+export function useVisualizationRevert({
+  workspaceId,
+  conversationId,
+  agentConfigurationId,
+  fileName,
+  fileId,
+}: {
+  workspaceId: string | null;
+  conversationId: string | null;
+  agentConfigurationId: string | null;
+  fileName?: string;
+  fileId: string
+}) {
+  const handleVisualizationRevert = useCallback(
+    async (): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              content: `Please revert the previous change in ${fileName ? `${fileName} (file ID: ${fileId})` : fileId}.`,
+              mentions: [
+                {
+                  configurationId: agentConfigurationId,
+                },
+              ],
+              context: {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                profilePictureUrl: null,
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to send revert message");
+        }
+
+        return true;
+      } catch (error) {
+        console.error("Error sending revert message:", error);
+        return false;
+      }
+    },
+    [workspaceId, conversationId, agentConfigurationId]
+  );
+
+  return {
+    handleVisualizationRevert,
+  };
+}
+
 export function useVisualizationRetry({
   workspaceId,
   conversationId,

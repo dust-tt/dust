@@ -78,6 +78,9 @@ export function ContentCreationContainer({
             conversation={conversation}
             fileId={contentId}
             fileName={fileMetadata.fileName}
+            lastEditedByAgentConfigurationId={
+              fileMetadata.useCaseMetadata.lastEditedByAgentConfigurationId
+            }
             owner={owner}
           />
         );
