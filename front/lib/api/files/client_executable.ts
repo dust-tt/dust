@@ -354,7 +354,7 @@ async function fetchEditOrRevertActionsForFile(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
-  const allactions = await AgentMCPActionModel.findAll({
+  const allActions = await AgentMCPActionModel.findAll({
     include: [
       {
         model: AgentMessage,
@@ -380,7 +380,7 @@ async function fetchEditOrRevertActionsForFile(
     order: [["createdAt", "ASC"]],
   });
 
-  return allactions.filter(
+  return allActions.filter(
     (action) =>
       action.augmentedInputs.file_id === fileId &&
       (action.toolConfiguration.originalName ===
@@ -397,7 +397,7 @@ async function fetchCreateActionsForConversation(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
-  const allactions = await AgentMCPActionModel.findAll({
+  const allActions = await AgentMCPActionModel.findAll({
     include: [
       {
         model: AgentMessage,
@@ -419,7 +419,7 @@ async function fetchCreateActionsForConversation(
     order: [["createdAt", "ASC"]],
   });
 
-  return allactions.filter(
+  return allActions.filter(
     (action) =>
       action.toolConfiguration.originalName ===
       CREATE_CONTENT_CREATION_FILE_TOOL_NAME
@@ -503,8 +503,12 @@ async function getOutputForRevertAction(
     order: [["createdAt", "ASC"]],
   });
 
-  const revertOutput = outputs.find((output) =>
-    isRevertFileActionOutput(output, action)
+  const revertOutput = outputs.find(
+    (
+      output
+    ): output is AgentMCPActionOutputItem & {
+      content: { type: "resource"; resource: { text: string } };
+    } => isRevertFileActionOutput(output, action)
   );
 
   return revertOutput ? revertOutput : null;
@@ -519,29 +523,29 @@ async function findCreateActionForFile(
     return null;
   }
 
-  // Get output items for create actions to check which one created our file
-  const outputItems = await getOutputItemsForActions(
-    createActions.map((action) => action.id),
-    workspaceId
-  );
+  for (const action of createActions) {
+    const outputItems = await AgentMCPActionOutputItem.findAll({
+      where: {
+        agentMCPActionId: action.id,
+        workspaceId,
+      },
+      order: [["createdAt", "ASC"]],
+    });
 
-  return (
-    createActions.find((action) => {
-      const resourceOutput = outputItems.get(action.id)?.find(
-        (
-          output
-        ): output is AgentMCPActionOutputItem & {
-          content: { type: "resource"; resource: { fileId: string } };
-        } => isCreateFileResourceOutput(output)
-      );
+    const resourceOutput = outputItems.find(
+      (
+        output
+      ): output is AgentMCPActionOutputItem & {
+        content: { type: "resource"; resource: { fileId: string } };
+      } => isCreateFileResourceOutput(output)
+    );
 
-      if (!resourceOutput) {
-        return false;
-      }
+    if (resourceOutput && resourceOutput.content.resource.fileId === fileId) {
+      return action;
+    }
+  }
 
-      return resourceOutput.content.resource.fileId === fileId;
-    }) ?? null
-  );
+  return null;
 }
 
 export async function revertClientExecutableFileToPreviousState(
