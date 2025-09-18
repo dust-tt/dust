@@ -4,6 +4,7 @@ import {
   generateCronRule,
   INVALID_TIMEZONE_MESSAGE,
   TOO_FREQUENT_MESSAGE,
+  GENERIC_ERROR_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -53,19 +54,17 @@ async function handler(
       });
 
       if (r.isErr()) {
-        let message = "Failed to generate cron rule.";
-        if (r.error.message === INVALID_TIMEZONE_MESSAGE) {
-          message += " Invalid timezone provided.";
-        }
-        if (r.error.message === TOO_FREQUENT_MESSAGE) {
-          message += " Cron output is too frequent.";
-        }
-
+        const cleanMessage = [
+          INVALID_TIMEZONE_MESSAGE,
+          TOO_FREQUENT_MESSAGE,
+        ].includes(r.error.message)
+          ? r.error.message
+          : GENERIC_ERROR_MESSAGE;
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message,
+            message: cleanMessage,
           },
         });
       }

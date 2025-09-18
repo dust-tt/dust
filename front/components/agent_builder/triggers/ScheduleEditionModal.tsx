@@ -32,7 +32,6 @@ import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
 const MIN_DESCRIPTION_LENGTH = 10;
-type ErrorType = "unknown" | "invalid_timezone" | "too_frequent";
 
 function formatTimezone(timezone: string): string {
   const parts = timezone.split("/");
@@ -43,17 +42,14 @@ function formatTimezone(timezone: string): string {
   return `${city} (${timezone})`;
 }
 
-function extractErrorType(error: unknown): ErrorType {
+function extractErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "error" in error) {
-    const message = (error as any).error.message.toLowerCase();
-    if (message.includes("invalid timezone")) {
-      return "invalid_timezone";
-    }
-    if (message.includes("too frequent")) {
-      return "too_frequent";
+    const innerError = error.error;
+    if (typeof innerError === "object" && innerError !== null && "message" in innerError) {
+      return innerError.message as string;
     }
   }
-  return "unknown";
+  return "Unable to generate a schedule. Please try rephrasing.";
 }
 
 interface ScheduleEditionModalProps {
@@ -91,7 +87,7 @@ export function ScheduleEditionModal({
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
   ] = useState<"idle" | "loading" | "error">("idle");
-  const [cronErrorStatus, setCronErrorStatus] = useState<ErrorType>("unknown");
+  const [cronErrorMessage, setCronErrorMessage] = useState<string | null>(null);
   const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
     null
   );
@@ -132,14 +128,7 @@ export function ScheduleEditionModal({
       case "loading":
         return "Generating schedule...";
       case "error":
-        switch (cronErrorStatus) {
-          case "invalid_timezone":
-            return "Unable to generate a schedule due to an invalid timezone returned by the model. Valid timezones have the form 'Europe/Paris'. Please try rephrasing.";
-          case "too_frequent":
-            return "Unable to generate a schedule: it can't be more frequent than hourly. Please try rephrasing.";
-          case "unknown":
-            return "Unable to generate a schedule. Please try rephrasing.";
-        }
+        return cronErrorMessage;
       case "idle":
         if (!cron) {
           return undefined;
@@ -248,7 +237,7 @@ export function ScheduleEditionModal({
                             setNaturalDescriptionToCronRuleStatus("idle");
                           } catch (error) {
                             setNaturalDescriptionToCronRuleStatus("error");
-                            setCronErrorStatus(extractErrorType(error));
+                            setCronErrorMessage(extractErrorMessage(error));
                             setGeneratedTimezone(null);
                           }
                         },

@@ -15,11 +15,12 @@ function isTooFrequentCron(cron: string): boolean {
   return !cron.split(" ")[0].match(/^\d+$/);
 }
 
-const GENERIC_ERROR_MESSAGE = "Error generating cron rule.";
+export const GENERIC_ERROR_MESSAGE =
+  "Unable to generate a schedule. Please try rephrasing.";
 export const INVALID_TIMEZONE_MESSAGE =
-  "Error generating cron rule: invalid timezone";
+  'Unable to generate the schedule, timezone returned by the model don\'t follow the IANA standard (i.e "Europe/Paris"). Please try rephrasing.';
 export const TOO_FREQUENT_MESSAGE =
-  "Error generating cron rule: cron output is too frequent";
+  "Unable to generate a schedule: it can't be more frequent than hourly. Please try rephrasing.";
 
 export async function generateCronRule(
   auth: Authenticator,
@@ -111,6 +112,5 @@ export async function generateCronRule(
   if (!timezone || !isValidIANATimezone(timezone)) {
     return new Err(new Error(INVALID_TIMEZONE_MESSAGE));
   }
-
   return new Ok({ cron: cronRule, timezone });
 }
