@@ -338,6 +338,7 @@ const createServer = (
           {
             type: "resource",
             resource: {
+              fileId: fileResource.sId,
               mimeType:
                 INTERNAL_MIME_TYPES.TOOL_OUTPUT.CONTENT_CREATION_REVERT_RESULT,
               uri: fileResource.getPublicUrl(auth),
