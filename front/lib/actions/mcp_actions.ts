@@ -256,10 +256,10 @@ export async function* tryCallMCPTool(
   agentLoopRunContext: AgentLoopRunContextType,
   {
     progressToken,
-    onToolNotification,
+    makeToolNotificationEvent,
   }: {
     progressToken: ModelId;
-    onToolNotification: (
+    makeToolNotificationEvent: (
       notification: MCPProgressNotificationType
     ) => Promise<ToolNotificationEvent>;
   }
@@ -369,7 +369,7 @@ export async function* tryCallMCPTool(
           break;
         }
 
-        yield onToolNotification(iteratorResult.value);
+        yield makeToolNotificationEvent(iteratorResult.value);
       }
     }
 

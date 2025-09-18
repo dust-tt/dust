@@ -95,7 +95,7 @@ export async function* runToolWithStreaming(
     agentLoopRunContext,
     {
       progressToken: action.id,
-      onToolNotification: (notification) =>
+      makeToolNotificationEvent: (notification) =>
         processToolNotification(notification, {
           action,
           agentConfiguration,
