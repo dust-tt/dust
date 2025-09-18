@@ -898,9 +898,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 27,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("google_drive_tool");
-    },
+    isRestricted: undefined,
     isPreview: true,
     tools_stakes: {
       list_drives: "never_ask",
