@@ -354,7 +354,7 @@ async function fetchEditOrRevertActionsForFile(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
-  return AgentMCPActionModel.findAll({
+  const allactions = await AgentMCPActionModel.findAll({
     include: [
       {
         model: AgentMessage,
@@ -376,24 +376,18 @@ async function fetchEditOrRevertActionsForFile(
     where: {
       workspaceId,
       status: "succeeded",
-      [Op.and]: [
-        {
-          [Op.or]: [
-            {
-              "toolConfiguration.originalName":
-                EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-            },
-            {
-              "toolConfiguration.originalName":
-                REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME,
-            },
-          ],
-        },
-        { "augmentedInputs.file_id": fileId },
-      ],
     },
     order: [["createdAt", "ASC"]],
   });
+
+  return allactions.filter(
+    (action) =>
+      action.augmentedInputs.file_id === fileId &&
+      (action.toolConfiguration.originalName ===
+        EDIT_CONTENT_CREATION_FILE_TOOL_NAME ||
+        action.toolConfiguration.originalName ===
+          REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME)
+  );
 }
 
 async function fetchCreateActionsForConversation(
@@ -403,7 +397,7 @@ async function fetchCreateActionsForConversation(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // TODO (content-creation 18-09-2025): Use AgentMCPActionResource instead of AgentMCPActionModel
-  return AgentMCPActionModel.findAll({
+  const allactions = await AgentMCPActionModel.findAll({
     include: [
       {
         model: AgentMessage,
@@ -422,13 +416,14 @@ async function fetchCreateActionsForConversation(
         ],
       },
     ],
-    where: {
-      workspaceId,
-      status: "succeeded",
-      "toolConfiguration.originalName": CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-    },
     order: [["createdAt", "ASC"]],
   });
+
+  return allactions.filter(
+    (action) =>
+      action.toolConfiguration.originalName ===
+      CREATE_CONTENT_CREATION_FILE_TOOL_NAME
+  );
 }
 
 async function getFileActions(
