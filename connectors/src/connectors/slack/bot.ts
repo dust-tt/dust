@@ -550,9 +550,15 @@ async function answerMessage(
   if (slackUserInfo.is_bot) {
     const isBotAllowedRes = await isBotAllowed(connector, slackUserInfo);
     if (isBotAllowedRes.isErr()) {
+      if (slackUserInfo.real_name === "Dust Data Sync") {
+        // The Dust Data Sync bot mentions Dust to let ther user know which bot to use so we should
+        // not react to it.
+        return new Ok(undefined);
+      }
       return isBotAllowedRes;
     }
-    // If the bot is allowed, we skip tools validation as we have no users to rely on for permissions.
+    // If the bot is allowed, we skip tools validation as we have no users to rely on for
+    // permissions.
     skipToolsValidation = true;
   } else {
     const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
