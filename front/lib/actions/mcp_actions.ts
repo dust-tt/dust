@@ -2,7 +2,10 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  CallToolResult,
+  McpError,
+} from "@modelcontextprotocol/sdk/types.js";
 import {
   CallToolResultSchema,
   ProgressNotificationSchema,
@@ -262,7 +265,7 @@ export async function* tryCallMCPTool(
   }
 ): AsyncGenerator<
   ToolNotificationEvent,
-  Result<CallToolResult["content"], Error>
+  Result<CallToolResult["content"], Error | McpError>
 > {
   const { toolConfiguration } = agentLoopRunContext;
 
