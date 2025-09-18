@@ -291,6 +291,7 @@ fn responses_api_input_from_chat_messages(
                                 warn!(
                                     region,
                                     use_openai_eu_host,
+                                    model = assistant_msg.name.as_deref().unwrap_or("unknown"),
                                     "Skipping reasoning metadata due to region mismatch. This is expected if a conversation was started with OpenAI US and is now being continued with OpenAI EU, or vice versa."
                                 );
                                 continue;
