@@ -296,10 +296,8 @@ const createServer = (
       },
       async ({ file_id }, { sendNotification, _meta }) => {
         if (!agentLoopContext?.runContext) {
-          return new Err(
-            new MCPError(
-              "Could not access Agent Loop Context from revert last edit tool."
-            )
+          throw new Error(
+            "Could not access Agent Loop Context from revert last edit tool."
           );
         }
 
