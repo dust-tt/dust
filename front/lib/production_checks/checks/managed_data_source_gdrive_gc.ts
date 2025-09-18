@@ -55,8 +55,8 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
               }
             ),
           {
-            retries: 10,
-            delayBetweenRetriesMs: 5000,
+            retries: 8,
+            delayBetweenRetriesMs: 4000,
           }
         )({})) as { id: number; coreDocumentId: string }[];
 
