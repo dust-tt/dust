@@ -333,14 +333,16 @@ function isRevertFileActionOutput(
   output: AgentMCPActionOutputItem,
   action: AgentMCPActionModel
 ): output is AgentMCPActionOutputItem & {
-  content: { type: "text"; text: string };
+  content: { type: "resource"; resource: { text: string } };
 } {
   return (
     output.agentMCPActionId === action.id &&
     action.toolConfiguration.originalName ===
       REVERT_CONTENT_CREATION_FILE_LAST_EDIT_TOOL_NAME &&
-    output.content.type === "text" &&
-    typeof output.content.text === "string"
+    typeof output.content.resource === "object" &&
+    output.content.resource !== null &&
+    "text" in output.content.resource &&
+    typeof output.content.resource.text === "string"
   );
 }
 
@@ -493,7 +495,9 @@ async function getOutputForRevertAction(
   action: AgentMCPActionModel,
   workspaceId: number
 ): Promise<
-  | (AgentMCPActionOutputItem & { content: { type: "text"; text: string } })
+  | (AgentMCPActionOutputItem & {
+      content: { type: "resource"; resource: { text: string } };
+    })
   | null
 > {
   const outputs = await AgentMCPActionOutputItem.findAll({
@@ -508,11 +512,7 @@ async function getOutputForRevertAction(
     isRevertFileActionOutput(output, action)
   );
 
-  return revertOutput
-    ? (revertOutput as AgentMCPActionOutputItem & {
-        content: { type: "text"; text: string };
-      })
-    : null;
+  return revertOutput ? revertOutput : null;
 }
 
 async function findCreateActionForFile(
