@@ -786,9 +786,18 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         this.editedByUser,
         this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
       ),
-      toolsMetadata:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        this.internalToolsMetadata || this.remoteToolsMetadata || [],
+      toolsMetadata: [
+        ...(this.internalToolsMetadata ?? []).map((t) => ({
+          toolName: t.toolName,
+          permission: t.permission,
+          enabled: t.enabled,
+        })),
+        ...(this.remoteToolsMetadata ?? []).map((t) => ({
+          toolName: t.toolName,
+          permission: t.permission,
+          enabled: t.enabled,
+        })),
+      ],
     };
   }
 }
