@@ -70,7 +70,12 @@ export class ProviderTransientError extends ProviderWorkflowError {
     originalError?: Error | APIError,
     readonly retryAfterMs?: number
   ) {
-    super(provider, message, "transient_upstream_activity_error", originalError);
+    super(
+      provider,
+      message,
+      "transient_upstream_activity_error",
+      originalError
+    );
   }
 }
 

@@ -1,14 +1,14 @@
 import {
+  APIErrorCode,
+  APIResponseError,
   RequestTimeoutError,
   UnknownHTTPResponseError,
 } from "@notionhq/client";
-import { APIErrorCode, APIResponseError } from "@notionhq/client";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-
 import { ProviderTransientError, ProviderWorkflowError } from "@connectors/lib/error";
 
 export class NotionCastKnownErrorsInterceptor
