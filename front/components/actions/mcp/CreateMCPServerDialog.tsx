@@ -15,6 +15,7 @@ import {
   InformationCircleIcon,
   Input,
   Label,
+  SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
@@ -41,6 +42,8 @@ import {
   setupOAuthConnection,
   validateUrl,
 } from "@app/types";
+
+import { McpServerHeaders } from "./MCPServerHeaders";
 
 const DEFAULT_AUTH_METHOD = "oauth-dynamic";
 
@@ -85,6 +88,16 @@ export function CreateMCPServerDialog({
   const [authMethod, setAuthMethod] = useState<
     "oauth-dynamic" | "oauth-static" | "bearer"
   >(DEFAULT_AUTH_METHOD);
+  const [useCustomHeaders, setUseCustomHeaders] = useState(false);
+  const [customHeaders, setCustomHeaders] = useState<{ key: string; value: string }[]>([]);
+
+  const sanitizeHeaders = useCallback(
+    (headers: { key: string; value: string }[]) =>
+      headers
+        .map(({ key, value }) => ({ key: key.trim(), value: value.trim() }))
+        .filter(({ key, value }) => key.length > 0 && value.length > 0),
+    []
+  );
 
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
@@ -119,6 +132,8 @@ export function CreateMCPServerDialog({
     setAuthMethod(DEFAULT_AUTH_METHOD);
     setIsOAuthFormValid(true);
     setAuthorization(null);
+    setUseCustomHeaders(false);
+    setCustomHeaders([])
   }, [setExternalIsLoading]);
 
   const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -139,8 +154,10 @@ export function CreateMCPServerDialog({
 
       if (authMethod === "oauth-dynamic") {
         if (!remoteMCPServerOAuthDiscoveryDone) {
-          const discoverOAuthMetadataRes =
-            await discoverOAuthMetadata(remoteServerUrl);
+          const discoverOAuthMetadataRes = await discoverOAuthMetadata(
+            remoteServerUrl,
+            useCustomHeaders ? sanitizeHeaders(customHeaders) : undefined
+          );
           setRemoteMCPServerOAuthDiscoveryDone(true);
 
           if (discoverOAuthMetadataRes.isOk()) {
@@ -239,6 +256,7 @@ export function CreateMCPServerDialog({
         includeGlobal: true,
         sharedSecret: authMethod === "bearer" ? sharedSecret : undefined,
         oauthConnection,
+        customHeaders: useCustomHeaders ? sanitizeHeaders(customHeaders) : undefined,
       });
 
       if (createRes.isErr()) {
@@ -463,7 +481,6 @@ export function CreateMCPServerDialog({
                 )}
               </>
             )}
-
           {authorization && (
             <MCPServerOAuthConnexion
               authorization={authorization}
@@ -475,6 +492,39 @@ export function CreateMCPServerDialog({
               documentationUrl={
                 internalMCPServer?.documentationUrl ?? undefined
               }
+            />
+          )}
+          {!defaultServerConfig && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="customHeaders">
+                    Use custom headers
+                  </Label>
+                  <Tooltip
+                    trigger={
+                      <Icon
+                        visual={InformationCircleIcon}
+                        size="xs"
+                        className="text-gray-400"
+                      />
+                    }
+                    label="Custom headers can be added for advanced networking such as firewalls."
+                  />
+                </div>
+                <SliderToggle
+                  disabled={false}
+                  selected={useCustomHeaders}
+                  onClick={() => setUseCustomHeaders(!useCustomHeaders)}
+                />
+              </div>
+            </div>
+          )}
+
+          {useCustomHeaders && (
+            <McpServerHeaders
+              headers={customHeaders}
+              onHeadersChange={(headers) => setCustomHeaders(headers)}
             />
           )}
         </DialogContainer>

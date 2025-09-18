@@ -52,6 +52,7 @@ const PostQueryParamsSchema = t.union([
       t.undefined,
     ]),
     connectionId: t.union([t.string, t.undefined]),
+    customHeaders: t.union([t.array(t.type({ key: t.string, value: t.string })), t.undefined]),
   }),
   t.type({
     serverType: t.literal("internal"),
@@ -161,15 +162,21 @@ async function handler(
           }
         }
 
-        const r = await fetchRemoteServerMetaDataByURL(
-          auth,
-          url,
-          bearerToken
-            ? {
-                Authorization: `Bearer ${bearerToken}`,
-              }
-            : undefined
-        );
+        // Merge custom headers (if any) with Authorization when probing the server.
+        // Note: Authorization from OAuth/sharedSecret takes precedence over custom headers.
+        const customHeaders = body.customHeaders
+          ? Object.fromEntries(
+              body.customHeaders
+                .filter((h) => h.key && h.value)
+                .map(({ key, value }) => [key.trim(), value])
+            )
+          : undefined;
+
+        const headers = bearerToken
+          ? { ...(customHeaders ?? {}), Authorization: `Bearer ${bearerToken}` }
+          : customHeaders;
+
+        const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);
         if (r.isErr()) {
           return apiError(req, res, {
             status_code: 400,
@@ -205,6 +212,15 @@ async function handler(
           version: metadata.version,
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           sharedSecret: sharedSecret || null,
+          // Persist only user-provided custom headers (exclude Authorization)
+          customHeaders:
+            customHeaders && Object.keys(customHeaders).length > 0
+              ? Object.fromEntries(
+                  Object.entries(customHeaders).filter(
+                    ([k]) => k.toLowerCase() !== "authorization"
+                  )
+                )
+              : null,
           authorization,
           oAuthUseCase: body.useCase ?? null,
         });

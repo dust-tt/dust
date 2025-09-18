@@ -21,6 +21,14 @@ const PatchMCPServerBodySchema = z
     z.object({
       sharedSecret: z.string(),
     })
+  )
+  .or(
+    z.object({
+      customHeaders: z
+        .array(z.object({ key: z.string(), value: z.string() }))
+        .nullable()
+        .optional(),
+    })
   );
 
 export type PatchMCPServerBody = z.infer<typeof PatchMCPServerBodySchema>;
@@ -187,6 +195,42 @@ async function handler(
         if (server instanceof RemoteMCPServerResource) {
           const r2 = await server.updateMetadata(auth, {
             sharedSecret: r.data.sharedSecret,
+            lastSyncAt: new Date(),
+          });
+          if (r2.isErr()) {
+            switch (r2.error.code) {
+              case "unauthorized":
+                return apiError(req, res, {
+                  status_code: 401,
+                  api_error: {
+                    type: "workspace_auth_error",
+                    message: "You are not authorized to update the MCP server.",
+                  },
+                });
+            }
+          }
+        }
+      } else if ("customHeaders" in r.data) {
+        if (server instanceof RemoteMCPServerResource) {
+          const headersRecord = r.data.customHeaders
+            ? Object.fromEntries(
+                r.data.customHeaders
+                  .filter((h) => h.key && h.value)
+                  .map(({ key, value }) => [key.trim(), value.trim()])
+              )
+            : null;
+
+          // Strip any Authorization key from persisted headers; auth is handled separately
+          const sanitizedRecord = headersRecord
+            ? Object.fromEntries(
+                Object.entries(headersRecord).filter(
+                  ([k]) => k.toLowerCase() !== "authorization"
+                )
+              )
+            : null;
+
+          const r2 = await server.updateMetadata(auth, {
+            customHeaders: sanitizedRecord,
             lastSyncAt: new Date(),
           });
           if (r2.isErr()) {

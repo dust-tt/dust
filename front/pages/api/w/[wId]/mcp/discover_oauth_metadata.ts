@@ -21,6 +21,7 @@ export type DiscoverOAuthMetadataResponseBody =
 
 const PostQueryParamsSchema = t.type({
   url: t.string,
+  customHeaders: t.union([t.array(t.type({ key: t.string, value: t.string })), t.undefined]),
 });
 
 /**
@@ -52,12 +53,21 @@ async function handler(
         });
       }
 
-      const { url } = r.right;
+      const { url, customHeaders } = r.right;
+
+      const headers = customHeaders
+        ? Object.fromEntries(
+            customHeaders
+              .filter((h) => h.key && h.value)
+              .map(({ key, value }) => [key.trim(), value])
+          )
+        : undefined;
 
       const r2 = await connectToMCPServer(auth, {
         params: {
           type: "remoteMCPServerUrl",
           remoteMCPServerUrl: url,
+          headers,
         },
       });
       if (r2.isErr()) {
