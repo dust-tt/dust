@@ -98,7 +98,7 @@ const createServer = (
           });
         }
 
-        const content: CallToolResult["content"] = [
+        return new Ok([
           ...results.map((result) => ({
             type: "resource" as const,
             resource: result,
@@ -111,9 +111,7 @@ const createServer = (
               uri: "",
             },
           },
-        ];
-
-        return new Ok(content);
+        ]);
       }
     )
   );
@@ -198,7 +196,8 @@ const createServer = (
           }
 
           const tokensCount = tokensRes.value[0];
-          const avgCharactersPerToken = (contentText?.length ?? 0) / tokensCount;
+          const avgCharactersPerToken =
+            (contentText?.length ?? 0) / tokensCount;
           const maxCharacters = BROWSE_MAX_TOKENS_LIMIT * avgCharactersPerToken;
           let truncatedContent = contentText?.slice(0, maxCharacters);
 
