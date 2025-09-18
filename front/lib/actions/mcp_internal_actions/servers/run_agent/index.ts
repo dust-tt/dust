@@ -112,6 +112,16 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   };
 }
 
+const configurableProperties = {
+  isHandover: ConfigurableToolInputSchemas[
+    INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
+  ].describe(
+    "Whether we want to completely handover the query to the child agent in the main conversation."
+  ),
+  childAgent:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+};
+
 export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -159,10 +169,7 @@ export default async function createServer(
       "run_agent_tool_not_available",
       "No child agent configured for this tool, as the child agent was probably archived. " +
         "Do not attempt to run the tool and warn the user instead.",
-      {
-        childAgent:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
-      },
+      configurableProperties,
       async () => makeMCPToolTextError("No child agent configured")
     );
     return server;
@@ -199,12 +206,11 @@ export default async function createServer(
       conversationId: z
         .string()
         .describe(
-          "The conversation id to run the agent in. Pass the main conversation id if user explicitly request to delegate the query in the same conversation."
+          "The conversation id to run the agent in. Only use if the user explicitly request to delegate the query in previous conversation."
         )
         .optional()
         .nullable(),
-      childAgent:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+      ...configurableProperties,
     },
     async (
       {
@@ -213,6 +219,7 @@ export default async function createServer(
         toolsetsToAdd,
         fileOrContentFragmentIds,
         conversationId,
+        isHandover,
       },
       { sendNotification, _meta }
     ) => {
@@ -248,7 +255,6 @@ export default async function createServer(
         logger
       );
 
-      const isHandover = conversationId === mainConversation.sId;
       const instructions =
         agentLoopContext.runContext.agentConfiguration.instructions;
       if (_meta?.progressToken && sendNotification) {
@@ -289,7 +295,7 @@ export default async function createServer(
           childAgentId,
           mainAgent,
           mainConversation,
-          query: isHandover
+          query: isHandover.value
             ? `
 You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
 ${instructions ?? ""}
@@ -298,7 +304,9 @@ ${query}`
             : query,
           toolsetsToAdd: toolsetsToAdd ?? null,
           fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
-          conversationId: conversationId ?? null,
+          conversationId: isHandover.value
+            ? mainConversation.sId
+            : conversationId ?? null,
         }
       );
 
@@ -306,7 +314,7 @@ ${query}`
         return makeMCPToolTextError(convRes.error.message);
       }
 
-      if (isHandover) {
+      if (isHandover.value) {
         return makeMCPToolExit({
           message: `Query delegated to agent @${childAgentBlob.name}`,
           isError: false,
