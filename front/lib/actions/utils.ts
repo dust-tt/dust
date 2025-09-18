@@ -298,6 +298,8 @@ const TOOLS_VALIDATION_WILDCARD = "*";
 const getToolsValidationKey = (mcpServerId: string) =>
   `toolsValidations:${mcpServerId}`;
 
+// The function call name is scoped by MCP servers so that the same tool name on different servers
+// does not conflict, which is why we use it here instead of the tool name.
 export async function setUserAlwaysApprovedTool({
   user,
   mcpServerId,

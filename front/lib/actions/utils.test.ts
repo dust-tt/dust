@@ -607,11 +607,11 @@ describe("Tool validation utilities", () => {
       }
 
       // Try to add duplicates and verify no changes
-      for (const tool of functionCallNames) {
+      for (const functionCallName of functionCallNames) {
         await setUserAlwaysApprovedTool({
           user,
           mcpServerId,
-          functionCallName: tool,
+          functionCallName,
         });
       }
 
