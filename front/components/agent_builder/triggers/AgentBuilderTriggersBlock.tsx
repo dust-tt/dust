@@ -2,7 +2,6 @@ import {
   BellIcon,
   Button,
   CardGrid,
-  Chip,
   ClockIcon,
   EmptyCTA,
   Hoverable,
