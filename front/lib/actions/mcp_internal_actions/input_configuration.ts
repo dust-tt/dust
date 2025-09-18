@@ -625,26 +625,19 @@ export function getMCPServerToolsConfigurations(
     return Object.values(config).length > 0 ? Object.values(config).every((c) => c.default !== undefined) ? "optional": "required" : "no";
   }
 
-  const dataSourceConfigurationPaths =
+  const dataSourceConfiguration =
     Object.values(
       findPathsToConfiguration({
         mcpServerView,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
       })
-    );
-
-    console.log("dataSourceConfigurationPaths", dataSourceConfigurationPaths);
-    
-    const dataSourceConfiguration = dataSourceConfigurationPaths.map((schema) => ({
+    ).map((schema) => ({
       description: schema.description,
       default: extractSchemaDefaultArray(
         schema,
         (v: unknown): v is { uri: string } => v !== null && typeof v === "object" && "uri" in v
       ),
     })).at(0);
-
-
-    console.log("dataSourceConfiguration", dataSourceConfiguration);
   
 
   const dataWarehouseConfiguration =
@@ -692,13 +685,6 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
-
-    console.log("reasoning_config_path", Object.entries(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-      })
-    ));
 
   // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
   const disabledToolNames =
