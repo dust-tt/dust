@@ -19,7 +19,8 @@ use tracing::info;
 use super::utils::ProviderHttpRequestError;
 
 lazy_static! {
-    static ref OAUTH_CONFLUENCE_MCP_CLIENT_ID: String = env::var("OAUTH_CONFLUENCE_MCP_CLIENT_ID").unwrap();
+    static ref OAUTH_CONFLUENCE_MCP_CLIENT_ID: String =
+        env::var("OAUTH_CONFLUENCE_MCP_CLIENT_ID").unwrap();
     static ref OAUTH_CONFLUENCE_MCP_CLIENT_SECRET: String =
         env::var("OAUTH_CONFLUENCE_MCP_CLIENT_SECRET").unwrap();
 }
@@ -99,9 +100,13 @@ impl Provider for ConfluenceToolsConnectionProvider {
         let expires_in = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
                 Some(n) => n,
-                None => Err(anyhow!("Invalid `expires_in` in response from Confluence Tools"))?,
+                None => Err(anyhow!(
+                    "Invalid `expires_in` in response from Confluence Tools"
+                ))?,
             },
-            _ => Err(anyhow!("Missing `expires_in` in response from Confluence Tools"))?,
+            _ => Err(anyhow!(
+                "Missing `expires_in` in response from Confluence Tools"
+            ))?,
         };
         let refresh_token = match raw_json["refresh_token"].as_str() {
             Some(token) => token,
@@ -144,7 +149,9 @@ impl Provider for ConfluenceToolsConnectionProvider {
 
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
-            Ok(None) => Err(anyhow!("Missing `refresh_token` in Confluence Tools connection"))?,
+            Ok(None) => Err(anyhow!(
+                "Missing `refresh_token` in Confluence Tools connection"
+            ))?,
             Err(e) => Err(e)?,
         };
 
@@ -175,9 +182,13 @@ impl Provider for ConfluenceToolsConnectionProvider {
         let expires_in = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
                 Some(n) => n,
-                None => Err(anyhow!("Invalid `expires_in` in response from Confluence Tools"))?,
+                None => Err(anyhow!(
+                    "Invalid `expires_in` in response from Confluence Tools"
+                ))?,
             },
-            _ => Err(anyhow!("Missing `expires_in` in response from Confluence Tools"))?,
+            _ => Err(anyhow!(
+                "Missing `expires_in` in response from Confluence Tools"
+            ))?,
         };
         let refresh_token = match raw_json["refresh_token"].as_str() {
             Some(token) => token,
