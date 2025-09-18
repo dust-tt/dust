@@ -39,7 +39,8 @@ const dustDeepKnowledgeCutoffPrompt = `Your knowledge cutoff was at least 1 year
 Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
 Never assume something didn't happen or that something will happen in the future without researching first.
 
-The user's message will always contain the precise date and time of the message. Make sure to think about the current date and take it into account when making assumptions.
+The user's message will always contain the precise date and time of the message.
+CRITICAL: make sure to reflect on the current date, time and year before making any assumptions.
 `;
 
 const dustDeepPrimaryGoal = `<primary_goal>
