@@ -8,12 +8,16 @@ import type {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
+import { ApplicationFailure } from "@temporalio/common";
 
 import { ProviderWorkflowError } from "@connectors/lib/error";
 
 export class NotionCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
+  // Delay retries for Notion transient 5xx by ~30 minutes to avoid hot-looping.
+  private static readonly TRANSIENT_RETRY_DELAY_MS = 30 * 60 * 1000;
+
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -56,14 +60,12 @@ export class NotionCastKnownErrorsInterceptor
         }
       } else if (UnknownHTTPResponseError.isUnknownHTTPResponseError(err)) {
         if ([502, 504, 530].includes(err.status)) {
-          // Sometimes notion returns 502/504s, they are transient and look like rate limiting
-          // errors. 530 is transient and looks like DNS errors.
-          throw new ProviderWorkflowError(
-            "notion",
-            "Notion 5XX transient error",
-            "transient_upstream_activity_error",
-            err
-          );
+          // Notion transient upstream errors: force Temporal to wait ~30 minutes before retrying.
+          throw ApplicationFailure.create({
+            message: `Notion ${err.status} - Transient upstream error. Retry after ${NotionCastKnownErrorsInterceptor.TRANSIENT_RETRY_DELAY_MS / 1000}s`,
+            type: "transient_upstream_activity_error",
+            nextRetryDelay: NotionCastKnownErrorsInterceptor.TRANSIENT_RETRY_DELAY_MS,
+          });
         }
       } else if (RequestTimeoutError.isRequestTimeoutError(err)) {
         throw new ProviderWorkflowError(
