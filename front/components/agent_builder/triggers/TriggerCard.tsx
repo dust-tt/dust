@@ -1,5 +1,6 @@
 import {
   Avatar,
+  BellIcon,
   Card,
   CardActionButton,
   TimeIcon,
@@ -17,6 +18,10 @@ function getIcon(kind: TriggerKind) {
     case "schedule":
       return (
         <TimeIcon className="h-4 w-4 text-foreground dark:text-foreground-night" />
+      );
+    case "webhook":
+      return (
+        <BellIcon className="h-4 w-4 text-foreground dark:text-foreground-night" />
       );
     default:
       return null;

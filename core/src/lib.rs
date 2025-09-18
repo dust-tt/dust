@@ -179,9 +179,14 @@ pub mod api {
     pub mod data_sources;
     pub mod databases;
     pub mod datasets;
+    pub mod folders;
+    pub mod nodes;
     pub mod projects;
     pub(crate) mod run_manager;
     pub mod runs;
     pub mod specifications;
+    pub mod sqlite_workers;
     pub mod tables;
+    pub mod tags;
+    pub mod tokenize;
 }

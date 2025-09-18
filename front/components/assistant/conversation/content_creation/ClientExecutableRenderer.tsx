@@ -95,14 +95,12 @@ function ExportContentDropdown({
 interface ClientExecutableRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
-  fileName?: string;
   owner: LightWorkspaceType;
 }
 
 export function ClientExecutableRenderer({
   conversation,
   fileId,
-  fileName,
   owner,
 }: ClientExecutableRendererProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
@@ -218,12 +216,7 @@ export function ClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <ContentCreationHeader
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        title={fileName || "Client Executable"}
-        subtitle={fileId}
-        onClose={onClosePanel}
-      >
+      <ContentCreationHeader onClose={onClosePanel}>
         <Button
           icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
           variant="ghost"

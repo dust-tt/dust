@@ -1264,3 +1264,82 @@ pub async fn data_sources_delete(
         },
     }
 }
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataSourceAndProject {
+    data_source_id: String,
+    project_id: i64,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StatsPayload {
+    query: Vec<DataSourceAndProject>,
+}
+
+pub async fn data_sources_stats(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<StatsPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Validate payload data sources
+    if payload.query.is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parameter",
+            "query array cannot be empty",
+            None,
+        );
+    }
+
+    // Convert payload data to project_data_sources format
+    let project_data_sources: Vec<(i64, String)> = payload
+        .query
+        .into_iter()
+        .map(|item| (item.project_id, item.data_source_id))
+        .collect();
+
+    match state
+        .store
+        .load_data_sources(project_data_sources.clone())
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data sources",
+            Some(e),
+        ),
+        Ok(data_sources) if data_sources.is_empty() => error_response(
+            StatusCode::NOT_FOUND,
+            "data_sources_not_found",
+            "No data sources found",
+            None,
+        ),
+        Ok(data_sources) => {
+            let ds_ids: Vec<String> = data_sources
+                .iter()
+                .map(|ds| ds.data_source_id().to_string())
+                .collect();
+
+            match state.search_store.get_data_source_stats(ds_ids).await {
+                Ok((stats, overall_total_size)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "data_sources": stats,
+                            "overall_total_size": overall_total_size,
+                        })),
+                    }),
+                ),
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to get stats relative to data sources",
+                    Some(e),
+                ),
+            }
+        }
+    }
+}

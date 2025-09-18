@@ -31,7 +31,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::info;
 
 use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
@@ -1091,16 +1090,6 @@ impl LLM for OpenAILLM {
                 _ => false,
             },
         };
-
-        info!(
-            RESPONSES_API_ENABLED,
-            is_auto_function_call,
-            n,
-            is_reasoning_model,
-            use_openai_eu_host,
-            last2 = &api_key[api_key.len() - 2..],
-            "OpenAILLM chat completion"
-        );
 
         // Use response API only when function_call is not forced and when n == 1.
         if RESPONSES_API_ENABLED && is_auto_function_call && n == 1 && is_reasoning_model {

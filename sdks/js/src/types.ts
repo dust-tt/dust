@@ -2743,6 +2743,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionArrowDownOnSquareIcon"
   | "ActionArrowUpOnSquareIcon"
   | "ActionAttachmentIcon"
+  | "ActionAtomIcon"
   | "ActionBankIcon"
   | "ActionBarcodeIcon"
   | "ActionBeerIcon"

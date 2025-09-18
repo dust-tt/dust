@@ -18,10 +18,12 @@ import cronstrue from "cronstrue";
 import uniqueId from "lodash/uniqueId";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
-import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { TriggerFormData } from "@app/components/agent_builder/triggers/triggerFormSchema";
-import { triggerFormSchema } from "@app/components/agent_builder/triggers/triggerFormSchema";
+import type {
+  AgentBuilderScheduleTriggerType,
+  AgentBuilderTriggerType,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
 import { useUser } from "@app/lib/swr/user";
@@ -29,8 +31,15 @@ import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
+const scheduleFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  customPrompt: z.string(),
+  cron: z.string().min(1, "Cron expression is required"),
+  timezone: z.string().min(1, "Timezone is required"),
+});
+
 // a ScheduleFormData must be a TriggerFormData with a cron field
-type ScheduleFormData = Extract<TriggerFormData, { cron: string }>;
+type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
@@ -45,7 +54,7 @@ function formatTimezone(timezone: string): string {
 
 interface ScheduleEditionModalProps {
   owner: LightWorkspaceType;
-  trigger?: AgentBuilderTriggerType;
+  trigger?: AgentBuilderScheduleTriggerType;
   isOpen: boolean;
   onClose: () => void;
   onSave: (trigger: AgentBuilderTriggerType) => void;
@@ -59,7 +68,8 @@ export function ScheduleEditionModal({
   onSave,
 }: ScheduleEditionModalProps) {
   const { user } = useUser();
-  const isEditor = !trigger?.editor || trigger?.editor === user?.id;
+
+  const isEditor = trigger?.editor ? trigger?.editor === user?.id : false;
 
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
@@ -69,7 +79,7 @@ export function ScheduleEditionModal({
   };
 
   const form = useForm<ScheduleFormData>({
-    resolver: zodResolver(triggerFormSchema),
+    resolver: zodResolver(scheduleFormSchema),
     defaultValues,
     disabled: !isEditor,
   });
