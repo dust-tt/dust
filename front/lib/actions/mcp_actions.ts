@@ -408,7 +408,7 @@ export async function* tryCallMCPTool(
           "information on MCP tool result"
         );
 
-        return new Err(new Error(`MCP tool result content size too large.`));
+        return new Err(new Error("MCP tool result content size too large."));
       }
     }
 
