@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
+
 import {
   generateCronRule,
+  GENERIC_ERROR_MESSAGE,
   INVALID_TIMEZONE_MESSAGE,
   TOO_FREQUENT_MESSAGE,
-  GENERIC_ERROR_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
