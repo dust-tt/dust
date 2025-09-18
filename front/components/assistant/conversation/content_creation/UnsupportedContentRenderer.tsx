@@ -7,25 +7,18 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 
 interface UnsupportedContentRendererProps {
   contentType: string;
-  fileId: string;
   fileName?: string;
 }
 
 export function UnsupportedContentRenderer({
   contentType,
-  fileId,
   fileName,
 }: UnsupportedContentRendererProps) {
   const { closePanel } = useConversationSidePanelContext();
 
   return (
     <div className="flex h-full flex-col">
-      <ContentCreationHeader
-        onClose={closePanel}
-        subtitle={fileId}
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        title={fileName || "Unsupported Content"}
-      />
+      <ContentCreationHeader onClose={closePanel} />
 
       <div className="flex-1 overflow-hidden">
         <CenteredState>
