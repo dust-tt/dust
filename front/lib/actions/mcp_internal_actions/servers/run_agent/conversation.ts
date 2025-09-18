@@ -7,7 +7,10 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import {
+  fetchTableDataSourceConfigurations,
+  getAgentDataSourceConfigurations,
+} from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
@@ -46,10 +49,18 @@ export async function createContentFragmentsFromDataSources(
     (action) => action.dataSources ?? []
   );
 
+  const allTables = searchActions.flatMap((action) => action.tables ?? []);
+
   // Convert DataSourceConfiguration to DataSourcesToolConfigurationType format
   const dataSourceToolConfigurations = allDataSources.map((dataSource) => ({
     uri: getDataSourceURI(dataSource),
     mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+  }));
+
+  // Convert TableDataSourceConfiguration to TablesToolConfigurationType format
+  const tableToolConfigurations = allTables.map((table) => ({
+    uri: `table_configuration://dust/w/${table.workspaceId}/data_source_views/${table.dataSourceViewId}/tables/${table.tableId}`,
+    mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
   }));
 
   // Resolve data source configurations to get actual data source IDs
@@ -63,6 +74,18 @@ export async function createContentFragmentsFromDataSources(
   }
 
   const resolvedDataSources = resolvedDataSourcesResult.value;
+
+  // Resolve table configurations to get actual table data
+  const resolvedTablesResult = await fetchTableDataSourceConfigurations(
+    auth,
+    tableToolConfigurations
+  );
+
+  if (resolvedTablesResult.isErr()) {
+    return resolvedTablesResult;
+  }
+
+  const resolvedTables = resolvedTablesResult.value;
 
   const contentFragments: PublicPostContentFragmentRequestBody[] = [];
 
@@ -97,6 +120,20 @@ export async function createContentFragmentsFromDataSources(
         supersededContentFragmentId: null,
       });
     }
+  }
+
+  // Create content fragments for tables
+  for (const table of resolvedTables) {
+    contentFragments.push({
+      title: `Table: ${table.tableId}`,
+      nodeId: table.tableId, // Use the table ID as the node ID
+      nodeDataSourceViewId: table.dataSourceViewId,
+      url: null,
+      content: null,
+      contentType: null,
+      context: null,
+      supersededContentFragmentId: null,
+    });
   }
 
   return new Ok(contentFragments);
