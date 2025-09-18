@@ -343,7 +343,6 @@ async function fetchEditOrRevertActionsForFile(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   // TODO (content-creation): Use AgentMCPActionResource instead of AgentMCPActionModel
-  // TODO in an other PR as it's causing a circular dependency and requires careful refactoring
   return AgentMCPActionModel.findAll({
     include: [
       {
