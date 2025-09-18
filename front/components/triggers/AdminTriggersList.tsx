@@ -15,6 +15,7 @@ import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhoo
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
 import type {
@@ -58,6 +59,7 @@ type AdminTriggersListProps = {
   >;
   isWebhookSourcesWithViewsLoading: boolean;
   webhookSourcesWithViews: WebhookSourceWithViews[];
+  filter: string;
 };
 
 export const AdminTriggersList = ({
@@ -66,6 +68,7 @@ export const AdminTriggersList = ({
   setSelectedWebhookSourceView,
   isWebhookSourcesWithViewsLoading,
   webhookSourcesWithViews,
+  filter,
 }: AdminTriggersListProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { spaces } = useSpacesAsAdmin({
@@ -118,6 +121,13 @@ export const AdminTriggersList = ({
         cell: (info: CellContext<RowData, string>) => (
           <NameCell row={info.row.original} />
         ),
+        filterFn: (row, id, filterValue) =>
+          filterWebhookSource(row.original.webhookSourceWithViews, filterValue),
+        sortingFn: (rowA, rowB) => {
+          return rowA.original.webhookSourceWithViews.name.localeCompare(
+            rowB.original.webhookSourceWithViews.name
+          );
+        },
       },
       {
         id: "access",
@@ -227,6 +237,7 @@ export const AdminTriggersList = ({
             columns={columns}
             className="pb-4"
             filterColumn="name"
+            filter={filter}
           />
         </>
       )}
