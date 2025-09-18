@@ -19,9 +19,9 @@ import { ScheduleEditionModal } from "@app/components/agent_builder/triggers/Sch
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
 import { WebhookEditionModal } from "@app/components/agent_builder/triggers/WebhookEditionModal";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { TriggerKind } from "@app/types/assistant/triggers";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type DialogMode =
   | {

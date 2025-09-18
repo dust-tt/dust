@@ -110,7 +110,7 @@ export function WebhookEditionModal({
     });
 
     return options;
-  }, [webhookSourcesWithViews, accessibleSpaceIds, spaceById]);
+  }, [webhookSourcesWithViews, accessibleSpaceIds]);
 
   useEffect(() => {
     if (!isOpen) {
