@@ -162,7 +162,7 @@ export function useFileContent({
 }: {
   fileId: string;
   owner: LightWorkspaceType;
-  cacheKey?: string | null;
+  cacheKey?: string;
 }) {
   // Include cacheKey in the SWR key if provided to force cache invalidation.
   const swrKey = cacheKey

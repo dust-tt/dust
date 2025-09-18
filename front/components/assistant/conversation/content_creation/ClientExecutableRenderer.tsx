@@ -96,7 +96,7 @@ interface ClientExecutableRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
   owner: LightWorkspaceType;
-  contentHash?: string | null;
+  contentHash?: string;
 }
 
 export function ClientExecutableRenderer({
