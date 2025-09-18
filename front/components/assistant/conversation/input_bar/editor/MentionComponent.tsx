@@ -51,7 +51,7 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
             @{agentName}
           </span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent side="top" align="start">
           <DropdownMenuItem
             onClick={handleStartConversation}
             icon={() => <ChatBubbleBottomCenterTextIcon />}
