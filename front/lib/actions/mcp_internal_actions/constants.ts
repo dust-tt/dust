@@ -962,7 +962,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "0.1.0",
       description: "Handoff the query to the deep research agent.",
       authorization: null,
-      icon: "ActionBrainIcon",
+      icon: "ActionAtomIcon",
       documentationUrl: null,
       instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
     },
