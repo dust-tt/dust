@@ -1,4 +1,3 @@
-import type { PublicPostContentFragmentRequestBody } from "@dust-tt/client";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
@@ -14,7 +13,6 @@ import type {
   ChildAgentBlob,
   RunAgentBlockingEvent,
 } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
-import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import {
   makeInternalMCPServer,
   makeMCPToolExit,
@@ -28,7 +26,6 @@ import type {
 import {
   isLightServerSideMCPToolConfiguration,
   isMCPActionArray,
-  isMCPConfigurationForInternalSearch,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
@@ -36,7 +33,6 @@ import {
   getCitationsFromActions,
   getRefs,
 } from "@app/lib/api/assistant/citations";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -44,9 +40,8 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType, CitationType, Result } from "@app/types";
+import type { CitationType, Result } from "@app/types";
 import {
-  DATA_SOURCE_NODE_ID,
   Err,
   getHeaderFromUserEmail,
   isGlobalAgentId,
