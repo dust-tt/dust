@@ -62,6 +62,18 @@ export class ProviderRateLimitError extends ProviderWorkflowError {
   }
 }
 
+// Transient upstream error with optional retryAfterMs hint for backoff.
+export class ProviderTransientError extends ProviderWorkflowError {
+  constructor(
+    provider: ConnectorProvider,
+    message: string,
+    originalError?: Error | APIError,
+    readonly retryAfterMs?: number
+  ) {
+    super(provider, message, "transient_upstream_activity_error", originalError);
+  }
+}
+
 export class HTTPError extends Error {
   readonly statusCode: number;
   constructor(message: string, statusCode: number) {

@@ -8,14 +8,15 @@ import type {
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
-import { ApplicationFailure } from "@temporalio/common";
+// no ApplicationFailure here; we cast to ProviderTransientError and let
+// the monitoring interceptor handle retry delay.
 
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import { ProviderTransientError, ProviderWorkflowError } from "@connectors/lib/error";
 
 export class NotionCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
-  // Delay retries for Notion transient 5xx by ~30 minutes to avoid hot-looping.
+  // Delay hint for transient upstream 5xx.
   private static readonly TRANSIENT_RETRY_DELAY_MS = 30 * 60 * 1000;
 
   async execute(
@@ -60,12 +61,13 @@ export class NotionCastKnownErrorsInterceptor
         }
       } else if (UnknownHTTPResponseError.isUnknownHTTPResponseError(err)) {
         if ([502, 504, 530].includes(err.status)) {
-          // Notion transient upstream errors: force Temporal to wait ~30 minutes before retrying.
-          throw ApplicationFailure.create({
-            message: `Notion ${err.status} - Transient upstream error. Retry after ${NotionCastKnownErrorsInterceptor.TRANSIENT_RETRY_DELAY_MS / 1000}s`,
-            type: "transient_upstream_activity_error",
-            nextRetryDelay: NotionCastKnownErrorsInterceptor.TRANSIENT_RETRY_DELAY_MS,
-          });
+          // Notion transient upstream errors: cast to ProviderTransientError with 30m hint.
+          throw new ProviderTransientError(
+            "notion",
+            `Notion ${err.status} - Transient upstream error`,
+            err,
+            NotionCastKnownErrorsInterceptor.TRANSIENT_RETRY_DELAY_MS
+          );
         }
       } else if (RequestTimeoutError.isRequestTimeoutError(err)) {
         throw new ProviderWorkflowError(

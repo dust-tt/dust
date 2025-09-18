@@ -18,6 +18,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   DustConnectorWorkflowError,
   ExternalOAuthTokenError,
+  ProviderTransientError,
   WorkspaceQuotaExceededError,
 } from "./error";
 import { syncFailed } from "./sync_status";
@@ -126,6 +127,17 @@ export class ActivityInboundLogInterceptor
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
       error = err;
+
+      // Convert provider-marked transient upstream errors into ApplicationFailures
+      // with a fixed retry delay to avoid hot-looping.
+      if (err instanceof ProviderTransientError) {
+        const delayMs = err.retryAfterMs ?? 30 * 60 * 1000;
+        throw ApplicationFailure.create({
+          message: `${err.message}. Retry after ${Math.floor(delayMs / 1000)}s`,
+          type: err.type, // "transient_upstream_activity_error"
+          nextRetryDelay: delayMs,
+        });
+      }
 
       // Log connection-related errors with more context
       if (err instanceof Error && err.message.includes("other side closed")) {
