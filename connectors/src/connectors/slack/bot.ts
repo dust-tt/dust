@@ -157,6 +157,7 @@ export async function botAnswerMessage(
           channel: slackChannel,
           blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
           thread_ts: slackMessageTs,
+          unfurl_links: false,
         });
       } else {
         await slackClient.chat.postMessage({
@@ -231,6 +232,7 @@ export async function botReplaceMention(
         channel: slackChannel,
         blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
         thread_ts: slackMessageTs,
+        unfurl_links: false,
       });
     } else {
       await slackClient.chat.postMessage({
