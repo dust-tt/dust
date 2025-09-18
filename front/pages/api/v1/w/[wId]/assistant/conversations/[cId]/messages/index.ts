@@ -170,6 +170,18 @@ async function handler(
         }
       }
 
+      const isRunAgent =
+        context.origin === "run_agent" || context.origin === "agent_handover";
+      if (isRunAgent && !auth.isSystemKey()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Messages from run_agent or agent_handover must come from a system key.",
+          },
+        });
+      }
       const ctx: UserMessageContext = {
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         email: context.email?.toLowerCase() ?? null,

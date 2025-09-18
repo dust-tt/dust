@@ -45,7 +45,6 @@ import { ProcessingMethodSection } from "@app/components/agent_builder/capabilit
 import { SelectedDataSources } from "@app/components/agent_builder/capabilities/shared/SelectedDataSources";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   AgentBuilderAction,
   CapabilityFormData,
@@ -154,7 +153,6 @@ function KnowledgeConfigurationSheetForm({
   onCancel,
   setIsDirty,
 }: KnowledgeConfigurationSheetFormProps) {
-  const { spaces } = useSpacesContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const handleSave = (formData: CapabilityFormData) => {
@@ -230,7 +228,7 @@ function KnowledgeConfigurationSheetForm({
 
   return (
     <FormProvider {...form}>
-      <DataSourceBuilderProvider spaces={spaces}>
+      <DataSourceBuilderProvider>
         <KnowledgePageProvider initialPageId={getInitialPageId(isEditing)}>
           <KnowledgeConfigurationSheetContent
             onSave={form.handleSubmit(handleSave)}
@@ -268,7 +266,12 @@ function KnowledgeConfigurationSheetContent({
 
   const hasSourceSelection = useWatch({
     compute: (formData: CapabilityFormData) => {
-      return formData.sources.in.length > 0;
+      // Check if we have actual selections: either explicit inclusions or "select all with exclusions"
+      const hasExplicitInclusions = formData.sources.in.length > 0;
+      const hasSelectAllWithExclusions =
+        formData.sources.in.length === 0 && formData.sources.notIn.length > 0;
+
+      return hasExplicitInclusions || hasSelectAllWithExclusions;
     },
   });
 

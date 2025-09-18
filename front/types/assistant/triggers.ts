@@ -9,7 +9,9 @@ export type ScheduleConfig = {
   timezone: string;
 };
 
-export type WebhookConfig = Record<string, never>;
+export type WebhookConfig = {
+  includePayload: boolean;
+};
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
 
@@ -68,7 +70,9 @@ const ScheduleConfigSchema = t.type({
   timezone: t.string,
 });
 
-const WebhookConfigSchema = t.type({});
+const WebhookConfigSchema = t.type({
+  includePayload: t.boolean,
+});
 
 export const TriggerSchema = t.union([
   t.type({

@@ -131,7 +131,7 @@ impl EmbedderRequest {
                 Ok(c)
             }
             Err(e) => Err(anyhow!(
-                "Error querying `{}:{}`: error={}",
+                "Embedder: Error querying `{}:{}`: error={}",
                 self.provider_id.to_string(),
                 self.model_id,
                 e.to_string(),

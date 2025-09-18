@@ -301,20 +301,23 @@ const getToolsValidationKey = (mcpServerId: string) =>
 export async function setUserAlwaysApprovedTool({
   user,
   mcpServerId,
-  toolName,
+  functionCallName,
 }: {
   user: UserResource;
   mcpServerId: string;
-  toolName: string;
+  functionCallName: string;
 }) {
-  if (!toolName) {
+  if (!functionCallName) {
     throw new Error("toolName is required");
   }
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
   }
 
-  await user.upsertMetadataArray(getToolsValidationKey(mcpServerId), toolName);
+  await user.upsertMetadataArray(
+    getToolsValidationKey(mcpServerId),
+    functionCallName
+  );
 }
 
 export async function hasUserAlwaysApprovedTool({

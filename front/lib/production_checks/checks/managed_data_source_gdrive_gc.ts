@@ -26,17 +26,33 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   for (const ds of GdriveDataSources) {
     heartbeat();
 
-    // Retrieve all documents from the connector (first)
-    const connectorDocuments: { id: number; coreDocumentId: string }[] =
-      await connectorsReplica.query(
-        'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId',
+    // Retrieve all documents from the connector (first) in 10k batches using an id cursor
+    const BATCH_SIZE = 5_000;
+    let lastId = 0;
+    const connectorDocuments: { id: number; coreDocumentId: string }[] = [];
+    let fetched = 0;
+    do {
+      const batch = (await connectorsReplica.query(
+        // eslint-disable-next-line dust/no-raw-sql -- Legit
+        'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId AND id > :lastId ORDER BY id ASC LIMIT :batchSize',
         {
           replacements: {
             connectorId: ds.connectorId,
+            lastId,
+            batchSize: BATCH_SIZE,
           },
           type: QueryTypes.SELECT,
         }
-      );
+      )) as { id: number; coreDocumentId: string }[];
+
+      fetched = batch.length;
+      if (fetched > 0) {
+        connectorDocuments.push(...batch);
+        lastId = batch[fetched - 1].id;
+        heartbeat();
+      }
+    } while (fetched === BATCH_SIZE);
+
     const connectorDocumentIds = new Set(
       connectorDocuments.map((d) => d.coreDocumentId)
     );

@@ -148,6 +148,19 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     const owner = auth.getNonNullableWorkspace();
 
     try {
+      // Directly delete the WebhookSourceViewModel to avoid a circular dependency.
+      await WebhookSourcesViewModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          webhookSourceId: this.id,
+        },
+        // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+        // bypassing the soft deletion in place.
+        hardDelete: true,
+        transaction,
+      });
+
+      // Then delete the webhook source itself
       await WebhookSourceModel.destroy({
         where: {
           id: this.id,

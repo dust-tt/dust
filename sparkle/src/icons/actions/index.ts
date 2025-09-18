@@ -1,6 +1,7 @@
 export { default as ActionArmchairIcon } from "./Armchair";
 export { default as ActionArrowDownOnSquareIcon } from "./ArrowDownOnSquare";
 export { default as ActionArrowUpOnSquareIcon } from "./ArrowUpOnSquare";
+export { default as ActionAtomIcon } from "./Atom";
 export { default as ActionAttachmentIcon } from "./Attachment";
 export { default as ActionBankIcon } from "./Bank";
 export { default as ActionBarcodeIcon } from "./Barcode";

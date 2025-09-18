@@ -345,7 +345,7 @@ export function SlackSettingsSheet({
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    Enhanced Default Agent
+                    Respond to all messages in channel
                   </span>
                   <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     Agent will automatically respond to all messages and thread
