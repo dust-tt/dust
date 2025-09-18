@@ -27,7 +27,6 @@ export function AgentBuilderSectionContainer({
               {title}
             </h2>
           </div>
-          g
           {description && (
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {description}
