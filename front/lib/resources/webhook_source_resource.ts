@@ -145,6 +145,11 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
   ): Promise<Result<undefined, Error>> {
+    assert(
+      await SpaceResource.canAdministrateSystemSpace(auth),
+      "The user is not authorized to delete a webhook source"
+    );
+
     const owner = auth.getNonNullableWorkspace();
 
     try {
