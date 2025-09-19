@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -202,56 +202,66 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
-  const deleteServer = async (server: MCPServerType): Promise<boolean> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/${server.sId}`, {
-      method: "DELETE",
-    });
+  const [isDeleting, setIsDeleting] = useState(false);
 
-    if (!response.ok) {
-      const body = await response.json();
-      sendNotification({
-        title: `Failure`,
-        type: "error",
-        description:
-          body.error?.message ||
-          `Failed to delete ${getMcpServerDisplayName(server)}`,
-      });
-      return false;
-    }
+  const deleteServer = useCallback(
+    async (server: MCPServerType): Promise<boolean> => {
+      setIsDeleting(true);
+      try {
+        const response = await fetch(`/api/w/${owner.sId}/mcp/${server.sId}`, {
+          method: "DELETE",
+        });
 
-    const result: WithAPIErrorResponse<DeleteMCPServerResponseBody> =
-      await response.json();
+        if (!response.ok) {
+          const body = await response.json();
+          sendNotification({
+            title: `Failure`,
+            type: "error",
+            description:
+              body.error?.message ||
+              `Failed to delete ${getMcpServerDisplayName(server)}`,
+          });
+          return false;
+        }
 
-    if (isAPIErrorResponse(result)) {
-      sendNotification({
-        title: `Failure`,
-        type: "error",
-        description:
-          result.error?.message ||
-          `Failed to delete ${getMcpServerDisplayName(server)}`,
-      });
-      return false;
-    }
+        const result: WithAPIErrorResponse<DeleteMCPServerResponseBody> =
+          await response.json();
 
-    if (!result.deleted) {
-      sendNotification({
-        title: `Failure`,
-        type: "error",
-        description: `Failed to delete ${getMcpServerDisplayName(server)}`,
-      });
-      return false;
-    }
+        if (isAPIErrorResponse(result)) {
+          sendNotification({
+            title: `Failure`,
+            type: "error",
+            description:
+              result.error?.message ||
+              `Failed to delete ${getMcpServerDisplayName(server)}`,
+          });
+          return false;
+        }
 
-    sendNotification({
-      title: `Success`,
-      type: "success",
-      description: `Successfully deleted ${getMcpServerDisplayName(server)}`,
-    });
-    await mutate();
-    return result.deleted;
-  };
+        if (!result.deleted) {
+          sendNotification({
+            title: `Failure`,
+            type: "error",
+            description: `Failed to delete ${getMcpServerDisplayName(server)}`,
+          });
+          return false;
+        }
 
-  return { deleteServer };
+        sendNotification({
+          title: `Success`,
+          type: "success",
+          description: `Successfully deleted ${getMcpServerDisplayName(server)}`,
+        });
+        await mutate();
+        return result.deleted;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [mutate, owner.sId, sendNotification]
+  );
+
+  return { deleteServer, isDeleting };
 }
 
 export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
