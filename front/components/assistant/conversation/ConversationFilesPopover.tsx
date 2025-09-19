@@ -211,11 +211,11 @@ export function ConversationFilesPopover({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        // If we're opening, we enable the hook right away.
+        // If we're opening, we enable the hook right away, if we're closing,
+        // we disable it after the animation is done to avoid flickering.
         if (open) {
           setShouldDisableConversationFiles(false);
         }
-        // If we're closing, we don't disable the file hook immediately to prevent flickering.
       }}
     >
       <PopoverTrigger asChild>
