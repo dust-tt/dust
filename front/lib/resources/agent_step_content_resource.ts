@@ -115,6 +115,20 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
+  public static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<AgentStepContentResource[]> {
+    const contents = await AgentStepContentModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: ids },
+      },
+    });
+
+    return contents.map((content) => new this(this.model, content.get()));
+  }
+
   /**
    * Helper to filter latest versions from fetched content
    */
