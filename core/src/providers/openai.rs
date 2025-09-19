@@ -807,9 +807,11 @@ impl LLM for OpenAILLM {
                 Err(_) => false,
             },
         };
-        self.host = match self.use_eu_endpoint {
-            false => Some("api.openai.com".to_string()),
-            true => Some("eu.api.openai.com".to_string()),
+
+        self.host = if self.use_eu_endpoint {
+            Some("eu.api.openai.com".to_string())
+        } else {
+            Some("api.openai.com".to_string())
         };
         info!(model = self.id, host = self.host, "OpenAILLM.initialize");
 
