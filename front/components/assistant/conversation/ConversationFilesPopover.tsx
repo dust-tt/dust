@@ -8,6 +8,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   ScrollArea,
+  Spinner,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -194,18 +195,6 @@ export function ConversationFilesPopover({
     setIsOpen(false);
   };
 
-  if (isConversationFilesLoading && isOpen) {
-    return (
-      <Button
-        size="sm"
-        variant="ghost"
-        icon={FolderIcon}
-        tooltip="Loading files..."
-        disabled
-      />
-    );
-  }
-
   return (
     <PopoverRoot
       open={isOpen}
@@ -241,7 +230,11 @@ export function ConversationFilesPopover({
             Generated Content
           </div>
 
-          {!hasFiles ? (
+          {isConversationFilesLoading ? (
+            <div className="flex h-16 w-full items-center justify-center">
+              <Spinner />
+            </div>
+          ) : !hasFiles ? (
             <EmptyFilesState />
           ) : (
             <div className="space-y-4">
