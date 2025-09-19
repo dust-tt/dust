@@ -265,7 +265,7 @@ async function handler(
                 subscriptionStartAt: now,
               });
             }
-            await unpauseAllConnectorsAndCancelScrub(
+            await onCancelScrub(
               await Authenticator.internalAdminForWorkspace(workspace.sId)
             );
 
@@ -530,7 +530,7 @@ async function handler(
             );
             if (!endDate) {
               // Subscription is re-activated, so we need to unpause the connectors and re-enable triggers.
-              await unpauseAllConnectorsAndCancelScrub(auth);
+              await onCancelScrub(auth);
 
               ServerSideTracking.trackSubscriptionReactivated({
                 workspace: renderLightWorkspaceType({
@@ -787,7 +787,13 @@ function _returnStripeApiError(
   });
 }
 
-async function unpauseAllConnectorsAndCancelScrub(auth: Authenticator) {
+/**
+ * When a subscription is re-activated, we need to:
+ * - Terminate the scheduled workspace scrub workflow (if any)
+ * - Unpause all connectors
+ * - Re-enable all triggers that point to non-archived agents
+ */
+async function onCancelScrub(auth: Authenticator) {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Missing workspace on auth.");
