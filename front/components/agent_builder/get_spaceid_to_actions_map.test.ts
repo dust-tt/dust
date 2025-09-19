@@ -42,6 +42,7 @@ const createMockMCPAction = (
     dustAppConfiguration: null,
     jsonSchema: null,
     _jsonSchemaString: null,
+    secretName: null,
   },
   configurable: true,
 });

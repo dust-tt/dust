@@ -98,7 +98,7 @@ export function AgentBuilderTriggersBlock({
 
   return (
     <AgentBuilderSectionContainer
-      title="[BETA] Triggers"
+      title="Triggers"
       description={
         <>
           Triggers agent execution based on events. Need help? Check our{" "}
@@ -134,6 +134,7 @@ export function AgentBuilderTriggersBlock({
           </>
         )
       }
+      isBeta
     >
       <div className="flex-1">
         {isTriggersLoading ? (

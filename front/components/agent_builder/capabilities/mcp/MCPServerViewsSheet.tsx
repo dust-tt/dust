@@ -55,6 +55,7 @@ import { DustAppSection } from "@app/components/agent_builder/capabilities/share
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
+import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -623,6 +624,10 @@ export function MCPServerViewsSheet({
 
                 {toolsConfigurations.mayRequireDustAppConfiguration && (
                   <DustAppSection />
+                )}
+
+                {toolsConfigurations.mayRequireSecretConfiguration && (
+                  <SecretSection />
                 )}
 
                 {toolsConfigurations.mayRequireJsonSchemaConfiguration && (

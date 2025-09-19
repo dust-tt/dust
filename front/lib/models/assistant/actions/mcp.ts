@@ -37,6 +37,8 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare appId: string | null;
 
+  declare secretName: string | null;
+
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
   declare mcpServerView: NonAttribute<MCPServerViewModel>;
 
@@ -122,6 +124,10 @@ AgentMCPServerConfiguration.init(
       },
     },
     appId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    secretName: {
       type: DataTypes.STRING,
       allowNull: true,
     },

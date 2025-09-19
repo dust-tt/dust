@@ -26,6 +26,7 @@ import { default as jitToolStringSettingDebuggerServer } from "@app/lib/actions/
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday/server";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
+import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
@@ -125,6 +126,8 @@ export async function getInternalMCPServer(
       return missingActionCatcherServer(auth, agentLoopContext);
     case "notion":
       return notionServer(auth, agentLoopContext);
+    case "openai_usage":
+      return openaiUsageServer(auth, agentLoopContext);
     case "include_data":
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":

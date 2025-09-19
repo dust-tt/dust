@@ -1,4 +1,8 @@
-import type { GongTranscriptMetadata } from "@connectors/connectors/gong/lib/gong_api";
+import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
+import type {
+  GongCallTranscript,
+  GongTranscriptMetadata,
+} from "@connectors/connectors/gong/lib/gong_api";
 import { makeGongTranscriptInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { syncGongTranscript } from "@connectors/connectors/gong/lib/upserts";
 import {
@@ -115,11 +119,39 @@ export async function gongSyncTranscriptsActivity({
 
   const gongClient = await getGongClient(connector);
 
-  const { transcripts, nextPageCursor, totalRecords } =
-    await gongClient.getTranscripts({
+  // Fetch transcripts, handling expired cursor by restarting pagination once.
+  let transcriptsResp: {
+    transcripts: GongCallTranscript[];
+    nextPageCursor: string | null;
+    totalRecords: number;
+  };
+  try {
+    transcriptsResp = await gongClient.getTranscripts({
       startTimestamp: configuration.getSyncStartTimestamp(),
       pageCursor,
     });
+  } catch (err) {
+    const isExpiredCursorError =
+      err instanceof GongAPIError &&
+      err.status === 400 &&
+      Array.isArray(err.errors) &&
+      err.errors.some((e) => e.toLowerCase().includes("cursor has expired"));
+
+    if (isExpiredCursorError) {
+      logger.warn(
+        { ...loggerArgs, pageCursor, requestId: err.requestId },
+        "[Gong] Cursor expired; restarting pagination from beginning."
+      );
+      transcriptsResp = await gongClient.getTranscripts({
+        startTimestamp: configuration.getSyncStartTimestamp(),
+        pageCursor: null,
+      });
+    } else {
+      throw err;
+    }
+  }
+
+  const { transcripts, nextPageCursor, totalRecords } = transcriptsResp;
 
   const processedRecords = transcripts.length;
 

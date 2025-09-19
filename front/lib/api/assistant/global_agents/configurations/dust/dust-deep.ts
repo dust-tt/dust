@@ -390,6 +390,7 @@ function getCompanyDataAction(
     timeFrame: null,
     dustAppConfiguration: null,
     jsonSchema: null,
+    secretName: null,
   };
 }
 
@@ -429,6 +430,7 @@ function getCompanyDataWarehousesAction(
     timeFrame: null,
     dustAppConfiguration: null,
     jsonSchema: null,
+    secretName: null,
   };
 }
 
@@ -551,6 +553,7 @@ export function _getDustDeepGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 
@@ -572,6 +575,7 @@ export function _getDustDeepGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
     actions.push({
       id: -1,
@@ -590,6 +594,7 @@ export function _getDustDeepGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 
@@ -611,6 +616,7 @@ export function _getDustDeepGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 
@@ -726,6 +732,7 @@ export function _getDustTaskGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 
