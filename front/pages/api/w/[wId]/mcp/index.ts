@@ -29,6 +29,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
+import { headersArrayToRecord } from "@app/types";
 
 export type GetMCPServersResponseBody = {
   success: true;
@@ -164,17 +165,14 @@ async function handler(
 
         // Merge custom headers (if any) with Authorization when probing the server.
         // Note: Authorization from OAuth/sharedSecret takes precedence over custom headers.
-        const customHeaders = body.customHeaders
-          ? Object.fromEntries(
-              body.customHeaders
-                .filter((h) => h.key && h.value)
-                .map(({ key, value }) => [key.trim(), value])
-            )
-          : undefined;
+        const sanitizedCustomHeaders = headersArrayToRecord(
+          body.customHeaders,
+          { stripAuthorization: false }
+        );
 
         const headers = bearerToken
-          ? { ...(customHeaders ?? {}), Authorization: `Bearer ${bearerToken}` }
-          : customHeaders;
+          ? { ...(sanitizedCustomHeaders ?? {}), Authorization: `Bearer ${bearerToken}` }
+          : sanitizedCustomHeaders;
 
         const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);
         if (r.isErr()) {
@@ -213,14 +211,10 @@ async function handler(
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           sharedSecret: sharedSecret || null,
           // Persist only user-provided custom headers (exclude Authorization)
-          customHeaders:
-            customHeaders && Object.keys(customHeaders).length > 0
-              ? Object.fromEntries(
-                  Object.entries(customHeaders).filter(
-                    ([k]) => k.toLowerCase() !== "authorization"
-                  )
-                )
-              : null,
+          customHeaders: headersArrayToRecord(body.customHeaders, {
+            stripAuthorization: true,
+            emptyAsNull: true,
+          }),
           authorization,
           oAuthUseCase: body.useCase ?? null,
         });

@@ -19,10 +19,8 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import type { MCPServerViewType, RemoteMCPServerType } from "@app/lib/api/mcp";
-import {
-  useSyncRemoteMCPServer,
-  useUpdateMCPServer,
-} from "@app/lib/swr/mcp_servers";
+import { useSyncRemoteMCPServer, useUpdateMCPServer } from "@app/lib/swr/mcp_servers";
+import { sanitizeHeadersArray } from "@app/types";
 import type { LightWorkspaceType } from "@app/types";
 import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 
@@ -90,10 +88,7 @@ export function RemoteMCPForm({
   );
 
   const sanitizeHeaders = useCallback(
-    (rows: { key: string; value: string }[]) =>
-      rows
-        .map(({ key, value }) => ({ key: key.trim(), value: value.trim() }))
-        .filter(({ key, value }) => key.length > 0 && value.length > 0),
+    (rows: { key: string; value: string }[]) => sanitizeHeadersArray(rows),
     []
   );
 

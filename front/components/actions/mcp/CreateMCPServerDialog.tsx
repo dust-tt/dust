@@ -44,6 +44,7 @@ import {
 } from "@app/types";
 
 import { McpServerHeaders } from "./MCPServerHeaders";
+import { sanitizeHeadersArray } from "@app/types";
 
 const DEFAULT_AUTH_METHOD = "oauth-dynamic";
 
@@ -92,10 +93,7 @@ export function CreateMCPServerDialog({
   const [customHeaders, setCustomHeaders] = useState<{ key: string; value: string }[]>([]);
 
   const sanitizeHeaders = useCallback(
-    (headers: { key: string; value: string }[]) =>
-      headers
-        .map(({ key, value }) => ({ key: key.trim(), value: value.trim() }))
-        .filter(({ key, value }) => key.length > 0 && value.length > 0),
+    (headers: { key: string; value: string }[]) => sanitizeHeadersArray(headers),
     []
   );
 

@@ -11,6 +11,7 @@ import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_m
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { headersArrayToRecord } from "@app/types";
 import { assertNever } from "@app/types";
 
 const PatchMCPServerBodySchema = z
@@ -126,6 +127,7 @@ async function handler(
       break;
     }
     case "PATCH": {
+      const sanitizeHeaderPart = (s: string) => s.replace(/[\r\n]/g, " ").trim();
       const r = PatchMCPServerBodySchema.safeParse(req.body);
       if (r.error) {
         return apiError(req, res, {
@@ -212,22 +214,10 @@ async function handler(
         }
       } else if ("customHeaders" in r.data) {
         if (server instanceof RemoteMCPServerResource) {
-          const headersRecord = r.data.customHeaders
-            ? Object.fromEntries(
-                r.data.customHeaders
-                  .filter((h) => h.key && h.value)
-                  .map(({ key, value }) => [key.trim(), value.trim()])
-              )
-            : null;
-
-          // Strip any Authorization key from persisted headers; auth is handled separately
-          const sanitizedRecord = headersRecord
-            ? Object.fromEntries(
-                Object.entries(headersRecord).filter(
-                  ([k]) => k.toLowerCase() !== "authorization"
-                )
-              )
-            : null;
+          const sanitizedRecord = headersArrayToRecord(r.data.customHeaders, {
+            stripAuthorization: true,
+            emptyAsNull: true,
+          }) ?? null;
 
           const r2 = await server.updateMetadata(auth, {
             customHeaders: sanitizedRecord,
