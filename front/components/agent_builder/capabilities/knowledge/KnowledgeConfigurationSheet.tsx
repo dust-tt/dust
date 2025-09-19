@@ -352,7 +352,7 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: toolsConfigurations.tableConfiguration
+      title: toolsConfigurations.dataSourceConfiguration
         ? "Select Tables"
         : "Select Data Sources",
       description: toolsConfigurations.tableConfiguration

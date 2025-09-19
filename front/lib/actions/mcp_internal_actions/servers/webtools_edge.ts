@@ -39,7 +39,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getHeaderFromUserEmail, Ok } from "@app/types";
 
-function parseAgentConfigurationUri(uri: string): string | null {
+export function parseAgentConfigurationUri(uri: string): string | null {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
   return match ? match[2] : null;
 }
