@@ -89,6 +89,7 @@ export async function createContentFragmentsFromDataSources(
 
   const contentFragments: PublicPostContentFragmentRequestBody[] = [];
 
+  // We need to iterate over the resolved data sources and the associated parent filter, and create a content fragment for each parent node.
   for (const dataSource of resolvedDataSources) {
     if (
       dataSource.filter.parents?.in &&
