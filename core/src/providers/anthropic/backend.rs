@@ -172,7 +172,7 @@ impl AnthropicBackend for VertexAnthropicBackend {
                 .await?
             {
                 Ok(location) => location,
-                Err(_) => "global".to_string(), // Default fallback region.
+                Err(_) => "us-south1".to_string(), // Default fallback region.
             },
         };
 
