@@ -338,7 +338,9 @@ ${query}`
               : query,
             toolsetsToAdd: toolsetsToAdd ?? null,
             fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
-            conversationId: conversationId ?? null,
+            conversationId: isHandoff
+              ? mainConversation.sId
+              : conversationId ?? null,
           }
         );
 
