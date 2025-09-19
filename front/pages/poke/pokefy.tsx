@@ -68,7 +68,7 @@ function PokefyPage() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://dust.tt/w/workspace/assistant/conversation"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-black"
           />
         </div>
 

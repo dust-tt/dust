@@ -5,7 +5,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type {
   AllPlugins,
-  InferPluginArgs,
+  InferPluginArgsAtExecution,
   PluginResponse,
 } from "@app/lib/api/poke/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -29,7 +29,7 @@ import type { UserResource } from "./user_resource";
 
 function redactPluginArgs(
   plugin: AllPlugins,
-  args: InferPluginArgs<PluginArgs>
+  args: InferPluginArgsAtExecution<PluginArgs>
 ) {
   const sanitizedArgs: Record<string, unknown> = {};
 
@@ -37,7 +37,11 @@ function redactPluginArgs(
     const arg = args[key];
     if (argDef.redact) {
       sanitizedArgs[key] = "REDACTED";
-    } else if (argDef.type === "file" && typeof arg === "object") {
+    } else if (
+      argDef.type === "file" &&
+      typeof arg === "object" &&
+      "originalFilename" in arg
+    ) {
       sanitizedArgs[key] = arg.originalFilename;
     } else {
       sanitizedArgs[key] = arg;
@@ -76,7 +80,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
 
   static async makeNew(
     plugin: AllPlugins,
-    args: InferPluginArgs<PluginArgs>,
+    args: InferPluginArgsAtExecution<PluginArgs>,
     author: UserResource,
     workspace: LightWorkspaceType | null,
     pluginResourceTarget: PluginResourceTarget

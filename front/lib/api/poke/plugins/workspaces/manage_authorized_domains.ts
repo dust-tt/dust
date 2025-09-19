@@ -126,6 +126,7 @@ export const addAuthorizedDomain = createPlugin({
           label: operation,
           value: operation,
         })),
+        multiple: false,
       },
     },
   },
@@ -151,7 +152,7 @@ export const addAuthorizedDomain = createPlugin({
       ],
     });
 
-    if (operation === "add") {
+    if (operation[0] === "add") {
       return handleAddDomain(auth, { domain }, existingDomain);
     } else {
       return handleRemoveDomain(auth, { domain }, existingDomain);

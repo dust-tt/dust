@@ -50,6 +50,7 @@ export const connectorOperationsPlugin = createPlugin({
           label: op,
           value: op,
         })),
+        multiple: false,
       },
     },
   },
@@ -73,7 +74,10 @@ export const connectorOperationsPlugin = createPlugin({
       },
       "Executing operation on connector"
     );
-    const res = await doOperation(op as OperationType, connectorId.toString());
+    const res = await doOperation(
+      op[0] as OperationType,
+      connectorId.toString()
+    );
     if (res.isErr()) {
       return new Err(new Error(res.error.message));
     }

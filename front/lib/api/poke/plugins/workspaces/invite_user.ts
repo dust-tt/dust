@@ -24,6 +24,7 @@ export const inviteUser = createPlugin({
           label: role,
           value: role,
         })),
+        multiple: false,
       },
       force: {
         type: "boolean",
@@ -62,7 +63,7 @@ export const inviteUser = createPlugin({
       invitationRequests: [
         {
           ...args,
-          role: args.role as MembershipRoleType,
+          role: args.role[0] as MembershipRoleType,
           email,
         },
       ],

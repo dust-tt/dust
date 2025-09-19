@@ -1,9 +1,10 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import type { WhitelistableFeature } from "@app/types";
 import { Ok } from "@app/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   FEATURE_FLAG_STAGE_LABELS,
+  isWhitelistableFeature,
   WHITELISTABLE_FEATURES,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
@@ -17,12 +18,13 @@ export const toggleFeatureFlagPlugin = createPlugin({
       "current status.",
     resourceTypes: ["workspaces"],
     args: {
-      feature: {
+      features: {
         type: "enum",
-        label: "Feature Flag",
-        description: "Select which feature flag you want to enable/disable",
+        label: "Feature Flags",
+        description: "Select which feature flags you want to enable/disable",
         async: true,
         values: [],
+        multiple: true,
       },
     },
   },
@@ -36,8 +38,17 @@ export const toggleFeatureFlagPlugin = createPlugin({
 
     const enabledFlagNames = new Set(enabledFlags.map((flag) => flag.name));
 
+    const sortedFeatures = WHITELISTABLE_FEATURES.sort((a, b) => {
+      const configA = WHITELISTABLE_FEATURES_CONFIG[a];
+      const configB = WHITELISTABLE_FEATURES_CONFIG[b];
+      if (configA.stage !== configB.stage) {
+        return configB.stage.localeCompare(configA.stage);
+      }
+      return a.localeCompare(b);
+    });
+
     return new Ok({
-      feature: WHITELISTABLE_FEATURES.map((feature) => {
+      features: sortedFeatures.map((feature) => {
         const config = WHITELISTABLE_FEATURES_CONFIG[feature];
         return {
           label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature} `,
@@ -49,35 +60,51 @@ export const toggleFeatureFlagPlugin = createPlugin({
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();
-    const feature = args.feature as WhitelistableFeature;
-
-    // Check if the feature flag is currently enabled.
-    const existingFlag = await FeatureFlag.findOne({
+    const existingFlags = await FeatureFlag.findAll({
       where: {
         workspaceId: workspace.id,
-        name: feature,
+      },
+    });
+    const featureFlags = args.features.filter((feature) =>
+      isWhitelistableFeature(feature)
+    );
+
+    const toAdd = featureFlags.filter(
+      (feature) => !existingFlags.some((flag) => flag.name === feature)
+    );
+    const toRemove = existingFlags
+      .filter((flag) => !featureFlags.includes(flag.name))
+      .map((flag) => flag.name);
+
+    await FeatureFlag.bulkCreate(
+      toAdd.map((feature) => ({
+        workspaceId: workspace.id,
+        name: feature as WhitelistableFeature,
+      }))
+    );
+    await FeatureFlag.destroy({
+      where: {
+        workspaceId: workspace.id,
+        name: toRemove,
       },
     });
 
-    if (existingFlag) {
-      // Feature is enabled, disable it.
-      await existingFlag.destroy();
+    const actions: string[] = [];
 
-      return new Ok({
-        display: "text",
-        value: `✅ Feature "${feature}" has been DISABLED for workspace "${workspace.name}".`,
-      });
-    } else {
-      // Feature is disabled, enable it.
-      await FeatureFlag.create({
-        workspaceId: workspace.id,
-        name: feature,
-      });
-
-      return new Ok({
-        display: "text",
-        value: `✅ Feature "${feature}" has been ENABLED for workspace "${workspace.name}".`,
-      });
+    for (const feature of toAdd) {
+      actions.push(
+        `✅ Feature "${feature}" has been ENABLED for workspace "${workspace.name}"`
+      );
     }
+    for (const feature of toRemove) {
+      actions.push(
+        `❌ Feature "${feature}" has been DISABLED for workspace "${workspace.name}"`
+      );
+    }
+
+    return new Ok({
+      display: "markdown",
+      value: actions.join("\n\n"),
+    });
   },
 });

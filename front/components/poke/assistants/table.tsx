@@ -24,6 +24,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 interface AssistantsDataTableProps {
   owner: LightWorkspaceType;
   agentsRetention: Record<string, number>;
+  loadOnInit?: boolean;
 }
 
 function prepareAgentConfigurationForDisplay(
@@ -74,6 +75,7 @@ const importAssistant = async (
 export function AssistantsDataTable({
   owner,
   agentsRetention,
+  loadOnInit,
 }: AssistantsDataTableProps) {
   const router = useRouter();
   const [showRestoreAssistantModal, setShowRestoreAssistantModal] =
@@ -111,6 +113,7 @@ export function AssistantsDataTable({
         header="Agents"
         globalActions={assistantButtons}
         owner={owner}
+        loadOnInit={loadOnInit}
         useSWRHook={usePokeAgentConfigurations}
       >
         {(data, mutate) => (

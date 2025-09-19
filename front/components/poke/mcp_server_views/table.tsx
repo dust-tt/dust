@@ -8,6 +8,7 @@ import type { LightWorkspaceType } from "@app/types";
 interface MCPServerViewsDataTableProps {
   owner: LightWorkspaceType;
   spaceId?: string;
+  loadOnInit?: boolean;
 }
 
 function prepareMCPServerViewsForDisplay(
@@ -36,11 +37,13 @@ function prepareMCPServerViewsForDisplay(
 export function MCPServerViewsDataTable({
   owner,
   spaceId,
+  loadOnInit,
 }: MCPServerViewsDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="MCP Server Views"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeMCPServerViews}
     >
       {(data) => (
