@@ -177,6 +177,9 @@ const InputBarContainer = ({
         }
       }
     },
+    onTranscribeDelta: (delta) => {
+      editorService.insertAnimatedText(delta);
+    },
   });
 
   // Update the editor ref when the editor is created.
