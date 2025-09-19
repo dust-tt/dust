@@ -1,4 +1,4 @@
-import { Avatar, BarChartIcon, CommandIcon } from "@dust-tt/sparkle";
+import { Avatar, BarChartIcon, CommandIcon, Spinner } from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -46,12 +46,15 @@ export function AssistantToolsSection({
   owner,
 }: AssistantToolsSectionProps) {
   const { isDark } = useTheme();
-  const { mcpServers } = useMCPServers({ owner });
+  const { mcpServers, isMCPServersLoading: isLoading } = useMCPServers({
+    owner,
+  });
 
+  const nonHiddenActions = agentConfiguration.actions.filter(
+    (action) => !isHiddenDustAction(agentConfiguration, action)
+  );
   const actions = removeNulls(
-    agentConfiguration.actions
-      .filter((action) => !isHiddenDustAction(agentConfiguration, action))
-      .map((action) => renderOtherAction(action, mcpServers))
+    nonHiddenActions.map((action) => renderOtherAction(action, mcpServers))
   );
   if (agentConfiguration.visualizationEnabled) {
     actions.push({
@@ -76,21 +79,27 @@ export function AssistantToolsSection({
   const filteredModels = removeNulls(models);
   return (
     <div className="flex flex-row gap-2">
-      {sortedActions.length > 0 && (
+      {nonHiddenActions.length > 0 && (
         <div className="flex flex-[1_0_0] flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Tools
           </div>
           <div className="flex flex-col gap-2">
-            {sortedActions.map((action) => (
-              <div
-                className="flex flex-row items-center gap-2"
-                key={action.title}
-              >
-                {action.avatar}
-                <div>{action.title}</div>
+            {isLoading ? (
+              <div className="flex flex-row items-center gap-2">
+                <Spinner size="xs" />
               </div>
-            ))}
+            ) : (
+              sortedActions.map((action) => (
+                <div
+                  className="flex flex-row items-center gap-2"
+                  key={action.title}
+                >
+                  {action.avatar}
+                  <div>{action.title}</div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

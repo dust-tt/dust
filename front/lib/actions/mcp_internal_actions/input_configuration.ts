@@ -300,6 +300,16 @@ function generateConfiguredInput({
       return { appId, mimeType };
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET: {
+      const secretName = actionConfiguration.secretName;
+
+      if (!secretName) {
+        throw new Error("Invalid Secret configuration");
+      }
+
+      return { secretName, mimeType };
+    }
+
     default:
       assertNever(mimeType);
   }
@@ -545,6 +555,7 @@ export interface MCPServerToolsConfigurations {
     }
   >;
   mayRequireDustAppConfiguration: boolean;
+  mayRequireSecretConfiguration: boolean;
   configurable: "no" | "optional" | "required";
 }
 
@@ -561,6 +572,7 @@ export function getMCPServerToolsConfigurations(
       enumConfigurations: {},
       listConfigurations: {},
       mayRequireDustAppConfiguration: false,
+      mayRequireSecretConfiguration: false,
       configurable: "optional",
     };
   }
@@ -619,7 +631,7 @@ export function getMCPServerToolsConfigurations(
     return undefined;
   }
 
-  function configurableOptional<T extends { default?: unknown }>(
+  function getConfigurableStateForOptional<T extends { default?: unknown }>(
     config?: T
   ): "no" | "optional" | "required" {
     return config !== undefined
@@ -629,7 +641,7 @@ export function getMCPServerToolsConfigurations(
       : "no";
   }
 
-  function configurableArray<T extends { default?: unknown }>(
+  function getConfigurableStateForArray<T extends { default?: unknown }>(
     config: T[]
   ): "no" | "optional" | "required" {
     return config.length > 0
@@ -639,7 +651,7 @@ export function getMCPServerToolsConfigurations(
       : "no";
   }
 
-  function configurableRecord<T extends { default?: unknown }>(
+  function getConfigurableStateForRecord<T extends { default?: unknown }>(
     config: Record<string, T>
   ): "no" | "optional" | "required" {
     return Object.values(config).length > 0
@@ -894,22 +906,25 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
-  const configurables = [
-    configurableOptional(dataSourceConfiguration),
-    configurableOptional(dataWarehouseConfiguration),
-    configurableOptional(tableConfiguration),
-    configurableOptional(childAgentConfiguration),
-    configurableOptional(reasoningConfiguration),
-    configurableArray(stringConfigurations),
-    configurableArray(numberConfigurations),
-    configurableArray(booleanConfigurations),
-    configurableRecord(enumConfigurations),
-    configurableRecord(listConfigurations),
+  const mayRequireSecretConfiguration =
+    mcpServerView.server.requiresSecret === true;
+
+  const configurableStates = [
+    getConfigurableStateForOptional(dataSourceConfiguration),
+    getConfigurableStateForOptional(dataWarehouseConfiguration),
+    getConfigurableStateForOptional(tableConfiguration),
+    getConfigurableStateForOptional(childAgentConfiguration),
+    getConfigurableStateForOptional(reasoningConfiguration),
+    getConfigurableStateForArray(stringConfigurations),
+    getConfigurableStateForArray(numberConfigurations),
+    getConfigurableStateForArray(booleanConfigurations),
+    getConfigurableStateForRecord(enumConfigurations),
+    getConfigurableStateForRecord(listConfigurations),
   ];
 
-  const configurable = configurables.every((c) => c === "no")
+  const configurable = configurableStates.every((c) => c === "no")
     ? "no"
-    : configurables.every((c) => c === "optional" || c === "no")
+    : configurableStates.every((c) => c === "optional" || c === "no")
       ? "optional"
       : "required";
 
@@ -927,6 +942,7 @@ export function getMCPServerToolsConfigurations(
     enumConfigurations,
     listConfigurations,
     mayRequireDustAppConfiguration,
+    mayRequireSecretConfiguration,
     configurable,
   };
 }

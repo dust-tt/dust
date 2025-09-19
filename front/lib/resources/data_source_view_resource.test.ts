@@ -145,4 +145,95 @@ describe("DataSourceViewResource", () => {
       );
     });
   });
+
+  describe("removeChildrenIfEnclosedBy", () => {
+    it("should return empty array for empty input", () => {
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy([]);
+      expect(result).toEqual([]);
+    });
+
+    it("should return single path unchanged", () => {
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy([
+        "a.b.c",
+      ]);
+      expect(result).toEqual(["a.b.c"]);
+    });
+
+    it("should remove children when parent is present", () => {
+      const input = ["a.b", "a.b.c", "a.b.c.d"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result).toEqual(["a.b"]);
+    });
+
+    it("should handle multiple independent paths", () => {
+      const input = ["a.b", "x.y", "m.n.o"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result.sort()).toEqual(["a.b", "m.n.o", "x.y"]);
+    });
+
+    it("should handle mixed parent-child relationships", () => {
+      const input = ["a.b.c", "a.b", "x.y.z", "x.y", "m.n"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result.sort()).toEqual(["a.b", "m.n", "x.y"]);
+    });
+
+    it("should preserve paths that are not children of others", () => {
+      const input = ["a.b.c", "a.b.d", "a.x.y"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result.sort()).toEqual(["a.b.c", "a.b.d", "a.x.y"]);
+    });
+
+    it("should handle deep nesting correctly", () => {
+      const input = ["a", "a.b", "a.b.c", "a.b.c.d", "a.b.c.d.e"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result).toEqual(["a"]);
+    });
+
+    it("should handle similar prefixes that are not actual parents", () => {
+      const input = ["abc", "ab.c", "ab.cd"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result.sort()).toEqual(["ab.c", "ab.cd", "abc"]);
+    });
+
+    it("should handle complex mixed scenarios", () => {
+      const input = [
+        "folder1.subfolder1.file1",
+        "folder1.subfolder1",
+        "folder1.subfolder2.file2",
+        "folder2.file3",
+        "folder1",
+        "folder3.sub.deep.very.nested",
+      ];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result.sort()).toEqual([
+        "folder1",
+        "folder2.file3",
+        "folder3.sub.deep.very.nested",
+      ]);
+    });
+
+    it("should handle paths with same prefix but different structures", () => {
+      const input = ["a.b", "a.bc", "a.b.c"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result.sort()).toEqual(["a.b", "a.bc"]);
+    });
+
+    it("should handle unordered input correctly", () => {
+      const input = ["x.y.z.w", "a.b", "x.y", "a.b.c.d", "x"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result.sort()).toEqual(["a.b", "x"]);
+    });
+
+    it("should handle duplicate paths", () => {
+      const input = ["a.b", "a.b.c", "a.b", "a.b.c"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result).toEqual(["a.b"]);
+    });
+
+    it("should handle single character paths", () => {
+      const input = ["a", "a.b", "b", "b.c"];
+      const result = DataSourceViewResource.removeChildrenIfEnclosedBy(input);
+      expect(result.sort()).toEqual(["a", "b"]);
+    });
+  });
 });

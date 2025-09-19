@@ -277,6 +277,7 @@ async function handler(
       // 1) We use the OpenAI EU endpoint (in Core)
       // 2) We use the DUST_MANAGED_OPENAI_API_KEY_EU env as the key
       let useOpenAIEUKey =
+        config.MODEL && // This could be null, e.g. in the config.CREATE_SUGGESTIONS case
         keyWorkspaceFlags.includes("use_openai_eu_key") &&
         !!apiConfig.getDustManagedOpenAIAPIKeyEU();
 
@@ -326,7 +327,7 @@ async function handler(
         "App run creation"
       );
 
-      if (useOpenAIEUKey && config.MODEL) {
+      if (useOpenAIEUKey) {
         config.MODEL.use_openai_eu_host = true;
       }
 

@@ -237,6 +237,7 @@ const TOOL_MIME_TYPES = {
       "DUST_APP",
       "NULLABLE_TIME_FRAME",
       "JSON_SCHEMA",
+      "SECRET",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({

@@ -229,7 +229,7 @@ export default function SecretsPage({
       >
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
-            title="Dust Apps Secrets"
+            title="Developer Secrets"
             icon={BracesIcon}
             description="Secrets usable in Dust apps to avoid showing sensitive data in blocks definitions."
           />{" "}

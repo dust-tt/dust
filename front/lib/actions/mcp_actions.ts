@@ -195,6 +195,7 @@ function makeServerSideMCPToolConfigurations(
     originalName: tool.name,
     mcpServerName: config.name,
     dustAppConfiguration: config.dustAppConfiguration,
+    secretName: config.secretName,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
   }));
 }
