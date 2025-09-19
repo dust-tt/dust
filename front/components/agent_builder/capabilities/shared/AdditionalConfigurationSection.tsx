@@ -542,8 +542,6 @@ export function AdditionalConfigurationSection({
     });
     return groups;
   }, [enumConfigurations]);
-  console.log("groupedEnums", groupedEnums);
-  console.log("groupedEnums", enumConfigurations);
 
   const groupedLists = useMemo(() => {
     const groups: Record<
