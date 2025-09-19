@@ -3,7 +3,6 @@ import type {
   LightClientSideMCPToolConfigurationType,
   LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
-  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
