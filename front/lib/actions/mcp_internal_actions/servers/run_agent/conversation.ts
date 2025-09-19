@@ -94,7 +94,7 @@ export async function createContentFragmentsFromDataSources(
       dataSource.filter.parents?.in &&
       dataSource.filter.parents.in.length > 0
     ) {
-      // If there are specific parent filters, create content fragments for each parent node
+      // If there are specific parent filters, create content fragments for each parent node.
       for (const parentNodeId of dataSource.filter.parents.in) {
         contentFragments.push({
           title: `Node: ${parentNodeId}`,
