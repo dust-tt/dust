@@ -29,7 +29,6 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
