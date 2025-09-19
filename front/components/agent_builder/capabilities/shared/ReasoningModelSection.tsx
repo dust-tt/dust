@@ -202,7 +202,7 @@ export function ReasoningModelSection() {
                 variant="outline"
                 size="sm"
                 icon={PencilIcon}
-                label="Edit model"
+                label="Edit selection"
                 onClick={handleEditClick}
               />
             </div>
