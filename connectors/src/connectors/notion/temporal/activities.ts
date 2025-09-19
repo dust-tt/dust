@@ -2438,7 +2438,7 @@ export async function getDiscoveredResourcesFromCache({
   };
 }
 
-const LONG_RENDER_BLOCK_SECTION_TIME_MS = 30000;
+const LONG_RENDER_BLOCK_SECTION_TIME_MS = 120000;
 
 /** Render page sections according to Notion structure:
  * - the natural nesting of blocks is used as structure,
