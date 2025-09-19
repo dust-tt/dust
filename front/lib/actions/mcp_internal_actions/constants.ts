@@ -899,7 +899,7 @@ The directive should be used to display a clickable version of the agent name in
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       list_drives: "never_ask",
       search_files: "never_ask",
