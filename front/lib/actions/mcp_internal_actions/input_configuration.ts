@@ -751,7 +751,7 @@ export function getMCPServerToolsConfigurations(
                 isJSONSchemaObject(v.properties?.value) &&
                 v.properties.value.const
             )
-            .filter((v): v is string => typeof v === "string")
+            .filter(isString)
         : [];
       const labels = Array.isArray(optionsProperty.anyOf)
         ? optionsProperty.anyOf
