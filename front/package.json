@@ -30,6 +30,7 @@
     "@dust-tt/sparkle": "^0.2.637",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
+    "@google-cloud/speech": "^7.2.0",
     "@heroicons/react": "^2.0.11",
     "@hookform/resolvers": "^3.3.4",
     "@hubspot/api-client": "^12.0.1",
@@ -154,7 +155,8 @@
     "yargs": "^17.7.2",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.24.5",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.45.0"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.3.0",
