@@ -13,7 +13,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
@@ -44,6 +44,12 @@ export function MCPServerDetails({
   const [isDeleting, setIsDeleting] = useState(false);
   const confirm = useContext(ConfirmContext);
   const { deleteServer } = useDeleteMCPServer(owner);
+
+  useEffect(() => {
+    if (mcpServerView) {
+      setSelectedTab(DETAILS_TABS[0]);
+    }
+  }, [mcpServerView]);
 
   return (
     <>
