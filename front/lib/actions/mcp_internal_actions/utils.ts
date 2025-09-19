@@ -16,10 +16,6 @@ import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import type {
-  RunAgentBlockingEvent,
-  RunAgentResumeState,
-} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
@@ -54,27 +50,6 @@ export function makeMCPToolTextError(text: string): {
       {
         type: "text",
         text,
-      },
-    ],
-  };
-}
-
-export function makeToolBlockedAwaitingInputResponse(
-  blockingEvents: RunAgentBlockingEvent[],
-  state: RunAgentResumeState
-): CallToolResult {
-  return {
-    content: [
-      {
-        type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
-          type: "tool_blocked_awaiting_input",
-          text: "Tool requires resume after blocking events",
-          uri: "",
-          blockingEvents,
-          state,
-        },
       },
     ],
   };
@@ -124,13 +99,13 @@ export function makeMCPToolExit({
   };
 }
 
-export const makeMCPToolTextSuccess = ({
+export function makeMCPToolTextSuccess({
   message,
   result,
 }: {
   message: string;
   result?: string;
-}): CallToolResult => {
+}): CallToolResult {
   if (!result) {
     return {
       isError: false,
@@ -144,7 +119,7 @@ export const makeMCPToolTextSuccess = ({
       { type: "text", text: result },
     ],
   };
-};
+}
 
 export const makeMCPToolJSONSuccess = ({
   message,
@@ -162,7 +137,7 @@ export const makeMCPToolJSONSuccess = ({
   };
 };
 
-export const getExitOrPauseEvents = async ({
+export async function getExitOrPauseEvents({
   outputItems,
   action,
   agentConfiguration,
@@ -180,7 +155,7 @@ export const getExitOrPauseEvents = async ({
     | ToolPersonalAuthRequiredEvent
     | ToolEarlyExitEvent
   )[]
-> => {
+> {
   const exitOutputItem = outputItems
     .map((item) => item.content)
     .find(isAgentPauseOutputResourceType)?.resource;
@@ -251,4 +226,4 @@ export const getExitOrPauseEvents = async ({
   }
 
   return [];
-};
+}

@@ -37,6 +37,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dustAppConfiguration: DustAppRunConfigurationType | null;
   jsonSchema: JSONSchema | null;
   _jsonSchemaString: string | null;
+  secretName: string | null;
 };
 
 export type AssistantBuilderMCPConfiguration = {
@@ -126,6 +127,7 @@ export function getDefaultMCPServerActionConfiguration(
       dustAppConfiguration: null,
       jsonSchema: null,
       _jsonSchemaString: null,
+      secretName: null,
     },
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:

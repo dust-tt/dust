@@ -84,6 +84,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "openai_usage",
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
@@ -1022,6 +1023,32 @@ The directive should be used to display a clickable version of the agent name in
         "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+    },
+  },
+  openai_usage: {
+    id: 32,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("openai_usage_mcp");
+    },
+    tools_stakes: {
+      get_completions_usage: "low",
+      get_organization_costs: "low",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "openai_usage",
+      version: "1.0.0",
+      description:
+        "Direct access to OpenAI APIs for tracking API consumption and costs. Requires OpenAI Admin API key configured as a secret.",
+      authorization: null,
+      icon: "OpenaiLogo",
+      documentationUrl: null,
+      instructions: null,
+      requiresSecret: true,
     },
   },
   [SEARCH_SERVER_NAME]: {

@@ -61,6 +61,8 @@ export const dustAppConfigurationSchema = z
   })
   .nullable();
 
+export const secretNameSchema = z.string().nullable();
+
 export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
 
 export const jsonSchemaStringSchema = z.string().nullable();
@@ -131,6 +133,7 @@ export const mcpServerConfigurationSchema = z.object({
   timeFrame: mcpTimeFrameSchema,
   additionalConfiguration: additionalConfigurationSchema,
   dustAppConfiguration: dustAppConfigurationSchema,
+  secretName: secretNameSchema,
   jsonSchema: jsonSchemaFieldSchema,
   reasoningModel: reasoningModelSchema,
   _jsonSchemaString: jsonSchemaStringSchema,
@@ -276,6 +279,7 @@ export interface MCPFormData {
     } | null;
     additionalConfiguration: AdditionalConfigurationInBuilderType;
     dustAppConfiguration: any;
+    secretName: string | null;
     jsonSchema: any;
     _jsonSchemaString: string | null;
   };

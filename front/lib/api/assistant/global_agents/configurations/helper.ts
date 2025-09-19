@@ -125,6 +125,7 @@ export function _getHelperGlobalAgent({
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 

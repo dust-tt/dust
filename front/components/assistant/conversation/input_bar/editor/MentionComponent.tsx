@@ -44,7 +44,7 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
   };
 
   return (
-    <NodeViewWrapper className="inline-flex align-middle">
+    <NodeViewWrapper className="inline-flex">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <span className="inline-block cursor-pointer font-medium text-highlight-500">
