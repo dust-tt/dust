@@ -33,9 +33,11 @@ export function MCPServerDetailsInfo({
       )}
       <Separator />
       <MCPServerViewForm mcpServerView={mcpServerView} owner={owner} />
-      <Separator />
       {mcpServerView.server.authorization && (
-        <MCPServerSettings mcpServerView={mcpServerView} owner={owner} />
+        <>
+          <Separator />
+          <MCPServerSettings mcpServerView={mcpServerView} owner={owner} />
+        </>
       )}
       {isRemoteMCPServerType(mcpServerView.server) && (
         <RemoteMCPForm
