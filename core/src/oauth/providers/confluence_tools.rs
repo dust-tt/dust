@@ -19,10 +19,11 @@ use tracing::info;
 use super::utils::ProviderHttpRequestError;
 
 lazy_static! {
-    static ref OAUTH_CONFLUENCE_MCP_CLIENT_ID: String =
-        env::var("OAUTH_CONFLUENCE_MCP_CLIENT_ID").unwrap();
+    static ref OAUTH_CONFLUENCE_MCP_CLIENT_ID: String = env::var("OAUTH_CONFLUENCE_MCP_CLIENT_ID")
+        .expect("OAUTH_CONFLUENCE_MCP_CLIENT_ID must be set");
     static ref OAUTH_CONFLUENCE_MCP_CLIENT_SECRET: String =
-        env::var("OAUTH_CONFLUENCE_MCP_CLIENT_SECRET").unwrap();
+        env::var("OAUTH_CONFLUENCE_MCP_CLIENT_SECRET")
+            .expect("OAUTH_CONFLUENCE_MCP_CLIENT_SECRET must be set");
 }
 
 /// Confluence tools use case for MCP actions.
