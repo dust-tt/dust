@@ -117,17 +117,27 @@ export function VoicePicker({
       </div>
       <Button
         size="xs"
-        icon={voiceTranscriberService.isRecording ? SquareIcon : MicIcon}
+        icon={
+          voiceTranscriberService.isRecording && mode === "click"
+            ? SquareIcon
+            : MicIcon
+        }
         isLoading={voiceTranscriberService.isTranscribing}
         variant={
-          voiceTranscriberService.isRecording ? "highlight" : "ghost-secondary"
+          voiceTranscriberService.isRecording && mode === "click"
+            ? "highlight"
+            : "ghost-secondary"
         }
         tooltip={computeTooltip(
           mode,
           voiceTranscriberService.isRecording,
           voiceTranscriberService.isTranscribing
         )}
-        label={voiceTranscriberService.isRecording ? "Stop" : undefined}
+        label={
+          voiceTranscriberService.isRecording && mode === "click"
+            ? "Stop"
+            : undefined
+        }
         disabled={disabled}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
