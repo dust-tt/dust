@@ -142,12 +142,12 @@ function createAdditionalConfigurationSchema(
         ) {
           nestedStructure[rootKey] = z.coerce.boolean();
         } else if (toolsConfigurations.enumConfigurations[path]) {
-          nestedStructure[rootKey] = z.enum(
-            toolsConfigurations.enumConfigurations[path].options as [
-              string,
-              ...string[],
-            ]
-          );
+          const enumOptions = toolsConfigurations.enumConfigurations[path].options;
+          const enumValues = enumOptions.map((option) => option.value) as [
+            string,
+            ...string[],
+          ];
+          nestedStructure[rootKey] = z.enum(enumValues);
         } else if (toolsConfigurations.listConfigurations[rootKey]) {
           nestedStructure[rootKey] = z
             .array(z.string())

@@ -19,7 +19,7 @@ export class NotionCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
   // Delay hint for transient upstream 5xx.
-  private static readonly TRANSIENT_RETRY_DELAY_MS = 30 * 60 * 1000;
+  private static readonly TRANSIENT_RETRY_DELAY_MS = 2 * 60 * 60 * 1000;
 
   async execute(
     input: ActivityExecuteInput,

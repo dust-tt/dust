@@ -615,6 +615,8 @@ The directive should be used to display a clickable version of the agent name in
       delete_worksheet: "low",
       format_cells: "low",
       copy_sheet: "low",
+      rename_worksheet: "low",
+      move_worksheet: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -898,10 +900,8 @@ The directive should be used to display a clickable version of the agent name in
     id: 27,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("google_drive_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       list_drives: "never_ask",
       search_files: "never_ask",

@@ -5,6 +5,7 @@ export type ProviderType = {
 
 export type CredentialsType = {
   OPENAI_API_KEY?: string;
+  OPENAI_USE_EU_ENDPOINT?: string;
   COHERE_API_KEY?: string;
   AI21_API_KEY?: string;
   AZURE_OPENAI_API_KEY?: string;
