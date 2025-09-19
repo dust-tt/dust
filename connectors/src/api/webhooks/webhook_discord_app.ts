@@ -10,28 +10,32 @@ import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
  * Discord Interaction Types (incoming requests)
  * @see https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object-interaction-type
  */
-enum DiscordInteractionType {
-  PING = 1,
-  APPLICATION_COMMAND = 2,
-  MESSAGE_COMPONENT = 3,
-  APPLICATION_COMMAND_AUTOCOMPLETE = 4,
-  MODAL_SUBMIT = 5,
-}
+const DiscordInteraction = {
+  PING: 1,
+  APPLICATION_COMMAND: 2,
+  MESSAGE_COMPONENT: 3,
+  APPLICATION_COMMAND_AUTOCOMPLETE: 4,
+  MODAL_SUBMIT: 5,
+} as const;
+
+type DiscordInteractionType = (typeof DiscordInteraction)[keyof typeof DiscordInteraction];
 
 /**
  * Discord Interaction Response Types (outgoing responses)
  * @see https://discord.com/developers/docs/interactions/receiving-and-responding#responding-to-an-interaction
  */
-enum DiscordInteractionResponseType {
-  PONG = 1,
-  CHANNEL_MESSAGE_WITH_SOURCE = 4,
-  DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5,
-  DEFERRED_UPDATE_MESSAGE = 6,
-  UPDATE_MESSAGE = 7,
-  APPLICATION_COMMAND_AUTOCOMPLETE_RESULT = 8,
-  MODAL = 9,
-  PREMIUM_REQUIRED = 10,
-}
+const DiscordInteractionResponse = {
+  PONG: 1,
+  CHANNEL_MESSAGE_WITH_SOURCE: 4,
+  DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE: 5,
+  DEFERRED_UPDATE_MESSAGE: 6,
+  UPDATE_MESSAGE: 7,
+  APPLICATION_COMMAND_AUTOCOMPLETE_RESULT: 8,
+  MODAL: 9,
+  PREMIUM_REQUIRED: 10,
+} as const;
+
+type DiscordInteractionResponseType = (typeof DiscordInteractionResponse)[keyof typeof DiscordInteractionResponse];
 
 const logger = mainLogger.child(
   {
@@ -149,24 +153,36 @@ const _webhookDiscordAppHandler = async (
     });
   }
 
-  const interactionBody = JSON.parse(bodyString);
+  let interactionBody: DiscordWebhookReqBody;
+  try {
+    interactionBody = JSON.parse(bodyString);
+  } catch (error) {
+    logger.error({ error, bodyString }, "Failed to parse Discord webhook body");
+    return apiError(req, res, {
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid JSON in request body",
+      },
+      status_code: 400,
+    });
+  }
 
   // Discord webhook verification - respond to ping
-  if (interactionBody.type === DiscordInteractionType.PING) {
+  if (interactionBody.type === DiscordInteraction.PING) {
     logger.info("Discord ping received, responding with pong");
     return res.status(200).json({
-      type: DiscordInteractionResponseType.PONG,
+      type: DiscordInteractionResponse.PONG,
     });
   }
 
   // Default response for unsupported interaction types
   return res.status(200).json({
-    type: DiscordInteractionResponseType.PONG,
+    type: DiscordInteractionResponse.PONG,
   });
 };
 
 async function parseExpressRequestRawBody(req: Request): Promise<string> {
-  if (req !== null && "rawBody" in req && req.rawBody) {
+  if ("rawBody" in req && req.rawBody) {
     return req.rawBody.toString();
   }
 
