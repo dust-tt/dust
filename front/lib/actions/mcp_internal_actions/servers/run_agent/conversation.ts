@@ -75,7 +75,7 @@ export async function createContentFragmentsFromDataSources(
 
   const resolvedDataSources = resolvedDataSourcesResult.value;
 
-  // Resolve table configurations to get actual table data
+  // Resolve table configurations to get actual table data.
   const resolvedTablesResult = await fetchTableDataSourceConfigurations(
     auth,
     tableToolConfigurations
