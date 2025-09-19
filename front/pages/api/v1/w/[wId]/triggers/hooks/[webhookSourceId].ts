@@ -47,6 +47,7 @@ const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
  *         description: Webhook source ID
  *         schema:
  *           type: string
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
@@ -62,6 +63,8 @@ const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
  *         description: Workspace or webhook source not found
  *       405:
  *         description: Method not allowed
+ *       429:
+ *         description: Rate limit exceeded
  */
 
 export const config = {

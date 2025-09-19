@@ -3939,9 +3939,7 @@
       "get": {
         "summary": "List available MCP server views.",
         "description": "Retrieves a list of enabled MCP server views (aka tools) for a specific space of the authenticated workspace.",
-        "tags": [
-          "Tools"
-        ],
+        "tags": ["Tools"],
         "security": [
           {
             "BearerAuth": []
@@ -4058,6 +4056,61 @@
           },
           "500": {
             "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/triggers/hooks/{webhookSourceId}": {
+      "post": {
+        "summary": "Receive external webhook to trigger flows",
+        "description": "Skeleton endpoint that verifies workspace and webhook source and logs receipt.",
+        "tags": ["Triggers"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "Workspace ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "webhookSourceId",
+            "required": true,
+            "description": "Webhook source ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook received"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Workspace or webhook source not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
           }
         }
       }
@@ -5091,10 +5144,7 @@
           },
           "serverType": {
             "type": "string",
-            "enum": [
-              "remote",
-              "internal"
-            ],
+            "enum": ["remote", "internal"],
             "description": "Type of the MCP server",
             "example": "remote"
           },
@@ -5139,15 +5189,10 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": [
-                        "platform_actions",
-                        "personal_actions"
-                      ]
+                      "enum": ["platform_actions", "personal_actions"]
                     },
                     "description": "Supported use cases for the authorization",
-                    "example": [
-                      "platform_actions"
-                    ]
+                    "example": ["platform_actions"]
                   },
                   "scope": {
                     "type": "string",
@@ -5207,10 +5252,7 @@
           "oAuthUseCase": {
             "type": "string",
             "nullable": true,
-            "enum": [
-              "platform_actions",
-              "personal_actions"
-            ],
+            "enum": ["platform_actions", "personal_actions"],
             "description": "OAuth use case for the MCP server view",
             "example": "platform_actions"
           },
