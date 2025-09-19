@@ -77,7 +77,7 @@ export type ServerSideMCPServerConfigurationType =
     additionalConfiguration: AdditionalConfigurationType;
     mcpServerViewId: string;
     dustAppConfiguration: DustAppRunConfigurationType | null;
-    secretName?: string | null;
+    secretName: string | null;
     // Out of convenience, we hold the sId of the internal server if it is an internal server.
     internalMCPServerId: string | null;
   };

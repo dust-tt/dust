@@ -61,7 +61,7 @@ export const dustAppConfigurationSchema = z
   })
   .nullable();
 
-export const secretNameSchema = z.string().optional();
+export const secretNameSchema = z.string().nullable();
 
 export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
 
@@ -279,7 +279,7 @@ export interface MCPFormData {
     } | null;
     additionalConfiguration: AdditionalConfigurationInBuilderType;
     dustAppConfiguration: any;
-    secretName?: string;
+    secretName: string | null;
     jsonSchema: any;
     _jsonSchemaString: string | null;
   };
