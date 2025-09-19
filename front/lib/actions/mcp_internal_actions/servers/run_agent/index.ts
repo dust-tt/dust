@@ -635,9 +635,9 @@ ${query}`
               return new Err(new MCPError(errorMessage));
             } else if (event.type === "agent_message_success") {
               if (
-              Array.isArray(event.message.actions) &&
-              event.message.actions.every(isAgentMCPActionWithOutputType)
-            ) {
+                Array.isArray(event.message.actions) &&
+                event.message.actions.every(isAgentMCPActionWithOutputType)
+              ) {
                 refsFromAgent = getCitationsFromActions(event.message.actions);
                 files = event.message.actions.flatMap((action) =>
                   action.generatedFiles.filter((f) => !f.hidden)
