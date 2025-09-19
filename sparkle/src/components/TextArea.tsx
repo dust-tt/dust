@@ -20,7 +20,8 @@ const textAreaVariants = cva(
   cn(
     "s-flex s-w-full s-px-3 s-py-2 s-text-sm",
     "s-text-foreground dark:s-text-foreground-night",
-    "s-bg-muted-background dark:s-bg-muted-background-night",
+    // Default to plain background; disabled variant will set muted background
+    "s-bg-background dark:s-bg-background-night",
     "s-ring-offset-background",
     "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
     "focus-visible:s-border-border dark:focus-visible:s-border-border-night focus-visible:s-ring"
@@ -52,7 +53,9 @@ const textAreaVariants = cva(
       disabled: {
         true: cn(
           "disabled:s-cursor-not-allowed",
-          "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night"
+          "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night",
+          // Use muted background only when disabled
+          "s-bg-muted-background dark:s-bg-muted-background-night"
         ),
         false: "",
       },
@@ -117,8 +120,8 @@ const ReadOnlyTextArea = ({ content }: { content: string | null }) => {
       isDisplay
       className={cn(
         "s-copy-sm s-h-full s-min-h-60 s-w-full s-min-w-0 s-rounded-xl",
-        "s-resize-none s-border-border s-bg-muted-background",
-        "dark:s-border-border-night dark:s-bg-muted-background-night"
+        "s-resize-none s-border-border",
+        "dark:s-border-border-night"
       )}
       defaultValue={content ?? ""}
     />
