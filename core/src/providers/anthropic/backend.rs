@@ -168,12 +168,9 @@ impl AnthropicBackend for VertexAnthropicBackend {
 
         let location = match credentials.get("GOOGLE_CLOUD_LOCATION") {
             Some(location) => location.clone(),
-            None => match tokio::task::spawn_blocking(|| std::env::var("GOOGLE_CLOUD_LOCATION"))
+            None => tokio::task::spawn_blocking(|| std::env::var("GOOGLE_CLOUD_LOCATION"))
                 .await?
-            {
-                Ok(location) => location,
-                Err(_) => "us-south1".to_string(), // Default fallback region.
-            },
+                .unwrap_or_else(|_| "us-south1".to_string()),
         };
 
         self.api_key = Some(api_key.clone());
