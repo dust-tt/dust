@@ -600,7 +600,7 @@ export async function runModelActivity(
             cached_tokens?: number;
           };
         } | null;
-        const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
+        const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
 
         // Determine the region based on feature flag and current region
         let region = "us";
@@ -840,6 +840,7 @@ export async function runModelActivity(
         reasoningModel: null,
         timeFrame: null,
         jsonSchema: null,
+        secretName: null,
         additionalConfiguration: {},
         mcpServerViewId: mcpServerView.sId,
         dustAppConfiguration: null,

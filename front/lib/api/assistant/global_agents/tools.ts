@@ -62,6 +62,7 @@ export function _getDefaultWebActionsForGlobalAgent({
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     },
   ];
 }
@@ -95,6 +96,7 @@ export function _getToolsetsToolsConfiguration({
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     },
   ];
 }
@@ -124,6 +126,7 @@ export function _getAgentRouterToolsConfiguration(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     },
   ];
 }
