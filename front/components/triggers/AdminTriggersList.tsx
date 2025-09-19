@@ -15,34 +15,31 @@ import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhoo
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
-import type {
-  WebhookSourceViewType,
-  WebhookSourceWithViews,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceWithSystemView } from "@app/types/triggers/webhooks";
 
 type RowData = {
-  webhookSourceWithViews: WebhookSourceWithViews;
-  webhookSourceSystemView: WebhookSourceViewType | null;
+  webhookSource: WebhookSourceWithSystemView;
   spaces: SpaceType[];
   onClick?: () => void;
 };
 
 const NameCell = ({ row }: { row: RowData }) => {
-  const { webhookSourceWithViews, webhookSourceSystemView } = row;
+  const { webhookSource } = row;
 
   return (
     <DataTable.CellContent grow>
       <div
         className={classNames(
           "flex flex-row items-center gap-3 py-3",
-          webhookSourceSystemView ? "" : "opacity-50"
+          webhookSource.systemView ? "" : "opacity-50"
         )}
       >
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-            {webhookSourceSystemView?.customName ?? webhookSourceWithViews.name}
+            {webhookSource.systemView?.customName ?? webhookSource.name}
           </div>
         </div>
       </div>
@@ -52,20 +49,18 @@ const NameCell = ({ row }: { row: RowData }) => {
 
 type AdminTriggersListProps = {
   owner: LightWorkspaceType;
-  systemSpace: SpaceType;
-  setSelectedWebhookSourceView: Dispatch<
-    SetStateAction<WebhookSourceViewType | null>
-  >;
+  setSelectedWebhookSourceId: Dispatch<SetStateAction<string | null>>;
   isWebhookSourcesWithViewsLoading: boolean;
-  webhookSourcesWithViews: WebhookSourceWithViews[];
+  webhookSourcesWithSystemView: WebhookSourceWithSystemView[];
+  filter: string;
 };
 
 export const AdminTriggersList = ({
   owner,
-  systemSpace,
-  setSelectedWebhookSourceView,
+  setSelectedWebhookSourceId,
   isWebhookSourcesWithViewsLoading,
-  webhookSourcesWithViews,
+  webhookSourcesWithSystemView,
+  filter,
 }: AdminTriggersListProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { spaces } = useSpacesAsAdmin({
@@ -78,34 +73,20 @@ export const AdminTriggersList = ({
 
   const rows: RowData[] = useMemo(
     () =>
-      webhookSourcesWithViews.map((webhookSourceWithViews) => {
-        const webhookSourceSystemView =
-          webhookSourceWithViews.views.find(
-            (view) => view.spaceId === systemSpace?.sId
-          ) ?? null;
-        const spaceIds =
-          webhookSourceWithViews?.views.map((view) => view.spaceId) ?? [];
+      webhookSourcesWithSystemView.map((webhookSource) => {
+        const spaceIds = webhookSource.views.map((view) => view.spaceId);
 
-        const onClick =
-          webhookSourceSystemView !== null
-            ? () => {
-                setSelectedWebhookSourceView(webhookSourceSystemView);
-              }
-            : undefined;
+        const onClick = !webhookSource.systemView
+          ? undefined
+          : () => setSelectedWebhookSourceId(webhookSource.sId);
 
         return {
-          webhookSourceWithViews,
-          webhookSourceSystemView,
+          webhookSource,
           spaces: spaces.filter((space) => spaceIds?.includes(space.sId)),
           onClick,
         };
       }),
-    [
-      webhookSourcesWithViews,
-      spaces,
-      systemSpace?.sId,
-      setSelectedWebhookSourceView,
-    ]
+    [spaces, setSelectedWebhookSourceId, webhookSourcesWithSystemView]
   );
   const columns = useMemo((): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -118,6 +99,13 @@ export const AdminTriggersList = ({
         cell: (info: CellContext<RowData, string>) => (
           <NameCell row={info.row.original} />
         ),
+        filterFn: (row, _id, filterValue) =>
+          filterWebhookSource(row.original.webhookSource, filterValue),
+        sortingFn: (rowA, rowB) => {
+          return rowA.original.webhookSource.name.localeCompare(
+            rowB.original.webhookSource.name
+          );
+        },
       },
       {
         id: "access",
@@ -140,8 +128,8 @@ export const AdminTriggersList = ({
           );
         },
         sortingFn: (rowA, rowB) => {
-          return rowA.original.webhookSourceWithViews.name.localeCompare(
-            rowB.original.webhookSourceWithViews.name
+          return rowA.original.webhookSource.name.localeCompare(
+            rowB.original.webhookSource.name
           );
         },
         meta: {
@@ -154,7 +142,7 @@ export const AdminTriggersList = ({
         header: "By",
         cell: (info) => {
           const editedByUser =
-            info.row.original.webhookSourceSystemView?.editedByUser;
+            info.row.original.webhookSource.systemView?.editedByUser;
 
           return (
             <DataTable.CellContent
@@ -175,7 +163,7 @@ export const AdminTriggersList = ({
         cell: (info: CellContext<RowData, number>) => (
           <DataTable.BasicCellContent
             label={formatTimestampToFriendlyDate(
-              info.row.original.webhookSourceWithViews.updatedAt,
+              info.row.original.webhookSource.updatedAt,
               "long"
             )}
           />
@@ -227,6 +215,7 @@ export const AdminTriggersList = ({
             columns={columns}
             className="pb-4"
             filterColumn="name"
+            filter={filter}
           />
         </>
       )}
