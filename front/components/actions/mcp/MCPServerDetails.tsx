@@ -41,9 +41,9 @@ export function MCPServerDetails({
   onClose,
 }: MCPServerDetailsProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
-  const [isDeleting, setIsDeleting] = useState(false);
+
   const confirm = useContext(ConfirmContext);
-  const { deleteServer } = useDeleteMCPServer(owner);
+  const { deleteServer, isDeleting } = useDeleteMCPServer(owner);
 
   useEffect(() => {
     if (mcpServerView) {
@@ -113,9 +113,7 @@ export function MCPServerDetails({
                           if (!confirmed) {
                             return;
                           }
-                          setIsDeleting(true);
                           const deleted = await deleteServer(server);
-                          setIsDeleting(false);
                           if (deleted) {
                             onClose();
                           }
