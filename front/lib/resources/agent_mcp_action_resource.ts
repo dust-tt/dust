@@ -2,8 +2,10 @@ import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
+  IncludeOptions,
   NonAttribute,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -22,7 +24,11 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  ConversationModel,
+  Message,
+} from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -31,6 +37,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
 import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
@@ -402,6 +409,124 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<AgentMCPActionResource[]> {
     return this.baseFetch(auth, {
       where: { agentMessageId: { [Op.in]: agentMessageIds } },
+    });
+  }
+
+  static async listByAgent(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      limit,
+      cursor,
+    }: {
+      agentConfigurationId: string;
+      limit: number;
+      cursor?: string;
+    }
+  ): Promise<Result<GetMCPActionsResult, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const whereClause: WhereOptions<AgentStepContentModel> = {
+      workspaceId: owner.id,
+      type: "function_call",
+    };
+
+    if (cursor) {
+      const cursorDate = new Date(cursor);
+      if (isNaN(cursorDate.getTime())) {
+        return new Err(new Error("Invalid cursor format"));
+      }
+      whereClause.createdAt = {
+        [Op.lt]: cursorDate,
+      };
+    }
+
+    const includeClause: IncludeOptions[] = [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+        where: {
+          agentConfigurationId,
+        },
+        include: [
+          {
+            model: Message,
+            as: "message",
+            required: true,
+            include: [
+              {
+                model: ConversationModel,
+                as: "conversation",
+                required: true,
+                where: {
+                  visibility: { [Op.ne]: "deleted" },
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: AgentMCPActionModel,
+        as: "agentMCPActions",
+        required: true,
+      },
+    ];
+
+    const [totalCount, stepContents] = await Promise.all([
+      AgentStepContentModel.count({
+        include: includeClause,
+        where: whereClause,
+      }),
+      AgentStepContentModel.findAll({
+        include: includeClause,
+        where: whereClause,
+        order: [["createdAt", "DESC"]],
+        limit: limit + 1,
+      }),
+    ]);
+
+    const hasMore = stepContents.length > limit;
+    const actualStepContents = hasMore
+      ? stepContents.slice(0, limit)
+      : stepContents;
+    const nextCursor = hasMore
+      ? actualStepContents[
+          actualStepContents.length - 1
+        ].createdAt.toISOString()
+      : null;
+
+    const actions = actualStepContents.flatMap((stepContent) =>
+      (stepContent.agentMCPActions ?? []).map((action) => {
+        assert(
+          stepContent.agentMessage?.message?.conversation,
+          "Missing required relations"
+        );
+        assert(
+          stepContent.value.type === "function_call",
+          "Step content must be a function call"
+        );
+
+        return {
+          sId: AgentMCPActionResource.modelIdToSId({
+            id: action.id,
+            workspaceId: action.workspaceId,
+          }),
+          createdAt: action.createdAt.toISOString(),
+          functionCallName: stepContent.value.value.name,
+          params: JSON.parse(stepContent.value.value.arguments),
+          status: action.status,
+          conversationId: stepContent.agentMessage.message.conversation.sId,
+          messageId: stepContent.agentMessage.message.sId,
+        };
+      })
+    );
+
+    return new Ok({
+      actions,
+      nextCursor,
+      totalCount,
     });
   }
 
