@@ -735,13 +735,31 @@ describe("augmentInputsWithConfiguration", () => {
             enumParam: {
               type: "object",
               properties: {
+                options: {
+                  anyOf: [
+                    {
+                      type: "object",
+                      properties: {
+                        value: { type: "string", const: "option1" },
+                        label: { type: "string", const: "Option 1" },
+                      },
+                    },
+                    {
+                      type: "object",
+                      properties: {
+                        value: { type: "string", const: "option2" },
+                        label: { type: "string", const: "Option 2" },
+                      },
+                    },
+                  ],
+                },
                 value: { type: "string" },
                 mimeType: {
                   type: "string",
                   const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
                 },
               },
-              required: ["value", "mimeType"],
+              required: ["options", "value", "mimeType"],
             },
           },
           required: ["enumParam"],
@@ -1428,16 +1446,40 @@ describe("augmentInputsWithConfiguration", () => {
               enumParam: {
                 type: "object",
                 properties: {
+                  options: {
+                    anyOf: [
+                      {
+                        type: "object",
+                        properties: {
+                          value: { type: "string", const: "option1" },
+                          label: { type: "string", const: "Option 1" },
+                        },
+                      },
+                      {
+                        type: "object",
+                        properties: {
+                          value: { type: "string", const: "option2" },
+                          label: { type: "string", const: "Option 2" },
+                        },
+                      },
+                      {
+                        type: "object",
+                        properties: {
+                          value: { type: "string", const: "option3" },
+                          label: { type: "string", const: "Option 3" },
+                        },
+                      },
+                    ],
+                  },
                   value: {
                     type: "string",
-                    enum: ["option1", "option2", "option3"],
                   },
                   mimeType: {
                     type: "string",
                     const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
                   },
                 },
-                required: ["value", "mimeType"],
+                required: ["options", "value", "mimeType"],
                 default: {
                   value: "option2",
                   mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,

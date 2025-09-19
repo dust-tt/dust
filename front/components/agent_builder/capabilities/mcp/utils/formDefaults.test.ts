@@ -219,15 +219,15 @@ describe("getDefaultConfiguration", () => {
           booleanConfigurations: [],
           enumConfigurations: {
             priority: {
-              options: ["low", "medium", "high"],
+              options: { low: "Low", medium: "Medium", high: "High" },
               description: "Priority level",
             },
             category: {
-              options: ["A", "B", "C"],
+              options: { A: "Option A", B: "Option B", C: "Option C" },
               description: "Category selection",
             },
             "nested.enum": {
-              options: ["option1", "option2"],
+              options: { option1: "Option 1", option2: "Option 2" },
               description: "Nested enum",
             },
           },
@@ -261,11 +261,11 @@ describe("getDefaultConfiguration", () => {
           booleanConfigurations: [],
           enumConfigurations: {
             valid_enum: {
-              options: ["option1", "option2"],
+              options: { option1: "Option 1", option2: "Option 2" },
               description: "Valid enum",
             },
             empty_enum: {
-              options: [],
+              options: {},
               description: "Empty enum",
             },
           },
@@ -296,12 +296,16 @@ describe("getDefaultConfiguration", () => {
           booleanConfigurations: [],
           enumConfigurations: {
             priority: {
-              options: ["low", "medium", "high"],
+              options: { low: "Low", medium: "Medium", high: "High" },
               description: "Priority level",
               default: "medium", // explicit default
             },
             status: {
-              options: ["draft", "published", "archived"],
+              options: {
+                draft: "Draft",
+                published: "Published",
+                archived: "Archived",
+              },
               description: "Status", // no explicit default, should use first
             },
           },
@@ -460,7 +464,7 @@ describe("getDefaultConfiguration", () => {
           ],
           enumConfigurations: {
             priority: {
-              options: ["low", "medium", "high"],
+              options: { low: "Low", medium: "Medium", high: "High" },
               description: "Priority",
             },
           },
@@ -521,12 +525,21 @@ describe("getDefaultConfiguration", () => {
           ],
           enumConfigurations: {
             "logging.level": {
-              options: ["debug", "info", "warn", "error"],
+              options: {
+                debug: "Debug",
+                info: "Info",
+                warn: "Warn",
+                error: "Error",
+              },
               description: "Logging level",
               default: "info",
             },
             environment: {
-              options: ["development", "staging", "production"],
+              options: {
+                development: "Development",
+                staging: "Staging",
+                production: "Production",
+              },
               description: "Environment", // no default (will use first)
             },
           },
@@ -599,7 +612,7 @@ describe("getDefaultConfiguration", () => {
           ],
           enumConfigurations: {
             "a.b.c.d.enum": {
-              options: ["x", "y"],
+              options: { x: "X", y: "Y" },
               description: "Deeply nested enum",
             },
           },
