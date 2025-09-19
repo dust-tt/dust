@@ -313,7 +313,12 @@ export const connectToMCPServer = async (
           try {
             const req = {
               requestInit: {
-                headers: undefined,
+                // Include stored custom headers (excluding Authorization; handled by authProvider)
+                headers: Object.fromEntries(
+                  Object.entries(remoteMCPServer.customHeaders ?? {}).filter(
+                    ([k]) => k.toLowerCase() !== "authorization"
+                  )
+                ),
                 dispatcher: createMCPDispatcher(auth),
               },
               authProvider: new MCPOAuthProvider(auth, token),

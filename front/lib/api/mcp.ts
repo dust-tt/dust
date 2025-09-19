@@ -87,6 +87,7 @@ export type RemoteMCPServerType = MCPServerType & {
   sharedSecret?: string | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;
+  customHeaders?: Record<string, string> | null;
   icon: CustomServerIconType | InternalAllowedIconType;
   // Always manual and allow multiple instances.
   availability: "manual";

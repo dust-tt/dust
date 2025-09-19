@@ -313,14 +313,15 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
 export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
   const discoverOAuthMetadata = useCallback(
     async (
-      url: string
+      url: string,
+      customHeaders?: { key: string; value: string }[]
     ): Promise<Result<DiscoverOAuthMetadataResponseBody, Error>> => {
       const response = await fetch(
         `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({ url, customHeaders }),
         }
       );
 
@@ -357,11 +358,13 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       includeGlobal,
       sharedSecret,
       oauthConnection,
+      customHeaders,
     }: {
       url: string;
       includeGlobal: boolean;
       sharedSecret?: string;
       oauthConnection?: MCPConnectionType;
+      customHeaders?: { key: string; value: string }[];
     }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
       const body: any = { url, serverType: "remote", includeGlobal };
       if (sharedSecret) {
@@ -371,6 +374,9 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (oauthConnection) {
         body.connectionId = oauthConnection.connectionId;
         body.useCase = oauthConnection.useCase;
+      }
+      if (customHeaders) {
+        body.customHeaders = customHeaders;
       }
       const response = await fetch(`/api/w/${owner.sId}/mcp`, {
         method: "POST",
