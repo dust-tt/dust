@@ -24,7 +24,6 @@ export async function scheduleWorkspaceScrubWorkflow({
   workspaceId: string;
 }): Promise<boolean> {
   await pauseAllConnectors({ workspaceId });
-  await pauseAllTriggers({ workspaceId });
   await sendDataDeletionEmail({
     remainingDays: 15,
     workspaceId,
@@ -49,7 +48,25 @@ export async function scheduleWorkspaceScrubWorkflowV2({
 }: {
   workspaceId: string;
 }): Promise<boolean> {
-  return scheduleWorkspaceScrubWorkflow({ workspaceId });
+  await pauseAllConnectors({ workspaceId });
+  await pauseAllTriggers({ workspaceId });
+  await sendDataDeletionEmail({
+    remainingDays: 15,
+    workspaceId,
+    isLast: false,
+  });
+  await sleep("12 days");
+  if (!(await shouldStillScrubData({ workspaceId }))) {
+    return false;
+  }
+  await sendDataDeletionEmail({ remainingDays: 3, workspaceId, isLast: true });
+  await sleep("3 days");
+  if (!(await shouldStillScrubData({ workspaceId }))) {
+    return false;
+  }
+
+  await scrubWorkspaceData({ workspaceId });
+  return true;
 }
 
 export async function immediateWorkspaceScrubWorkflow({
