@@ -59,12 +59,12 @@ export function getDefaultConfiguration(
   // Enum configurations: use explicit default or fallback to first option
   for (const [
     key,
-    { options: enumValues, default: defaultValue },
+    { options: enumOptions, default: defaultValue },
   ] of Object.entries(toolsConfigurations.enumConfigurations)) {
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
-    } else if (enumValues.length > 0) {
-      set(additionalConfig, key, enumValues[0]);
+    } else if (enumOptions.length > 0) {
+      set(additionalConfig, key, enumOptions[0].value);
     }
   }
 
