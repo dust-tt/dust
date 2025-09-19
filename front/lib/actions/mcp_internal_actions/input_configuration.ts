@@ -24,7 +24,7 @@ import {
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, isString } from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -273,9 +273,7 @@ function generateConfiguredInput({
           ) {
             if (
               Array.isArray(propSchema.default.values) &&
-              propSchema.default.values.every(
-                (v): v is string => typeof v === "string"
-              )
+              propSchema.default.values.every(isString)
             ) {
               values = propSchema.default.values;
             } else {
@@ -294,9 +292,7 @@ function generateConfiguredInput({
           ) {
             if (
               Array.isArray(propSchema.properties.values.default) &&
-              propSchema.properties.values.default.every(
-                (v): v is string => typeof v === "string"
-              )
+              propSchema.properties.values.default.every(isString)
             ) {
               values = propSchema.properties.values.default;
             } else {
@@ -687,10 +683,7 @@ export function getMCPServerToolsConfigurations(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
-    default: extractSchemaDefault(
-      schema,
-      (v: unknown): v is string => typeof v === "string"
-    ),
+    default: extractSchemaDefault(schema, isString),
   }));
 
   const numberConfigurations = Object.entries(
@@ -740,10 +733,7 @@ export function getMCPServerToolsConfigurations(
         return [key, { options: [], description: schema.description }];
       }
 
-      const defaultValue = extractSchemaDefault(
-        schema,
-        (v: unknown): v is string => typeof v === "string"
-      );
+      const defaultValue = extractSchemaDefault(schema, isString);
 
       const options = Array.isArray(optionsProperty.anyOf)
         ? (optionsProperty.anyOf
@@ -838,10 +828,7 @@ export function getMCPServerToolsConfigurations(
         throw new Error(`No valid list options found for key ${key}`);
       }
 
-      const defaultValue = extractSchemaDefault(
-        schema,
-        (v: unknown): v is string => typeof v === "string"
-      );
+      const defaultValue = extractSchemaDefault(schema, isString);
 
       return [
         key,
