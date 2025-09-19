@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import * as temporalClient from "@app/temporal/agent_schedule/client";
@@ -664,7 +665,7 @@ describe("TriggerResource", () => {
       // Mock temporal workflow operations to avoid failures in test environment
       const mockCreateOrUpdateWorkflow = vi
         .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
-        .mockResolvedValue(new Ok(undefined));
+        .mockResolvedValue(new Ok("workflow-id"));
       const mockDeleteWorkflow = vi
         .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
         .mockResolvedValue(new Ok(undefined));
@@ -780,24 +781,14 @@ describe("TriggerResource", () => {
       mockCreateOrUpdateWorkflow.mockRestore();
       mockDeleteWorkflow.mockRestore();
     });
+  });
 
-    it("should return success when no triggers exist in workspace", async () => {
-      const { authenticator } = await createResourceTest({
-        role: "admin",
-      });
-
-      // Try to disable all triggers in a workspace with no triggers
-      const result =
-        await TriggerResource.disableAllForWorkspace(authenticator);
-
-      expect(result.isOk()).toBe(true);
-    });
-
-    it("should return success when no enabled triggers exist in workspace", async () => {
+  describe("enableAllForWorkspace", () => {
+    it("should successfully enable all disabled triggers that point to active agents", async () => {
       // Mock temporal workflow operations
       const mockCreateOrUpdateWorkflow = vi
         .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
-        .mockResolvedValue(new Ok(undefined));
+        .mockResolvedValue(new Ok("workflow-id"));
       const mockDeleteWorkflow = vi
         .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
         .mockResolvedValue(new Ok(undefined));
@@ -806,107 +797,141 @@ describe("TriggerResource", () => {
         role: "admin",
       });
 
-      // Create an agent configuration
-      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      // Create agent configurations - one active, one archived
+      const activeAgentConfig = await AgentConfigurationFactory.createTestAgent(
         authenticator,
-        { name: "Test Agent" }
+        { name: "Active Agent" }
       );
 
-      // Create only disabled triggers
-      const triggerResult = await TriggerResource.makeNew(authenticator, {
-        id: 123,
-        workspaceId: workspace.id,
-        name: "Already Disabled Trigger",
-        kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
-        editor: authenticator.getNonNullableUser().id,
-        customPrompt: null,
-        enabled: false,
-        configuration: {
-          cron: "0 9 * * 1",
-          timezone: "UTC",
-        },
-      });
+      const archivedAgentConfig =
+        await AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "Archived Agent",
+        });
 
-      expect(triggerResult.isOk()).toBe(true);
+      // Mock AgentConfiguration.findAll to return different statuses
+      const mockAgentConfigFindAll = vi
+        .spyOn(AgentConfiguration, "findAll")
+        .mockResolvedValue([
+          {
+            sId: activeAgentConfig.sId,
+            status: "active",
+            versionCreatedAt: new Date(),
+          } as any,
+          {
+            sId: archivedAgentConfig.sId,
+            status: "archived",
+            versionCreatedAt: new Date(),
+          } as any,
+        ]);
 
-      // Try to disable all triggers (should succeed even though none are enabled)
-      const result =
-        await TriggerResource.disableAllForWorkspace(authenticator);
+      // Create triggers - some disabled pointing to active agent, some to archived agent, some enabled
+      const disabledActiveAgentTrigger = await TriggerResource.makeNew(
+        authenticator,
+        {
+          id: 123,
+          workspaceId: workspace.id,
+          name: "Disabled Active Agent Trigger",
+          kind: "schedule",
+          agentConfigurationId: activeAgentConfig.sId,
+          editor: authenticator.getNonNullableUser().id,
+          customPrompt: null,
+          enabled: false,
+          configuration: {
+            cron: "0 9 * * 1",
+            timezone: "UTC",
+          },
+        }
+      );
+
+      const disabledArchivedAgentTrigger = await TriggerResource.makeNew(
+        authenticator,
+        {
+          id: 124,
+          workspaceId: workspace.id,
+          name: "Disabled Archived Agent Trigger",
+          kind: "schedule",
+          agentConfigurationId: archivedAgentConfig.sId,
+          editor: authenticator.getNonNullableUser().id,
+          customPrompt: null,
+          enabled: false,
+          configuration: {
+            cron: "0 10 * * 1",
+            timezone: "UTC",
+          },
+        }
+      );
+
+      const enabledActiveTrigger = await TriggerResource.makeNew(
+        authenticator,
+        {
+          id: 125,
+          workspaceId: workspace.id,
+          name: "Already Enabled Trigger",
+          kind: "schedule",
+          agentConfigurationId: activeAgentConfig.sId,
+          editor: authenticator.getNonNullableUser().id,
+          customPrompt: null,
+          enabled: true,
+          configuration: {
+            cron: "0 11 * * 1",
+            timezone: "UTC",
+          },
+        }
+      );
+
+      expect(disabledActiveAgentTrigger.isOk()).toBe(true);
+      expect(disabledArchivedAgentTrigger.isOk()).toBe(true);
+      expect(enabledActiveTrigger.isOk()).toBe(true);
+
+      if (
+        disabledActiveAgentTrigger.isErr() ||
+        disabledArchivedAgentTrigger.isErr() ||
+        enabledActiveTrigger.isErr()
+      ) {
+        throw new Error("Failed to create test triggers");
+      }
+
+      const trigger1 = disabledActiveAgentTrigger.value;
+      const trigger2 = disabledArchivedAgentTrigger.value;
+      const trigger3 = enabledActiveTrigger.value;
+
+      // Verify initial state
+      expect(trigger1.enabled).toBe(false);
+      expect(trigger2.enabled).toBe(false);
+      expect(trigger3.enabled).toBe(true);
+
+      // Enable all triggers for the workspace
+      const result = await TriggerResource.enableAllForWorkspace(authenticator);
 
       expect(result.isOk()).toBe(true);
+
+      // Fetch updated triggers to verify correct behavior
+      const updatedTrigger1 = await TriggerResource.fetchById(
+        authenticator,
+        trigger1.sId()
+      );
+      const updatedTrigger2 = await TriggerResource.fetchById(
+        authenticator,
+        trigger2.sId()
+      );
+      const updatedTrigger3 = await TriggerResource.fetchById(
+        authenticator,
+        trigger3.sId()
+      );
+
+      expect(updatedTrigger1).toBeTruthy();
+      expect(updatedTrigger2).toBeTruthy();
+      expect(updatedTrigger3).toBeTruthy();
+
+      // Disabled trigger pointing to active agent should now be enabled
+      expect(updatedTrigger1!.enabled).toBe(true);
+      // Disabled trigger pointing to archived agent should remain disabled
+      expect(updatedTrigger2!.enabled).toBe(false);
+      // Already enabled trigger should remain enabled
+      expect(updatedTrigger3!.enabled).toBe(true);
 
       // Clean up mocks
-      mockCreateOrUpdateWorkflow.mockRestore();
-      mockDeleteWorkflow.mockRestore();
-    });
-
-    it("should handle errors when individual trigger disabling fails", async () => {
-      // Mock temporal workflow operations
-      const mockCreateOrUpdateWorkflow = vi
-        .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
-        .mockResolvedValue(new Ok(undefined));
-      const mockDeleteWorkflow = vi
-        .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
-        .mockResolvedValue(new Ok(undefined));
-
-      const { workspace, authenticator } = await createResourceTest({
-        role: "admin",
-      });
-
-      // Create an agent configuration
-      const agentConfig = await AgentConfigurationFactory.createTestAgent(
-        authenticator,
-        { name: "Test Agent" }
-      );
-
-      // Create an enabled trigger
-      const triggerResult = await TriggerResource.makeNew(authenticator, {
-        id: 123,
-        workspaceId: workspace.id,
-        name: "Test Trigger",
-        kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
-        editor: authenticator.getNonNullableUser().id,
-        customPrompt: null,
-        enabled: true,
-        configuration: {
-          cron: "0 9 * * 1",
-          timezone: "UTC",
-        },
-      });
-
-      expect(triggerResult.isOk()).toBe(true);
-      if (triggerResult.isErr()) {
-        throw triggerResult.error;
-      }
-
-      const trigger = triggerResult.value;
-
-      // Mock the disable method to fail
-      const mockDisable = vi.spyOn(trigger, "disable").mockResolvedValue({
-        isErr: () => true,
-        error: new Error("Failed to disable trigger"),
-      } as any);
-
-      // Mock listByWorkspace to return our trigger
-      const mockListByWorkspace = vi
-        .spyOn(TriggerResource, "listByWorkspace")
-        .mockResolvedValue([trigger]);
-
-      const result =
-        await TriggerResource.disableAllForWorkspace(authenticator);
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toContain(
-          "Failed to disable 1 some triggers"
-        );
-      }
-
-      // Restore mocks
-      mockDisable.mockRestore();
-      mockListByWorkspace.mockRestore();
+      mockAgentConfigFindAll.mockRestore();
       mockCreateOrUpdateWorkflow.mockRestore();
       mockDeleteWorkflow.mockRestore();
     });

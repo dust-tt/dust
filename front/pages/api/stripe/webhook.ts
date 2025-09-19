@@ -22,6 +22,7 @@ import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -528,7 +529,7 @@ async function handler(
               subscription.workspace.sId
             );
             if (!endDate) {
-              // Subscription is re-activated, so we need to unpause the connectors in case they were paused.
+              // Subscription is re-activated, so we need to unpause the connectors and re-enable triggers.
               await unpauseAllConnectorsAndCancelScrub(auth);
 
               ServerSideTracking.trackSubscriptionReactivated({
@@ -814,6 +815,16 @@ async function unpauseAllConnectorsAndCancelScrub(auth: Authenticator) {
         "Error unpausing connector after subscription reactivation."
       );
     }
+  }
+
+  // Re-enable all triggers that point to non-archived agents
+  const enableTriggersRes = await TriggerResource.enableAllForWorkspace(auth);
+  if (enableTriggersRes.isErr()) {
+    logger.error(
+      { stripeError: true, error: enableTriggersRes.error },
+      "Error re-enabling workspace triggers on subscription reactivation"
+    );
+    // Don't throw error here - we want the function to continue even if trigger re-enabling fails
   }
 }
 

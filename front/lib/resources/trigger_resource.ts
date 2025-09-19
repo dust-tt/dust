@@ -9,6 +9,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -284,6 +285,109 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Err(
         new Error(
           `Failed to disable ${r.filter((res) => res.isErr()).length} some triggers`
+        )
+      );
+    }
+    return new Ok(undefined);
+  }
+
+  /**
+   * We can not use the getAgentConfigurations method here, because of dependency cycle.
+   */
+  private static async getActiveAgentFromTriggers(
+    auth: Authenticator,
+    triggers: TriggerResource[]
+  ): Promise<Result<Set<string> | undefined, Error>> {
+    // Get all unique agent configuration IDs from disabled triggers
+    const agentConfigurationIds = [
+      ...new Set(triggers.map((t) => t.agentConfigurationId)),
+    ];
+
+    if (agentConfigurationIds.length === 0) {
+      return new Ok(undefined);
+    }
+
+    // Query latest versions of all agent configurations at once
+    const agentConfigs = await AgentConfiguration.findAll({
+      where: {
+        sId: agentConfigurationIds,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      order: [["versionCreatedAt", "DESC"]],
+    });
+
+    // Get only the latest version of each agent config
+    const latestAgentConfigs = new Map<string, AgentConfiguration>();
+    for (const config of agentConfigs) {
+      if (!latestAgentConfigs.has(config.sId)) {
+        latestAgentConfigs.set(config.sId, config);
+      }
+    }
+
+    // Create a map of agent config ID to status for quick lookup
+    const activeAgentIds = new Set(
+      Array.from(latestAgentConfigs.values())
+        .filter((config) => config.status === "active")
+        .map((config) => config.sId)
+    );
+
+    return new Ok(activeAgentIds);
+  }
+
+  static async enableAllForWorkspace(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listByWorkspace(auth);
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    // Only enable disabled triggers that point to non-archived agents
+    const disabledTriggers = triggers.filter((t) => !t.enabled);
+    if (disabledTriggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const rActiveAgentIds = await this.getActiveAgentFromTriggers(
+      auth,
+      disabledTriggers
+    );
+    if (rActiveAgentIds.isErr()) {
+      return rActiveAgentIds;
+    }
+
+    const activeAgentIds = rActiveAgentIds.value;
+    if (!activeAgentIds || activeAgentIds.size === 0) {
+      return new Ok(undefined);
+    }
+
+    // Filter triggers to only include those pointing to active agents
+    const enableableTriggers = disabledTriggers.filter((trigger) =>
+      activeAgentIds.has(trigger.agentConfigurationId)
+    );
+
+    if (enableableTriggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const r = await concurrentExecutor(
+      enableableTriggers,
+      async (trigger) => {
+        try {
+          return await trigger.enable(auth);
+        } catch (error) {
+          return new Err(normalizeError(error));
+        }
+      },
+      {
+        concurrency: 10,
+      }
+    );
+
+    if (r.find((res) => res.isErr())) {
+      return new Err(
+        new Error(
+          `Failed to enable ${r.filter((res) => res.isErr()).length} some triggers`
         )
       );
     }
