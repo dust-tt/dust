@@ -57,7 +57,7 @@ export async function createContentFragmentsFromDataSources(
     mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
   }));
 
-  // Convert TableDataSourceConfiguration to TablesToolConfigurationType format
+  // Convert TableDataSourceConfiguration to TablesToolConfigurationType format.
   const tableToolConfigurations = allTables.map((table) => ({
     uri: `table_configuration://dust/w/${table.workspaceId}/data_source_views/${table.dataSourceViewId}/tables/${table.tableId}`,
     mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
