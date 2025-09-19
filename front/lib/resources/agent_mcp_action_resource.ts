@@ -133,7 +133,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { transaction }
     );
 
-    const stepContent = await AgentStepContentResource.fetchByModelId(
+    const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
+      auth,
       action.stepContentId
     );
     assert(stepContent, "Step content not found.");

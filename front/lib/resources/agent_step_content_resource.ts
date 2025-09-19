@@ -129,6 +129,15 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return contents.map((content) => new this(this.model, content.get()));
   }
 
+  public static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<AgentStepContentResource | null> {
+    const stepContents = await this.fetchByModelIds(auth, [id]);
+
+    return stepContents[0] ?? null;
+  }
+
   /**
    * Helper to filter latest versions from fetched content
    */
