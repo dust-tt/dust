@@ -18,7 +18,8 @@ const DiscordInteraction = {
   MODAL_SUBMIT: 5,
 } as const;
 
-type DiscordInteractionType = (typeof DiscordInteraction)[keyof typeof DiscordInteraction];
+type DiscordInteractionType =
+  (typeof DiscordInteraction)[keyof typeof DiscordInteraction];
 
 /**
  * Discord Interaction Response Types (outgoing responses)
@@ -35,7 +36,8 @@ const DiscordInteractionResponse = {
   PREMIUM_REQUIRED: 10,
 } as const;
 
-type DiscordInteractionResponseType = (typeof DiscordInteractionResponse)[keyof typeof DiscordInteractionResponse];
+type DiscordInteractionResponseType =
+  (typeof DiscordInteractionResponse)[keyof typeof DiscordInteractionResponse];
 
 const logger = mainLogger.child(
   {
