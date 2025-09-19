@@ -932,9 +932,7 @@ export function getMCPServerToolsConfigurations(
     mayRequireSecretConfiguration ||
     mayRequireDustAppConfiguration ||
     mayRequireJsonSchemaConfiguration ||
-    mayRequireTimeFrameConfiguration ||
-    mayRequireReasoningConfiguration ||
-    mayRequireChildAgentConfiguration
+    mayRequireTimeFrameConfiguration
       ? "optional"
       : realConfigurable;
 
