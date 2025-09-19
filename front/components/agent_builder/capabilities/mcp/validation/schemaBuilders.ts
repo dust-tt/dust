@@ -9,6 +9,7 @@ import {
   mcpServerViewIdSchema,
   mcpTimeFrameSchema,
   reasoningModelSchema,
+  secretNameSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { VALIDATION_MESSAGES } from "@app/components/agent_builder/capabilities/mcp/utils/validationMessages";
 import type { MCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -67,6 +68,11 @@ export function createDynamicConfigurationFields(
     dustAppConfiguration: requirements.mayRequireDustAppConfiguration
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.dustApp.required,
+        })
+      : z.null(),
+    secretName: requirements.mayRequireSecretConfiguration
+      ? secretNameSchema.refine((val) => val !== null, {
+          message: VALIDATION_MESSAGES.secret.required,
         })
       : z.null(),
     additionalConfiguration: createAdditionalConfigurationSchema(requirements),

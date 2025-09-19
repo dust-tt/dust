@@ -3,7 +3,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
 
-import { useUpdateWebhookSourceView } from "@app/lib/swr/webhook_source";
+import {
+  useUpdateWebhookSourceView,
+  useWebhookSourcesWithViews,
+} from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
 import type {
   PatchWebhookSourceViewBody,
@@ -30,6 +33,11 @@ export function WebhookSourceViewForm({
     },
   });
 
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    owner,
+    disabled: true,
+  });
+
   const onSubmit = useCallback(
     async (values: PatchWebhookSourceViewBody) => {
       const success = await updateWebhookSourceView(webhookSourceView.sId, {
@@ -38,9 +46,15 @@ export function WebhookSourceViewForm({
 
       if (success) {
         form.reset(values);
+        await mutateWebhookSourcesWithViews();
       }
     },
-    [updateWebhookSourceView, webhookSourceView.sId, form]
+    [
+      updateWebhookSourceView,
+      webhookSourceView.sId,
+      form,
+      mutateWebhookSourcesWithViews,
+    ]
   );
 
   return (

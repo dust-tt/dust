@@ -15,7 +15,9 @@ export function listGeneratedFiles(
         action.getGeneratedFiles()
       );
 
-      files.push(...generatedFiles);
+      files.push(
+        ...generatedFiles.filter((generatedFile) => !generatedFile.hidden)
+      );
     }
   }
 

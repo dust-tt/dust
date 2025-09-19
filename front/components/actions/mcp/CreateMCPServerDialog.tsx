@@ -1,15 +1,20 @@
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   Icon,
   InformationCircleIcon,
   Input,
   Label,
-  SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
@@ -261,6 +266,18 @@ export function CreateMCPServerDialog({
     resetState();
   };
 
+  const getAuthMethodLabel = () => {
+    if (authMethod === "oauth-dynamic") {
+      return "Automatic";
+    }
+    if (authMethod === "bearer") {
+      return defaultServerConfig?.authMethod === "bearer"
+        ? `${defaultServerConfig.name} API Key`
+        : "Bearer token";
+    }
+    return "Static OAuth";
+  };
+
   return (
     <Dialog
       open={isOpen}
@@ -327,48 +344,12 @@ export function CreateMCPServerDialog({
                     </div>
                   </div>
                 )}
-                {!defaultServerConfig && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="useDiscovery">
-                          Let Dust discover if OAuth authentication is required
-                        </Label>
-                        <Tooltip
-                          trigger={
-                            <Icon
-                              visual={InformationCircleIcon}
-                              size="xs"
-                              className="text-gray-400"
-                            />
-                          }
-                          label="Dust will automatically discover if OAuth authentication is required. If OAuth is not needed, the server will be accessed without authentication. Otherwise, Dust will try to use dynamic client registration to get the OAuth credentials."
-                        />
-                      </div>
-                      {!defaultServerConfig && (
-                        <SliderToggle
-                          disabled={authMethod === "oauth-dynamic"}
-                          selected={authMethod === "oauth-dynamic"}
-                          onClick={() => {
-                            setAuthMethod("oauth-dynamic");
-                            setAuthorization(null);
-                            setIsOAuthFormValid(true);
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
                 {(!defaultServerConfig ||
                   defaultServerConfig?.authMethod === "bearer") && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Label htmlFor="requiresBearerToken">
-                          {defaultServerConfig?.authMethod === "bearer"
-                            ? `${defaultServerConfig.name} API Key`
-                            : "Use Bearer Token Authentication"}
-                        </Label>
+                        <Label>Authentication</Label>
                         <Tooltip
                           trigger={
                             <Icon
@@ -377,25 +358,77 @@ export function CreateMCPServerDialog({
                               className="text-gray-400"
                             />
                           }
-                          label="Enable bearer token authentication if the server requires an API key."
+                          label="Choose how to authenticate to the MCP server: Automatic discovery, Bearer token, or Static OAuth credentials."
                         />
                       </div>
-                      {!defaultServerConfig && (
-                        <SliderToggle
-                          disabled={false}
-                          selected={authMethod === "bearer"}
-                          onClick={() => {
-                            setAuthMethod(
-                              authMethod === "bearer"
-                                ? DEFAULT_AUTH_METHOD
-                                : "bearer"
-                            );
-                            setAuthorization(null);
-                            setIsOAuthFormValid(true);
-                          }}
-                        />
-                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            isSelect
+                            label={getAuthMethodLabel()}
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuRadioGroup>
+                            {!defaultServerConfig && (
+                              <DropdownMenuRadioItem
+                                value="oauth-dynamic"
+                                label="Automatic"
+                                onClick={() => {
+                                  setAuthMethod("oauth-dynamic");
+                                  setAuthorization(null);
+                                  setIsOAuthFormValid(true);
+                                }}
+                              />
+                            )}
+                            {(!defaultServerConfig ||
+                              defaultServerConfig?.authMethod === "bearer") && (
+                              <DropdownMenuRadioItem
+                                value="bearer"
+                                label={
+                                  defaultServerConfig?.authMethod === "bearer"
+                                    ? `${defaultServerConfig.name} API Key`
+                                    : "Bearer token"
+                                }
+                                onClick={() => {
+                                  setAuthMethod("bearer");
+                                  setAuthorization(null);
+                                  setIsOAuthFormValid(true);
+                                }}
+                              />
+                            )}
+                            {!defaultServerConfig && (
+                              <DropdownMenuRadioItem
+                                value="oauth-static"
+                                label="Static OAuth"
+                                onClick={() => {
+                                  setAuthMethod("oauth-static");
+                                  setAuthorization({
+                                    provider: "mcp_static",
+                                    supported_use_cases: [
+                                      "platform_actions",
+                                      "personal_actions",
+                                    ],
+                                  });
+                                  setIsOAuthFormValid(false);
+                                }}
+                              />
+                            )}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
+                    {(authMethod === "oauth-dynamic" ||
+                      defaultServerConfig?.authMethod === "oauth-dynamic") && (
+                      <div className="text-xs text-muted-foreground">
+                        Dust will automatically discover if OAuth authentication
+                        is required. If OAuth is not needed, the server will be
+                        accessed without authentication. Otherwise, Dust will
+                        try to use dynamic client registration to get the OAuth
+                        credentials.
+                      </div>
+                    )}
                     {(authMethod === "bearer" ||
                       defaultServerConfig?.authMethod === "bearer") && (
                       <div className="flex-grow">
@@ -418,56 +451,14 @@ export function CreateMCPServerDialog({
                         />
                       </div>
                     )}
-                  </div>
-                )}
-                {!defaultServerConfig && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="requiresBearerToken">
-                          Use static OAuth credentials
-                        </Label>
-                        <Tooltip
-                          trigger={
-                            <Icon
-                              visual={InformationCircleIcon}
-                              size="xs"
-                              className="text-gray-400"
-                            />
-                          }
-                          label={
-                            <div>
-                              Use static OAuth credentials to authenticate with
-                              the MCP server. The redirect URI to allow is{" "}
-                              <strong>
-                                {window.origin + "/oauth/mcp_static/finalize"}
-                              </strong>
-                            </div>
-                          }
-                        />
+                    {!defaultServerConfig && authMethod === "oauth-static" && (
+                      <div className="text-xs text-muted-foreground">
+                        The redirect URI to allow is{" "}
+                        <strong>
+                          {window.origin + "/oauth/mcp_static/finalize"}
+                        </strong>
                       </div>
-                      <SliderToggle
-                        disabled={false}
-                        selected={authMethod === "oauth-static"}
-                        onClick={() => {
-                          if (authMethod === "oauth-static") {
-                            setAuthMethod(DEFAULT_AUTH_METHOD);
-                            setAuthorization(null);
-                            setIsOAuthFormValid(true);
-                          } else {
-                            setAuthMethod("oauth-static");
-                            setAuthorization({
-                              provider: "mcp_static",
-                              supported_use_cases: [
-                                "platform_actions",
-                                "personal_actions",
-                              ],
-                            });
-                            setIsOAuthFormValid(false);
-                          }
-                        }}
-                      />
-                    </div>
+                    )}
                   </div>
                 )}
               </>

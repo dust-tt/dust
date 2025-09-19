@@ -30,6 +30,7 @@ export function getDefaultConfiguration(
     dustAppConfiguration: null,
     jsonSchema: null,
     _jsonSchemaString: null,
+    secretName: null,
   };
 
   if (!toolsConfigurations) {

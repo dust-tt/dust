@@ -122,7 +122,7 @@ const JsonSchemaCodec = new t.Type<JSONSchema7, unknown, unknown>(
     const validation = validateJsonSchema(JSON.stringify(u));
     return validation.isValid
       ? t.success(u as JSONSchema7)
-      : t.failure(u, c, validation.error || "Invalid JSON schema");
+      : t.failure(u, c, validation.error ?? "Invalid JSON schema");
   },
   t.identity
 );
@@ -149,6 +149,7 @@ const MCPServerActionConfigurationSchema = t.type({
     t.union([t.boolean, t.number, t.string, t.array(t.string), t.null])
   ),
   dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
+  secretName: t.union([t.string, t.null]),
 });
 
 const multiActionsCommonFields = {

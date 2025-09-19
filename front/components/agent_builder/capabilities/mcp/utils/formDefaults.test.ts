@@ -35,6 +35,7 @@ describe("getDefaultConfiguration", () => {
         dustAppConfiguration: null,
         jsonSchema: null,
         _jsonSchemaString: null,
+        secretName: null,
       });
     });
 
@@ -52,6 +53,7 @@ describe("getDefaultConfiguration", () => {
         dustAppConfiguration: null,
         jsonSchema: null,
         _jsonSchemaString: null,
+        secretName: null,
       });
     });
   });
@@ -85,9 +87,6 @@ describe("getDefaultConfiguration", () => {
 
     it("should use mcpServerView sId as mcpServerViewId", () => {
       mockGetMCPServerToolsConfigurations.mockReturnValue({
-        mayRequireDataSourceConfiguration: false,
-        mayRequireDataWarehouseConfiguration: false,
-        mayRequireTableConfiguration: false,
         mayRequireChildAgentConfiguration: false,
         mayRequireReasoningConfiguration: false,
         mayRequireTimeFrameConfiguration: false,
@@ -98,6 +97,7 @@ describe("getDefaultConfiguration", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
+        mayRequireSecretConfiguration: false,
         configurable: "optional",
       });
 
@@ -109,9 +109,6 @@ describe("getDefaultConfiguration", () => {
     describe("boolean configurations", () => {
       it("should set boolean configurations to false by default", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -129,6 +126,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -147,9 +145,6 @@ describe("getDefaultConfiguration", () => {
 
       it("should use explicit boolean defaults when available", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -168,6 +163,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -182,9 +178,6 @@ describe("getDefaultConfiguration", () => {
 
       it("should handle empty boolean configurations", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -195,6 +188,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -207,9 +201,6 @@ describe("getDefaultConfiguration", () => {
     describe("enum configurations", () => {
       it("should set enum configurations to first option", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -244,6 +235,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -260,9 +252,6 @@ describe("getDefaultConfiguration", () => {
 
       it("should skip enum configurations with empty options", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -285,6 +274,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -298,9 +288,6 @@ describe("getDefaultConfiguration", () => {
 
       it("should use explicit enum defaults when available", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -329,6 +316,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -344,9 +332,6 @@ describe("getDefaultConfiguration", () => {
     describe("list configurations", () => {
       it("should set list configurations to empty arrays", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -376,6 +361,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -394,9 +380,6 @@ describe("getDefaultConfiguration", () => {
     describe("string configurations", () => {
       it("should set defaults for string configurations when available", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -419,6 +402,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -436,9 +420,6 @@ describe("getDefaultConfiguration", () => {
     describe("number configurations", () => {
       it("should set defaults for number configurations when available", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -453,6 +434,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -470,9 +452,6 @@ describe("getDefaultConfiguration", () => {
     describe("mixed configurations", () => {
       it("should handle all configuration types together", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -503,6 +482,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -522,9 +502,6 @@ describe("getDefaultConfiguration", () => {
     describe("comprehensive default handling", () => {
       it("should handle mixed types with nested paths and explicit defaults", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -589,6 +566,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -632,9 +610,6 @@ describe("getDefaultConfiguration", () => {
     describe("nested path handling", () => {
       it("should handle deeply nested configuration paths", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireDataSourceConfiguration: false,
-          mayRequireDataWarehouseConfiguration: false,
-          mayRequireTableConfiguration: false,
           mayRequireChildAgentConfiguration: false,
           mayRequireReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
@@ -660,6 +635,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -736,6 +712,7 @@ describe("getDefaultConfiguration", () => {
         dustAppConfiguration: null,
         jsonSchema: null,
         _jsonSchemaString: null,
+        secretName: null,
       });
     });
   });
@@ -773,9 +750,6 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
       };
 
       mockGetMCPServerToolsConfigurations.mockReturnValue({
-        mayRequireDataSourceConfiguration: false,
-        mayRequireDataWarehouseConfiguration: false,
-        mayRequireTableConfiguration: false,
         mayRequireChildAgentConfiguration: false,
         mayRequireReasoningConfiguration: false,
         mayRequireTimeFrameConfiguration: false,
@@ -800,6 +774,7 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
+        mayRequireSecretConfiguration: false,
         configurable: "optional",
       });
 
