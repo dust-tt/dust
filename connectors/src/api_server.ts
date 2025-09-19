@@ -24,6 +24,7 @@ import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { unpauseConnectorAPIHandler } from "@connectors/api/unpause_connector";
 import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
+import { webhookDiscordAppHandler } from "@connectors/api/webhooks/webhook_discord_app";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import {
   webhookIntercomAPIHandler,
@@ -167,6 +168,11 @@ export function startServer(port: number) {
     "/webhooks/:webhooks_secret/firecrawl",
     bodyParser.raw({ type: "application/json" }),
     webhookFirecrawlAPIHandler
+  );
+  app.post(
+    "/webhooks/:webhooks_secret/discord/app",
+    bodyParser.raw({ type: "application/json" }),
+    webhookDiscordAppHandler
   );
 
   // /configuration/ is the new configration method, replacing the old /config/ method
