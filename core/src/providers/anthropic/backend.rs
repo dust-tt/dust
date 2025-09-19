@@ -170,6 +170,7 @@ impl AnthropicBackend for VertexAnthropicBackend {
             Some(location) => location.clone(),
             None => tokio::task::spawn_blocking(|| std::env::var("GOOGLE_CLOUD_LOCATION"))
                 .await?
+                // Default region our credits are allocated on.
                 .unwrap_or_else(|_| "us-south1".to_string()),
         };
 
