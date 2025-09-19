@@ -139,7 +139,11 @@ const configurableProperties = {
       value: z.string(),
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
     })
-    .describe("Indicate the choices the agent can select from"),
+    .describe("Indicate the choices the agent can select from")
+    .default({
+      value: "run-agent",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+    }),
   childAgent:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
 };
