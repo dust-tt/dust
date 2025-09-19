@@ -207,7 +207,7 @@ export function ShareContentCreationFilePopover({
                   icon={InformationCircleIcon}
                 >
                   {isSharingForbidden
-                    ? "Your workspace administrator has turned off sharing of Content Creation files with the public."
+                    ? "Your workspace administrator has turned off public sharing of Content Creation files."
                     : "This Content Creation relies on conversation files. The sharing to public option is " +
                       "disabled to protect company information."}
                 </ContentMessage>
