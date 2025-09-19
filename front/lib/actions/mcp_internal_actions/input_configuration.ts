@@ -3,7 +3,6 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import zip from "lodash/zip";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -25,7 +24,7 @@ import {
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, isString } from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
   const { workspaceId, sId, dataSourceViewId, filter } = config;
@@ -261,9 +260,7 @@ function generateConfiguredInput({
           ) {
             if (
               Array.isArray(propSchema.default.values) &&
-              propSchema.default.values.every(
-                (v): v is string => typeof v === "string"
-              )
+              propSchema.default.values.every(isString)
             ) {
               values = propSchema.default.values;
             } else {
@@ -537,12 +534,16 @@ export interface MCPServerToolsConfigurations {
   }[];
   enumConfigurations: Record<
     string,
-    { options: string[]; description?: string; default?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+      default?: string;
+    }
   >;
   listConfigurations: Record<
     string,
     {
-      options: Record<string, string>;
+      options: Array<{ value: string; label: string; description?: string }>;
       description?: string;
       values?: string[];
       default?: string;
@@ -748,10 +749,7 @@ export function getMCPServerToolsConfigurations(
   ).map(([key, schema]) => ({
     key,
     description: schema.description,
-    default: extractSchemaDefault(
-      schema,
-      (v: unknown): v is string => typeof v === "string"
-    ),
+    default: extractSchemaDefault(schema, isString),
   }));
 
   const numberConfigurations = Object.entries(
@@ -784,7 +782,11 @@ export function getMCPServerToolsConfigurations(
 
   const enumConfigurations: Record<
     string,
-    { options: string[]; description?: string; default?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+      default?: string;
+    }
   > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
@@ -792,24 +794,49 @@ export function getMCPServerToolsConfigurations(
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
       })
     ).map(([key, schema]) => {
-      const valueProperty = schema.properties?.value;
-      if (!valueProperty || !isJSONSchemaObject(valueProperty)) {
+      const optionsProperty = schema.properties?.options;
+      if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
         return [key, { options: [], description: schema.description }];
       }
 
-      const defaultValue = extractSchemaDefault(
-        schema,
-        (v: unknown): v is string => typeof v === "string"
-      );
+      const defaultValue = extractSchemaDefault(schema, isString);
+
+      const options = Array.isArray(optionsProperty.anyOf)
+        ? (optionsProperty.anyOf
+            .map((v) => {
+              if (
+                isJSONSchemaObject(v) &&
+                isJSONSchemaObject(v.properties?.value) &&
+                isJSONSchemaObject(v.properties?.label) &&
+                v.properties.value.const &&
+                v.properties.label.const
+              ) {
+                return {
+                  value: v.properties.value.const,
+                  label: v.properties.label.const,
+                  description:
+                    typeof v.description === "string"
+                      ? v.description
+                      : undefined,
+                };
+              }
+              return null;
+            })
+            .filter((v) => v !== null) as Array<{
+            value: string;
+            label: string;
+            description?: string;
+          }>)
+        : [];
+
+      if (options.length === 0) {
+        throw new Error(`No valid enum options found for key ${key}`);
+      }
 
       return [
         key,
         {
-          options: Array.isArray(valueProperty.enum)
-            ? valueProperty.enum.filter(
-                (v): v is string => typeof v === "string"
-              )
-            : [],
+          options,
           description: schema.description,
           default: defaultValue,
         },
@@ -820,7 +847,7 @@ export function getMCPServerToolsConfigurations(
   const listConfigurations: Record<
     string,
     {
-      options: Record<string, string>;
+      options: Array<{ value: string; label: string; description?: string }>;
       description?: string;
       values?: string[];
       default?: string;
@@ -835,44 +862,44 @@ export function getMCPServerToolsConfigurations(
       const optionsProperty = schema.properties?.options;
 
       if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
-        return [key, { options: {}, description: schema.description }];
+        return [key, { options: [], description: schema.description }];
       }
 
-      const values =
-        optionsProperty.anyOf?.map(
-          (v) =>
-            isJSONSchemaObject(v) &&
-            isJSONSchemaObject(v.properties?.value) &&
-            v.properties.value.const
-        ) ?? [];
-      const labels =
-        optionsProperty.anyOf?.map(
-          (v) =>
-            isJSONSchemaObject(v) &&
-            isJSONSchemaObject(v.properties?.label) &&
-            v.properties.label.const
-        ) ?? [];
+      const options =
+        (optionsProperty.anyOf
+          ?.map((v) => {
+            if (
+              isJSONSchemaObject(v) &&
+              isJSONSchemaObject(v.properties?.value) &&
+              isJSONSchemaObject(v.properties?.label) &&
+              v.properties.value.const &&
+              v.properties.label.const
+            ) {
+              return {
+                value: v.properties.value.const,
+                label: v.properties.label.const,
+                description:
+                  typeof v.description === "string" ? v.description : undefined,
+              };
+            }
+            return null;
+          })
+          .filter((v) => v !== null) as Array<{
+          value: string;
+          label: string;
+          description?: string;
+        }>) ?? [];
 
-      if (values.length !== labels.length) {
-        throw new Error(
-          `Expected the same number of values and labels for key ${key}, got ${values.length} values and ${labels.length} labels`
-        );
+      if (options.length === 0) {
+        throw new Error(`No valid list options found for key ${key}`);
       }
 
-      // Create a record of values to labels
-      const valueToLabel: Record<string, string> = Object.fromEntries(
-        zip(labels, values).map(([label, value]) => [value, label])
-      );
-
-      const defaultValue = extractSchemaDefault(
-        schema,
-        (v: unknown): v is string => typeof v === "string"
-      );
+      const defaultValue = extractSchemaDefault(schema, isString);
 
       return [
         key,
         {
-          options: valueToLabel,
+          options,
           description: schema.description,
           default: defaultValue,
         },
@@ -945,9 +972,10 @@ function isSchemaConfigurable(
   mimeType: InternalToolInputMimeType
 ): boolean {
   if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
-    // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
+    // We check that the schema has an `options` property, a `value` property and a `mimeType` property with the correct value.
     const mimeTypeProperty = schema.properties?.mimeType;
     if (
+      schema.properties?.options &&
       schema.properties?.value &&
       mimeTypeProperty &&
       isJSONSchemaObject(mimeTypeProperty)
