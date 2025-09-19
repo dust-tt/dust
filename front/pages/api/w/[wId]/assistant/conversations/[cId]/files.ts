@@ -10,7 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetConversationFilesResponseBody = {
-  files: Array<ActionGeneratedFileType>;
+  files: ActionGeneratedFileType[];
 };
 
 async function handler(

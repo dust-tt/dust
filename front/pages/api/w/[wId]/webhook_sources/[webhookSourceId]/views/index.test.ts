@@ -63,7 +63,7 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
     }
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: webhookSource.id,
+      webhookSourceId: webhookSource.sId(),
     });
 
     await handler(req, res);

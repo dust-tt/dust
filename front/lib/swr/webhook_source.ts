@@ -11,6 +11,7 @@ import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type {
   PostWebhookSourcesBody,
   WebhookSourceType,
+  WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
 
 export function useWebhookSourceViews({
@@ -258,4 +259,126 @@ export function useWebhookSourceViewsByWebhookSource({
     isWebhookSourceViewsError: error,
     mutateWebhookSourceViews: mutate,
   };
+}
+
+export function useAddWebhookSourceViewToSpace({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    owner,
+    disabled: true,
+  });
+
+  const createView = useCallback(
+    async ({
+      space,
+      webhookSource,
+    }: {
+      space: SpaceType;
+      webhookSource: WebhookSourceType;
+    }): Promise<void> => {
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ webhookSourceId: webhookSource.sId }),
+          }
+        );
+
+        if (!response.ok) {
+          const body = await response.json();
+          throw new Error(body.error?.message ?? "Unknown error");
+        }
+
+        sendNotification({
+          type: "success",
+          title: `Webhook source added to space ${space.name}`,
+          description: `${webhookSource.name} has been added to the ${space.name} space successfully.`,
+        });
+
+        await mutateWebhookSourcesWithViews();
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: `Failed to add webhook source to space ${space.name}`,
+          description: `Could not add ${webhookSource.name} to the ${space.name} space. Please try again.`,
+        });
+      }
+    },
+    [sendNotification, owner.sId, mutateWebhookSourcesWithViews]
+  );
+
+  return { addToSpace: createView };
+}
+
+export function useRemoveWebhookSourceViewFromSpace({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    owner,
+    disabled: true,
+  });
+
+  const deleteView = useCallback(
+    async ({
+      webhookSourceView,
+      space,
+    }: {
+      webhookSourceView: WebhookSourceViewType;
+      space: SpaceType;
+    }): Promise<void> => {
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views/${webhookSourceView.sId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title:
+              space.kind === "system"
+                ? "Webhook source removed from workspace"
+                : "Webhook source removed from space",
+            description: `${webhookSourceView.webhookSource.name} has been removed from the ${space.name} space successfully.`,
+          });
+
+          await mutateWebhookSourcesWithViews();
+        } else {
+          const res = await response.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to remove webhook source",
+            description:
+              res.error?.message ||
+              `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
+          });
+        }
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to remove webhook source",
+          description: `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
+        });
+      }
+    },
+    [sendNotification, owner.sId, mutateWebhookSourcesWithViews]
+  );
+
+  return { removeFromSpace: deleteView };
 }

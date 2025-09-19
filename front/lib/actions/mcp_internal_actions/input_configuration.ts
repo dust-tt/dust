@@ -86,6 +86,7 @@ function generateConfiguredInput({
       );
       if (propSchema) {
         // Handle both object-level default {value, mimeType}
+        // Handle both object-level default {value, mimeType}
         if (
           propSchema.default &&
           typeof propSchema.default === "object" &&
@@ -252,6 +253,7 @@ function generateConfiguredInput({
           keyPath.split(".")
         );
         if (propSchema) {
+          // Handle both object-level default {values, mimeType}
           // Handle both object-level default {values, mimeType}
           if (
             propSchema.default &&
@@ -666,8 +668,7 @@ export function getMCPServerToolsConfigurations(
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
     })
-  )
-    .map((schema) => ({
+  ).map((schema) => ({
       description: schema.description,
       default: extractSchemaDefaultArray(
         schema,
@@ -676,14 +677,14 @@ export function getMCPServerToolsConfigurations(
       ),
     }))
     .at(0);
+  
 
   const dataWarehouseConfiguration = Object.values(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
     })
-  )
-    .map((schema) => ({
+  ).map((schema) => ({
       description: schema.description,
       default: extractSchemaDefaultArray(
         schema,
