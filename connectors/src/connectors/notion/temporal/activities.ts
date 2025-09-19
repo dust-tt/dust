@@ -2591,7 +2591,6 @@ async function renderPageSection({
           elapsedTime,
           blockId: b.notionBlockId,
           blockType: b.blockType,
-          blockText: b.blockText,
           depth,
           indent,
         },
