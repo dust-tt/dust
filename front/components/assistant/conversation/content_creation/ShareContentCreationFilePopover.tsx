@@ -35,6 +35,7 @@ interface FileSharingDropdownProps {
   disabled?: boolean;
   isLoading?: boolean;
   isUsingConversationFiles: boolean;
+  isSharingForbidden: boolean;
 }
 
 function FileSharingDropdown({
@@ -43,6 +44,7 @@ function FileSharingDropdown({
   owner,
   disabled = false,
   isUsingConversationFiles,
+  isSharingForbidden,
 }: FileSharingDropdownProps) {
   const scopeOptions: {
     icon: React.ComponentType;
@@ -100,7 +102,10 @@ function FileSharingDropdown({
               onClick={() => onScopeChange(option.value)}
               truncateText
               icon={option.icon}
-              disabled={option.value === "public" && isUsingConversationFiles}
+              disabled={
+                option.value === "public" &&
+                (isSharingForbidden || isUsingConversationFiles)
+              }
             />
           ))}
         </DropdownMenuContent>
@@ -202,7 +207,7 @@ export function ShareContentCreationFilePopover({
                   icon={InformationCircleIcon}
                 >
                   {isSharingForbidden
-                    ? "Your workspace administrator has turned off sharing of Content Creation files."
+                    ? "Your workspace administrator has turned off sharing of Content Creation files with the public."
                     : "This Content Creation relies on conversation files. The sharing to public option is " +
                       "disabled to protect company information."}
                 </ContentMessage>
@@ -214,8 +219,9 @@ export function ShareContentCreationFilePopover({
                   selectedScope={selectedScope}
                   onScopeChange={handleScopeChange}
                   owner={owner}
+                  disabled={isUpdatingShare}
                   isUsingConversationFiles={isUsingConversationFiles}
-                  disabled={isSharingForbidden || isUpdatingShare}
+                  isSharingForbidden={isSharingForbidden}
                   isLoading={isUpdatingShare}
                 />
 
