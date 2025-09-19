@@ -571,21 +571,38 @@ export async function processAndStoreFile(
     });
   }
 
+  // Optimization: for CSV/TSV (delimited text) used for table upserts, write the upload
+  // directly to the `processed` version and skip the original->processed copy. The
+  // `/tables/csv` flow only reads from the `processed` object, so there’s no need to
+  // create `original` synchronously which can add significant time for large files.
+  const directToProcessed =
+    file.useCase === "upsert_table" &&
+    isSupportedDelimitedTextContentType(file.contentType);
+
   if (content.type === "string") {
     await pipeline(
       Readable.from(content.value),
-      file.getWriteStream({ auth, version: "original" })
+      file.getWriteStream({
+        auth,
+        version: directToProcessed ? "processed" : "original",
+      })
     );
   } else if (content.type === "readable") {
     await pipeline(
       content.value,
-      file.getWriteStream({ auth, version: "original" })
+      file.getWriteStream({
+        auth,
+        version: directToProcessed ? "processed" : "original",
+      })
     );
   } else {
     const r = await parseUploadRequest(
       file,
       content.value,
-      file.getWriteStream({ auth, version: "original" })
+      file.getWriteStream({
+        auth,
+        version: directToProcessed ? "processed" : "original",
+      })
     );
     if (r.isErr()) {
       await file.markAsFailed();
@@ -593,7 +610,10 @@ export async function processAndStoreFile(
     }
   }
 
-  const processingRes = await maybeApplyProcessing(auth, file);
+  // Skip processing in the direct-to-processed optimization case.
+  const processingRes = directToProcessed
+    ? new Ok(undefined)
+    : await maybeApplyProcessing(auth, file);
   if (processingRes.isErr()) {
     await file.markAsFailed();
     // Unfortunately, there is no better way to catch this image format error.
