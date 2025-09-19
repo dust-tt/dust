@@ -417,8 +417,12 @@ export function CreateMCPServerDialog({
                     </div>
                     {(authMethod === "oauth-dynamic" ||
                       defaultServerConfig?.authMethod === "oauth-dynamic") && (
-                    <div className="text-xs text-muted-foreground">
-                        Dust will automatically discover if OAuth authentication is required. If OAuth is not needed, the server will be accessed without authentication. Otherwise, Dust will try to use dynamic client registration to get the OAuth credentials.
+                      <div className="text-xs text-muted-foreground">
+                        Dust will automatically discover if OAuth authentication
+                        is required. If OAuth is not needed, the server will be
+                        accessed without authentication. Otherwise, Dust will
+                        try to use dynamic client registration to get the OAuth
+                        credentials.
                       </div>
                     )}
                     {(authMethod === "bearer" ||
@@ -445,7 +449,8 @@ export function CreateMCPServerDialog({
                     )}
                     {!defaultServerConfig && authMethod === "oauth-static" && (
                       <div className="text-xs text-muted-foreground">
-                        The redirect URI to allow is <strong>
+                        The redirect URI to allow is{" "}
+                        <strong>
                           {window.origin + "/oauth/mcp_static/finalize"}
                         </strong>
                       </div>
