@@ -140,6 +140,7 @@ pub mod oauth {
 
     pub mod providers {
         pub mod confluence;
+        pub mod confluence_tools;
         pub mod freshservice;
         pub mod github;
         pub mod gmail;
