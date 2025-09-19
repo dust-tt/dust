@@ -1,5 +1,6 @@
 import assert from "assert";
 
+import { clearOrganizationCache } from "@connectors/connectors/zendesk/lib/in_memory_cache";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
   deleteTicket,
@@ -359,5 +360,9 @@ export async function syncZendeskTicketUpdateBatchActivity({
     },
     { concurrency: 10 }
   );
+
+  if (!hasMore) {
+    clearOrganizationCache({ brandSubdomain });
+  }
   return { hasMore, nextLink };
 }
