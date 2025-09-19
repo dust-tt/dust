@@ -312,6 +312,7 @@ ${query}`
             toolsetsToAdd: toolsetsToAdd ?? null,
             fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
             conversationId: conversationId ?? null,
+            contentFragments: null,
           }
         );
 

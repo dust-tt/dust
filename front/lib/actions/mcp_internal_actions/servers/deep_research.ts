@@ -2,7 +2,10 @@ import { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
+import {
+  createContentFragmentsFromDataSources,
+  getOrCreateConversation,
+} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
 import {
   makeInternalMCPServer,
   makeMCPToolExit,
@@ -58,6 +61,18 @@ const createServer = (
         const instructions = agentConfiguration.instructions;
         const query = `You have been summoned by @${agentConfiguration.name}. Its instructions are: <main_agent_instructions>${instructions ?? ""}</main_agent_instructions>`;
 
+        // Create content fragments for configured data sources
+        const contentFragmentsRes = await createContentFragmentsFromDataSources(
+          auth,
+          agentConfiguration
+        );
+
+        if (contentFragmentsRes.isErr()) {
+          return new Err(new MCPError(contentFragmentsRes.error.message));
+        }
+
+        const contentFragments = contentFragmentsRes.value;
+
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
             name: DUST_DEEP_NAME,
@@ -70,6 +85,7 @@ const createServer = (
           toolsetsToAdd: null,
           fileOrContentFragmentIds: null,
           conversationId: conversation.sId,
+          contentFragments,
         });
 
         if (convRes.isErr()) {
