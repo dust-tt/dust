@@ -33,6 +33,7 @@ import type {
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
+  ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
@@ -194,6 +195,7 @@ function makeServerSideMCPToolConfigurations(
     originalName: tool.name,
     mcpServerName: config.name,
     dustAppConfiguration: config.dustAppConfiguration,
+    secretName: config.secretName,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
   }));
 }
@@ -243,20 +245,11 @@ function generateContentMetadata(content: CallToolResult["content"]): {
   return result;
 }
 
-type MCPCallToolEvent =
-  | {
-      type: "notification";
-      notification: MCPProgressNotificationType;
-    }
-  | {
-      type: "result";
-      result: Result<CallToolResult["content"], Error | McpError>;
-    };
-
 /**
  * Try to call an MCP tool.
  *
  * May fail when connecting to remote/client-side servers.
+ * In case of an error, the error content is bubbled up to expose it to the model.
  */
 export async function* tryCallMCPTool(
   auth: Authenticator,
@@ -264,23 +257,23 @@ export async function* tryCallMCPTool(
   agentLoopRunContext: AgentLoopRunContextType,
   {
     progressToken,
+    makeToolNotificationEvent,
   }: {
     progressToken: ModelId;
+    makeToolNotificationEvent: (
+      notification: MCPProgressNotificationType
+    ) => Promise<ToolNotificationEvent>;
   }
-): AsyncGenerator<MCPCallToolEvent, void> {
+): AsyncGenerator<
+  ToolNotificationEvent,
+  Result<CallToolResult["content"], Error | McpError>
+> {
   const { toolConfiguration } = agentLoopRunContext;
 
   if (!isMCPToolConfiguration(toolConfiguration)) {
-    yield {
-      type: "result",
-      result: new Err(
-        new Error(
-          "Invalid action configuration: not an MCP action configuration"
-        )
-      ),
-    };
-
-    return;
+    return new Err(
+      new Error("Invalid action configuration: not an MCP action configuration")
+    );
   }
 
   const conversationId = agentLoopRunContext.conversation.sId;
@@ -295,40 +288,31 @@ export async function* tryCallMCPTool(
     }
   );
   if (connectionParamsRes.isErr()) {
-    yield {
-      type: "result",
-      result: connectionParamsRes,
-    };
-    return;
+    return connectionParamsRes;
   }
 
   let mcpClient;
   try {
-    const r = await connectToMCPServer(auth, {
+    const connectionResult = await connectToMCPServer(auth, {
       params: connectionParamsRes.value,
       agentLoopContext: { runContext: agentLoopRunContext },
     });
-    if (r.isErr()) {
-      if (r.error instanceof MCPServerPersonalAuthenticationRequiredError) {
-        yield {
-          type: "result",
-          result: new Ok(
-            makePersonalAuthenticationError(
-              r.error.provider,
-              r.error.scope
-            ).content
-          ),
-        };
-        return;
+    if (connectionResult.isErr()) {
+      if (
+        connectionResult.error instanceof
+        MCPServerPersonalAuthenticationRequiredError
+      ) {
+        return new Ok(
+          makePersonalAuthenticationError(
+            connectionResult.error.provider,
+            connectionResult.error.scope
+          ).content
+        );
       }
 
-      yield {
-        type: "result",
-        result: r,
-      };
-      return;
+      return connectionResult;
     }
-    mcpClient = r.value;
+    mcpClient = connectionResult.value;
 
     const emitter = new EventEmitter();
 
@@ -386,10 +370,7 @@ export async function* tryCallMCPTool(
           break;
         }
 
-        yield {
-          type: "notification",
-          notification: iteratorResult.value,
-        };
+        yield makeToolNotificationEvent(iteratorResult.value);
       }
     }
 
@@ -405,14 +386,11 @@ export async function* tryCallMCPTool(
       []) as CallToolResult["content"];
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
-      yield {
-        type: "result",
-        result: new Err(
-          new Error(
-            `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
-          )
-        ),
-      };
+      return new Err(
+        new Error(
+          `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
+        )
+      );
     }
 
     let serverType;
@@ -434,17 +412,11 @@ export async function* tryCallMCPTool(
           "information on MCP tool result"
         );
 
-        yield {
-          type: "result",
-          result: new Err(new Error(`MCP tool result content size too large.`)),
-        };
+        return new Err(new Error("MCP tool result content size too large."));
       }
     }
 
-    yield {
-      type: "result",
-      result: new Ok(content),
-    };
+    return new Ok(content);
   } catch (error) {
     logger.error(
       {
@@ -457,10 +429,7 @@ export async function* tryCallMCPTool(
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
-    yield {
-      type: "result",
-      result: new Err(normalizeError(error)),
-    };
+    return new Err(normalizeError(error));
   } finally {
     await mcpClient?.close();
   }

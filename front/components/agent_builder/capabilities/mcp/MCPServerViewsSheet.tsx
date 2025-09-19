@@ -53,7 +53,9 @@ import { AdditionalConfigurationSection } from "@app/components/agent_builder/ca
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
+import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
+import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -75,7 +77,7 @@ import {
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
-import { O4_MINI_MODEL_ID } from "@app/types";
+import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 export type SelectedTool =
   | {
@@ -84,8 +86,6 @@ export type SelectedTool =
       configuredAction?: AgentBuilderAction;
     }
   | { type: "DATA_VISUALIZATION" };
-
-const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 export type SheetMode =
   | { type: "add" }
@@ -600,8 +600,15 @@ export function MCPServerViewsSheet({
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
-                  allowNameEdit={configurationTool.configurable}
                 />
+
+                {configurationTool.configurable && (
+                  <NameSection
+                    title="Name"
+                    placeholder="My tool name…"
+                    triggerValidationOnChange
+                  />
+                )}
 
                 {toolsConfigurations.mayRequireReasoningConfiguration && (
                   <ReasoningModelSection />
@@ -617,6 +624,10 @@ export function MCPServerViewsSheet({
 
                 {toolsConfigurations.mayRequireDustAppConfiguration && (
                   <DustAppSection />
+                )}
+
+                {toolsConfigurations.mayRequireSecretConfiguration && (
+                  <SecretSection />
                 )}
 
                 {toolsConfigurations.mayRequireJsonSchemaConfiguration && (

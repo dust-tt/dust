@@ -1,0 +1,28 @@
+# This is a configuration file for the bacon tool
+#
+# Complete help on configuration: https://dystroy.org/bacon/config/
+#
+# You may check the current default at
+#   https://github.com/Canop/bacon/blob/main/defaults/default-bacon.toml
+
+default_job = "core-api"
+env.CARGO_TERM_COLOR = "always"
+
+[jobs.test]
+command = ["cargo", "test", "--all"]
+need_stdout = true
+
+[jobs.core-api]
+command = ["cargo", "run", "--bin", "core-api"]
+need_stdout = true
+allow_warnings = true
+
+[jobs.oauth]
+command = ["cargo", "run", "--bin", "oauth"]
+need_stdout = true
+allow_warnings = true
+
+[jobs.sqlite-worker]
+command = ["cargo", "run", "--bin", "sqlite-worker"]
+need_stdout = true
+allow_warnings = true

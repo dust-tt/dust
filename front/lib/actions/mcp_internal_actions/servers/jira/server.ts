@@ -895,7 +895,7 @@ const createServer = (
                 mimeType: uploadedAttachment.mimeType,
                 created: uploadedAttachment.created,
                 author:
-                  uploadedAttachment.author.displayName ||
+                  uploadedAttachment.author.displayName ??
                   uploadedAttachment.author.accountId,
               },
             },
@@ -932,7 +932,7 @@ const createServer = (
             size: att.size,
             mimeType: att.mimeType,
             created: att.created,
-            author: att.author?.displayName || att.author?.accountId,
+            author: att.author?.displayName ?? att.author?.accountId,
             content: att.content,
             thumbnail: att.thumbnail,
           }));

@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import type {
   MCPApproveExecutionEvent,
   MCPToolConfigurationType,
@@ -12,8 +14,8 @@ import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type {
   AgentActionsEvent,
   AgentConfigurationType,
@@ -54,9 +56,10 @@ export async function createToolActionsActivity(
     runAgentData;
 
   const actionBlobs: ActionBlob[] = [];
-  const approvalEvents: Array<
-    Omit<MCPApproveExecutionEvent, "isLastBlockingEventForStep">
-  > = [];
+  const approvalEvents: Omit<
+    MCPApproveExecutionEvent,
+    "isLastBlockingEventForStep"
+  >[] = [];
 
   for (const [
     index,
@@ -137,17 +140,21 @@ async function createActionForTool(
     agentMessage
   );
 
-  const actionBaseParams = await buildActionBaseParams({
-    agentMessageId: agentMessage.agentMessageId,
-    citationsAllocated: stepContext.citationsCount,
-    mcpServerId: actionConfiguration.toolServerId,
-    mcpServerConfigurationId: actionConfiguration.id.toString(),
-    step,
-    stepContentId,
-    status,
-  });
+  const stepContent =
+    await AgentStepContentResource.fetchByModelId(stepContentId);
+  assert(
+    stepContent,
+    `Step content not found for stepContentId: ${stepContentId}`
+  );
 
-  const validateToolInputsResult = validateToolInputs(actionBaseParams.params);
+  assert(
+    stepContent.isFunctionCallContent(),
+    `Expected step content to be a function call, got: ${stepContent.value.type}`
+  );
+
+  const rawInputs = JSON.parse(stepContent.value.value.arguments);
+
+  const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
     return updateResourceAndPublishEvent(auth, {
       event: {
@@ -174,14 +181,15 @@ async function createActionForTool(
   // Compute augmented inputs with preconfigured data sources, etc.
   const augmentedInputs = getAugmentedInputs(auth, {
     actionConfiguration,
-    rawInputs: actionBaseParams.params,
+    rawInputs,
   });
 
   // Create the action object in the database and yield an event for the generation of the params.
   // We store the action here as the params have been generated, if an error occurs later on,
   // the error will be stored on the parent agent message.
   const action = await createMCPAction(auth, {
-    actionBaseParams,
+    agentMessage,
+    status,
     actionConfiguration,
     augmentedInputs,
     stepContentId,

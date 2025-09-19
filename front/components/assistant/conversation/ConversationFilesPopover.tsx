@@ -8,6 +8,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   ScrollArea,
+  Spinner,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -171,13 +172,15 @@ export function ConversationFilesPopover({
   owner,
 }: ConversationFilesPopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [shouldDisableConversationFiles, setShouldDisableConversationFiles] =
+    React.useState(true);
 
   const { conversationFiles, isConversationFilesLoading } =
     useConversationFiles({
       conversationId,
       owner,
       options: {
-        disabled: !isOpen,
+        disabled: shouldDisableConversationFiles,
       },
     });
 
@@ -192,20 +195,18 @@ export function ConversationFilesPopover({
     setIsOpen(false);
   };
 
-  if (isConversationFilesLoading && isOpen) {
-    return (
-      <Button
-        size="sm"
-        variant="ghost"
-        icon={FolderIcon}
-        tooltip="Loading files..."
-        disabled
-      />
-    );
-  }
-
   return (
-    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+    <PopoverRoot
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        // If we're opening, we enable the hook right away, if we're closing,
+        // we disable it after the animation is done to avoid flickering.
+        if (open) {
+          setShouldDisableConversationFiles(false);
+        }
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           size="sm"
@@ -218,13 +219,22 @@ export function ConversationFilesPopover({
         className="flex w-96 flex-col gap-3"
         align="end"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onAnimationEnd={() => {
+          if (!isOpen) {
+            setShouldDisableConversationFiles(true);
+          }
+        }}
       >
         <ScrollArea className="flex flex-col gap-3">
           <div className="heading-lg text-primary dark:text-primary-night">
             Generated Content
           </div>
 
-          {!hasFiles ? (
+          {isConversationFilesLoading ? (
+            <div className="flex w-full items-center justify-center p-8">
+              <Spinner />
+            </div>
+          ) : !hasFiles ? (
             <EmptyFilesState />
           ) : (
             <div className="space-y-4">

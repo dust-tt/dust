@@ -6,6 +6,9 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 
 const { runTriggeredAgentsActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
+  retry: {
+    nonRetryableErrorTypes: ["TriggerNonRetryableError"],
+  },
 });
 
 export async function agentTriggerWorkflow(

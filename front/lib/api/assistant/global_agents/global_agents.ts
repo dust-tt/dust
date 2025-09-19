@@ -68,6 +68,7 @@ function getGlobalAgent({
   globalAgentSettings,
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
+  webSearchBrowseWithSummaryMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
   contentCreationMCPServerView,
@@ -84,6 +85,7 @@ function getGlobalAgent({
   globalAgentSettings: GlobalAgentSettings[];
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  webSearchBrowseWithSummaryMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
   contentCreationMCPServerView: MCPServerViewResource | null;
@@ -288,9 +290,7 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_DEEP:
-    case GLOBAL_AGENTS_SID.DUST_DEEP_2:
       agentConfiguration = _getDustDeepGlobalAgent(auth, {
-        sId: sId as GLOBAL_AGENTS_SID.DUST_DEEP | GLOBAL_AGENTS_SID.DUST_DEEP_2,
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
@@ -306,7 +306,7 @@ function getGlobalAgent({
       agentConfiguration = _getDustTaskGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        webSearchBrowseMCPServerView,
+        webSearchBrowseWithSummaryMCPServerView,
         dataSourcesFileSystemMCPServerView,
         dataWarehousesMCPServerView,
       });
@@ -378,7 +378,7 @@ export async function getGlobalAgents(
     helperPromptInstance,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
-    webtoolsEdgeMCPServerView,
+    webSearchBrowseWithSummaryMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
     contentCreationMCPServerView,
@@ -473,11 +473,6 @@ export async function getGlobalAgents(
     );
 
   const flags = await getFeatureFlags(owner);
-  const getWebSearchBrowseViewFor = (sId: string | number) => {
-    const useEdge =
-      sId === GLOBAL_AGENTS_SID.DUST_TASK && webtoolsEdgeMCPServerView;
-    return useEdge ? webtoolsEdgeMCPServerView : webSearchBrowseMCPServerView;
-  };
 
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
@@ -500,14 +495,7 @@ export async function getGlobalAgents(
 
   if (!flags.includes("research_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) =>
-        sId !== GLOBAL_AGENTS_SID.DUST_DEEP &&
-        sId !== GLOBAL_AGENTS_SID.DUST_DEEP_2
-    );
-  }
-  if (!flags.includes("research_agent_2")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP_2
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_DEEP
     );
   }
 
@@ -521,7 +509,8 @@ export async function getGlobalAgents(
       helperPromptInstance,
       globalAgentSettings,
       agentRouterMCPServerView,
-      webSearchBrowseMCPServerView: getWebSearchBrowseViewFor(sId),
+      webSearchBrowseMCPServerView,
+      webSearchBrowseWithSummaryMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
       contentCreationMCPServerView,

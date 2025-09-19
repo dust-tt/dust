@@ -1,66 +1,62 @@
 import { Input } from "@dust-tt/sparkle";
 import { forwardRef } from "react";
-import { useController, useFormContext } from "react-hook-form";
 
-import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
 
 interface NameSectionProps {
-  title: string;
+  title?: string;
   description?: string;
   label?: string;
   placeholder: string;
   helpText?: string;
+  triggerValidationOnChange?: boolean;
 }
 
-const FIELD_NAME = "name";
+export const NAME_FIELD_NAME = "name";
 
 export const NameSection = forwardRef<HTMLInputElement, NameSectionProps>(
-  ({ title, description, label, placeholder, helpText }, ref) => {
-    const { register } = useFormContext();
-    const { fieldState } = useController<CapabilityFormData, typeof FIELD_NAME>(
-      {
-        name: FIELD_NAME,
-      }
-    );
-
-    const { ref: registerRef, ...registerProps } = register(FIELD_NAME);
-
+  (
+    {
+      title,
+      description,
+      label,
+      placeholder,
+      helpText,
+      triggerValidationOnChange = false,
+    },
+    ref
+  ) => {
     return (
-      <div className="space-y-4">
-        <div>
-          <h3 className="mb-2 text-lg font-semibold">{title}</h3>
-          {description && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {description}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Input
-            ref={(e) => {
-              registerRef(e);
-              if (ref) {
-                if (typeof ref === "function") {
-                  ref(e);
-                } else {
-                  ref.current = e;
+      <BaseFormFieldSection
+        title={title}
+        description={description}
+        helpText={helpText}
+        fieldName={NAME_FIELD_NAME}
+        triggerValidationOnChange={triggerValidationOnChange}
+      >
+        {({ registerRef, registerProps, onChange, errorMessage, hasError }) => {
+          return (
+            <Input
+              ref={(e) => {
+                registerRef(e);
+                if (ref) {
+                  if (typeof ref === "function") {
+                    ref(e);
+                  } else {
+                    ref.current = e;
+                  }
                 }
-              }
-            }}
-            placeholder={placeholder}
-            {...registerProps}
-            label={label}
-            message={fieldState.error?.message}
-            messageStatus={fieldState.error ? "error" : "default"}
-          />
-          {helpText && (
-            <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              {helpText}
-            </p>
-          )}
-        </div>
-      </div>
+              }}
+              placeholder={placeholder}
+              label={label}
+              onChange={onChange}
+              message={errorMessage}
+              messageStatus={hasError ? "error" : "default"}
+              {...registerProps}
+            />
+          );
+        }}
+      </BaseFormFieldSection>
     );
   }
 );

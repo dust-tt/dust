@@ -39,6 +39,10 @@ export type WebhookSourceWithViews = WebhookSourceType & {
   views: WebhookSourceViewType[];
 };
 
+export type WebhookSourceWithSystemView = WebhookSourceWithViews & {
+  systemView: WebhookSourceViewType | null;
+};
+
 export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
 
 export const PostWebhookSourcesSchema = z.object({
@@ -48,4 +52,12 @@ export const PostWebhookSourcesSchema = z.object({
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
   customHeaders: z.record(z.string(), z.string()).nullable(),
   includeGlobal: z.boolean().optional(),
+});
+
+export type PatchWebhookSourceViewBody = z.infer<
+  typeof patchWebhookSourceViewBodySchema
+>;
+
+export const patchWebhookSourceViewBodySchema = z.object({
+  name: z.string().min(1, "Name is required."),
 });

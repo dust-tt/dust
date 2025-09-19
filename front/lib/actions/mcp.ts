@@ -77,6 +77,7 @@ export type ServerSideMCPServerConfigurationType =
     additionalConfiguration: AdditionalConfigurationType;
     mcpServerViewId: string;
     dustAppConfiguration: DustAppRunConfigurationType | null;
+    secretName: string | null;
     // Out of convenience, we hold the sId of the internal server if it is an internal server.
     internalMCPServerId: string | null;
   };
@@ -247,8 +248,6 @@ export type ToolNotificationEvent = {
   action: AgentMCPActionWithOutputType;
   notification: ProgressNotificationContentType;
 };
-
-export type ActionBaseParams = Omit<MCPActionBlob, "id" | "type" | "output">;
 
 export type AgentActionRunningEvents =
   | MCPParamsEvent

@@ -642,7 +642,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
-  | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "hootl_webhooks"
@@ -657,12 +656,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
+  | "openai_usage_mcp"
   | "research_agent"
-  | "research_agent_2"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
   | "slack_semantic_search"
+  | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
@@ -2736,6 +2736,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SlackLogo"
   | "StripeLogo"
+  | "OpenaiLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<
@@ -2743,6 +2744,7 @@ const CustomServerIconSchema = FlexibleEnumSchema<
   | "ActionArrowDownOnSquareIcon"
   | "ActionArrowUpOnSquareIcon"
   | "ActionAttachmentIcon"
+  | "ActionAtomIcon"
   | "ActionBankIcon"
   | "ActionBarcodeIcon"
   | "ActionBeerIcon"

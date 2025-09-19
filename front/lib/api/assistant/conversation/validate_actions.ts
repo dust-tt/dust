@@ -15,7 +15,6 @@ import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
-import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ConversationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
@@ -131,25 +130,11 @@ export async function validateAction(
   if (approvalState === "always_approved") {
     const user = auth.user();
     if (user) {
-      const toolServerId = action.toolConfiguration?.toolServerId;
-      const actionBaseParams = await buildActionBaseParams({
-        agentMessageId: action.agentMessageId,
-        citationsAllocated: action.citationsAllocated,
-        mcpServerConfigurationId: action.mcpServerConfigurationId,
+      await setUserAlwaysApprovedTool({
+        user,
         mcpServerId: action.toolConfiguration.toolServerId,
-        step: agentStepContent.step,
-        stepContentId: action.stepContentId,
-        status: action.status,
+        functionCallName: action.functionCallName,
       });
-      const toolName = actionBaseParams.functionCallName;
-
-      if (toolName) {
-        await setUserAlwaysApprovedTool({
-          user,
-          mcpServerId: toolServerId,
-          toolName,
-        });
-      }
     }
   }
 

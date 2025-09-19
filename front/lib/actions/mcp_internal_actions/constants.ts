@@ -2,7 +2,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  MAX_MCP_REQUEST_TIMEOUT_MS,
+  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -84,6 +84,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "openai_usage",
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
@@ -94,6 +95,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "slack",
+  "slack_bot",
   "think",
   "toolsets",
   "web_search_&_browse",
@@ -613,6 +615,8 @@ The directive should be used to display a clickable version of the agent name in
       delete_worksheet: "low",
       format_cells: "low",
       copy_sheet: "low",
+      rename_worksheet: "low",
+      move_worksheet: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -896,10 +900,8 @@ The directive should be used to display a clickable version of the agent name in
     id: 27,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("google_drive_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       list_drives: "never_ask",
       search_files: "never_ask",
@@ -961,7 +963,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "0.1.0",
       description: "Handoff the query to the deep research agent.",
       authorization: null,
-      icon: "ActionBrainIcon",
+      icon: "ActionAtomIcon",
       documentationUrl: null,
       instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
     },
@@ -983,6 +985,70 @@ The directive should be used to display a clickable version of the agent name in
       authorization: null,
       documentationUrl: null,
       instructions: null,
+    },
+  },
+  slack_bot: {
+    id: 31,
+    availability: "manual" as const,
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slack_bot_mcp");
+    },
+    isPreview: false,
+    tools_stakes: {
+      list_public_channels: "never_ask" as const,
+      list_users: "never_ask" as const,
+      get_user: "never_ask" as const,
+      read_channel_history: "never_ask" as const,
+      read_thread_messages: "never_ask" as const,
+
+      post_message: "low" as const,
+      add_reaction: "low" as const,
+      remove_reaction: "low" as const,
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slack_bot",
+      version: "1.0.0",
+      description:
+        "Slack tools using workspace bot credentials. Messages and actions will appear as coming from the Dust Slack bot rather than your personal account.",
+      authorization: {
+        provider: "slack" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "SlackLogo",
+      documentationUrl: null,
+      instructions:
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+    },
+  },
+  openai_usage: {
+    id: 32,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("openai_usage_mcp");
+    },
+    tools_stakes: {
+      get_completions_usage: "low",
+      get_organization_costs: "low",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "openai_usage",
+      version: "1.0.0",
+      description:
+        "Direct access to OpenAI APIs for tracking API consumption and costs. Requires OpenAI Admin API key configured as a secret.",
+      authorization: null,
+      icon: "OpenaiLogo",
+      documentationUrl: null,
+      instructions: null,
+      requiresSecret: true,
     },
   },
   [SEARCH_SERVER_NAME]: {
@@ -1012,7 +1078,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
+    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",

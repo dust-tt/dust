@@ -131,12 +131,19 @@ export function startServer(port: number) {
 
   app.get("/notion/url/status", getNotionUrlStatusHandler);
 
+  // (legacy) "Dust Data-sync" for indexing and handling calls to the dust bot.
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
+
+  // (legacy) "Dust Data-sync" (legacy) when the user interacts with the dust bot.
   app.post(
     "/webhooks/:webhook_secret/slack_interaction",
     webhookSlackInteractionsAPIHandler
   );
+
+  // "Dust" for handling calls to the dust bot.
   app.post("/webhooks/:webhook_secret/slack_bot", webhookSlackBotAPIHandler);
+
+  // "Dust" when the user interacts with the dust bot.
   app.post(
     "/webhooks/:webhook_secret/slack_bot_interaction",
     webhookSlackBotInteractionsAPIHandler

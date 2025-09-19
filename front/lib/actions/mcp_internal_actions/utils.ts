@@ -10,17 +10,12 @@ import type {
   TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import type {
-  RunAgentBlockingEvent,
-  RunAgentResumeState,
-} from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
@@ -55,27 +50,6 @@ export function makeMCPToolTextError(text: string): {
       {
         type: "text",
         text,
-      },
-    ],
-  };
-}
-
-export function makeToolBlockedAwaitingInputResponse(
-  blockingEvents: RunAgentBlockingEvent[],
-  state: RunAgentResumeState
-): CallToolResult {
-  return {
-    content: [
-      {
-        type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
-          type: "tool_blocked_awaiting_input",
-          text: "Tool requires resume after blocking events",
-          uri: "",
-          blockingEvents,
-          state,
-        },
       },
     ],
   };
@@ -125,13 +99,13 @@ export function makeMCPToolExit({
   };
 }
 
-export const makeMCPToolTextSuccess = ({
+export function makeMCPToolTextSuccess({
   message,
   result,
 }: {
   message: string;
   result?: string;
-}): CallToolResult => {
+}): CallToolResult {
   if (!result) {
     return {
       isError: false,
@@ -145,7 +119,7 @@ export const makeMCPToolTextSuccess = ({
       { type: "text", text: result },
     ],
   };
-};
+}
 
 export const makeMCPToolJSONSuccess = ({
   message,
@@ -163,17 +137,15 @@ export const makeMCPToolJSONSuccess = ({
   };
 };
 
-export const getExitOrPauseEvents = async ({
+export async function getExitOrPauseEvents({
   outputItems,
   action,
-  actionBaseParams,
   agentConfiguration,
   agentMessage,
   conversation,
 }: {
   outputItems: AgentMCPActionOutputItem[];
   action: AgentMCPActionResource;
-  actionBaseParams: ActionBaseParams;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   conversation: ConversationType;
@@ -183,7 +155,7 @@ export const getExitOrPauseEvents = async ({
     | ToolPersonalAuthRequiredEvent
     | ToolEarlyExitEvent
   )[]
-> => {
+> {
   const exitOutputItem = outputItems
     .map((item) => item.content)
     .find(isAgentPauseOutputResourceType)?.resource;
@@ -222,7 +194,7 @@ export const getExitOrPauseEvents = async ({
         const { provider, scope } = exitOutputItem;
 
         const authErrorMessage =
-          `The tool ${actionBaseParams.functionCallName} requires personal ` +
+          `The tool ${action.functionCallName} requires personal ` +
           `authentication, please authenticate to use it.`;
 
         // Update the action to mark it as blocked because of a personal authentication error.
@@ -238,7 +210,7 @@ export const getExitOrPauseEvents = async ({
             authError: {
               mcpServerId: action.toolConfiguration.toolServerId,
               provider: provider,
-              toolName: actionBaseParams.functionCallName ?? "unknown",
+              toolName: action.functionCallName ?? "unknown",
               message: authErrorMessage,
               ...(scope && {
                 scope,
@@ -254,4 +226,4 @@ export const getExitOrPauseEvents = async ({
   }
 
   return [];
-};
+}

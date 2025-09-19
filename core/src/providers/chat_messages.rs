@@ -73,6 +73,8 @@ pub struct ReasoningContent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning: Option<String>,
     pub metadata: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub region: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

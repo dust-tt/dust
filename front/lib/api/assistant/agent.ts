@@ -251,6 +251,7 @@ export async function runAgentLoop(
   };
 
   if (runAgentArgsWithTiming.sync && executionMode !== "async") {
+    // TODO(DURABLE_AGENTS): dead code.
     await runAgentSynchronousWithStreaming(authType, runAgentArgsWithTiming, {
       startStep,
       withTimeout: executionMode !== "sync",

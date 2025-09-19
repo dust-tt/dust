@@ -11,6 +11,17 @@ function isValidIANATimezone(timezone: string): boolean {
   return supportedTimezones.includes(timezone);
 }
 
+function isTooFrequentCron(cron: string): boolean {
+  return !cron.split(" ")[0].match(/^\d+$/);
+}
+
+export const GENERIC_ERROR_MESSAGE =
+  "Unable to generate a schedule. Please try rephrasing.";
+export const INVALID_TIMEZONE_MESSAGE =
+  'Unable to generate the schedule, timezone returned by the model don\'t follow the IANA standard (i.e "Europe/Paris"). Please try rephrasing.';
+export const TOO_FREQUENT_MESSAGE =
+  "Unable to generate a schedule: it can't be more frequent than hourly. Please try rephrasing.";
+
 export async function generateCronRule(
   auth: Authenticator,
   {
@@ -89,19 +100,17 @@ export async function generateCronRule(
   if (
     !cronRule ||
     cronRule.split(" ").length !== 5 ||
-    !cronRule.split(" ")[0].match(/^\d+$/) ||
     !cronRule.match(
       /^((((\d+,)+\d+|(\d+(\/|-|#)\d+)|\d+L?|\*(\/\d+)?|L(-\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/
     )
   ) {
-    return new Err(
-      new Error("Error generating cron rule: malformed cron output")
-    );
+    return new Err(new Error(GENERIC_ERROR_MESSAGE));
   }
-
+  if (isTooFrequentCron(cronRule)) {
+    return new Err(new Error(TOO_FREQUENT_MESSAGE));
+  }
   if (!timezone || !isValidIANATimezone(timezone)) {
-    return new Err(new Error("Error generating cron rule: invalid timezone"));
+    return new Err(new Error(INVALID_TIMEZONE_MESSAGE));
   }
-
   return new Ok({ cron: cronRule, timezone });
 }

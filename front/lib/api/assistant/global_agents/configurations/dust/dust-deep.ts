@@ -1,6 +1,6 @@
+import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   DUST_DEEP_DESCRIPTION,
   DUST_DEEP_NAME,
@@ -35,21 +35,27 @@ import {
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
+const dustDeepKnowledgeCutoffPrompt = `Your knowledge cutoff was at least 1 year ago. You have no internal knowledge of anything that happened since then.
+Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
+Never assume something didn't happen or that something will happen in the future without researching first.
+
+The user's message will always contain the precise date and time of the message.
+CRITICAL: make sure to reflect on the current date, time and year before making any assumptions.
+`;
+
 const dustDeepPrimaryGoal = `<primary_goal>
 You are an agent. Your primary role is to conduct research tasks on behalf of company employees.
 As an AI agent, your own context window is limited. Prefer spawning sub-agents when the work is decomposable or requires additional toolsets, typically when tasks involve more than ~3 steps. If a task cannot be reasonably decomposed and requires no additional toolsets, execute it directly.
 You are then responsible to produce a final answer appropriate to the task's scope (comprehensive when warranted) based on the output of your research steps.
 
-Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
-Never assumed something didn't happen or that something will happen in the future without researching first.
+${dustDeepKnowledgeCutoffPrompt}
 </primary_goal>`;
 
 const subAgentPrimaryGoal = `<primary_goal>
 You are an agent. Your primary role is to conduct research tasks.
 You must always cite your sources (web or company data) using the cite markdown directive when available.
 
-Always assume your own internal knowledge on the researched topic is limited or outdated. Major events may have happened since your knowledge cutoff.
-Never assumed something didn't happen or that something will happen in the future without researching first.
+${dustDeepKnowledgeCutoffPrompt}
 </primary_goal>`;
 
 const requestComplexityPrompt = `<request_complexity>
@@ -119,6 +125,9 @@ Web browsing delegation (multiple URLs):
 - Keep prompts compact: include only the URL, objective, and relevance/constraints. Do not enumerate hypothetical topics or keywords.
 - Prefer concise plain text over JSON for extraction results
 
+Quantitative requests:
+  - If the user's request requires finding a specific number, date, percentage, etc., you should consider whether any data warehouses are available and whether they contains relevant data.
+
 Clarifying questions:
 - Ask clarifying questions only when they are truly necessary to proceed or to prevent likely rework (e.g., missing scope, timeframe, audience, definitions, or constraints).
 - Reserve clarifying questions for very complex, deep research tasks. For routine or moderately complex tasks, proceed without asking.
@@ -130,6 +139,8 @@ If you must ask clarifying questions for a very complex task, you may briefly re
 Assumptions:
 - Make reasonable assumptions in your internal reasoning; do not state assumptions in the response or interim messages.
 - Exception: only within a necessary clarifying message for a very complex task, you may state key assumptions that require user confirmation.
+
+For complex requests that require a lot of research, you should default to produce very comprehensive and thorough research reports.
 </complex_request_guidelines>
 
 <sub_agent_guidelines>
@@ -212,6 +223,12 @@ Exception for clarifications (very complex tasks only):
   - Numbered lists only for true sequences or procedures.
   - Tables or code blocks only when they improve clarity; otherwise avoid.
   - NEVER use filler openers ("Here is...", "Summary:"). Write directly.
+
+Do not use the content_creation tool for markdown documents. Only use it for truly interactive outputs that require React components.
+Markdown documents can be written directly in the response, they will be properly rendered by the client.
+
+Heavily bias against using the content_creation tool for what could be written directly as Markdown in the conversation (unless explicitly requested by the user).
+Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
@@ -373,6 +390,7 @@ function getCompanyDataAction(
     timeFrame: null,
     dustAppConfiguration: null,
     jsonSchema: null,
+    secretName: null,
   };
 }
 
@@ -412,13 +430,13 @@ function getCompanyDataWarehousesAction(
     timeFrame: null,
     dustAppConfiguration: null,
     jsonSchema: null,
+    secretName: null,
   };
 }
 
 export function _getDustDeepGlobalAgent(
   auth: Authenticator,
   {
-    sId,
     settings,
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
@@ -429,7 +447,6 @@ export function _getDustDeepGlobalAgent(
     toolsetsMCPServerView,
     slideshowMCPServerView,
   }: {
-    sId: GLOBAL_AGENTS_SID.DUST_DEEP | GLOBAL_AGENTS_SID.DUST_DEEP_2;
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -442,28 +459,19 @@ export function _getDustDeepGlobalAgent(
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
-
-  const name =
-    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2
-      ? DUST_DEEP_NAME + "-2"
-      : DUST_DEEP_NAME;
-
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
-
-  const preferredModel =
-    sId === GLOBAL_AGENTS_SID.DUST_DEEP_2 ? "openai" : "anthropic";
-  const modelConfig = getModelConfig(owner, preferredModel);
+  const modelConfig = getModelConfig(owner, "anthropic");
 
   const deepAgent: Omit<
     AgentConfigurationType,
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
-    sId,
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name,
+    name: DUST_DEEP_NAME,
     description: DUST_DEEP_DESCRIPTION,
     instructions: dustDeepInstructions,
     pictureUrl,
@@ -545,6 +553,7 @@ export function _getDustDeepGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 
@@ -566,6 +575,7 @@ export function _getDustDeepGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
     actions.push({
       id: -1,
@@ -584,6 +594,7 @@ export function _getDustDeepGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 
@@ -605,6 +616,7 @@ export function _getDustDeepGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 
@@ -626,13 +638,13 @@ export function _getDustTaskGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    webSearchBrowseMCPServerView,
+    webSearchBrowseWithSummaryMCPServerView,
     dataSourcesFileSystemMCPServerView,
     dataWarehousesMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    webSearchBrowseMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseWithSummaryMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
   }
@@ -662,7 +674,7 @@ export function _getDustTaskGlobalAgent(
     scope: "global" as const,
     userFavorite: false,
     model: dummyModelConfiguration,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -700,30 +712,28 @@ export function _getDustTaskGlobalAgent(
     actions.push(companyDataAction);
   }
 
-  actions.push(
-    ..._getDefaultWebActionsForGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.DUST_TASK,
-      webSearchBrowseMCPServerView,
-    })
-  );
+  const summaryAgent = _getBrowserSummaryAgent(auth, { settings });
 
-  if (
-    webSearchBrowseMCPServerView?.internalMCPServerId &&
-    getInternalMCPServerNameFromSId(
-      webSearchBrowseMCPServerView.internalMCPServerId
-    ) === "web_search_&_browse_with_summary"
-  ) {
-    const summaryAgent = _getBrowserSummaryAgent(auth, { settings });
-    if (summaryAgent && summaryAgent.status === "active") {
-      for (const a of actions) {
-        if (
-          a.sId === GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-action" &&
-          "mcpServerViewId" in a
-        ) {
-          a.childAgentId = summaryAgent.sId;
-        }
-      }
-    }
+  if (webSearchBrowseWithSummaryMCPServerView && summaryAgent) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-with-summaryaction",
+      type: "mcp_server_configuration",
+      name: "webtools",
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      mcpServerViewId: webSearchBrowseWithSummaryMCPServerView.sId,
+      internalMCPServerId:
+        webSearchBrowseWithSummaryMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: summaryAgent.sId,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    });
   }
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(

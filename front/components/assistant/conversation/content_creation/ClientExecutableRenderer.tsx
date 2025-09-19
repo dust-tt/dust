@@ -95,15 +95,15 @@ function ExportContentDropdown({
 interface ClientExecutableRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
-  fileName?: string;
   owner: LightWorkspaceType;
+  contentHash?: string;
 }
 
 export function ClientExecutableRenderer({
   conversation,
   fileId,
-  fileName,
   owner,
+  contentHash,
 }: ClientExecutableRendererProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
@@ -123,7 +123,9 @@ export function ClientExecutableRenderer({
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
     owner,
+    cacheKey: contentHash,
   });
+
   const { fileMetadata } = useFileMetadata({ fileId, owner });
 
   const isFileUsingConversationFiles = React.useMemo(
@@ -218,12 +220,7 @@ export function ClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <ContentCreationHeader
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        title={fileName || "Client Executable"}
-        subtitle={fileId}
-        onClose={onClosePanel}
-      >
+      <ContentCreationHeader onClose={onClosePanel}>
         <Button
           icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
           variant="ghost"

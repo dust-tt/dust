@@ -28,6 +28,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -119,6 +120,22 @@ export async function pauseAllConnectors({
       continue;
     }
     await connectorsAPI.pauseConnector(ds.connectorId);
+  }
+}
+
+export async function pauseAllTriggers({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const disableResult = await TriggerResource.disableAllForWorkspace(auth);
+  if (disableResult.isErr()) {
+    // Don't fail the whole scrub workflow if we can't disable triggers, just log it.
+    logger.error(
+      { workspaceId, error: disableResult.error },
+      "Failed to disable workspace triggers during scrub"
+    );
   }
 }
 
