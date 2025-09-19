@@ -888,7 +888,7 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
-    const mayRequireSecretConfiguration =
+  const mayRequireSecretConfiguration =
     mcpServerView.server.requiresSecret === true;
 
   const configurableStates = [
