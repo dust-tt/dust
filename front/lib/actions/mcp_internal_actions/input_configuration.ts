@@ -922,11 +922,21 @@ export function getMCPServerToolsConfigurations(
     getConfigurableStateForRecord(listConfigurations),
   ];
 
-  const configurable = configurableStates.every((c) => c === "no")
+  const realConfigurable = configurableStates.every((c) => c === "no")
     ? "no"
     : configurableStates.every((c) => c === "optional" || c === "no")
       ? "optional"
       : "required";
+
+  const configurable =
+    mayRequireSecretConfiguration ||
+    mayRequireDustAppConfiguration ||
+    mayRequireJsonSchemaConfiguration ||
+    mayRequireTimeFrameConfiguration ||
+    mayRequireReasoningConfiguration ||
+    mayRequireChildAgentConfiguration
+      ? "optional"
+      : realConfigurable;
 
   return {
     dataSourceConfiguration,
