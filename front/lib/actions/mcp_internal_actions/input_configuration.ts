@@ -729,7 +729,7 @@ export function getMCPServerToolsConfigurations(
       })
     ).map(([key, schema]) => {
       const optionsProperty = schema.properties?.options;
-      
+
       const defaultValue = extractSchemaDefault(
         schema,
         (v: unknown): v is string => typeof v === "string"
@@ -775,7 +775,11 @@ export function getMCPServerToolsConfigurations(
       } else {
         // Old format - check if there's a value property with enum values
         const valueProperty = schema.properties?.value;
-        if (valueProperty && isJSONSchemaObject(valueProperty) && Array.isArray(valueProperty.enum)) {
+        if (
+          valueProperty &&
+          isJSONSchemaObject(valueProperty) &&
+          Array.isArray(valueProperty.enum)
+        ) {
           // Use enum values as their own labels
           valueProperty.enum.forEach((enumValue) => {
             if (typeof enumValue === "string") {
