@@ -1,9 +1,7 @@
 import { Button, cn, MicIcon, SquareIcon } from "@dust-tt/sparkle";
 import React, { useRef, useState } from "react";
 
-import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
-import type { WorkspaceType } from "@app/types";
+import type { VoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 
 // Component intent:
 // - Supports two recording interaction patterns:
@@ -12,25 +10,15 @@ import type { WorkspaceType } from "@app/types";
 // - Shows a loading state while transcribing and sends notifications on success/failure.
 
 interface VoicePickerProps {
-  owner: WorkspaceType;
-  fileUploaderService: FileUploaderService;
-  onTranscribeDelta: (delta: string) => void;
+  voiceTranscriberService: VoiceTranscriberService;
   disabled?: boolean;
 }
 
 export function VoicePicker({
-  owner,
-  fileUploaderService,
-  onTranscribeDelta,
+  voiceTranscriberService,
   disabled = false,
 }: VoicePickerProps) {
   const [mode, setMode] = useState<"hold" | "click">("hold");
-
-  const voiceTranscriberService = useVoiceTranscriberService({
-    owner,
-    fileUploaderService,
-    onTranscribeDelta,
-  });
 
   // Track pointer press to distinguish click (<150ms) vs hold (>=150ms).
   const pressStartRef = useRef<number | null>(null);
