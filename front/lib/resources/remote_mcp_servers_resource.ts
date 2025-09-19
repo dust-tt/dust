@@ -276,7 +276,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     }: {
       icon?: CustomServerIconType | InternalAllowedIconType;
       sharedSecret?: string;
-      customHeaders?: Record<string, string> | null;
+      customHeaders?: Record<string, string>;
       cachedName?: string;
       cachedDescription?: string;
       cachedTools?: MCPToolType[];

@@ -127,8 +127,6 @@ async function handler(
       break;
     }
     case "PATCH": {
-      const sanitizeHeaderPart = (s: string) =>
-        s.replace(/[\r\n]/g, " ").trim();
       const r = PatchMCPServerBodySchema.safeParse(req.body);
       if (r.error) {
         return apiError(req, res, {
@@ -215,11 +213,9 @@ async function handler(
         }
       } else if ("customHeaders" in r.data) {
         if (server instanceof RemoteMCPServerResource) {
-          const sanitizedRecord =
-            headersArrayToRecord(r.data.customHeaders, {
-              stripAuthorization: true,
-              emptyAsNull: true,
-            }) ?? null;
+          const sanitizedRecord = headersArrayToRecord(r.data.customHeaders, {
+            stripAuthorization: true,
+          });
 
           const r2 = await server.updateMetadata(auth, {
             customHeaders: sanitizedRecord,

@@ -17,19 +17,17 @@ export function sanitizeHeadersArray(rows: HeaderRow[]): HeaderRow[] {
 
 export function headersArrayToRecord(
   rows: HeaderRow[] | null | undefined,
-  opts?: { stripAuthorization?: boolean; emptyAsNull?: boolean }
-): Record<string, string> | null | undefined {
-  if (!rows) return opts?.emptyAsNull ? null : undefined;
+  opts?: { stripAuthorization?: boolean }
+): Record<string, string> {
+  if (!rows) {
+    return Object.fromEntries([]);
+  }
 
   const sanitized = sanitizeHeadersArray(rows);
   let entries = sanitized.map(({ key, value }) => [key, value] as const);
 
   if (opts?.stripAuthorization) {
     entries = entries.filter(([k]) => k.toLowerCase() !== "authorization");
-  }
-
-  if (entries.length === 0) {
-    return opts?.emptyAsNull ? null : undefined;
   }
   return Object.fromEntries(entries);
 }

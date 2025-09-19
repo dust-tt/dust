@@ -219,7 +219,6 @@ async function handler(
           // Persist only user-provided custom headers (exclude Authorization)
           customHeaders: headersArrayToRecord(body.customHeaders, {
             stripAuthorization: true,
-            emptyAsNull: true,
           }),
           authorization,
           oAuthUseCase: body.useCase ?? null,
