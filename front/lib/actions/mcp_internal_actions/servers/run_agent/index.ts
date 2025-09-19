@@ -1,4 +1,10 @@
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import {
+  AgentMessagePublicType,
+  ConversationPublicType,
+  DustAPI,
+  INTERNAL_MIME_TYPES,
+  isAgentMessage,
+} from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { z } from "zod";
@@ -49,6 +55,7 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
+import _ from "lodash";
 
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
 
@@ -444,49 +451,43 @@ ${query}`
           ];
         };
 
-        // Early finish: if the child conversation already succeeded, return its stored result.
-        {
-          const latestMessages = conversation.content
-            .map((versions) => versions[versions.length - 1])
-            .filter(
-              (m: any) =>
-                m && m.type === "agent_message" && m.parentMessageId === userMessageId
+        const getFinishedContent = (agentMessage: AgentMessagePublicType) => {
+          const finalText: string = agentMessage.content ?? "";
+          const cot: string = agentMessage.chainOfThought ?? "";
+
+          let refsFromAgent: Record<string, CitationType> = {};
+          let files: ActionGeneratedFileType[] = [];
+          if (isMCPActionArray(agentMessage.actions)) {
+            refsFromAgent = getCitationsFromActions(agentMessage.actions);
+            files = agentMessage.actions.flatMap((action: any) =>
+              action.generatedFiles.filter((f: any) => !f.hidden)
             );
-
-          if (latestMessages.length > 0) {
-            const agentMsg: any = latestMessages[0];
-            if (agentMsg.status === "succeeded") {
-              let finalText: string = agentMsg.content ?? "";
-              let cot: string = agentMsg.chainOfThought ?? "";
-
-              let refsFromAgent: Record<string, CitationType> = {};
-              let files: ActionGeneratedFileType[] = [];
-              if (isMCPActionArray(agentMsg.actions)) {
-                refsFromAgent = getCitationsFromActions(agentMsg.actions);
-                files = agentMsg.actions.flatMap((action: any) =>
-                  action.generatedFiles.filter((f: any) => !f.hidden)
-                );
-              }
-
-              logger.info(
-                {
-                  childConversationId: conversation.sId,
-                  userMessageId,
-                },
-                "run_agent: child conversation already finished; returning final result"
-              );
-
-              return new Ok(
-                buildSuccessContent({
-                  conversationId: conversation.sId,
-                  finalContent: finalText,
-                  chainOfThought: cot,
-                  refsFromAgent,
-                  files,
-                })
-              );
-            }
           }
+          return {
+            finalText,
+            cot,
+            refsFromAgent,
+            files,
+          };
+        };
+        // Early finish: if the child conversation already succeeded, return its stored result.
+        const agentMessage = getLatestVersionByParentMessageId(
+          conversation,
+          userMessageId
+        );
+
+        if (agentMessage && agentMessage.status === "succeeded") {
+          const { finalText, cot, refsFromAgent, files } =
+            getFinishedContent(agentMessage);
+          return new Ok(
+            buildSuccessContent({
+              conversationId: conversation.sId,
+              finalContent: finalText,
+              chainOfThought: cot,
+              refsFromAgent,
+              files,
+            })
+          );
         }
 
         const streamRes = await api.streamAgentAnswerEvents({
@@ -661,45 +662,22 @@ ${query}`
           });
           if (refreshed.isOk()) {
             const conv2 = refreshed.value;
-            const latestMessages = conv2.content
-              .map((versions) => versions[versions.length - 1])
-              .filter(
-                (m: any) =>
-                  m && m.type === "agent_message" && m.parentMessageId === userMessageId
+            const agentMessage = getLatestVersionByParentMessageId(
+              conv2,
+              userMessageId
+            );
+            if (agentMessage && agentMessage.status === "succeeded") {
+              const { finalText, cot, refsFromAgent, files } =
+                getFinishedContent(agentMessage);
+              return new Ok(
+                buildSuccessContent({
+                  conversationId: conv2.sId,
+                  finalContent: finalText,
+                  chainOfThought: cot,
+                  refsFromAgent,
+                  files,
+                })
               );
-            if (latestMessages.length > 0) {
-              const agentMsg: any = latestMessages[0];
-              if (agentMsg.status === "succeeded") {
-                let finalText: string = agentMsg.content ?? "";
-                let cot: string = agentMsg.chainOfThought ?? "";
-
-                let refsFromAgent: Record<string, CitationType> = {};
-                let files: ActionGeneratedFileType[] = [];
-                if (isMCPActionArray(agentMsg.actions)) {
-                  refsFromAgent = getCitationsFromActions(agentMsg.actions);
-                  files = agentMsg.actions.flatMap((action: any) =>
-                    action.generatedFiles.filter((f: any) => !f.hidden)
-                  );
-                }
-
-                logger.info(
-                  {
-                    childConversationId: conv2.sId,
-                    userMessageId,
-                  },
-                  "run_agent: child conversation finished on refresh; returning final result"
-                );
-
-                return new Ok(
-                  buildSuccessContent({
-                    conversationId: conv2.sId,
-                    finalContent: finalText,
-                    chainOfThought: cot,
-                    refsFromAgent,
-                    files,
-                  })
-                );
-              }
             }
           }
 
@@ -725,4 +703,21 @@ ${query}`
   );
 
   return server;
+}
+
+function getLatestVersionByParentMessageId(
+  conversation: ConversationPublicType,
+  userMessageId: string
+) {
+  const messageIndex = conversation.content.findLastIndex((versions) => {
+    const message = versions[versions.length - 1];
+    return isAgentMessage(message) && message.parentMessageId === userMessageId;
+  });
+
+  return messageIndex !== -1
+    ? _.maxBy(
+        conversation.content[messageIndex] as AgentMessagePublicType[],
+        (m) => m.version
+      )
+    : undefined;
 }

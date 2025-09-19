@@ -8,6 +8,7 @@ import {
 } from "./mcp_icon_types";
 import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
+import { Agent } from "http";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -959,6 +960,17 @@ const AgentMessageTypeSchema = z.object({
     .nullable(),
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
+
+export function isAgentMessage(
+  message:
+    | UserMessageType
+    | AgentMessagePublicType
+    | ContentFragmentType
+    | null
+    | undefined
+): message is AgentMessagePublicType {
+  return AgentMessageTypeSchema.safeParse(message).success;
+}
 
 const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
