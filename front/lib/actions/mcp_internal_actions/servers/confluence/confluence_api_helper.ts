@@ -151,6 +151,120 @@ async function getConfluenceResourceInfo(accessToken: string): Promise<{
   return null;
 }
 
+export async function createPage({
+  baseUrl,
+  accessToken,
+  spaceId,
+  title,
+  content,
+  parentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  spaceId: string;
+  title: string;
+  content: string;
+  parentId?: string;
+}): Promise<
+  Result<z.infer<typeof ConfluencePageSchema>, ConfluenceErrorResult>
+> {
+  const body = {
+    spaceId,
+    status: "current",
+    title,
+    body: {
+      representation: "storage",
+      value: content,
+    },
+    ...(parentId && { parentId }),
+  };
+
+  const result = await confluenceApiCall(
+    {
+      endpoint: "/wiki/api/v2/pages",
+      accessToken,
+    },
+    ConfluencePageSchema,
+    {
+      baseUrl,
+      method: "POST",
+      body,
+    }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const resourceInfo = await getConfluenceResourceInfo(accessToken);
+  if (resourceInfo) {
+    result.value = {
+      ...result.value,
+      browseUrl: `${resourceInfo.url}/wiki/spaces/viewpage.action?pageId=${result.value.id}`,
+    };
+  }
+
+  return result;
+}
+
+export async function updatePageContent({
+  baseUrl,
+  accessToken,
+  pageId,
+  title,
+  content,
+  version,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  pageId: string;
+  title: string;
+  content: string;
+  version: number;
+}): Promise<
+  Result<z.infer<typeof ConfluencePageSchema>, ConfluenceErrorResult>
+> {
+  const body = {
+    type: "page",
+    title,
+    version: { number: version },
+    body: {
+      storage: {
+        value: content,
+        representation: "storage",
+      },
+    },
+  };
+
+  // Use v1 API for content updates as v2 has limited functionality
+  const result = await confluenceApiCall(
+    {
+      endpoint: `/wiki/rest/api/content/${pageId}`,
+      accessToken,
+    },
+    ConfluencePageSchema,
+    {
+      baseUrl,
+      method: "PUT",
+      body,
+    }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const resourceInfo = await getConfluenceResourceInfo(accessToken);
+  if (resourceInfo) {
+    result.value = {
+      ...result.value,
+      browseUrl: `${resourceInfo.url}/wiki/spaces/viewpage.action?pageId=${result.value.id}`,
+    };
+  }
+
+  return result;
+}
+
 export async function getConfluenceBaseUrl(
   accessToken: string
 ): Promise<string | null> {
