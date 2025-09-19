@@ -25,7 +25,7 @@ export function MCPServerDetailsInfo({
   }, [mcpServerView.editedByUser]);
 
   return (
-    <div className="flex flex-col gap-3 py-2">
+    <div className="flex flex-col gap-3">
       {mcpServerView.editedByUser && (
         <div className="flex w-full text-sm text-muted-foreground dark:text-muted-foreground-night">
           Edited by {mcpServerView.editedByUser.fullName}, {editedAt}
