@@ -42,7 +42,7 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
 ): Promise<Result<z.infer<T>, ConfluenceErrorResult>> {
   try {
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
-      method: options.method || "GET",
+      method: options.method ?? "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
@@ -74,7 +74,9 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
 
     return new Ok(parseResult.data);
   } catch (error: unknown) {
-    logger.error(`[Confluence MCP Server] Confluence API call failed for ${endpoint}:`);
+    logger.error(
+      `[Confluence MCP Server] Confluence API call failed for ${endpoint}:`
+    );
     return new Err(normalizeError(error).message);
   }
 }
@@ -87,7 +89,9 @@ export async function getPage({
   baseUrl: string;
   accessToken: string;
   pageId: string;
-}): Promise<Result<z.infer<typeof ConfluencePageSchema> | null, ConfluenceErrorResult>> {
+}): Promise<
+  Result<z.infer<typeof ConfluencePageSchema> | null, ConfluenceErrorResult>
+> {
   const result = await confluenceApiCall(
     {
       endpoint: `/wiki/api/v2/pages/${pageId}`,
@@ -151,7 +155,7 @@ export async function getConfluenceBaseUrl(
   accessToken: string
 ): Promise<string | null> {
   const resourceInfo = await getConfluenceResourceInfo(accessToken);
-  const cloudId = resourceInfo?.id || null;
+  const cloudId = resourceInfo?.id ?? null;
   if (cloudId) {
     return `https://api.atlassian.com/ex/confluence/${cloudId}`;
   }
