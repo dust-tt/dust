@@ -2597,7 +2597,7 @@ async function renderPageSection({
         "Long renderBlockSection time."
       );
     }
-    heartbeat();
+    await heartbeat();
     return blockSection;
   };
 
