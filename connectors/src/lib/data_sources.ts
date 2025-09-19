@@ -533,7 +533,6 @@ async function tokenize(text: string, ds: DataSourceConfig) {
     return [];
   }
 
-  // Primary path: use SDK fetch with AbortController timeout.
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TOKENIZE_TIMEOUT_MS);
   const tokensRes = await getDustAPI(ds).tokenize(
@@ -542,57 +541,22 @@ async function tokenize(text: string, ds: DataSourceConfig) {
     { signal: controller.signal }
   );
   clearTimeout(timeoutId);
-
-  if (!tokensRes.isErr()) {
-    return tokensRes.value;
-  }
-
-  // Fallback path: retry once via axiosWithTimeout to avoid undici/fetch socket issues.
-  try {
-    const endpoint =
-      `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${ds.workspaceId}` +
-      `/data_sources/${ds.dataSourceId}/tokenize`;
-    const r = await axiosWithTimeout.post(
-      endpoint,
-      { text: sanitizedText },
-      {
-        headers: {
-          Authorization: `Bearer ${ds.workspaceAPIKey}`,
-          "Content-Type": "application/json",
-        },
-        timeout: TOKENIZE_TIMEOUT_MS,
-      }
-    );
-
-    if (r.status >= 200 && r.status < 300 && r.data?.tokens) {
-      return r.data.tokens;
-    }
-
+  if (tokensRes.isErr()) {
     logger.error(
       {
-        status: r.status,
+        error: tokensRes.error.message,
         dataSourceId: ds.dataSourceId,
         workspaceId: ds.workspaceId,
       },
-      `Axios fallback failed tokenizing text for ${ds.dataSourceId}`
+      `Error tokenizing text for ${ds.dataSourceId}`
     );
-  } catch (e) {
-    logger.error(
-      {
-        error: axios.isAxiosError(e) ? { ...e, config: undefined } : e,
-        dataSourceId: ds.dataSourceId,
-        workspaceId: ds.workspaceId,
-      },
-      `Axios fallback error tokenizing text for ${ds.dataSourceId}`
+    throw new DustConnectorWorkflowError(
+      `Error tokenizing text for ${ds.dataSourceId}`,
+      "transient_upstream_activity_error",
+      tokensRes.error
     );
   }
-
-  // If both paths failed, propagate a transient error to let Temporal retry.
-  throw new DustConnectorWorkflowError(
-    `Error tokenizing text for ${ds.dataSourceId}`,
-    "transient_upstream_activity_error",
-    tokensRes.error
-  );
+  return tokensRes.value;
 }
 
 /// This function is used to render markdown from (alternatively GFM format) to our Section format.
