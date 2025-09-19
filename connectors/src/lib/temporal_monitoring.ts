@@ -25,7 +25,7 @@ import { syncFailed } from "./sync_status";
 import { getConnectorId } from "./temporal";
 
 const TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS = [145];
-const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 10;
+const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 19;
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
