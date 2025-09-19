@@ -77,6 +77,15 @@ export function PluginForm({
                 ? (asyncArgs[key] as boolean)
                 : false,
             ];
+          case "enum":
+            return [
+              key,
+              arg.async && asyncArgs?.[key] !== undefined
+                ? (asyncArgs[key] as AsyncEnumValues)
+                    .filter((v) => v.checked)
+                    .map((v) => v.value)
+                : arg.values.filter((v) => v.checked).map((v) => v.value),
+            ];
           default:
             return [key, null];
         }
@@ -106,68 +115,78 @@ export function PluginForm({
         onSubmit={form.handleSubmit(handleSubmit)}
         className="max-w-[600px] space-y-8"
       >
-        {Object.entries(manifest.args).map(([key, arg]) => (
-          <PokeFormField
-            key={key}
-            control={form.control}
-            name={key}
-            disabled={disabled}
-            render={({ field }) => (
-              <PokeFormItem>
-                <div
-                  className={
-                    arg.type === "boolean"
-                      ? "flex flex-row items-center gap-x-2"
-                      : "flex flex-col gap-y-2"
-                  }
-                >
-                  <PokeFormLabel>{arg.label}</PokeFormLabel>
-                  <PokeFormControl>
-                    <>
-                      {arg.type === "text" && <PokeFormTextArea {...field} />}
-                      {arg.type === "string" && <PokeFormInput {...field} />}
-                      {arg.type === "number" && (
-                        <PokeFormInput
-                          type="number"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
-                          }
-                        />
-                      )}
-                      {arg.type === "boolean" && (
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      )}
-                      {arg.type === "enum" && (
-                        <EnumSelect
-                          label={arg.label}
-                          onValueChange={(value) => field.onChange(value)}
-                          options={
-                            arg.async && asyncArgs?.[key]
-                              ? (asyncArgs[key] as AsyncEnumValues)
-                              : arg.values
-                          }
-                          placeholder="Select value"
-                          value={field.value}
-                        />
-                      )}
-                      {arg.type === "file" && (
-                        <PokeFormUpload type="file" {...field} />
-                      )}
-                    </>
-                  </PokeFormControl>
-                </div>
-                {arg.description && (
-                  <PokeFormDescription>{arg.description}</PokeFormDescription>
-                )}
-                <PokeFormMessage />
-              </PokeFormItem>
-            )}
-          />
-        ))}
+        {Object.entries(manifest.args).map(([key, arg]) => {
+          let defaultValue = undefined;
+          let options = undefined;
+          if (arg.type === "enum") {
+            options =
+              arg.async && asyncArgs?.[key]
+                ? (asyncArgs[key] as AsyncEnumValues)
+                : arg.values;
+            defaultValue = options.filter((v) => v.checked).map((v) => v.value);
+          }
+
+          return (
+            <PokeFormField
+              key={key}
+              control={form.control}
+              name={key}
+              disabled={disabled}
+              defaultValue={defaultValue}
+              render={({ field }) => (
+                <PokeFormItem>
+                  <div
+                    className={
+                      arg.type === "boolean"
+                        ? "flex flex-row items-center gap-x-2"
+                        : "flex flex-col gap-y-2"
+                    }
+                  >
+                    <PokeFormLabel>{arg.label}</PokeFormLabel>
+                    <PokeFormControl>
+                      <>
+                        {arg.type === "text" && <PokeFormTextArea {...field} />}
+                        {arg.type === "string" && <PokeFormInput {...field} />}
+                        {arg.type === "number" && (
+                          <PokeFormInput
+                            type="number"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(Number(e.target.value))
+                            }
+                          />
+                        )}
+                        {arg.type === "boolean" && (
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                        {arg.type === "enum" && (
+                          <EnumSelect
+                            label={arg.label}
+                            onValuesChange={(values) => field.onChange(values)}
+                            options={options ?? []}
+                            placeholder="Select value"
+                            values={field.value}
+                            multiple={arg.multiple}
+                          />
+                        )}
+                        {arg.type === "file" && (
+                          <PokeFormUpload type="file" {...field} />
+                        )}
+                      </>
+                    </PokeFormControl>
+                  </div>
+                  {arg.description && (
+                    <PokeFormDescription>{arg.description}</PokeFormDescription>
+                  )}
+                  <PokeFormMessage />
+                </PokeFormItem>
+              )}
+            />
+          );
+        })}
         <Button
           type="submit"
           variant="outline"

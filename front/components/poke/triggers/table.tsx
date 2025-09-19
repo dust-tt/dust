@@ -8,9 +8,14 @@ import type { LightWorkspaceType } from "@app/types";
 interface TriggerDataTableProps {
   owner: LightWorkspaceType;
   agentId?: string;
+  loadOnInit?: boolean;
 }
 
-export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
+export function TriggerDataTable({
+  owner,
+  agentId,
+  loadOnInit,
+}: TriggerDataTableProps) {
   const { data: agentConfigurations } = usePokeAgentConfigurations({
     owner,
     disabled: false,
@@ -20,6 +25,7 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
     <PokeDataTableConditionalFetch
       header="Triggers"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeTriggers}
     >
       {(triggers, mutateTriggers) => {

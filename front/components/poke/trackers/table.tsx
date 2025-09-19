@@ -6,13 +6,15 @@ import type { WorkspaceType } from "@app/types";
 
 interface TrackerDataTableProps {
   owner: WorkspaceType;
+  loadOnInit?: boolean;
 }
 
-export function TrackerDataTable({ owner }: TrackerDataTableProps) {
+export function TrackerDataTable({ owner, loadOnInit }: TrackerDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="Trackers"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeTrackers}
     >
       {(data) => (
