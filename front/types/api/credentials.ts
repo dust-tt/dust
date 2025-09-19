@@ -16,6 +16,7 @@ const {
   DUST_MANAGED_FIREWORKS_API_KEY = "",
   DUST_MANAGED_XAI_API_KEY = "",
   DUST_MANAGED_FIRECRAWL_API_KEY = "",
+  DUST_REGION = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -85,16 +86,19 @@ export const credentialsFromProviders = (
 };
 
 export const dustManagedCredentials = (options?: {
-  useOpenAIEU?: boolean;
+  useOpenAIEUKeyFlag?: boolean;
 }): CredentialsType => {
+  const useOpenAIEU =
+    options?.useOpenAIEUKeyFlag && DUST_REGION === "europe-west1";
   return {
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
     AZURE_OPENAI_API_KEY: DUST_MANAGED_AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT: DUST_MANAGED_AZURE_OPENAI_ENDPOINT,
     MISTRAL_API_KEY: DUST_MANAGED_MISTRAL_API_KEY,
-    OPENAI_API_KEY: options?.useOpenAIEU
+    OPENAI_API_KEY: useOpenAIEU
       ? DUST_MANAGED_OPENAI_API_KEY_EU
       : DUST_MANAGED_OPENAI_API_KEY,
+    OPENAI_USE_EU_ENDPOINT: useOpenAIEU ? "true" : "false",
     TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
     SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,

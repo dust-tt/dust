@@ -273,23 +273,16 @@ async function handler(
         keyAuth.getNonNullableWorkspace()
       );
 
-      // When this is on, two things happen:
-      // 1) We use the OpenAI EU endpoint (in Core)
-      // 2) We use the DUST_MANAGED_OPENAI_API_KEY_EU env as the key
-      let useOpenAIEUKey =
-        config.MODEL && // This could be null, e.g. in the config.CREATE_SUGGESTIONS case
-        keyWorkspaceFlags.includes("use_openai_eu_key") &&
-        !!apiConfig.getDustManagedOpenAIAPIKeyEU();
+      // Temporary flag to help test EU OpenAI in specific workspaces.
+      const useOpenAIEUKeyFlag =
+        keyWorkspaceFlags.includes("use_openai_eu_key");
 
       let credentials: CredentialsType | null = null;
       if (auth.isSystemKey() && !useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
-        credentials = dustManagedCredentials({ useOpenAIEU: useOpenAIEUKey });
+        credentials = dustManagedCredentials({ useOpenAIEUKeyFlag });
       } else {
         credentials = credentialsFromProviders(providers);
-
-        // We never want to use the EU hostname with provider credentials.
-        useOpenAIEUKey = false;
       }
 
       if (!auth.isSystemKey()) {
@@ -321,15 +314,11 @@ async function handler(
             name: owner.name,
           },
           app: app.sId,
-          useOpenAIEUKey,
+          useOpenAIEUKeyFlag,
           userWorkspace: keyAuth.getNonNullableWorkspace().sId,
         },
         "App run creation"
       );
-
-      if (useOpenAIEUKey) {
-        config.MODEL.use_openai_eu_host = true;
-      }
 
       const runRes = await coreAPI.createRunStream(
         keyAuth.getNonNullableWorkspace(),
