@@ -133,7 +133,7 @@ const configurableProperties = {
               value: z.literal("handoff"),
               label: z.literal("Agent responds in conversation"),
             })
-            .describe("The agent is called in the conversation directly."),
+            .describe("The selected agent takes over and responds directly in the conversation."),
         ])
         .optional(),
       value: z.string(),
