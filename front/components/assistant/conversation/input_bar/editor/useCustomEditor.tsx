@@ -5,6 +5,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useEffect, useMemo } from "react";
 
+import { AnimatedTextExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/AnimatedTextExtension";
 import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
@@ -98,6 +99,13 @@ const useEditorService = (editor: Editor | null) => {
           })
           .insertContent(" ") // Add an extra space after the mention.
           .run();
+      },
+
+      // insert uneditable loading text helper function.
+      insertAnimatedText: (text: string) => {
+        // editor?.chain().focus().insertContent("loading     ").run();
+
+        editor?.chain().focus().insertAnimatedText(text).run();
       },
 
       resetWithMentions: (
@@ -246,6 +254,7 @@ const useCustomEditor = ({
         "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),
     MarkdownStyleExtension,
+    AnimatedTextExtension,
     ParagraphExtension,
     URLStorageExtension,
   ];
