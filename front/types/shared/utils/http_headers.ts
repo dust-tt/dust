@@ -33,4 +33,3 @@ export function headersArrayToRecord(
   }
   return Object.fromEntries(entries);
 }
-

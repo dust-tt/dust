@@ -22,7 +22,10 @@ export type DiscoverOAuthMetadataResponseBody =
 
 const PostQueryParamsSchema = t.type({
   url: t.string,
-  customHeaders: t.union([t.array(t.type({ key: t.string, value: t.string })), t.undefined]),
+  customHeaders: t.union([
+    t.array(t.type({ key: t.string, value: t.string })),
+    t.undefined,
+  ]),
 });
 
 /**

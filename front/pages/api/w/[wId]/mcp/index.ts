@@ -28,8 +28,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 import { headersArrayToRecord } from "@app/types";
+import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 
 export type GetMCPServersResponseBody = {
   success: true;
@@ -53,7 +53,10 @@ const PostQueryParamsSchema = t.union([
       t.undefined,
     ]),
     connectionId: t.union([t.string, t.undefined]),
-    customHeaders: t.union([t.array(t.type({ key: t.string, value: t.string })), t.undefined]),
+    customHeaders: t.union([
+      t.array(t.type({ key: t.string, value: t.string })),
+      t.undefined,
+    ]),
   }),
   t.type({
     serverType: t.literal("internal"),
@@ -171,7 +174,10 @@ async function handler(
         );
 
         const headers = bearerToken
-          ? { ...(sanitizedCustomHeaders ?? {}), Authorization: `Bearer ${bearerToken}` }
+          ? {
+              ...(sanitizedCustomHeaders ?? {}),
+              Authorization: `Bearer ${bearerToken}`,
+            }
           : sanitizedCustomHeaders;
 
         const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);

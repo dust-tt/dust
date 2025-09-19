@@ -18,11 +18,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import type { MCPServerViewType, RemoteMCPServerType } from "@app/lib/api/mcp";
-import { useSyncRemoteMCPServer, useUpdateMCPServer } from "@app/lib/swr/mcp_servers";
-import { sanitizeHeadersArray } from "@app/types";
-import type { LightWorkspaceType } from "@app/types";
 import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import type { MCPServerViewType, RemoteMCPServerType } from "@app/lib/api/mcp";
+import {
+  useSyncRemoteMCPServer,
+  useUpdateMCPServer,
+} from "@app/lib/swr/mcp_servers";
+import type { LightWorkspaceType } from "@app/types";
+import { sanitizeHeadersArray } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -64,9 +67,8 @@ export function RemoteMCPForm({
       })),
     [mcpServer.customHeaders]
   );
-  const [headersRows, setHeadersRows] = useState<
-    { key: string; value: string }[]
-  >(initialHeaderRows);
+  const [headersRows, setHeadersRows] =
+    useState<{ key: string; value: string }[]>(initialHeaderRows);
   const [headersDirty, setHeadersDirty] = useState(false);
 
   // Use the serverId from state for the hooks

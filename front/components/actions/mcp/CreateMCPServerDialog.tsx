@@ -42,9 +42,9 @@ import {
   setupOAuthConnection,
   validateUrl,
 } from "@app/types";
+import { sanitizeHeadersArray } from "@app/types";
 
 import { McpServerHeaders } from "./MCPServerHeaders";
-import { sanitizeHeadersArray } from "@app/types";
 
 const DEFAULT_AUTH_METHOD = "oauth-dynamic";
 
@@ -90,10 +90,13 @@ export function CreateMCPServerDialog({
     "oauth-dynamic" | "oauth-static" | "bearer"
   >(DEFAULT_AUTH_METHOD);
   const [useCustomHeaders, setUseCustomHeaders] = useState(false);
-  const [customHeaders, setCustomHeaders] = useState<{ key: string; value: string }[]>([]);
+  const [customHeaders, setCustomHeaders] = useState<
+    { key: string; value: string }[]
+  >([]);
 
   const sanitizeHeaders = useCallback(
-    (headers: { key: string; value: string }[]) => sanitizeHeadersArray(headers),
+    (headers: { key: string; value: string }[]) =>
+      sanitizeHeadersArray(headers),
     []
   );
 
@@ -131,7 +134,7 @@ export function CreateMCPServerDialog({
     setIsOAuthFormValid(true);
     setAuthorization(null);
     setUseCustomHeaders(false);
-    setCustomHeaders([])
+    setCustomHeaders([]);
   }, [setExternalIsLoading]);
 
   const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -254,7 +257,9 @@ export function CreateMCPServerDialog({
         includeGlobal: true,
         sharedSecret: authMethod === "bearer" ? sharedSecret : undefined,
         oauthConnection,
-        customHeaders: useCustomHeaders ? sanitizeHeaders(customHeaders) : undefined,
+        customHeaders: useCustomHeaders
+          ? sanitizeHeaders(customHeaders)
+          : undefined,
       });
 
       if (createRes.isErr()) {
@@ -496,9 +501,7 @@ export function CreateMCPServerDialog({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Label htmlFor="customHeaders">
-                    Use custom headers
-                  </Label>
+                  <Label htmlFor="customHeaders">Use custom headers</Label>
                   <Tooltip
                     trigger={
                       <Icon
