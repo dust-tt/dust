@@ -137,9 +137,9 @@ export function DustAppSection() {
       accessorKey: "name",
       cell: ({ row }) => (
         <DataTable.CellContent icon={CommandLineIcon}>
-          <div className="flex flex-col gap-1">
-            <div className="text-sm font-medium">{row.original.name}</div>
-            <div className="line-clamp-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <div className="flex flex-col">
+            <div className="heading-sm truncate">{row.original.name}</div>
+            <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
               {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
               {row.original.description || "No description available"}
             </div>
@@ -203,8 +203,8 @@ export function DustAppSection() {
           </div>
         ) : field.value ? (
           <Card size="sm" className="w-full">
-            <div className="flex w-full p-3">
-              <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
+            <div className="flex w-full">
+              <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
                 <div className="flex items-center gap-2">
                   <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
                   <div className="text-md font-medium">{field.value.name}</div>
@@ -218,7 +218,7 @@ export function DustAppSection() {
                   variant="outline"
                   size="sm"
                   icon={PencilIcon}
-                  label="Edit app"
+                  label="Edit selection"
                   onClick={handleEditClick}
                 />
               </div>
