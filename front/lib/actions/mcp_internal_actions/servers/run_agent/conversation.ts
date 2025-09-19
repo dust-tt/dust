@@ -226,7 +226,7 @@ export async function getOrCreateConversation(
   }
 
   if (conversationId) {
-    // Post content fragments separately for existing conversations
+    // Post content fragments separately for existing conversations.
     if (contentFragmentsToUse.length > 0) {
       for (const contentFragment of contentFragmentsToUse) {
         const fragmentRes = await api.postContentFragment({
