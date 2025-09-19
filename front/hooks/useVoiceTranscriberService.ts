@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 
 interface UseVoiceTranscriberServiceParams {
@@ -30,6 +31,8 @@ export function useVoiceTranscriberService({
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
   const sendNotification = useSendNotification();
+
+  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
 
   const stopLevelMetering = useCallback(() => {
     if (rafRef.current !== null) {
@@ -259,14 +262,16 @@ export function useVoiceTranscriberService({
     [stopAndFinalize]
   );
 
-  return {
-    isRecording,
-    isTranscribing,
-    level,
-    elapsedSeconds,
-    startRecording,
-    stopRecording,
-  };
+  return featureFlags.hasFeature("simple_audio_transcription")
+    ? {
+        isRecording,
+        isTranscribing,
+        level,
+        elapsedSeconds,
+        startRecording,
+        stopRecording,
+      }
+    : quackingVoiceTranscriptService;
 }
 
 export type VoiceTranscriberService = ReturnType<
@@ -274,6 +279,15 @@ export type VoiceTranscriberService = ReturnType<
 >;
 
 // Helpers ---------------------------------------------------------------------
+
+const quackingVoiceTranscriptService = {
+  isRecording: false,
+  isTranscribing: false,
+  level: 0,
+  elapsedSeconds: 0,
+  startRecording: () => Promise.resolve(),
+  stopRecording: () => Promise.resolve(),
+};
 
 const stopTracks = (stream: MediaStream | null) => {
   if (!stream) {

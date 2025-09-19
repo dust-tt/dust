@@ -2572,10 +2572,28 @@ export type PublicFileResponseBodyType = z.infer<
   typeof PublicFileResponseBodySchema
 >;
 
+export const MembershipOriginType = FlexibleEnumSchema<
+  "provisioned" | "invited" | "auto-joined"
+>();
+
+export const WorkOSOrganizationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  externalId: z.string().nullable(),
+  metadata: z.record(z.string()),
+});
+
+export type WorkOSOrganizationType = z.infer<typeof WorkOSOrganizationSchema>;
+
 export const MeResponseSchema = z.object({
   user: UserSchema.and(
     z.object({
       workspaces: WorkspaceSchema.array().or(ExtensionWorkspaceSchema.array()),
+      organizations: WorkOSOrganizationSchema.array().optional(),
+      origin: MembershipOriginType.optional(),
+      selectedWorkspace: z.string().optional(),
     })
   ),
 });

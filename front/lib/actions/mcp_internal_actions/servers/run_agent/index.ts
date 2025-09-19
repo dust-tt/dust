@@ -115,6 +115,40 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   };
 }
 
+const configurableProperties = {
+  executionMode: z
+    .object({
+      options: z
+        .union([
+          z
+            .object({
+              value: z.literal("run-agent"),
+              label: z.literal("Agent runs in background"),
+            })
+            .describe(
+              "The selected agent runs silently in a background conversation and passes results to the main agent."
+            ),
+          z
+            .object({
+              value: z.literal("handoff"),
+              label: z.literal("Agent responds in conversation"),
+            })
+            .describe(
+              "The selected agent takes over and responds directly in the conversation."
+            ),
+        ])
+        .optional(),
+      value: z.string(),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
+    })
+    .default({
+      value: "run-agent",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+    }),
+  childAgent:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+};
+
 export default async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -162,10 +196,7 @@ export default async function createServer(
       "run_agent_tool_not_available",
       "No child agent configured for this tool, as the child agent was probably archived. " +
         "Do not attempt to run the tool and warn the user instead.",
-      {
-        childAgent:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
-      },
+      configurableProperties,
       withToolLogging(
         auth,
         { toolName: RUN_AGENT_TOOL_LOG_NAME, agentLoopContext },
@@ -205,13 +236,10 @@ export default async function createServer(
         .nullable(),
       conversationId: z
         .string()
-        .describe(
-          "The conversation id to run the agent in. Pass the main conversation id if user explicitly request to delegate the query in the same conversation."
-        )
+        .describe("The conversation id where the sub-agent will run.")
         .optional()
         .nullable(),
-      childAgent:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
+      ...configurableProperties,
     },
     withToolLogging(
       auth,
@@ -220,6 +248,7 @@ export default async function createServer(
         {
           query,
           childAgent: { uri },
+          executionMode,
           toolsetsToAdd,
           fileOrContentFragmentIds,
           conversationId,
@@ -231,10 +260,20 @@ export default async function createServer(
           "agentLoopContext is required to run the run_agent tool"
         );
 
+        const isHandoff = executionMode.value === "handoff";
+
         const {
           agentConfiguration: mainAgent,
           conversation: mainConversation,
         } = agentLoopContext.runContext;
+
+        if (conversationId === mainConversation.sId) {
+          return new Err(
+            new MCPError(
+              "Conversation id cannot be the same as the main conversation."
+            )
+          );
+        }
 
         const childAgentIdRes = parseAgentConfigurationUri(uri);
         if (childAgentIdRes.isErr()) {
@@ -260,7 +299,6 @@ export default async function createServer(
           logger
         );
 
-        const isHandover = conversationId === mainConversation.sId;
         const instructions =
           agentLoopContext.runContext.agentConfiguration.instructions;
         if (_meta?.progressToken && sendNotification) {
@@ -302,7 +340,7 @@ export default async function createServer(
             childAgentId,
             mainAgent,
             mainConversation,
-            query: isHandover
+            query: isHandoff
               ? `
 You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
 ${instructions ?? ""}
@@ -311,7 +349,9 @@ ${query}`
               : query,
             toolsetsToAdd: toolsetsToAdd ?? null,
             fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
-            conversationId: conversationId ?? null,
+            conversationId: isHandoff
+              ? mainConversation.sId
+              : conversationId ?? null,
           }
         );
 
@@ -319,7 +359,7 @@ ${query}`
           return new Err(new MCPError(convRes.error.message));
         }
 
-        if (isHandover) {
+        if (isHandoff) {
           return new Ok(
             makeMCPToolExit({
               message: `Query delegated to agent @${childAgentBlob.name}`,
