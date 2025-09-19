@@ -318,12 +318,12 @@ function isRevertFileActionOutput(
   );
 }
 
-async function isCreateOrRevertFileAction(
+async function isEditOrRevertFileAction(
   action: AgentMCPActionModel
 ): Promise<boolean> {
   return (
     action.toolConfiguration.originalName ===
-      CREATE_CONTENT_CREATION_FILE_TOOL_NAME ||
+      EDIT_CONTENT_CREATION_FILE_TOOL_NAME ||
     action.toolConfiguration.originalName ===
       REVERT_CONTENT_CREATION_FILE_TOOL_NAME
   );
@@ -391,7 +391,7 @@ async function getFileActions(
   const editOrRevertActions = conversationActions.filter(
     (action) =>
       action.augmentedInputs.file_id === fileId &&
-      isCreateOrRevertFileAction(action)
+      isEditOrRevertFileAction(action)
   );
 
   const fileCreateAction = conversationActions.filter((action) =>
