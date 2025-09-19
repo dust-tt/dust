@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+
 import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
 import { redisClient } from "@app/lib/utils/redis_client";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -97,7 +98,11 @@ export async function rateLimiter({
     redis = await getRedisClient({ origin: "rate_limiter", redisUri });
     const remaining = (await redis.eval(luaScript, {
       keys: [redisKey],
-      arguments: [timeframeSeconds.toString(), maxPerTimeframe.toString(), uuidv4()],
+      arguments: [
+        timeframeSeconds.toString(),
+        maxPerTimeframe.toString(),
+        uuidv4(),
+      ],
     })) as number;
 
     const totalTimeMs = new Date().getTime() - now.getTime();
