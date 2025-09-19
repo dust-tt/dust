@@ -1,12 +1,11 @@
-import {
+import type {
   AgentMessagePublicType,
   ConversationPublicType,
-  DustAPI,
-  INTERNAL_MIME_TYPES,
-  isAgentMessage,
 } from "@dust-tt/client";
+import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
+import _ from "lodash";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -55,7 +54,6 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
-import _ from "lodash";
 
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
 
