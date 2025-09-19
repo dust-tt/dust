@@ -521,7 +521,12 @@ export interface MCPServerToolsConfigurations {
   };
   reasoningConfiguration?: {
     description?: string;
-    default?: { modelId: string; providerId: string; temperature: number; reasoningEffort: string };
+    default?: {
+      modelId: string;
+      providerId: string;
+      temperature: number;
+      reasoningEffort: string;
+    };
   };
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
@@ -669,7 +674,8 @@ export function getMCPServerToolsConfigurations(
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
     })
-  ).map((schema) => ({
+  )
+    .map((schema) => ({
       description: schema.description,
       default: extractSchemaDefaultArray(
         schema,
@@ -678,14 +684,14 @@ export function getMCPServerToolsConfigurations(
       ),
     }))
     .at(0);
-  
 
   const dataWarehouseConfiguration = Object.values(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
     })
-  ).map((schema) => ({
+  )
+    .map((schema) => ({
       description: schema.description,
       default: extractSchemaDefaultArray(
         schema,
@@ -711,32 +717,46 @@ export function getMCPServerToolsConfigurations(
     }))
     .at(0);
 
-  const childAgentConfiguration =
-    Object.values(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
-      })
-    ).map((schema) => ({
+  const childAgentConfiguration = Object.values(
+    findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
+    })
+  )
+    .map((schema) => ({
       description: schema.description,
       default: extractSchemaDefault(
         schema,
-        (v: unknown): v is { uri: string } => v !== null && typeof v === "object" && "uri" in v
+        (v: unknown): v is { uri: string } =>
+          v !== null && typeof v === "object" && "uri" in v
       ),
     }))
     .at(0);
 
-  const reasoningConfiguration =
-    Object.values(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-      })
-    ).map((schema) => ({
+  const reasoningConfiguration = Object.values(
+    findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+    })
+  )
+    .map((schema) => ({
       description: schema.description,
       default: extractSchemaDefault(
         schema,
-        (v: unknown): v is { modelId: string; providerId: string; temperature: number; reasoningEffort: string } => v !== null && typeof v === "object" && "modelId" in v && "providerId" in v && "temperature" in v && "reasoningEffort" in v
+        (
+          v: unknown
+        ): v is {
+          modelId: string;
+          providerId: string;
+          temperature: number;
+          reasoningEffort: string;
+        } =>
+          v !== null &&
+          typeof v === "object" &&
+          "modelId" in v &&
+          "providerId" in v &&
+          "temperature" in v &&
+          "reasoningEffort" in v
       ),
     }))
     .at(0);

@@ -174,7 +174,7 @@ export function AssistantInputBar({
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
     // Optimistic update
     setSelectedMCPServerViewIds((prev) => [...prev, serverView.sId]);
-    const toolsConfigs = getMCPServerToolsConfigurations(serverView)
+    const toolsConfigs = getMCPServerToolsConfigurations(serverView);
     console.log("tool config:", toolsConfigs);
     void addTool(serverView.sId);
   };

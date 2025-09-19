@@ -75,7 +75,8 @@ export function createDynamicConfigurationFields(
           message: VALIDATION_MESSAGES.secret.required,
         })
       : z.null(),
-    additionalConfiguration: createAdditionalConfigurationSchema(toolsConfigurations),
+    additionalConfiguration:
+      createAdditionalConfigurationSchema(toolsConfigurations),
   };
 }
 
@@ -130,19 +131,26 @@ function createAdditionalConfigurationSchema(
       } else {
         // This is a leaf value - determine type based on requirements
         if (
-          toolsConfigurations.stringConfigurations.some((item) => item.key === path)
+          toolsConfigurations.stringConfigurations.some(
+            (item) => item.key === path
+          )
         ) {
           nestedStructure[rootKey] = z.string().min(1);
         } else if (
-          toolsConfigurations.numberConfigurations.some((item) => item.key === path)
+          toolsConfigurations.numberConfigurations.some(
+            (item) => item.key === path
+          )
         ) {
           nestedStructure[rootKey] = z.coerce.number();
         } else if (
-          toolsConfigurations.booleanConfigurations.some((item) => item.key === path)
+          toolsConfigurations.booleanConfigurations.some(
+            (item) => item.key === path
+          )
         ) {
           nestedStructure[rootKey] = z.coerce.boolean();
         } else if (toolsConfigurations.enumConfigurations[path]) {
-          const enumOptions = toolsConfigurations.enumConfigurations[path].options;
+          const enumOptions =
+            toolsConfigurations.enumConfigurations[path].options;
           const enumValues = enumOptions.map((option) => option.value) as [
             string,
             ...string[],

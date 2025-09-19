@@ -210,8 +210,7 @@ export function MCPServerViewsSheet({
     }
 
     return filteredList.filter(
-      (view) =>
-        !getMCPServerToolsConfigurations(view).reasoningConfiguration
+      (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
     );
   }, [
     defaultMCPServerViews,
@@ -373,7 +372,9 @@ export function MCPServerViewsSheet({
 
     if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = toolsConfigurations.reasoningConfiguration ? true : false;
+      const isReasoning = toolsConfigurations.reasoningConfiguration
+        ? true
+        : false;
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -389,8 +390,11 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) => model.modelId === toolsConfigurations.reasoningConfiguration?.default?.modelId
-          ) ?? reasoningModels.find(
+            (model) =>
+              model.modelId ===
+              toolsConfigurations.reasoningConfiguration?.default?.modelId
+          ) ??
+          reasoningModels.find(
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
           ) ??
           reasoningModels[0];
