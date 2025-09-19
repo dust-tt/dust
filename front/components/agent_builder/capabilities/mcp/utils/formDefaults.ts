@@ -93,7 +93,7 @@ export function getDefaultConfiguration(
     mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
     dataSourceConfigurations: null,
     tablesConfigurations: null,
-    childAgentId: childAgentDefaultId ?? null,
+    childAgentId: childAgentDefaultId,
     reasoningModel: validatedReasoningModel,
     timeFrame: null,
     additionalConfiguration: {},
