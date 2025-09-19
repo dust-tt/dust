@@ -604,9 +604,48 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       (parent) => !parentsToRemove.includes(parent)
     );
 
-    await this.update({ parentsIn: updatedParents });
+    const filteredParents =
+      DataSourceViewResource.removeChildrenIfEnclosedBy(updatedParents);
+
+    await this.update({ parentsIn: filteredParents });
 
     return new Ok(undefined);
+  }
+
+  static removeChildrenIfEnclosedBy(parentsIn: string[]): string[] {
+    // Parents paths are specified using dot syntax.
+    // Clean-up the list so no children are left if they have enclosing parents already in the list.
+    // Important: Sort by length asc so we start with the potential enclosing parents first.
+    const sortedByLength = [...parentsIn].sort((a, b) => a.length - b.length);
+    const filteredParents: string[] = [];
+    for (const parent of sortedByLength) {
+      let enclosingParentFound = false;
+
+      // No need to check if the parent has no dots, it's a root node.
+      if (parent.indexOf(".") !== -1) {
+        const parts = parent.split(".");
+
+        let potentialEnclosingParentPath = "";
+        for (const part of parts) {
+          potentialEnclosingParentPath += part + ".";
+          const pathWithoutDot = potentialEnclosingParentPath.substring(
+            0,
+            potentialEnclosingParentPath.length - 1
+          );
+          if (filteredParents.some((p) => p === pathWithoutDot)) {
+            // Found an enclosing parent, so we don't add this parent to the list
+            enclosingParentFound = true;
+            break;
+          }
+        }
+      }
+      if (!enclosingParentFound) {
+        // If the parent is not a child of any other parent, add it to the list
+        filteredParents.push(parent);
+      }
+    }
+
+    return filteredParents;
   }
 
   async setParents(
