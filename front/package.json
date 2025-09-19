@@ -230,5 +230,6 @@
     "fs": false,
     "dgram": false,
     "child_process": false
-  }
+  },
+  "version": "0.0.1"
 }
