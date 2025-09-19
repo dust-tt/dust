@@ -160,7 +160,7 @@ function KnowledgeConfigurationSheetForm({
       formData.sources,
       supportedDataSourceViews
     );
-
+  
     const datasource =
       toolsConfigurations.dataSourceConfiguration ??
       toolsConfigurations.dataWarehouseConfiguration ??
