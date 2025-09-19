@@ -2040,6 +2040,7 @@ export async function renderAndUpsertPageFromCache({
   let renderedPageSection = await renderPageSection({
     dsConfig,
     blocksByParentId,
+    localLogger,
   });
 
   // add a newline to separate the page from the metadata above (title, author...)
@@ -2437,6 +2438,8 @@ export async function getDiscoveredResourcesFromCache({
   };
 }
 
+const LONG_RENDER_BLOCK_SECTION_TIME_MS = 30000;
+
 /** Render page sections according to Notion structure:
  * - the natural nesting of blocks is used as structure,
  * - H1, H2 & H3 blocks add a level of nesting in addition to the "natural"
@@ -2448,9 +2451,11 @@ export async function getDiscoveredResourcesFromCache({
 async function renderPageSection({
   dsConfig,
   blocksByParentId,
+  localLogger,
 }: {
   dsConfig: DataSourceConfig;
   blocksByParentId: Record<string, NotionConnectorBlockCacheEntry[]>;
+  localLogger: Logger;
 }): Promise<CoreAPIDataSourceDocumentSection> {
   const renderedPageSection: CoreAPIDataSourceDocumentSection = {
     prefix: null,
@@ -2536,6 +2541,7 @@ async function renderPageSection({
     depth: number,
     indent = ""
   ): Promise<CoreAPIDataSourceDocumentSection> => {
+    const startTime = Date.now();
     // Initial rendering (remove base64 images from rendered block)
     let renderedBlock = b.blockText ? `${indent}${b.blockText}` : "";
     renderedBlock = renderedBlock
@@ -2578,6 +2584,21 @@ async function renderPageSection({
         await renderBlockSection(child, depth + 1, indent)
       );
     }
+    const elapsedTime = Date.now() - startTime;
+    if (elapsedTime > LONG_RENDER_BLOCK_SECTION_TIME_MS) {
+      localLogger.info(
+        {
+          elapsedTime,
+          blockId: b.notionBlockId,
+          blockType: b.blockType,
+          blockText: b.blockText,
+          depth,
+          indent,
+        },
+        "Long renderBlockSection time."
+      );
+    }
+    heartbeat();
     return blockSection;
   };
 
