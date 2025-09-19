@@ -615,6 +615,8 @@ The directive should be used to display a clickable version of the agent name in
       delete_worksheet: "low",
       format_cells: "low",
       copy_sheet: "low",
+      rename_worksheet: "low",
+      move_worksheet: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
