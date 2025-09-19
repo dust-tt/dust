@@ -552,7 +552,12 @@ export interface MCPServerToolsConfigurations {
   }[];
   enumConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string; default?: string }
+    {
+      options: Record<string, string>;
+      descriptions?: Record<string, string>;
+      description?: string;
+      default?: string;
+    }
   >;
   listConfigurations: Record<
     string,
@@ -758,6 +763,16 @@ export function getMCPServerToolsConfigurations(
             )
             .filter((v): v is string => typeof v === "string")
         : [];
+      const descriptions = Array.isArray(optionsProperty.anyOf)
+        ? optionsProperty.anyOf
+            .map(
+              (v) =>
+                isJSONSchemaObject(v) &&
+                typeof v.description === "string" &&
+                v.description
+            )
+            .filter((v): v is string => typeof v === "string")
+        : [];
 
       if (values.length !== labels.length) {
         throw new Error(
@@ -765,11 +780,15 @@ export function getMCPServerToolsConfigurations(
         );
       }
 
-      // Create a record of values to labels
+      // Create a record of values to labels and descriptions
       const valueToLabel: Record<string, string> = {};
+      const valueToDescription: Record<string, string> = {};
       for (let i = 0; i < values.length; i++) {
         if (values[i] && labels[i]) {
           valueToLabel[values[i]] = labels[i];
+          if (descriptions[i]) {
+            valueToDescription[values[i]] = descriptions[i];
+          }
         }
       }
 
@@ -777,6 +796,7 @@ export function getMCPServerToolsConfigurations(
         key,
         {
           options: valueToLabel,
+          descriptions: valueToDescription,
           description: schema.description,
           default: defaultValue,
         },

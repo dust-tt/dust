@@ -233,10 +233,12 @@ function StringConfigurationSection({
 function EnumConfigurationInput({
   configKey,
   enumOptions,
+  enumDescriptions,
   description,
 }: {
   configKey: string;
   enumOptions: Record<string, string>;
+  enumDescriptions?: Record<string, string>;
   description?: string;
 }) {
   const { field, fieldState } = useController<MCPFormData>({
@@ -248,53 +250,62 @@ function EnumConfigurationInput({
   const currentLabel = currentValue
     ? enumOptions[currentValue] || currentValue
     : displayLabel;
+  const currentDescription =
+    currentValue && enumDescriptions
+      ? enumDescriptions[currentValue]
+      : undefined;
 
   return (
-    <div key={configKey} className="mb-2 flex items-center gap-4">
-      <div className="flex w-1/5 items-center gap-2">
-        <Label className="text-sm font-medium">
-          {formatKeyForDisplay(configKey)}
-        </Label>
-        {description && (
-          <Tooltip
-            trigger={
-              <Icon
-                visual={InformationCircleIcon}
-                size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
-              />
-            }
-            label={description}
-          />
-        )}
-      </div>
-      <div className="flex-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              isSelect
-              label={currentLabel}
-              size="sm"
-              tooltip={displayLabel}
-              variant="outline"
+    <div className="flex flex-col gap-1">
+      <div key={configKey} className="mb-2 flex items-center gap-4">
+        <div className="flex w-1/5 items-center gap-2">
+          <Label className="text-sm font-medium">
+            {formatKeyForDisplay(configKey)}
+          </Label>
+          {description && (
+            <Tooltip
+              trigger={
+                <Icon
+                  visual={InformationCircleIcon}
+                  size="xs"
+                  className="cursor-help text-gray-400 hover:text-gray-600"
+                />
+              }
+              label={description}
             />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {Object.entries(enumOptions).map(([value, label]) => (
-              <DropdownMenuItem
-                key={value}
-                label={label}
-                onSelect={() => field.onChange(value)}
+          )}
+        </div>
+        <div className="flex-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                isSelect
+                label={currentLabel}
+                size="sm"
+                tooltip={displayLabel}
+                variant="outline"
               />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {!!fieldState.error && (
-          <div className={"error flex items-center gap-1 text-xs"}>
-            {fieldState.error.message}
-          </div>
-        )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {Object.entries(enumOptions).map(([value, label]) => (
+                <DropdownMenuItem
+                  key={value}
+                  label={label}
+                  onSelect={() => field.onChange(value)}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {!!fieldState.error && (
+            <div className={"error flex items-center gap-1 text-xs"}>
+              {fieldState.error.message}
+            </div>
+          )}
+        </div>
       </div>
+      {currentDescription && (
+        <div className="mt-1 text-sm text-gray-600">{currentDescription}</div>
+      )}
     </div>
   );
 }
@@ -304,7 +315,11 @@ function EnumConfigurationSection({
 }: {
   enumConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Record<string, string>;
+      descriptions?: Record<string, string>;
+      description?: string;
+    }
   >;
 }) {
   if (Object.keys(enumConfigurations).length === 0) {
@@ -312,11 +327,12 @@ function EnumConfigurationSection({
   }
 
   return Object.entries(enumConfigurations).map(
-    ([key, { options, description }]) => (
+    ([key, { options, descriptions, description }]) => (
       <EnumConfigurationInput
         key={key}
         configKey={key}
         enumOptions={options}
+        enumDescriptions={descriptions}
         description={description}
       />
     )
@@ -500,7 +516,11 @@ interface AdditionalConfigurationSectionProps {
   booleanConfigurations: OptionalDescribedKey[];
   enumConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Record<string, string>;
+      descriptions?: Record<string, string>;
+      description?: string;
+    }
   >;
   listConfigurations: Record<
     string,
