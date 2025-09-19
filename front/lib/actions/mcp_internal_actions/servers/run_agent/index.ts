@@ -231,9 +231,7 @@ export default async function createServer(
         .nullable(),
       conversationId: z
         .string()
-        .describe(
-          "The conversation id to run the agent in. Only use if the user explicitly request to delegate the query in previous conversation."
-        )
+        .describe("The conversation id where the sub-agent will run.")
         .optional()
         .nullable(),
       ...configurableProperties,
@@ -263,6 +261,14 @@ export default async function createServer(
           agentConfiguration: mainAgent,
           conversation: mainConversation,
         } = agentLoopContext.runContext;
+
+        if (conversationId === mainConversation.sId) {
+          return new Err(
+            new MCPError(
+              "Conversation id cannot be the same as the main conversation."
+            )
+          );
+        }
 
         const childAgentIdRes = parseAgentConfigurationUri(uri);
         if (childAgentIdRes.isErr()) {
