@@ -122,7 +122,7 @@ export async function createContentFragmentsFromDataSources(
     }
   }
 
-  // Create content fragments for tables
+  // Create content fragments for tables.
   for (const table of resolvedTables) {
     contentFragments.push({
       title: `Table: ${table.tableId}`,
