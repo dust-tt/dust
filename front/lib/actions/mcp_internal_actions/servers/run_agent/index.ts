@@ -123,7 +123,7 @@ const configurableProperties = {
           z
             .object({
               value: z.literal("run-agent"),
-              label: z.literal("Background conversation"),
+              label: z.literal("Agent runs in background"),
             })
             .describe(
               "The agent is called in a hidden process, and the main agent manage the response."
