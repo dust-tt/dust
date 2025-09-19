@@ -423,6 +423,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       limit: number;
       cursor?: string;
     }
+    // TODO(2025-09-19 aubin): fix this return type, the resource should not need to be aware of
+    //  API-specific types.
   ): Promise<Result<GetMCPActionsResult, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -474,6 +476,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
     ];
 
+    // TODO(2025-09-19 aubin): extract these in methods of AgentStepContentResource.
     const [totalCount, stepContents] = await Promise.all([
       AgentStepContentModel.count({
         include: includeClause,
