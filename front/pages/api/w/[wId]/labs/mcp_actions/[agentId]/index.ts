@@ -107,7 +107,7 @@ async function handler(
       }
 
       const result = await AgentMCPActionResource.listByAgent(auth, {
-        agentConfigurationId: agentConfiguration.sId,
+        agentConfiguration,
         limit,
         cursor,
       });

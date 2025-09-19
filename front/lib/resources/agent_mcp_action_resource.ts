@@ -38,7 +38,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
-import type { ModelId, Result } from "@app/types";
+import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
@@ -415,11 +415,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   static async listByAgent(
     auth: Authenticator,
     {
-      agentConfigurationId,
+      agentConfiguration,
       limit,
       cursor,
     }: {
-      agentConfigurationId: string;
+      agentConfiguration: LightAgentConfigurationType;
       limit: number;
       cursor?: string;
     }
@@ -447,7 +447,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         as: "agentMessage",
         required: true,
         where: {
-          agentConfigurationId,
+          agentConfigurationId: agentConfiguration.sId,
         },
         include: [
           {
