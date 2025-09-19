@@ -346,7 +346,7 @@ export function CreateMCPServerDialog({
                               className="text-gray-400"
                             />
                           }
-                          label="Choose how to authenticate: Automatic discovery, Bearer token, or Static OAuth credentials. Automatic lets Dust discover if OAuth is required and use dynamic client registration if possible."
+                          label="Choose how to authenticate to the MCP server: Automatic discovery, Bearer token, or Static OAuth credentials."
                         />
                       </div>
                       <DropdownMenu>
@@ -415,6 +415,12 @@ export function CreateMCPServerDialog({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    {(authMethod === "oauth-dynamic" ||
+                      defaultServerConfig?.authMethod === "oauth-dynamic") && (
+                    <div className="text-xs text-muted-foreground">
+                        Dust will automatically discover if OAuth authentication is required. If OAuth is not needed, the server will be accessed without authentication. Otherwise, Dust will try to use dynamic client registration to get the OAuth credentials.
+                      </div>
+                    )}
                     {(authMethod === "bearer" ||
                       defaultServerConfig?.authMethod === "bearer") && (
                       <div className="flex-grow">
