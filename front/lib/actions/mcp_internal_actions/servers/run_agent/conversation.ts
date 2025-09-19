@@ -63,7 +63,7 @@ export async function createContentFragmentsFromDataSources(
     mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
   }));
 
-  // Resolve data source configurations to get actual data source IDs
+  // Resolve data source configurations to get actual data source IDs.
   const resolvedDataSourcesResult = await getAgentDataSourceConfigurations(
     auth,
     dataSourceToolConfigurations
