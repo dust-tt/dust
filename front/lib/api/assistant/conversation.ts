@@ -43,7 +43,10 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid, normalizeArrays } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import {
+  getTimeframeSecondsFromLiteral,
+  rateLimiter,
+} from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -58,7 +61,6 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MaxMessagesTimeframeType,
   MentionType,
   ModelId,
   PlanType,
@@ -87,22 +89,6 @@ import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
-
-function getTimeframeSecondsFromLiteral(
-  timeframeLiteral: MaxMessagesTimeframeType
-): number {
-  switch (timeframeLiteral) {
-    case "day":
-      return 60 * 60 * 24; // 1 day.
-
-    // Lifetime is intentionally mapped to a 30-day period.
-    case "lifetime":
-      return 60 * 60 * 24 * 30; // 30 days.
-
-    default:
-      return 0;
-  }
-}
 
 /**
  * Conversation Creation, update and deletion
