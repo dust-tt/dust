@@ -272,11 +272,6 @@ const config = {
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
   },
-  getDustManagedOpenAIAPIKeyEU: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "DUST_MANAGED_OPENAI_API_KEY_EU"
-    );
-  },
 };
 
 export default config;
