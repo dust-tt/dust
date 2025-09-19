@@ -266,6 +266,18 @@ export function CreateMCPServerDialog({
     resetState();
   };
 
+  const getAuthMethodLabel = () => {
+    if (authMethod === "oauth-dynamic") {
+      return "Automatic";
+    }
+    if (authMethod === "bearer") {
+      return defaultServerConfig?.authMethod === "bearer"
+        ? `${defaultServerConfig.name} API Key`
+        : "Bearer token";
+    }
+    return "Static OAuth";
+  };
+
   return (
     <Dialog
       open={isOpen}
@@ -354,15 +366,7 @@ export function CreateMCPServerDialog({
                           <Button
                             variant="outline"
                             isSelect
-                            label={
-                              authMethod === "oauth-dynamic"
-                                ? "Automatic"
-                                : authMethod === "bearer"
-                                  ? defaultServerConfig?.authMethod === "bearer"
-                                    ? `${defaultServerConfig.name} API Key`
-                                    : "Bearer token"
-                                  : "Static OAuth"
-                            }
+                            label={getAuthMethodLabel()}
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
