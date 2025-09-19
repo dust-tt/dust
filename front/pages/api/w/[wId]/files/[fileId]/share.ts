@@ -107,6 +107,8 @@ async function handler(
           });
         }
 
+        // We don't want to share Content Creation files that use files from the conversation
+        // to people outside of the workspace.
         if (isUsingConversationFiles(fileContent)) {
           return apiError(req, res, {
             status_code: 400,
