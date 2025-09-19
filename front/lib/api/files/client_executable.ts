@@ -405,7 +405,7 @@ async function getFileActions(
   );
 }
 
-async function getOutputForRevertAction(
+async function getRevertActionOutput(
   action: AgentMCPActionModel,
   workspaceId: number
 ): Promise<
@@ -549,7 +549,7 @@ export async function revertClientExecutableFileToPreviousState(
   if (lastRevertAction !== null) {
     const revertAction = lastRevertAction;
 
-    const revertItemOutput = await getOutputForRevertAction(
+    const revertItemOutput = await getRevertActionOutput(
       revertAction,
       workspaceId
     );
