@@ -112,8 +112,9 @@ export function ShareContentCreationFilePopover({
     await doShare(shareScope);
   };
 
-  const handleCreateLink = () => {
+  const handleCreateLink = async () => {
     setShowShareOptions(true);
+    await handleChangeFileShare("workspace");
   };
 
   const handleShareOptionSelect = async (scope: FileShareScope) => {
@@ -243,14 +244,14 @@ export function ShareContentCreationFilePopover({
               <div className="flex flex-col gap-3">
                 {!showShareOptions ? (
                   // Not shared state
-                  <div className="flex space-x-2 justify-between">
+                  <div className="flex justify-between space-x-2">
                     <div className="grow">
-                    <Input
-                      disabled
-                      placeholder={getPlaceholderUrl()}
-                      className="text-element-600 dark:text-element-600-dark"
+                      <Input
+                        disabled
+                        placeholder={getPlaceholderUrl()}
+                        className="text-element-600 dark:text-element-600-dark"
                       />
-                      </div>
+                    </div>
                     <Button
                       label="Create link"
                       icon={LinkIcon}
