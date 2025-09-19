@@ -133,13 +133,14 @@ const configurableProperties = {
               value: z.literal("handoff"),
               label: z.literal("Agent responds in conversation"),
             })
-            .describe("The selected agent takes over and responds directly in the conversation."),
+            .describe(
+              "The selected agent takes over and responds directly in the conversation."
+            ),
         ])
         .optional(),
       value: z.string(),
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
     })
-    .describe("Indicate the choices the agent can select from")
     .default({
       value: "run-agent",
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
