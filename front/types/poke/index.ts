@@ -42,7 +42,7 @@ export type PokeMCPServerViewType = MCPServerViewType &
     space: PokeSpaceType;
   };
 
-type PokeAgentActionType = AgentMessageType["actions"][0] & {
+type PokeAgentActionType = AgentMessageType["actions"][number] & {
   runId?: string | null;
   appWorkspaceId?: string | null;
   appSpaceId?: string | null;

@@ -1,7 +1,6 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -17,6 +16,7 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -27,6 +27,7 @@ import type {
   ContentFragmentType,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
+  LightAgentConfigurationType,
   LightAgentMessageType,
   LightMessageWithRankType,
   MessageWithRankType,
@@ -34,8 +35,8 @@ import type {
   Result,
   UserMessageType,
 } from "@app/types";
-import type { LightAgentConfigurationType } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
   ReasoningContentType,
@@ -64,12 +65,12 @@ export function getMaximalVersionAgentStepContent(
 }
 
 export async function generateParsedContents(
-  actions: MCPActionType[],
+  actions: AgentMCPActionWithOutputType[],
   agentConfiguration: LightAgentConfigurationType,
   messageId: string,
   contents: { step: number; content: AgentContentItemType }[]
-): Promise<Record<number, Array<ParsedContentItem>>> {
-  const parsedContents: Record<number, Array<ParsedContentItem>> = {};
+): Promise<Record<number, ParsedContentItem[]>> {
+  const parsedContents: Record<number, ParsedContentItem[]> = {};
   const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
 
   for (const c of contents) {
@@ -112,7 +113,6 @@ export async function generateParsedContents(
       if (matchingAction) {
         parsedContents[step].push({ kind: "action", action: matchingAction });
       }
-      continue;
     }
   }
 
@@ -209,31 +209,26 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [agentConfigurations, agentMCPActions] = await Promise.all([
-    (async () => {
-      // Get all unique pairs id-version for the agent configurations
-      const agentConfigurationIds = agentMessages.reduce((acc, m) => {
-        if (m.agentMessage) {
-          acc.add(m.agentMessage.agentConfigurationId);
-        }
-        return acc;
-      }, new Set<string>());
+  // Get all unique pairs id-version for the agent configurations
+  const agentConfigurationIds = agentMessages.reduce((acc, m) => {
+    if (m.agentMessage) {
+      acc.add(m.agentMessage.agentConfigurationId);
+    }
+    return acc;
+  }, new Set<string>());
 
-      return getAgentConfigurations(auth, {
-        agentIds: [...agentConfigurationIds],
-        variant: "extra_light",
-      });
-    })(),
-    (async () => {
-      const agentStepContents =
-        await AgentStepContentResource.fetchByAgentMessages(auth, {
-          agentMessageIds,
-          includeMCPActions: true,
-          latestVersionsOnly: true,
-        });
-      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
-    })(),
-  ]);
+  const agentConfigurations = await getAgentConfigurations(auth, {
+    agentIds: [...agentConfigurationIds],
+    variant: "extra_light",
+  });
+
+  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds,
+      latestVersionsOnly: true,
+    }
+  );
 
   if (!agentConfigurations) {
     return new Err(
@@ -241,14 +236,18 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
-  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+  const agentMCPActions = await AgentMCPActionResource.fetchByStepContents(
     auth,
     {
-      agentMessageIds: agentMessageIds,
-      includeMCPActions: false,
+      stepContents,
       latestVersionsOnly: true,
     }
   );
+  const actionsWithOutputs =
+    await AgentMCPActionResource.enrichActionsWithOutputItems(
+      auth,
+      agentMCPActions
+    );
 
   const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
     stepContents.reduce(
@@ -273,7 +272,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions = agentMCPActions
+      const actions = actionsWithOutputs
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 

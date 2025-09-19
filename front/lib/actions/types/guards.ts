@@ -3,7 +3,6 @@ import type {
   LightClientSideMCPToolConfigurationType,
   LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
-  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
@@ -282,24 +281,4 @@ export function throwIfInvalidAgentConfiguration(
       throw new Error("Cannot edit archived agent");
     }
   }
-}
-
-function isMCPActionType(action: unknown): action is MCPActionType {
-  return (
-    typeof action === "object" &&
-    action !== null &&
-    "id" in action &&
-    typeof action.id === "number" &&
-    "agentMessageId" in action &&
-    typeof action.agentMessageId === "number" &&
-    "output" in action &&
-    "step" in action &&
-    typeof action.step === "number" &&
-    "citationsAllocated" in action &&
-    typeof action.citationsAllocated === "number"
-  );
-}
-
-export function isMCPActionArray(actions: unknown): actions is MCPActionType[] {
-  return Array.isArray(actions) && actions.every(isMCPActionType);
 }
