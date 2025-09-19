@@ -972,7 +972,7 @@ The directive should be used to display a clickable version of the agent name in
   "web_search_&_browse_with_summary": {
     id: 30,
     availability: "auto_hidden_builder",
-    allowMultipleInstances: true,
+    allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: true,
     tools_stakes: undefined,
