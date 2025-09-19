@@ -8,6 +8,11 @@ import "@app/styles/components.css";
 import { datadogLogs } from "@datadog/browser-logs";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
+import { useRouter } from "next/router";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
+import { useEffect } from "react";
+import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
 
@@ -37,12 +42,54 @@ type AppPropsWithLayout = AppProps & {
 };
 
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
+  const router = useRouter();
+  const [cookies] = useCookies(["dust-cookies-accepted"]);
+
+  // Check if user has accepted cookies
+  const hasAcceptedCookies = ["true", "auto"].includes(
+    cookies["dust-cookies-accepted"]
+  );
+
+  // Initialize PostHog only for public pages (not under /w/) and if cookies are accepted
+  useEffect(() => {
+    const isPublicPage = !router.pathname.startsWith("/w/");
+
+    if (isPublicPage && hasAcceptedCookies) {
+      // Only initialize if not already initialized
+      if (!posthog.__loaded) {
+        posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+          api_host: "/ingest", // Using proxy to avoid ad blockers
+          person_profiles: "identified_only", // Only create profiles for identified users
+          defaults: "2025-05-24",
+          loaded: (posthog) => {
+            if (process.env.NODE_ENV === "development") posthog.debug();
+          },
+        });
+      } else {
+        // Re-enable capturing if previously opted out
+        posthog.opt_in_capturing();
+      }
+    } else {
+      // Opt out of capturing if on webapp pages or cookies not accepted
+      if (posthog.__loaded) {
+        posthog.opt_out_capturing();
+      }
+    }
+  }, [router.pathname, hasAcceptedCookies]);
+
   // Use the layout defined at the page level, if available.
   const getLayout = Component.getLayout ?? ((page) => page);
 
-  return (
+  const content = (
     <RootLayout>
       {getLayout(<Component {...pageProps} />, pageProps)}
     </RootLayout>
   );
+
+  // Only wrap with PostHogProvider for public pages when cookies are accepted
+  if (!router.pathname.startsWith("/w/") && hasAcceptedCookies) {
+    return <PostHogProvider client={posthog}>{content}</PostHogProvider>;
+  }
+
+  return content;
 }
