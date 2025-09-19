@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/client",
-  "version": "1.1.15",
+  "version": "1.1.16",
   "description": "Client for Dust API",
   "repository": {
     "type": "git",
