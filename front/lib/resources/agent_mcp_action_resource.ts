@@ -29,6 +29,7 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -42,15 +43,6 @@ import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
-
-function isFunctionCallStepContent(
-  stepContent: AgentStepContentModel
-): stepContent is AgentStepContentModel & {
-  value: FunctionCallContentType;
-} {
-  return isFunctionCallContent(stepContent.value);
-}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -68,7 +60,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     blob: Attributes<AgentMCPActionModel>,
     // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
     readonly stepContent: NonAttribute<
-      AgentStepContentModel & { value: FunctionCallContentType }
+      AgentStepContentResource & { value: FunctionCallContentType }
     >,
     readonly metadata: {
       internalMCPServerName: InternalMCPServerNameType | null;
@@ -95,14 +87,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       transaction,
     });
 
-    const stepContents = await AgentStepContentModel.findAll({
-      where: {
-        id: {
-          [Op.in]: actions.map((a) => a.stepContentId),
-        },
-        workspaceId,
-      },
-    });
+    const stepContents = await AgentStepContentResource.fetchByModelIds(
+      auth,
+      actions.map((a) => a.stepContentId)
+    );
 
     const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
 
@@ -112,7 +100,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       // Each action must have a function call step content.
       assert(stepContent, "Step content not found.");
       assert(
-        isFunctionCallStepContent(stepContent),
+        stepContent.isFunctionCallContent(),
         "Step content is not a function call."
       );
 
@@ -145,16 +133,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { transaction }
     );
 
-    const stepContent = await AgentStepContentModel.findOne({
-      where: {
-        id: action.stepContentId,
-        workspaceId: workspace.id,
-      },
-      transaction,
-    });
+    const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
+      auth,
+      action.stepContentId
+    );
     assert(stepContent, "Step content not found.");
     assert(
-      isFunctionCallStepContent(stepContent),
+      stepContent.isFunctionCallContent(),
       "Step content is not a function call."
     );
 

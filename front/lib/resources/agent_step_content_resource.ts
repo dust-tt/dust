@@ -115,24 +115,27 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
-  get sId(): string {
-    return AgentStepContentResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
+  public static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<AgentStepContentResource[]> {
+    const contents = await AgentStepContentModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: ids },
+      },
     });
+
+    return contents.map((content) => new this(this.model, content.get()));
   }
 
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: ModelId;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("agent_step_content", {
-      id,
-      workspaceId,
-    });
+  public static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<AgentStepContentResource | null> {
+    const stepContents = await this.fetchByModelIds(auth, [id]);
+
+    return stepContents[0] ?? null;
   }
 
   /**
@@ -460,6 +463,26 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         },
         transaction
       );
+    });
+  }
+
+  get sId(): string {
+    return AgentStepContentResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("agent_step_content", {
+      id,
+      workspaceId,
     });
   }
 }
