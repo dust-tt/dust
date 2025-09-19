@@ -3,12 +3,17 @@ import type { NextApiResponse } from "next";
 
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator } from "@app/lib/auth";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  getTimeframeSecondsFromLiteral,
+  rateLimiter,
+} from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -18,6 +23,8 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { Err } from "@app/types";
+
+const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
 
 /**
  * @swagger
@@ -119,6 +126,34 @@ async function handler(
         message: `Webhook source ${webhookSourceId} not found in workspace ${wId}.`,
       },
     });
+  }
+
+  // Rate limiting: 10% of workspace message limit
+  const plan = auth.getNonNullablePlan();
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  if (maxMessages !== -1) {
+    const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+    const webhookLimit = Math.ceil(
+      maxMessages * activeSeats * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
+    ); // 10% of workspace message limit
+
+    const remaining = await rateLimiter({
+      key: `workspace:${workspace.sId}:webhook_triggers:${maxMessagesTimeframe}`,
+      maxPerTimeframe: webhookLimit,
+      timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+      logger,
+    });
+
+    if (remaining <= 0) {
+      return apiError(req, res, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message: `Webhook triggers rate limit exceeded. You can trigger up to ${webhookLimit} webhooks per ${maxMessagesTimeframe}.`,
+        },
+      });
+    }
   }
 
   // Fetch all triggers based on the webhook source id
