@@ -12,18 +12,17 @@ import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
   useAddWebhookSourceViewToSpace,
   useRemoveWebhookSourceViewFromSpace,
-  useWebhookSourcesWithViews,
-  useWebhookSourceViewsByWebhookSource,
 } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
 import type { SpaceType } from "@app/types/space";
 import type {
   WebhookSourceType,
   WebhookSourceViewType,
+  WebhookSourceWithViews,
 } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsSharingProps = {
-  webhookSource: WebhookSourceType;
+  webhookSource: WebhookSourceWithViews;
   owner: LightWorkspaceType;
 };
 
@@ -87,17 +86,9 @@ export function WebhookSourceDetailsSharing({
     workspaceId: owner.sId,
     disabled: false,
   });
-  const {
-    webhookSourceViews,
-    isWebhookSourceViewsLoading,
-    mutateWebhookSourceViews,
-  } = useWebhookSourceViewsByWebhookSource({
-    owner,
-    webhookSourceId: webhookSource.sId,
-  });
 
   const globalSpace = spaces.find((space) => space.kind === "global") ?? null;
-  const webhookSourceViewsWithSpace = webhookSourceViews.map((view) => ({
+  const webhookSourceViewsWithSpace = webhookSource.views.map((view) => ({
     ...view,
     space: spaces.find((space) => space.sId === view.spaceId) ?? null,
   }));
@@ -106,24 +97,11 @@ export function WebhookSourceDetailsSharing({
     null;
   const isRestricted = globalView === null;
 
-  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
-    owner,
-    disabled: true,
-  });
-
   const { addToSpace } = useAddWebhookSourceViewToSpace({
     owner,
-    callback: async () => {
-      await mutateWebhookSourceViews();
-      await mutateWebhookSourcesWithViews();
-    },
   });
   const { removeFromSpace } = useRemoveWebhookSourceViewFromSpace({
     owner,
-    callback: async () => {
-      await mutateWebhookSourceViews();
-      await mutateWebhookSourcesWithViews();
-    },
   });
 
   const availableSpaces = (spaces ?? []).filter((s) => s.kind === "regular");
@@ -132,7 +110,7 @@ export function WebhookSourceDetailsSharing({
     .map((space) => ({
       name: space.name,
       space: space,
-      webhookSourceView: webhookSourceViews.find(
+      webhookSourceView: webhookSource.views.find(
         (view) => view.spaceId === space.sId
       ),
       onClick: () => {},
@@ -169,7 +147,7 @@ export function WebhookSourceDetailsSharing({
         <div className="flex w-full items-center justify-between overflow-visible">
           <Page.SectionHeader title="Available to all Spaces" />
           <SliderToggle
-            disabled={isWebhookSourceViewsLoading || loading}
+            disabled={loading}
             selected={!isRestricted}
             onClick={async () => {
               if (globalSpace !== null) {
@@ -198,7 +176,7 @@ export function WebhookSourceDetailsSharing({
         )}
       </div>
 
-      {!isWebhookSourceViewsLoading && isRestricted && (
+      {isRestricted && (
         <>
           <div className="flex flex-row gap-2">
             <SearchInput

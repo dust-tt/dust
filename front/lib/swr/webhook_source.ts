@@ -263,12 +263,15 @@ export function useWebhookSourceViewsByWebhookSource({
 
 export function useAddWebhookSourceViewToSpace({
   owner,
-  callback,
 }: {
   owner: LightWorkspaceType;
-  callback?: () => Promise<void>;
 }) {
   const sendNotification = useSendNotification();
+
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    owner,
+    disabled: true,
+  });
 
   const createView = useCallback(
     async ({
@@ -299,7 +302,7 @@ export function useAddWebhookSourceViewToSpace({
           description: `${webhookSource.name} has been added to the ${space.name} space successfully.`,
         });
 
-        await callback?.();
+        await mutateWebhookSourcesWithViews();
       } catch (error) {
         sendNotification({
           type: "error",
@@ -308,7 +311,7 @@ export function useAddWebhookSourceViewToSpace({
         });
       }
     },
-    [sendNotification, owner.sId, callback]
+    [sendNotification, owner.sId, mutateWebhookSourcesWithViews]
   );
 
   return { addToSpace: createView };
@@ -316,12 +319,15 @@ export function useAddWebhookSourceViewToSpace({
 
 export function useRemoveWebhookSourceViewFromSpace({
   owner,
-  callback,
 }: {
   owner: LightWorkspaceType;
-  callback?: () => Promise<void>;
 }) {
   const sendNotification = useSendNotification();
+
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    owner,
+    disabled: true,
+  });
 
   const deleteView = useCallback(
     async ({
@@ -352,7 +358,7 @@ export function useRemoveWebhookSourceViewFromSpace({
             description: `${webhookSourceView.webhookSource.name} has been removed from the ${space.name} space successfully.`,
           });
 
-          await callback?.();
+          await mutateWebhookSourcesWithViews();
         } else {
           const res = await response.json();
           sendNotification({
@@ -371,7 +377,7 @@ export function useRemoveWebhookSourceViewFromSpace({
         });
       }
     },
-    [sendNotification, owner.sId, callback]
+    [sendNotification, owner.sId, mutateWebhookSourcesWithViews]
   );
 
   return { removeFromSpace: deleteView };
