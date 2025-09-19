@@ -13,11 +13,10 @@ const { sendDataDeletionEmail } = proxyActivities<typeof activities>({
   },
 });
 
-const { scrubWorkspaceData, pauseAllConnectors } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "60 minutes",
-});
+const { scrubWorkspaceData, pauseAllConnectors, pauseAllTriggers } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "60 minutes",
+  });
 
 export async function scheduleWorkspaceScrubWorkflow({
   workspaceId,
@@ -25,6 +24,7 @@ export async function scheduleWorkspaceScrubWorkflow({
   workspaceId: string;
 }): Promise<boolean> {
   await pauseAllConnectors({ workspaceId });
+  await pauseAllTriggers({ workspaceId });
   await sendDataDeletionEmail({
     remainingDays: 15,
     workspaceId,

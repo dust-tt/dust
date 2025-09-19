@@ -252,6 +252,44 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  static async disableAllForWorkspace(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listByWorkspace(auth);
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    // Only disable enabled triggers
+    const enabledTriggers = triggers.filter((t) => t.enabled);
+    if (enabledTriggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const r = await concurrentExecutor(
+      enabledTriggers,
+      async (trigger) => {
+        try {
+          return await trigger.disable(auth);
+        } catch (error) {
+          return new Err(normalizeError(error));
+        }
+      },
+      {
+        concurrency: 10,
+      }
+    );
+
+    if (r.find((res) => res.isErr())) {
+      return new Err(
+        new Error(
+          `Failed to disable ${r.filter((res) => res.isErr()).length} some triggers`
+        )
+      );
+    }
+    return new Ok(undefined);
+  }
+
   async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
