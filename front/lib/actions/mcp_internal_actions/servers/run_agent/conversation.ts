@@ -108,7 +108,7 @@ export async function createContentFragmentsFromDataSources(
         });
       }
     } else {
-      // If no parent filters, create a content fragment for the entire data source
+      // If no parent filters, create a content fragment for the entire data source.
       contentFragments.push({
         title: `Data Source: ${dataSource.dataSource.name}`,
         nodeId: DATA_SOURCE_NODE_ID, // Use the constant directly for data source nodes
