@@ -63,6 +63,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_management",
   "agent_memory",
   "agent_router",
+  "confluence",
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
@@ -971,7 +972,7 @@ The directive should be used to display a clickable version of the agent name in
   "web_search_&_browse_with_summary": {
     id: 30,
     availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: true,
     tools_stakes: undefined,
@@ -1049,6 +1050,35 @@ The directive should be used to display a clickable version of the agent name in
       documentationUrl: null,
       instructions: null,
       requiresSecret: true,
+    },
+  },
+  confluence: {
+    id: 33,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("confluence_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      // Read operations - never ask (no side effects)
+      get_page: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "confluence",
+      version: "1.0.0",
+      description:
+        "Basic Confluence integration for retrieving page information using the Confluence REST API.",
+      authorization: {
+        provider: "confluence_tools" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ConfluenceLogo",
+      documentationUrl:
+        "https://developer.atlassian.com/cloud/confluence/rest/v2/intro/",
+      instructions: null,
     },
   },
   [SEARCH_SERVER_NAME]: {
