@@ -813,7 +813,11 @@ impl LLM for OpenAILLM {
         } else {
             Some("api.openai.com".to_string())
         };
-        info!(model = self.id, host = self.host, "OpenAILLM.initialize");
+        info!(
+            model = self.id,
+            openai_host = self.host,
+            "OpenAILLM.initialize"
+        );
 
         Ok(())
     }
@@ -1230,7 +1234,7 @@ impl Embedder for OpenAIEmbedder {
         };
         info!(
             model = self.id,
-            host = self.host,
+            openai_host = self.host,
             "OpenAIEmbedder.initialize"
         );
         Ok(())
