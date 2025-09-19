@@ -232,11 +232,11 @@ function StringConfigurationSection({
 
 function EnumConfigurationInput({
   configKey,
-  enumValues,
+  enumOptions,
   description,
 }: {
   configKey: string;
-  enumValues: string[];
+  enumOptions: Record<string, string>;
   description?: string;
 }) {
   const { field, fieldState } = useController<MCPFormData>({
@@ -244,6 +244,11 @@ function EnumConfigurationInput({
   });
 
   const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
+  const currentValue = field.value?.toString();
+  const currentLabel = currentValue
+    ? enumOptions[currentValue] || currentValue
+    : displayLabel;
+
   return (
     <div key={configKey} className="mb-2 flex items-center gap-4">
       <div className="flex w-1/5 items-center gap-2">
@@ -268,18 +273,18 @@ function EnumConfigurationInput({
           <DropdownMenuTrigger asChild>
             <Button
               isSelect
-              label={field.value?.toString() ?? displayLabel}
+              label={currentLabel}
               size="sm"
               tooltip={displayLabel}
               variant="outline"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {enumValues.map((enumValue) => (
+            {Object.entries(enumOptions).map(([value, label]) => (
               <DropdownMenuItem
-                key={enumValue}
-                label={enumValue}
-                onSelect={() => field.onChange(enumValue)}
+                key={value}
+                label={label}
+                onSelect={() => field.onChange(value)}
               />
             ))}
           </DropdownMenuContent>
@@ -299,7 +304,7 @@ function EnumConfigurationSection({
 }: {
   enumConfigurations: Record<
     string,
-    { options: string[]; description?: string }
+    { options: Record<string, string>; description?: string }
   >;
 }) {
   if (Object.keys(enumConfigurations).length === 0) {
@@ -311,7 +316,7 @@ function EnumConfigurationSection({
       <EnumConfigurationInput
         key={key}
         configKey={key}
-        enumValues={options}
+        enumOptions={options}
         description={description}
       />
     )
@@ -438,7 +443,7 @@ interface GroupedConfigurationSectionProps {
   booleanConfigurations: OptionalDescribedKey[];
   enumConfigurations: Record<
     string,
-    { options: string[]; description?: string }
+    { options: Record<string, string>; description?: string }
   >;
   listConfigurations: Record<
     string,
@@ -495,7 +500,7 @@ interface AdditionalConfigurationSectionProps {
   booleanConfigurations: OptionalDescribedKey[];
   enumConfigurations: Record<
     string,
-    { options: string[]; description?: string }
+    { options: Record<string, string>; description?: string }
   >;
   listConfigurations: Record<
     string,
@@ -526,7 +531,7 @@ export function AdditionalConfigurationSection({
   const groupedEnums = useMemo(() => {
     const groups: Record<
       string,
-      Record<string, { options: string[]; description?: string }>
+      Record<string, { options: Record<string, string>; description?: string }>
     > = {};
     Object.entries(enumConfigurations).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
@@ -537,6 +542,8 @@ export function AdditionalConfigurationSection({
     });
     return groups;
   }, [enumConfigurations]);
+  console.log("groupedEnums", groupedEnums);
+  console.log("groupedEnums", enumConfigurations);
 
   const groupedLists = useMemo(() => {
     const groups: Record<

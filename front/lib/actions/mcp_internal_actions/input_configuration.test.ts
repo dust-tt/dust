@@ -762,6 +762,63 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
+    it("should augment inputs with enum configuration using new format", () => {
+      const rawInputs = {};
+      const config = createBasicMCPConfiguration({
+        additionalConfiguration: {
+          enumParam: "A",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            enumParam: {
+              type: "object",
+              properties: {
+                options: {
+                  anyOf: [
+                    {
+                      type: "object",
+                      properties: {
+                        value: { type: "string", const: "A" },
+                        label: { type: "string", const: "Option A" },
+                      },
+                    },
+                    {
+                      type: "object",
+                      properties: {
+                        value: { type: "string", const: "B" },
+                        label: { type: "string", const: "Option B" },
+                      },
+                    },
+                  ],
+                },
+                value: { type: "string" },
+                mimeType: {
+                  type: "string",
+                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+                },
+              },
+              required: ["value", "mimeType"],
+            },
+          },
+          required: ["enumParam"],
+        },
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual({
+        enumParam: {
+          value: "A",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
+        },
+      });
+    });
+
     it("should augment inputs with list configuration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
@@ -1654,7 +1711,29 @@ describe("findPathsToConfiguration", () => {
         enabled: booleanConfigSchema.describe("Whether the user is enabled"), // Reuses boolean schema
         category: z
           .object({
-            value: z.enum(["A", "B", "C"]),
+            options: z
+              .union([
+                z
+                  .object({
+                    value: z.literal("A"),
+                    label: z.literal("Category A"),
+                  })
+                  .describe("The label of the category"),
+                z
+                  .object({
+                    value: z.literal("B"),
+                    label: z.literal("Category B"),
+                  })
+                  .describe("The label of the category"),
+                z
+                  .object({
+                    value: z.literal("C"),
+                    label: z.literal("Category C"),
+                  })
+                  .describe("The label of the category"),
+              ])
+              .optional(),
+            value: z.string().describe("The selected category value"),
             mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
           })
           .describe("The category of the user"),
@@ -1861,9 +1940,33 @@ describe("findPathsToConfiguration", () => {
     expect(enumConfigurations["user.category"]).toMatchObject({
       type: "object",
       properties: {
+        options: {
+          anyOf: [
+            {
+              type: "object",
+              properties: {
+                value: { type: "string", const: "A" },
+                label: { type: "string", const: "Category A" },
+              },
+            },
+            {
+              type: "object",
+              properties: {
+                value: { type: "string", const: "B" },
+                label: { type: "string", const: "Category B" },
+              },
+            },
+            {
+              type: "object",
+              properties: {
+                value: { type: "string", const: "C" },
+                label: { type: "string", const: "Category C" },
+              },
+            },
+          ],
+        },
         value: {
           type: "string",
-          enum: ["A", "B", "C"],
         },
         mimeType: {
           type: "string",

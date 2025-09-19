@@ -136,12 +136,9 @@ function createAdditionalConfigurationSchema(
         ) {
           nestedStructure[rootKey] = z.coerce.boolean();
         } else if (requirements.enumConfigurations[path]) {
-          nestedStructure[rootKey] = z.enum(
-            requirements.enumConfigurations[path].options as [
-              string,
-              ...string[],
-            ]
-          );
+          const enumOptions = requirements.enumConfigurations[path].options;
+          const enumValues = Object.keys(enumOptions) as [string, ...string[]];
+          nestedStructure[rootKey] = z.enum(enumValues);
         } else if (requirements.listConfigurations[rootKey]) {
           nestedStructure[rootKey] = z
             .array(z.string())

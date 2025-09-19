@@ -552,7 +552,7 @@ export interface MCPServerToolsConfigurations {
   }[];
   enumConfigurations: Record<
     string,
-    { options: string[]; description?: string; default?: string }
+    { options: Record<string, string>; description?: string; default?: string }
   >;
   listConfigurations: Record<
     string,
@@ -720,7 +720,7 @@ export function getMCPServerToolsConfigurations(
 
   const enumConfigurations: Record<
     string,
-    { options: string[]; description?: string; default?: string }
+    { options: Record<string, string>; description?: string; default?: string }
   > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
@@ -728,9 +728,9 @@ export function getMCPServerToolsConfigurations(
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
       })
     ).map(([key, schema]) => {
-      const valueProperty = schema.properties?.value;
-      if (!valueProperty || !isJSONSchemaObject(valueProperty)) {
-        return [key, { options: [], description: schema.description }];
+      const optionsProperty = schema.properties?.options;
+      if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
+        return [key, { options: {}, description: schema.description }];
       }
 
       const defaultValue = extractSchemaDefault(
@@ -738,14 +738,46 @@ export function getMCPServerToolsConfigurations(
         (v: unknown): v is string => typeof v === "string"
       );
 
+      const values = Array.isArray(optionsProperty.anyOf)
+        ? optionsProperty.anyOf
+            .map(
+              (v) =>
+                isJSONSchemaObject(v) &&
+                isJSONSchemaObject(v.properties?.value) &&
+                v.properties.value.const
+            )
+            .filter((v): v is string => typeof v === "string")
+        : [];
+      const labels = Array.isArray(optionsProperty.anyOf)
+        ? optionsProperty.anyOf
+            .map(
+              (v) =>
+                isJSONSchemaObject(v) &&
+                isJSONSchemaObject(v.properties?.label) &&
+                v.properties.label.const
+            )
+            .filter((v): v is string => typeof v === "string")
+        : [];
+
+      if (values.length !== labels.length) {
+        throw new Error(
+          `Expected the same number of values and labels for key ${key}, got ${values.length} values and ${labels.length} labels`
+        );
+      }
+
+      // Create a record of values to labels
+      // Create a record of values to labels manually instead of using zip
+      const valueToLabel: Record<string, string> = {};
+      for (let i = 0; i < values.length; i++) {
+        if (values[i] && labels[i]) {
+          valueToLabel[values[i]] = labels[i];
+        }
+      }
+
       return [
         key,
         {
-          options: Array.isArray(valueProperty.enum)
-            ? valueProperty.enum.filter(
-                (v): v is string => typeof v === "string"
-              )
-            : [],
+          options: valueToLabel,
           description: schema.description,
           default: defaultValue,
         },
@@ -889,9 +921,10 @@ function isSchemaConfigurable(
   mimeType: InternalToolInputMimeType
 ): boolean {
   if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM) {
-    // We only check that the schema has a `value` property and a `mimeType` property with the correct value.
+    // We check that the schema has an `options` property, a `value` property and a `mimeType` property with the correct value.
     const mimeTypeProperty = schema.properties?.mimeType;
     if (
+      schema.properties?.options &&
       schema.properties?.value &&
       mimeTypeProperty &&
       isJSONSchemaObject(mimeTypeProperty)
