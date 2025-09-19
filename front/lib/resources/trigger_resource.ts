@@ -267,26 +267,20 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
-    const r = await concurrentExecutor(
+    const disabledTriggersResult = await concurrentExecutor(
       enabledTriggers,
-      async (trigger) => {
-        try {
-          return await trigger.disable(auth);
-        } catch (error) {
-          return new Err(normalizeError(error));
-        }
-      },
+      async (trigger) => trigger.disable(auth),
       {
         concurrency: 10,
       }
     );
 
-    if (r.find((res) => res.isErr())) {
-      return new Err(
-        new Error(
-          `Failed to disable ${r.filter((res) => res.isErr()).length} some triggers`
-        )
-      );
+    const failuresCount = disabledTriggersResult.filter((res) =>
+      res.isErr()
+    ).length;
+
+    if (failuresCount > 0) {
+      return new Err(new Error(`Failed to disable ${failuresCount} triggers`));
     }
     return new Ok(undefined);
   }
@@ -310,16 +304,20 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     // Query latest versions of all agent configurations at once
     const agentConfigs = await AgentConfiguration.findAll({
       where: {
-        sId: agentConfigurationIds,
         workspaceId: auth.getNonNullableWorkspace().id,
+        sId: agentConfigurationIds,
       },
-      order: [["versionCreatedAt", "DESC"]],
     });
 
-    // Get only the latest version of each agent config
+    // Get only the latest version of each agent config (by latest createdAt)
     const latestAgentConfigs = new Map<string, AgentConfiguration>();
     for (const config of agentConfigs) {
-      if (!latestAgentConfigs.has(config.sId)) {
+      const existing = latestAgentConfigs.get(config.sId);
+      if (
+        !existing ||
+        new Date(config.createdAt).getTime() >
+          new Date(existing.createdAt).getTime()
+      ) {
         latestAgentConfigs.set(config.sId, config);
       }
     }
@@ -370,26 +368,20 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
-    const r = await concurrentExecutor(
+    const enabledTriggersResult = await concurrentExecutor(
       enableableTriggers,
-      async (trigger) => {
-        try {
-          return await trigger.enable(auth);
-        } catch (error) {
-          return new Err(normalizeError(error));
-        }
-      },
+      async (trigger) => trigger.enable(auth),
       {
         concurrency: 10,
       }
     );
 
-    if (r.find((res) => res.isErr())) {
-      return new Err(
-        new Error(
-          `Failed to enable ${r.filter((res) => res.isErr()).length} some triggers`
-        )
-      );
+    const failuresCount = enabledTriggersResult.filter((res) =>
+      res.isErr()
+    ).length;
+
+    if (failuresCount > 0) {
+      return new Err(new Error(`Failed to enable ${failuresCount} triggers`));
     }
     return new Ok(undefined);
   }
@@ -429,7 +421,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
-    await this.update({ enabled: true });
+    try {
+      await this.update({ enabled: true });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
 
     // Re-register the temporal workflow
     const r = await this.upsertTemporalWorkflow(auth);
@@ -445,7 +441,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
-    await this.update({ enabled: false });
+    try {
+      await this.update({ enabled: false });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
 
     // Remove the temporal workflow
     const r = await this.removeTemporalWorkflow(auth);
