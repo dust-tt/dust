@@ -160,11 +160,10 @@ function KnowledgeConfigurationSheetForm({
       formData.sources,
       supportedDataSourceViews
     );
-  
+
     const datasource =
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      false
+      toolsConfigurations.mayRequireDataSourceConfiguration ||
+      toolsConfigurations.mayRequireDataWarehouseConfiguration
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -207,10 +206,9 @@ function KnowledgeConfigurationSheetForm({
       action,
       mcpServerViews,
       isEditing,
-      supportedDataSourceViews,
       presetActionData,
     });
-  }, [action, mcpServerViews, isEditing, presetActionData, supportedDataSourceViews]);
+  }, [action, mcpServerViews, isEditing, presetActionData]);
 
   const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
@@ -353,10 +351,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: toolsConfigurations.tableConfiguration
+      title: toolsConfigurations.mayRequireTableConfiguration
         ? "Select Tables"
         : "Select Data Sources",
-      description: toolsConfigurations.tableConfiguration
+      description: toolsConfigurations.mayRequireTableConfiguration
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,

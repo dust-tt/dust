@@ -47,7 +47,7 @@ export function makeDataSourceViewFilter(
   }));
 }
 
-export async function fetchAgentDataSourceConfiguration(
+async function fetchAgentDataSourceConfiguration(
   dataSourceConfigSId: string
 ): Promise<Result<AgentDataSourceConfiguration, Error>> {
   const sIdParts = getResourceNameAndIdFromSId(dataSourceConfigSId);
