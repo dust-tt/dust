@@ -51,7 +51,7 @@ export async function createContentFragmentsFromDataSources(
 
   const allTables = searchActions.flatMap((action) => action.tables ?? []);
 
-  // Convert DataSourceConfiguration to DataSourcesToolConfigurationType format
+  // Convert DataSourceConfiguration to DataSourcesToolConfigurationType format.
   const dataSourceToolConfigurations = allDataSources.map((dataSource) => ({
     uri: getDataSourceURI(dataSource),
     mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
