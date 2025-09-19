@@ -13,11 +13,14 @@ export default function RenderVisualization({
   searchParams: RenderVisualizationSearchParams;
 }) {
   const isFullHeight = searchParams.fullHeight === 'true';
-  
+  const allowedOrigins = ALLOWED_VISUALIZATION_ORIGIN
+    ? ALLOWED_VISUALIZATION_ORIGIN.split(',').map((s) => s.trim())
+    : [];
+
   return (
     <VisualizationWrapperWithErrorBoundary
       identifier={searchParams.identifier}
-      allowedVisualizationOrigin={ALLOWED_VISUALIZATION_ORIGIN}
+      allowedOrigins={allowedOrigins}
       isFullHeight={isFullHeight}
     />
   );

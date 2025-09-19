@@ -131,6 +131,7 @@ export function convertActionsForFormData(
     description: action.description,
     type: "MCP",
     configuration: action.configuration,
+    secretName: action.configuration.secretName,
   }));
 }
 

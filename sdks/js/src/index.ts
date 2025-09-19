@@ -1073,11 +1073,16 @@ export class DustAPI {
     return this._resultFromResponse(PostMessageFeedbackResponseSchema, res);
   }
 
-  async tokenize(text: string, dataSourceId: string) {
+  async tokenize(
+    text: string,
+    dataSourceId: string,
+    opts?: { signal?: AbortSignal }
+  ) {
     const res = await this.request({
       method: "POST",
       path: `data_sources/${dataSourceId}/tokenize`,
       body: { text },
+      signal: opts?.signal,
     });
 
     const r = await this._resultFromResponse(TokenizeResponseSchema, res);

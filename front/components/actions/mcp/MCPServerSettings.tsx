@@ -85,7 +85,6 @@ export function MCPServerSettings({
         isOpen={isConnectDialogOpen}
         setIsOpen={setIsConnectDialogOpen}
       />
-      <div className="heading-lg">Server Settings</div>
       <div className="space-y-2">
         <div className="heading-base">Authentication</div>
         <div className="flex space-x-2">

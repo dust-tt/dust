@@ -1,11 +1,36 @@
+import type { NodeViewProps } from "@tiptap/core";
+import type { MentionOptions } from "@tiptap/extension-mention";
 import Mention from "@tiptap/extension-mention";
 import type { PasteRuleMatch } from "@tiptap/react";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";
 import escapeRegExp from "lodash/escapeRegExp";
 
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { WorkspaceType } from "@app/types";
 
-export const MentionWithPasteExtension = Mention.extend({
+import { MentionComponent } from "../MentionComponent";
+
+interface MentionExtensionOptions extends MentionOptions {
+  owner?: WorkspaceType;
+}
+
+export const MentionExtension = Mention.extend<MentionExtensionOptions>({
+  addOptions() {
+    return {
+      ...this.parent?.(),
+    };
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer((props: NodeViewProps) => (
+      <MentionComponent
+        node={{ attrs: props.node.attrs as { id: string; label: string } }}
+        owner={this.options.owner}
+      />
+    ));
+  },
+
   addPasteRules() {
     const pasteRule = nodePasteRule({
       find: (text) => {
@@ -37,8 +62,8 @@ export const MentionWithPasteExtension = Mention.extend({
         return results;
       },
       type: this.type,
-      getAttributes: (match: Record<string, any>) => {
-        return { label: match.data["label"], id: match.data["id"] };
+      getAttributes: (match: { data: { label: string; id: string } }) => {
+        return { label: match.data.label, id: match.data.id };
       },
     });
 

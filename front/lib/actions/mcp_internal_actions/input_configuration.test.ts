@@ -59,6 +59,7 @@ function createBasicMCPConfiguration(
     retryPolicy: "no_retry",
     originalName: "test_tool",
     mcpServerName: "test_server",
+    secretName: null,
     ...overrides,
   };
 }

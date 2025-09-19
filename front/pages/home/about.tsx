@@ -390,6 +390,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/neyla-belmaachi-4817b0166/",
     github: null,
   },
+  leandre: {
+    name: "Leandre Le Bizec",
+    title: "Acceleration Engineer",
+    image: "https://avatars.githubusercontent.com/u/95234460?v=4",
+    linkedIn: "https://www.linkedin.com/in/leandre-lebizec/",
+    github: "https://github.com/LeandreLeBizec",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {

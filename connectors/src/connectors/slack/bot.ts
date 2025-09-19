@@ -157,6 +157,7 @@ export async function botAnswerMessage(
           channel: slackChannel,
           blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
           thread_ts: slackMessageTs,
+          unfurl_links: false,
         });
       } else {
         await slackClient.chat.postMessage({
@@ -231,6 +232,7 @@ export async function botReplaceMention(
         channel: slackChannel,
         blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
         thread_ts: slackMessageTs,
+        unfurl_links: false,
       });
     } else {
       await slackClient.chat.postMessage({
@@ -547,12 +549,19 @@ async function answerMessage(
 
   let requestedGroups: string[] | undefined = undefined;
   let skipToolsValidation = false;
+
   if (slackUserInfo.is_bot) {
     const isBotAllowedRes = await isBotAllowed(connector, slackUserInfo);
     if (isBotAllowedRes.isErr()) {
+      if (slackUserInfo.real_name === "Dust Data Sync") {
+        // The Dust Data Sync bot mentions Dust to let ther user know which bot to use so we should
+        // not react to it.
+        return new Ok(undefined);
+      }
       return isBotAllowedRes;
     }
-    // If the bot is allowed, we skip tools validation as we have no users to rely on for permissions.
+    // If the bot is allowed, we skip tools validation as we have no users to rely on for
+    // permissions.
     skipToolsValidation = true;
   } else {
     const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
@@ -632,7 +641,8 @@ async function answerMessage(
     slackThreadTs || slackMessageTs,
     lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
     connector,
-    lastSlackChatBotMessage?.conversationId || null
+    lastSlackChatBotMessage?.conversationId || null,
+    slackBotId // If we reach that line with a slackBotId, it means that the message is from an allowed Slack workflow bot.
   );
 
   buildContentFragmentPromise.catch((error) => {
@@ -1042,7 +1052,8 @@ async function makeContentFragments(
   threadTs: string,
   startingAtTs: string | null,
   connector: ConnectorResource,
-  conversationId: string | null
+  conversationId: string | null,
+  allowedSlackBotId: string | undefined // Slack workflow bot message should be taken into account.
 ): Promise<Result<PublicPostContentFragmentRequestBody[] | null, Error>> {
   const allContentFragments: PublicPostContentFragmentRequestBody[] = [];
   let allMessages: MessageElement[] = [];
@@ -1069,7 +1080,11 @@ async function makeContentFragments(
       // Signal that we must take all the messages starting from this one.
       shouldTake = true;
     }
-    if (!reply.user) {
+
+    const isFromAllowedBot =
+      allowedSlackBotId && reply.bot_id === allowedSlackBotId;
+    // Message is not from a user or an allowed bot, so we skip it.
+    if (!reply.user && !isFromAllowedBot) {
       continue;
     }
     if (shouldTake) {

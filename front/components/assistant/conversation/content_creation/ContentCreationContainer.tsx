@@ -77,6 +77,7 @@ export function ContentCreationContainer({
             conversation={conversation}
             fileId={contentId}
             owner={owner}
+            contentHash={contentHash}
           />
         );
 

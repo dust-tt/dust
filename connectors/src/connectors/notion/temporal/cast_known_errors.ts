@@ -1,19 +1,26 @@
 import {
+  APIErrorCode,
+  APIResponseError,
   RequestTimeoutError,
   UnknownHTTPResponseError,
 } from "@notionhq/client";
-import { APIErrorCode, APIResponseError } from "@notionhq/client";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
   Next,
 } from "@temporalio/worker";
 
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  ProviderTransientError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 
 export class NotionCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
+  // Delay hint for transient upstream 5xx.
+  private static readonly TRANSIENT_RETRY_DELAY_MS = 30 * 60 * 1000;
+
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -56,13 +63,12 @@ export class NotionCastKnownErrorsInterceptor
         }
       } else if (UnknownHTTPResponseError.isUnknownHTTPResponseError(err)) {
         if ([502, 504, 530].includes(err.status)) {
-          // Sometimes notion returns 502/504s, they are transient and look like rate limiting
-          // errors. 530 is transient and looks like DNS errors.
-          throw new ProviderWorkflowError(
+          // Notion transient upstream errors: cast to ProviderTransientError with 30m hint.
+          throw new ProviderTransientError(
             "notion",
-            "Notion 5XX transient error",
-            "transient_upstream_activity_error",
-            err
+            `Notion ${err.status} - Transient upstream error`,
+            err,
+            NotionCastKnownErrorsInterceptor.TRANSIENT_RETRY_DELAY_MS
           );
         }
       } else if (RequestTimeoutError.isRequestTimeoutError(err)) {

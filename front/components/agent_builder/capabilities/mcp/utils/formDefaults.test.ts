@@ -35,6 +35,7 @@ describe("getDefaultConfiguration", () => {
         dustAppConfiguration: null,
         jsonSchema: null,
         _jsonSchemaString: null,
+        secretName: null,
       });
     });
 
@@ -52,6 +53,7 @@ describe("getDefaultConfiguration", () => {
         dustAppConfiguration: null,
         jsonSchema: null,
         _jsonSchemaString: null,
+        secretName: null,
       });
     });
   });
@@ -98,6 +100,7 @@ describe("getDefaultConfiguration", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
+        mayRequireSecretConfiguration: false,
         configurable: "optional",
       });
 
@@ -129,6 +132,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -168,6 +172,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -195,6 +200,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -233,6 +239,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -271,6 +278,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -307,6 +315,7 @@ describe("getDefaultConfiguration", () => {
           },
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -348,6 +357,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -391,6 +401,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -425,6 +436,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           listConfigurations: {},
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -471,6 +483,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -542,6 +555,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -610,6 +624,7 @@ describe("getDefaultConfiguration", () => {
             },
           },
           mayRequireDustAppConfiguration: false,
+          mayRequireSecretConfiguration: false,
           configurable: "optional",
         });
 
@@ -686,6 +701,7 @@ describe("getDefaultConfiguration", () => {
         dustAppConfiguration: null,
         jsonSchema: null,
         _jsonSchemaString: null,
+        secretName: null,
       });
     });
   });
@@ -750,6 +766,7 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
         enumConfigurations: {},
         listConfigurations: {},
         mayRequireDustAppConfiguration: false,
+        mayRequireSecretConfiguration: false,
         configurable: "optional",
       });
 

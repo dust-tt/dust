@@ -84,6 +84,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "openai_usage",
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
@@ -962,7 +963,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "0.1.0",
       description: "Handoff the query to the deep research agent.",
       authorization: null,
-      icon: "ActionBrainIcon",
+      icon: "ActionAtomIcon",
       documentationUrl: null,
       instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
     },
@@ -993,14 +994,17 @@ The directive should be used to display a clickable version of the agent name in
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("slack_bot_mcp");
     },
-    isPreview: true,
+    isPreview: false,
     tools_stakes: {
       list_public_channels: "never_ask" as const,
       list_users: "never_ask" as const,
       get_user: "never_ask" as const,
-      post_message: "low" as const,
       read_channel_history: "never_ask" as const,
       read_thread_messages: "never_ask" as const,
+
+      post_message: "low" as const,
+      add_reaction: "low" as const,
+      remove_reaction: "low" as const,
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1019,6 +1023,32 @@ The directive should be used to display a clickable version of the agent name in
         "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
         "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
         "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+    },
+  },
+  openai_usage: {
+    id: 32,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("openai_usage_mcp");
+    },
+    tools_stakes: {
+      get_completions_usage: "low",
+      get_organization_costs: "low",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "openai_usage",
+      version: "1.0.0",
+      description:
+        "Direct access to OpenAI APIs for tracking API consumption and costs. Requires OpenAI Admin API key configured as a secret.",
+      authorization: null,
+      icon: "OpenaiLogo",
+      documentationUrl: null,
+      instructions: null,
+      requiresSecret: true,
     },
   },
   [SEARCH_SERVER_NAME]: {

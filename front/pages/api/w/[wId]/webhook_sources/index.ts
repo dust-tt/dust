@@ -122,7 +122,7 @@ async function handler(
           const systemView =
             await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
               auth,
-              webhookSource.id
+              webhookSource.sId
             );
 
           if (systemView === null) {
