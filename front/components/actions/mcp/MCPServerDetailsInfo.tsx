@@ -25,16 +25,18 @@ export function MCPServerDetailsInfo({
   }, [mcpServerView.editedByUser]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3 py-2">
       {mcpServerView.editedByUser && (
-        <div className="flex w-full justify-end text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex w-full text-sm text-muted-foreground dark:text-muted-foreground-night">
           Edited by {mcpServerView.editedByUser.fullName}, {editedAt}
         </div>
       )}
+      <Separator />
+      <MCPServerViewForm mcpServerView={mcpServerView} owner={owner} />
+      <Separator />
       {mcpServerView.server.authorization && (
         <MCPServerSettings mcpServerView={mcpServerView} owner={owner} />
       )}
-      <MCPServerViewForm mcpServerView={mcpServerView} owner={owner} />
       {isRemoteMCPServerType(mcpServerView.server) && (
         <RemoteMCPForm
           mcpServerView={mcpServerView}

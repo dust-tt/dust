@@ -1,12 +1,7 @@
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   InformationCircleIcon,
   LockIcon,
-  MoreIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -18,7 +13,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { DeleteMCPServerDialog } from "@app/components/actions/mcp/DeleteMCPServerDialog";
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
@@ -27,12 +22,15 @@ import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import type { WorkspaceType } from "@app/types";
 
-type MCPServerDetailsProps = {
+const DETAILS_TABS = ["info", "sharing"];
+type TabType = (typeof DETAILS_TABS)[number];
+
+interface MCPServerDetailsProps {
   owner: WorkspaceType;
   onClose: () => void;
   mcpServerView: MCPServerViewType | null;
   isOpen: boolean;
-};
+}
 
 export function MCPServerDetails({
   owner,
@@ -40,14 +38,7 @@ export function MCPServerDetails({
   isOpen,
   onClose,
 }: MCPServerDetailsProps) {
-  const [selectedTab, setSelectedTab] = useState<string>("info");
-
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedTab("info");
-    }
-  }, [isOpen]);
-
+  const [selectedTab, setSelectedTab] = useState<TabType>("info");
   const [mcpServerToDelete, setMCPServerToDelete] = useState<
     MCPServerType | undefined
   >();
@@ -96,22 +87,17 @@ export function MCPServerDetails({
                 {mcpServerView?.server.availability === "manual" && (
                   <>
                     <div className="grow" />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button icon={MoreIcon} variant="outline" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem
-                          key="remove-mcp-server"
-                          icon={TrashIcon}
-                          label="Remove"
-                          variant="warning"
-                          onClick={() => {
-                            setMCPServerToDelete(mcpServerView.server);
-                          }}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex h-full flex-row items-center">
+                      <Button
+                        icon={TrashIcon}
+                        variant="warning"
+                        label="Remove"
+                        size="xs"
+                        onClick={() => {
+                          setMCPServerToDelete(mcpServerView.server);
+                        }}
+                      />
+                    </div>
                   </>
                 )}
               </TabsList>
