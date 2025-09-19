@@ -203,8 +203,8 @@ export function DustAppSection() {
           </div>
         ) : field.value ? (
           <Card size="sm" className="w-full">
-            <div className="flex w-full p-3">
-              <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
+            <div className="flex w-full">
+              <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
                 <div className="flex items-center gap-2">
                   <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
                   <div className="text-md font-medium">{field.value.name}</div>

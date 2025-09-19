@@ -183,8 +183,8 @@ export function ChildAgentSection() {
 
       {!isAgentConfigurationsLoading && !shouldShowTable && selectedAgent && (
         <Card size="sm" className="w-full">
-          <div className="flex w-full p-3">
-            <div className="flex w-full flex-grow flex-col gap-2 overflow-hidden">
+          <div className="flex w-full">
+            <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
               <div className="flex items-center gap-2">
                 <Avatar
                   size="sm"
