@@ -93,9 +93,7 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
     }
 
     if (failures.length > 0) {
-      const failedList = failures
-        .map((f) => `${f.id}: ${f.error}`)
-        .join("; ");
+      const failedList = failures.map((f) => `${f.id}: ${f.error}`).join("; ");
       return new Err(
         new Error(
           `Garbage collection failed for ${failures.length}/${documentIds.length} document(s): ${failedList}`
