@@ -116,11 +116,30 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
 }
 
 const configurableProperties = {
-  isHandover: ConfigurableToolInputSchemas[
-    INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
-  ].describe(
-    "Whether we want to completely handover the query to the child agent in the main conversation."
-  ),
+  executionMode: z
+    .object({
+      options: z
+        .union([
+          z
+            .object({
+              value: z.literal("run-agent"),
+              label: z.literal("Background conversation"),
+            })
+            .describe(
+              "The agent is called in a hidden process, and the main agent manage the response."
+            ),
+          z
+            .object({
+              value: z.literal("handoff"),
+              label: z.literal("In conversation handoff"),
+            })
+            .describe("The agent is called in the conversation directly."),
+        ])
+        .optional(),
+      value: z.string(),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
+    })
+    .describe("Indicate the choices the agent can select from"),
   childAgent:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
 };
@@ -226,7 +245,7 @@ export default async function createServer(
         {
           query,
           childAgent: { uri },
-          isHandover,
+          executionMode,
           toolsetsToAdd,
           fileOrContentFragmentIds,
           conversationId,
@@ -238,7 +257,7 @@ export default async function createServer(
           "agentLoopContext is required to run the run_agent tool"
         );
 
-        const isHandoverFlag = isHandover.value;
+        const isHandoff = executionMode.value === "handoff";
 
         const {
           agentConfiguration: mainAgent,
@@ -310,7 +329,7 @@ export default async function createServer(
             childAgentId,
             mainAgent,
             mainConversation,
-            query: isHandoverFlag
+            query: isHandoff
               ? `
 You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
 ${instructions ?? ""}
@@ -327,7 +346,7 @@ ${query}`
           return new Err(new MCPError(convRes.error.message));
         }
 
-        if (isHandoverFlag) {
+        if (isHandoff) {
           return new Ok(
             makeMCPToolExit({
               message: `Query delegated to agent @${childAgentBlob.name}`,
