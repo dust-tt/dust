@@ -233,12 +233,10 @@ function StringConfigurationSection({
 function EnumConfigurationInput({
   configKey,
   enumOptions,
-  enumDescriptions,
   description,
 }: {
   configKey: string;
-  enumOptions: Record<string, string>;
-  enumDescriptions?: Record<string, string>;
+  enumOptions: Array<{ value: string; label: string; description?: string }>;
   description?: string;
 }) {
   const { field, fieldState } = useController<MCPFormData>({
@@ -247,13 +245,11 @@ function EnumConfigurationInput({
 
   const displayLabel = `Select ${formatKeyForDisplay(configKey)}`;
   const currentValue = field.value?.toString();
-  const currentLabel = currentValue
-    ? enumOptions[currentValue] || currentValue
-    : displayLabel;
-  const currentDescription =
-    currentValue && enumDescriptions
-      ? enumDescriptions[currentValue]
-      : undefined;
+  const currentOption = currentValue
+    ? enumOptions.find((option) => option.value === currentValue)
+    : undefined;
+  const currentLabel = currentOption ? currentOption.label : displayLabel;
+  const currentDescription = currentOption?.description;
 
   return (
     <div className="flex flex-col gap-1">
@@ -287,11 +283,11 @@ function EnumConfigurationInput({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              {Object.entries(enumOptions).map(([value, label]) => (
+              {enumOptions.map((option) => (
                 <DropdownMenuItem
-                  key={value}
-                  label={label}
-                  onSelect={() => field.onChange(value)}
+                  key={option.value}
+                  label={option.label}
+                  onSelect={() => field.onChange(option.value)}
                 />
               ))}
             </DropdownMenuContent>
@@ -316,8 +312,7 @@ function EnumConfigurationSection({
   enumConfigurations: Record<
     string,
     {
-      options: Record<string, string>;
-      descriptions?: Record<string, string>;
+      options: Array<{ value: string; label: string; description?: string }>;
       description?: string;
     }
   >;
@@ -327,12 +322,11 @@ function EnumConfigurationSection({
   }
 
   return Object.entries(enumConfigurations).map(
-    ([key, { options, descriptions, description }]) => (
+    ([key, { options, description }]) => (
       <EnumConfigurationInput
         key={key}
         configKey={key}
         enumOptions={options}
-        enumDescriptions={descriptions}
         description={description}
       />
     )
@@ -341,11 +335,11 @@ function EnumConfigurationSection({
 
 function ListConfigurationInput({
   configKey,
-  listValues,
+  listOptions,
   description,
 }: {
   configKey: string;
-  listValues: Record<string, string>;
+  listOptions: Array<{ value: string; label: string; description?: string }>;
   description?: string;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -357,14 +351,14 @@ function ListConfigurationInput({
     return Array.isArray(field.value) ? field.value : [];
   }, [field.value]);
 
-  const filteredValues = useMemo(() => {
+  const filteredOptions = useMemo(() => {
     if (searchQuery.trim() === "") {
-      return Object.entries(listValues);
+      return listOptions;
     }
-    return Object.entries(listValues).filter(([, label]) =>
-      label.toLowerCase().includes(searchQuery.toLowerCase())
+    return listOptions.filter((option) =>
+      option.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [listValues, searchQuery]);
+  }, [listOptions, searchQuery]);
 
   return (
     <div className="mb-4 flex flex-col gap-2">
@@ -384,35 +378,42 @@ function ListConfigurationInput({
           onChange={setSearchQuery}
         />
         <div className="space-y-1">
-          {filteredValues.length === 0 ? (
+          {filteredOptions.length === 0 ? (
             <div className="py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
               {searchQuery.trim() === ""
                 ? "No options available"
                 : `No options match "${searchQuery}"`}
             </div>
           ) : (
-            filteredValues.map(([value, label]) => (
+            filteredOptions.map((option) => (
               <div
-                key={value}
+                key={option.value}
                 className="group flex items-center justify-between rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <div className="flex items-center space-x-3">
                   <Checkbox
-                    checked={currentValue.includes(value)}
+                    checked={currentValue.includes(option.value)}
                     size="xs"
                     onCheckedChange={(checked) => {
                       const current = Array.isArray(field.value)
                         ? field.value
                         : [];
                       const newValues = checked
-                        ? [...current, value]
-                        : current.filter((v) => v !== value);
+                        ? [...current, option.value]
+                        : current.filter((v) => v !== option.value);
                       field.onChange(newValues);
                     }}
                   />
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {label}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {option.label}
+                    </span>
+                    {option.description && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {option.description}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
@@ -433,7 +434,10 @@ function ListConfigurationSection({
 }: {
   listConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
   >;
 }) {
   if (Object.keys(listConfigurations).length === 0) {
@@ -445,7 +449,7 @@ function ListConfigurationSection({
       <ListConfigurationInput
         key={key}
         configKey={key}
-        listValues={options}
+        listOptions={options}
         description={description}
       />
     )
@@ -459,11 +463,17 @@ interface GroupedConfigurationSectionProps {
   booleanConfigurations: OptionalDescribedKey[];
   enumConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
   >;
   listConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
   >;
 }
 
@@ -517,14 +527,16 @@ interface AdditionalConfigurationSectionProps {
   enumConfigurations: Record<
     string,
     {
-      options: Record<string, string>;
-      descriptions?: Record<string, string>;
+      options: Array<{ value: string; label: string; description?: string }>;
       description?: string;
     }
   >;
   listConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+    }
   >;
 }
 
@@ -551,7 +563,17 @@ export function AdditionalConfigurationSection({
   const groupedEnums = useMemo(() => {
     const groups: Record<
       string,
-      Record<string, { options: Record<string, string>; description?: string }>
+      Record<
+        string,
+        {
+          options: Array<{
+            value: string;
+            label: string;
+            description?: string;
+          }>;
+          description?: string;
+        }
+      >
     > = {};
     Object.entries(enumConfigurations).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);
@@ -566,7 +588,17 @@ export function AdditionalConfigurationSection({
   const groupedLists = useMemo(() => {
     const groups: Record<
       string,
-      Record<string, { options: Record<string, string>; description?: string }>
+      Record<
+        string,
+        {
+          options: Array<{
+            value: string;
+            label: string;
+            description?: string;
+          }>;
+          description?: string;
+        }
+      >
     > = {};
     Object.entries(listConfigurations).forEach(([key, values]) => {
       const prefix = getKeyPrefix(key);

@@ -3,7 +3,6 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import zip from "lodash/zip";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -553,8 +552,7 @@ export interface MCPServerToolsConfigurations {
   enumConfigurations: Record<
     string,
     {
-      options: Record<string, string>;
-      descriptions?: Record<string, string>;
+      options: Array<{ value: string; label: string; description?: string }>;
       description?: string;
       default?: string;
     }
@@ -562,7 +560,7 @@ export interface MCPServerToolsConfigurations {
   listConfigurations: Record<
     string,
     {
-      options: Record<string, string>;
+      options: Array<{ value: string; label: string; description?: string }>;
       description?: string;
       values?: string[];
       default?: string;
@@ -725,7 +723,11 @@ export function getMCPServerToolsConfigurations(
 
   const enumConfigurations: Record<
     string,
-    { options: Record<string, string>; description?: string; default?: string }
+    {
+      options: Array<{ value: string; label: string; description?: string }>;
+      description?: string;
+      default?: string;
+    }
   > = Object.fromEntries(
     Object.entries(
       findPathsToConfiguration({
@@ -735,7 +737,7 @@ export function getMCPServerToolsConfigurations(
     ).map(([key, schema]) => {
       const optionsProperty = schema.properties?.options;
       if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
-        return [key, { options: {}, description: schema.description }];
+        return [key, { options: [], description: schema.description }];
       }
 
       const defaultValue = extractSchemaDefault(
@@ -743,60 +745,42 @@ export function getMCPServerToolsConfigurations(
         (v: unknown): v is string => typeof v === "string"
       );
 
-      const values = Array.isArray(optionsProperty.anyOf)
-        ? optionsProperty.anyOf
-            .map(
-              (v) =>
+      const options = Array.isArray(optionsProperty.anyOf)
+        ? (optionsProperty.anyOf
+            .map((v) => {
+              if (
                 isJSONSchemaObject(v) &&
                 isJSONSchemaObject(v.properties?.value) &&
-                v.properties.value.const
-            )
-            .filter(isString)
-        : [];
-      const labels = Array.isArray(optionsProperty.anyOf)
-        ? optionsProperty.anyOf
-            .map(
-              (v) =>
-                isJSONSchemaObject(v) &&
                 isJSONSchemaObject(v.properties?.label) &&
+                v.properties.value.const &&
                 v.properties.label.const
-            )
-            .filter((v): v is string => typeof v === "string")
-        : [];
-      const descriptions = Array.isArray(optionsProperty.anyOf)
-        ? optionsProperty.anyOf
-            .map(
-              (v) =>
-                isJSONSchemaObject(v) &&
-                typeof v.description === "string" &&
-                v.description
-            )
-            .filter((v): v is string => typeof v === "string")
+              ) {
+                return {
+                  value: v.properties.value.const,
+                  label: v.properties.label.const,
+                  description:
+                    typeof v.description === "string"
+                      ? v.description
+                      : undefined,
+                };
+              }
+              return null;
+            })
+            .filter((v) => v !== null) as Array<{
+            value: string;
+            label: string;
+            description?: string;
+          }>)
         : [];
 
-      if (values.length !== labels.length) {
-        throw new Error(
-          `Expected the same number of values and labels for key ${key}, got ${values.length} values and ${labels.length} labels`
-        );
-      }
-
-      // Create a record of values to labels and descriptions
-      const valueToLabel: Record<string, string> = {};
-      const valueToDescription: Record<string, string> = {};
-      for (let i = 0; i < values.length; i++) {
-        if (values[i] && labels[i]) {
-          valueToLabel[values[i]] = labels[i];
-          if (descriptions[i]) {
-            valueToDescription[values[i]] = descriptions[i];
-          }
-        }
+      if (options.length === 0) {
+        throw new Error(`No valid enum options found for key ${key}`);
       }
 
       return [
         key,
         {
-          options: valueToLabel,
-          descriptions: valueToDescription,
+          options,
           description: schema.description,
           default: defaultValue,
         },
@@ -807,7 +791,7 @@ export function getMCPServerToolsConfigurations(
   const listConfigurations: Record<
     string,
     {
-      options: Record<string, string>;
+      options: Array<{ value: string; label: string; description?: string }>;
       description?: string;
       values?: string[];
       default?: string;
@@ -822,34 +806,37 @@ export function getMCPServerToolsConfigurations(
       const optionsProperty = schema.properties?.options;
 
       if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
-        return [key, { options: {}, description: schema.description }];
+        return [key, { options: [], description: schema.description }];
       }
 
-      const values =
-        optionsProperty.anyOf?.map(
-          (v) =>
-            isJSONSchemaObject(v) &&
-            isJSONSchemaObject(v.properties?.value) &&
-            v.properties.value.const
-        ) ?? [];
-      const labels =
-        optionsProperty.anyOf?.map(
-          (v) =>
-            isJSONSchemaObject(v) &&
-            isJSONSchemaObject(v.properties?.label) &&
-            v.properties.label.const
-        ) ?? [];
+      const options =
+        (optionsProperty.anyOf
+          ?.map((v) => {
+            if (
+              isJSONSchemaObject(v) &&
+              isJSONSchemaObject(v.properties?.value) &&
+              isJSONSchemaObject(v.properties?.label) &&
+              v.properties.value.const &&
+              v.properties.label.const
+            ) {
+              return {
+                value: v.properties.value.const,
+                label: v.properties.label.const,
+                description:
+                  typeof v.description === "string" ? v.description : undefined,
+              };
+            }
+            return null;
+          })
+          .filter((v) => v !== null) as Array<{
+          value: string;
+          label: string;
+          description?: string;
+        }>) ?? [];
 
-      if (values.length !== labels.length) {
-        throw new Error(
-          `Expected the same number of values and labels for key ${key}, got ${values.length} values and ${labels.length} labels`
-        );
+      if (options.length === 0) {
+        throw new Error(`No valid list options found for key ${key}`);
       }
-
-      // Create a record of values to labels
-      const valueToLabel: Record<string, string> = Object.fromEntries(
-        zip(labels, values).map(([label, value]) => [value, label])
-      );
 
       const defaultValue = extractSchemaDefault(
         schema,
@@ -859,7 +846,7 @@ export function getMCPServerToolsConfigurations(
       return [
         key,
         {
-          options: valueToLabel,
+          options,
           description: schema.description,
           default: defaultValue,
         },

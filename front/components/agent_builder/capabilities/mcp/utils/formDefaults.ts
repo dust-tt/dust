@@ -62,8 +62,8 @@ export function getDefaultConfiguration(
   ] of Object.entries(toolsConfigurations.enumConfigurations)) {
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
-    } else if (Object.keys(enumOptions).length > 0) {
-      set(additionalConfig, key, Object.keys(enumOptions)[0]);
+    } else if (enumOptions.length > 0) {
+      set(additionalConfig, key, enumOptions[0].value);
     }
   }
 
