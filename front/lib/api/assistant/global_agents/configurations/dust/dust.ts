@@ -166,6 +166,7 @@ export function _getDustGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
 
     // Add one action per managed data source to improve search results for queries like
@@ -205,6 +206,7 @@ export function _getDustGlobalAgent(
           timeFrame: null,
           dustAppConfiguration: null,
           jsonSchema: null,
+          secretName: null,
         });
       }
     });
@@ -242,6 +244,7 @@ export function _getDustGlobalAgent(
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
+      secretName: null,
     });
   }
 

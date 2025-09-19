@@ -65,7 +65,7 @@ export async function createAgentActionConfiguration(
         singleToolDescriptionOverride:
           serverDescription !== action.description ? action.description : null,
         appId: action.dustAppConfiguration?.appId ?? null,
-        secretName: action.secretName,
+        secretName: action.secretName ?? null,
       },
       { transaction: t }
     );
