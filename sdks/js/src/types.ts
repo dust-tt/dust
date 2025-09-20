@@ -959,6 +959,17 @@ const AgentMessageTypeSchema = z.object({
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
+export function isAgentMessage(
+  message:
+    | UserMessageType
+    | AgentMessagePublicType
+    | ContentFragmentType
+    | null
+    | undefined
+): message is AgentMessagePublicType {
+  return AgentMessageTypeSchema.safeParse(message).success;
+}
+
 const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
   agentMessageId: z.number(),
