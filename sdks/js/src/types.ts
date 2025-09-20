@@ -8,7 +8,6 @@ import {
 } from "./mcp_icon_types";
 import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
-import { Agent } from "http";
 
 type StringLiteral<T> = T extends string
   ? string extends T
