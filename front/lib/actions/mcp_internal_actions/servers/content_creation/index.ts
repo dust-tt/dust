@@ -275,25 +275,25 @@ const createServer = (
       }
     )
   );
-server.tool(
-  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-  "Reverts a Content Creation file by canceling recent agent messages. " +
-    "Cancels the most recent N agent messages chronologically, where N = revertCount.",
-  {
-    file_id: z
-      .string()
-      .describe(
-        "The ID of the Content Creation file to revert (e.g., 'fil_abc123')"
-      ),
-    revertCount: z
-      .number()
-      .optional()
-      .default(1)
-      .describe(
-        "Number of recent agent messages to cancel. Default: 1. " +
-        "Multiple reverts in the same message accumulate."
-      ),
-  },
+  server.tool(
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+    "Reverts a Content Creation file by canceling recent agent messages. " +
+      "Cancels the most recent N agent messages chronologically, where N = revertCount.",
+    {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Content Creation file to revert (e.g., 'fil_abc123')"
+        ),
+      revertCount: z
+        .number()
+        .optional()
+        .default(1)
+        .describe(
+          "Number of recent agent messages to cancel. Default: 1. " +
+            "Multiple reverts in the same message accumulate."
+        ),
+    },
     withToolLogging(
       auth,
       {
@@ -314,7 +314,7 @@ server.tool(
           fileId: file_id,
           conversationId: conversation.id,
           revertedByAgentConfigurationId: agentConfiguration.sId,
-          revertCount
+          revertCount,
         });
 
         if (result.isErr()) {
