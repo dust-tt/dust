@@ -1,0 +1,771 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
+import {
+  getEditActionsToApply,
+  getFileActionsByActionType,
+  getRevertedContent,
+  isCreateFileAction,
+} from "@app/lib/api/files/client_executable";
+import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+
+// Mock the AgentMCPActionOutputItem.findAll method
+vi.mock("@app/lib/models/assistant/actions/mcp", () => ({
+  AgentMCPActionOutputItem: {
+    findAll: vi.fn(),
+  },
+}));
+
+const mockFindAll = vi.mocked(AgentMCPActionOutputItem.findAll);
+
+const createEditAction = (
+  id: string,
+  agentMessageId: string,
+  createdAt: Date,
+  oldString: string = "old",
+  newString: string = "new"
+) =>
+  ({
+    id,
+    agentMessageId,
+    createdAt,
+    toolConfiguration: {
+      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+    augmentedInputs: {
+      old_string: oldString,
+      new_string: newString,
+    },
+  }) as unknown as AgentMCPActionModel;
+
+const createRevertAction = (
+  id: string,
+  agentMessageId: string,
+  createdAt: Date,
+  revertCount: number = 1
+) =>
+  ({
+    id,
+    agentMessageId,
+    createdAt,
+    toolConfiguration: {
+      originalName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+    augmentedInputs: {
+      revertCount,
+    },
+  }) as unknown as AgentMCPActionModel;
+
+const createCreateFileAction = (content: string) =>
+  ({
+    id: "create-1",
+    agentMessageId: "msg1",
+    createdAt: new Date(1000),
+    toolConfiguration: {
+      originalName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+    augmentedInputs: {
+      content,
+    },
+  }) as unknown as AgentMCPActionModel;
+
+describe("isCreateFileAction", () => {
+  const mockAction: AgentMCPActionModel = {
+    toolConfiguration: {
+      originalName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+  } as AgentMCPActionModel;
+
+  const mockActionNonCreate: AgentMCPActionModel = {
+    toolConfiguration: {
+      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+  } as AgentMCPActionModel;
+
+  const workspaceId = 123;
+  const fileId = "correct_file_id";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should return true when action is create file action with valid outputs", async () => {
+    const mockOutput = {
+      content: {
+        resource: {
+          fileId: "correct_file_id",
+        },
+      },
+    };
+
+    mockFindAll.mockResolvedValueOnce([mockOutput as any]);
+
+    const result = await isCreateFileAction(mockAction, workspaceId, fileId);
+    expect(result).toBe(true);
+  });
+
+  it("should return false when action is not a create file action", async () => {
+    const result = await isCreateFileAction(
+      mockActionNonCreate,
+      workspaceId,
+      fileId
+    );
+    expect(result).toBe(false);
+  });
+
+  it("should return false when no create file outputs are found", async () => {
+    mockFindAll.mockResolvedValueOnce([]);
+
+    const result = await isCreateFileAction(mockAction, workspaceId, fileId);
+    expect(result).toBe(false);
+  });
+
+  it("should throw error when multiple create file outputs are found for the same file", async () => {
+    const mockOutput1 = {
+      content: {
+        resource: {
+          fileId: "correct_file_id",
+        },
+      },
+    };
+    const mockOutput2 = {
+      content: {
+        resource: {
+          fileId: "correct_file_id",
+        },
+      },
+    };
+
+    mockFindAll.mockResolvedValueOnce([mockOutput1 as any, mockOutput2 as any]);
+
+    await expect(
+      isCreateFileAction(mockAction, workspaceId, fileId)
+    ).rejects.toThrow(
+      "Multiple create file actions found for file_id correct_file_id."
+    );
+  });
+});
+
+describe("getFileActionsByActionType", () => {
+  const workspaceId = 123;
+  const fileId = "correct_file_id";
+
+  const createAction = {
+    id: "create-1",
+    toolConfiguration: {
+      originalName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+    augmentedInputs: {},
+  } as unknown as AgentMCPActionModel;
+
+  const editAction = {
+    id: "edit-1",
+    toolConfiguration: {
+      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+    augmentedInputs: {
+      file_id: fileId,
+    },
+  } as unknown as AgentMCPActionModel;
+
+  const revertAction = {
+    id: "revert-1",
+    toolConfiguration: {
+      originalName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+    augmentedInputs: {
+      file_id: fileId,
+    },
+  } as unknown as AgentMCPActionModel;
+
+  const editActionDifferentFile = {
+    id: "edit-2",
+    toolConfiguration: {
+      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+    },
+    augmentedInputs: {
+      file_id: "different-file-id",
+    },
+  } as unknown as AgentMCPActionModel;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should categorize actions correctly when all types are present", async () => {
+    const mockCreateOutput = {
+      content: {
+        resource: {
+          fileId: fileId,
+        },
+      },
+    };
+
+    mockFindAll.mockResolvedValue([mockCreateOutput as any]);
+
+    const actions = [
+      createAction,
+      editAction,
+      revertAction,
+      editActionDifferentFile,
+    ];
+    const result = await getFileActionsByActionType(
+      actions,
+      fileId,
+      workspaceId
+    );
+
+    expect(result.createFileAction).toBe(createAction);
+    expect(result.editOrRevertFileActions).toEqual([editAction, revertAction]);
+  });
+
+  it("should return undefined createFileAction when no create action exists", async () => {
+    mockFindAll.mockResolvedValue([]);
+
+    const actions = [editAction, revertAction];
+    const result = await getFileActionsByActionType(
+      actions,
+      fileId,
+      workspaceId
+    );
+
+    expect(result.createFileAction).toBeUndefined();
+    expect(result.editOrRevertFileActions).toEqual([editAction, revertAction]);
+  });
+
+  it("should return empty editOrRevertFileActions when no edit/revert actions exist", async () => {
+    const mockCreateOutput = {
+      content: {
+        resource: {
+          fileId: fileId,
+        },
+      },
+    };
+
+    mockFindAll.mockResolvedValue([mockCreateOutput as any]);
+
+    const actions = [createAction];
+    const result = await getFileActionsByActionType(
+      actions,
+      fileId,
+      workspaceId
+    );
+
+    expect(result.createFileAction).toBe(createAction);
+    expect(result.editOrRevertFileActions).toEqual([]);
+  });
+
+  it("should filter actions by fileId correctly", async () => {
+    mockFindAll.mockResolvedValue([]);
+
+    const actions = [createAction, editAction, editActionDifferentFile];
+    const result = await getFileActionsByActionType(
+      actions,
+      fileId,
+      workspaceId
+    );
+
+    expect(result.createFileAction).toBeUndefined();
+    expect(result.editOrRevertFileActions).toEqual([editAction]);
+    expect(result.editOrRevertFileActions).not.toContain(
+      editActionDifferentFile
+    );
+  });
+
+  it("should return empty results when no matching actions exist", async () => {
+    mockFindAll.mockResolvedValue([]);
+
+    const actions = [editActionDifferentFile];
+    const result = await getFileActionsByActionType(
+      actions,
+      fileId,
+      workspaceId
+    );
+
+    expect(result.createFileAction).toBeUndefined();
+    expect(result.editOrRevertFileActions).toEqual([]);
+  });
+
+  it("should handle empty actions array", async () => {
+    const actions: AgentMCPActionModel[] = [];
+    const result = await getFileActionsByActionType(
+      actions,
+      fileId,
+      workspaceId
+    );
+
+    expect(result.createFileAction).toBeUndefined();
+    expect(result.editOrRevertFileActions).toEqual([]);
+  });
+});
+
+describe("getEditActionsToApply", () => {
+  it("should return all edit actions when no reverts are present", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+    const edit3 = createEditAction("edit3", "msg3", new Date(3000));
+
+    const result = getEditActionsToApply([edit1, edit2, edit3], 1);
+
+    // With revertCount=1, should skip newest edit group (msg3) and return msg2, msg1
+    expect(result).toEqual([edit2, edit1]);
+  });
+
+  it("should skip edit actions that are immediately followed by reverts", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+    const revert1 = createRevertAction("revert1", "msg3", new Date(3000), 1);
+
+    const result = getEditActionsToApply([edit1, edit2, revert1], 1);
+
+    // External revertCount=1 + revert action count=1 = 2 total reverts
+    // Should cancel msg2 and msg1, leaving nothing
+    expect(result).toEqual([]);
+  });
+
+  it("should handle double revert correctly", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+    const edit3 = createEditAction("edit3", "msg3", new Date(3000));
+
+    const result = getEditActionsToApply([edit1, edit2, edit3], 2);
+
+    expect(result).toEqual([edit1]);
+  });
+
+  it("should properly group edits from same agent message when reverting", () => {
+    const edit1a = createEditAction("edit1a", "msg1", new Date(1000));
+    const edit1b = createEditAction("edit1b", "msg1", new Date(1100));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+
+    const result = getEditActionsToApply([edit1a, edit1b, edit2], 1);
+
+    expect(result).toEqual([edit1a, edit1b]);
+  });
+
+  it("should handle consecutive revert attempts when last action was revert", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+    const revert1 = createRevertAction("revert1", "msg3", new Date(3000), 1);
+
+    const result = getEditActionsToApply([edit1, edit2, revert1], 1);
+
+    expect(result).toEqual([]);
+  });
+
+  it("should return empty array when all edits are reverted", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const revert1 = createRevertAction("revert1", "msg2", new Date(2000), 1);
+
+    const result = getEditActionsToApply([edit1, revert1], 1);
+
+    expect(result).toEqual([]);
+  });
+
+  it("should handle complex scenario with mixed edits and reverts", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg1", new Date(1100));
+    const edit3 = createEditAction("edit3", "msg2", new Date(2000));
+    const revert1 = createRevertAction("revert1", "msg3", new Date(3000), 1);
+    const edit4 = createEditAction("edit4", "msg4", new Date(4000));
+    const edit5 = createEditAction("edit5", "msg4", new Date(4100));
+
+    const result = getEditActionsToApply(
+      [edit1, edit2, edit3, revert1, edit4, edit5],
+      1
+    );
+
+    // Processing newest → oldest with revertCount=1:
+    // msg4: counter=1>0, edit-only group, skip and decrement counter to 0
+    // msg3: counter=0, see revert(count=1), increase counter to 1
+    // msg2: counter=1>0, edit-only group, skip and decrement counter to 0
+    // msg1: counter=0, collect edit1, edit2
+    expect(result).toEqual([edit1, edit2]);
+  });
+
+  it("should handle multiple reverts in same message group", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+    const edit3 = createEditAction("edit3", "msg3", new Date(3000));
+    const revert1 = createRevertAction("revert1", "msg4", new Date(4000), 1);
+    const revert2 = createRevertAction("revert2", "msg4", new Date(4100), 2);
+
+    const result = getEditActionsToApply(
+      [edit1, edit2, edit3, revert1, revert2],
+      1
+    );
+
+    // External revertCount=1 + revert1 (count=1) + revert2 (count=2) = 4 total reverts
+    // Should cancel all 3 edit groups (msg3, msg2, msg1) and still have 1 remaining
+    expect(result).toEqual([]);
+  });
+
+  it("should handle empty actions array", () => {
+    const result = getEditActionsToApply([], 0);
+    expect(result).toEqual([]);
+  });
+
+  it("should handle revert with custom revert count", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+    const edit3 = createEditAction("edit3", "msg3", new Date(3000));
+    const revert1 = createRevertAction("revert1", "msg4", new Date(4000), 3);
+
+    const result = getEditActionsToApply([edit1, edit2, edit3, revert1], 0);
+
+    // revert with count=3 should cancel 3 edit groups (msg3, msg2, msg1)
+    expect(result).toEqual([]);
+  });
+
+  it("should handle revert without explicit revert count (defaults to 1)", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+    const revert1 = {
+      id: "revert1",
+      agentMessageId: "msg3",
+      createdAt: new Date(3000),
+      toolConfiguration: {
+        originalName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+      },
+      augmentedInputs: {}, // No revertCount specified
+    } as unknown as AgentMCPActionModel;
+
+    const result = getEditActionsToApply([edit1, edit2, revert1], 0);
+
+    // Should default to revertCount=1 and cancel msg2
+    expect(result).toEqual([edit1]);
+  });
+
+  it("should handle revert and edit actions in the same message", () => {
+    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
+    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
+    const edit3 = createEditAction("edit3", "msg3", new Date(3000));
+
+    // Same message with both revert and edit (chronologically ordered within group)
+    const revert1 = createRevertAction("revert1", "msg4", new Date(4000), 1);
+    const edit4 = createEditAction("edit4", "msg4", new Date(4100));
+
+    const result = getEditActionsToApply(
+      [edit1, edit2, edit3, revert1, edit4],
+      1
+    );
+
+    // Processing newest → oldest with revertCount=1:
+    // msg4: counter=1>0, but contains revert - don't decrement, add revert count (1), so counter becomes 2. Drop edits in this group.
+    // msg3: counter=2>0, edit-only group, skip and decrement counter to 1
+    // msg2: counter=1>0, edit-only group, skip and decrement counter to 0
+    // msg1: counter=0, collect edit1
+    expect(result).toEqual([edit1]);
+  });
+});
+
+describe("getRevertedContent", () => {
+  const originalReactComponent = `import React from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+const SuperSimple = () => {
+  return (
+    <div className="w-full max-w-md mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-center">Hello World!</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-gray-600">
+            This is a super simple React component created with shadcn/ui components.
+          </p>
+          <Button className="w-full mt-4">Click Me</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default SuperSimple;`;
+
+  it("should return original content when no actions to apply", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+    const actionsToApply: AgentMCPActionModel[] = [];
+
+    const result = getRevertedContent(createAction, actionsToApply);
+
+    expect(result).toBe(originalReactComponent);
+  });
+
+  it("should apply a single edit action", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const editAction = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      `      <Card>
+        <CardHeader>
+          <CardTitle className="text-center">Hello World!</CardTitle>
+        </CardHeader>`,
+      `      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="text-center text-blue-800">Welcome to Dust!</CardTitle>
+        </CardHeader>`
+    );
+
+    const result = getRevertedContent(createAction, [editAction]);
+
+    expect(result).toContain("Welcome to Dust!");
+    expect(result).toContain("bg-blue-50 border-blue-200");
+    expect(result).toContain("text-blue-800");
+    expect(result).not.toContain("Hello World!");
+  });
+
+  it("should apply multiple edits in chronological order", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const edit1 = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      `      <Card>
+        <CardHeader>
+          <CardTitle className="text-center">Hello World!</CardTitle>
+        </CardHeader>`,
+      `      <Card className="bg-pink-50 border-pink-200">
+        <CardHeader>
+          <CardTitle className="text-center text-pink-800">Welcome to Dust!</CardTitle>
+        </CardHeader>`
+    );
+
+    const edit2 = createEditAction(
+      "edit2",
+      "msg3",
+      new Date(3000),
+      `          <p className="text-center text-gray-600">
+            This is a super simple React component created with shadcn/ui components.
+          </p>`,
+      `          <p className="text-center text-pink-600">
+            This is a beautiful React component with a pink theme.
+          </p>`
+    );
+
+    const edit3 = createEditAction(
+      "edit3",
+      "msg4",
+      new Date(4000),
+      `          <Button className="w-full mt-4">Click Me</Button>`,
+      `          <Button className="w-full mt-4 bg-pink-500 hover:bg-pink-600">
+            Get Started
+          </Button>`
+    );
+
+    const result = getRevertedContent(createAction, [edit1, edit2, edit3]);
+
+    expect(result).toContain("Welcome to Dust!");
+    expect(result).toContain("bg-pink-50 border-pink-200");
+    expect(result).toContain(
+      "This is a beautiful React component with a pink theme."
+    );
+    expect(result).toContain("bg-pink-500 hover:bg-pink-600");
+    expect(result).toContain("Get Started");
+    expect(result).not.toContain("Hello World!");
+    expect(result).not.toContain("Click Me");
+  });
+
+  it("should apply edits in chronological order even when passed out of order", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const edit1 = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      "Hello World!",
+      "Step 1"
+    );
+
+    const edit2 = createEditAction(
+      "edit2",
+      "msg3",
+      new Date(3000),
+      "Step 1",
+      "Step 2"
+    );
+
+    const edit3 = createEditAction(
+      "edit3",
+      "msg4",
+      new Date(4000),
+      "Step 2",
+      "Final Step"
+    );
+
+    // Pass actions out of chronological order
+    const result = getRevertedContent(createAction, [edit3, edit1, edit2]);
+
+    expect(result).toContain("Final Step");
+    expect(result).not.toContain("Hello World!");
+    expect(result).not.toContain("Step 1");
+    expect(result).not.toContain("Step 2");
+  });
+
+  it("should handle component theme changes", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const edit1 = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      `    <div className="w-full max-w-md mx-auto p-4">
+      <Card>`,
+      `    <div className="w-full max-w-lg mx-auto p-6">
+      <Card className="shadow-lg border-gray-300">`
+    );
+
+    const edit2 = createEditAction(
+      "edit2",
+      "msg3",
+      new Date(3000),
+      `        <CardContent>
+          <p className="text-center text-gray-600">
+            This is a super simple React component created with shadcn/ui components.
+          </p>
+          <Button className="w-full mt-4">Click Me</Button>
+        </CardContent>`,
+      `        <CardContent>
+          <p className="text-center text-gray-700 mb-6">
+            This is a super simple React component created with shadcn/ui components.
+          </p>
+          <div className="flex gap-2">
+            <Button className="flex-1">Primary</Button>
+            <Button variant="outline" className="flex-1">Secondary</Button>
+          </div>
+        </CardContent>`
+    );
+
+    const result = getRevertedContent(createAction, [edit1, edit2]);
+
+    expect(result).toContain("max-w-lg mx-auto p-6");
+    expect(result).toContain("shadow-lg border-gray-300");
+    expect(result).toContain('div className="flex gap-2"');
+    expect(result).toContain('variant="outline"');
+    expect(result).not.toContain("max-w-md mx-auto p-4");
+  });
+
+  it("should handle component structure changes", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const edit1 = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      `        <CardContent>
+          <p className="text-center text-gray-600">
+            This is a super simple React component created with shadcn/ui components.
+          </p>
+          <Button className="w-full mt-4">Click Me</Button>
+        </CardContent>`,
+      `        <CardContent>
+          <p className="text-center text-gray-600">
+            This is a super simple React component created with shadcn/ui components.
+          </p>
+          <div className="space-y-3">
+            <Button className="w-full">Click Me</Button>
+            <Button variant="secondary" className="w-full">
+              Learn More
+            </Button>
+          </div>
+        </CardContent>`
+    );
+
+    const result = getRevertedContent(createAction, [edit1]);
+
+    expect(result).toContain('div className="space-y-3"');
+    expect(result).toContain('variant="secondary"');
+    expect(result).toContain("Learn More");
+  });
+
+  it("should throw error when old_string is not found", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const editAction = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      "This string does not exist in the component",
+      "New content"
+    );
+
+    expect(() => getRevertedContent(createAction, [editAction])).toThrow(
+      'Cannot find matched text: "This string does not exist in the component"'
+    );
+  });
+
+  it("should handle import statement changes", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const edit1 = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      `import React from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";`,
+      `import React, { useState } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";`
+    );
+
+    const result = getRevertedContent(createAction, [edit1]);
+
+    expect(result).toContain('import React, { useState } from "react";');
+    expect(result).toContain('import { Badge } from "@/components/ui/badge";');
+    expect(result).not.toMatch(/^import React from "react";$/m);
+  });
+
+  it("should handle function body changes", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const edit1 = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      `const SuperSimple = () => {
+  return (`,
+      `const SuperSimple = () => {
+  const [count, setCount] = useState(0);
+
+  return (`
+    );
+
+    const result = getRevertedContent(createAction, [edit1]);
+
+    expect(result).toContain("const [count, setCount] = useState(0);");
+    expect(result).toContain("return (");
+  });
+
+  it("should handle complex multi-line replacements", () => {
+    const createAction = createCreateFileAction(originalReactComponent);
+
+    const edit1 = createEditAction(
+      "edit1",
+      "msg2",
+      new Date(2000),
+      `export default SuperSimple;`,
+      `const MemoizedSuperSimple = React.memo(SuperSimple);
+
+export default MemoizedSuperSimple;`
+    );
+
+    const result = getRevertedContent(createAction, [edit1]);
+
+    expect(result).toContain(
+      "const MemoizedSuperSimple = React.memo(SuperSimple);"
+    );
+    expect(result).toContain("export default MemoizedSuperSimple;");
+    expect(result).not.toMatch(/^export default SuperSimple;$/m);
+  });
+});
