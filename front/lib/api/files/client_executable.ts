@@ -311,24 +311,22 @@ export async function isCreateFileAction(
   workspaceId: number,
   fileId: string
 ) {
-  // You can create multiple files in one conversation so you need to find the right one.
-  if (
-    action.toolConfiguration.originalName ===
-    CREATE_CONTENT_CREATION_FILE_TOOL_NAME
-  ) {
-    // Handle create actions (they don't have file_id in augmentedInputs, need to check outputs)
+  if (isCreateFileActionType(action)) {
+    // For create actions, `file_id` isn't present in inputs; inspect outputs to see
+    // whether this action produced the specified `fileId` for this workspace.
     const createdActionOutputs = await getCreateFileActionOutputs(
       action,
       workspaceId,
       fileId
     );
 
+    // No outputs referencing `fileId` => this action did not create that file.
     if (createdActionOutputs.length === 0) {
       return false;
     }
 
+    // Multiple outputs referencing the same `fileId` should never occur.
     if (createdActionOutputs.length > 1) {
-      // This should never happen
       throw new Error(
         `Multiple create file actions found for file_id ${fileId}.`
       );
@@ -345,7 +343,13 @@ export async function getCreateFileActionOutputs(
   workspaceId: number,
   fileId: string
 ): Promise<AgentMCPActionOutputItem[]> {
-  const actionOutputs = await getActionOutput(action, workspaceId);
+  const actionOutputs = await AgentMCPActionOutputItem.findAll({
+    where: {
+      agentMCPActionId: action.id,
+      workspaceId,
+    },
+    order: [["createdAt", "ASC"]],
+  });
 
   const createdActionOutputs = actionOutputs.filter((output) => {
     if (isCreateFileActionOutput(output)) {
@@ -358,7 +362,7 @@ export async function getCreateFileActionOutputs(
   return createdActionOutputs;
 }
 
-function isEditFileAction(
+function isEditFileActionType(
   action: AgentMCPActionModel
 ): action is AgentMCPActionModel & {
   augmentedInputs: { old_string: string; new_string: string };
@@ -371,7 +375,10 @@ function isEditFileAction(
   );
 }
 
-export function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
+export function isEditOrRevertFileAction(
+  action: AgentMCPActionModel,
+  fileId: string
+) {
   if (action.augmentedInputs.file_id !== fileId) {
     return false;
   }
@@ -382,16 +389,40 @@ export function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: st
   ].includes(action.toolConfiguration.originalName);
 }
 
-function isRevertFileAction(action: AgentMCPActionModel) {
-  return action.toolConfiguration.originalName === REVERT_CONTENT_CREATION_FILE_TOOL_NAME;
+export function isCreateFileActionType(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel & {
+  augmentedInputs: {
+    content: string;
+    fileName: string;
+    mimeType: string;
+  };
+} {
+  return (
+    action.toolConfiguration.originalName ===
+    CREATE_CONTENT_CREATION_FILE_TOOL_NAME
+  );
 }
 
-/**
- * Categorizes file actions by their type for a specific file
- * @param actions - All conversation actions
- * @param fileId - The file ID to filter actions for
- * @returns Object containing arrays of actions categorized by type
- */
+export function isRevertFileActionType(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel & {
+  augmentedInputs: { file_id: string; revertCount?: number };
+} {
+  return (
+    action.toolConfiguration.originalName ===
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
+  );
+}
+
+function isRevertFileAction(action: AgentMCPActionModel) {
+  return (
+    action.toolConfiguration.originalName ===
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
+  );
+}
+
+// A conversation can have multiple files so you need to find the file actions.
 export async function getFileActionsByActionType(
   actions: AgentMCPActionModel[],
   fileId: string,
@@ -410,46 +441,46 @@ export async function getFileActionsByActionType(
     }
   }
 
-   return {
-      createFileAction,
-      editOrRevertFileActions,
-    };
+  return {
+    createFileAction,
+    editOrRevertFileActions,
+  };
 }
 
-async function getActionOutput(
-  action: AgentMCPActionModel,
-  workspaceId: number
-) {
-  return AgentMCPActionOutputItem.findAll({
-    where: {
-      agentMCPActionId: action.id,
-      workspaceId,
-    },
-    order: [["createdAt", "ASC"]],
-  });
-}
-
-
+/**
+ * Returns the edit actions that still apply after honoring revert actions.
+ *
+ * How it works:
+ * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest → newest.
+ * - Process groups newest → oldest so reverts cancel the most recent edits first.
+ * - Maintain a group-level cancellation counter seeded with `revertCount` from the current (external) revert.
+ *   While counter > 0:
+ *     • Edit-only group → skip it and decrement counter by 1.
+ *     • Group with any revert(s) → do not decrement; add each revert's revertCount (default 1). Drop edits in that group.
+ * - When counter = 0, collect edit actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
+ *
+ * Notes:
+ * - `editOrRevertActions` already includes past reverts; the current revert is not included (its value is `revertCount`).
+ * - Returned edits are ordered by group (newest → oldest) and within group (oldest → newest).
+ */
 export function getEditActionsToApply(
   editOrRevertActions: AgentMCPActionModel[],
   revertCount: number
 ) {
-  // Group actions by agent message ID since multiple actions can occur in one message
+  // Group actions by agent message ID (one group per message)
   const editOrRevertActionsByMessage = groupBy(
     editOrRevertActions,
     (action) => action.agentMessageId
   );
 
-  // Sort actions within each message group chronologically (oldest to newest)
-  // This ensures we process actions in the order they were created within each message
+  // Within each group, sort actions chronologically (oldest → newest)
   Object.keys(editOrRevertActionsByMessage).forEach((messageId) => {
     editOrRevertActionsByMessage[messageId] = editOrRevertActionsByMessage[
       messageId
     ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   });
 
-  // Sort message groups by creation time (newest first)
-  // We process from latest to oldest messages so reverts cancel the most recent actions first
+  // Order groups newest → oldest (based on the group's earliest action time)
   const sortedActionGroups = Object.entries(editOrRevertActionsByMessage)
     .sort(
       ([, actionsA], [, actionsB]) =>
@@ -457,36 +488,23 @@ export function getEditActionsToApply(
     )
     .map(([, actions]) => actions);
 
-  // Track how many action groups we need to cancel
-  // The current revert action (not included in editOrRevertActions) starts the cancellation
+  // Remaining edit-only groups to cancel; starts from the current (external) revert
   let cancelGroupActionCounter = revertCount;
+
   const pickedEditActions = [];
 
-  // Process each action group from newest to oldest
+  // Traverse groups newest → oldest
   for (const actionGroup of sortedActionGroups) {
-    // If we still have groups to cancel, check if this group should be skipped
     if (cancelGroupActionCounter > 0) {
-      const revertActions = actionGroup.filter((action) =>
-        isRevertFileAction(action)
-      );
+      // If any revert is present, extend the window; otherwise consume one edit-only group
+      const revertActions = actionGroup.filter((a) => isRevertFileAction(a));
 
-      // If this group contains only edit actions (no reverts), cancel the entire group
-      if (revertActions.length == 0) {
-        cancelGroupActionCounter--;
+      if (revertActions.length === 0) {
+        cancelGroupActionCounter--; // skip this edit-only group
         continue;
       }
 
-      // if it has both revert + edits, and this is the exact point we need to revert (= cancelGroupActionCounter is 1),
-      // we will cancel the entire group action
-      if (
-        cancelGroupActionCounter === 1 &&
-        revertActions.length !== actionGroup.length
-      ) {
-        cancelGroupActionCounter--;
-        continue;
-      }
-      // If this group contains revert actions, those reverts add to our cancellation count
-      // (reverts in the past increase the number of groups we need to cancel)
+      // Extend cancellation window by each revert's count. Drop edits in this group.
       for (const revertAction of revertActions) {
         const counter = revertAction.augmentedInputs.revertCount;
         cancelGroupActionCounter += typeof counter === "number" ? counter : 1;
@@ -494,19 +512,11 @@ export function getEditActionsToApply(
       continue;
     }
 
-    // We're no longer canceling groups, so process each action in this group
-    for (let actionIndex = 0; actionIndex < actionGroup.length; actionIndex++) {
-      const currentAction = actionGroup[actionIndex];
-
-      // Collect edit actions that should be applied
-      if (isEditFileAction(currentAction)) {
+    // Not cancelling: collect edits. A revert here reopens cancellation for older groups
+    for (const currentAction of actionGroup) {
+      if (isEditFileActionType(currentAction)) {
         pickedEditActions.push(currentAction);
-        continue;
-      }
-
-      // Handle revert actions by adding to the cancellation counter
-      // This affects processing of subsequent (older) action groups
-      if (isRevertFileAction(currentAction)) {
+      } else if (isRevertFileAction(currentAction)) {
         const counter = currentAction.augmentedInputs.revertCount;
         cancelGroupActionCounter += typeof counter === "number" ? counter : 1;
       }
@@ -525,15 +535,20 @@ export function getRevertedContent(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
   );
 
-  let revertedContent = createFileAction.augmentedInputs.content as string;
+  if (!isCreateFileActionType(createFileAction)) {
+    throw new Error("Wrong file action type for create file action");
+  }
+
+  let revertedContent = createFileAction.augmentedInputs.content;
 
   for (let i = 0; i < sortedActions.length; i++) {
     const editAction = sortedActions[i];
 
-    const { old_string, new_string } = editAction.augmentedInputs as {
-      old_string: string;
-      new_string: string;
-    };
+    if (!isEditFileActionType(editAction)) {
+      throw new Error("Wrong file action type for edit file action");
+    }
+
+    const { old_string, new_string } = editAction.augmentedInputs;
 
     const { updatedContent, occurrences } = getUpdatedContentAndOccurrences(
       old_string,
@@ -625,48 +640,50 @@ export async function revertClientExecutableFileToPreviousState(
     });
   }
 
-  const workspaceId = auth.getNonNullableWorkspace().id;
-
-  const conversationActions = await getConversationActions(
-    auth,
-    conversationId
-  );
-
-  const { createFileAction, editOrRevertFileActions } =
-    await getFileActionsByActionType(conversationActions, fileId, workspaceId);
-
-  if (!createFileAction) {
-    return new Err({
-      message: `Cannot find the create file action for ${fileId}`,
-      tracked: true,
-    });
-  }
-
-  let editActionsToApply = [];
-
   try {
-    editActionsToApply = getEditActionsToApply(
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const conversationActions = await getConversationActions(
+      auth,
+      conversationId
+    );
+
+    const { createFileAction, editOrRevertFileActions } =
+      await getFileActionsByActionType(
+        conversationActions,
+        fileId,
+        workspaceId
+      );
+
+    if (!createFileAction) {
+      return new Err({
+        message: `Cannot find the create file action for ${fileId}`,
+        tracked: true,
+      });
+    }
+
+    const editActionsToApply = getEditActionsToApply(
       editOrRevertFileActions,
       revertCount
     );
+
+    const revertedContent = getRevertedContent(
+      createFileAction,
+      editActionsToApply
+    );
+
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+    });
+
+    await fileResource.uploadContent(auth, revertedContent);
+
+    return new Ok({ fileResource, revertedContent });
   } catch (error) {
     return new Err({
-      message: `Failed to edit ${fileId}`,
+      message: `Failed to revert ${fileId}: ${normalizeError(error)}`,
       tracked: true,
     });
   }
-
-  const revertedContent = getRevertedContent(
-    createFileAction,
-    editActionsToApply
-  );
-
-  await fileResource.setUseCaseMetadata({
-    ...fileResource.useCaseMetadata,
-    lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
-  });
-
-  await fileResource.uploadContent(auth, revertedContent);
-
-  return new Ok({ fileResource, revertedContent });
 }
