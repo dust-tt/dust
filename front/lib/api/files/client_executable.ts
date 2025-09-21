@@ -393,27 +393,34 @@ export async function getCreateFileAction(
   }
 }
 
-// We need to pick up the edits to re-compute the file.
-// You can perform multiple actions in one agent message so we need to group actions by agent message ID.
-// Then we traverse from latest to oldest messages and each revert cancels ALL actions in the groups.
+/**
+ * Determines which edit actions should be applied after accounting for revert operations.
+ * 
+ * The function processes a series of edit and revert actions, applying revert logic
+ * that cancels previous action groups in reverse chronological order.
+ * 
+ * @returns Array of edit actions that should be applied after all reverts are processed
+ */
 export function getEditActionsToApply(
   editOrRevertActions: AgentMCPActionModel[],
   revertCount: number
 ) {
+  // Group actions by agent message ID since multiple actions can occur in one message
   const editOrRevertActionsByMessage = groupBy(
     editOrRevertActions,
     (action) => action.agentMessageId
   );
 
-  // Sort each group of actions from latest to oldest within each message
+  // Sort actions within each message group chronologically (oldest to newest)
+  // This ensures we process actions in the order they were created within each message
   Object.keys(editOrRevertActionsByMessage).forEach((messageId) => {
     editOrRevertActionsByMessage[messageId] = editOrRevertActionsByMessage[
       messageId
     ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   });
 
-  // Sort groups by first action's createdAt (latest first)
-  // TODO: do I really need to sort this??
+  // Sort message groups by creation time (newest first)
+  // We process from latest to oldest messages so reverts cancel the most recent actions first
   const sortedActionGroups = Object.entries(editOrRevertActionsByMessage)
     .sort(
       ([, actionsA], [, actionsB]) =>
@@ -421,33 +428,47 @@ export function getEditActionsToApply(
     )
     .map(([, actions]) => actions);
 
-
-
-  // The current revert action is not included in editOrRevertActions,
-  // so this should be always bigger than 1. This count cancels the previous action group.
+  // Track how many action groups we need to cancel
+  // The current revert action (not included in editOrRevertActions) starts the cancellation
   let cancelGroupActionCounter = revertCount;
   const pickedEditActions = [];
 
+  // Process each action group from newest to oldest
   for (
-    let groupIndex = 0;
-    groupIndex < sortedActionGroups.length;
-    groupIndex++
+    const actionGroup of sortedActionGroups
   ) {
-    const actionGroup = sortedActionGroups[groupIndex];
 
+    // If we still have groups to cancel, check if this group should be skipped
     if (cancelGroupActionCounter > 0) {
-      cancelGroupActionCounter--;
+      const revertActions = actionGroup.filter(action => isRevertFileAction(action));
+
+      // If this group contains only edit actions (no reverts), cancel the entire group
+      if (revertActions.length === 0 && cancelGroupActionCounter === 1) {
+        cancelGroupActionCounter--;
+        continue;
+      } 
+
+      // If this group contains revert actions, those reverts add to our cancellation count
+      // (reverts in the past increase the number of groups we need to cancel)
+      for (const revertAction of revertActions) {
+        const counter = revertAction.augmentedInputs.revertCount;
+        cancelGroupActionCounter += typeof counter === "number" ? counter : 1;
+      }
       continue;
     }
 
+    // We're no longer canceling groups, so process each action in this group
     for (let actionIndex = 0; actionIndex < actionGroup.length; actionIndex++) {
       const currentAction = actionGroup[actionIndex];
 
+      // Collect edit actions that should be applied
       if (isEditFileAction(currentAction)) {
         pickedEditActions.push(currentAction);
         continue;
       }
 
+      // Handle revert actions by adding to the cancellation counter
+      // This affects processing of subsequent (older) action groups
       if (isRevertFileAction(currentAction)) {
         const counter = currentAction.augmentedInputs.revertCount;
         cancelGroupActionCounter += typeof counter === "number" ? counter : 1;
@@ -457,7 +478,6 @@ export function getEditActionsToApply(
 
   return pickedEditActions;
 }
-
 export function getRevertedContent(
   createFileAction: AgentMCPActionModel,
   actionsToApply: AgentMCPActionModel[]
