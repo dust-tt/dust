@@ -306,6 +306,58 @@ function isCreateFileActionOutput(
   );
 }
 
+export async function isCreateFileAction(
+  action: AgentMCPActionModel,
+  workspaceId: number,
+  fileId: string
+) {
+  // You can create multiple files in one conversation so you need to find the right one.
+  if (
+    action.toolConfiguration.originalName ===
+    CREATE_CONTENT_CREATION_FILE_TOOL_NAME
+  ) {
+    // Handle create actions (they don't have file_id in augmentedInputs, need to check outputs)
+    const createdActionOutputs = await getCreateFileActionOutputs(
+      action,
+      workspaceId,
+      fileId
+    );
+
+    if (createdActionOutputs.length === 0) {
+      return false;
+    }
+
+    if (createdActionOutputs.length > 1) {
+      // This should never happen
+      throw new Error(
+        `Multiple create file actions found for file_id ${fileId}.`
+      );
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+export async function getCreateFileActionOutputs(
+  action: AgentMCPActionModel,
+  workspaceId: number,
+  fileId: string
+): Promise<AgentMCPActionOutputItem[]> {
+  const actionOutputs = await getActionOutput(action, workspaceId);
+
+  const createdActionOutputs = actionOutputs.filter((output) => {
+    if (isCreateFileActionOutput(output)) {
+      return output.content.resource.fileId === fileId;
+    }
+
+    return false;
+  });
+
+  return createdActionOutputs;
+}
+
 function isEditFileAction(
   action: AgentMCPActionModel
 ): action is AgentMCPActionModel & {
@@ -319,27 +371,49 @@ function isEditFileAction(
   );
 }
 
-function isRevertFileAction(action: AgentMCPActionModel) {
-  return (
-    action.toolConfiguration.originalName ===
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
-  );
+export function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
+  if (action.augmentedInputs.file_id !== fileId) {
+    return false;
+  }
+
+  return [
+    EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+  ].includes(action.toolConfiguration.originalName);
 }
 
-function getEditOrRevertFileActions(
+function isRevertFileAction(action: AgentMCPActionModel) {
+  return action.toolConfiguration.originalName === REVERT_CONTENT_CREATION_FILE_TOOL_NAME;
+}
+
+/**
+ * Categorizes file actions by their type for a specific file
+ * @param actions - All conversation actions
+ * @param fileId - The file ID to filter actions for
+ * @returns Object containing arrays of actions categorized by type
+ */
+export async function getFileActionsByActionType(
   actions: AgentMCPActionModel[],
-  fileId: string
+  fileId: string,
+  workspaceId: number
 ) {
-  return actions.filter((action) => {
-    if (action.augmentedInputs.file_id !== fileId) {
-      return false;
+  let createFileAction: AgentMCPActionModel | undefined;
+  const editOrRevertFileActions: AgentMCPActionModel[] = [];
+
+  for (const action of actions) {
+    if (await isCreateFileAction(action, workspaceId, fileId)) {
+      createFileAction = action;
     }
 
-    return [
-      EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-      REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    ].includes(action.toolConfiguration.originalName);
-  });
+    if (isEditOrRevertFileAction(action, fileId)) {
+      editOrRevertFileActions.push(action);
+    }
+  }
+
+   return {
+      createFileAction,
+      editOrRevertFileActions,
+    };
 }
 
 async function getActionOutput(
@@ -355,52 +429,7 @@ async function getActionOutput(
   });
 }
 
-export async function getCreateFileAction(
-  actions: AgentMCPActionModel[],
-  workspaceId: number,
-  fileId: string
-): Promise<AgentMCPActionModel | undefined> {
-  // You can generate multiple files in one conversation
-  const createActions = actions.filter(
-    (action) =>
-      action.toolConfiguration.originalName ===
-      CREATE_CONTENT_CREATION_FILE_TOOL_NAME
-  );
 
-  for (const action of createActions) {
-    // We need to check the outputs to find the create action for the given file id.
-    const actionOutputs = await getActionOutput(action, workspaceId);
-
-    const createdActionOutputs = actionOutputs.filter((output) => {
-      if (isCreateFileActionOutput(output)) {
-        return output.content.resource.fileId === fileId;
-      }
-      return false;
-    });
-
-    if (createdActionOutputs.length === 0) {
-      continue;
-    }
-
-    if (createdActionOutputs.length > 1) {
-      // This should never happen
-      throw new Error(
-        `Multiple create file actions found for file_id ${fileId}.`
-      );
-    }
-
-    return action;
-  }
-}
-
-/**
- * Determines which edit actions should be applied after accounting for revert operations.
- * 
- * The function processes a series of edit and revert actions, applying revert logic
- * that cancels previous action groups in reverse chronological order.
- * 
- * @returns Array of edit actions that should be applied after all reverts are processed
- */
 export function getEditActionsToApply(
   editOrRevertActions: AgentMCPActionModel[],
   revertCount: number
@@ -434,22 +463,25 @@ export function getEditActionsToApply(
   const pickedEditActions = [];
 
   // Process each action group from newest to oldest
-  for (
-    const actionGroup of sortedActionGroups
-  ) {
-
+  for (const actionGroup of sortedActionGroups) {
     // If we still have groups to cancel, check if this group should be skipped
     if (cancelGroupActionCounter > 0) {
-      const revertActions = actionGroup.filter(action => isRevertFileAction(action));
+      const revertActions = actionGroup.filter((action) =>
+        isRevertFileAction(action)
+      );
 
       // If this group contains only edit actions (no reverts), cancel the entire group
-      if (revertActions.length === 0) {
+      if (revertActions.length == 0) {
         cancelGroupActionCounter--;
         continue;
-      } 
+      }
 
-      // if it has both revert + edits, and this is the point we need to revert, we will skip the entire action
-      if (cancelGroupActionCounter === 1 && revertActions.length !== actionGroup.length) {
+      // if it has both revert + edits, and this is the exact point we need to revert (= cancelGroupActionCounter is 1),
+      // we will cancel the entire group action
+      if (
+        cancelGroupActionCounter === 1 &&
+        revertActions.length !== actionGroup.length
+      ) {
         cancelGroupActionCounter--;
         continue;
       }
@@ -483,6 +515,7 @@ export function getEditActionsToApply(
 
   return pickedEditActions;
 }
+
 export function getRevertedContent(
   createFileAction: AgentMCPActionModel,
   actionsToApply: AgentMCPActionModel[]
@@ -497,7 +530,10 @@ export function getRevertedContent(
   for (let i = 0; i < sortedActions.length; i++) {
     const editAction = sortedActions[i];
 
-    const { old_string, new_string } = editAction.augmentedInputs;
+    const { old_string, new_string } = editAction.augmentedInputs as {
+      old_string: string;
+      new_string: string;
+    };
 
     const { updatedContent, occurrences } = getUpdatedContentAndOccurrences(
       old_string,
@@ -596,16 +632,8 @@ export async function revertClientExecutableFileToPreviousState(
     conversationId
   );
 
-  const editOrRevertFileActions = getEditOrRevertFileActions(
-    conversationActions,
-    fileId
-  );
-
-  const createFileAction = await getCreateFileAction(
-    conversationActions,
-    workspaceId,
-    fileId
-  );
+  const { createFileAction, editOrRevertFileActions } =
+    await getFileActionsByActionType(conversationActions, fileId, workspaceId);
 
   if (!createFileAction) {
     return new Err({
@@ -628,7 +656,10 @@ export async function revertClientExecutableFileToPreviousState(
     });
   }
 
-  const revertedContent = getRevertedContent(createFileAction, editActionsToApply);
+  const revertedContent = getRevertedContent(
+    createFileAction,
+    editActionsToApply
+  );
 
   await fileResource.setUseCaseMetadata({
     ...fileResource.useCaseMetadata,
