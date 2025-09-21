@@ -275,26 +275,32 @@ const createServer = (
       }
     )
   );
-
-  server.tool(
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Reverts the content creation to the state it was at the last agent message. " +
-      "This tool can be used to restore the content creation file to its state before the last agent message. " +
-      "Use this when you need to undo changes made in the last agent message and return to the previous state.",
-    {
-      file_id: z
-        .string()
-        .describe(
-          "The ID of the Content Creation file to revert (e.g., 'fil_abc123')"
-        ),
-    },
+server.tool(
+  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+  "Reverts a Content Creation file by canceling recent agent messages. " +
+    "Cancels the most recent N agent messages chronologically, where N = revertCount.",
+  {
+    file_id: z
+      .string()
+      .describe(
+        "The ID of the Content Creation file to revert (e.g., 'fil_abc123')"
+      ),
+    revertCount: z
+      .number()
+      .optional()
+      .default(1)
+      .describe(
+        "Number of recent agent messages to cancel. Default: 1. " +
+        "Multiple reverts in the same message accumulate."
+      ),
+  },
     withToolLogging(
       auth,
       {
         toolName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
         agentLoopContext,
       },
-      async ({ file_id }, { sendNotification, _meta }) => {
+      async ({ file_id, revertCount }, { sendNotification, _meta }) => {
         if (!agentLoopContext?.runContext) {
           throw new Error(
             "Could not access Agent Loop Context from revert content creation file tool."
@@ -308,6 +314,7 @@ const createServer = (
           fileId: file_id,
           conversationId: conversation.id,
           revertedByAgentConfigurationId: agentConfiguration.sId,
+          revertCount
         });
 
         if (result.isErr()) {

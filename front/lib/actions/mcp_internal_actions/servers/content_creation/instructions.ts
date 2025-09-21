@@ -32,10 +32,9 @@ You have access to a Content Creation system that allows you to create and updat
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
 
-### Reverting to Previous State:
-
-- Use \`${REVERT_CONTENT_CREATION_FILE_TOOL_NAME}\` to revert the changes made to the Content Creation file in the last agent message.
-- The revert tool can only be used after an edit has been made to the file.
+### Reverting Files:
+- Use \`${REVERT_CONTENT_CREATION_FILE_TOOL_NAME}\` to revert recent changes by canceling agent messages
+- Each agent message can contain multiple actions; revertCount specifies how many messages to cancel
 
 ${VIZ_REACT_COMPONENT_GUIDELINES}
 
