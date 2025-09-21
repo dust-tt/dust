@@ -443,11 +443,16 @@ export function getEditActionsToApply(
       const revertActions = actionGroup.filter(action => isRevertFileAction(action));
 
       // If this group contains only edit actions (no reverts), cancel the entire group
-      if (revertActions.length === 0 && cancelGroupActionCounter === 1) {
+      if (revertActions.length === 0) {
         cancelGroupActionCounter--;
         continue;
       } 
 
+      // if it has both revert + edits, and this is the point we need to revert, we will skip the entire action
+      if (cancelGroupActionCounter === 1 && revertActions.length !== actionGroup.length) {
+        cancelGroupActionCounter--;
+        continue;
+      }
       // If this group contains revert actions, those reverts add to our cancellation count
       // (reverts in the past increase the number of groups we need to cancel)
       for (const revertAction of revertActions) {
