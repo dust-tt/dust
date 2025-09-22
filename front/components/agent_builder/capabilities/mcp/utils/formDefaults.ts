@@ -79,22 +79,12 @@ export function getDefaultConfiguration(
     ? getMCPServerToolsConfigurations(mcpServerView)
     : null;
 
-  const reasoningDefault = toolsConfigurations?.reasoningConfiguration?.default;
-  const validatedReasoningModel = getValidatedReasoningModel(reasoningDefault);
-
-  const childAgentDefaultId = toolsConfigurations?.childAgentConfiguration
-    ?.default?.uri
-    ? (parseAgentConfigurationUri(
-        toolsConfigurations?.childAgentConfiguration?.default?.uri
-      ) ?? null)
-    : null;
-
   const defaults: MCPServerConfigurationType = {
     mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
     dataSourceConfigurations: null,
     tablesConfigurations: null,
-    childAgentId: childAgentDefaultId,
-    reasoningModel: validatedReasoningModel,
+    childAgentId: null,
+    reasoningModel: null,
     timeFrame: null,
     additionalConfiguration: {},
     dustAppConfiguration: null,
@@ -109,7 +99,15 @@ export function getDefaultConfiguration(
 
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
 
-  //const childAgentId = toolsConfigurations.childAgentConfiguration?.default ?? null;
+  const reasoningDefault = toolsConfigurations?.reasoningConfiguration?.default;
+  defaults.reasoningModel = getValidatedReasoningModel(reasoningDefault);
+
+  defaults.childAgentId = toolsConfigurations?.childAgentConfiguration?.default
+    ?.uri
+    ? (parseAgentConfigurationUri(
+        toolsConfigurations?.childAgentConfiguration?.default?.uri
+      ) ?? null)
+    : null;
 
   // Set default values for all configuration types when available
   // This provides better UX by pre-filling known defaults while still allowing
