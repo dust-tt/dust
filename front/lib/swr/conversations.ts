@@ -390,7 +390,7 @@ export function useVisualizationRevert({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              content: `Please revert the previous change in ${fileId}.`,
+              content: `Please revert the previous change in ${fileId}`,
               mentions: [
                 {
                   configurationId: agentConfigurationId,
