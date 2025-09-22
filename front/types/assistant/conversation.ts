@@ -101,6 +101,7 @@ export type UserMessageContext = {
   lastTriggerRunAt?: Date | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
+  mainAgentId: string | null;
 };
 
 export type UserMessageType = {

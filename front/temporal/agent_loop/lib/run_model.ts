@@ -12,12 +12,18 @@ import {
 } from "@app/lib/actions/server";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import {
+  isMCPConfigurationWithDataSource,
+  isMCPServerConfiguration,
+  isServerSideMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
   categorizeAgentErrorMessage,
@@ -221,6 +227,38 @@ export async function runModelActivity(
       "Error listing MCP tools."
     );
   }
+
+  // TODO This is specific to dust-deep
+  const mainAgentId = runAgentData.userMessage.context.mainAgentId;
+  if (mainAgentId) {
+    const mainAgent = await getAgentConfiguration(auth, {
+      agentId: mainAgentId,
+      variant: "full",
+    });
+    if (mainAgent) {
+      const searchActions = mainAgent.actions.filter(
+        isServerSideMCPServerConfiguration
+      );
+
+      const allDataSources = searchActions.flatMap(
+        (action) => action.dataSources ?? []
+      );
+
+      const allTables = searchActions.flatMap((action) => action.tables ?? []);
+
+      const companyDataAction = agentConfiguration.actions.find(
+        (action) => action.sId === "dust-deep-company-data-action"
+      );
+      if (
+        companyDataAction &&
+        isMCPConfigurationWithDataSource(companyDataAction)
+      ) {
+        companyDataAction.dataSources?.push(...allDataSources);
+        companyDataAction.tables?.push(...allTables);
+      }
+    }
+  }
+  // END-TODO
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 

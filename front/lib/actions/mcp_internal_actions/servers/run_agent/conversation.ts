@@ -121,6 +121,7 @@ export async function getOrCreateConversation(
               ? "run_agent"
               : "agent_handover",
           selectedMCPServerViewIds: toolsetsToAdd,
+          mainAgentId: mainAgent.sId,
         },
       },
     });
@@ -160,6 +161,7 @@ export async function getOrCreateConversation(
         // `run_agent` origin will skip adding the conversation to the user history.
         origin: "run_agent",
         selectedMCPServerViewIds: toolsetsToAdd,
+        mainAgentId: mainAgent.sId,
       },
     },
     contentFragments,
