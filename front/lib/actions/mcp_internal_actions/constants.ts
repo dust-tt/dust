@@ -1175,15 +1175,12 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  query_tables_v2: {
+  [TABLE_QUERY_V2_SERVER_NAME]: {
     id: 1009,
     availability: "auto",
     allowMultipleInstances: false,
-    // We'll eventually switch everyone to this new tables query toolset.
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("exploded_tables_query");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,

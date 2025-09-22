@@ -72,7 +72,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   },
   [TABLE_QUERY_SERVER_NAME]: {
     icon: TableIcon,
-    configPageTitle: "Configure Query Tables",
+    configPageTitle: "Configure Query Tables (legacy)",
     configPageDescription:
       "Describe how you want to query the selected tables.",
     descriptionConfig: {
@@ -84,7 +84,7 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
   },
   [TABLE_QUERY_V2_SERVER_NAME]: {
     icon: TableIcon,
-    configPageTitle: "Configure Query Tables v2",
+    configPageTitle: "Configure Query Tables",
     configPageDescription:
       "Describe how you want to query the selected tables.",
     descriptionConfig: {
