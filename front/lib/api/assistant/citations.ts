@@ -49,12 +49,7 @@ export function citationMetaPrompt(isUsingRunAgent: boolean) {
 }
 
 export function getCitationsFromActions(
-  actions: (AgentMCPActionWithOutputType & {
-    // TODO(2025-09-22 aubin): the internalMCPServerName is properly typed in the public type,
-    //  purposedly weakening the type here until we add the type in the public API/remove the
-    //  internalMCPServerName from the public type (TBD).
-    internalMCPServerName: string | null;
-  })[]
+  actions: Omit<AgentMCPActionWithOutputType, "internalMCPServerName">[]
 ): Record<string, CitationType> {
   const searchResultsWithDocs = removeNulls(
     actions.flatMap((action) =>
