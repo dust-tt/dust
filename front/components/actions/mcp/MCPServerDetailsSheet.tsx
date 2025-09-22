@@ -65,7 +65,7 @@ export function MCPServerDetailsSheet({
   }, [mcpServerView]);
 
   const changeTab = async (next: TabType) => {
-    if (selectedTab === "info" && next !== "info" && form.formState.isDirty) {
+    if (selectedTab === "info" && next !== "info") {
       const confirmed = await confirm({
         title: "Unsaved changes",
         message:
@@ -103,19 +103,17 @@ export function MCPServerDetailsSheet({
     if (open) {
       return;
     }
-    if (form.formState.isDirty) {
-      const confirmed = await confirm({
-        title: "Unsaved changes",
-        message:
-          "You have unsaved changes. Are you sure you want to close without saving?",
-        validateLabel: "Discard changes",
-        validateVariant: "warning",
-      });
-      if (!confirmed) {
-        return;
-      }
-      onCancel();
+    const confirmed = await confirm({
+      title: "Unsaved changes will be lost",
+      message:
+        "All unsaved changes will be lost. Are you sure you want to close?",
+      validateLabel: "Close without saving",
+      validateVariant: "warning",
+    });
+    if (!confirmed) {
+      return;
     }
+    onCancel();
     onClose();
   };
 
@@ -216,7 +214,7 @@ export function MCPServerDetailsSheet({
             <Button
               label={form.formState.isSubmitting ? "Saving..." : "Save"}
               variant="primary"
-              disabled={!form.formState.isDirty || form.formState.isSubmitting}
+              disabled={form.formState.isSubmitting}
               onClick={async () => {
                 const ok = await onSave();
                 if (ok) {
