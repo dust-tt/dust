@@ -406,12 +406,10 @@ export function getEditActionsToApply(
   });
 
   // Order groups newest → oldest (based on the group's earliest action time).
-  const sortedActionGroups = Object.entries(editOrRevertActionsByMessage)
-    .sort(
-      ([, actionsA], [, actionsB]) =>
-        actionsB[0].createdAt.getTime() - actionsA[0].createdAt.getTime()
-    )
-    .map(([, actions]) => actions);
+  const sortedActionGroups = Object.values(editOrRevertActionsByMessage).sort(
+    (actionsA, actionsB) =>
+      actionsB[0].createdAt.getTime() - actionsA[0].createdAt.getTime()
+  );
 
   // Remaining edit-only groups to cancel. Starts from the current (external) revert.
   let cancelGroupActionCounter = revertCount;
