@@ -302,13 +302,21 @@ export async function isCreateFileAction(
   fileId: string
 ) {
   if (isCreateFileActionType(action)) {
-    // For create actions, `file_id` isn't present in inputs; inspect outputs to see
-    // whether this action produced the specified `fileId` for this workspace.
-    const createdActionOutputs = await getCreateFileActionOutputs(
-      action,
-      workspace,
-      fileId
-    );
+    const actionOutputs = await AgentMCPActionOutputItem.findAll({
+      where: {
+        agentMCPActionId: action.id,
+        workspaceId: workspace.id,
+      },
+      order: [["createdAt", "ASC"]],
+    });
+
+    const createdActionOutputs = actionOutputs.filter((output) => {
+      if (isCreateFileActionOutputType(output)) {
+        return output.content.resource.fileId === fileId;
+      }
+
+      return false;
+    });
 
     // No outputs referencing `fileId` => this action did not create that file.
     if (createdActionOutputs.length === 0) {
@@ -326,30 +334,6 @@ export async function isCreateFileAction(
   }
 
   return false;
-}
-
-async function getCreateFileActionOutputs(
-  action: AgentMCPActionModel,
-  workspace: WorkspaceType,
-  fileId: string
-): Promise<AgentMCPActionOutputItem[]> {
-  const actionOutputs = await AgentMCPActionOutputItem.findAll({
-    where: {
-      agentMCPActionId: action.id,
-      workspaceId: workspace.id,
-    },
-    order: [["createdAt", "ASC"]],
-  });
-
-  const createdActionOutputs = actionOutputs.filter((output) => {
-    if (isCreateFileActionOutputType(output)) {
-      return output.content.resource.fileId === fileId;
-    }
-
-    return false;
-  });
-
-  return createdActionOutputs;
 }
 
 function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
