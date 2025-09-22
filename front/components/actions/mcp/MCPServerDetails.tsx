@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
   TrashIcon,
@@ -76,7 +77,7 @@ export function MCPServerDetails({
           )}
         </SheetHeader>
         <SheetContainer>
-          <Tabs value={selectedTab}>
+          <Tabs value={selectedTab} onValueChange={setSelectedTab}>
             <TabsList>
               <TabsTrigger
                 value="info"
@@ -138,24 +139,24 @@ export function MCPServerDetails({
                 </>
               )}
             </TabsList>
-          </Tabs>
 
-          {mcpServerView && (
-            <>
-              {selectedTab === "info" && (
-                <MCPServerDetailsInfo
-                  mcpServerView={mcpServerView}
-                  owner={owner}
-                />
-              )}
-              {selectedTab === "sharing" && (
-                <MCPServerDetailsSharing
-                  mcpServer={mcpServerView.server}
-                  owner={owner}
-                />
-              )}
-            </>
-          )}
+            {mcpServerView && (
+              <div className="mt-4">
+                <TabsContent value="info">
+                  <MCPServerDetailsInfo
+                    mcpServerView={mcpServerView}
+                    owner={owner}
+                  />
+                </TabsContent>
+                <TabsContent value="sharing">
+                  <MCPServerDetailsSharing
+                    mcpServer={mcpServerView.server}
+                    owner={owner}
+                  />
+                </TabsContent>
+              </div>
+            )}
+          </Tabs>
         </SheetContainer>
       </SheetContent>
     </Sheet>

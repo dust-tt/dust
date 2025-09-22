@@ -11,9 +11,9 @@ import { useState } from "react";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useAddMCPServerToSpace,
+  useMCPServers,
   useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_servers";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
@@ -80,8 +80,7 @@ export function MCPServerDetailsSharing({
     mcpServerWithViews?.views.map((v) => ({
       ...v,
       space: spaces.find((space) => space.sId === v.spaceId),
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    })) || [];
+    })) ?? [];
 
   const globalView = views.find((view) => view.space?.kind === "global");
   const globalSpace = spaces.find((space) => space.kind === "global");
@@ -166,6 +165,7 @@ export function MCPServerDetailsSharing({
             <SearchInput
               name="filter"
               placeholder="Search a space"
+              className="w-full"
               value={filter}
               onChange={(e) => setFilter(e)}
             />
