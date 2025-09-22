@@ -1,0 +1,2 @@
+-- Migration created on Sep 22, 2025
+CREATE INDEX "shareable_files_workspace_id_share_scope" ON "shareable_files" ("workspaceId", "shareScope");
