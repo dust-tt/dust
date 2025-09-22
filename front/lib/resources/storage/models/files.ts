@@ -143,7 +143,7 @@ ShareableFileModel.init(
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "fileId"], unique: true },
-      { fields: ["workspaceId", "shareScope"], unique: true },
+      { fields: ["workspaceId", "shareScope"], unique: false },
       { fields: ["token"], unique: true },
     ],
   }
