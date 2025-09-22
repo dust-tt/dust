@@ -53,7 +53,6 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
-import { isAgentMCPActionWithOutputType } from "@app/types/actions";
 
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
 
@@ -490,25 +489,13 @@ ${query}`
         };
 
         const getFinishedContent = (agentMessage: AgentMessagePublicType) => {
-          const finalText: string = agentMessage.content ?? "";
-          const cot: string = agentMessage.chainOfThought ?? "";
-
-          let refsFromAgent: Record<string, CitationType> = {};
-          let files: ActionGeneratedFileType[] = [];
-          if (
-            Array.isArray(agentMessage.actions) &&
-            agentMessage.actions.every(isAgentMCPActionWithOutputType)
-          ) {
-            refsFromAgent = getCitationsFromActions(agentMessage.actions);
-            files = agentMessage.actions.flatMap((action) =>
-              action.generatedFiles.filter((f) => !f.hidden)
-            );
-          }
           return {
-            finalText,
-            cot,
-            refsFromAgent,
-            files,
+            finalText: agentMessage.content ?? "",
+            cot: agentMessage.chainOfThought ?? "",
+            refsFromAgent: getCitationsFromActions(agentMessage.actions),
+            files: agentMessage.actions.flatMap((action) =>
+              action.generatedFiles.filter((f) => !f.hidden)
+            ),
           };
         };
         // Early finish: if the child conversation already succeeded, return its stored result.
@@ -637,17 +624,10 @@ ${query}`
               const errorMessage = `User message error: ${event.error.message}`;
               return new Err(new MCPError(errorMessage));
             } else if (event.type === "agent_message_success") {
-              // TODO(2025-09-22 aubin): update the SDK type to remove the need for this typeguard
-              //  (event.message.actions should always be an AgentMCPActionWithOutputType[]).
-              if (
-                Array.isArray(event.message.actions) &&
-                event.message.actions.every(isAgentMCPActionWithOutputType)
-              ) {
-                refsFromAgent = getCitationsFromActions(event.message.actions);
-                files = event.message.actions.flatMap((action) =>
-                  action.generatedFiles.filter((f) => !f.hidden)
-                );
-              }
+              refsFromAgent = getCitationsFromActions(event.message.actions);
+              files = event.message.actions.flatMap((action) =>
+                action.generatedFiles.filter((f) => !f.hidden)
+              );
               break;
             } else if (event.type === "tool_approve_execution") {
               // Collect this blocking event.

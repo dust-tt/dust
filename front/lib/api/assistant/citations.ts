@@ -49,7 +49,12 @@ export function citationMetaPrompt(isUsingRunAgent: boolean) {
 }
 
 export function getCitationsFromActions(
-  actions: AgentMCPActionWithOutputType[]
+  actions: Omit<
+    AgentMCPActionWithOutputType,
+    // TODO(2025-09-22 aubin): add proper typing for the statuses in the SDK (not really needed but
+    //  nice to have IMHO).
+    "internalMCPServerName" | "status"
+  >[]
 ): Record<string, CitationType> {
   const searchResultsWithDocs = removeNulls(
     actions.flatMap((action) =>
