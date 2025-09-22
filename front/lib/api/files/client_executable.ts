@@ -89,8 +89,8 @@ export async function createClientExecutableFile(
   }: {
     content: string;
     conversationId: string;
-    fileName: string;
     mimeType: ContentCreationFileContentType;
+    fileName: string;
     createdByAgentConfigurationId?: string;
   }
 ): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
@@ -394,31 +394,24 @@ export function isCreateFileActionType(
 ): action is AgentMCPActionModel & {
   augmentedInputs: {
     content: string;
-    fileName: string;
-    mimeType: string;
   };
 } {
   return (
     action.toolConfiguration.originalName ===
-    CREATE_CONTENT_CREATION_FILE_TOOL_NAME
+      CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
+    typeof action.augmentedInputs.content === "string"
   );
 }
 
 export function isRevertFileActionType(
   action: AgentMCPActionModel
 ): action is AgentMCPActionModel & {
-  augmentedInputs: { file_id: string; revertCount?: number };
+  augmentedInputs: { revertCount?: number };
 } {
   return (
     action.toolConfiguration.originalName ===
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
-  );
-}
-
-function isRevertFileAction(action: AgentMCPActionModel) {
-  return (
-    action.toolConfiguration.originalName ===
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
+      REVERT_CONTENT_CREATION_FILE_TOOL_NAME &&
+    typeof action.augmentedInputs === "object"
   );
 }
 
@@ -448,7 +441,7 @@ export async function getFileActionsByActionType(
 }
 
 /**
- * Returns the edit actions that still apply after honoring revert actions.
+ * Returns the edit actions that still apply after revert actions.
  *
  * How it works:
  * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest → newest.
@@ -497,7 +490,9 @@ export function getEditActionsToApply(
   for (const actionGroup of sortedActionGroups) {
     if (cancelGroupActionCounter > 0) {
       // If any revert is present, extend the window; otherwise consume one edit-only group
-      const revertActions = actionGroup.filter((a) => isRevertFileAction(a));
+      const revertActions = actionGroup.filter((a) =>
+        isRevertFileActionType(a)
+      );
 
       if (revertActions.length === 0) {
         cancelGroupActionCounter--; // skip this edit-only group
@@ -516,7 +511,7 @@ export function getEditActionsToApply(
     for (const currentAction of actionGroup) {
       if (isEditFileActionType(currentAction)) {
         pickedEditActions.push(currentAction);
-      } else if (isRevertFileAction(currentAction)) {
+      } else if (isRevertFileActionType(currentAction)) {
         const counter = currentAction.augmentedInputs.revertCount;
         cancelGroupActionCounter += typeof counter === "number" ? counter : 1;
       }
@@ -566,50 +561,10 @@ export function getRevertedContent(
   return revertedContent;
 }
 
-async function getConversationActions(
-  auth: Authenticator,
-  conversationId: ModelId
-): Promise<AgentMCPActionModel[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
-
-  // Fetch all the successful actions from the given conversation id
-  // (we only update the file when action succeeded).
-  const conversationActions = await AgentMCPActionModel.findAll({
-    include: [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-        include: [
-          {
-            model: Message,
-            as: "message",
-            required: true,
-            where: {
-              conversationId,
-              workspaceId,
-            },
-          },
-        ],
-      },
-    ],
-    where: {
-      workspaceId,
-      status: "succeeded",
-    },
-    order: [["createdAt", "ASC"]],
-  });
-
-  return conversationActions;
-}
-
-/**
- * Reverts the content creation file to the previous state.
- *
- * This reconstructs the previous file state by replaying edit operations chronologically
- * from the create action.
- */
-export async function revertClientExecutableFileToPreviousState(
+// Revert the changes made to the Content Creation file in the last agent message.
+// This reconstructs the previous file state by replaying edit operations chronologically
+// from the create action.
+export async function revertClientExecutableFileChanges(
   auth: Authenticator,
   {
     fileId,
@@ -643,10 +598,40 @@ export async function revertClientExecutableFileToPreviousState(
   try {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const conversationActions = await getConversationActions(
-      auth,
-      conversationId
-    );
+    // Fetch all the successful actions from the given conversation id
+    // (we only update the file when action succeeded).
+    const conversationActions = await AgentMCPActionModel.findAll({
+      include: [
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: true,
+          include: [
+            {
+              model: Message,
+              as: "message",
+              required: true,
+              where: {
+                conversationId,
+                workspaceId,
+              },
+            },
+          ],
+        },
+      ],
+      where: {
+        workspaceId,
+        status: "succeeded",
+      },
+      order: [["createdAt", "ASC"]],
+    });
+
+    if (!conversationActions.length) {
+      return new Err({
+        message: `No file actions found for: ${fileId}`,
+        tracked: true,
+      });
+    }
 
     const { createFileAction, editOrRevertFileActions } =
       await getFileActionsByActionType(
@@ -655,7 +640,7 @@ export async function revertClientExecutableFileToPreviousState(
         workspaceId
       );
 
-    if (!createFileAction) {
+    if (createFileAction === undefined) {
       return new Err({
         message: `Cannot find the create file action for ${fileId}`,
         tracked: true,

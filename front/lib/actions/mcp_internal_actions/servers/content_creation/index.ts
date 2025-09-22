@@ -17,7 +17,7 @@ import {
   createClientExecutableFile,
   editClientExecutableFile,
   getClientExecutableFileContent,
-  revertClientExecutableFileToPreviousState,
+  revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -310,7 +310,7 @@ const createServer = (
         const { conversation, agentConfiguration } =
           agentLoopContext.runContext;
 
-        const result = await revertClientExecutableFileToPreviousState(auth, {
+        const result = await revertClientExecutableFileChanges(auth, {
           fileId: file_id,
           conversationId: conversation.id,
           revertedByAgentConfigurationId: agentConfiguration.sId,
