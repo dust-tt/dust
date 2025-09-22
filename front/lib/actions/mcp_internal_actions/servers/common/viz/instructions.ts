@@ -98,30 +98,37 @@ Example using the \`useFile\` hook:
 
 \`\`\`
 // Reading files from conversation - ASYNC HANDLING REQUIRED
+import React, { useState, useEffect } from "react";
 import { useFile } from "@dust/react-hooks";
-import { useState, useEffect } from "react";
+import Papa from "papaparse";
 
-function Chart() {
-  const file = useFile(fileId);
-  const [fileContent, setFileContent] = useState(null);
+function DataChart() {
+  const file = useFile("fil_abc123"); 
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadFile = async () => {
       if (file) {
-        // For text files
         const text = await file.text();
-        setFileContent(text);
-
-        // For binary files
-        const arrayBuffer = await file.arrayBuffer();
-        setFileContent(arrayBuffer);
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: "greedy" });
+        setData(parsed.data);
+        setLoading(false);
       }
     };
     loadFile();
   }, [file]);
-  
-  return ...
+
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <h2>Data from File</h2>
+      <p>Found {data.length} rows</p>
+    </div>
+  );
 }
+export default DataChart;
 \`\`\`
 
 \`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
