@@ -252,10 +252,24 @@ export function generateSecureSecret(length = 64): string {
     .toString();
 }
 
+function hasProp<K extends PropertyKey>(
+  value: unknown,
+  key: K
+): value is Record<K, unknown> {
+  return typeof value === "object" && value !== null && key in value;
+}
+
 function hasWebCrypto(obj: unknown): obj is {
-  crypto: { getRandomValues: (arr: Uint8Array) => Uint8Array };
+  crypto: { getRandomValues: (arr: ArrayBufferView) => ArrayBufferView };
 } {
-  return !!obj && typeof (obj as any).crypto?.getRandomValues === "function";
+  if (!hasProp(obj, "crypto")) {
+    return false;
+  }
+  const crypto = obj.crypto;
+  if (!hasProp(crypto, "getRandomValues")) {
+    return false;
+  }
+  return typeof crypto.getRandomValues === "function";
 }
 
 function getSecureRandomBytes(length: number): Uint8Array {
