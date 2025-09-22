@@ -128,7 +128,8 @@ function isStreamTerminationError(e: unknown): boolean {
 }
 
 function isTransientHttpStatus(status: number): boolean {
-  return status === 408 || status === 429 || (status >= 500 && status < 600);
+  // Only retry on explicit transient statuses; do NOT retry on 5xx.
+  return status === 408 || status === 429;
 }
 
 // Copied from front/hooks/useEventSource.ts
