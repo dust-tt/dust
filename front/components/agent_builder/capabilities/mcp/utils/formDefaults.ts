@@ -5,7 +5,7 @@ import type {
   MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { parseAgentConfigurationUri } from "@app/lib/actions/mcp_internal_actions/servers/webtools_edge";
+import { parseAgentConfigurationUri } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   ModelIdType,
