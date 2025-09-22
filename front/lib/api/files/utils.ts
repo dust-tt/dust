@@ -4,23 +4,23 @@ import type { IncomingMessage } from "http";
 import { Writable } from "stream";
 import { pipeline } from "stream/promises";
 
+import {
+  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
+import type {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItem,
+} from "@app/lib/models/assistant/actions/mcp";
 import type {
   FileResource,
   FileVersion,
 } from "@app/lib/resources/file_resource";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
-import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 
 export const parseUploadRequest = async (
   file: FileResource,
