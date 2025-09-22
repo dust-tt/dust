@@ -222,7 +222,7 @@ async function handler(
 
         case "google_ai_studio":
           const { api_key } = config;
-          const testUrlGoogleAIStudio = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${api_key}`;
+          const testUrlGoogleAIStudio = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${api_key}`;
           const testRequestBodyGoogleAIStudio = {
             contents: {
               role: "user",
