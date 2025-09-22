@@ -292,7 +292,7 @@ export async function getClientExecutableFileContent(
   }
 }
 
-function isCreateFileActionOutput(
+function isCreateFileActionOutputType(
   output: AgentMCPActionOutputItem
 ): output is AgentMCPActionOutputItem & {
   content: { resource: { fileId: string } };
@@ -360,7 +360,7 @@ export async function getCreateFileActionOutputs(
   });
 
   const createdActionOutputs = actionOutputs.filter((output) => {
-    if (isCreateFileActionOutput(output)) {
+    if (isCreateFileActionOutputType(output)) {
       return output.content.resource.fileId === fileId;
     }
 
@@ -508,7 +508,7 @@ export function getEditActionsToApply(
       // Extend cancellation window by each revert's count (any edits will be cancelled).
       for (const revertAction of revertActions) {
         const count =
-          typeof revertAction.augmentedInputs.revertCount === "number"
+          "revertCount" in revertAction.augmentedInputs
             ? revertAction.augmentedInputs.revertCount
             : 1;
         cancelGroupActionCounter += count;
