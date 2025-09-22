@@ -39,10 +39,10 @@ export class ShareableFileResource extends BaseResource<ShareableFileModel> {
   }
 
   static async updatePublicShareScopeToWorkspace(auth: Authenticator) {
-    const workspace = auth.getNonNullableWorkspace().id;
+    const workspaceId = auth.getNonNullableWorkspace().id;
     return this.model.update(
       { shareScope: "workspace" },
-      { where: { workspaceId: workspace, shareScope: "public" } }
+      { where: { workspaceId, shareScope: "public" } }
     );
   }
 }
