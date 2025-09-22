@@ -31,7 +31,7 @@ vi.mock("@app/temporal/agent_schedule/client", () => ({
   })),
 }));
 
-import handler from "./[webhookSourceId]";
+import handler from ".";
 
 describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
   it("returns 200 when workspace and webhook source exist", async () => {
