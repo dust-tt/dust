@@ -507,7 +507,10 @@ export function getEditActionsToApply(
 
       // Extend cancellation window by each revert's count (any edits will be cancelled).
       for (const revertAction of revertActions) {
-        const count = revertAction.augmentedInputs.revertCount ?? 1;
+        const count =
+          typeof revertAction.augmentedInputs.revertCount === "number"
+            ? revertAction.augmentedInputs.revertCount
+            : 1;
         cancelGroupActionCounter += count;
       }
 
@@ -522,7 +525,10 @@ export function getEditActionsToApply(
       }
 
       if (isRevertFileActionType(currentAction)) {
-        const count = currentAction.augmentedInputs.revertCount ?? 1;
+        const count =
+          typeof currentAction.augmentedInputs.revertCount === "number"
+            ? currentAction.augmentedInputs.revertCount
+            : 1;
         cancelGroupActionCounter += count;
       }
     }
