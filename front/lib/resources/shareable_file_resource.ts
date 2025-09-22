@@ -1,5 +1,4 @@
 import type { Attributes } from "sequelize";
-import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -26,7 +25,7 @@ export class ShareableFileResource extends BaseResource<ShareableFileModel> {
   }
 
   static async makeNew(blob: Attributes<ShareableFileModel>) {
-    const shareableFile = await this.model.create(blob);
+    const shareableFile = await ShareableFileModel.create(blob);
     return new this(this.model, shareableFile.get());
   }
 
@@ -39,38 +38,9 @@ export class ShareableFileResource extends BaseResource<ShareableFileModel> {
     return new Ok(undefined);
   }
 
-  static async fetchAllPublicFilesForWorkspace(auth: Authenticator) {
-    const workspace = auth.getNonNullableWorkspace().id;
-    const shareableFiles = await this.model.findAll({
-      where: { workspaceId: workspace, shareScope: "public" },
-    });
-
-    return shareableFiles.map(
-      (shareableFile) => new this(this.model, shareableFile.get())
-    );
-  }
-
-  static async updateShareScopeToWorkspace(
-    auth: Authenticator,
-    shareableFiles: ShareableFileResource[]
-  ) {
-    const workspace = auth.getNonNullableWorkspace().id;
-    await this.model.update(
-      { shareScope: "workspace" },
-      {
-        where: {
-          workspaceId: workspace,
-          id: {
-            [Op.in]: shareableFiles.map((shareableFile) => shareableFile.id),
-          },
-        },
-      }
-    );
-  }
-
   static async updatePublicShareScopeToWorkspace(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace().id;
-    await this.model.update(
+    return this.model.update(
       { shareScope: "workspace" },
       { where: { workspaceId: workspace, shareScope: "public" } }
     );

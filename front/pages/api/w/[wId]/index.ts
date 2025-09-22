@@ -156,7 +156,7 @@ async function handler(
         await w.update({ metadata: newMetadata });
         owner.metadata = newMetadata;
 
-        // update all "public" files to be "workspace" in the workspace
+        // if public sharing is disabled, update all "public" files to be "workspace" in the workspace
         if (!body.allowContentCreationFileSharing) {
           await ShareableFileResource.updatePublicShareScopeToWorkspace(auth);
         }
