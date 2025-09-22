@@ -1,3 +1,4 @@
+import { PluginKey } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,6 +33,8 @@ export interface MentionDropdownState {
   triggerRect: DOMRect | null;
   isLoading: boolean;
 }
+
+export const mentionPluginKey = new PluginKey("mention-suggestion");
 
 export const useMentionDropdown = (
   editorSuggestions: EditorSuggestions,
@@ -158,6 +161,7 @@ export const useMentionDropdown = (
 
   const getSuggestionHandler = () => {
     return {
+      pluginKey: mentionPluginKey,
       render: () => {
         return {
           onStart: (props: SuggestionProps) => {
