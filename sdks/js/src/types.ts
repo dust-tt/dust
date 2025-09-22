@@ -729,6 +729,14 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
+const ActionGeneratedFileSchema = z.object({
+  fileId: z.string(),
+  title: z.string(),
+  contentType: z.string(),
+  snippet: z.string().nullable(),
+  hidden: z.boolean().optional(),
+});
+
 const MCPActionTypeSchema = z.object({
   id: ModelIdSchema,
   mcpServerId: z.string().nullable(),
@@ -738,6 +746,7 @@ const MCPActionTypeSchema = z.object({
   status: z.string(),
   params: z.record(z.any()),
   output: CallToolResultSchema.shape.content.nullable(),
+  generatedFiles: z.array(ActionGeneratedFileSchema),
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
