@@ -1,9 +1,11 @@
 import fs from "fs";
+import { QueryTypes } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -64,7 +66,7 @@ async function convertWorkspaceTableQueryToolsToV2({
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: ["active", "archived"],
         },
       },
     ],
@@ -160,21 +162,43 @@ makeScript(
     },
   },
   async ({ execute, wId }, parentLogger) => {
-    const revertSql = await convertWorkspaceTableQueryToolsToV2({
-      wId,
-      execute,
-      parentLogger,
-    });
+    const doAll = wId === "all";
 
-    if (execute && revertSql) {
-      const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      fs.writeFileSync(
-        `${now}_table_query_v1_to_v2_revert_${wId}.sql`,
-        revertSql
+    let wIds: string[] = [];
+
+    if (doAll) {
+      const sql = `SELECT distinct(w."sId") as "workspaceId" FROM agent_mcp_server_configurations amsc JOIN workspaces w ON w.id = amsc."workspaceId" WHERE amsc."internalMCPServerId" is not null AND id_from_sid(amsc."internalMCPServerId") = 4`;
+      // eslint-disable-next-line dust/no-raw-sql
+      const workspaces = await frontSequelize.query<{ workspaceId: string }>(
+        sql,
+        { type: QueryTypes.SELECT }
       );
-      console.log(
-        `Revert SQL written to ${now}_table_query_v1_to_v2_revert_${wId}.sql`
-      );
+      wIds = workspaces.map((w) => w.workspaceId);
+    } else {
+      wIds = [wId];
     }
+
+    await concurrentExecutor(
+      wIds,
+      async (wId) => {
+        const revertSql = await convertWorkspaceTableQueryToolsToV2({
+          wId,
+          execute,
+          parentLogger,
+        });
+
+        if (execute && revertSql) {
+          const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+          fs.writeFileSync(
+            `${now}_table_query_v1_to_v2_revert_${wId}.sql`,
+            revertSql
+          );
+          console.log(
+            `Revert SQL written to ${now}_table_query_v1_to_v2_revert_${wId}.sql`
+          );
+        }
+      },
+      { concurrency: CONFIGURATION_CONCURRENCY }
+    );
   }
 );
