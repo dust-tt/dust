@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -18,7 +18,7 @@ import type {
   MCPServerConnectionConnectionType,
   MCPServerConnectionType,
 } from "@app/lib/resources/mcp_server_connection_resource";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { GetMCPServersResponseBody } from "@app/pages/api/w/[wId]/mcp";
@@ -30,7 +30,6 @@ import type {
   PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
-import type { GetMCPServerToolsSettingsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
 import type {
   PatchMCPServerToolsPermissionsResponseBody,
   UpdateMCPToolSettingsBodyType,
@@ -203,56 +202,66 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
-  const deleteServer = async (server: MCPServerType): Promise<boolean> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/${server.sId}`, {
-      method: "DELETE",
-    });
+  const [isDeleting, setIsDeleting] = useState(false);
 
-    if (!response.ok) {
-      const body = await response.json();
-      sendNotification({
-        title: `Failure`,
-        type: "error",
-        description:
-          body.error?.message ||
-          `Failed to delete ${getMcpServerDisplayName(server)}`,
-      });
-      return false;
-    }
+  const deleteServer = useCallback(
+    async (server: MCPServerType): Promise<boolean> => {
+      setIsDeleting(true);
+      try {
+        const response = await fetch(`/api/w/${owner.sId}/mcp/${server.sId}`, {
+          method: "DELETE",
+        });
 
-    const result: WithAPIErrorResponse<DeleteMCPServerResponseBody> =
-      await response.json();
+        if (!response.ok) {
+          const body = await response.json();
+          sendNotification({
+            title: `Failure`,
+            type: "error",
+            description:
+              body.error?.message ||
+              `Failed to delete ${getMcpServerDisplayName(server)}`,
+          });
+          return false;
+        }
 
-    if (isAPIErrorResponse(result)) {
-      sendNotification({
-        title: `Failure`,
-        type: "error",
-        description:
-          result.error?.message ||
-          `Failed to delete ${getMcpServerDisplayName(server)}`,
-      });
-      return false;
-    }
+        const result: WithAPIErrorResponse<DeleteMCPServerResponseBody> =
+          await response.json();
 
-    if (!result.deleted) {
-      sendNotification({
-        title: `Failure`,
-        type: "error",
-        description: `Failed to delete ${getMcpServerDisplayName(server)}`,
-      });
-      return false;
-    }
+        if (isAPIErrorResponse(result)) {
+          sendNotification({
+            title: `Failure`,
+            type: "error",
+            description:
+              result.error?.message ||
+              `Failed to delete ${getMcpServerDisplayName(server)}`,
+          });
+          return false;
+        }
 
-    sendNotification({
-      title: `Success`,
-      type: "success",
-      description: `Successfully deleted ${getMcpServerDisplayName(server)}`,
-    });
-    await mutate();
-    return result.deleted;
-  };
+        if (!result.deleted) {
+          sendNotification({
+            title: `Failure`,
+            type: "error",
+            description: `Failed to delete ${getMcpServerDisplayName(server)}`,
+          });
+          return false;
+        }
 
-  return { deleteServer };
+        sendNotification({
+          title: `Success`,
+          type: "success",
+          description: `Successfully deleted ${getMcpServerDisplayName(server)}`,
+        });
+        await mutate();
+        return result.deleted;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [mutate, owner.sId, sendNotification]
+  );
+
+  return { deleteServer, isDeleting };
 }
 
 export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
@@ -740,41 +749,22 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
-function useMCPServerToolsSettings({
-  owner,
-  serverId,
-}: {
-  owner: LightWorkspaceType;
-  serverId: string;
-}) {
-  const toolsFetcher: Fetcher<GetMCPServerToolsSettingsResponseBody> = fetcher;
-
-  const url = `/api/w/${owner.sId}/mcp/${serverId}/tools`;
-
-  const { data, error, mutate } = useSWRWithDefaults(url, toolsFetcher);
-
-  const toolsSettings = useMemo(() => (data ? data.toolsSettings : {}), [data]);
-
-  return {
-    toolsSettings,
-    isToolsSettingsLoading: !error && !data,
-    isToolsSettingsError: error,
-    mutateToolsSettings: mutate,
-  };
-}
-
 export function useUpdateMCPServerToolsSettings({
   owner,
-  serverId,
+  mcpServerView,
 }: {
   owner: LightWorkspaceType;
-  serverId: string;
+  mcpServerView: MCPServerViewType;
 }) {
-  const { mutateToolsSettings: mutateToolsSettings } =
-    useMCPServerToolsSettings({
-      owner,
-      serverId,
-    });
+  const space = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: mcpServerView.spaceId,
+  });
+  const { mutateMCPServerViews } = useMCPServerViews({
+    owner,
+    space: space.spaceInfo ?? undefined,
+    disabled: true,
+  });
 
   const sendNotification = useSendNotification();
 
@@ -792,7 +782,7 @@ export function useUpdateMCPServerToolsSettings({
       enabled,
     };
     const response = await fetch(
-      `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,
+      `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}/tools/${toolName}`,
       {
         method: "PATCH",
         headers: {
@@ -814,7 +804,7 @@ export function useUpdateMCPServerToolsSettings({
       description: `The settings for ${toolName} have been updated.`,
     });
 
-    void mutateToolsSettings();
+    void mutateMCPServerViews();
     return response.json();
   };
 

@@ -31,6 +31,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
+use tracing::info;
 
 use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
@@ -688,37 +689,35 @@ pub async fn embed(
 
 pub struct OpenAILLM {
     id: String,
+    host: Option<String>,
+    use_eu_endpoint: bool,
     api_key: Option<String>,
 }
 
 impl OpenAILLM {
     pub fn new(id: String) -> Self {
-        OpenAILLM { id, api_key: None }
-    }
-
-    #[inline]
-    fn host(use_openai_eu_host: bool) -> &'static str {
-        if use_openai_eu_host {
-            "eu.api.openai.com"
-        } else {
-            "api.openai.com"
+        OpenAILLM {
+            id,
+            host: None,
+            use_eu_endpoint: false,
+            api_key: None,
         }
     }
 
-    fn uri(&self, use_openai_eu_host: bool) -> Result<Uri> {
-        Ok(format!("https://{}/v1/completions", Self::host(use_openai_eu_host)).parse::<Uri>()?)
+    fn uri(&self) -> Result<Uri> {
+        Ok(format!("https://{}/v1/completions", self.host.as_ref().unwrap()).parse::<Uri>()?)
     }
 
-    fn chat_uri(&self, use_openai_eu_host: bool) -> Result<Uri> {
+    fn chat_uri(&self) -> Result<Uri> {
         Ok(format!(
             "https://{}/v1/chat/completions",
-            Self::host(use_openai_eu_host)
+            self.host.as_ref().unwrap()
         )
         .parse::<Uri>()?)
     }
 
-    fn responses_uri(&self, use_openai_eu_host: bool) -> Result<Uri> {
-        Ok(format!("https://{}/v1/responses", Self::host(use_openai_eu_host)).parse::<Uri>()?)
+    fn responses_uri(&self) -> Result<Uri> {
+        Ok(format!("https://{}/v1/responses", self.host.as_ref().unwrap()).parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
@@ -799,6 +798,27 @@ impl LLM for OpenAILLM {
                 ))?,
             },
         }
+        self.use_eu_endpoint = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
+            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_USE_EU_ENDPOINT"))
+                .await?
+            {
+                Ok(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+                Err(_) => false,
+            },
+        };
+
+        self.host = if self.use_eu_endpoint {
+            Some("eu.api.openai.com".to_string())
+        } else {
+            Some("api.openai.com".to_string())
+        };
+        info!(
+            model = self.id,
+            openai_host = self.host,
+            "OpenAILLM.initialize"
+        );
+
         Ok(())
     }
 
@@ -851,14 +871,6 @@ impl LLM for OpenAILLM {
             None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
         };
 
-        let use_openai_eu_host = match &extras {
-            None => false,
-            Some(v) => match v.get("use_openai_eu_host") {
-                Some(Value::Bool(b)) => *b,
-                _ => false,
-            },
-        };
-
         let (c, request_id) = if event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
@@ -866,7 +878,7 @@ impl LLM for OpenAILLM {
                 ))?;
             }
             streamed_completion(
-                self.uri(use_openai_eu_host)?,
+                self.uri()?,
                 api_key.clone(),
                 match &extras {
                     Some(ex) => match ex.get("openai_organization_id") {
@@ -911,7 +923,7 @@ impl LLM for OpenAILLM {
             .await?
         } else {
             completion(
-                self.uri(use_openai_eu_host)?,
+                self.uri()?,
                 api_key.clone(),
                 match &extras {
                     Some(e) => match e.get("openai_organization_id") {
@@ -1083,18 +1095,10 @@ impl LLM for OpenAILLM {
             None => true,
         };
 
-        let use_openai_eu_host = match &extras {
-            None => false,
-            Some(v) => match v.get("use_openai_eu_host") {
-                Some(Value::Bool(b)) => *b,
-                _ => false,
-            },
-        };
-
         // Use response API only when function_call is not forced and when n == 1.
         if RESPONSES_API_ENABLED && is_auto_function_call && n == 1 && is_reasoning_model {
             openai_responses_api_completion(
-                self.responses_uri(use_openai_eu_host)?,
+                self.responses_uri()?,
                 self.id.clone(),
                 api_key,
                 &messages,
@@ -1105,11 +1109,12 @@ impl LLM for OpenAILLM {
                 event_sender,
                 transform_system_messages,
                 provider_name,
+                self.use_eu_endpoint,
             )
             .await
         } else {
             openai_compatible_chat_completion(
-                self.chat_uri(use_openai_eu_host)?,
+                self.chat_uri()?,
                 self.id.clone(),
                 api_key,
                 &messages,
@@ -1153,16 +1158,21 @@ pub struct Embeddings {
 
 pub struct OpenAIEmbedder {
     id: String,
+    host: Option<String>,
     api_key: Option<String>,
 }
 
 impl OpenAIEmbedder {
     pub fn new(id: String) -> Self {
-        OpenAIEmbedder { id, api_key: None }
+        OpenAIEmbedder {
+            id,
+            host: None,
+            api_key: None,
+        }
     }
 
     fn uri(&self) -> Result<Uri> {
-        Ok(format!("https://api.openai.com/v1/embeddings",).parse::<Uri>()?)
+        Ok(format!("https://{}/v1/embeddings", self.host.as_ref().unwrap()).parse::<Uri>()?)
     }
 
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
@@ -1209,6 +1219,24 @@ impl Embedder for OpenAIEmbedder {
                 },
             },
         }
+        let use_eu_endpoint: bool = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
+            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_USE_EU_ENDPOINT"))
+                .await?
+            {
+                Ok(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+                Err(_) => false,
+            },
+        };
+        self.host = match use_eu_endpoint {
+            false => Some("api.openai.com".to_string()),
+            true => Some("eu.api.openai.com".to_string()),
+        };
+        info!(
+            model = self.id,
+            openai_host = self.host,
+            "OpenAIEmbedder.initialize"
+        );
         Ok(())
     }
 

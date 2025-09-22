@@ -81,6 +81,7 @@ export function ContentCreationContainer({
               fileMetadata.useCaseMetadata.lastEditedByAgentConfigurationId
             }
             owner={owner}
+            contentHash={contentHash}
           />
         );
 

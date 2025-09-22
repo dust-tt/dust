@@ -100,6 +100,7 @@ interface ClientExecutableRendererProps {
   fileName: string;
   owner: LightWorkspaceType;
   lastEditedByAgentConfigurationId?: string;
+  contentHash?: string;
 }
 
 export function ClientExecutableRenderer({
@@ -108,6 +109,7 @@ export function ClientExecutableRenderer({
   fileName,
   owner,
   lastEditedByAgentConfigurationId,
+  contentHash,
 }: ClientExecutableRendererProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
@@ -127,7 +129,9 @@ export function ClientExecutableRenderer({
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
     owner,
+    cacheKey: contentHash,
   });
+
   const { fileMetadata } = useFileMetadata({ fileId, owner });
 
   // Ideally we should not show the revert button when it's not applicable (e.g. there is no edit)

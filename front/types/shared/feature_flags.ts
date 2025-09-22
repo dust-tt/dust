@@ -72,10 +72,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
   },
-  google_drive_tool: {
-    description: "Google Drive MCP tool",
-    stage: "rolling_out",
-  },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
     stage: "on_demand",
@@ -107,6 +103,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   openai_o1_high_reasoning_feature: {
     description: "Access to OpenAI o1 high reasoning model",
+    stage: "on_demand",
+  },
+  openai_usage_mcp: {
+    description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
   salesforce_synced_queries: {

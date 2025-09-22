@@ -1,8 +1,28 @@
-import { getFileContent } from "@app/lib/api/files/utils";
+import groupBy from "lodash/groupBy";
+
+import {
+  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
+import {
+  getFileContent,
+  getUpdatedContentAndOccurrences,
+} from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItem,
+} from "@app/lib/models/assistant/actions/mcp";
+import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { ContentCreationFileContentType, Result } from "@app/types";
+import type {
+  ContentCreationFileContentType,
+  ModelId,
+  Result,
+  WorkspaceType,
+} from "@app/types";
 import {
   clientExecutableContentType,
   CONTENT_CREATION_FILE_FORMATS,
@@ -70,8 +90,8 @@ export async function createClientExecutableFile(
   }: {
     content: string;
     conversationId: string;
-    fileName: string;
     mimeType: ContentCreationFileContentType;
+    fileName: string;
     createdByAgentConfigurationId?: string;
   }
 ): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
@@ -190,13 +210,11 @@ export async function editClientExecutableFile(
   }
   const { fileResource, content: currentContent } = fileContentResult.value;
 
-  // Count occurrences of oldString.
-  const regex = new RegExp(
-    oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-    "g"
-  );
-  const matches = currentContent.match(regex);
-  const occurrences = matches ? matches.length : 0;
+  const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
+    oldString,
+    newString,
+    currentContent,
+  });
 
   if (occurrences === 0) {
     return new Err({
@@ -222,9 +240,6 @@ export async function editClientExecutableFile(
       lastEditedByAgentConfigurationId: editedByAgentConfigurationId,
     });
   }
-
-  // Perform the replacement.
-  const updatedContent = currentContent.replace(regex, newString);
 
   // Validate the Tailwind classes in the resulting code.
   const validationResult = validateTailwindCode(updatedContent);
@@ -275,5 +290,364 @@ export async function getClientExecutableFileContent(
         `Failed to retrieve file content for '${fileId}': ${normalizeError(error)}`
       )
     );
+  }
+}
+
+export function isCreateFileActionType(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel & {
+  augmentedInputs: {
+    content: string;
+  };
+} {
+  return (
+    action.toolConfiguration.originalName ===
+      CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
+    typeof action.augmentedInputs.content === "string"
+  );
+}
+
+function isEditFileActionType(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel & {
+  augmentedInputs: { old_string: string; new_string: string };
+} {
+  return (
+    action.toolConfiguration.originalName ===
+      EDIT_CONTENT_CREATION_FILE_TOOL_NAME &&
+    typeof action.augmentedInputs.old_string === "string" &&
+    typeof action.augmentedInputs.new_string === "string"
+  );
+}
+
+function isRevertFileActionType(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel {
+  return (
+    action.toolConfiguration.originalName ===
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
+  );
+}
+
+function isCreateFileActionOutputType(
+  output: AgentMCPActionOutputItem
+): output is AgentMCPActionOutputItem & {
+  content: { resource: { fileId: string } };
+} {
+  if (typeof output.content !== "object" || output.content === null) {
+    return false;
+  }
+
+  if (
+    typeof output.content.resource !== "object" ||
+    output.content.resource === null
+  ) {
+    return false;
+  }
+
+  return (
+    "fileId" in output.content.resource &&
+    typeof output.content.resource.fileId === "string"
+  );
+}
+
+export async function isCreateFileActionForFileId({
+  action,
+  workspace,
+  fileId,
+}: {
+  action: AgentMCPActionModel;
+  workspace: WorkspaceType;
+  fileId: string;
+}) {
+  if (isCreateFileActionType(action)) {
+    const actionOutputs = await AgentMCPActionOutputItem.findAll({
+      where: {
+        agentMCPActionId: action.id,
+        workspaceId: workspace.id,
+      },
+    });
+
+    const createdActionOutputs = actionOutputs.filter((output) => {
+      if (isCreateFileActionOutputType(output)) {
+        return output.content.resource.fileId === fileId;
+      }
+
+      return false;
+    });
+
+    // No outputs referencing `fileId` => this action did not create that file.
+    if (createdActionOutputs.length === 0) {
+      return false;
+    }
+
+    // Multiple outputs referencing the same `fileId` should never occur.
+    if (createdActionOutputs.length > 1) {
+      throw new Error(
+        `Multiple create file actions found for file_id ${fileId}.`
+      );
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
+  if (action.augmentedInputs.file_id !== fileId) {
+    return false;
+  }
+
+  return [
+    EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+  ].includes(action.toolConfiguration.originalName);
+}
+
+// A conversation can have multiple files so you need to find the file actions for the given fileId.
+export async function getFileActionsByType(
+  actions: AgentMCPActionModel[],
+  fileId: string,
+  workspace: WorkspaceType
+) {
+  let createFileAction: AgentMCPActionModel | null = null;
+  const editOrRevertFileActions: AgentMCPActionModel[] = [];
+
+  for (const action of actions) {
+    const isCreateAction = await isCreateFileActionForFileId({
+      action,
+      workspace,
+      fileId,
+    });
+
+    if (isCreateAction) {
+      createFileAction = action;
+    }
+
+    if (isEditOrRevertFileAction(action, fileId)) {
+      editOrRevertFileActions.push(action);
+    }
+  }
+
+  return {
+    createFileAction,
+    editOrRevertFileActions,
+  };
+}
+
+/**
+ * Returns the edit actions that still apply after a revert operation.
+ *
+ * How it works:
+ * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest => newest.
+ * - Process groups newest => oldest so the revert cancels the most recent edit first.
+ * - Maintain a cancellation counter starting at 1 (single revert step).
+ *   While counter > 0:
+ *     • Edit-only group => skip it and decrement counter by 1.
+ *     • Group with any revert(s) => do not decrement; increase counter by 1 per revert. Drop edits in that group.
+ * - When counter = 0, collect edit actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
+ *
+ * Note:
+ * - `editOrRevertActions` includes only past reverts; the current revert is not included.
+ * - We expect that all changes on the file were done through the edit tool.
+ */
+export function getEditActionsToApply(
+  editOrRevertActions: AgentMCPActionModel[]
+) {
+  const editOrRevertActionsByMessage = groupBy(
+    editOrRevertActions,
+    (action) => action.agentMessageId
+  );
+
+  // Within each group, sort actions chronologically (oldest → newest).
+  Object.keys(editOrRevertActionsByMessage).forEach((messageId) => {
+    editOrRevertActionsByMessage[messageId] = editOrRevertActionsByMessage[
+      messageId
+    ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  });
+
+  // Order groups newest => oldest (based on the group's earliest action time).
+  const sortedActionGroups = Object.values(editOrRevertActionsByMessage).sort(
+    (actionsA, actionsB) =>
+      actionsB[0].createdAt.getTime() - actionsA[0].createdAt.getTime()
+  );
+
+  // Remaining edit-only groups to cancel. Starts from the current revert.
+  let cancelGroupActionCounter = 1;
+
+  const pickedEditActions = [];
+
+  for (const actionGroup of sortedActionGroups) {
+    if (cancelGroupActionCounter > 0) {
+      const revertActions = actionGroup.filter((a) =>
+        isRevertFileActionType(a)
+      );
+
+      // Cancel everything if there are only edit actions in the group.
+      if (revertActions.length === 0) {
+        cancelGroupActionCounter--;
+        continue;
+      }
+
+      // Extend cancellation window by each revert (any edits in the group will be cancelled).
+      cancelGroupActionCounter += revertActions.length;
+
+      continue;
+    }
+
+    // Not cancelling: collect edits. A revert here reopens cancellation for older groups.
+    for (const currentAction of actionGroup) {
+      if (isEditFileActionType(currentAction)) {
+        pickedEditActions.push(currentAction);
+        continue;
+      }
+
+      if (isRevertFileActionType(currentAction)) {
+        cancelGroupActionCounter++;
+      }
+    }
+  }
+
+  return pickedEditActions;
+}
+
+export function getRevertedContent(
+  createFileAction: AgentMCPActionModel,
+  actionsToApply: AgentMCPActionModel[]
+) {
+  // Sort actions from oldest to latest since we need to apply the changes from top to bottom.
+  const sortedActions = actionsToApply.sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+  );
+
+  if (!isCreateFileActionType(createFileAction)) {
+    throw new Error("Wrong file action type for create file action");
+  }
+
+  let revertedContent = createFileAction.augmentedInputs.content;
+
+  for (const editAction of sortedActions) {
+    if (!isEditFileActionType(editAction)) {
+      throw new Error("Wrong file action type for edit file action");
+    }
+
+    const { old_string, new_string } = editAction.augmentedInputs;
+
+    const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
+      oldString: old_string,
+      newString: new_string,
+      currentContent: revertedContent,
+    });
+
+    if (occurrences === 0) {
+      throw new Error(`Cannot find matched text: "${old_string}"`);
+    }
+
+    revertedContent = updatedContent;
+  }
+
+  return revertedContent;
+}
+
+// Revert the changes made to the Content Creation file in the last agent message.
+// This reconstructs the previous file content by replaying edit operations chronologically
+// from the create action.
+export async function revertClientExecutableFileChanges(
+  auth: Authenticator,
+  {
+    fileId,
+    conversationId,
+    revertedByAgentConfigurationId,
+  }: {
+    fileId: string;
+    conversationId: ModelId;
+    revertedByAgentConfigurationId: string;
+  }
+): Promise<
+  Result<
+    { fileResource: FileResource; revertedContent: string },
+    { tracked: boolean; message: string }
+  >
+> {
+  const fileResource = await FileResource.fetchById(auth, fileId);
+  if (!fileResource) {
+    return new Err({ message: `File not found: ${fileId}`, tracked: true });
+  }
+
+  if (fileResource.contentType !== clientExecutableContentType) {
+    return new Err({
+      message: `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`,
+      tracked: true,
+    });
+  }
+
+  try {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Fetch all the successful actions from the given conversation id
+    // (we only update the file when action succeeded).
+    const conversationActions = await AgentMCPActionModel.findAll({
+      include: [
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          required: true,
+          include: [
+            {
+              model: Message,
+              as: "message",
+              required: true,
+              where: {
+                conversationId,
+                workspaceId: workspace.id,
+              },
+            },
+          ],
+        },
+      ],
+      where: {
+        workspaceId: workspace.id,
+        status: "succeeded",
+      },
+    });
+
+    if (!conversationActions.length) {
+      return new Err({
+        message: `No file actions found for: ${fileId}`,
+        tracked: true,
+      });
+    }
+
+    const { createFileAction, editOrRevertFileActions } =
+      await getFileActionsByType(conversationActions, fileId, workspace);
+
+    if (createFileAction === null) {
+      return new Err({
+        message: `Cannot find the create file action for ${fileId}`,
+        tracked: true,
+      });
+    }
+
+    const editActionsToApply = getEditActionsToApply(editOrRevertFileActions);
+
+    const revertedContent = getRevertedContent(
+      createFileAction,
+      editActionsToApply
+    );
+
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+    });
+
+    await fileResource.uploadContent(auth, revertedContent);
+
+    return new Ok({ fileResource, revertedContent });
+  } catch (error) {
+    return new Err({
+      message: `Failed to revert ${fileId}: ${normalizeError(error)}`,
+      tracked: true,
+    });
   }
 }

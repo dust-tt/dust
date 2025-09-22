@@ -1,5 +1,4 @@
-import { Button, Input, MoreIcon, Popover } from "@dust-tt/sparkle";
-import { useFormContext, useWatch } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 
 import type {
   AgentBuilderAction,
@@ -12,25 +11,13 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 interface MCPActionHeaderProps {
   mcpServerView: MCPServerViewType;
   action: AgentBuilderAction;
-  allowNameEdit?: boolean;
 }
 
 export function MCPActionHeader({
   mcpServerView,
   action,
-  allowNameEdit = false,
 }: MCPActionHeaderProps) {
-  const form = useFormContext<MCPFormData>();
-  const error = form.formState.errors.name;
-  const newName = useWatch({ name: "name" });
-
-  // Reset the form with default value if there is an error when popup is closed
-  const onClose = () => {
-    if (error) {
-      form.setValue("name", form.formState.defaultValues?.name ?? "");
-      form.clearErrors("name");
-    }
-  };
+  const newName = useWatch<MCPFormData, "name">({ name: "name" });
 
   const newAction = {
     ...action,
@@ -38,7 +25,7 @@ export function MCPActionHeader({
   };
 
   return (
-    <div className="flex w-full flex-row items-center justify-between">
+    <div className="flex w-full flex-col items-start gap-4">
       <div className="flex flex-col items-center gap-3 sm:flex-row">
         {getAvatar(mcpServerView.server, "md")}
         <div className="flex grow flex-col gap-0 pr-9">
@@ -50,33 +37,6 @@ export function MCPActionHeader({
           </p>
         </div>
       </div>
-      {allowNameEdit && (
-        <Popover
-          trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
-          popoverTriggerAsChild
-          onAnimationEnd={onClose}
-          content={
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col items-end gap-2">
-                <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
-                  Name of the tool
-                </div>
-              </div>
-              <Input
-                {...form.register("name", {
-                  onChange: () => {
-                    void form.trigger("name");
-                  },
-                })}
-                placeholder="My tool name…"
-                message={error?.message}
-                messageStatus="error"
-                className="text-sm"
-              />
-            </div>
-          }
-        />
-      )}
     </div>
   );
 }

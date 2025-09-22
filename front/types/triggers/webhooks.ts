@@ -39,6 +39,10 @@ export type WebhookSourceWithViews = WebhookSourceType & {
   views: WebhookSourceViewType[];
 };
 
+export type WebhookSourceWithSystemView = WebhookSourceWithViews & {
+  systemView: WebhookSourceViewType | null;
+};
+
 export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
 
 export const PostWebhookSourcesSchema = z.object({

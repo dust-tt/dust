@@ -642,7 +642,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
-  | "google_drive_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "hootl_webhooks"
@@ -657,6 +656,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
+  | "openai_usage_mcp"
   | "research_agent"
   | "salesforce_synced_queries"
   | "salesforce_tool"
@@ -958,6 +958,17 @@ const AgentMessageTypeSchema = z.object({
     .nullable(),
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
+
+export function isAgentMessage(
+  message:
+    | UserMessageType
+    | AgentMessagePublicType
+    | ContentFragmentType
+    | null
+    | undefined
+): message is AgentMessagePublicType {
+  return AgentMessageTypeSchema.safeParse(message).success;
+}
 
 const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
@@ -2572,10 +2583,28 @@ export type PublicFileResponseBodyType = z.infer<
   typeof PublicFileResponseBodySchema
 >;
 
+export const MembershipOriginType = FlexibleEnumSchema<
+  "provisioned" | "invited" | "auto-joined"
+>();
+
+export const WorkOSOrganizationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  externalId: z.string().nullable(),
+  metadata: z.record(z.string()),
+});
+
+export type WorkOSOrganizationType = z.infer<typeof WorkOSOrganizationSchema>;
+
 export const MeResponseSchema = z.object({
   user: UserSchema.and(
     z.object({
       workspaces: WorkspaceSchema.array().or(ExtensionWorkspaceSchema.array()),
+      organizations: WorkOSOrganizationSchema.array().optional(),
+      origin: MembershipOriginType.optional(),
+      selectedWorkspace: z.string().optional(),
     })
   ),
 });
@@ -2736,6 +2765,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SlackLogo"
   | "StripeLogo"
+  | "OpenaiLogo"
 >();
 
 const CustomServerIconSchema = FlexibleEnumSchema<

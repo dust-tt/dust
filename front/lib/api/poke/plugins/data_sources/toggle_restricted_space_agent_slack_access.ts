@@ -21,6 +21,7 @@ export const restrictedSpaceAgentsPlugin = createPlugin({
           label: action,
           value: action,
         })),
+        multiple: false,
       },
       confirm: {
         type: "boolean",
@@ -54,7 +55,7 @@ export const restrictedSpaceAgentsPlugin = createPlugin({
       );
     }
 
-    if (!["enable", "disable"].includes(action)) {
+    if (!["enable", "disable"].includes(action[0])) {
       return new Err(
         new Error("Invalid action. Must be either 'enable' or 'disable'.")
       );
@@ -75,14 +76,14 @@ export const restrictedSpaceAgentsPlugin = createPlugin({
     const res = await connectorsAPI.setConnectorConfig(
       dataSource.connectorId,
       "restrictedSpaceAgentsEnabled",
-      (action === "enable").toString()
+      (action[0] === "enable").toString()
     );
 
     if (res.isErr()) {
       return new Err(new Error(res.error.message));
     }
 
-    const actionText = action === "enable" ? "enabled" : "disabled";
+    const actionText = action[0] === "enable" ? "enabled" : "disabled";
     return new Ok({
       display: "text",
       value: `Restricted space agents have been ${actionText} on Slack for this workspace.`,

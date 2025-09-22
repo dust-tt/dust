@@ -5,6 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   InformationCircleIcon,
+  LockIcon,
   MoreIcon,
   Sheet,
   SheetContainer,
@@ -22,22 +23,24 @@ import { useEffect, useState } from "react";
 import { DeleteWebhookSourceDialog } from "@app/components/triggers/DeleteWebhookSourceDialog";
 import { WebhookSourceDetailsHeader } from "@app/components/triggers/WebhookSourceDetailsHeader";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
-import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
+import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
+import type { WebhookSourceWithSystemView } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsProps = {
   owner: LightWorkspaceType;
   onClose: () => void;
-  webhookSourceView: WebhookSourceViewType;
+  webhookSource: RequireAtLeastOne<WebhookSourceWithSystemView, "systemView">;
   isOpen: boolean;
 };
 
 export function WebhookSourceDetails({
   owner,
-  webhookSourceView,
+  webhookSource,
   isOpen,
   onClose,
 }: WebhookSourceDetailsProps) {
+  const systemView = webhookSource.systemView!; // guaranteed by RequireAtLeastOne
   const [selectedTab, setSelectedTab] = useState<string>("info");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
 
@@ -51,7 +54,7 @@ export function WebhookSourceDetails({
     <>
       <DeleteWebhookSourceDialog
         owner={owner}
-        webhookSource={webhookSourceView.webhookSource}
+        webhookSource={webhookSource}
         isOpen={isDeleteDialogOpen}
         onClose={() => {
           setIsDeleteDialogOpen(false);
@@ -64,7 +67,7 @@ export function WebhookSourceDetails({
             <VisuallyHidden>
               <SheetTitle />
             </VisuallyHidden>
-            <WebhookSourceDetailsHeader webhookSourceView={webhookSourceView} />
+            <WebhookSourceDetailsHeader webhookSourceView={systemView} />
 
             <Tabs value={selectedTab}>
               <TabsList border={false}>
@@ -73,6 +76,12 @@ export function WebhookSourceDetails({
                   label="Info"
                   icon={InformationCircleIcon}
                   onClick={() => setSelectedTab("info")}
+                />
+                <TabsTrigger
+                  value="sharing"
+                  label="Sharing"
+                  icon={LockIcon}
+                  onClick={() => setSelectedTab("sharing")}
                 />
                 <>
                   <div className="grow" />
@@ -100,7 +109,13 @@ export function WebhookSourceDetails({
           <SheetContainer>
             {selectedTab === "info" && (
               <WebhookSourceDetailsInfo
-                webhookSourceView={webhookSourceView}
+                webhookSourceView={systemView}
+                owner={owner}
+              />
+            )}
+            {selectedTab === "sharing" && (
+              <WebhookSourceDetailsSharing
+                webhookSource={webhookSource}
                 owner={owner}
               />
             )}

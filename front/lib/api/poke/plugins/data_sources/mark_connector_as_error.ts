@@ -26,6 +26,7 @@ export const markConnectorAsErrorPlugin = createPlugin({
           label: errorType,
           value: errorType,
         })),
+        multiple: false,
       },
     },
   },
@@ -55,7 +56,7 @@ export const markConnectorAsErrorPlugin = createPlugin({
       command: "set-error",
       args: {
         connectorId: connectorId.toString(),
-        error: errorType,
+        error: errorType[0],
         wId: auth.getNonNullableWorkspace().sId,
         dsId: dataSource.sId,
       },

@@ -25,13 +25,15 @@ export const slackWhitelistBotPlugin = createPlugin({
         description: "Type of whitelisting to apply",
         values: [],
         async: true,
+        multiple: false,
       },
-      groupId: {
+      groupIds: {
         type: "enum",
-        label: "Group",
-        description: "Group to associate with the whitelisted bot",
+        label: "Groups",
+        description: "Groups to associate with the whitelisted bot",
         async: true,
         values: [],
+        multiple: true,
       },
     },
   },
@@ -63,7 +65,7 @@ export const slackWhitelistBotPlugin = createPlugin({
         value: type,
         label: type,
       })),
-      groupId: groups.map((group) => ({
+      groupIds: groups.map((group) => ({
         value: group.sId,
         label: group.name,
       })),
@@ -71,7 +73,7 @@ export const slackWhitelistBotPlugin = createPlugin({
   },
   execute: async (auth, resource, args) => {
     const owner = auth.getNonNullableWorkspace();
-    const { botName, whitelistType, groupId } = args;
+    const { botName, whitelistType, groupIds } = args;
 
     if (!resource) {
       return new Err(new Error("Data source not found."));
@@ -81,8 +83,8 @@ export const slackWhitelistBotPlugin = createPlugin({
       return new Err(new Error("Bot name is required"));
     }
 
-    if (!groupId) {
-      return new Err(new Error("Group selection is required"));
+    if (!groupIds || groupIds.length === 0) {
+      return new Err(new Error("Groups selection is required"));
     }
 
     if (!resource.connectorProvider) {
@@ -92,7 +94,7 @@ export const slackWhitelistBotPlugin = createPlugin({
     // Validate whitelist type based on connector provider
     if (
       resource.connectorProvider === "slack_bot" &&
-      whitelistType === "index_messages"
+      whitelistType[0] === "index_messages"
     ) {
       return new Err(
         new Error(
@@ -109,8 +111,7 @@ export const slackWhitelistBotPlugin = createPlugin({
     }
 
     // Combine the selected group with the Workspace group (avoid duplicates)
-    const groupIds: string[] = [groupId];
-    if (workspaceGroupRes.value.sId !== groupId) {
+    if (!groupIds.includes(workspaceGroupRes.value.sId)) {
       groupIds.push(workspaceGroupRes.value.sId);
     }
 
@@ -126,7 +127,7 @@ export const slackWhitelistBotPlugin = createPlugin({
         botName,
         wId: owner.sId,
         groupId: groupIds.join(","),
-        whitelistType,
+        whitelistType: whitelistType[0],
         providerType: resource.connectorProvider,
       },
     };

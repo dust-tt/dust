@@ -24,6 +24,7 @@ import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
@@ -123,6 +124,15 @@ const InputBarContainer = ({
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
+    owner,
+  });
+
+  const voiceTranscriberService = useVoiceTranscriberService({
+    owner,
+    fileUploaderService,
+    onTranscribeDelta: (delta) => {
+      editorService.insertText(delta);
+    },
   });
 
   // Update the editor ref when the editor is created.
@@ -337,11 +347,7 @@ const InputBarContainer = ({
             {featureFlags.hasFeature("simple_audio_transcription") &&
               actions.includes("voice") && (
                 <VoicePicker
-                  owner={owner}
-                  fileUploaderService={fileUploaderService}
-                  onTranscribeDelta={(delta) => {
-                    editorService.insertText(delta);
-                  }}
+                  voiceTranscriberService={voiceTranscriberService}
                   disabled={disableTextInput}
                 />
               )}
@@ -350,7 +356,12 @@ const InputBarContainer = ({
               isLoading={disableSendButton}
               icon={ArrowUpIcon}
               variant="highlight"
-              disabled={editorService.isEmpty() || disableSendButton}
+              disabled={
+                editorService.isEmpty() ||
+                disableSendButton ||
+                voiceTranscriberService.isRecording ||
+                voiceTranscriberService.isTranscribing
+              }
               onClick={async () => {
                 onEnterKeyDown(
                   editorService.isEmpty(),

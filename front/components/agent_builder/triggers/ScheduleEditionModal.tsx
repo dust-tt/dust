@@ -52,6 +52,27 @@ function formatTimezone(timezone: string): string {
   return `${city} (${timezone})`;
 }
 
+function isErrorWithMessage(
+  err: unknown
+): err is { error: { message: string } } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "error" in err &&
+    typeof err.error === "object" &&
+    err.error !== null &&
+    "message" in err.error &&
+    typeof err.error.message === "string"
+  );
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (isErrorWithMessage(error)) {
+    return error.error.message;
+  }
+  return "Unable to generate a schedule. Please try rephrasing.";
+}
+
 interface ScheduleEditionModalProps {
   owner: LightWorkspaceType;
   trigger?: AgentBuilderScheduleTriggerType;
@@ -69,7 +90,7 @@ export function ScheduleEditionModal({
 }: ScheduleEditionModalProps) {
   const { user } = useUser();
 
-  const isEditor = trigger?.editor ? trigger?.editor === user?.id : false;
+  const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
@@ -88,6 +109,7 @@ export function ScheduleEditionModal({
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
   ] = useState<"idle" | "loading" | "error">("idle");
+  const [cronErrorMessage, setCronErrorMessage] = useState<string | null>(null);
   const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
     null
   );
@@ -128,7 +150,7 @@ export function ScheduleEditionModal({
       case "loading":
         return "Generating schedule...";
       case "error":
-        return "Unable to generate a schedule (note: it can't be more frequent than hourly). Try rephrasing.";
+        return cronErrorMessage;
       case "idle":
         if (!cron) {
           return undefined;
@@ -146,7 +168,12 @@ export function ScheduleEditionModal({
       default:
         assertNever(naturalDescriptionToCronRuleStatus);
     }
-  }, [naturalDescriptionToCronRuleStatus, cron, generatedTimezone]);
+  }, [
+    naturalDescriptionToCronRuleStatus,
+    cron,
+    generatedTimezone,
+    cronErrorMessage,
+  ]);
 
   const handleCancel = () => {
     onClose();
@@ -237,6 +264,7 @@ export function ScheduleEditionModal({
                             setNaturalDescriptionToCronRuleStatus("idle");
                           } catch (error) {
                             setNaturalDescriptionToCronRuleStatus("error");
+                            setCronErrorMessage(extractErrorMessage(error));
                             setGeneratedTimezone(null);
                           }
                         },

@@ -53,7 +53,9 @@ import { AdditionalConfigurationSection } from "@app/components/agent_builder/ca
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
+import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
+import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -208,8 +210,7 @@ export function MCPServerViewsSheet({
     }
 
     return filteredList.filter(
-      (view) =>
-        !getMCPServerToolsConfigurations(view).mayRequireReasoningConfiguration
+      (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
     );
   }, [
     defaultMCPServerViews,
@@ -367,11 +368,13 @@ export function MCPServerViewsSheet({
 
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const requirement = getMCPServerToolsConfigurations(mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
-    if (requirement.configurable !== "no") {
+    if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = requirement.mayRequireReasoningConfiguration;
+      const isReasoning = toolsConfigurations.reasoningConfiguration
+        ? true
+        : false;
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -387,8 +390,14 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
+            (model) =>
+              model.modelId ===
+              toolsConfigurations.reasoningConfiguration?.default?.modelId
+          ) ??
+          reasoningModels.find(
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ?? reasoningModels[0];
+          ) ??
+          reasoningModels[0];
 
         configuredAction = {
           ...action,
@@ -598,14 +607,21 @@ export function MCPServerViewsSheet({
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
-                  allowNameEdit={configurationTool.configurable}
                 />
 
-                {toolsConfigurations.mayRequireReasoningConfiguration && (
+                {configurationTool.configurable && (
+                  <NameSection
+                    title="Name"
+                    placeholder="My tool name…"
+                    triggerValidationOnChange
+                  />
+                )}
+
+                {toolsConfigurations.reasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.mayRequireChildAgentConfiguration && (
+                {toolsConfigurations.childAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
@@ -615,6 +631,10 @@ export function MCPServerViewsSheet({
 
                 {toolsConfigurations.mayRequireDustAppConfiguration && (
                   <DustAppSection />
+                )}
+
+                {toolsConfigurations.mayRequireSecretConfiguration && (
+                  <SecretSection />
                 )}
 
                 {toolsConfigurations.mayRequireJsonSchemaConfiguration && (

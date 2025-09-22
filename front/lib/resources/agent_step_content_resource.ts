@@ -3,10 +3,8 @@ import _ from "lodash";
 import type {
   Attributes,
   CreationAttributes,
-  IncludeOptions,
   ModelStatic,
   Transaction,
-  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -21,12 +19,7 @@ import {
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import {
-  AgentMessage,
-  ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -34,7 +27,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 import type {
@@ -123,24 +115,27 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
-  get sId(): string {
-    return AgentStepContentResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
+  public static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<AgentStepContentResource[]> {
+    const contents = await AgentStepContentModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: ids },
+      },
     });
+
+    return contents.map((content) => new this(this.model, content.get()));
   }
 
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: ModelId;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("agent_step_content", {
-      id,
-      workspaceId,
-    });
+  public static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<AgentStepContentResource | null> {
+    const stepContents = await this.fetchByModelIds(auth, [id]);
+
+    return stepContents[0] ?? null;
   }
 
   /**
@@ -471,122 +466,23 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
   }
 
-  static async getMCPActionsForAgent(
-    auth: Authenticator,
-    {
-      agentConfigurationId,
-      limit,
-      cursor,
-    }: {
-      agentConfigurationId: string;
-      limit: number;
-      cursor?: string;
-    }
-  ): Promise<Result<GetMCPActionsResult, Error>> {
-    const owner = auth.getNonNullableWorkspace();
+  get sId(): string {
+    return AgentStepContentResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
 
-    const whereClause: WhereOptions<AgentStepContentModel> = {
-      workspaceId: owner.id,
-      type: "function_call",
-    };
-
-    if (cursor) {
-      const cursorDate = new Date(cursor);
-      if (isNaN(cursorDate.getTime())) {
-        return new Err(new Error("Invalid cursor format"));
-      }
-      whereClause.createdAt = {
-        [Op.lt]: cursorDate,
-      };
-    }
-
-    const includeClause: IncludeOptions[] = [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-        where: {
-          agentConfigurationId: agentConfigurationId,
-        },
-        include: [
-          {
-            model: Message,
-            as: "message",
-            required: true,
-            include: [
-              {
-                model: ConversationModel,
-                as: "conversation",
-                required: true,
-                where: {
-                  visibility: { [Op.ne]: "deleted" },
-                },
-              },
-            ],
-          },
-        ],
-      },
-      {
-        model: AgentMCPActionModel,
-        as: "agentMCPActions",
-        required: true,
-      },
-    ];
-
-    const [totalCount, stepContents] = await Promise.all([
-      this.model.count({
-        include: includeClause,
-        where: whereClause,
-      }),
-      this.model.findAll({
-        include: includeClause,
-        where: whereClause,
-        order: [["createdAt", "DESC"]],
-        limit: limit + 1,
-      }),
-    ]);
-
-    const hasMore = stepContents.length > limit;
-    const actualStepContents = hasMore
-      ? stepContents.slice(0, limit)
-      : stepContents;
-    const nextCursor = hasMore
-      ? actualStepContents[
-          actualStepContents.length - 1
-        ].createdAt.toISOString()
-      : null;
-
-    const actions = actualStepContents.flatMap((stepContent) =>
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      (stepContent.agentMCPActions || []).map((action) => {
-        assert(
-          stepContent.agentMessage?.message?.conversation,
-          "Missing required relations"
-        );
-        assert(
-          stepContent.value.type === "function_call",
-          "Step content must be a function call"
-        );
-
-        return {
-          sId: AgentMCPActionResource.modelIdToSId({
-            id: action.id,
-            workspaceId: action.workspaceId,
-          }),
-          createdAt: action.createdAt.toISOString(),
-          functionCallName: stepContent.value.value.name,
-          params: JSON.parse(stepContent.value.value.arguments),
-          status: action.status,
-          conversationId: stepContent.agentMessage.message.conversation.sId,
-          messageId: stepContent.agentMessage.message.sId,
-        };
-      })
-    );
-
-    return new Ok({
-      actions,
-      nextCursor,
-      totalCount,
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("agent_step_content", {
+      id,
+      workspaceId,
     });
   }
 }

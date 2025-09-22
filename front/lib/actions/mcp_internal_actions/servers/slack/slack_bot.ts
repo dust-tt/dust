@@ -293,6 +293,100 @@ const createServer = async (
     }
   );
 
+  server.tool(
+    "add_reaction",
+    "Add a reaction emoji to a message",
+    {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to react to"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart')"
+        ),
+    },
+    async ({ channel, timestamp, name }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        throw new Error("Access token not found");
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.add({
+          channel,
+          timestamp,
+          name,
+        });
+
+        if (!response.ok) {
+          return makeMCPToolTextError(
+            `Error adding reaction: ${response.error}`
+          );
+        }
+
+        return makeMCPToolJSONSuccess({
+          message: `Successfully added ${name} reaction to message`,
+          result: response,
+        });
+      } catch (error) {
+        return makeMCPToolTextError(
+          `Error adding reaction: ${normalizeError(error)}`
+        );
+      }
+    }
+  );
+
+  server.tool(
+    "remove_reaction",
+    "Remove a reaction emoji from a message",
+    {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to remove reaction from"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart')"
+        ),
+    },
+    async ({ channel, timestamp, name }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        throw new Error("Access token not found");
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.remove({
+          channel,
+          timestamp,
+          name,
+        });
+
+        if (!response.ok) {
+          return makeMCPToolTextError(
+            `Error removing reaction: ${response.error}`
+          );
+        }
+
+        return makeMCPToolJSONSuccess({
+          message: `Successfully removed ${name} reaction from message`,
+          result: response,
+        });
+      } catch (error) {
+        return makeMCPToolTextError(
+          `Error removing reaction: ${normalizeError(error)}`
+        );
+      }
+    }
+  );
+
   return server;
 };
 

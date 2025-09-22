@@ -9,14 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   FormProvider,
   useForm,
@@ -40,7 +33,10 @@ import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/util
 import { CustomCheckboxSection } from "@app/components/agent_builder/capabilities/shared/CustomCheckboxSection";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
-import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
+import {
+  NAME_FIELD_NAME,
+  NameSection,
+} from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ProcessingMethodSection } from "@app/components/agent_builder/capabilities/shared/ProcessingMethodSection";
 import { SelectedDataSources } from "@app/components/agent_builder/capabilities/shared/SelectedDataSources";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -166,8 +162,9 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      toolsConfigurations.mayRequireDataSourceConfiguration ||
-      toolsConfigurations.mayRequireDataWarehouseConfiguration
+      (toolsConfigurations.dataSourceConfiguration ??
+      toolsConfigurations.dataWarehouseConfiguration ??
+      false)
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -256,8 +253,8 @@ function KnowledgeConfigurationSheetContent({
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
-  const nameSectionRef = useRef<HTMLInputElement>(null);
-  const { setValue, getValues } = useFormContext<CapabilityFormData>();
+  const { setValue, getValues, setFocus } =
+    useFormContext<CapabilityFormData>();
   const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
@@ -289,9 +286,12 @@ function KnowledgeConfigurationSheetContent({
   // Focus NameSection input when navigating to CONFIGURATION page
   useEffect(() => {
     if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION) {
-      nameSectionRef.current?.focus();
+      const t = setTimeout(() => {
+        setFocus(NAME_FIELD_NAME);
+      }, 250);
+      return () => clearTimeout(t);
     }
-  }, [currentPageId]);
+  }, [currentPageId, setFocus]);
 
   // Prefill name field with processing method display name when mcpServerView changes
   useEffect(() => {
@@ -352,10 +352,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: toolsConfigurations.mayRequireTableConfiguration
+      title: toolsConfigurations.tableConfiguration
         ? "Select Tables"
         : "Select Data Sources",
-      description: toolsConfigurations.mayRequireTableConfiguration
+      description: toolsConfigurations.tableConfiguration
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
@@ -378,11 +378,7 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-6">
           <ProcessingMethodSection />
 
-          <NameSection
-            ref={nameSectionRef}
-            title="Name"
-            placeholder="Name ..."
-          />
+          <NameSection title="Name" placeholder="Name ..." />
 
           {toolsConfigurations.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />

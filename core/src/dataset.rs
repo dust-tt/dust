@@ -35,7 +35,7 @@ impl Dataset {
                     Some(obj) => {
                         let record_keys: Vec<String> = obj.keys().cloned().collect();
                         if let Some(keys) = &keys {
-                            assert!(*keys == record_keys);
+                            assert_eq!(*keys, record_keys);
                         } else {
                             keys = Some(record_keys);
                         }
@@ -58,7 +58,7 @@ impl Dataset {
             "asserting recomputed_hash == hash"
         );
 
-        assert!(recomputed_hash == hash);
+        assert_eq!(recomputed_hash, hash);
         assert!(keys.is_some());
 
         Ok(Dataset {
@@ -90,7 +90,7 @@ impl Dataset {
         self.keys.clone()
     }
 
-    pub fn iter(&self) -> Iter<Value> {
+    pub fn iter(&self) -> Iter<'_, Value> {
         self.data.iter()
     }
 
@@ -142,10 +142,7 @@ impl Dataset {
             .collect::<Result<Vec<_>>>()?;
 
         let hash = format!("{}", hasher.finalize().to_hex());
-        let keys = match keys {
-            Some(keys) => keys,
-            None => vec![],
-        };
+        let keys = keys.unwrap_or_else(|| vec![]);
 
         Ok(Dataset {
             created: utils::now(),

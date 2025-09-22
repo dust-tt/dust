@@ -8,6 +8,7 @@ import { removeNulls, WHITELISTABLE_FEATURES_CONFIG } from "@app/types";
 interface FeatureFlagsDataTableProps {
   owner: WorkspaceType;
   whitelistableFeatures: WhitelistableFeature[];
+  loadOnInit?: boolean;
 }
 
 function prepareFeatureFlagsForDisplay(
@@ -38,11 +39,13 @@ function prepareFeatureFlagsForDisplay(
 export function FeatureFlagsDataTable({
   owner,
   whitelistableFeatures,
+  loadOnInit,
 }: FeatureFlagsDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="Feature Flags"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeFeatureFlags}
     >
       {(data) => (

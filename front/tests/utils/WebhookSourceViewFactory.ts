@@ -15,7 +15,7 @@ export class WebhookSourceViewFactory {
   async create(
     space: SpaceResource,
     options: {
-      webhookSourceId?: number;
+      webhookSourceId?: string;
       customName?: string;
     } = {}
   ) {
@@ -31,7 +31,7 @@ export class WebhookSourceViewFactory {
       if (webhookSourceResult.isErr()) {
         throw webhookSourceResult.error;
       }
-      webhookSourceId = webhookSourceResult.value.id;
+      webhookSourceId = webhookSourceResult.value.sId();
     }
 
     const systemView =

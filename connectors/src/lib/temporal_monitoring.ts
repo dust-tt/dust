@@ -18,12 +18,14 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   DustConnectorWorkflowError,
   ExternalOAuthTokenError,
+  ProviderTransientError,
   WorkspaceQuotaExceededError,
 } from "./error";
 import { syncFailed } from "./sync_status";
 import { getConnectorId } from "./temporal";
 
 const TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS = [145];
+const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 19;
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -126,6 +128,21 @@ export class ActivityInboundLogInterceptor
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
       error = err;
+
+      // Convert provider-marked transient upstream errors into ApplicationFailures
+      // with the provided retry delay to avoid hot-looping.
+      if (
+        err instanceof ProviderTransientError &&
+        this.context.info.attempt > TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS
+      ) {
+        throw ApplicationFailure.create({
+          message: `${err.message}. Retry after ${Math.floor(
+            err.retryAfterMs / 1000
+          )}s`,
+          type: err.type, // "transient_upstream_activity_error"
+          nextRetryDelay: err.retryAfterMs,
+        });
+      }
 
       // Log connection-related errors with more context
       if (err instanceof Error && err.message.includes("other side closed")) {
