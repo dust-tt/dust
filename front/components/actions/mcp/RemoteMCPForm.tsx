@@ -14,16 +14,18 @@ import {
   PopoverTrigger,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import type { MCPServerViewType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useSyncRemoteMCPServer,
   useUpdateMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
+import { sanitizeHeadersArray } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -57,6 +59,18 @@ export function RemoteMCPForm({
 
   const { url, lastError, lastSyncAt } = mcpServer;
 
+  const initialHeaderRows = useMemo(
+    () =>
+      Object.entries(mcpServer.customHeaders ?? {}).map(([key, value]) => ({
+        key,
+        value: String(value),
+      })),
+    [mcpServer.customHeaders]
+  );
+  const [headersRows, setHeadersRows] =
+    useState<{ key: string; value: string }[]>(initialHeaderRows);
+  const [headersDirty, setHeadersDirty] = useState(false);
+
   // Use the serverId from state for the hooks
   const { updateServer } = useUpdateMCPServer(owner, mcpServerView);
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
@@ -74,6 +88,33 @@ export function RemoteMCPForm({
     },
     [updateServer, form]
   );
+
+  const sanitizeHeaders = useCallback(
+    (rows: { key: string; value: string }[]) => sanitizeHeadersArray(rows),
+    []
+  );
+
+  const onSaveHeaders = useCallback(async () => {
+    const sanitized = sanitizeHeaders(headersRows);
+    const ok = await updateServer({ customHeaders: sanitized });
+    if (ok) {
+      // After the SWR mutate from the hook refreshes, the effect below
+      // will sync local rows from mcpServer.customHeaders.
+      setHeadersDirty(false);
+    }
+  }, [headersRows, sanitizeHeaders, updateServer]);
+
+  // Keep local headers state in sync with server when not dirty
+  useEffect(() => {
+    if (!headersDirty) {
+      setHeadersRows(
+        Object.entries(mcpServer.customHeaders ?? {}).map(([key, value]) => ({
+          key,
+          value: String(value),
+        }))
+      );
+    }
+  }, [mcpServer.customHeaders, headersDirty]);
 
   const handleSynchronize = useCallback(async () => {
     setIsSynchronizing(true);
@@ -160,6 +201,40 @@ export function RemoteMCPForm({
           />
         </div>
       </div>
+
+      <CollapsibleComponent
+        triggerChildren={<div className="heading-lg">Networking & Headers</div>}
+        contentChildren={
+          <div className="space-y-2">
+            <McpServerHeaders
+              headers={headersRows}
+              onHeadersChange={(rows) => {
+                setHeadersRows(rows);
+                setHeadersDirty(true);
+              }}
+            />
+            {headersDirty && (
+              <div className="flex flex-row items-end justify-end gap-2">
+                <Button
+                  variant="outline"
+                  label={"Cancel"}
+                  onClick={() => {
+                    setHeadersRows(initialHeaderRows);
+                    setHeadersDirty(false);
+                  }}
+                />
+                <Button
+                  variant="highlight"
+                  label={"Save"}
+                  onClick={() => {
+                    void onSaveHeaders();
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        }
+      />
 
       {!mcpServer.authorization && (
         <CollapsibleComponent
