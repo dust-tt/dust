@@ -277,7 +277,7 @@ const createServer = (
   );
   server.tool(
     REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Reverts a Content Creation file by canceling the last agent message.",
+    "Reverts a Content Creation file by canceling the edits in the last agent message.",
     {
       file_id: z
         .string()
