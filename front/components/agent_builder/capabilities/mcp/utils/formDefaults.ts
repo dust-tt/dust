@@ -104,9 +104,9 @@ export function getDefaultConfiguration(
 
   defaults.childAgentId = toolsConfigurations?.childAgentConfiguration?.default
     ?.uri
-    ? (parseAgentConfigurationUri(
+    ? parseAgentConfigurationUri(
         toolsConfigurations?.childAgentConfiguration?.default?.uri
-      ) ?? null)
+      ) ?? null
     : null;
 
   // Set default values for all configuration types when available
