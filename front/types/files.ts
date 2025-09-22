@@ -31,8 +31,10 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
 };
 
+// TODO(2025-09-22 yuka): remove conversation_participants once migration is done
 export const fileShareScopeSchema = z.enum([
   "conversation_participants",
+  "none",
   "workspace",
   "public",
 ]);

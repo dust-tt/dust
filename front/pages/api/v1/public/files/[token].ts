@@ -85,9 +85,10 @@ async function handler(
     });
   }
 
+  // TODO(2025-09-22 yuka): remove conversation_participants once migration is done.
   // This endpoint does not support conversation participants sharing. It goes through the private
   // API endpoint instead.
-  if (shareScope === "conversation_participants") {
+  if (shareScope === "conversation_participants" || shareScope === "none") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
