@@ -1124,13 +1124,11 @@ export async function upsertDataSourceTableFromCsv({
 
   let dustRequestResult: AxiosResponse | undefined;
   let currentTimeoutMs = 60000;
-  let callCount = 0;
   try {
     dustRequestResult = await withRetries(
       localLogger,
       async () => {
-        callCount += 1;
-        currentTimeoutMs = callCount >= 2 ? 120000 : 60000;
+        currentTimeoutMs += 30000;
         return axiosWithTimeout.post(endpoint, dustRequestPayload, {
           ...dustRequestConfig,
           timeout: currentTimeoutMs,
