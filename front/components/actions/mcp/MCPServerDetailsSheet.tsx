@@ -6,7 +6,6 @@ import {
   SheetContainer,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   Tabs,
@@ -40,7 +39,7 @@ interface MCPServerDetailsSheetProps {
   onClose: () => void;
   mcpServerView: MCPServerViewType | null;
   isOpen: boolean;
-  onSave: () => void;
+  onSave: () => Promise<boolean>;
   onCancel: () => void;
 }
 
@@ -64,25 +63,6 @@ export function MCPServerDetailsSheet({
       setSelectedTab("info");
     }
   }, [mcpServerView]);
-
-  const handleClose = async (open: boolean) => {
-    if (!open) {
-      if (form.formState.isDirty) {
-        const confirmed = await confirm({
-          title: "Unsaved changes",
-          message:
-            "You have unsaved changes. Are you sure you want to close without saving?",
-          validateLabel: "Discard changes",
-          validateVariant: "warning",
-        });
-        if (!confirmed) {
-          return;
-        }
-        onCancel();
-      }
-      onClose();
-    }
-  };
 
   const changeTab = async (next: TabType) => {
     if (selectedTab === "info" && next !== "info" && form.formState.isDirty) {
@@ -119,8 +99,28 @@ export function MCPServerDetailsSheet({
     );
   }, [mcpServerView]);
 
+  const handleOpenChange = async (open: boolean) => {
+    if (open) {
+      return;
+    }
+    if (form.formState.isDirty) {
+      const confirmed = await confirm({
+        title: "Unsaved changes",
+        message:
+          "You have unsaved changes. Are you sure you want to close without saving?",
+        validateLabel: "Discard changes",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
+      onCancel();
+    }
+    onClose();
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
+    <Sheet open={isOpen} onOpenChange={(open) => void handleOpenChange(open)}>
       <SheetContent size="lg">
         <SheetHeader className="flex flex-col gap-5 text-foreground dark:text-foreground-night">
           {header}
@@ -204,19 +204,28 @@ export function MCPServerDetailsSheet({
             </div>
           </Tabs>
         </SheetContainer>
-        <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-            disabled: form.formState.isSubmitting,
-          }}
-          rightButtonProps={{
-            label: form.formState.isSubmitting ? "Saving..." : "Save",
-            variant: "primary",
-            onClick: onSave,
-            disabled: !form.formState.isDirty || form.formState.isSubmitting,
-          }}
-        />
+        <div className="mt-2">
+          <div className="flex flex-row gap-2 border-t border-border px-3 py-3 dark:border-border-night">
+            <Button
+              label="Cancel"
+              variant="outline"
+              disabled={form.formState.isSubmitting}
+              onClick={() => handleOpenChange(false)}
+            />
+            <div className="flex-grow" />
+            <Button
+              label={form.formState.isSubmitting ? "Saving..." : "Save"}
+              variant="primary"
+              disabled={!form.formState.isDirty || form.formState.isSubmitting}
+              onClick={async () => {
+                const ok = await onSave();
+                if (ok) {
+                  onClose();
+                }
+              }}
+            />
+          </div>
+        </div>
       </SheetContent>
     </Sheet>
   );

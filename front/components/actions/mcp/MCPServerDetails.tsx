@@ -65,9 +65,11 @@ export function MCPServerDetails({
       : undefined,
   });
 
-  const onSave = () => {
-    void form.handleSubmit(async (values) => {
+  const onSave = async (): Promise<boolean> => {
+    let success = false;
+    await form.handleSubmit(async (values) => {
       if (!mcpServerView) {
+        success = false;
         return;
       }
 
@@ -91,14 +93,17 @@ export function MCPServerDetails({
           description: "Your changes have been saved.",
         });
         form.reset(values);
+        success = true;
       } else {
         sendNotification({
           type: "error",
           title: "Save failed",
           description: result.error.message,
         });
+        success = false;
       }
     })();
+    return success;
   };
 
   const onCancel = () => {
