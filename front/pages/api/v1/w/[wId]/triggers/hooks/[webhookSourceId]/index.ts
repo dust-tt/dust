@@ -89,6 +89,17 @@ async function handler(
     });
   }
 
+  const contentType = req.headers["content-type"];
+  if (!contentType || !contentType.includes("application/json")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Content-Type must be application/json.",
+      },
+    });
+  }
+
   const { wId, webhookSourceId } = req.query;
 
   if (typeof wId !== "string" || typeof webhookSourceId !== "string") {

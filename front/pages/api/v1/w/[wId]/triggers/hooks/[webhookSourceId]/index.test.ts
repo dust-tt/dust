@@ -62,6 +62,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
       webhookSourceId: webhookSource.sId(),
     };
     req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "application/json",
+    };
 
     await handler(req, res);
 
@@ -85,6 +88,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
       webhookSourceId: "webhook_source/nonexistent",
     };
     req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "application/json",
+    };
 
     await handler(req, res);
 
@@ -107,6 +113,29 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(405);
+  });
+
+  it("returns 400 when content-type is not application/json", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: "webhook_source/whatever",
+    };
+    req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "text/plain",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("error");
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toBe("Content-Type must be application/json.");
   });
 
   it("returns 200 when webhook source has valid signature", async () => {
@@ -151,6 +180,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     };
     req.body = payload;
     req.headers = {
+      "content-type": "application/json",
       [signatureHeader.toLowerCase()]: validSignature,
     };
 
@@ -199,6 +229,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     };
     req.body = payload;
     req.headers = {
+      "content-type": "application/json",
       [signatureHeader.toLowerCase()]: invalidSignature,
     };
 
