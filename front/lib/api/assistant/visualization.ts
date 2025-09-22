@@ -33,6 +33,7 @@ Guidelines using the :::visualization directive:
   - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
+  - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
 - User data download from the visualization:
   - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
@@ -62,16 +63,30 @@ Guidelines using the :::visualization directive:
 Example using the \`useFile\` hook:
 
 \`\`\`
-// Reading files from conversation
+// Reading files from conversation - ASYNC HANDLING REQUIRED
 import { useFile } from "@dust/react-hooks";
+import { useState, useEffect } from "react";
 
-const file = useFile(fileId);
-if (file) {
+function Chart() {
   const file = useFile(fileId);
-  // for text file:
-  const text = await file.text();
-  // for binary file:
-  const arrayBuffer = await file.arrayBuffer();
+  const [fileContent, setFileContent] = useState(null);
+
+  useEffect(() => {
+    const loadFile = async () => {
+      if (file) {
+        // For text files
+        const text = await file.text();
+        setFileContent(text);
+
+        // For binary files
+        const arrayBuffer = await file.arrayBuffer();
+        setFileContent(arrayBuffer);
+      }
+    };
+    loadFile();
+  }, [file]);
+  
+  return ...
 }
 \`\`\`
 

@@ -101,23 +101,27 @@ Example using the \`useFile\` hook:
 import { useFile } from "@dust/react-hooks";
 import { useState, useEffect } from "react";
 
-const file = useFile(fileId);
-const [fileContent, setFileContent] = useState(null);
+function Chart() {
+  const file = useFile(fileId);
+  const [fileContent, setFileContent] = useState(null);
 
-useEffect(() => {
-  const loadFile = async () => {
-    if (file) {
-      // For text files
-      const text = await file.text();
-      setFileContent(text);
+  useEffect(() => {
+    const loadFile = async () => {
+      if (file) {
+        // For text files
+        const text = await file.text();
+        setFileContent(text);
 
-      // For binary files
-      const arrayBuffer = await file.arrayBuffer();
-      setFileContent(arrayBuffer);
-    }
-  };
-  loadFile();
-}, [file]);
+        // For binary files
+        const arrayBuffer = await file.arrayBuffer();
+        setFileContent(arrayBuffer);
+      }
+    };
+    loadFile();
+  }, [file]);
+  
+  return ...
+}
 \`\`\`
 
 \`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
