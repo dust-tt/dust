@@ -30,11 +30,11 @@ import {
 } from "@connectors/lib/data_sources";
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import { ConfluencePage } from "@connectors/lib/models/confluence";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import { heartbeat } from "@connectors/lib/temporal";
 
 const turndownService = new TurndownService();
 
