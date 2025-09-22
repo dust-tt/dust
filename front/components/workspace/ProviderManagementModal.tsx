@@ -29,8 +29,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { canUseModel } from "@app/lib/assistant";
 import { useFeatureFlags, useWorkspace } from "@app/lib/swr/workspaces";
-import type { ModelProviderIdType, WorkspaceType } from "@app/types";
-import type { PlanType } from "@app/types";
+import type { ModelProviderIdType, PlanType, WorkspaceType } from "@app/types";
 import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;

@@ -140,22 +140,20 @@ export function MCPServerDetails({
               )}
             </TabsList>
 
-            {mcpServerView && (
-              <div className="mt-4">
-                <TabsContent value="info">
-                  <MCPServerDetailsInfo
-                    mcpServerView={mcpServerView}
-                    owner={owner}
-                  />
-                </TabsContent>
-                <TabsContent value="sharing">
-                  <MCPServerDetailsSharing
-                    mcpServer={mcpServerView.server}
-                    owner={owner}
-                  />
-                </TabsContent>
-              </div>
-            )}
+            <div className="mt-4">
+              <TabsContent value="info">
+                <MCPServerDetailsInfo
+                  mcpServerView={mcpServerView}
+                  owner={owner}
+                />
+              </TabsContent>
+              <TabsContent value="sharing">
+                <MCPServerDetailsSharing
+                  mcpServer={mcpServerView?.server}
+                  owner={owner}
+                />
+              </TabsContent>
+            </div>
           </Tabs>
         </SheetContainer>
       </SheetContent>

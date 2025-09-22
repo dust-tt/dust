@@ -17,11 +17,6 @@ import {
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
-type MCPServerDetailsSharingProps = {
-  mcpServer: MCPServerType;
-  owner: LightWorkspaceType;
-};
-
 type RowData = {
   name: string;
   space: SpaceType;
@@ -35,7 +30,7 @@ const ActionCell = ({
   space,
   owner,
 }: {
-  mcpServer: MCPServerType;
+  mcpServer?: MCPServerType;
   mcpServerView?: MCPServerViewType;
   space: SpaceType;
   owner: LightWorkspaceType;
@@ -53,7 +48,9 @@ const ActionCell = ({
           if (mcpServerView) {
             await removeFromSpace(mcpServerView, space);
           } else {
-            await addToSpace(mcpServer, space);
+            if (mcpServer) {
+              await addToSpace(mcpServer, space);
+            }
           }
           setLoading(false);
         }}
@@ -61,6 +58,11 @@ const ActionCell = ({
     </DataTable.CellContent>
   );
 };
+
+interface MCPServerDetailsSharingProps {
+  mcpServer?: MCPServerType;
+  owner: LightWorkspaceType;
+}
 
 export function MCPServerDetailsSharing({
   mcpServer,
@@ -73,7 +75,7 @@ export function MCPServerDetailsSharing({
   const { mcpServers } = useMCPServers({
     owner,
   });
-  const mcpServerWithViews = mcpServers.find((s) => s.sId === mcpServer.sId);
+  const mcpServerWithViews = mcpServers.find((s) => s.sId === mcpServer?.sId);
   const [loading, setLoading] = useState(false);
 
   const views =
@@ -139,7 +141,9 @@ export function MCPServerDetailsSharing({
                 if (!isRestricted) {
                   await removeFromSpace(globalView, globalSpace);
                 } else {
-                  await addToSpace(mcpServer, globalSpace);
+                  if (mcpServer) {
+                    await addToSpace(mcpServer, globalSpace);
+                  }
                 }
                 setLoading(false);
               }
