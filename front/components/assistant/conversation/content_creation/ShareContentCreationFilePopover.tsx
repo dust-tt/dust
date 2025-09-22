@@ -5,12 +5,17 @@ import {
   ClipboardIcon,
   cn,
   ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   GlobeAltIcon,
   IconButton,
   InformationCircleIcon,
   Input,
   Label,
   LinkIcon,
+  LockIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -77,6 +82,24 @@ interface ShareContentCreationFilePopoverProps {
   isUsingConversationFiles: boolean;
 }
 
+const getSharingOptions = (name: string) => [
+  {
+    label: `Anyone in ${name} workspace`,
+    icon: UserGroupIcon,
+    value: "workspace" as const,
+  },
+  {
+    label: "Anyone with the link",
+    icon: GlobeAltIcon,
+    value: "public" as const,
+  },
+  {
+    label: "Private",
+    icon: LockIcon,
+    value: "none" as const,
+  },
+];
+
 export function ShareContentCreationFilePopover({
   fileId,
   owner,
@@ -84,9 +107,6 @@ export function ShareContentCreationFilePopover({
 }: ShareContentCreationFilePopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const [showShareOptions, setShowShareOptions] = React.useState(false);
-  const [selectedScope, setSelectedScope] =
-    React.useState<FileShareScope>("none");
 
   const isSharingForbidden =
     owner.metadata?.allowContentCreationFileSharing === false;
@@ -97,31 +117,14 @@ export function ShareContentCreationFilePopover({
       owner,
     });
 
-  // Sync selectedScope with current fileShare data.
-  React.useEffect(() => {
-    if (!isFileShareLoading && !isFileShareError && fileShare) {
-      setSelectedScope(fileShare.scope);
-      setShowShareOptions(fileShare.scope !== "none");
-    }
-  }, [fileShare, isFileShareLoading, isFileShareError]);
+  const currentScope = fileShare?.scope;
+
+  const onPublish = async () => {
+    await handleChangeFileShare("workspace");
+  };
 
   const handleChangeFileShare = async (shareScope: FileShareScope) => {
-    setSelectedScope(shareScope);
-    setShowShareOptions(shareScope !== "none");
     await doShare(shareScope);
-  };
-
-  const handleCreateLink = () => {
-    setShowShareOptions(true);
-  };
-
-  const handleShareOptionSelect = async (scope: FileShareScope) => {
-    if (scope === "none") {
-      setShowShareOptions(false);
-      setSelectedScope("none");
-    }
-
-    await handleChangeFileShare(scope);
   };
 
   const shareURL = fileShare?.shareUrl ?? "";
@@ -129,29 +132,13 @@ export function ShareContentCreationFilePopover({
     await copyToClipboard(shareURL);
   };
 
-  const currentShareScope = fileShare?.scope;
-
-  const getShareButtonIcon = () => {
-    switch (currentShareScope) {
-      case "workspace":
-        return UserGroupIcon;
-      case "public":
-        return GlobeAltIcon;
-      default:
-        return LinkIcon;
-    }
-  };
-
-  const getShareButtonTooltip = () => {
-    switch (currentShareScope) {
-      case "workspace":
-        return `Shared with: ${owner.name} workspace`;
-      case "public":
-        return "Shared with: Anyone with the link";
-      default:
-        return "Share this Content Creation";
-    }
-  };
+  const options = getSharingOptions(owner.name);
+  const selectedOption = options.find(
+    (option) => option.value === fileShare?.scope
+  );
+  const isPublished =
+    selectedOption !== undefined &&
+    ["workspace", "public"].includes(selectedOption?.value);
 
   const getPlaceholderUrl = () => {
     return `${window.location.origin}/w/${owner.sId}/assistant/conversation/share`;
@@ -160,10 +147,6 @@ export function ShareContentCreationFilePopover({
   const isDisabled = isSharingForbidden || isUsingConversationFiles;
 
   const handleOpenChange = (open: boolean) => {
-    // Reset to initial state if dialog is closed and file is not shared
-    if (!open && (!fileShare || fileShare.scope === "none")) {
-      setShowShareOptions(false);
-    }
     setIsOpen(open);
   };
 
@@ -171,16 +154,20 @@ export function ShareContentCreationFilePopover({
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange} modal={true}>
       <PopoverTrigger asChild>
         <Button
-          icon={getShareButtonIcon()}
+          icon={isPublished ? selectedOption?.icon : undefined}
+          label={isPublished ? "Published" : "Publish"}
           size="xs"
-          variant="ghost"
-          tooltip={getShareButtonTooltip()}
         />
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col" align="end">
         <div className="flex flex-col gap-4">
-          <div className="text-base font-semibold text-primary dark:text-primary-night">
-            Share this Content Creation
+          <div>
+            <h2 className="text-base font-semibold text-primary dark:text-primary-night">
+              Publish and share this content
+            </h2>
+            <p className="text-sm text-primary-light dark:text-primary-light-night">
+              Share with your workspace or make it public
+            </p>
           </div>
 
           <div className="flex flex-col">
@@ -208,85 +195,85 @@ export function ShareContentCreationFilePopover({
                       "disabled to protect company information."}
                 </ContentMessage>
               )}
-            {/* File sharing options. */}
             {!isFileShareLoading && (
               <div className="flex flex-col gap-3">
-                {!showShareOptions ? (
-                  // Not shared state: disabled input with placeholder and create link button
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="grow">
-                        <Input
-                          disabled
-                          placeholder={getPlaceholderUrl()}
-                          className="text-element-600 dark:text-element-600-dark"
-                        />
-                      </div>
+                {currentScope === "none" ? (
+                  <div className="flex items-center gap-2">
+                    <div className="grow">
+                      <Input
+                        disabled
+                        placeholder={getPlaceholderUrl()}
+                        className="text-element-600 dark:text-element-600-dark"
+                      />
                     </div>
                     <Button
                       label="Create link"
                       icon={LinkIcon}
-                      onClick={handleCreateLink}
+                      onClick={onPublish}
                       disabled={isDisabled}
                       size="sm"
-                      className="w-full"
                     />
                   </div>
                 ) : (
                   // Share options
                   <div className="flex flex-col gap-3">
-                    <Label className="text-sm font-semibold text-primary dark:text-primary-night">
+                    <h3 className="text-sm font-semibold text-primary dark:text-primary-night">
                       Who can access
-                    </Label>
-                    <div className="flex flex-col gap-2">
-                      <ShareOption
-                        scope="none"
-                        label="Private"
-                        icon={LinkIcon}
-                        isSelected={selectedScope === "none"}
-                        onSelect={() => handleShareOptionSelect("none")}
-                        disabled={isDisabled}
-                      />
-                      <ShareOption
-                        scope="workspace"
-                        label={`${owner.name} workspace`}
-                        icon={UserGroupIcon}
-                        isSelected={selectedScope === "workspace"}
-                        onSelect={() => handleShareOptionSelect("workspace")}
-                        disabled={isDisabled}
-                      />
-                      <ShareOption
-                        scope="public"
-                        label="Anyone with the link"
-                        icon={GlobeAltIcon}
-                        isSelected={selectedScope === "public"}
-                        onSelect={() => handleShareOptionSelect("public")}
-                        disabled={isDisabled}
+                    </h3>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          isSelect
+                          label={selectedOption?.label}
+                          icon={selectedOption?.icon}
+                          className={cn(
+                            "grid w-full grid-cols-[auto_1fr_auto] truncate",
+                            selectedOption?.value === "public" &&
+                              isUsingConversationFiles &&
+                              "text-primary-400 dark:text-primary-400-night"
+                          )}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                        {options.map((option) => (
+                          <DropdownMenuItem
+                            key={option.value}
+                            label={option.label}
+                            onClick={() => handleChangeFileShare(option.value)}
+                            truncateText
+                            icon={option.icon}
+                            disabled={
+                              option.value === "public" &&
+                              isUsingConversationFiles
+                            }
+                          />
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+                {currentScope !== "none" && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2">
+                      <div className="grow">
+                        <Input
+                          disabled
+                          onClick={(e) => e.currentTarget.select()}
+                          readOnly
+                          value={shareURL}
+                        />
+                      </div>
+                      <IconButton
+                        className="flex-none"
+                        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                        tooltip={isCopied ? "Copied!" : "Copy link"}
+                        onClick={handleCopyLink}
                       />
                     </div>
-
-                    {selectedScope !== "none" && (
-                      <>
-                        <Separator />
-                        <div className="flex items-center gap-2">
-                          <div className="grow">
-                            <Input
-                              disabled
-                              onClick={(e) => e.currentTarget.select()}
-                              readOnly
-                              value={shareURL}
-                            />
-                          </div>
-                          <IconButton
-                            className="flex-none"
-                            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                            tooltip={isCopied ? "Copied!" : "Copy link"}
-                            onClick={handleCopyLink}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  </>
                 )}
               </div>
             )}

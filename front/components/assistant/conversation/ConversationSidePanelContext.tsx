@@ -100,7 +100,7 @@ export function ConversationSidePanelProvider({
   };
 
   const closePanel = () => {
-    if (panelRef && panelRef.current) {
+    if (panelRef && panelRef.current && panelRef.current.getSize()) {
       panelRef.current.collapse();
     }
   };

@@ -31,14 +31,7 @@ export type FileUseCaseMetadata = {
   lastEditedByAgentConfigurationId?: string;
 };
 
-export const fileShareScopeSchema = z.enum([
-  "none",
-  "workspace",
-  "public",
-  // TODO(interactive-content/canvas): deprecated. Keep it for backward compatibility.
-  // Can be removed after migration (conversation_participants -> workspace) is done
-  "conversation_participants",
-]);
+export const fileShareScopeSchema = z.enum(["none", "workspace", "public"]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
