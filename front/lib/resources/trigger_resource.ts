@@ -7,7 +7,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
@@ -179,6 +179,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const trigger = await this.fetchById(auth, sId);
     if (!trigger) {
       return new Err(new Error(`Trigger with sId ${sId} not found`));
+    }
+
+    if (!trigger.editor || trigger.editor !== auth.getNonNullableUser().id) {
+      return new Err(
+        new Error("Only the editor of the trigger can update the trigger")
+      );
     }
 
     await trigger.update(blob, transaction);
@@ -427,8 +433,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Err(normalizeError(error));
     }
 
+    const editor = await UserResource.fetchByModelId(this.editor);
+    if (!editor) {
+      return new Err(new Error("Trigger editor user not found"));
+    }
+    const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      editor.sId,
+      auth.getNonNullableWorkspace().sId
+    );
+
     // Re-register the temporal workflow
-    const r = await this.upsertTemporalWorkflow(auth);
+    const r = await this.upsertTemporalWorkflow(editorAuth);
     if (r.isErr()) {
       return r;
     }
