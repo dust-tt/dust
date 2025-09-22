@@ -97,7 +97,6 @@ function ExportContentDropdown({
 interface ClientExecutableRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
-  fileName: string;
   owner: LightWorkspaceType;
   lastEditedByAgentConfigurationId?: string;
   contentHash?: string;
@@ -106,7 +105,6 @@ interface ClientExecutableRendererProps {
 export function ClientExecutableRenderer({
   conversation,
   fileId,
-  fileName,
   owner,
   lastEditedByAgentConfigurationId,
   contentHash,
