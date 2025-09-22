@@ -737,7 +737,7 @@ const ActionGeneratedFileSchema = z.object({
   hidden: z.boolean().optional(),
 });
 
-const MCPActionTypeSchema = z.object({
+const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
   mcpServerId: z.string().nullable(),
   internalMCPServerName: z.string().nullable(),
@@ -935,7 +935,7 @@ export type UserMessageWithRankType = z.infer<
   typeof UserMessageWithRankTypeSchema
 >;
 
-export type AgentActionPublicType = z.infer<typeof MCPActionTypeSchema>;
+export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
 const AgentMessageStatusSchema = FlexibleEnumSchema<
   "created" | "succeeded" | "failed" | "cancelled"
@@ -952,7 +952,7 @@ const AgentMessageTypeSchema = z.object({
   parentMessageId: z.string().nullable(),
   configuration: LightAgentConfigurationSchema,
   status: AgentMessageStatusSchema,
-  actions: z.array(MCPActionTypeSchema),
+  actions: z.array(AgentActionTypeSchema),
   content: z.string().nullable(),
   chainOfThought: z.string().nullable(),
   rawContents: z.array(
@@ -1070,7 +1070,7 @@ const MCPParamsEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
 });
 
 const NotificationImageContentSchema = z.object({
@@ -1160,7 +1160,7 @@ const ToolNotificationEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
   notification: ToolNotificationProgressSchema,
 });
 
@@ -1261,7 +1261,7 @@ const AgentActionSuccessEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
 });
 export type AgentActionSuccessEvent = z.infer<
   typeof AgentActionSuccessEventSchema
