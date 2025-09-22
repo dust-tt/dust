@@ -267,6 +267,15 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedAudioFileFormats
 >();
 
+const ContentCreationExecutableSchema = z.literal(
+  "application/vnd.dust.client-executable"
+);
+
+const ActionGeneratedFileContentTypeSchema = z.union([
+  SupportedFileContentFragmentTypeSchema,
+  ContentCreationExecutableSchema,
+]);
+
 export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {
@@ -732,7 +741,7 @@ export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 const ActionGeneratedFileSchema = z.object({
   fileId: z.string(),
   title: z.string(),
-  contentType: z.string(),
+  contentType: ActionGeneratedFileContentTypeSchema,
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
 });
