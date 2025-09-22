@@ -35,7 +35,7 @@ interface FileSharingDropdownProps {
   disabled?: boolean;
   isLoading?: boolean;
   isUsingConversationFiles: boolean;
-  isSharingForbidden: boolean;
+  isPublicSharingForbidden: boolean;
 }
 
 function FileSharingDropdown({
@@ -44,7 +44,7 @@ function FileSharingDropdown({
   owner,
   disabled = false,
   isUsingConversationFiles,
-  isSharingForbidden,
+  isPublicSharingForbidden,
 }: FileSharingDropdownProps) {
   const scopeOptions: {
     icon: React.ComponentType;
@@ -104,7 +104,7 @@ function FileSharingDropdown({
               icon={option.icon}
               disabled={
                 option.value === "public" &&
-                (isSharingForbidden || isUsingConversationFiles)
+                (isPublicSharingForbidden || isUsingConversationFiles)
               }
             />
           ))}
@@ -132,7 +132,7 @@ export function ShareContentCreationFilePopover({
     "conversation_participants"
   );
 
-  const isSharingForbidden =
+  const isPublicSharingForbidden =
     owner.metadata?.allowContentCreationFileSharing === false;
 
   const { doShare, fileShare, isFileShareLoading, isFileShareError } =
@@ -195,18 +195,18 @@ export function ShareContentCreationFilePopover({
             )}
             {/* Warning if sharing is disabled. */}
             {!isFileShareLoading &&
-              (isSharingForbidden || isUsingConversationFiles) && (
+              (isPublicSharingForbidden || isUsingConversationFiles) && (
                 <ContentMessage
                   className="mb-4"
                   title={
-                    isSharingForbidden
+                    isPublicSharingForbidden
                       ? "Sharing disabled by admin"
                       : "This file contains company data"
                   }
                   variant="golden"
                   icon={InformationCircleIcon}
                 >
-                  {isSharingForbidden
+                  {isPublicSharingForbidden
                     ? "Your workspace administrator has turned off public sharing of Content Creation files."
                     : "This Content Creation relies on conversation files. The sharing to public option is " +
                       "disabled to protect company information."}
@@ -221,7 +221,7 @@ export function ShareContentCreationFilePopover({
                   owner={owner}
                   disabled={isUpdatingShare}
                   isUsingConversationFiles={isUsingConversationFiles}
-                  isSharingForbidden={isSharingForbidden}
+                  isPublicSharingForbidden={isPublicSharingForbidden}
                   isLoading={isUpdatingShare}
                 />
 
