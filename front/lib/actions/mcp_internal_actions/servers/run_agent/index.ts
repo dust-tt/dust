@@ -495,7 +495,10 @@ ${query}`
 
           let refsFromAgent: Record<string, CitationType> = {};
           let files: ActionGeneratedFileType[] = [];
-          if (isMCPActionArray(agentMessage.actions)) {
+          if (
+            Array.isArray(agentMessage.actions) &&
+            agentMessage.actions.every(isAgentMCPActionWithOutputType)
+          ) {
             refsFromAgent = getCitationsFromActions(agentMessage.actions);
             files = agentMessage.actions.flatMap((action: any) =>
               action.generatedFiles.filter((f: any) => !f.hidden)
