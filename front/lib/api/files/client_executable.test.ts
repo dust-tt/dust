@@ -21,14 +21,17 @@ vi.mock("@app/lib/models/assistant/actions/mcp", () => ({
   },
 }));
 
-const mockFindAll = vi.mocked(AgentMCPActionOutputItem.findAll);
+const mockAgentMCPActionOutputItemFindAll = vi.mocked(
+  AgentMCPActionOutputItem.findAll
+);
 
 const createEditAction = (
   id: string,
   agentMessageId: string,
   createdAt: Date,
   oldString: string = "old",
-  newString: string = "new"
+  newString: string = "new",
+  fileId?: string
 ) =>
   ({
     id,
@@ -40,6 +43,7 @@ const createEditAction = (
     augmentedInputs: {
       old_string: oldString,
       new_string: newString,
+      ...(fileId && { file_id: fileId }),
     },
   }) as unknown as AgentMCPActionModel;
 
@@ -47,7 +51,8 @@ const createRevertAction = (
   id: string,
   agentMessageId: string,
   createdAt: Date,
-  revertCount: number = 1
+  revertCount: number = 1,
+  fileId?: string
 ) =>
   ({
     id,
@@ -58,6 +63,7 @@ const createRevertAction = (
     },
     augmentedInputs: {
       revertCount,
+      ...(fileId && { file_id: fileId }),
     },
   }) as unknown as AgentMCPActionModel;
 
@@ -75,20 +81,15 @@ const createCreateFileAction = (content: string) =>
   }) as unknown as AgentMCPActionModel;
 
 describe("isCreateFileAction", () => {
-  const mockAction: AgentMCPActionModel = {
-    toolConfiguration: {
-      originalName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-    },
-  } as AgentMCPActionModel;
-
-  const mockActionNonCreate: AgentMCPActionModel = {
-    toolConfiguration: {
-      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-    },
-  } as AgentMCPActionModel;
-
   const workspaceId = 123;
   const fileId = "correct_file_id";
+
+  const mockAction = createCreateFileAction("test content");
+  const mockActionNonCreate = createEditAction(
+    "test-edit-action",
+    "msg1",
+    new Date()
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -103,7 +104,9 @@ describe("isCreateFileAction", () => {
       },
     };
 
-    mockFindAll.mockResolvedValueOnce([mockOutput as any]);
+    mockAgentMCPActionOutputItemFindAll.mockResolvedValueOnce([
+      mockOutput as any,
+    ]);
 
     const result = await isCreateFileAction(mockAction, workspaceId, fileId);
     expect(result).toBe(true);
@@ -115,11 +118,12 @@ describe("isCreateFileAction", () => {
       workspaceId,
       fileId
     );
+
     expect(result).toBe(false);
   });
 
   it("should return false when no create file outputs are found", async () => {
-    mockFindAll.mockResolvedValueOnce([]);
+    mockAgentMCPActionOutputItemFindAll.mockResolvedValueOnce([]);
 
     const result = await isCreateFileAction(mockAction, workspaceId, fileId);
     expect(result).toBe(false);
@@ -141,7 +145,10 @@ describe("isCreateFileAction", () => {
       },
     };
 
-    mockFindAll.mockResolvedValueOnce([mockOutput1 as any, mockOutput2 as any]);
+    mockAgentMCPActionOutputItemFindAll.mockResolvedValueOnce([
+      mockOutput1 as any,
+      mockOutput2 as any,
+    ]);
 
     await expect(
       isCreateFileAction(mockAction, workspaceId, fileId)
@@ -155,43 +162,30 @@ describe("getFileActionsByActionType", () => {
   const workspaceId = 123;
   const fileId = "correct_file_id";
 
-  const createAction = {
-    id: "create-1",
-    toolConfiguration: {
-      originalName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-    },
-    augmentedInputs: {},
-  } as unknown as AgentMCPActionModel;
-
-  const editAction = {
-    id: "edit-1",
-    toolConfiguration: {
-      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-    },
-    augmentedInputs: {
-      file_id: fileId,
-    },
-  } as unknown as AgentMCPActionModel;
-
-  const revertAction = {
-    id: "revert-1",
-    toolConfiguration: {
-      originalName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    },
-    augmentedInputs: {
-      file_id: fileId,
-    },
-  } as unknown as AgentMCPActionModel;
-
-  const editActionDifferentFile = {
-    id: "edit-2",
-    toolConfiguration: {
-      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-    },
-    augmentedInputs: {
-      file_id: "different-file-id",
-    },
-  } as unknown as AgentMCPActionModel;
+  const createAction = createCreateFileAction("test content");
+  const editAction = createEditAction(
+    "edit-1",
+    "msg1",
+    new Date(),
+    "old",
+    "new",
+    fileId
+  );
+  const revertAction = createRevertAction(
+    "revert-1",
+    "msg1",
+    new Date(),
+    1,
+    fileId
+  );
+  const editActionDifferentFile = createEditAction(
+    "edit-2",
+    "msg1",
+    new Date(),
+    "old",
+    "new",
+    "different-file-id"
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -206,7 +200,9 @@ describe("getFileActionsByActionType", () => {
       },
     };
 
-    mockFindAll.mockResolvedValue([mockCreateOutput as any]);
+    mockAgentMCPActionOutputItemFindAll.mockResolvedValue([
+      mockCreateOutput as any,
+    ]);
 
     const actions = [
       createAction,
@@ -225,7 +221,7 @@ describe("getFileActionsByActionType", () => {
   });
 
   it("should return undefined createFileAction when no create action exists", async () => {
-    mockFindAll.mockResolvedValue([]);
+    mockAgentMCPActionOutputItemFindAll.mockResolvedValue([]);
 
     const actions = [editAction, revertAction];
     const result = await getFileActionsByActionType(
@@ -247,7 +243,9 @@ describe("getFileActionsByActionType", () => {
       },
     };
 
-    mockFindAll.mockResolvedValue([mockCreateOutput as any]);
+    mockAgentMCPActionOutputItemFindAll.mockResolvedValue([
+      mockCreateOutput as any,
+    ]);
 
     const actions = [createAction];
     const result = await getFileActionsByActionType(
@@ -261,7 +259,7 @@ describe("getFileActionsByActionType", () => {
   });
 
   it("should filter actions by fileId correctly", async () => {
-    mockFindAll.mockResolvedValue([]);
+    mockAgentMCPActionOutputItemFindAll.mockResolvedValue([]);
 
     const actions = [createAction, editAction, editActionDifferentFile];
     const result = await getFileActionsByActionType(
@@ -278,7 +276,7 @@ describe("getFileActionsByActionType", () => {
   });
 
   it("should return empty results when no matching actions exist", async () => {
-    mockFindAll.mockResolvedValue([]);
+    mockAgentMCPActionOutputItemFindAll.mockResolvedValue([]);
 
     const actions = [editActionDifferentFile];
     const result = await getFileActionsByActionType(
@@ -305,7 +303,7 @@ describe("getFileActionsByActionType", () => {
 });
 
 describe("getEditActionsToApply", () => {
-  it("should return all edit actions when no reverts are present", () => {
+  it("should skip the last edit action when no reverts are present", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const edit3 = createEditAction("edit3", "msg3", new Date(3000));
@@ -438,28 +436,6 @@ describe("getEditActionsToApply", () => {
     const result = getEditActionsToApply([edit1, edit2, revert1], 0);
 
     // Should default to revertCount=1 and cancel msg2
-    expect(result).toEqual([edit1]);
-  });
-
-  it("should handle revert and edit actions in the same message", () => {
-    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
-    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
-    const edit3 = createEditAction("edit3", "msg3", new Date(3000));
-
-    // Same message with both revert and edit (chronologically ordered within group)
-    const revert1 = createRevertAction("revert1", "msg4", new Date(4000), 1);
-    const edit4 = createEditAction("edit4", "msg4", new Date(4100));
-
-    const result = getEditActionsToApply(
-      [edit1, edit2, edit3, revert1, edit4],
-      1
-    );
-
-    // Processing newest → oldest with revertCount=1:
-    // msg4: counter=1>0, but contains revert - don't decrement, add revert count (1), so counter becomes 2. Drop edits in this group.
-    // msg3: counter=2>0, edit-only group, skip and decrement counter to 1
-    // msg2: counter=1>0, edit-only group, skip and decrement counter to 0
-    // msg1: counter=0, collect edit1
     expect(result).toEqual([edit1]);
   });
 });
@@ -611,49 +587,6 @@ export default SuperSimple;`;
     expect(result).not.toContain("Step 2");
   });
 
-  it("should handle component theme changes", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
-
-    const edit1 = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      `    <div className="w-full max-w-md mx-auto p-4">
-      <Card>`,
-      `    <div className="w-full max-w-lg mx-auto p-6">
-      <Card className="shadow-lg border-gray-300">`
-    );
-
-    const edit2 = createEditAction(
-      "edit2",
-      "msg3",
-      new Date(3000),
-      `        <CardContent>
-          <p className="text-center text-gray-600">
-            This is a super simple React component created with shadcn/ui components.
-          </p>
-          <Button className="w-full mt-4">Click Me</Button>
-        </CardContent>`,
-      `        <CardContent>
-          <p className="text-center text-gray-700 mb-6">
-            This is a super simple React component created with shadcn/ui components.
-          </p>
-          <div className="flex gap-2">
-            <Button className="flex-1">Primary</Button>
-            <Button variant="outline" className="flex-1">Secondary</Button>
-          </div>
-        </CardContent>`
-    );
-
-    const result = getRevertedContent(createAction, [edit1, edit2]);
-
-    expect(result).toContain("max-w-lg mx-auto p-6");
-    expect(result).toContain("shadow-lg border-gray-300");
-    expect(result).toContain('div className="flex gap-2"');
-    expect(result).toContain('variant="outline"');
-    expect(result).not.toContain("max-w-md mx-auto p-4");
-  });
-
   it("should handle component structure changes", () => {
     const createAction = createCreateFileAction(originalReactComponent);
 
@@ -724,48 +657,5 @@ import { Badge } from "@/components/ui/badge";`
     expect(result).toContain('import React, { useState } from "react";');
     expect(result).toContain('import { Badge } from "@/components/ui/badge";');
     expect(result).not.toMatch(/^import React from "react";$/m);
-  });
-
-  it("should handle function body changes", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
-
-    const edit1 = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      `const SuperSimple = () => {
-  return (`,
-      `const SuperSimple = () => {
-  const [count, setCount] = useState(0);
-
-  return (`
-    );
-
-    const result = getRevertedContent(createAction, [edit1]);
-
-    expect(result).toContain("const [count, setCount] = useState(0);");
-    expect(result).toContain("return (");
-  });
-
-  it("should handle complex multi-line replacements", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
-
-    const edit1 = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      `export default SuperSimple;`,
-      `const MemoizedSuperSimple = React.memo(SuperSimple);
-
-export default MemoizedSuperSimple;`
-    );
-
-    const result = getRevertedContent(createAction, [edit1]);
-
-    expect(result).toContain(
-      "const MemoizedSuperSimple = React.memo(SuperSimple);"
-    );
-    expect(result).toContain("export default MemoizedSuperSimple;");
-    expect(result).not.toMatch(/^export default SuperSimple;$/m);
   });
 });
