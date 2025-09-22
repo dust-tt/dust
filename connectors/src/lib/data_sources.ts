@@ -32,6 +32,15 @@ import { withRetries,WithRetriesError } from "@connectors/types";
 
 const MAX_CSV_SIZE = 50 * 1024 * 1024;
 
+function isTimeoutError(e: unknown): boolean {
+  return (
+    axios.isAxiosError(e) &&
+    (e.code === "ECONNABORTED" ||
+      (typeof e.message === "string" &&
+        e.message.toLowerCase().includes("timeout")))
+  );
+}
+
 const axiosWithTimeout = axios.create({
   timeout: 60000,
   // Ensure client timeout is lower than the target server timeout.
@@ -1115,27 +1124,19 @@ export async function upsertDataSourceTableFromCsv({
 
   let dustRequestResult: AxiosResponse | undefined;
   let currentTimeoutMs = 60000;
+  let callCount = 0;
   try {
-    dustRequestResult = await withRetries(
-      localLogger,
-      async () => {
-        return axiosWithTimeout.post(endpoint, dustRequestPayload, {
-          ...dustRequestConfig,
-          timeout: currentTimeoutMs,
-        });
-      },
-      {
-        retries: 3,
-        shouldRetry: (e) =>
-          axios.isAxiosError(e) &&
-          (e.code === "ECONNABORTED" ||
-            (typeof e.message === "string" &&
-              e.message.toLowerCase().includes("timeout"))),
-        onAttempt: (attempt) => {
-          currentTimeoutMs = attempt >= 2 ? 120000 : 60000;
-        },
-      }
-    )();
+    dustRequestResult = await withRetries(localLogger, async () => {
+      callCount += 1;
+      currentTimeoutMs = callCount >= 2 ? 120000 : 60000;
+      return axiosWithTimeout.post(endpoint, dustRequestPayload, {
+        ...dustRequestConfig,
+        timeout: currentTimeoutMs,
+      });
+    }, {
+      retries: 3,
+      shouldRetry: (e) => isTimeoutError(e),
+    })();
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
     statsDClient.increment(

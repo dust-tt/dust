@@ -29,19 +29,12 @@ type RetryOptions = {
   delayBetweenRetriesMs?: number;
   // Return true to retry on this error, false to stop and rethrow.
   shouldRetry?: (error: unknown, attempt: number) => boolean;
-  // Called before each attempt (1-based index) so callers can adjust state.
-  onAttempt?: (attempt: number) => void;
 };
 
 export function withRetries<Args extends unknown[], Return>(
   logger: LoggerInterface,
   fn: (...args: Args) => Promise<Return>,
-  {
-    retries = 10,
-    delayBetweenRetriesMs = 1000,
-    shouldRetry,
-    onAttempt,
-  }: RetryOptions = {}
+  { retries = 10, delayBetweenRetriesMs = 1000, shouldRetry }: RetryOptions = {}
 ): (...args: Args) => Promise<Return> {
   if (retries < 1) {
     throw new Error("retries must be >= 1");
@@ -52,13 +45,6 @@ export function withRetries<Args extends unknown[], Return>(
 
     for (let i = 0; i < retries; i++) {
       const attempt = i + 1;
-      try {
-        if (onAttempt) {
-          onAttempt(attempt);
-        }
-      } catch (e) {
-        logger.warn({ error: e, attempt }, "onAttempt hook error");
-      }
       try {
         return await fn(...args);
       } catch (e) {
