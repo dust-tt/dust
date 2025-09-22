@@ -457,13 +457,7 @@ export function AgentMessage({
               // Dispatch retry event to reset failed state and re-enable streaming.
               dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
               // Retry on the event's conversationId, which may be coming from a subagent.
-              // TODO(durable-agents): typeguard on a proper type here.
-              if (
-                error.metadata &&
-                isString(error.metadata.messageId) &&
-                isString(error.metadata.conversationId) &&
-                error.metadata.conversationId !== conversationId
-              ) {
+              if (error.metadata.conversationId !== conversationId) {
                 await retryHandler({
                   conversationId: error.metadata.conversationId,
                   messageId: error.metadata.messageId,
