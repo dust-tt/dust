@@ -222,7 +222,7 @@ describe("getFileActionsByType", () => {
     const actions = [editAction, revertAction];
     const result = await getFileActionsByType(actions, fileId, workspace);
 
-    expect(result.createFileAction).toBeUndefined();
+    expect(result.createFileAction).toBeNull();
     expect(result.editOrRevertFileActions).toEqual([editAction, revertAction]);
   });
 
@@ -252,7 +252,7 @@ describe("getFileActionsByType", () => {
     const actions = [createAction, editAction, editActionDifferentFile];
     const result = await getFileActionsByType(actions, fileId, workspace);
 
-    expect(result.createFileAction).toBeUndefined();
+    expect(result.createFileAction).toBeNull();
     expect(result.editOrRevertFileActions).toEqual([editAction]);
     expect(result.editOrRevertFileActions).not.toContain(
       editActionDifferentFile
@@ -265,7 +265,7 @@ describe("getFileActionsByType", () => {
     const actions = [editActionDifferentFile];
     const result = await getFileActionsByType(actions, fileId, workspace);
 
-    expect(result.createFileAction).toBeUndefined();
+    expect(result.createFileAction).toBeNull();
     expect(result.editOrRevertFileActions).toEqual([]);
   });
 
@@ -273,7 +273,7 @@ describe("getFileActionsByType", () => {
     const actions: AgentMCPActionModel[] = [];
     const result = await getFileActionsByType(actions, fileId, workspace);
 
-    expect(result.createFileAction).toBeUndefined();
+    expect(result.createFileAction).toBeNull();
     expect(result.editOrRevertFileActions).toEqual([]);
   });
 });

@@ -352,7 +352,7 @@ export async function getFileActionsByType(
   fileId: string,
   workspace: WorkspaceType
 ) {
-  let createFileAction: AgentMCPActionModel | undefined;
+  let createFileAction: AgentMCPActionModel | null;
   const editOrRevertFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
@@ -573,7 +573,7 @@ export async function revertClientExecutableFileChanges(
     const { createFileAction, editOrRevertFileActions } =
       await getFileActionsByType(conversationActions, fileId, workspace);
 
-    if (createFileAction === undefined) {
+    if (createFileAction === null) {
       return new Err({
         message: `Cannot find the create file action for ${fileId}`,
         tracked: true,
