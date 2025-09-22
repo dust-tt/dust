@@ -69,7 +69,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   constructor(
     model: ModelStaticWorkspaceAware<AgentMCPActionModel>,
     blob: Attributes<AgentMCPActionModel>,
-    // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
     readonly stepContent: NonAttribute<
       AgentStepContentResource & { value: FunctionCallContentType }
     >,
