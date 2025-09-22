@@ -916,6 +916,55 @@ impl Row {
             }
         }
 
+        // Small helpers to avoid expensive parsing on obviously non-matching strings.
+        #[inline]
+        fn looks_numeric(s: &str) -> bool {
+            // Allow optional leading sign, digits and a single dot.
+            // We deliberately do not support thousands separators here as Rust's parser doesn't either.
+            let mut chars = s.chars();
+            if let Some(first) = chars.next() {
+                let rest = if first == '-' || first == '+' { chars } else { s.chars() };
+                let mut dot_seen = false;
+                for c in rest {
+                    if c == '.' {
+                        if dot_seen {
+                            return false;
+                        }
+                        dot_seen = true;
+                        continue;
+                    }
+                    if !c.is_ascii_digit() {
+                        return false;
+                    }
+                }
+                true
+            } else {
+                false
+            }
+        }
+
+        #[inline]
+        fn looks_date_like(s: &str) -> bool {
+            // Quick heuristic: must contain at least one digit and one typical date separator/marker.
+            // This avoids calling the expensive dateparser on arbitrary text.
+            let bytes = s.as_bytes();
+            let has_digit = bytes.iter().any(|b| b.is_ascii_digit());
+            if !has_digit {
+                return false;
+            }
+            let has_sep = s.contains('T')
+                || s.contains('-')
+                || s.contains('/')
+                || s.contains(':')
+                || s.contains("GMT")
+                || s.contains("UTC");
+            if !has_sep {
+                return false;
+            }
+            // Extremely long strings are unlikely to be only a date.
+            s.len() <= 64
+        }
+
         for (i, field) in record.iter().enumerate() {
             if i >= headers.len() {
                 break;
@@ -930,11 +979,16 @@ impl Row {
 
             let parsed_value = if trimmed.is_empty() {
                 Value::Null
-            } else if let Ok(int) = trimmed.parse::<i64>() {
-                Value::Number(int.into())
-            } else if let Ok(float) = try_parse_float(trimmed) {
-                // Numbers
-                Value::Number(float)
+            } else if looks_numeric(trimmed) {
+                // Numbers (fast path only attempts parsing if string looks numeric)
+                if let Ok(int) = trimmed.parse::<i64>() {
+                    Value::Number(int.into())
+                } else if let Ok(float) = try_parse_float(trimmed) {
+                    Value::Number(float)
+                } else {
+                    // Fallback to string if parsing fails unexpectedly
+                    Value::String(trimmed.to_string())
+                }
             } else if let Ok(bool_val) = match trimmed.to_lowercase().as_str() {
                 // Booleans
                 "t" | "true" => Ok(true),
@@ -969,7 +1023,7 @@ impl Row {
                 .find_map(|result| result.ok());
 
                 // We fallback on dateparser for all other formats
-                if dt.is_none() {
+                if dt.is_none() && looks_date_like(trimmed) {
                     dt = match std::panic::catch_unwind(|| {
                         dateparser::parse_with(
                             trimmed,
