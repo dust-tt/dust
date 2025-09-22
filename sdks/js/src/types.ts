@@ -743,8 +743,11 @@ const MCPActionTypeSchema = z.object({
   internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   functionCallName: z.string(),
+  functionCallId: z.string(),
   status: z.string(),
   params: z.record(z.any()),
+  step: z.number(),
+  citationsAllocated: z.number(),
   output: CallToolResultSchema.shape.content.nullable(),
   generatedFiles: z.array(ActionGeneratedFileSchema),
 });
