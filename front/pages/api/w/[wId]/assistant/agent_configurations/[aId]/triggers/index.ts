@@ -84,7 +84,7 @@ async function handler(
   );
 
   const userTriggers = allTriggers.filter(
-    (trigger) => trigger.editor === auth.getNonNullableWorkspace().id
+    (trigger) => trigger.editor === auth.getNonNullableUser().id
   );
 
   switch (req.method) {
@@ -141,10 +141,9 @@ async function handler(
       const workspace = auth.getNonNullableWorkspace();
 
       if (requestTriggers.length > 0) {
-        const triggerNames = [
-          ...requestTriggers.map((t: { name: string }) => t.name),
-          ...allTriggers.map((t) => t.name),
-        ];
+        const triggerNames = requestTriggers.map(
+          (t: { name: string }) => t.name
+        );
         const uniqueTriggerNames = new Set(triggerNames);
         if (uniqueTriggerNames.size !== triggerNames.length) {
           return apiError(req, res, {
