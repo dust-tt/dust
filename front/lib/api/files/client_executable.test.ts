@@ -108,16 +108,20 @@ describe("isCreateFileAction", () => {
       mockOutput as any,
     ]);
 
-    const result = await isCreateFileAction(mockAction, workspace, fileId);
+    const result = await isCreateFileAction({
+      action: mockAction,
+      workspace,
+      fileId,
+    });
     expect(result).toBe(true);
   });
 
   it("should return false when action is not a create file action", async () => {
-    const result = await isCreateFileAction(
-      mockActionNonCreate,
+    const result = await isCreateFileAction({
+      action: mockActionNonCreate,
       workspace,
-      fileId
-    );
+      fileId,
+    });
 
     expect(result).toBe(false);
   });
@@ -125,7 +129,11 @@ describe("isCreateFileAction", () => {
   it("should return false when no create file outputs are found", async () => {
     mockAgentMCPActionOutputItemFindAll.mockResolvedValueOnce([]);
 
-    const result = await isCreateFileAction(mockAction, workspace, fileId);
+    const result = await isCreateFileAction({
+      action: mockAction,
+      workspace,
+      fileId,
+    });
     expect(result).toBe(false);
   });
 
@@ -151,7 +159,7 @@ describe("isCreateFileAction", () => {
     ]);
 
     await expect(
-      isCreateFileAction(mockAction, workspace, fileId)
+      isCreateFileAction({ action: mockAction, workspace, fileId })
     ).rejects.toThrow(
       "Multiple create file actions found for file_id correct_file_id."
     );

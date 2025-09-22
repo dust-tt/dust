@@ -296,11 +296,15 @@ export async function getClientExecutableFileContent(
   }
 }
 
-export async function isCreateFileAction(
-  action: AgentMCPActionModel,
-  workspace: WorkspaceType,
-  fileId: string
-) {
+export async function isCreateFileAction({
+  action,
+  workspace,
+  fileId,
+}: {
+  action: AgentMCPActionModel;
+  workspace: WorkspaceType;
+  fileId: string;
+}) {
   if (isCreateFileActionType(action)) {
     const actionOutputs = await AgentMCPActionOutputItem.findAll({
       where: {
@@ -356,7 +360,11 @@ export async function getFileActionsByType(
   const editOrRevertFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
-    const isCreateAction = await isCreateFileAction(action, workspace, fileId);
+    const isCreateAction = await isCreateFileAction({
+      action,
+      workspace,
+      fileId,
+    });
 
     if (isCreateAction) {
       createFileAction = action;
