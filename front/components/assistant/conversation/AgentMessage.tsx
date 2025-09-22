@@ -65,7 +65,6 @@ import {
   GLOBAL_AGENTS_SID,
   isContentCreationFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
-  isString,
   isSupportedImageContentType,
 } from "@app/types";
 
