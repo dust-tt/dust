@@ -390,7 +390,7 @@ describe("getEditActionsToApply", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const edit3 = createEditAction("edit3", "msg3", new Date(3000));
-    const revert1 = createRevertAction("revert1", "msg4", new Date(4000), 3);
+    const revert1 = createRevertAction("revert1", "msg4", new Date(4000));
 
     const result = getEditActionsToApply([edit1, edit2, edit3, revert1]);
 
