@@ -297,12 +297,20 @@ function isCreateFileActionOutput(
 ): output is AgentMCPActionOutputItem & {
   content: { resource: { fileId: string } };
 } {
+  if (typeof output.content !== "object" || output.content === null) {
+    return false;
+  }
+
+  if (
+    typeof output.content.resource !== "object" ||
+    output.content.resource === null
+  ) {
+    return false;
+  }
+
   return (
-    typeof output.content === "object" &&
-    output.content !== null &&
-    typeof (output.content as any).resource === "object" &&
-    (output.content as any).resource !== null &&
-    typeof (output.content as any).resource.fileId === "string"
+    "fileId" in output.content.resource &&
+    typeof output.content.resource.fileId === "string"
   );
 }
 
