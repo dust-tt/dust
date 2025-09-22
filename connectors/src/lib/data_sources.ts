@@ -28,7 +28,7 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import type { ProviderVisibility } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import { isValidDate, safeSubstring, stripNullBytes } from "@connectors/types";
-import { withRetries,WithRetriesError } from "@connectors/types";
+import { withRetries, WithRetriesError } from "@connectors/types";
 
 const MAX_CSV_SIZE = 50 * 1024 * 1024;
 
@@ -1126,17 +1126,21 @@ export async function upsertDataSourceTableFromCsv({
   let currentTimeoutMs = 60000;
   let callCount = 0;
   try {
-    dustRequestResult = await withRetries(localLogger, async () => {
-      callCount += 1;
-      currentTimeoutMs = callCount >= 2 ? 120000 : 60000;
-      return axiosWithTimeout.post(endpoint, dustRequestPayload, {
-        ...dustRequestConfig,
-        timeout: currentTimeoutMs,
-      });
-    }, {
-      retries: 3,
-      shouldRetry: (e) => isTimeoutError(e),
-    })();
+    dustRequestResult = await withRetries(
+      localLogger,
+      async () => {
+        callCount += 1;
+        currentTimeoutMs = callCount >= 2 ? 120000 : 60000;
+        return axiosWithTimeout.post(endpoint, dustRequestPayload, {
+          ...dustRequestConfig,
+          timeout: currentTimeoutMs,
+        });
+      },
+      {
+        retries: 3,
+        shouldRetry: (e) => isTimeoutError(e),
+      }
+    )();
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
     statsDClient.increment(
