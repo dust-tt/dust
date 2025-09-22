@@ -6,13 +6,15 @@ import type { WorkspaceType } from "@app/types";
 
 interface SpaceDataTableProps {
   owner: WorkspaceType;
+  loadOnInit?: boolean;
 }
 
-export function SpaceDataTable({ owner }: SpaceDataTableProps) {
+export function SpaceDataTable({ owner, loadOnInit }: SpaceDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="Spaces"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeSpaces}
     >
       {(data) => (

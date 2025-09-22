@@ -354,7 +354,7 @@ The directive should be used to display a clickable version of the agent name in
   run_dust_app: {
     id: 10,
     availability: "auto",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,

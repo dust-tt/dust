@@ -19,8 +19,10 @@ import {
   CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  isRemoteMCPServerType,
+} from "@app/lib/actions/mcp_helper";
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useUpdateMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
@@ -33,7 +35,7 @@ interface ToolsListProps {
   disableUpdates?: boolean;
 }
 
-// We disable buttons for Assistant Builder view because it would feel like
+// We disable buttons for agent builder view because it would feel like
 // you can configure per agent
 export function ToolsList({
   owner,

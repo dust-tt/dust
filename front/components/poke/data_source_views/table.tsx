@@ -9,6 +9,7 @@ import type { LightWorkspaceType } from "@app/types";
 interface DataSourceViewsDataTableProps {
   owner: LightWorkspaceType;
   spaceId?: string;
+  loadOnInit?: boolean;
 }
 
 function prepareDataSourceViewsForDisplay(
@@ -35,11 +36,13 @@ function prepareDataSourceViewsForDisplay(
 export function DataSourceViewsDataTable({
   owner,
   spaceId,
+  loadOnInit,
 }: DataSourceViewsDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="Data Source Views"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeDataSourceViews}
     >
       {(data) => (

@@ -104,7 +104,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       if (res.isErr()) {
         return {
           redirect: {
-            destination: `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${res.error.code}`)}`,
+            destination: `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${res.error.code}`)}`,
             permanent: false,
           },
         };

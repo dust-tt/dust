@@ -1,4 +1,3 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
@@ -9,31 +8,20 @@ import type {
   CustomServerIconType,
   InternalAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
-import type {
-  InternalMCPServerNameType,
-  MCPServerAvailability,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
-import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
-import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import type {
   DustAppRunConfigurationType,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelConfigurationType,
   ModelId,
   PersonalAuthenticationRequiredErrorContent,
   ReasoningModelConfigurationType,
@@ -43,7 +31,6 @@ import type {
 import {
   assertNever,
   isPersonalAuthenticationRequiredErrorContent,
-  removeNulls,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
@@ -253,142 +240,6 @@ export type AgentActionRunningEvents =
   | MCPParamsEvent
   | MCPApproveExecutionEvent
   | ToolNotificationEvent;
-
-type RemoveFunctionFields<T> = Pick<
-  T,
-  {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    [K in keyof T]: T[K] extends Function ? never : K;
-  }[keyof T]
->;
-
-type MCPActionBlob = RemoveFunctionFields<MCPActionType>;
-
-// This action uses the MCP protocol to communicate
-export class MCPActionType {
-  readonly id: ModelId;
-  readonly generatedFiles: ActionGeneratedFileType[];
-  readonly agentMessageId: ModelId;
-
-  readonly mcpServerConfigurationId: string;
-  readonly mcpServerId: string | null;
-  readonly internalMCPServerName: InternalMCPServerNameType | null;
-  readonly params: Record<string, unknown>; // Hold the inputs for the action.
-  readonly output: CallToolResult["content"] | null;
-
-  readonly functionCallId: string | null;
-  readonly functionCallName: string | null;
-  readonly step: number = -1;
-
-  readonly citationsAllocated: number = 0;
-
-  readonly type = "tool_action" as const;
-  readonly status: ToolExecutionStatus;
-
-  constructor(blob: MCPActionBlob) {
-    this.id = blob.id;
-    this.type = blob.type;
-    this.generatedFiles = blob.generatedFiles;
-
-    this.agentMessageId = blob.agentMessageId;
-    this.mcpServerConfigurationId = blob.mcpServerConfigurationId;
-    this.mcpServerId = blob.mcpServerId;
-    this.internalMCPServerName = blob.internalMCPServerName;
-    this.params = blob.params;
-    this.output = blob.output;
-    this.functionCallId = blob.functionCallId;
-    this.functionCallName = blob.functionCallName;
-    this.step = blob.step;
-    this.citationsAllocated = blob.citationsAllocated;
-    this.status = blob.status;
-  }
-
-  getGeneratedFiles(): ActionGeneratedFileType[] {
-    return this.generatedFiles;
-  }
-
-  renderForFunctionCall(): FunctionCallType {
-    if (!this.functionCallId) {
-      throw new Error("MCPAction: functionCallId is required");
-    }
-    if (!this.functionCallName) {
-      throw new Error("MCPAction: functionCallName is required");
-    }
-
-    return {
-      id: this.functionCallId,
-      name: this.functionCallName,
-      arguments: JSON.stringify(this.params),
-    };
-  }
-
-  async renderForMultiActionsModel(
-    _: Authenticator,
-    {
-      model,
-    }: {
-      model: ModelConfigurationType;
-    }
-  ): Promise<FunctionMessageTypeModel> {
-    if (!this.functionCallName) {
-      throw new Error("MCPAction: functionCallName is required");
-    }
-
-    if (!this.functionCallId) {
-      throw new Error("MCPAction: functionCallId is required");
-    }
-
-    const totalTextLength =
-      this.output?.reduce(
-        (acc, curr) =>
-          acc + (curr.type === "text" ? curr.text?.length ?? 0 : 0),
-        0
-      ) ?? 0;
-
-    if (totalTextLength > model.contextSize * 0.9) {
-      return {
-        role: "function" as const,
-        name: this.functionCallName,
-        function_call_id: this.functionCallId,
-        content:
-          "The tool returned too much content. The response cannot be processed.",
-      };
-    }
-
-    if (this.status === "denied") {
-      return {
-        role: "function" as const,
-        name: this.functionCallName,
-        function_call_id: this.functionCallId,
-        content:
-          "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
-      };
-    }
-
-    const outputItems = removeNulls(
-      this.output?.map(rewriteContentForModel) ?? []
-    );
-
-    const output = (() => {
-      if (outputItems.length === 0) {
-        return "Successfully executed action, no output.";
-      }
-
-      if (outputItems.every((item) => isTextContent(item))) {
-        return outputItems.map((item) => item.text).join("\n");
-      }
-
-      return JSON.stringify(outputItems);
-    })();
-
-    return {
-      role: "function" as const,
-      name: this.functionCallName,
-      function_call_id: this.functionCallId,
-      content: output,
-    };
-  }
-}
 
 const MAX_DESCRIPTION_LENGTH = 1024;
 

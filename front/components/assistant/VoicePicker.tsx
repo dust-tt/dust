@@ -72,13 +72,13 @@ export function VoicePicker({
         await voiceTranscriberService.startRecording();
         return;
       }
-      await voiceTranscriberService.stopRecording("click");
+      await voiceTranscriberService.stopRecording("attachment");
       return;
     }
 
     // Hold mode: release stops the recording if active.
     if (voiceTranscriberService.isRecording) {
-      await voiceTranscriberService.stopRecording("hold");
+      await voiceTranscriberService.stopRecording("transcribe");
     }
   };
 
@@ -87,7 +87,7 @@ export function VoicePicker({
       return;
     }
     if (voiceTranscriberService.isRecording) {
-      await voiceTranscriberService.stopRecording("hold");
+      await voiceTranscriberService.stopRecording("transcribe");
     }
   };
 
@@ -96,7 +96,7 @@ export function VoicePicker({
       return;
     }
     if (voiceTranscriberService.isRecording) {
-      await voiceTranscriberService.stopRecording("click");
+      await voiceTranscriberService.stopRecording("attachment");
     }
   };
 
@@ -117,17 +117,27 @@ export function VoicePicker({
       </div>
       <Button
         size="xs"
-        icon={voiceTranscriberService.isRecording ? SquareIcon : MicIcon}
+        icon={
+          voiceTranscriberService.isRecording && mode === "click"
+            ? SquareIcon
+            : MicIcon
+        }
         isLoading={voiceTranscriberService.isTranscribing}
         variant={
-          voiceTranscriberService.isRecording ? "highlight" : "ghost-secondary"
+          voiceTranscriberService.isRecording && mode === "click"
+            ? "highlight"
+            : "ghost-secondary"
         }
         tooltip={computeTooltip(
           mode,
           voiceTranscriberService.isRecording,
           voiceTranscriberService.isTranscribing
         )}
-        label={voiceTranscriberService.isRecording ? "Stop" : undefined}
+        label={
+          voiceTranscriberService.isRecording && mode === "click"
+            ? "Stop"
+            : undefined
+        }
         disabled={disabled}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}

@@ -34,12 +34,14 @@ interface EnumArgDefinition extends BaseArgDefinition {
   type: "enum";
   values: EnumValues;
   async?: false;
+  multiple: boolean;
 }
 
 interface AsyncEnumArgDefinition extends BaseArgDefinition {
   type: "enum";
   values: AsyncEnumValues;
   async: true;
+  multiple: boolean;
 }
 
 interface StringArgDefinition extends BaseArgDefinition {
@@ -156,19 +158,15 @@ export function createIoTsCodecFromArgs(
         }
 
         // Extract values from EnumValue objects.
-        const enumValues = arg.values.map((v) => v.value);
+        const enumValues = arg.values.map((v) => v.value) as string[];
 
         // Handle empty async enums
         if (enumValues.length === 0) {
-          codecProps[key] = t.string; // Allow any string for async enums initially.
+          codecProps[key] = t.array(t.string); // Allow any string for async enums initially.
         } else if (enumValues.length === 1) {
-          codecProps[key] = t.literal(enumValues[0]);
+          codecProps[key] = t.array(t.literal(enumValues[0]));
         } else {
-          codecProps[key] = t.union([
-            t.literal(enumValues[0]),
-            t.literal(enumValues[1]),
-            ...enumValues.slice(2).map((v) => t.literal(v)),
-          ]);
+          codecProps[key] = t.array(t.string);
         }
         break;
 

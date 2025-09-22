@@ -91,8 +91,6 @@ export function ActiveSubscriptionTable({
   subscription: SubscriptionType;
   subscriptions: SubscriptionType[];
 }) {
-  const activePlan = subscription.plan;
-
   return (
     <>
       <div className="flex flex-col">
@@ -166,6 +164,23 @@ export function ActiveSubscriptionTable({
               </PokeTableBody>
             </PokeTable>
           </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function PlanLimitationsTable({
+  subscription,
+}: {
+  subscription: SubscriptionType;
+}) {
+  const activePlan = subscription.plan;
+
+  return (
+    <>
+      <div className="flex flex-col">
+        <div className="flex justify-between gap-3">
           <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
             <h2 className="text-md pb-4 font-bold">Plan limitations</h2>
             <PokeTable>

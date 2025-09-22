@@ -10,74 +10,90 @@ import { makeScript } from "@app/scripts/helpers";
  * This allows to soft refresh all triggers by doing the pre-delete / post-create logic.
  */
 
-makeScript({}, async ({ execute }, logger) => {
-  // List all triggers that exists.
-  const triggers = await TriggerModel.findAll();
-  const activeTriggers = triggers.filter((t) => t.enabled);
-
-  // Group by workspace to minimize the number of workspace fetch.
-  const triggersByWorkspace = activeTriggers.reduce(
-    (acc, trigger) => {
-      if (!acc[trigger.workspaceId]) {
-        acc[trigger.workspaceId] = [];
-      }
-      acc[trigger.workspaceId].push(trigger);
-      return acc;
+makeScript(
+  {
+    wid: {
+      type: "number",
+      description:
+        "If provided, will only process triggers from this workspace ID.",
+      required: false,
     },
-    {} as Record<number, TriggerModel[]>
-  );
-
-  let affectedTriggersCount = 0;
-
-  // For each workspace, process all triggers sequentially.
-  for (const w of Object.keys(triggersByWorkspace)) {
-    const workspace = await WorkspaceModel.findByPk(w);
-    if (!workspace) {
-      logger.error({ workspaceId: w }, "Trigger workspace not found");
-      continue;
+  },
+  async ({ wid, execute }, logger) => {
+    if (wid) {
+      logger.info(`Processing only workspace ID: ${wid}`);
     }
 
-    // Fetch all triggers resources from sIds.
-    for (const trigger of triggersByWorkspace[workspace.id]) {
-      const t = new TriggerResource(TriggerModel, trigger.get());
-      const user = await UserResource.fetchByModelId(t.editor);
-      if (!user) {
-        logger.error(
-          { triggerId: t.sId(), triggerName: t.name },
-          "Trigger editor user not found"
-        );
+    // List all triggers that exists.
+    const triggers = await TriggerModel.findAll({
+      where: wid ? { workspaceId: wid } : {},
+    });
+    const activeTriggers = triggers.filter((t) => t.enabled);
+
+    // Group by workspace to minimize the number of workspace fetch.
+    const triggersByWorkspace = activeTriggers.reduce(
+      (acc, trigger) => {
+        if (!acc[trigger.workspaceId]) {
+          acc[trigger.workspaceId] = [];
+        }
+        acc[trigger.workspaceId].push(trigger);
+        return acc;
+      },
+      {} as Record<number, TriggerModel[]>
+    );
+
+    let affectedTriggersCount = 0;
+
+    // For each workspace, process all triggers sequentially.
+    for (const w of Object.keys(triggersByWorkspace)) {
+      const workspace = await WorkspaceModel.findByPk(w);
+      if (!workspace) {
+        logger.error({ workspaceId: w }, "Trigger workspace not found");
         continue;
       }
 
-      const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        user.sId,
-        workspace.sId
-      );
+      // Fetch all triggers resources from sIds.
+      for (const trigger of triggersByWorkspace[workspace.id]) {
+        const t = new TriggerResource(TriggerModel, trigger.get());
+        const user = await UserResource.fetchByModelId(t.editor);
+        if (!user) {
+          logger.error(
+            { triggerId: t.sId(), triggerName: t.name },
+            "Trigger editor user not found"
+          );
+          continue;
+        }
 
-      if (execute) {
-        await t.disable(editorAuth);
-        await t.enable(editorAuth);
-        logger.info(
-          { triggerId: t.sId(), triggerName: t.name },
-          "Trigger reset successful."
+        const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
         );
-        affectedTriggersCount++;
-        logger.info(
-          "----------------------------------------------------------------------------------------"
-        );
-      } else {
-        logger.info(
-          { triggerId: t.sId(), triggerName: t.name },
-          "Would disable and re-enable trigger (dry run)"
-        );
-        logger.info(
-          "----------------------------------------------------------------------------------------"
-        );
+
+        if (execute) {
+          await t.disable(editorAuth);
+          await t.enable(editorAuth);
+          logger.info(
+            { triggerId: t.sId(), triggerName: t.name },
+            "Trigger reset successful."
+          );
+          affectedTriggersCount++;
+          logger.info(
+            "----------------------------------------------------------------------------------------"
+          );
+        } else {
+          logger.info(
+            { triggerId: t.sId(), triggerName: t.name },
+            "Would disable and re-enable trigger (dry run)"
+          );
+          logger.info(
+            "----------------------------------------------------------------------------------------"
+          );
+        }
       }
     }
-  }
 
-  logger.info(
-    `Script completed. ${affectedTriggersCount} triggers were reset.`
-  );
-});
+    logger.info(
+      `Script completed. ${affectedTriggersCount} triggers were reset.`
+    );
+  }
+);

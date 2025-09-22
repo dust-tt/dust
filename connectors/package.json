@@ -73,6 +73,7 @@
     "tar": "^6.2.0",
     "tar-stream": "^3.1.7",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
+    "tweetnacl": "^1.0.3",
     "turndown": "^7.1.2",
     "undici": "^6.21.1",
     "uuid": "^9.0.0",

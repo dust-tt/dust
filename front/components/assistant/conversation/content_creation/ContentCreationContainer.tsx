@@ -76,6 +76,9 @@ export function ContentCreationContainer({
           <ClientExecutableRenderer
             conversation={conversation}
             fileId={contentId}
+            lastEditedByAgentConfigurationId={
+              fileMetadata.useCaseMetadata.lastEditedByAgentConfigurationId
+            }
             owner={owner}
             contentHash={contentHash}
           />

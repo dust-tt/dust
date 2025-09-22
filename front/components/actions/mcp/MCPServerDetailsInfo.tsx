@@ -10,7 +10,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types";
 
 type MCPServerDetailsInfoProps = {
-  mcpServerView: MCPServerViewType;
+  mcpServerView: MCPServerViewType | null;
   owner: LightWorkspaceType;
 };
 
@@ -20,12 +20,16 @@ export function MCPServerDetailsInfo({
 }: MCPServerDetailsInfoProps) {
   const editedAt = useMemo(() => {
     const d = new Date(0);
-    d.setUTCMilliseconds(mcpServerView.editedByUser?.editedAt ?? 0);
+    d.setUTCMilliseconds(mcpServerView?.editedByUser?.editedAt ?? 0);
     return d.toLocaleDateString();
-  }, [mcpServerView.editedByUser]);
+  }, [mcpServerView?.editedByUser]);
+
+  if (!mcpServerView) {
+    return null;
+  }
 
   return (
-    <div className="flex flex-col gap-3 py-2">
+    <div className="flex flex-col gap-3">
       {mcpServerView.editedByUser && (
         <div className="flex w-full text-sm text-muted-foreground dark:text-muted-foreground-night">
           Edited by {mcpServerView.editedByUser.fullName}, {editedAt}
