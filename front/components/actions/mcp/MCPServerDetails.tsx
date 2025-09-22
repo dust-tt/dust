@@ -14,19 +14,33 @@ import {
   TabsTrigger,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { useContext, useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
+import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
+import {
+  diffInfoForm,
+  getInfoFormDefaults,
+  getInfoFormSchema,
+} from "@app/components/actions/mcp/forms/infoFormSchema";
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { ConfirmContext } from "@app/components/Confirm";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import {
   getMcpServerDisplayName,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
+  isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
+import {
+  useDeleteMCPServer,
+  useUpdateMCPServer,
+  useUpdateMCPServerView,
+} from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
 
 const DETAILS_TABS = ["info", "sharing"];
@@ -55,6 +69,71 @@ export function MCPServerDetails({
       setSelectedTab(DETAILS_TABS[0]);
     }
   }, [mcpServerView]);
+
+  const formDefaultValues = useMemo(() => {
+    if (!mcpServerView) {
+      return null;
+    }
+    return getInfoFormDefaults(mcpServerView);
+  }, [mcpServerView]);
+
+  const schema = useMemo(() => {
+    if (!mcpServerView) {
+      return null;
+    }
+    return getInfoFormSchema(mcpServerView);
+  }, [mcpServerView]);
+
+  const formMethods = useForm<InfoFormValues>({
+    resolver: schema ? zodResolver(schema) : undefined,
+    defaultValues: formDefaultValues ?? undefined,
+    mode: "onChange",
+    shouldUnregister: true,
+  });
+
+  const { updateServerView } = mcpServerView
+    ? useUpdateMCPServerView(owner, mcpServerView)
+    : { updateServerView: async () => false };
+  const { updateServer } = mcpServerView
+    ? useUpdateMCPServer(owner, mcpServerView)
+    : { updateServer: async () => false };
+
+  const handleCancel = () => {
+    if (formDefaultValues) {
+      formMethods.reset(formDefaultValues);
+    }
+  };
+
+  const handleSave = formMethods.handleSubmit(async (values) => {
+    if (!mcpServerView || !formDefaultValues) {
+      return;
+    }
+    const isRemote = isRemoteMCPServerType(mcpServerView.server);
+    const diff = diffInfoForm(formDefaultValues, values, isRemote);
+
+    const updates: Array<() => Promise<boolean>> = [];
+    if (diff.serverView) {
+      const { name, description } = diff.serverView;
+      updates.push(() => updateServerView({ name, description }));
+    }
+    if (diff.remoteIcon) {
+      updates.push(() => updateServer({ icon: diff.remoteIcon! }));
+    }
+    if (diff.remoteSharedSecret) {
+      updates.push(() =>
+        updateServer({ sharedSecret: diff.remoteSharedSecret! })
+      );
+    }
+
+    for (const u of updates) {
+      const ok = await u();
+      if (!ok) {
+        return;
+      }
+    }
+
+    formMethods.reset(values);
+  });
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -142,10 +221,44 @@ export function MCPServerDetails({
 
             <div className="mt-4">
               <TabsContent value="info">
-                <MCPServerDetailsInfo
-                  mcpServerView={mcpServerView}
-                  owner={owner}
-                />
+                {mcpServerView && formDefaultValues && (
+                  <FormProvider form={formMethods}>
+                    <div
+                      key={mcpServerView.server.sId}
+                      className="flex flex-col gap-4"
+                    >
+                      <MCPServerDetailsInfo
+                        mcpServerView={mcpServerView}
+                        owner={owner}
+                      />
+                      {formMethods.formState.isDirty && (
+                        <div className="mt-2 flex flex-row items-end justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            label={"Cancel"}
+                            onClick={handleCancel}
+                            disabled={formMethods.formState.isSubmitting}
+                          />
+                          <Button
+                            variant="highlight"
+                            label={
+                              formMethods.formState.isSubmitting
+                                ? "Saving..."
+                                : "Save"
+                            }
+                            onClick={(
+                              e: React.MouseEvent<HTMLButtonElement>
+                            ) => {
+                              e.preventDefault();
+                              void handleSave();
+                            }}
+                            disabled={formMethods.formState.isSubmitting}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </FormProvider>
+                )}
               </TabsContent>
               <TabsContent value="sharing">
                 <MCPServerDetailsSharing
