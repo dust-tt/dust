@@ -500,8 +500,8 @@ ${query}`
             agentMessage.actions.every(isAgentMCPActionWithOutputType)
           ) {
             refsFromAgent = getCitationsFromActions(agentMessage.actions);
-            files = agentMessage.actions.flatMap((action: any) =>
-              action.generatedFiles.filter((f: any) => !f.hidden)
+            files = agentMessage.actions.flatMap((action) =>
+              action.generatedFiles.filter((f) => !f.hidden)
             );
           }
           return {
