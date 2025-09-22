@@ -298,7 +298,7 @@ describe("getEditActionsToApply", () => {
   it("should skip edit actions that are immediately followed by reverts", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
-    const revert1 = createRevertAction("revert1", "msg3", new Date(3000), 1);
+    const revert1 = createRevertAction("revert1", "msg3", new Date(3000));
 
     const result = getEditActionsToApply([edit1, edit2, revert1]);
 
