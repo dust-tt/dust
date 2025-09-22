@@ -11,6 +11,7 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
@@ -26,7 +27,6 @@ import type {
   FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
-import datadogLogger from "@app/logger/datadogLogger";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
