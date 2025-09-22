@@ -34,6 +34,7 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { heartbeat } from "@connectors/lib/temporal";
 
 const turndownService = new TurndownService();
 
@@ -188,6 +189,8 @@ export async function confluenceCheckAndUpsertSinglePage({
 }: BaseConfluenceCheckAndUpsertSingleEntityActivityInput & {
   pageRef: ConfluencePageRef;
 }) {
+  await heartbeat();
+
   const { id: spaceId, name: spaceName } = space;
   const { id: pageId } = pageRef;
 
