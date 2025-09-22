@@ -1,5 +1,5 @@
 import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
-import type {ChangeEvent} from "react";
+import type { ChangeEvent } from "react";
 import { useCallback } from "react";
 
 import { WebCrawlerHeaderRedactedValue } from "@app/types";
