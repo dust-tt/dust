@@ -453,6 +453,7 @@ export async function getFileActionsByType(
  *
  * Note:
  * - `editOrRevertActions` includes only past reverts; the current revert is not included (its value is `revertCount`).
+ * - We expect that all changes on the file were done through the edit tool.
  */
 export function getEditActionsToApply(
   editOrRevertActions: AgentMCPActionModel[],
