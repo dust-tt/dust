@@ -57,9 +57,7 @@ interface FileSharingDropdownProps {
   selectedOption: SharingOption;
   options: SharingOption[];
   onScopeChange: (option: SharingOption) => void;
-  owner: LightWorkspaceType;
   disabled?: boolean;
-  isLoading?: boolean;
   isUsingConversationFiles: boolean;
   isPublicSharingForbidden: boolean;
 }
@@ -67,82 +65,49 @@ interface FileSharingDropdownProps {
 function FileSharingDropdown({
   selectedOption,
   onScopeChange,
-  owner,
   disabled = false,
   options,
   isUsingConversationFiles,
   isPublicSharingForbidden,
 }: FileSharingDropdownProps) {
-  const onPublish = () => {
-    const workspaceOption = options.find((opt) => opt.value === "workspace");
-
-    if (workspaceOption) {
-      onScopeChange(workspaceOption);
-    }
-  };
-
-  const placeholderUrl = `${window.location.origin}/w/${owner.sId}/assistant/conversation/share`;
-
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-3">
-        {selectedOption.value === "none" ? (
-          <div className="flex items-center gap-2">
-            <div className="grow">
-              <Input
-                disabled
-                placeholder={placeholderUrl}
-                className="text-element-600 dark:text-element-600-dark"
-              />
-            </div>
-            <Button
-              label="Create link"
-              icon={LinkIcon}
-              onClick={onPublish}
-              size="sm"
+    <div className="flex flex-col gap-3">
+      <h3 className="text-sm font-semibold text-primary dark:text-primary-night">
+        Who can access
+      </h3>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            isSelect
+            label={selectedOption.label}
+            icon={selectedOption.icon}
+            className={cn(
+              "grid w-full grid-cols-[auto_1fr_auto] truncate",
+              selectedOption.value === "public" &&
+                isUsingConversationFiles &&
+                "text-primary-400 dark:text-primary-400-night"
+            )}
+            disabled={disabled}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+          {options.map((option) => (
+            <DropdownMenuItem
+              key={option.value}
+              label={option.label}
+              onClick={() => onScopeChange(option)}
+              truncateText
+              icon={option.icon}
+              disabled={
+                option.value === "public" &&
+                (isPublicSharingForbidden || isUsingConversationFiles)
+              }
             />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-semibold text-primary dark:text-primary-night">
-              Who can access
-            </h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  isSelect
-                  label={selectedOption.label}
-                  icon={selectedOption.icon}
-                  className={cn(
-                    "grid w-full grid-cols-[auto_1fr_auto] truncate",
-                    selectedOption.value === "public" &&
-                      isUsingConversationFiles &&
-                      "text-primary-400 dark:text-primary-400-night"
-                  )}
-                  disabled={disabled}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                {options.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    label={option.label}
-                    onClick={() => onScopeChange(option)}
-                    truncateText
-                    icon={option.icon}
-                    disabled={
-                      option.value === "public" &&
-                      (isPublicSharingForbidden || isUsingConversationFiles)
-                    }
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -191,6 +156,12 @@ export function ShareContentCreationFilePopover({
       }
     }
   }, [fileShare, isFileShareLoading, isFileShareError, options]);
+
+  const onPublish = async () => {
+    await handleChangeFileShare("workspace");
+  };
+
+  const placeholderUrl = `${window.location.origin}/w/${owner.sId}/assistant/conversation/share`;
 
   const handleChangeFileShare = async (shareScope: FileShareScope) => {
     setIsUpdatingShare(true);
@@ -259,16 +230,33 @@ export function ShareContentCreationFilePopover({
                 )}
 
                 <div className="flex flex-col gap-3">
-                  <FileSharingDropdown
-                    selectedOption={selectedOption}
-                    options={options}
-                    onScopeChange={handleScopeChange}
-                    owner={owner}
-                    disabled={isUpdatingShare}
-                    isUsingConversationFiles={isUsingConversationFiles}
-                    isPublicSharingForbidden={isPublicSharingForbidden}
-                    isLoading={isUpdatingShare}
-                  />
+                  {selectedOption.value === "public" ||
+                  selectedOption.value === "workspace" ? (
+                    <FileSharingDropdown
+                      selectedOption={selectedOption}
+                      options={options}
+                      onScopeChange={handleScopeChange}
+                      disabled={isUpdatingShare}
+                      isUsingConversationFiles={isUsingConversationFiles}
+                      isPublicSharingForbidden={isPublicSharingForbidden}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className="grow">
+                        <Input
+                          disabled
+                          placeholder={placeholderUrl}
+                          className="text-element-600 dark:text-element-600-dark"
+                        />
+                      </div>
+                      <Button
+                        label="Create link"
+                        icon={LinkIcon}
+                        onClick={onPublish}
+                        size="sm"
+                      />
+                    </div>
+                  )}
                   {selectedOption.value !== "none" && (
                     <>
                       <Separator />
