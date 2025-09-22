@@ -213,11 +213,11 @@ export async function editClientExecutableFile(
   }
   const { fileResource, content: currentContent } = fileContentResult.value;
 
-  const { updatedContent, occurrences } = getUpdatedContentAndOccurrences(
+  const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
     oldString,
     newString,
-    currentContent
-  );
+    currentContent,
+  });
 
   if (occurrences === 0) {
     return new Err({
@@ -482,11 +482,11 @@ export function getRevertedContent(
 
     const { old_string, new_string } = editAction.augmentedInputs;
 
-    const { updatedContent, occurrences } = getUpdatedContentAndOccurrences(
-      old_string,
-      new_string,
-      revertedContent
-    );
+    const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
+      oldString: old_string,
+      newString: new_string,
+      currentContent: revertedContent,
+    });
 
     if (occurrences === 0) {
       throw new Error(`Cannot find matched text: "${old_string}"`);

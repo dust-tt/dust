@@ -136,11 +136,15 @@ export async function getFileContent(
   return content;
 }
 
-export function getUpdatedContentAndOccurrences(
-  oldString: string,
-  newString: string,
-  currentContent: string
-) {
+export function getUpdatedContentAndOccurrences({
+  oldString,
+  newString,
+  currentContent,
+}: {
+  oldString: string;
+  newString: string;
+  currentContent: string;
+}) {
   // Count occurrences of oldString.
   const regex = new RegExp(
     oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
