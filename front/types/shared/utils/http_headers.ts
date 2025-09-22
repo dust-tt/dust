@@ -24,7 +24,7 @@ export function headersArrayToRecord(
   }
 
   const sanitized = sanitizeHeadersArray(rows);
-  let entries = sanitized.map(({ key, value }) => [key, value] as const);
+  let entries = sanitized.map(({ key, value }) => [key, value]);
 
   if (opts?.stripAuthorization) {
     entries = entries.filter(([k]) => k.toLowerCase() !== "authorization");
