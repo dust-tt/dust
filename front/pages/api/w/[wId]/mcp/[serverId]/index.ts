@@ -27,8 +27,7 @@ const PatchMCPServerBodySchema = z
     z.object({
       customHeaders: z
         .array(z.object({ key: z.string(), value: z.string() }))
-        .nullable()
-        .optional(),
+        .nullable(),
     })
   );
 
