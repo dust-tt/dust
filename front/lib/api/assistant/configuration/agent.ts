@@ -38,6 +38,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { normalizeArrays } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -62,7 +63,6 @@ import {
 } from "@app/types";
 import { isGlobalAgentId, removeNulls } from "@app/types";
 import type { TagType } from "@app/types/tag";
-import { UserResource } from "@app/lib/resources/user_resource";
 
 /**
  * Get one specific version of a single agent
