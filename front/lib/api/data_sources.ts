@@ -739,49 +739,44 @@ export async function upsertTable({
           "The file associated with the fileId you provided was not found",
       });
     }
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-    // Only perform synchronous CSV schema validation for non-async requests.
-    // For async requests, validation happens as part of the background upsert workflow.
-    if (!async) {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-      const schemaRes = await coreAPI.tableValidateCSVContent({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        bucket: file.getBucketForVersion("processed").name,
-        bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
-      });
-      if (schemaRes.isErr()) {
-        if (schemaRes.error.code === "invalid_csv_content") {
-          return new Err({
-            name: "dust_error",
-            code: "invalid_csv_content",
-            message: schemaRes.error.message,
-          });
-        } else {
-          logger.error(
-            {
-              bucket: file.getBucketForVersion("processed").name,
-              bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
-              dataSourceId: dataSource.sId,
-              error: schemaRes.error,
-            },
-            "Error validating CSV content"
-          );
-          return new Err({
-            name: "dust_error",
-            code: "internal_error",
-            message: schemaRes.error.message,
-          });
-        }
-      }
-      if (!params.allowEmptySchema && schemaRes.value.schema.length === 0) {
+    const schemaRes = await coreAPI.tableValidateCSVContent({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      bucket: file.getBucketForVersion("processed").name,
+      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+    });
+    if (schemaRes.isErr()) {
+      if (schemaRes.error.code === "invalid_csv_content") {
         return new Err({
           name: "dust_error",
           code: "invalid_csv_content",
-          message: "Invalid CSV content, skipping",
+          message: schemaRes.error.message,
+        });
+      } else {
+        logger.error(
+          {
+            bucket: file.getBucketForVersion("processed").name,
+            bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+            dataSourceId: dataSource.sId,
+            error: schemaRes.error,
+          },
+          "Error validating CSV content"
+        );
+        return new Err({
+          name: "dust_error",
+          code: "internal_error",
+          message: schemaRes.error.message,
         });
       }
+    }
+    if (!params.allowEmptySchema && schemaRes.value.schema.length === 0) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_csv_content",
+        message: "Invalid CSV content, skipping",
+      });
     }
   }
 
