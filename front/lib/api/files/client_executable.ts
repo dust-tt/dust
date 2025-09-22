@@ -356,7 +356,9 @@ export async function getFileActionsByType(
   const editOrRevertFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
-    if (await isCreateFileAction(action, workspace, fileId)) {
+    const isCreateAction = await isCreateFileAction(action, workspace, fileId);
+
+    if (isCreateAction) {
       createFileAction = action;
     }
 
@@ -560,7 +562,6 @@ export async function revertClientExecutableFileChanges(
         workspaceId: workspace.id,
         status: "succeeded",
       },
-      order: [["createdAt", "ASC"]],
     });
 
     if (!conversationActions.length) {
