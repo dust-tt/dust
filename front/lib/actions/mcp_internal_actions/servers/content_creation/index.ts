@@ -277,21 +277,12 @@ const createServer = (
   );
   server.tool(
     REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Reverts a Content Creation file by canceling recent agent messages. " +
-      "Cancels the most recent N agent messages chronologically, where N = revertCount.",
+    "Reverts a Content Creation file by canceling the last agent messages. ",
     {
       file_id: z
         .string()
         .describe(
           "The ID of the Content Creation file to revert (e.g., 'fil_abc123')"
-        ),
-      revertCount: z
-        .number()
-        .optional()
-        .default(1)
-        .describe(
-          "Number of recent agent messages to cancel. Default: 1. " +
-            "Multiple reverts in the same message accumulate."
         ),
     },
     withToolLogging(
@@ -300,7 +291,7 @@ const createServer = (
         toolName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
         agentLoopContext,
       },
-      async ({ file_id, revertCount }, { sendNotification, _meta }) => {
+      async ({ file_id }, { sendNotification, _meta }) => {
         if (!agentLoopContext?.runContext) {
           throw new Error(
             "Could not access Agent Loop Context from revert content creation file tool."
@@ -314,7 +305,6 @@ const createServer = (
           fileId: file_id,
           conversationId: conversation.id,
           revertedByAgentConfigurationId: agentConfiguration.sId,
-          revertCount,
         });
 
         if (result.isErr()) {

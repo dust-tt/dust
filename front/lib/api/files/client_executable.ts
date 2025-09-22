@@ -322,13 +322,10 @@ function isEditFileActionType(
 
 function isRevertFileActionType(
   action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: { revertCount?: number };
-} {
+): action is AgentMCPActionModel {
   return (
     action.toolConfiguration.originalName ===
-      REVERT_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs === "object"
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
   );
 }
 
@@ -440,24 +437,24 @@ export async function getFileActionsByType(
 }
 
 /**
- * Returns the edit actions that still apply after revert actions.
+ * Returns the edit actions that still apply after a revert operation.
  *
  * How it works:
  * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest => newest.
- * - Process groups newest => oldest so reverts cancel the most recent edits first.
- * - Maintain a group-level cancellation counter with `revertCount`.
+ * - Process groups newest => oldest so the revert cancels the most recent edit first.
+ * - Maintain a cancellation counter starting at 1 (single revert step).
  *   While counter > 0:
  *     • Edit-only group => skip it and decrement counter by 1.
- *     • Group with any revert(s) => do not decrement; add each revert's revertCount (default 1). Drop edits in that group.
+ *     • Group with any revert(s) => do not decrement; increase counter by 1 per revert. Drop edits in that group.
  * - When counter = 0, collect edit actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
  *
  * Note:
- * - `editOrRevertActions` includes only past reverts; the current revert is not included (its value is `revertCount`).
+ * - `editOrRevertActions` includes only past reverts; the current revert is not included.
  * - We expect that all changes on the file were done through the edit tool.
+ * - This function only supports single-step revert operations.
  */
 export function getEditActionsToApply(
-  editOrRevertActions: AgentMCPActionModel[],
-  revertCount: number
+  editOrRevertActions: AgentMCPActionModel[]
 ) {
   // Group actions by agent message ID (one group per message)
   const editOrRevertActionsByMessage = groupBy(
@@ -479,7 +476,7 @@ export function getEditActionsToApply(
   );
 
   // Remaining edit-only groups to cancel. Starts from the current (external) revert.
-  let cancelGroupActionCounter = revertCount;
+  let cancelGroupActionCounter = 1;
 
   const pickedEditActions = [];
 
@@ -495,14 +492,8 @@ export function getEditActionsToApply(
         continue;
       }
 
-      // Extend cancellation window by each revert's count (any edits will be cancelled).
-      for (const revertAction of revertActions) {
-        const count =
-          typeof revertAction.augmentedInputs.revertCount === "number"
-            ? revertAction.augmentedInputs.revertCount
-            : 1;
-        cancelGroupActionCounter += count;
-      }
+      // Extend cancellation window by each revert (any edits will be cancelled).
+      cancelGroupActionCounter += revertActions.length;
 
       continue;
     }
@@ -515,11 +506,7 @@ export function getEditActionsToApply(
       }
 
       if (isRevertFileActionType(currentAction)) {
-        const count =
-          typeof currentAction.augmentedInputs.revertCount === "number"
-            ? currentAction.augmentedInputs.revertCount
-            : 1;
-        cancelGroupActionCounter += count;
+        cancelGroupActionCounter++;
       }
     }
   }
@@ -574,12 +561,10 @@ export async function revertClientExecutableFileChanges(
     fileId,
     conversationId,
     revertedByAgentConfigurationId,
-    revertCount = 1,
   }: {
     fileId: string;
     conversationId: ModelId;
     revertedByAgentConfigurationId: string;
-    revertCount?: number;
   }
 ): Promise<
   Result<
@@ -646,10 +631,7 @@ export async function revertClientExecutableFileChanges(
       });
     }
 
-    const editActionsToApply = getEditActionsToApply(
-      editOrRevertFileActions,
-      revertCount
-    );
+    const editActionsToApply = getEditActionsToApply(editOrRevertFileActions);
 
     const revertedContent = getRevertedContent(
       createFileAction,

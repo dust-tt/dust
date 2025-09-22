@@ -51,7 +51,6 @@ const createRevertAction = (
   id: string,
   agentMessageId: string,
   createdAt: Date,
-  revertCount: number = 1,
   fileId?: string
 ) =>
   ({
@@ -62,7 +61,6 @@ const createRevertAction = (
       originalName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
     },
     augmentedInputs: {
-      revertCount,
       ...(fileId && { file_id: fileId }),
     },
   }) as unknown as AgentMCPActionModel;
@@ -224,7 +222,7 @@ describe("getFileActionsByType", () => {
     expect(result.editOrRevertFileActions).toEqual([editAction, revertAction]);
   });
 
-  it("should return undefined createFileAction when no create action exists", async () => {
+  it("should return null createFileAction when no create action exists", async () => {
     mockAgentMCPActionOutputItemFindAll.mockResolvedValue([]);
 
     const actions = [editAction, revertAction];
@@ -292,9 +290,9 @@ describe("getEditActionsToApply", () => {
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const edit3 = createEditAction("edit3", "msg3", new Date(3000));
 
-    const result = getEditActionsToApply([edit1, edit2, edit3], 1);
+    const result = getEditActionsToApply([edit1, edit2, edit3]);
 
-    // With revertCount=1, should skip newest edit group (msg3) and return msg2, msg1
+    // Should skip newest edit group (msg3) and return msg2, msg1
     expect(result).toEqual([edit2, edit1]);
   });
 
@@ -303,21 +301,11 @@ describe("getEditActionsToApply", () => {
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const revert1 = createRevertAction("revert1", "msg3", new Date(3000), 1);
 
-    const result = getEditActionsToApply([edit1, edit2, revert1], 1);
+    const result = getEditActionsToApply([edit1, edit2, revert1]);
 
-    // External revertCount=1 + revert action count=1 = 2 total reverts
+    // Current revert (1) + revert action count=1 = 2 total reverts
     // Should cancel msg2 and msg1, leaving nothing
     expect(result).toEqual([]);
-  });
-
-  it("should handle double revert correctly", () => {
-    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
-    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
-    const edit3 = createEditAction("edit3", "msg3", new Date(3000));
-
-    const result = getEditActionsToApply([edit1, edit2, edit3], 2);
-
-    expect(result).toEqual([edit1]);
   });
 
   it("should properly group edits from same agent message when reverting", () => {
@@ -325,7 +313,7 @@ describe("getEditActionsToApply", () => {
     const edit1b = createEditAction("edit1b", "msg1", new Date(1100));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
 
-    const result = getEditActionsToApply([edit1a, edit1b, edit2], 1);
+    const result = getEditActionsToApply([edit1a, edit1b, edit2]);
 
     expect(result).toEqual([edit1a, edit1b]);
   });
@@ -335,7 +323,7 @@ describe("getEditActionsToApply", () => {
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const revert1 = createRevertAction("revert1", "msg3", new Date(3000), 1);
 
-    const result = getEditActionsToApply([edit1, edit2, revert1], 1);
+    const result = getEditActionsToApply([edit1, edit2, revert1]);
 
     expect(result).toEqual([]);
   });
@@ -344,7 +332,7 @@ describe("getEditActionsToApply", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const revert1 = createRevertAction("revert1", "msg2", new Date(2000), 1);
 
-    const result = getEditActionsToApply([edit1, revert1], 1);
+    const result = getEditActionsToApply([edit1, revert1]);
 
     expect(result).toEqual([]);
   });
@@ -357,14 +345,18 @@ describe("getEditActionsToApply", () => {
     const edit4 = createEditAction("edit4", "msg4", new Date(4000));
     const edit5 = createEditAction("edit5", "msg4", new Date(4100));
 
-    const result = getEditActionsToApply(
-      [edit1, edit2, edit3, revert1, edit4, edit5],
-      1
-    );
+    const result = getEditActionsToApply([
+      edit1,
+      edit2,
+      edit3,
+      revert1,
+      edit4,
+      edit5,
+    ]);
 
-    // Processing newest → oldest with revertCount=1:
+    // Processing newest → oldest:
     // msg4: counter=1>0, edit-only group, skip and decrement counter to 0
-    // msg3: counter=0, see revert(count=1), increase counter to 1
+    // msg3: counter=0, see revert, increase counter to 1
     // msg2: counter=1>0, edit-only group, skip and decrement counter to 0
     // msg1: counter=0, collect edit1, edit2
     expect(result).toEqual([edit1, edit2]);
@@ -377,52 +369,36 @@ describe("getEditActionsToApply", () => {
     const revert1 = createRevertAction("revert1", "msg4", new Date(4000), 1);
     const revert2 = createRevertAction("revert2", "msg4", new Date(4100), 2);
 
-    const result = getEditActionsToApply(
-      [edit1, edit2, edit3, revert1, revert2],
-      1
-    );
+    const result = getEditActionsToApply([
+      edit1,
+      edit2,
+      edit3,
+      revert1,
+      revert2,
+    ]);
 
-    // External revertCount=1 + revert1 (count=1) + revert2 (count=2) = 4 total reverts
-    // Should cancel all 3 edit groups (msg3, msg2, msg1) and still have 1 remaining
+    // Current revert (1) + revert1 + revert2 = 3 total reverts
+    // Should cancel all 3 edit groups (msg3, msg2, msg1)
     expect(result).toEqual([]);
   });
 
   it("should handle empty actions array", () => {
-    const result = getEditActionsToApply([], 0);
+    const result = getEditActionsToApply([]);
     expect(result).toEqual([]);
   });
 
-  it("should handle revert with custom revert count", () => {
+  it("should handle revert action in historical data", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const edit3 = createEditAction("edit3", "msg3", new Date(3000));
     const revert1 = createRevertAction("revert1", "msg4", new Date(4000), 3);
 
-    const result = getEditActionsToApply([edit1, edit2, edit3, revert1], 0);
+    const result = getEditActionsToApply([edit1, edit2, edit3, revert1]);
 
-    // revert with count=3 should cancel 3 edit groups (msg3, msg2, msg1)
-    expect(result).toEqual([]);
-  });
-
-  it("should handle revert without explicit revert count (defaults to 1)", () => {
-    const edit1 = createEditAction("edit1", "msg1", new Date(1000));
-    const edit2 = createEditAction("edit2", "msg2", new Date(2000));
-    const revert1 = {
-      id: "revert1",
-      agentMessageId: "msg3",
-      createdAt: new Date(3000),
-      toolConfiguration: {
-        originalName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-      },
-      augmentedInputs: {}, // No revertCount specified
-    } as unknown as AgentMCPActionModel;
-
-    const result = getEditActionsToApply([edit1, edit2, revert1], 0);
-
-    // Should default to revertCount=1 and cancel msg2
+    // Current revert (1) + revert action (1) = 2 total reverts
+    // Should cancel msg3 and msg2, leaving msg1
     expect(result).toEqual([edit1]);
   });
-});
 
 describe("getRevertedContent", () => {
   const originalReactComponent = `import React from "react";

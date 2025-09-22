@@ -33,8 +33,7 @@ You have access to a Content Creation system that allows you to create and updat
 - Never attempt to edit without first retrieving the current file content
 
 ### Reverting Files:
-- Use \`${REVERT_CONTENT_CREATION_FILE_TOOL_NAME}\` to revert recent changes by canceling agent messages
-- Each agent message can contain multiple actions; revertCount specifies how many messages to cancel
+- Use \`${REVERT_CONTENT_CREATION_FILE_TOOL_NAME}\` to revert the most recent changes by canceling the last agent message (which may contain multiple file actions)
 
 ${VIZ_REACT_COMPONENT_GUIDELINES}
 
