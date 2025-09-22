@@ -24,6 +24,7 @@ import type {
   ContentCreationFileContentType,
   ModelId,
   Result,
+  WorkspaceType,
 } from "@app/types";
 import {
   clientExecutableContentType,
@@ -297,7 +298,7 @@ export async function getClientExecutableFileContent(
 
 export async function isCreateFileAction(
   action: AgentMCPActionModel,
-  workspaceId: number,
+  workspace: WorkspaceType,
   fileId: string
 ) {
   if (isCreateFileActionType(action)) {
@@ -305,7 +306,7 @@ export async function isCreateFileAction(
     // whether this action produced the specified `fileId` for this workspace.
     const createdActionOutputs = await getCreateFileActionOutputs(
       action,
-      workspaceId,
+      workspace,
       fileId
     );
 
@@ -329,13 +330,13 @@ export async function isCreateFileAction(
 
 async function getCreateFileActionOutputs(
   action: AgentMCPActionModel,
-  workspaceId: number,
+  workspace: WorkspaceType,
   fileId: string
 ): Promise<AgentMCPActionOutputItem[]> {
   const actionOutputs = await AgentMCPActionOutputItem.findAll({
     where: {
       agentMCPActionId: action.id,
-      workspaceId,
+      workspaceId: workspace.id,
     },
     order: [["createdAt", "ASC"]],
   });
@@ -366,13 +367,13 @@ function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
 export async function getFileActionsByActionType(
   actions: AgentMCPActionModel[],
   fileId: string,
-  workspaceId: number
+  workspace: WorkspaceType
 ) {
   let createFileAction: AgentMCPActionModel | undefined;
   const editOrRevertFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
-    if (await isCreateFileAction(action, workspaceId, fileId)) {
+    if (await isCreateFileAction(action, workspace, fileId)) {
       createFileAction = action;
     }
 
@@ -549,7 +550,7 @@ export async function revertClientExecutableFileChanges(
   }
 
   try {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspace = auth.getNonNullableWorkspace();
 
     // Fetch all the successful actions from the given conversation id
     // (we only update the file when action succeeded).
@@ -566,14 +567,14 @@ export async function revertClientExecutableFileChanges(
               required: true,
               where: {
                 conversationId,
-                workspaceId,
+                workspaceId: workspace.id,
               },
             },
           ],
         },
       ],
       where: {
-        workspaceId,
+        workspaceId: workspace.id,
         status: "succeeded",
       },
       order: [["createdAt", "ASC"]],
@@ -587,11 +588,7 @@ export async function revertClientExecutableFileChanges(
     }
 
     const { createFileAction, editOrRevertFileActions } =
-      await getFileActionsByActionType(
-        conversationActions,
-        fileId,
-        workspaceId
-      );
+      await getFileActionsByActionType(conversationActions, fileId, workspace);
 
     if (createFileAction === undefined) {
       return new Err({

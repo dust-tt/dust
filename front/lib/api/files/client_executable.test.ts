@@ -81,7 +81,7 @@ const createCreateFileAction = (content: string) =>
   }) as unknown as AgentMCPActionModel;
 
 describe("isCreateFileAction", () => {
-  const workspaceId = 123;
+  const workspace = { id: 123 } as any;
   const fileId = "correct_file_id";
 
   const mockAction = createCreateFileAction("test content");
@@ -108,14 +108,14 @@ describe("isCreateFileAction", () => {
       mockOutput as any,
     ]);
 
-    const result = await isCreateFileAction(mockAction, workspaceId, fileId);
+    const result = await isCreateFileAction(mockAction, workspace, fileId);
     expect(result).toBe(true);
   });
 
   it("should return false when action is not a create file action", async () => {
     const result = await isCreateFileAction(
       mockActionNonCreate,
-      workspaceId,
+      workspace,
       fileId
     );
 
@@ -125,7 +125,7 @@ describe("isCreateFileAction", () => {
   it("should return false when no create file outputs are found", async () => {
     mockAgentMCPActionOutputItemFindAll.mockResolvedValueOnce([]);
 
-    const result = await isCreateFileAction(mockAction, workspaceId, fileId);
+    const result = await isCreateFileAction(mockAction, workspace, fileId);
     expect(result).toBe(false);
   });
 
@@ -151,7 +151,7 @@ describe("isCreateFileAction", () => {
     ]);
 
     await expect(
-      isCreateFileAction(mockAction, workspaceId, fileId)
+      isCreateFileAction(mockAction, workspace, fileId)
     ).rejects.toThrow(
       "Multiple create file actions found for file_id correct_file_id."
     );
@@ -159,7 +159,7 @@ describe("isCreateFileAction", () => {
 });
 
 describe("getFileActionsByActionType", () => {
-  const workspaceId = 123;
+  const workspace = { id: 123 } as any;
   const fileId = "correct_file_id";
 
   const createAction = createCreateFileAction("test content");
@@ -213,7 +213,7 @@ describe("getFileActionsByActionType", () => {
     const result = await getFileActionsByActionType(
       actions,
       fileId,
-      workspaceId
+      workspace
     );
 
     expect(result.createFileAction).toBe(createAction);
@@ -227,7 +227,7 @@ describe("getFileActionsByActionType", () => {
     const result = await getFileActionsByActionType(
       actions,
       fileId,
-      workspaceId
+      workspace
     );
 
     expect(result.createFileAction).toBeUndefined();
@@ -251,7 +251,7 @@ describe("getFileActionsByActionType", () => {
     const result = await getFileActionsByActionType(
       actions,
       fileId,
-      workspaceId
+      workspace
     );
 
     expect(result.createFileAction).toBe(createAction);
@@ -265,7 +265,7 @@ describe("getFileActionsByActionType", () => {
     const result = await getFileActionsByActionType(
       actions,
       fileId,
-      workspaceId
+      workspace
     );
 
     expect(result.createFileAction).toBeUndefined();
@@ -282,7 +282,7 @@ describe("getFileActionsByActionType", () => {
     const result = await getFileActionsByActionType(
       actions,
       fileId,
-      workspaceId
+      workspace
     );
 
     expect(result.createFileAction).toBeUndefined();
@@ -294,7 +294,7 @@ describe("getFileActionsByActionType", () => {
     const result = await getFileActionsByActionType(
       actions,
       fileId,
-      workspaceId
+      workspace
     );
 
     expect(result.createFileAction).toBeUndefined();
