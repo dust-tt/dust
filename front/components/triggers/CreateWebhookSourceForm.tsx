@@ -17,6 +17,7 @@ import {
   PostWebhookSourcesSchema,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
 } from "@app/types/triggers/webhooks";
+import { generateSecureSecret } from "@app/lib/resources/string_ids";
 
 export const validateCustomHeadersFromString = (value: string | null) => {
   if (value === null || value.trim() === "") {
@@ -72,15 +73,32 @@ export function CreateWebhookSourceFormContent({
         control={form.control}
         name="secret"
         render={({ field }) => (
-          <Input
-            {...field}
-            label="Secret"
-            type="password"
-            placeholder="Secret for validation..."
-            isError={form.formState.errors.secret !== undefined}
-            message={form.formState.errors.secret?.message}
-            messageStatus="error"
-          />
+          <>
+            <Label htmlFor="secret">Secret</Label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Input
+                  {...field}
+                  id="secret"
+                  type="password"
+                  placeholder="Secret for validation..."
+                  isError={form.formState.errors.secret !== undefined}
+                  message={form.formState.errors.secret?.message}
+                  messageStatus="error"
+                />
+              </div>
+              <Button
+                label="Generate"
+                variant="outline"
+                type="button"
+                onClick={() => field.onChange(generateSecureSecret(64))}
+              />
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Note: You will be able to see and copy this secret for the first
+              10 minutes after creating the webhook.
+            </p>
+          </>
         )}
       />
 
