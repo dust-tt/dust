@@ -509,11 +509,25 @@ async function answerMessage(
   // The order is important here because we want to prioritize the user id over the bot id.
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
-    slackUserInfo = await getSlackUserInfo(
-      connector.id,
-      slackClient,
-      slackUserId
-    );
+    try {
+      slackUserInfo = await getSlackUserInfo(
+        connector.id,
+        slackClient,
+        slackUserId
+      );
+    } catch (e) {
+      if (isSlackWebAPIPlatformError(e)) {
+        logger.error(
+          {
+            error: e,
+            connectorId: connector.id,
+            slackUserId,
+          },
+          "Failed to get slack user info"
+        );
+      }
+      throw e;
+    }
   } else if (slackBotId) {
     try {
       slackUserInfo = await getSlackBotInfo(
@@ -523,6 +537,16 @@ async function answerMessage(
       );
     } catch (e) {
       if (isSlackWebAPIPlatformError(e)) {
+        logger.error(
+          {
+            error: e,
+            connectorId: connector.id,
+            slackUserId,
+            slackBotId,
+            slackTeamId,
+          },
+          "Failed to get slack bot info"
+        );
         if (e.data.error === "bot_not_found") {
           // We received a bot message from a bot that is not accessible to us. We log and ignore
           // the message.
