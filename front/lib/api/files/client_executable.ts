@@ -352,7 +352,7 @@ export async function getFileActionsByType(
   fileId: string,
   workspace: WorkspaceType
 ) {
-  let createFileAction: AgentMCPActionModel | null;
+  let createFileAction: AgentMCPActionModel | null = null;
   const editOrRevertFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
