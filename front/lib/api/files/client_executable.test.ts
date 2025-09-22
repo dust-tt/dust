@@ -181,7 +181,6 @@ describe("getFileActionsByType", () => {
     "revert-1",
     "msg1",
     new Date(),
-    1,
     fileId
   );
   const editActionDifferentFile = createEditAction(
