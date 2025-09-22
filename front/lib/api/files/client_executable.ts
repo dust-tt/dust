@@ -1,13 +1,16 @@
 import groupBy from "lodash/groupBy";
 
 import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
   getFileContent,
   getUpdatedContentAndOccurrences,
+  isCreateFileActionOutputType,
+  isCreateFileActionType,
+  isEditFileActionType,
+  isRevertFileActionType,
 } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -292,28 +295,6 @@ export async function getClientExecutableFileContent(
   }
 }
 
-function isCreateFileActionOutputType(
-  output: AgentMCPActionOutputItem
-): output is AgentMCPActionOutputItem & {
-  content: { resource: { fileId: string } };
-} {
-  if (typeof output.content !== "object" || output.content === null) {
-    return false;
-  }
-
-  if (
-    typeof output.content.resource !== "object" ||
-    output.content.resource === null
-  ) {
-    return false;
-  }
-
-  return (
-    "fileId" in output.content.resource &&
-    typeof output.content.resource.fileId === "string"
-  );
-}
-
 export async function isCreateFileAction(
   action: AgentMCPActionModel,
   workspaceId: number,
@@ -346,7 +327,7 @@ export async function isCreateFileAction(
   return false;
 }
 
-export async function getCreateFileActionOutputs(
+async function getCreateFileActionOutputs(
   action: AgentMCPActionModel,
   workspaceId: number,
   fileId: string
@@ -370,23 +351,7 @@ export async function getCreateFileActionOutputs(
   return createdActionOutputs;
 }
 
-function isEditFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: { old_string: string; new_string: string };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      EDIT_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.old_string === "string" &&
-    typeof action.augmentedInputs.new_string === "string"
-  );
-}
-
-export function isEditOrRevertFileAction(
-  action: AgentMCPActionModel,
-  fileId: string
-) {
+function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
   if (action.augmentedInputs.file_id !== fileId) {
     return false;
   }
@@ -395,32 +360,6 @@ export function isEditOrRevertFileAction(
     EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
     REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
   ].includes(action.toolConfiguration.originalName);
-}
-
-export function isCreateFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: {
-    content: string;
-  };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.content === "string"
-  );
-}
-
-export function isRevertFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: { revertCount?: number };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      REVERT_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs === "object"
-  );
 }
 
 // A conversation can have multiple files so you need to find the file actions.
