@@ -307,7 +307,6 @@ export async function isCreateFileAction(
         agentMCPActionId: action.id,
         workspaceId: workspace.id,
       },
-      order: [["createdAt", "ASC"]],
     });
 
     const createdActionOutputs = actionOutputs.filter((output) => {
@@ -348,7 +347,7 @@ function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
 }
 
 // A conversation can have multiple files so you need to find the file actions.
-export async function getFileActionsByActionType(
+export async function getFileActionsByType(
   actions: AgentMCPActionModel[],
   fileId: string,
   workspace: WorkspaceType
@@ -572,7 +571,7 @@ export async function revertClientExecutableFileChanges(
     }
 
     const { createFileAction, editOrRevertFileActions } =
-      await getFileActionsByActionType(conversationActions, fileId, workspace);
+      await getFileActionsByType(conversationActions, fileId, workspace);
 
     if (createFileAction === undefined) {
       return new Err({

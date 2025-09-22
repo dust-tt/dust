@@ -7,7 +7,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
   getEditActionsToApply,
-  getFileActionsByActionType,
+  getFileActionsByType,
   getRevertedContent,
   isCreateFileAction,
 } from "@app/lib/api/files/client_executable";
@@ -158,7 +158,7 @@ describe("isCreateFileAction", () => {
   });
 });
 
-describe("getFileActionsByActionType", () => {
+describe("getFileActionsByType", () => {
   const workspace = { id: 123 } as any;
   const fileId = "correct_file_id";
 
@@ -210,11 +210,7 @@ describe("getFileActionsByActionType", () => {
       revertAction,
       editActionDifferentFile,
     ];
-    const result = await getFileActionsByActionType(
-      actions,
-      fileId,
-      workspace
-    );
+    const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBe(createAction);
     expect(result.editOrRevertFileActions).toEqual([editAction, revertAction]);
@@ -224,11 +220,7 @@ describe("getFileActionsByActionType", () => {
     mockAgentMCPActionOutputItemFindAll.mockResolvedValue([]);
 
     const actions = [editAction, revertAction];
-    const result = await getFileActionsByActionType(
-      actions,
-      fileId,
-      workspace
-    );
+    const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeUndefined();
     expect(result.editOrRevertFileActions).toEqual([editAction, revertAction]);
@@ -248,11 +240,7 @@ describe("getFileActionsByActionType", () => {
     ]);
 
     const actions = [createAction];
-    const result = await getFileActionsByActionType(
-      actions,
-      fileId,
-      workspace
-    );
+    const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBe(createAction);
     expect(result.editOrRevertFileActions).toEqual([]);
@@ -262,11 +250,7 @@ describe("getFileActionsByActionType", () => {
     mockAgentMCPActionOutputItemFindAll.mockResolvedValue([]);
 
     const actions = [createAction, editAction, editActionDifferentFile];
-    const result = await getFileActionsByActionType(
-      actions,
-      fileId,
-      workspace
-    );
+    const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeUndefined();
     expect(result.editOrRevertFileActions).toEqual([editAction]);
@@ -279,11 +263,7 @@ describe("getFileActionsByActionType", () => {
     mockAgentMCPActionOutputItemFindAll.mockResolvedValue([]);
 
     const actions = [editActionDifferentFile];
-    const result = await getFileActionsByActionType(
-      actions,
-      fileId,
-      workspace
-    );
+    const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeUndefined();
     expect(result.editOrRevertFileActions).toEqual([]);
@@ -291,11 +271,7 @@ describe("getFileActionsByActionType", () => {
 
   it("should handle empty actions array", async () => {
     const actions: AgentMCPActionModel[] = [];
-    const result = await getFileActionsByActionType(
-      actions,
-      fileId,
-      workspace
-    );
+    const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeUndefined();
     expect(result.editOrRevertFileActions).toEqual([]);
