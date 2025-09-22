@@ -320,7 +320,7 @@ describe("getEditActionsToApply", () => {
   it("should handle consecutive revert attempts when last action was revert", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
-    const revert1 = createRevertAction("revert1", "msg3", new Date(3000), 1);
+    const revert1 = createRevertAction("revert1", "msg3", new Date(3000));
 
     const result = getEditActionsToApply([edit1, edit2, revert1]);
 
@@ -329,7 +329,7 @@ describe("getEditActionsToApply", () => {
 
   it("should return empty array when all edits are reverted", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
-    const revert1 = createRevertAction("revert1", "msg2", new Date(2000), 1);
+    const revert1 = createRevertAction("revert1", "msg2", new Date(2000));
 
     const result = getEditActionsToApply([edit1, revert1]);
 
@@ -340,7 +340,7 @@ describe("getEditActionsToApply", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const edit2 = createEditAction("edit2", "msg1", new Date(1100));
     const edit3 = createEditAction("edit3", "msg2", new Date(2000));
-    const revert1 = createRevertAction("revert1", "msg3", new Date(3000), 1);
+    const revert1 = createRevertAction("revert1", "msg3", new Date(3000));
     const edit4 = createEditAction("edit4", "msg4", new Date(4000));
     const edit5 = createEditAction("edit5", "msg4", new Date(4100));
 
@@ -365,8 +365,8 @@ describe("getEditActionsToApply", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const edit3 = createEditAction("edit3", "msg3", new Date(3000));
-    const revert1 = createRevertAction("revert1", "msg4", new Date(4000), 1);
-    const revert2 = createRevertAction("revert2", "msg4", new Date(4100), 2);
+    const revert1 = createRevertAction("revert1", "msg4", new Date(4000));
+    const revert2 = createRevertAction("revert2", "msg4", new Date(4100));
 
     const result = getEditActionsToApply([
       edit1,
@@ -399,8 +399,8 @@ describe("getEditActionsToApply", () => {
     expect(result).toEqual([edit1]);
   });
 
-describe("getRevertedContent", () => {
-  const originalReactComponent = `import React from "react";
+  describe("getRevertedContent", () => {
+    const originalReactComponent = `import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -424,142 +424,142 @@ const SuperSimple = () => {
 
 export default SuperSimple;`;
 
-  it("should return original content when no actions to apply", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
-    const actionsToApply: AgentMCPActionModel[] = [];
+    it("should return original content when no actions to apply", () => {
+      const createAction = createCreateFileAction(originalReactComponent);
+      const actionsToApply: AgentMCPActionModel[] = [];
 
-    const result = getRevertedContent(createAction, actionsToApply);
+      const result = getRevertedContent(createAction, actionsToApply);
 
-    expect(result).toBe(originalReactComponent);
-  });
+      expect(result).toBe(originalReactComponent);
+    });
 
-  it("should apply a single edit action", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
+    it("should apply a single edit action", () => {
+      const createAction = createCreateFileAction(originalReactComponent);
 
-    const editAction = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      `      <Card>
+      const editAction = createEditAction(
+        "edit1",
+        "msg2",
+        new Date(2000),
+        `      <Card>
         <CardHeader>
           <CardTitle className="text-center">Hello World!</CardTitle>
         </CardHeader>`,
-      `      <Card className="bg-blue-50 border-blue-200">
+        `      <Card className="bg-blue-50 border-blue-200">
         <CardHeader>
           <CardTitle className="text-center text-blue-800">Welcome to Dust!</CardTitle>
         </CardHeader>`
-    );
+      );
 
-    const result = getRevertedContent(createAction, [editAction]);
+      const result = getRevertedContent(createAction, [editAction]);
 
-    expect(result).toContain("Welcome to Dust!");
-    expect(result).toContain("bg-blue-50 border-blue-200");
-    expect(result).toContain("text-blue-800");
-    expect(result).not.toContain("Hello World!");
-  });
+      expect(result).toContain("Welcome to Dust!");
+      expect(result).toContain("bg-blue-50 border-blue-200");
+      expect(result).toContain("text-blue-800");
+      expect(result).not.toContain("Hello World!");
+    });
 
-  it("should apply multiple edits in chronological order", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
+    it("should apply multiple edits in chronological order", () => {
+      const createAction = createCreateFileAction(originalReactComponent);
 
-    const edit1 = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      `      <Card>
+      const edit1 = createEditAction(
+        "edit1",
+        "msg2",
+        new Date(2000),
+        `      <Card>
         <CardHeader>
           <CardTitle className="text-center">Hello World!</CardTitle>
         </CardHeader>`,
-      `      <Card className="bg-pink-50 border-pink-200">
+        `      <Card className="bg-pink-50 border-pink-200">
         <CardHeader>
           <CardTitle className="text-center text-pink-800">Welcome to Dust!</CardTitle>
         </CardHeader>`
-    );
+      );
 
-    const edit2 = createEditAction(
-      "edit2",
-      "msg3",
-      new Date(3000),
-      `          <p className="text-center text-gray-600">
+      const edit2 = createEditAction(
+        "edit2",
+        "msg3",
+        new Date(3000),
+        `          <p className="text-center text-gray-600">
             This is a super simple React component created with shadcn/ui components.
           </p>`,
-      `          <p className="text-center text-pink-600">
+        `          <p className="text-center text-pink-600">
             This is a beautiful React component with a pink theme.
           </p>`
-    );
+      );
 
-    const edit3 = createEditAction(
-      "edit3",
-      "msg4",
-      new Date(4000),
-      `          <Button className="w-full mt-4">Click Me</Button>`,
-      `          <Button className="w-full mt-4 bg-pink-500 hover:bg-pink-600">
+      const edit3 = createEditAction(
+        "edit3",
+        "msg4",
+        new Date(4000),
+        `          <Button className="w-full mt-4">Click Me</Button>`,
+        `          <Button className="w-full mt-4 bg-pink-500 hover:bg-pink-600">
             Get Started
           </Button>`
-    );
+      );
 
-    const result = getRevertedContent(createAction, [edit1, edit2, edit3]);
+      const result = getRevertedContent(createAction, [edit1, edit2, edit3]);
 
-    expect(result).toContain("Welcome to Dust!");
-    expect(result).toContain("bg-pink-50 border-pink-200");
-    expect(result).toContain(
-      "This is a beautiful React component with a pink theme."
-    );
-    expect(result).toContain("bg-pink-500 hover:bg-pink-600");
-    expect(result).toContain("Get Started");
-    expect(result).not.toContain("Hello World!");
-    expect(result).not.toContain("Click Me");
-  });
+      expect(result).toContain("Welcome to Dust!");
+      expect(result).toContain("bg-pink-50 border-pink-200");
+      expect(result).toContain(
+        "This is a beautiful React component with a pink theme."
+      );
+      expect(result).toContain("bg-pink-500 hover:bg-pink-600");
+      expect(result).toContain("Get Started");
+      expect(result).not.toContain("Hello World!");
+      expect(result).not.toContain("Click Me");
+    });
 
-  it("should apply edits in chronological order even when passed out of order", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
+    it("should apply edits in chronological order even when passed out of order", () => {
+      const createAction = createCreateFileAction(originalReactComponent);
 
-    const edit1 = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      "Hello World!",
-      "Step 1"
-    );
+      const edit1 = createEditAction(
+        "edit1",
+        "msg2",
+        new Date(2000),
+        "Hello World!",
+        "Step 1"
+      );
 
-    const edit2 = createEditAction(
-      "edit2",
-      "msg3",
-      new Date(3000),
-      "Step 1",
-      "Step 2"
-    );
+      const edit2 = createEditAction(
+        "edit2",
+        "msg3",
+        new Date(3000),
+        "Step 1",
+        "Step 2"
+      );
 
-    const edit3 = createEditAction(
-      "edit3",
-      "msg4",
-      new Date(4000),
-      "Step 2",
-      "Final Step"
-    );
+      const edit3 = createEditAction(
+        "edit3",
+        "msg4",
+        new Date(4000),
+        "Step 2",
+        "Final Step"
+      );
 
-    // Pass actions out of chronological order
-    const result = getRevertedContent(createAction, [edit3, edit1, edit2]);
+      // Pass actions out of chronological order
+      const result = getRevertedContent(createAction, [edit3, edit1, edit2]);
 
-    expect(result).toContain("Final Step");
-    expect(result).not.toContain("Hello World!");
-    expect(result).not.toContain("Step 1");
-    expect(result).not.toContain("Step 2");
-  });
+      expect(result).toContain("Final Step");
+      expect(result).not.toContain("Hello World!");
+      expect(result).not.toContain("Step 1");
+      expect(result).not.toContain("Step 2");
+    });
 
-  it("should handle component structure changes", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
+    it("should handle component structure changes", () => {
+      const createAction = createCreateFileAction(originalReactComponent);
 
-    const edit1 = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      `        <CardContent>
+      const edit1 = createEditAction(
+        "edit1",
+        "msg2",
+        new Date(2000),
+        `        <CardContent>
           <p className="text-center text-gray-600">
             This is a super simple React component created with shadcn/ui components.
           </p>
           <Button className="w-full mt-4">Click Me</Button>
         </CardContent>`,
-      `        <CardContent>
+        `        <CardContent>
           <p className="text-center text-gray-600">
             This is a super simple React component created with shadcn/ui components.
           </p>
@@ -570,52 +570,54 @@ export default SuperSimple;`;
             </Button>
           </div>
         </CardContent>`
-    );
+      );
 
-    const result = getRevertedContent(createAction, [edit1]);
+      const result = getRevertedContent(createAction, [edit1]);
 
-    expect(result).toContain('div className="space-y-3"');
-    expect(result).toContain('variant="secondary"');
-    expect(result).toContain("Learn More");
-  });
+      expect(result).toContain('div className="space-y-3"');
+      expect(result).toContain('variant="secondary"');
+      expect(result).toContain("Learn More");
+    });
 
-  it("should throw error when old_string is not found", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
+    it("should throw error when old_string is not found", () => {
+      const createAction = createCreateFileAction(originalReactComponent);
 
-    const editAction = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      "This string does not exist in the component",
-      "New content"
-    );
+      const editAction = createEditAction(
+        "edit1",
+        "msg2",
+        new Date(2000),
+        "This string does not exist in the component",
+        "New content"
+      );
 
-    expect(() => getRevertedContent(createAction, [editAction])).toThrow(
-      'Cannot find matched text: "This string does not exist in the component"'
-    );
-  });
+      expect(() => getRevertedContent(createAction, [editAction])).toThrow(
+        'Cannot find matched text: "This string does not exist in the component"'
+      );
+    });
 
-  it("should handle import statement changes", () => {
-    const createAction = createCreateFileAction(originalReactComponent);
+    it("should handle import statement changes", () => {
+      const createAction = createCreateFileAction(originalReactComponent);
 
-    const edit1 = createEditAction(
-      "edit1",
-      "msg2",
-      new Date(2000),
-      `import React from "react";
+      const edit1 = createEditAction(
+        "edit1",
+        "msg2",
+        new Date(2000),
+        `import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";`,
-      `import React, { useState } from "react";
+        `import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";`
-    );
+      );
 
-    const result = getRevertedContent(createAction, [edit1]);
+      const result = getRevertedContent(createAction, [edit1]);
 
-    expect(result).toContain('import React, { useState } from "react";');
-    expect(result).toContain('import { Badge } from "@/components/ui/badge";');
-    expect(result).not.toMatch(/^import React from "react";$/m);
+      expect(result).toContain('import React, { useState } from "react";');
+      expect(result).toContain(
+        'import { Badge } from "@/components/ui/badge";'
+      );
+      expect(result).not.toMatch(/^import React from "react";$/m);
+    });
   });
-});
 });
