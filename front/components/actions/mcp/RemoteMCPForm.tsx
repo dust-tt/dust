@@ -80,12 +80,16 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             disabled={isSynchronizing}
           />
           {(() => {
-            const IconComponent =
-              (currentIcon &&
-                (ActionIcons[
-                  currentIcon as keyof typeof ActionIcons
-                ] as any)) ||
-              ActionBookOpenIcon;
+            const getIconComponent = (iconName: string | undefined) => {
+              if (iconName && iconName in ActionIcons) {
+                return ActionIcons[iconName as keyof typeof ActionIcons];
+              }
+              return ActionBookOpenIcon;
+            };
+
+            const IconComponent = getIconComponent(currentIcon);
+            const selectedIconName = currentIcon ?? Object.keys(ActionIcons)[0];
+
             return (
               <PopoverRoot open={isPopoverOpen}>
                 <PopoverTrigger asChild>
@@ -104,7 +108,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 >
                   <IconPicker
                     icons={ActionIcons}
-                    selectedIcon={currentIcon}
+                    selectedIcon={selectedIconName}
                     onIconSelect={(iconName: string) => {
                       form.setValue("icon", iconName, { shouldDirty: true });
                       closePopover();
