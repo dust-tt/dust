@@ -447,7 +447,7 @@ export function getEditActionsToApply(
       // Extend cancellation window by each revert's count (any edits will be cancelled).
       for (const revertAction of revertActions) {
         const count =
-          "revertCount" in revertAction.augmentedInputs
+          typeof revertAction.augmentedInputs.revertCount === "number"
             ? revertAction.augmentedInputs.revertCount
             : 1;
         cancelGroupActionCounter += count;
