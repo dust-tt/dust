@@ -351,7 +351,7 @@ function isCreateFileActionOutputType(
   );
 }
 
-async function isCreateFileAction({
+export async function isCreateFileActionForFileId({
   action,
   workspace,
   fileId,
@@ -415,7 +415,7 @@ export async function getFileActionsByType(
   const editOrRevertFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
-    const isCreateAction = await isCreateFileAction({
+    const isCreateAction = await isCreateFileActionForFileId({
       action,
       workspace,
       fileId,

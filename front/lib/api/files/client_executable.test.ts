@@ -9,7 +9,7 @@ import {
   getEditActionsToApply,
   getFileActionsByType,
   getRevertedContent,
-  isCreateFileAction,
+  isCreateFileActionForFileId,
 } from "@app/lib/api/files/client_executable";
 import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
@@ -78,7 +78,7 @@ const createCreateFileAction = (content: string) =>
     },
   }) as unknown as AgentMCPActionModel;
 
-describe("isCreateFileAction", () => {
+describe("isCreateFileActionForFileId", () => {
   const workspace = { id: 123 } as any;
   const fileId = "correct_file_id";
 
@@ -106,7 +106,7 @@ describe("isCreateFileAction", () => {
       mockOutput as any,
     ]);
 
-    const result = await isCreateFileAction({
+    const result = await isCreateFileActionForFileId({
       action: mockAction,
       workspace,
       fileId,
@@ -115,7 +115,7 @@ describe("isCreateFileAction", () => {
   });
 
   it("should return false when action is not a create file action", async () => {
-    const result = await isCreateFileAction({
+    const result = await isCreateFileActionForFileId({
       action: mockActionNonCreate,
       workspace,
       fileId,
@@ -127,7 +127,7 @@ describe("isCreateFileAction", () => {
   it("should return false when no create file outputs are found", async () => {
     mockAgentMCPActionOutputItemFindAll.mockResolvedValueOnce([]);
 
-    const result = await isCreateFileAction({
+    const result = await isCreateFileActionForFileId({
       action: mockAction,
       workspace,
       fileId,
@@ -157,7 +157,7 @@ describe("isCreateFileAction", () => {
     ]);
 
     await expect(
-      isCreateFileAction({ action: mockAction, workspace, fileId })
+      isCreateFileActionForFileId({ action: mockAction, workspace, fileId })
     ).rejects.toThrow(
       "Multiple create file actions found for file_id correct_file_id."
     );
