@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
@@ -57,17 +57,13 @@ export function MCPServerDetails({
   }, [mcpServerView]);
 
   const form = useForm<InfoFormValues>({
-    defaultValues: defaults,
+    values: defaults,
     mode: "onChange",
     shouldUnregister: true,
     resolver: mcpServerView
       ? zodResolver(getInfoFormSchema(mcpServerView))
       : undefined,
   });
-
-  useEffect(() => {
-    form.reset(defaults, { keepErrors: true });
-  }, [defaults, form]);
 
   const onSave = () => {
     void form.handleSubmit(async (values) => {

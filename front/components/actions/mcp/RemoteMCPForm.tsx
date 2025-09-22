@@ -14,7 +14,7 @@ import {
   PopoverTrigger,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
@@ -29,8 +29,11 @@ interface RemoteMCPFormProps {
 export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
   const form = useFormContext<InfoFormValues>();
-  const currentIcon = form.watch("icon");
+  const { field: iconField } = useController<InfoFormValues, "icon">({
+    name: "icon",
+  });
 
   const { url, lastError, lastSyncAt } = mcpServer;
 
@@ -80,15 +83,20 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             disabled={isSynchronizing}
           />
           {(() => {
-            const getIconComponent = (iconName: string | undefined) => {
-              if (iconName && iconName in ActionIcons) {
-                return ActionIcons[iconName as keyof typeof ActionIcons];
-              }
-              return ActionBookOpenIcon;
-            };
+            const toActionIconKey = (v?: string) =>
+              v && v in ActionIcons
+                ? (v as keyof typeof ActionIcons)
+                : undefined;
 
-            const IconComponent = getIconComponent(currentIcon);
-            const selectedIconName = currentIcon ?? Object.keys(ActionIcons)[0];
+            const defaultKey = Object.keys(
+              ActionIcons
+            )[0] as keyof typeof ActionIcons;
+            const selectedIconName =
+              toActionIconKey(iconField.value) ??
+              toActionIconKey(mcpServer.icon as string) ??
+              defaultKey;
+            const IconComponent =
+              ActionIcons[selectedIconName] || ActionBookOpenIcon;
 
             return (
               <PopoverRoot open={isPopoverOpen}>
@@ -110,7 +118,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                     icons={ActionIcons}
                     selectedIcon={selectedIconName}
                     onIconSelect={(iconName: string) => {
-                      form.setValue("icon", iconName, { shouldDirty: true });
+                      iconField.onChange(iconName);
                       closePopover();
                     }}
                   />
