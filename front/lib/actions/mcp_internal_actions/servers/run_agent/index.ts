@@ -634,6 +634,8 @@ ${query}`
               const errorMessage = `User message error: ${event.error.message}`;
               return new Err(new MCPError(errorMessage));
             } else if (event.type === "agent_message_success") {
+              // TODO(2025-09-22 aubin): update the SDK type to remove the need for this typeguard
+              //  (event.message.actions should always be an AgentMCPActionWithOutputType[]).
               if (
                 Array.isArray(event.message.actions) &&
                 event.message.actions.every(isAgentMCPActionWithOutputType)
