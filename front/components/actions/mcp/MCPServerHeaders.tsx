@@ -1,4 +1,6 @@
 import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
+import type {ChangeEvent} from "react";
+import { useCallback } from "react";
 
 import { WebCrawlerHeaderRedactedValue } from "@app/types";
 
@@ -13,15 +15,21 @@ export function McpServerHeaders({
   headers,
   onHeadersChange,
 }: McpServerHeadersProps) {
-  const updateHeaderField = (
-    index: number,
-    field: keyof Header,
-    value: string
-  ) => {
-    const newHeaders = [...headers];
-    newHeaders[index] = { ...newHeaders[index], [field]: value };
-    onHeadersChange(newHeaders);
-  };
+  const updateHeaderField = useCallback(
+    (index: number, field: keyof Header, value: string) => {
+      const newHeaders = [...headers];
+      newHeaders[index] = { ...newHeaders[index], [field]: value };
+      onHeadersChange(newHeaders);
+    },
+    [headers, onHeadersChange]
+  );
+
+  const getChangeHandler = useCallback(
+    (index: number, field: keyof Header) =>
+      (e: ChangeEvent<HTMLInputElement>) =>
+        updateHeaderField(index, field, e.target.value),
+    [updateHeaderField]
+  );
 
   const removeHeader = (index: number) => {
     onHeadersChange(headers.filter((_, i) => i !== index));
@@ -43,9 +51,7 @@ export function McpServerHeaders({
                     placeholder="Header Name"
                     value={header.key}
                     name="headerName"
-                    onChange={(e) =>
-                      updateHeaderField(index, "key", e.target.value)
-                    }
+                    onChange={getChangeHandler(index, "key")}
                     disabled={header.value === WebCrawlerHeaderRedactedValue}
                     className="w-full"
                   />
@@ -55,9 +61,7 @@ export function McpServerHeaders({
                     name="headerValue"
                     placeholder="Header Value"
                     value={header.value}
-                    onChange={(e) =>
-                      updateHeaderField(index, "value", e.target.value)
-                    }
+                    onChange={getChangeHandler(index, "value")}
                     disabled={header.value === WebCrawlerHeaderRedactedValue}
                     className="w-full"
                   />
