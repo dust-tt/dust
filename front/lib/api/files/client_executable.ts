@@ -405,7 +405,7 @@ function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
   ].includes(action.toolConfiguration.originalName);
 }
 
-// A conversation can have multiple files so you need to find the file actions.
+// A conversation can have multiple files so you need to find the file actions for the given fileId.
 export async function getFileActionsByType(
   actions: AgentMCPActionModel[],
   fileId: string,
@@ -451,12 +451,10 @@ export async function getFileActionsByType(
  * Note:
  * - `editOrRevertActions` includes only past reverts; the current revert is not included.
  * - We expect that all changes on the file were done through the edit tool.
- * - This function only supports single-step revert operations.
  */
 export function getEditActionsToApply(
   editOrRevertActions: AgentMCPActionModel[]
 ) {
-  // Group actions by agent message ID (one group per message)
   const editOrRevertActionsByMessage = groupBy(
     editOrRevertActions,
     (action) => action.agentMessageId
@@ -469,13 +467,13 @@ export function getEditActionsToApply(
     ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   });
 
-  // Order groups newest → oldest (based on the group's earliest action time).
+  // Order groups newest => oldest (based on the group's earliest action time).
   const sortedActionGroups = Object.values(editOrRevertActionsByMessage).sort(
     (actionsA, actionsB) =>
       actionsB[0].createdAt.getTime() - actionsA[0].createdAt.getTime()
   );
 
-  // Remaining edit-only groups to cancel. Starts from the current (external) revert.
+  // Remaining edit-only groups to cancel. Starts from the current revert.
   let cancelGroupActionCounter = 1;
 
   const pickedEditActions = [];
@@ -492,7 +490,7 @@ export function getEditActionsToApply(
         continue;
       }
 
-      // Extend cancellation window by each revert (any edits will be cancelled).
+      // Extend cancellation window by each revert (any edits in the group will be cancelled).
       cancelGroupActionCounter += revertActions.length;
 
       continue;
@@ -553,7 +551,7 @@ export function getRevertedContent(
 }
 
 // Revert the changes made to the Content Creation file in the last agent message.
-// This reconstructs the previous file state by replaying edit operations chronologically
+// This reconstructs the previous file content by replaying edit operations chronologically
 // from the create action.
 export async function revertClientExecutableFileChanges(
   auth: Authenticator,
