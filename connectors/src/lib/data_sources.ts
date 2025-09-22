@@ -1160,7 +1160,10 @@ export async function upsertDataSourceTableFromCsv({
         },
         "Axios error uploading table to Dust."
       );
-    } else if (e instanceof WithRetriesError) {
+    } else if (
+      e instanceof WithRetriesError &&
+      e.errors.every((err) => isTimeoutError(err.error))
+    ) {
       localLogger.warn(
         { error: e.message },
         "Upload to Dust failed after retries."
