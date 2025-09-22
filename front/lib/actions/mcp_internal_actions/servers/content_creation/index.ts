@@ -8,6 +8,7 @@ import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -16,8 +17,10 @@ import {
   createClientExecutableFile,
   editClientExecutableFile,
   getClientExecutableFileContent,
+  revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { ContentCreationFileContentType } from "@app/types";
 import {
   clientExecutableContentType,
@@ -27,6 +30,34 @@ import {
 } from "@app/types";
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+
+/**
+ * Builds a progress notification for content creation file operations
+ */
+function buildContentCreationFileNotification(
+  progressToken: string | number,
+  fileResource: FileResource,
+  label: string
+): MCPProgressNotificationType {
+  return {
+    method: "notifications/progress",
+    params: {
+      progress: 1,
+      total: 1,
+      progressToken,
+      data: {
+        label,
+        output: {
+          type: "content_creation_file",
+          fileId: fileResource.sId,
+          mimeType: fileResource.contentType,
+          title: fileResource.fileName,
+          updatedAt: fileResource.updatedAtMs.toString(),
+        },
+      },
+    },
+  };
+}
 
 /**
  * Content Creation Server - Allows the model to create and update content creation files.
@@ -119,24 +150,12 @@ const createServer = (
           : `File '${fileResource.sId}' created successfully.`;
 
         if (_meta?.progressToken) {
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 1,
-              total: 1,
-              progressToken: _meta?.progressToken,
-              data: {
-                label: "Creating Content Creation file...",
-                output: {
-                  type: "content_creation_file",
-                  fileId: fileResource.sId,
-                  mimeType: fileResource.contentType,
-                  title: fileResource.fileName,
-                  updatedAt: fileResource.updatedAtMs.toString(),
-                },
-              },
-            },
-          };
+          const notification: MCPProgressNotificationType =
+            buildContentCreationFileNotification(
+              _meta.progressToken,
+              fileResource,
+              "Creating Content Creation file..."
+            );
 
           // Send a notification to the MCP Client, to display the Content Creation file.
           await sendNotification(notification);
@@ -236,24 +255,12 @@ const createServer = (
           `${replacementCount} replacement${pluralS}`;
 
         if (_meta?.progressToken) {
-          const notification: MCPProgressNotificationType = {
-            method: "notifications/progress",
-            params: {
-              progress: 1,
-              total: 1,
-              progressToken: _meta?.progressToken,
-              data: {
-                label: "Updating Content Creation file...",
-                output: {
-                  type: "content_creation_file",
-                  fileId: fileResource.sId,
-                  mimeType: fileResource.contentType,
-                  title: fileResource.fileName,
-                  updatedAt: fileResource.updatedAtMs.toString(),
-                },
-              },
-            },
-          };
+          const notification: MCPProgressNotificationType =
+            buildContentCreationFileNotification(
+              _meta.progressToken,
+              fileResource,
+              "Updating Content Creation file..."
+            );
 
           // Send a notification to the MCP Client, to refresh the Content Creation file.
           await sendNotification(notification);
@@ -263,6 +270,71 @@ const createServer = (
           {
             type: "text",
             text: responseText,
+          },
+        ]);
+      }
+    )
+  );
+  server.tool(
+    REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+    "Reverts a Content Creation file by canceling the edits in the last agent message.",
+    {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Content Creation file to revert (e.g., 'fil_abc123')"
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
+      async ({ file_id }, { sendNotification, _meta }) => {
+        if (!agentLoopContext?.runContext) {
+          throw new Error(
+            "Could not access Agent Loop Context from revert content creation file tool."
+          );
+        }
+
+        const { conversation, agentConfiguration } =
+          agentLoopContext.runContext;
+
+        const result = await revertClientExecutableFileChanges(auth, {
+          fileId: file_id,
+          conversationId: conversation.id,
+          revertedByAgentConfigurationId: agentConfiguration.sId,
+        });
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(result.error.message, {
+              tracked: result.error.tracked,
+            })
+          );
+        }
+
+        const {
+          value: { fileResource },
+        } = result;
+
+        if (_meta?.progressToken) {
+          const notification: MCPProgressNotificationType =
+            buildContentCreationFileNotification(
+              _meta.progressToken,
+              fileResource,
+              "Reverting Content Creation file..."
+            );
+
+          // Send a notification to the MCP Client, to refresh the Content Creation file.
+          await sendNotification(notification);
+        }
+
+        return new Ok([
+          {
+            type: "text",
+            text: `File '${fileResource.sId}' reverted successfully.`,
           },
         ]);
       }

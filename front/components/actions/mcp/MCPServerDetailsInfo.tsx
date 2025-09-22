@@ -44,7 +44,11 @@ export function MCPServerDetailsInfo({
         </>
       )}
       {isRemoteMCPServerType(mcpServerView.server) && (
-        <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
+        <RemoteMCPForm
+          mcpServer={mcpServerView.server}
+          mcpServerView={mcpServerView}
+          owner={owner}
+        />
       )}
 
       <Separator className="mb-4 mt-4" />

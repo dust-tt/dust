@@ -85,6 +85,7 @@ function generateConfiguredInput({
       );
       if (propSchema) {
         // Handle both object-level default {value, mimeType}
+        // Handle both object-level default {value, mimeType}
         if (
           propSchema.default &&
           typeof propSchema.default === "object" &&
@@ -251,6 +252,7 @@ function generateConfiguredInput({
           keyPath.split(".")
         );
         if (propSchema) {
+          // Handle both object-level default {values, mimeType}
           // Handle both object-level default {values, mimeType}
           if (
             propSchema.default &&
@@ -513,8 +515,19 @@ export interface MCPServerToolsConfigurations {
     description?: string;
     default?: { uri: string }[];
   };
-  mayRequireChildAgentConfiguration: boolean;
-  mayRequireReasoningConfiguration: boolean;
+  childAgentConfiguration?: {
+    description?: string;
+    default?: { uri: string };
+  };
+  reasoningConfiguration?: {
+    description?: string;
+    default?: {
+      modelId: string;
+      providerId: string;
+      temperature: number;
+      reasoningEffort: string;
+    };
+  };
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
   stringConfigurations: {
@@ -559,8 +572,6 @@ export function getMCPServerToolsConfigurations(
 ): MCPServerToolsConfigurations {
   if (!mcpServerView) {
     return {
-      mayRequireChildAgentConfiguration: false,
-      mayRequireReasoningConfiguration: false,
       mayRequireTimeFrameConfiguration: false,
       mayRequireJsonSchemaConfiguration: false,
       stringConfigurations: [],
@@ -706,21 +717,49 @@ export function getMCPServerToolsConfigurations(
     }))
     .at(0);
 
-  const mayRequireChildAgentConfiguration =
-    Object.keys(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
-      })
-    ).length > 0;
+  const childAgentConfiguration = Object.values(
+    findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
+    })
+  )
+    .map((schema) => ({
+      description: schema.description,
+      default: extractSchemaDefault(
+        schema,
+        (v: unknown): v is { uri: string } =>
+          v !== null && typeof v === "object" && "uri" in v
+      ),
+    }))
+    .at(0);
 
-  const mayRequireReasoningConfiguration =
-    Object.keys(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-      })
-    ).length > 0;
+  const reasoningConfiguration = Object.values(
+    findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+    })
+  )
+    .map((schema) => ({
+      description: schema.description,
+      default: extractSchemaDefault(
+        schema,
+        (
+          v: unknown
+        ): v is {
+          modelId: string;
+          providerId: string;
+          temperature: number;
+          reasoningEffort: string;
+        } =>
+          v !== null &&
+          typeof v === "object" &&
+          "modelId" in v &&
+          "providerId" in v &&
+          "temperature" in v &&
+          "reasoningEffort" in v
+      ),
+    }))
+    .at(0);
 
   // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
   const disabledToolNames =
@@ -922,6 +961,8 @@ export function getMCPServerToolsConfigurations(
     getConfigurableStateForOptional(dataSourceConfiguration),
     getConfigurableStateForOptional(dataWarehouseConfiguration),
     getConfigurableStateForOptional(tableConfiguration),
+    getConfigurableStateForOptional(childAgentConfiguration),
+    getConfigurableStateForOptional(reasoningConfiguration),
     getConfigurableStateForArray(stringConfigurations),
     getConfigurableStateForArray(numberConfigurations),
     getConfigurableStateForArray(booleanConfigurations),
@@ -939,9 +980,7 @@ export function getMCPServerToolsConfigurations(
     mayRequireSecretConfiguration ||
     mayRequireDustAppConfiguration ||
     mayRequireJsonSchemaConfiguration ||
-    mayRequireTimeFrameConfiguration ||
-    mayRequireReasoningConfiguration ||
-    mayRequireChildAgentConfiguration
+    mayRequireTimeFrameConfiguration
       ? "optional"
       : realConfigurable;
 
@@ -949,8 +988,8 @@ export function getMCPServerToolsConfigurations(
     dataSourceConfiguration,
     dataWarehouseConfiguration,
     tableConfiguration,
-    mayRequireChildAgentConfiguration,
-    mayRequireReasoningConfiguration,
+    childAgentConfiguration,
+    reasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
     stringConfigurations,
