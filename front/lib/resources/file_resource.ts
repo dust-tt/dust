@@ -130,9 +130,15 @@ export class FileResource extends BaseResource<FileModel> {
     content: string;
     shareScope: FileShareScope;
   } | null> {
-    const shareableFile = await ShareableFileModel.findOne({
-      where: { token },
-    });
+    let shareableFile = null;
+
+    try {
+      shareableFile = await ShareableFileModel.findOne({
+        where: { token },
+      });
+    } catch (error) {
+      return null;
+    }
 
     if (!shareableFile) {
       return null;
@@ -141,6 +147,7 @@ export class FileResource extends BaseResource<FileModel> {
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
+
     if (!workspace) {
       return null;
     }
