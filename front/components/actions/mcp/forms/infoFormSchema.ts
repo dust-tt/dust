@@ -27,7 +27,10 @@ export function getInfoFormDefaults(view: MCPServerViewType): InfoFormValues {
       icon: view.server.icon,
       sharedSecret: view.server.sharedSecret ?? "",
       customHeaders: Object.entries(view.server.customHeaders ?? {}).map(
-        ([key, value]) => ({ key, value: String(value) })
+        ([key, value]) => ({
+          key,
+          value: String(value),
+        })
       ),
     };
   }
@@ -41,7 +44,7 @@ export function getInfoFormSchema(view: MCPServerViewType) {
   });
   if (isRemoteMCPServerType(view.server)) {
     return baseSchema.extend({
-      icon: z.string().min(1, "Icon is required."),
+      icon: z.string().optional(),
       sharedSecret: z.string().optional(),
       customHeaders: z
         .array(

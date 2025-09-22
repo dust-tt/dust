@@ -13,7 +13,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useController, useFieldArray, useFormContext } from "react-hook-form";
 
 import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
@@ -38,27 +38,13 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
   const { url, lastError, lastSyncAt } = mcpServer;
 
-  const initialHeaderRows = useMemo(
-    () =>
-      Object.entries(mcpServer.customHeaders ?? {}).map(([key, value]) => ({
-        key,
-        value: String(value),
-      })),
-    [mcpServer.customHeaders]
-  );
-  const { control, getValues } = useFormContext<InfoFormValues>();
-  const { fields: headerFields, replace } = useFieldArray({
-    control,
+  const { fields: headerFields, replace } = useFieldArray<
+    InfoFormValues,
+    "customHeaders"
+  >({
     name: "customHeaders",
   });
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
-
-  useEffect(() => {
-    const existing = getValues("customHeaders");
-    if (typeof existing === "undefined") {
-      replace(initialHeaderRows);
-    }
-  }, [getValues, initialHeaderRows, replace]);
 
   const handleSynchronize = useCallback(async () => {
     setIsSynchronizing(true);
