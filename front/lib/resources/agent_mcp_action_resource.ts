@@ -642,6 +642,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
 
     const fileById = _.keyBy(
+      // Using the model instead of the resource since we're mutating outputItems.
+      // Not super clean but everything happens in this one function and faster to write.
       await FileModel.findAll({
         where: {
           workspaceId,
@@ -673,10 +675,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             }
 
             const file = o.file;
-            const fileSid = FileResource.modelIdToSId({
-              id: file.id,
-              workspaceId: action.workspaceId,
-            });
 
             const hidden =
               o.content.type === "resource" &&
@@ -684,7 +682,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               o.content.resource.hidden === true;
 
             return {
-              fileId: fileSid,
+              fileId: FileResource.modelIdToSId({
+                id: file.id,
+                workspaceId: file.workspaceId,
+              }),
               contentType: file.contentType,
               title: file.fileName,
               snippet: file.snippet,
