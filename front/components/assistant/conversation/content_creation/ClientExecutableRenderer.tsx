@@ -139,7 +139,6 @@ export function ClientExecutableRenderer({
   const { handleVisualizationRevert } = useVisualizationRevert({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
-    agentConfigurationId: lastEditedByAgentConfigurationId ?? null,
   });
 
   const isFileUsingConversationFiles = React.useMemo(
@@ -235,13 +234,21 @@ export function ClientExecutableRenderer({
   return (
     <div className="flex h-full flex-col">
       <ContentCreationHeader onClose={onClosePanel}>
-        <Button
-          variant="ghost"
-          size="xs"
-          icon={ArrowGoBackIcon}
-          tooltip={"Revert the last change"}
-          onClick={() => handleVisualizationRevert(fileId, fileName)}
-        />
+        {lastEditedByAgentConfigurationId && (
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={ArrowGoBackIcon}
+            tooltip={"Revert the last change"}
+            onClick={() =>
+              handleVisualizationRevert({
+                fileId,
+                agentConfigurationId: lastEditedByAgentConfigurationId,
+              })
+            }
+          />
+        )}
+
         <Button
           icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
           variant="ghost"

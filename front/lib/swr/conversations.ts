@@ -26,6 +26,7 @@ import type {
   FetchConversationMessagesResponse,
   LightWorkspaceType,
 } from "@app/types";
+import datadogLogger from "@app/logger/datadogLogger";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
@@ -368,14 +369,18 @@ export function useAddDeleteConversationTool({
 export function useVisualizationRevert({
   workspaceId,
   conversationId,
-  agentConfigurationId,
 }: {
   workspaceId: string | null;
   conversationId: string | null;
-  agentConfigurationId: string | null;
 }) {
   const handleVisualizationRevert = useCallback(
-    async (fileId: string, fileName?: string): Promise<boolean> => {
+    async ({
+      fileId,
+      agentConfigurationId,
+    }: {
+      fileId: string;
+      agentConfigurationId: string;
+    }): Promise<boolean> => {
       try {
         const response = await fetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
@@ -385,7 +390,7 @@ export function useVisualizationRevert({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              content: `Please revert the previous change in ${fileName ? `${fileName} (file ID: \`${fileId}\`)` : fileId}.`,
+              content: `Please revert the previous change in ${fileId}.`,
               mentions: [
                 {
                   configurationId: agentConfigurationId,
@@ -405,11 +410,11 @@ export function useVisualizationRevert({
 
         return true;
       } catch (error) {
-        console.error("Error sending revert message:", error);
+        datadogLogger.error({ error }, "Error sending revert message");
         return false;
       }
     },
-    [workspaceId, conversationId, agentConfigurationId]
+    [workspaceId, conversationId]
   );
 
   return {
