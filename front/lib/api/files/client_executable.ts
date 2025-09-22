@@ -499,8 +499,8 @@ export function getEditActionsToApply(
 
       // Extend cancellation window by each revert's count (any edits will be cancelled).
       for (const revertAction of revertActions) {
-        cancelGroupActionCounter +=
-          revertAction.augmentedInputs.revertCount ?? 1;
+        const count = revertAction.augmentedInputs.revertCount ?? 1;
+        cancelGroupActionCounter += count;
       }
 
       continue;
@@ -514,8 +514,8 @@ export function getEditActionsToApply(
       }
 
       if (isRevertFileActionType(currentAction)) {
-        cancelGroupActionCounter +=
-          currentAction.augmentedInputs.revertCount ?? 1;
+        const count = currentAction.augmentedInputs.revertCount ?? 1;
+        cancelGroupActionCounter += count;
       }
     }
   }
