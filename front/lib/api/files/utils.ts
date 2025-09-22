@@ -4,17 +4,8 @@ import type { IncomingMessage } from "http";
 import { Writable } from "stream";
 import { pipeline } from "stream/promises";
 
-import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import type {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
 import type {
   FileResource,
   FileVersion,
@@ -159,65 +150,4 @@ export function getUpdatedContentAndOccurrences({
     occurrences,
     updatedContent,
   };
-}
-
-export function isCreateFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: {
-    content: string;
-  };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.content === "string"
-  );
-}
-
-export function isEditFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: { old_string: string; new_string: string };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      EDIT_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.old_string === "string" &&
-    typeof action.augmentedInputs.new_string === "string"
-  );
-}
-
-export function isRevertFileActionType(
-  action: AgentMCPActionModel
-): action is AgentMCPActionModel & {
-  augmentedInputs: { revertCount?: number };
-} {
-  return (
-    action.toolConfiguration.originalName ===
-      REVERT_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs === "object"
-  );
-}
-
-export function isCreateFileActionOutputType(
-  output: AgentMCPActionOutputItem
-): output is AgentMCPActionOutputItem & {
-  content: { resource: { fileId: string } };
-} {
-  if (typeof output.content !== "object" || output.content === null) {
-    return false;
-  }
-
-  if (
-    typeof output.content.resource !== "object" ||
-    output.content.resource === null
-  ) {
-    return false;
-  }
-
-  return (
-    "fileId" in output.content.resource &&
-    typeof output.content.resource.fileId === "string"
-  );
 }
