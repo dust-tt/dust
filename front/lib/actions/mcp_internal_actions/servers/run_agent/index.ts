@@ -489,19 +489,13 @@ ${query}`
         };
 
         const getFinishedContent = (agentMessage: AgentMessagePublicType) => {
-          const finalText: string = agentMessage.content ?? "";
-          const cot: string = agentMessage.chainOfThought ?? "";
-
-          const refsFromAgent: Record<string, CitationType> =
-            getCitationsFromActions(agentMessage.actions);
-          const files: ActionGeneratedFileType[] = agentMessage.actions.flatMap(
-            (action) => action.generatedFiles.filter((f) => !f.hidden)
-          );
           return {
-            finalText,
-            cot,
-            refsFromAgent,
-            files,
+            finalText: agentMessage.content ?? "",
+            cot: agentMessage.chainOfThought ?? "",
+            refsFromAgent: getCitationsFromActions(agentMessage.actions),
+            files: agentMessage.actions.flatMap((action) =>
+              action.generatedFiles.filter((f) => !f.hidden)
+            ),
           };
         };
         // Early finish: if the child conversation already succeeded, return its stored result.
