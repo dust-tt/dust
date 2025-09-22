@@ -77,11 +77,6 @@ AgentStepContentModel.init(
         fields: ["agentMessageId", "step", "index", "version"],
         name: "agent_step_contents_agent_message_id_step_index_versioned",
       },
-      // TODO(durable-agents, 2025-07-08): drop this index once we start using the one above.
-      {
-        fields: ["agentMessageId", "step", "index"],
-        name: "agent_step_contents_agent_message_id_step_index_in_step",
-      },
       {
         fields: ["agentMessageId"],
         name: "agent_step_contents_agent_message_id_idx",
