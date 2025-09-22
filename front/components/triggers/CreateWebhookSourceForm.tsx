@@ -74,11 +74,11 @@ export function CreateWebhookSourceFormContent({
         name="secret"
         render={({ field }) => (
           <>
-            <Label htmlFor="secret">Secret</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-end gap-2">
               <div className="flex-1">
                 <Input
                   {...field}
+                  label="Secret"
                   id="secret"
                   type="password"
                   placeholder="Secret for validation..."
