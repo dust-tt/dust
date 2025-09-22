@@ -248,6 +248,7 @@ export default function AgentBuilder({
         areSlackChannelsChanged: form.getFieldState(
           "agentSettings.slackChannels"
         ).isDirty,
+        currentUserId: user.id,
       });
 
       if (!result.isOk()) {

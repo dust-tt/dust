@@ -78,22 +78,28 @@ async function handler(
     });
   }
 
-  const triggers = await TriggerResource.listByAgentConfigurationId(
+  const allTriggers = await TriggerResource.listByAgentConfigurationId(
     auth,
     agentConfigurationId
+  );
+
+  const userTriggers = allTriggers.filter(
+    (trigger) => trigger.editor === auth.getNonNullableWorkspace().id
   );
 
   switch (req.method) {
     case "GET": {
       // Fetch all editor users in batch
-      const editorIds = [...new Set(triggers.map((trigger) => trigger.editor))];
+      const editorIds = [
+        ...new Set(allTriggers.map((trigger) => trigger.editor)),
+      ];
       const editorUsers = await UserResource.fetchByModelIds(editorIds);
       const editorEmailMap = new Map(
         editorUsers.map((user) => [user.id, user.email])
       );
 
       const triggersWithIsSubscriber = await Promise.all(
-        triggers.map(async (trigger) => ({
+        allTriggers.map(async (trigger) => ({
           ...trigger.toJSON(),
           isSubscriber: await trigger.isSubscriber(auth),
           isEditor: trigger.editor === auth.getNonNullableUser().id,
@@ -135,9 +141,10 @@ async function handler(
       const workspace = auth.getNonNullableWorkspace();
 
       if (requestTriggers.length > 0) {
-        const triggerNames = requestTriggers.map(
-          (t: { name: string }) => t.name
-        );
+        const triggerNames = [
+          ...requestTriggers.map((t: { name: string }) => t.name),
+          ...allTriggers.map((t) => t.name),
+        ];
         const uniqueTriggerNames = new Set(triggerNames);
         if (uniqueTriggerNames.size !== triggerNames.length) {
           return apiError(req, res, {
@@ -150,7 +157,7 @@ async function handler(
         }
       }
 
-      const currentTriggersMap = new Map(triggers.map((t) => [t.sId(), t]));
+      const currentTriggersMap = new Map(userTriggers.map((t) => [t.sId(), t]));
       const resultTriggers: TriggerType[] = [];
       const errors: Error[] = [];
 

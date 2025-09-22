@@ -62,6 +62,7 @@ import {
 } from "@app/types";
 import { isGlobalAgentId, removeNulls } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 /**
  * Get one specific version of a single agent
@@ -985,7 +986,24 @@ export async function restoreAgentConfiguration(
       agentConfigurationId
     );
     for (const trigger of triggers) {
-      const enableResult = await trigger.enable(auth);
+      const editor = await UserResource.fetchByModelId(trigger.editor);
+      if (!editor) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+          },
+          `Could not find editor ${trigger.editor} for trigger ${trigger.sId} when restoring agent ${agentConfigurationId}`
+        );
+        continue;
+      }
+
+      const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        editor.sId,
+        auth.getNonNullableWorkspace().sId
+      );
+      const enableResult = await trigger.enable(editorAuth);
       if (enableResult.isErr()) {
         logger.error(
           {

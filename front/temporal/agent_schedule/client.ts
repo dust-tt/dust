@@ -4,7 +4,7 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -17,6 +17,7 @@ import type {
   TriggerType,
 } from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 function getScheduleOptions(
   auth: Authenticator,
@@ -60,6 +61,15 @@ export async function createOrUpdateAgentScheduleWorkflow({
   const workspace = auth.workspace();
   if (!workspace) {
     return new Err(new Error("Workspace ID is required"));
+  }
+
+  if (auth.getNonNullableUser().id !== trigger.editor) {
+    /**
+     * Only the editor of the trigger can create or update the schedule.
+     * If the user is not the editor, we skip the creation/update.
+     * This can happen when an admin does operation on a trigger.
+     */
+    return new Ok("");
   }
 
   const scheduleId = makeScheduleId(workspace.sId, trigger.sId());
