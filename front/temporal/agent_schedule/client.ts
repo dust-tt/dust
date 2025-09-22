@@ -69,6 +69,14 @@ export async function createOrUpdateAgentScheduleWorkflow({
      * If the user is not the editor, we skip the creation/update.
      * This can happen when an admin does operation on a trigger.
      */
+    logger.warn(
+      {
+        userId: auth.getNonNullableUser().sId,
+        triggerId: trigger.sId(),
+        triggerEditorId: trigger.editor,
+      },
+      "User is not the editor of the trigger, skipping schedule creation/update."
+    );
     return new Ok("");
   }
 
