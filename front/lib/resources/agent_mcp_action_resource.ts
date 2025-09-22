@@ -1,4 +1,5 @@
 import assert from "assert";
+import _ from "lodash";
 import type {
   Attributes,
   CreationAttributes,
@@ -13,6 +14,8 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
@@ -22,7 +25,10 @@ import type { StepContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
+import {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItem,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -32,7 +38,9 @@ import {
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -41,7 +49,10 @@ import logger from "@app/logger/logger";
 import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
-import type { AgentMCPActionType } from "@app/types/actions";
+import type {
+  AgentMCPActionType,
+  AgentMCPActionWithOutputType,
+} from "@app/types/actions";
 import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -388,6 +399,66 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return blockedActionsList;
   }
 
+  static async fetchByStepContents(
+    auth: Authenticator,
+    {
+      stepContents,
+      latestVersionsOnly = false,
+    }: {
+      stepContents: AgentStepContentResource[];
+      latestVersionsOnly?: boolean;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    if (stepContents.length === 0) {
+      return [];
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Not using the baseFetch because we already have the step contents.
+    let actions = await AgentMCPActionModel.findAll({
+      where: {
+        workspaceId,
+        stepContentId: {
+          [Op.in]: stepContents.map((content) => content.id),
+        },
+      },
+    });
+
+    if (latestVersionsOnly) {
+      const actionsByStepContentId = _.groupBy(actions, (action) =>
+        action.stepContentId.toString()
+      );
+      actions = removeNulls(
+        Object.values(actionsByStepContentId).map(
+          (actionsForContent) => _.maxBy(actionsForContent, "version") ?? null
+        )
+      );
+    }
+
+    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
+
+    return actions.map((a) => {
+      const stepContent = stepContentsMap.get(a.stepContentId);
+
+      // Each action must have a function call step content.
+      assert(stepContent, "Step content not found.");
+      assert(
+        stepContent.isFunctionCallContent(),
+        "Step content is not a function call."
+      );
+
+      const internalMCPServerName = a.toolConfiguration.toolServerId
+        ? getInternalMCPServerNameFromSId(a.toolConfiguration.toolServerId)
+        : null;
+
+      return new this(this.model, a.get(), stepContent, {
+        internalMCPServerName,
+        mcpServerId: a.toolConfiguration.toolServerId,
+      });
+    });
+  }
+
   static async listByAgentMessageIds(
     auth: Authenticator,
     agentMessageIds: ModelId[]
@@ -546,6 +617,86 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
+  static async enrichActionsWithOutputItems(
+    auth: Authenticator,
+    actions: AgentMCPActionResource[]
+  ): Promise<AgentMCPActionWithOutputType[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const outputItemsByActionId = _.groupBy(
+      await AgentMCPActionOutputItem.findAll({
+        where: {
+          workspaceId,
+          agentMCPActionId: {
+            [Op.in]: actions.map((a) => a.id),
+          },
+        },
+      }),
+      "agentMCPActionId"
+    );
+
+    const fileIds = removeNulls(
+      Object.values(outputItemsByActionId).flatMap((o) =>
+        o.map((o) => o.fileId)
+      )
+    );
+
+    const fileById = _.keyBy(
+      // Using the model instead of the resource since we're mutating outputItems.
+      // Not super clean but everything happens in this one function and faster to write.
+      await FileModel.findAll({
+        where: {
+          workspaceId,
+          id: {
+            [Op.in]: fileIds,
+          },
+        },
+      }),
+      "id"
+    );
+
+    for (const outputItems of Object.values(outputItemsByActionId)) {
+      for (const item of outputItems) {
+        if (item.fileId) {
+          item.file = fileById[item.fileId.toString()];
+        }
+      }
+    }
+
+    return actions.map((action) => {
+      const outputItems = outputItemsByActionId[action.id.toString()] ?? [];
+      return {
+        ...action.toJSON(),
+        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+        generatedFiles: removeNulls(
+          outputItems.map((o) => {
+            if (!o.file) {
+              return null;
+            }
+
+            const file = o.file;
+
+            const hidden =
+              o.content.type === "resource" &&
+              isToolGeneratedFile(o.content) &&
+              o.content.resource.hidden === true;
+
+            return {
+              fileId: FileResource.modelIdToSId({
+                id: file.id,
+                workspaceId: file.workspaceId,
+              }),
+              contentType: file.contentType,
+              title: file.fileName,
+              snippet: file.snippet,
+              ...(hidden ? { hidden: true } : {}),
+            };
+          })
+        ),
+      };
+    });
+  }
+
   toJSON(): AgentMCPActionType {
     assert(
       this.stepContent.value.type === "function_call",
@@ -554,12 +705,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     return {
       agentMessageId: this.agentMessageId,
+      citationsAllocated: this.citationsAllocated,
       functionCallName: this.functionCallName,
+      functionCallId: this.stepContent.value.value.id,
       id: this.id,
       internalMCPServerName: this.metadata.internalMCPServerName,
       mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
+      step: this.stepContent.step,
     };
   }
 

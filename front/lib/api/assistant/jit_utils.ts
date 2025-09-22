@@ -41,7 +41,7 @@ export function listAttachments(
         attachments.push(attachment);
       }
     } else if (isAgentMessageType(m)) {
-      const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
+      const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
         // Content Creation files should not be shown in the JIT.
@@ -58,8 +58,6 @@ export function listAttachments(
           })
         );
       }
-    } else {
-      continue;
     }
   }
 
