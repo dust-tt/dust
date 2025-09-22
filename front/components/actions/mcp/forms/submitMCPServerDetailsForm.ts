@@ -6,7 +6,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Result, WorkspaceType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, sanitizeHeadersArray } from "@app/types";
 
 export async function submitMCPServerDetailsForm({
   owner,
@@ -67,6 +67,24 @@ export async function submitMCPServerDetailsForm({
       if (!res.ok) {
         const b = await res.json();
         throw new Error(b.error?.message || "Failed to update shared secret");
+      }
+    }
+
+    if (typeof diff.remoteCustomHeaders !== "undefined") {
+      const sanitized = sanitizeHeadersArray(diff.remoteCustomHeaders ?? []);
+      const res = await fetch(
+        `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customHeaders: sanitized.length > 0 ? sanitized : null,
+          }),
+        }
+      );
+      if (!res.ok) {
+        const b = await res.json();
+        throw new Error(b.error?.message || "Failed to update headers");
       }
     }
 

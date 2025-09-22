@@ -5,12 +5,15 @@ import {
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { HeaderRow } from "@app/types";
+import { sanitizeHeadersArray } from "@app/types";
 
 export type InfoFormValues = {
   name: string;
   description: string;
   icon?: string;
   sharedSecret?: string;
+  customHeaders?: HeaderRow[] | null;
 };
 
 export function getInfoFormDefaults(view: MCPServerViewType): InfoFormValues {
@@ -23,6 +26,9 @@ export function getInfoFormDefaults(view: MCPServerViewType): InfoFormValues {
       ...baseDefaultValues,
       icon: view.server.icon,
       sharedSecret: view.server.sharedSecret ?? "",
+      customHeaders: Object.entries(view.server.customHeaders ?? {}).map(
+        ([key, value]) => ({ key, value: String(value) })
+      ),
     };
   }
   return baseDefaultValues;
@@ -37,6 +43,15 @@ export function getInfoFormSchema(view: MCPServerViewType) {
     return baseSchema.extend({
       icon: z.string().min(1, "Icon is required."),
       sharedSecret: z.string().optional(),
+      customHeaders: z
+        .array(
+          z.object({
+            key: z.string(),
+            value: z.string(),
+          })
+        )
+        .nullable()
+        .optional(),
     });
   }
   return baseSchema;
@@ -46,6 +61,7 @@ type InfoFormDiffType = {
   serverView?: { name: string; description: string };
   remoteIcon?: string;
   remoteSharedSecret?: string;
+  remoteCustomHeaders?: HeaderRow[] | null;
 };
 
 export function diffInfoForm(
@@ -74,6 +90,13 @@ export function diffInfoForm(
       current.sharedSecret.length > 0
     ) {
       out.remoteSharedSecret = current.sharedSecret;
+    }
+
+    // Compare sanitized custom headers
+    const iSan = sanitizeHeadersArray(initial.customHeaders ?? []);
+    const cSan = sanitizeHeadersArray(current.customHeaders ?? []);
+    if (JSON.stringify(iSan) !== JSON.stringify(cSan)) {
+      out.remoteCustomHeaders = cSan.length > 0 ? cSan : null;
     }
   }
 
