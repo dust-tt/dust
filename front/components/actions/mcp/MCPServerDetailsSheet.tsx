@@ -78,6 +78,7 @@ export function MCPServerDetailsSheet({
         if (!confirmed) {
           return;
         }
+        onCancel();
       }
       onClose();
     }
@@ -207,7 +208,6 @@ export function MCPServerDetailsSheet({
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            onClick: onCancel,
             disabled: form.formState.isSubmitting,
           }}
           rightButtonProps={{
