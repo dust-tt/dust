@@ -1076,8 +1076,7 @@ The directive should be used to display a clickable version of the agent name in
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
       },
       icon: "ConfluenceLogo",
-      documentationUrl:
-        "https://developer.atlassian.com/cloud/confluence/rest/v2/intro/",
+      documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
       instructions: null,
     },
   },

@@ -162,7 +162,7 @@ const config = {
     return EnvironmentConfig.getEnvVariable("OAUTH_CONFLUENCE_CLIENT_ID");
   },
   getOAuthConfluenceToolsClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_CONFLUENCE_MCP_CLIENT_ID");
+    return EnvironmentConfig.getEnvVariable("OAUTH_CONFLUENCE_TOOLS_CLIENT_ID");
   },
   getOAuthGoogleDriveClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GOOGLE_DRIVE_CLIENT_ID");

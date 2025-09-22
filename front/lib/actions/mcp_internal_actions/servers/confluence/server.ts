@@ -1,29 +1,14 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import {
+  makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-const serverInfo: InternalMCPServerDefinitionType = {
-  name: "confluence",
-  version: "1.0.0",
-  description: "Basic Confluence integration for retrieving page information.",
-  authorization: {
-    provider: "confluence_tools" as const,
-    supported_use_cases: ["platform_actions", "personal_actions"] as const,
-  },
-  instructions:
-    "Use this tool to retrieve information about a Confluence page.",
-  icon: "ConfluenceLogo",
-  documentationUrl:
-    "https://developer.atlassian.com/cloud/confluence/rest/v2/intro/",
-};
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo);
+  const server = makeInternalMCPServer("confluence");
 
   server.tool(
     "get_page",
@@ -113,4 +98,3 @@ const createServer = (): McpServer => {
 };
 
 export default createServer;
-export { serverInfo };
