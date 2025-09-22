@@ -14,10 +14,14 @@ export class WebhookSourceFactory {
   async create(
     options: {
       name?: string;
+      secret?: string;
+      signatureHeader?: string;
+      signatureAlgorithm?: "sha1" | "sha256" | "sha512";
+      customHeaders?: Record<string, string>;
     } = {}
   ) {
     const cachedName =
-      options.name || "Test WebhookSource" + faker.number.int(1000);
+      options.name ?? "Test WebhookSource" + faker.number.int(1000);
 
     const auth = await Authenticator.internalAdminForWorkspace(
       this.workspace.sId
@@ -26,6 +30,10 @@ export class WebhookSourceFactory {
     const result = await WebhookSourceResource.makeNew(auth, {
       workspaceId: this.workspace.id,
       name: cachedName,
+      secret: options.secret ?? null,
+      signatureHeader: options.signatureHeader ?? null,
+      signatureAlgorithm: options.signatureAlgorithm ?? null,
+      customHeaders: options.customHeaders ?? null,
     });
 
     return result;

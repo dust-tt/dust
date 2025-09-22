@@ -14,6 +14,7 @@ import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
+import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -76,7 +77,7 @@ async function handler(
   req: NextApiRequestWithContext,
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
-  const { method } = req;
+  const { method, body } = req;
 
   if (method !== "POST") {
     return apiError(req, res, {
@@ -118,6 +119,7 @@ async function handler(
     auth,
     webhookSourceId
   );
+
   if (!webhookSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -126,6 +128,59 @@ async function handler(
         message: `Webhook source ${webhookSourceId} not found in workspace ${wId}.`,
       },
     });
+  }
+
+  // Validate webhook signature if secret is configured
+  if (webhookSource.secret) {
+    const signatureHeader = webhookSource.signatureHeader;
+    const algorithm = webhookSource.signatureAlgorithm;
+
+    if (!signatureHeader || !algorithm) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "webhook_source_misconfiguration",
+          message: `Webhook source ${webhookSourceId} is missing header or algorithm configuration.`,
+        },
+      });
+    }
+    const signature = req.headers[signatureHeader.toLowerCase()] as string;
+
+    if (!signature) {
+      return apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message: `Missing signature header: ${signatureHeader}`,
+        },
+      });
+    }
+
+    const stringifiedBody = JSON.stringify(body);
+
+    const isValid = verifySignature({
+      signedContent: stringifiedBody,
+      secret: webhookSource.secret,
+      signature,
+      algorithm,
+    });
+
+    if (!isValid) {
+      logger.warn(
+        {
+          webhookSourceId: webhookSource.id,
+          workspaceId: workspace.id,
+        },
+        "Invalid webhook signature"
+      );
+      return apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message: "Invalid webhook signature.",
+        },
+      });
+    }
   }
 
   // Rate limiting: 10% of workspace message limit
