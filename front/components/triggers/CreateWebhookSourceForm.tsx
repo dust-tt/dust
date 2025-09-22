@@ -13,11 +13,11 @@ import type { useForm } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { z } from "zod";
 
+import { generateSecureSecret } from "@app/lib/resources/string_ids";
 import {
   PostWebhookSourcesSchema,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
 } from "@app/types/triggers/webhooks";
-import { generateSecureSecret } from "@app/lib/resources/string_ids";
 
 export const validateCustomHeadersFromString = (value: string | null) => {
   if (value === null || value.trim() === "") {
