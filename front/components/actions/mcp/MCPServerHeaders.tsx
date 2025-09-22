@@ -36,28 +36,32 @@ export function McpServerHeaders({
       <div className="flex w-full flex-col gap-3">
         <div className="flex flex-col gap-4">
           {headers.map((header, index) => (
-            <div key={index} className="flex gap-2">
-              <div className="flex grow flex-col gap-1 px-1">
-                <Input
-                  placeholder="Header Name"
-                  value={header.key}
-                  name="headerName"
-                  onChange={(e) =>
-                    updateHeaderField(index, "key", e.target.value)
-                  }
-                  disabled={header.value === WebCrawlerHeaderRedactedValue}
-                  className="grow"
-                />
-                <Input
-                  name="headerValue"
-                  placeholder="Header Value"
-                  value={header.value}
-                  onChange={(e) =>
-                    updateHeaderField(index, "value", e.target.value)
-                  }
-                  disabled={header.value === WebCrawlerHeaderRedactedValue}
-                  className="flex-1"
-                />
+            <div key={index} className="flex items-center gap-2">
+              <div className="grid flex-1 grid-cols-3 gap-2 px-1">
+                <div className="col-span-1">
+                  <Input
+                    placeholder="Header Name"
+                    value={header.key}
+                    name="headerName"
+                    onChange={(e) =>
+                      updateHeaderField(index, "key", e.target.value)
+                    }
+                    disabled={header.value === WebCrawlerHeaderRedactedValue}
+                    className="w-full"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Input
+                    name="headerValue"
+                    placeholder="Header Value"
+                    value={header.value}
+                    onChange={(e) =>
+                      updateHeaderField(index, "value", e.target.value)
+                    }
+                    disabled={header.value === WebCrawlerHeaderRedactedValue}
+                    className="w-full"
+                  />
+                </div>
               </div>
               <Button
                 variant="outline"
