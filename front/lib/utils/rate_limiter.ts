@@ -3,7 +3,11 @@ import { v4 as uuidv4 } from "uuid";
 import type { RedisUsageTagsType } from "@app/lib/utils/redis_client";
 import { redisClient } from "@app/lib/utils/redis_client";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import type { LoggerInterface, Result } from "@app/types";
+import type {
+  LoggerInterface,
+  MaxMessagesTimeframeType,
+  Result,
+} from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 export class RateLimitError extends Error {}
@@ -147,5 +151,21 @@ export async function expireRateLimiterKey({
     return new Ok(isExpired);
   } catch (err) {
     return new Err(normalizeError(err));
+  }
+}
+
+export function getTimeframeSecondsFromLiteral(
+  timeframeLiteral: MaxMessagesTimeframeType
+): number {
+  switch (timeframeLiteral) {
+    case "day":
+      return 60 * 60 * 24; // 1 day.
+
+    // Lifetime is intentionally mapped to a 30-day period.
+    case "lifetime":
+      return 60 * 60 * 24 * 30; // 30 days.
+
+    default:
+      return 0;
   }
 }
