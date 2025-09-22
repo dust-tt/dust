@@ -444,17 +444,16 @@ export async function getFileActionsByActionType(
  * Returns the edit actions that still apply after revert actions.
  *
  * How it works:
- * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest → newest.
- * - Process groups newest → oldest so reverts cancel the most recent edits first.
- * - Maintain a group-level cancellation counter seeded with `revertCount` from the current (external) revert.
+ * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest => newest.
+ * - Process groups newest => oldest so reverts cancel the most recent edits first.
+ * - Maintain a group-level cancellation counter with `revertCount`.
  *   While counter > 0:
- *     • Edit-only group → skip it and decrement counter by 1.
- *     • Group with any revert(s) → do not decrement; add each revert's revertCount (default 1). Drop edits in that group.
+ *     • Edit-only group => skip it and decrement counter by 1.
+ *     • Group with any revert(s) => do not decrement; add each revert's revertCount (default 1). Drop edits in that group.
  * - When counter = 0, collect edit actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
  *
- * Notes:
- * - `editOrRevertActions` already includes past reverts; the current revert is not included (its value is `revertCount`).
- * - Returned edits are ordered by group (newest → oldest) and within group (oldest → newest).
+ * Note:
+ * - `editOrRevertActions` includes only past reverts; the current revert is not included (its value is `revertCount`).
  */
 export function getEditActionsToApply(
   editOrRevertActions: AgentMCPActionModel[],
@@ -466,14 +465,14 @@ export function getEditActionsToApply(
     (action) => action.agentMessageId
   );
 
-  // Within each group, sort actions chronologically (oldest → newest)
+  // Within each group, sort actions chronologically (oldest → newest).
   Object.keys(editOrRevertActionsByMessage).forEach((messageId) => {
     editOrRevertActionsByMessage[messageId] = editOrRevertActionsByMessage[
       messageId
     ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   });
 
-  // Order groups newest → oldest (based on the group's earliest action time)
+  // Order groups newest → oldest (based on the group's earliest action time).
   const sortedActionGroups = Object.entries(editOrRevertActionsByMessage)
     .sort(
       ([, actionsA], [, actionsB]) =>
@@ -481,39 +480,42 @@ export function getEditActionsToApply(
     )
     .map(([, actions]) => actions);
 
-  // Remaining edit-only groups to cancel; starts from the current (external) revert
+  // Remaining edit-only groups to cancel. Starts from the current (external) revert.
   let cancelGroupActionCounter = revertCount;
 
   const pickedEditActions = [];
 
-  // Traverse groups newest → oldest
   for (const actionGroup of sortedActionGroups) {
     if (cancelGroupActionCounter > 0) {
-      // If any revert is present, extend the window; otherwise consume one edit-only group
       const revertActions = actionGroup.filter((a) =>
         isRevertFileActionType(a)
       );
 
+      // Cancel everything if there are only edit actions in the group.
       if (revertActions.length === 0) {
-        cancelGroupActionCounter--; // skip this edit-only group
+        cancelGroupActionCounter--;
         continue;
       }
 
-      // Extend cancellation window by each revert's count. Drop edits in this group.
+      // Extend cancellation window by each revert's count (any edits will be cancelled).
       for (const revertAction of revertActions) {
-        const counter = revertAction.augmentedInputs.revertCount;
-        cancelGroupActionCounter += typeof counter === "number" ? counter : 1;
+        cancelGroupActionCounter +=
+          revertAction.augmentedInputs.revertCount ?? 1;
       }
+
       continue;
     }
 
-    // Not cancelling: collect edits. A revert here reopens cancellation for older groups
+    // Not cancelling: collect edits. A revert here reopens cancellation for older groups.
     for (const currentAction of actionGroup) {
       if (isEditFileActionType(currentAction)) {
         pickedEditActions.push(currentAction);
-      } else if (isRevertFileActionType(currentAction)) {
-        const counter = currentAction.augmentedInputs.revertCount;
-        cancelGroupActionCounter += typeof counter === "number" ? counter : 1;
+        continue;
+      }
+
+      if (isRevertFileActionType(currentAction)) {
+        cancelGroupActionCounter +=
+          currentAction.augmentedInputs.revertCount ?? 1;
       }
     }
   }
@@ -536,9 +538,7 @@ export function getRevertedContent(
 
   let revertedContent = createFileAction.augmentedInputs.content;
 
-  for (let i = 0; i < sortedActions.length; i++) {
-    const editAction = sortedActions[i];
-
+  for (const editAction of sortedActions) {
     if (!isEditFileActionType(editAction)) {
       throw new Error("Wrong file action type for edit file action");
     }

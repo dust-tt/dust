@@ -140,7 +140,6 @@ export function getUpdatedContentAndOccurrences(
   const matches = currentContent.match(regex);
   const occurrences = matches ? matches.length : 0;
 
-  // Perform the replacement.
   const updatedContent = currentContent.replace(regex, newString);
 
   return {
