@@ -618,3 +618,4 @@ import { Badge } from "@/components/ui/badge";`
     expect(result).not.toMatch(/^import React from "react";$/m);
   });
 });
+});
