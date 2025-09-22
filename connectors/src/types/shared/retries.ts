@@ -27,12 +27,21 @@ export class WithRetriesError extends Error {
 type RetryOptions = {
   retries?: number;
   delayBetweenRetriesMs?: number;
+  // Return true to retry on this error, false to stop and rethrow.
+  shouldRetry?: (error: unknown, attempt: number) => boolean;
+  // Called before each attempt (1-based index) so callers can adjust state.
+  onAttempt?: (attempt: number) => void;
 };
 
 export function withRetries<Args extends unknown[], Return>(
   logger: LoggerInterface,
   fn: (...args: Args) => Promise<Return>,
-  { retries = 10, delayBetweenRetriesMs = 1000 }: RetryOptions = {}
+  {
+    retries = 10,
+    delayBetweenRetriesMs = 1000,
+    shouldRetry,
+    onAttempt,
+  }: RetryOptions = {}
 ): (...args: Args) => Promise<Return> {
   if (retries < 1) {
     throw new Error("retries must be >= 1");
@@ -42,6 +51,14 @@ export function withRetries<Args extends unknown[], Return>(
     const errors: Array<{ attempt: number; error: unknown }> = [];
 
     for (let i = 0; i < retries; i++) {
+      const attempt = i + 1;
+      try {
+        if (onAttempt) {
+          onAttempt(attempt);
+        }
+      } catch (e) {
+        logger.warn({ error: e, attempt }, "onAttempt hook error");
+      }
       try {
         return await fn(...args);
       } catch (e) {
@@ -58,12 +75,15 @@ export function withRetries<Args extends unknown[], Return>(
             throw new WorkspaceQuotaExceededError(e);
           }
         }
-
+        // If a predicate is provided and returns false, do not retry.
+        if (shouldRetry && !shouldRetry(e, attempt)) {
+          throw e;
+        }
         const sleepTime = delayBetweenRetriesMs * (i + 1) ** 2;
         logger.warn(
           {
             error: e,
-            attempt: i + 1,
+            attempt: attempt,
             retries: retries,
             sleepTime: sleepTime,
           },
@@ -72,7 +92,7 @@ export function withRetries<Args extends unknown[], Return>(
 
         await setTimeoutAsync(sleepTime);
 
-        errors.push({ attempt: i + 1, error: e });
+        errors.push({ attempt: attempt, error: e });
       }
     }
 
