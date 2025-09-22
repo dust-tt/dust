@@ -2,7 +2,10 @@ import type { LoggerInterface } from "@dust-tt/client";
 import { AxiosError } from "axios";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
-import { WorkspaceQuotaExceededError } from "@connectors/lib/error";
+import {
+  DataSourceQuotaExceededError,
+  WorkspaceQuotaExceededError,
+} from "@connectors/lib/error";
 import { normalizeError } from "@connectors/types/api";
 
 export class WithRetriesError extends Error {
@@ -51,11 +54,15 @@ export function withRetries<Args extends unknown[], Return>(
           e.status === 403
         ) {
           const errorType = e.response?.data?.error?.type;
-          if (
-            errorType === "workspace_quota_error" ||
-            errorType === "data_source_quota_error"
-          ) {
+
+          if (errorType === "workspace_quota_error") {
+            // This error will pause the connector.
             throw new WorkspaceQuotaExceededError(e);
+          }
+
+          if (errorType === "data_source_quota_error") {
+            // This error is per file and will NOT pause the connector (important!).
+            throw new DataSourceQuotaExceededError(e);
           }
         }
 
