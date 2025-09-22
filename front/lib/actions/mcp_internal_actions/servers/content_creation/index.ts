@@ -326,7 +326,7 @@ const createServer = (
         }
 
         const {
-          value: { fileResource, revertedContent },
+          value: { fileResource },
         } = result;
 
         if (_meta?.progressToken) {
@@ -345,10 +345,6 @@ const createServer = (
           {
             type: "text",
             text: `File '${fileResource.sId}' reverted successfully.`,
-          },
-          {
-            type: "text",
-            text: `content:${revertedContent}`,
           },
         ]);
       }
