@@ -1,4 +1,6 @@
 import {
+  ActionIcons,
+  Avatar,
   Button,
   Checkbox,
   ContentMessage,
@@ -7,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  Icon,
   Input,
   Label,
   Sheet,
@@ -51,6 +54,8 @@ interface WebhookEditionModalProps {
 type WebhookOption = {
   value: string;
   label: string;
+  icon: string;
+  description?: string;
 };
 
 export function WebhookEditionModal({
@@ -105,6 +110,8 @@ export function WebhookEditionModal({
           options.push({
             value: view.sId,
             label: view.customName ?? wsv.name,
+            icon: wsv.icon ?? "globe",
+            description: wsv.description ?? undefined,
           });
         });
     });
@@ -235,7 +242,6 @@ export function WebhookEditionModal({
                       {webhookOptions.map((option) => (
                         <DropdownMenuItem
                           key={option.value}
-                          label={option.label}
                           disabled={!isEditor}
                           onClick={() => {
                             form.setValue(
@@ -246,7 +252,28 @@ export function WebhookEditionModal({
                               }
                             );
                           }}
-                        />
+                        >
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center space-x-2">
+                              {
+                                <Avatar
+                                  icon={
+                                    ActionIcons[
+                                      option.icon as keyof typeof ActionIcons
+                                    ]
+                                  }
+                                  size="xs"
+                                />
+                              }
+                              <span>{option.label}</span>
+                            </div>
+                            {option.description && (
+                              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                                {option.description}
+                              </span>
+                            )}
+                          </div>
+                        </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>

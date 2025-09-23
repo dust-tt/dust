@@ -1,4 +1,7 @@
 import {
+  ActionGlobeAltIcon,
+  ActionIcons,
+  Avatar,
   Button,
   classNames,
   DataTable,
@@ -29,6 +32,13 @@ type RowData = {
 const NameCell = ({ row }: { row: RowData }) => {
   const { webhookSource } = row;
 
+  const getIconComponent = () => {
+    if (webhookSource.icon && webhookSource.icon in ActionIcons) {
+      return ActionIcons[webhookSource.icon as keyof typeof ActionIcons];
+    }
+    return ActionGlobeAltIcon;
+  };
+
   return (
     <DataTable.CellContent grow>
       <div
@@ -37,6 +47,7 @@ const NameCell = ({ row }: { row: RowData }) => {
           webhookSource.systemView ? "" : "opacity-50"
         )}
       >
+        <Avatar icon={getIconComponent()} size="xs" />
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
             {webhookSource.systemView?.customName ?? webhookSource.name}

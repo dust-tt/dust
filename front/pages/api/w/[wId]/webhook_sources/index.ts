@@ -107,7 +107,7 @@ async function handler(
           workspaceId: workspace.id,
           name,
           description: null,
-          icon: null,
+          icon: "ActionGlobeAltIcon", // Default icon for webhook sources
           secret,
           signatureHeader,
           signatureAlgorithm,

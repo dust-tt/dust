@@ -72,3 +72,13 @@ export const patchWebhookSourceBodySchema = z.object({
   description: z.string().nullable().optional(),
   icon: z.string().nullable().optional(),
 });
+
+export type PatchWebhookSourceViewAndSourceBody = z.infer<
+  typeof patchWebhookSourceViewAndSourceBodySchema
+>;
+
+export const patchWebhookSourceViewAndSourceBodySchema = z.object({
+  name: z.string().min(1, "Name is required."),
+  description: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
+});
