@@ -47,6 +47,7 @@ type RowData = {
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   menuItems?: MenuItem[];
   agentTags: TagType[];
   agentTagsAsString: string;
@@ -67,27 +68,23 @@ const getTableColumns = ({
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
   return [
-    ...(isBatchEdit
-      ? [
-          {
-            header: "",
-            accessorKey: "select",
-            cell: (info: CellContext<RowData, boolean>) => (
-              <DataTable.CellContent>
-                <Checkbox
-                  checked={info.row.original.isSelected}
-                  disabled={!info.row.original.canArchive}
-                />
-              </DataTable.CellContent>
-            ),
-            meta: {
-              className: "w-8",
-              tooltip: "Select",
-            },
-            sortable: false,
-          },
-        ]
-      : []),
+    {
+      header: "",
+      accessorKey: "select",
+      cell: (info: CellContext<RowData, boolean>) => (
+        <DataTable.CellContent>
+          <Checkbox
+            checked={info.row.original.isSelected}
+            disabled={!info.row.original.canArchive}
+          />
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "w-8",
+        tooltip: "Select",
+      },
+      sortable: false,
+    },
     {
       header: "Name",
       accessorKey: "name",
@@ -316,17 +313,16 @@ export function AssistantsTable({
               />
             ) : undefined,
           onClick: () => {
-            if (isBatchEdit) {
-              if (canArchive) {
-                setSelection(
-                  selection.includes(agentConfiguration.sId)
-                    ? selection.filter((s) => s !== agentConfiguration.sId)
-                    : [...selection, agentConfiguration.sId]
-                );
-              }
-            } else {
-              setShowDetails(agentConfiguration);
+            if (canArchive) {
+              setSelection(
+                selection.includes(agentConfiguration.sId)
+                  ? selection.filter((s) => s !== agentConfiguration.sId)
+                  : [...selection, agentConfiguration.sId]
+              );
             }
+          },
+          onDoubleClick: () => {
+            setShowDetails(agentConfiguration);
           },
           menuItems:
             agentConfiguration.scope !== "global" &&

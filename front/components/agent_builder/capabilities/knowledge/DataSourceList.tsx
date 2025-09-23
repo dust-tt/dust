@@ -32,6 +32,7 @@ export interface DataSourceListItem {
   icon?: React.ComponentType;
   entry: NavigationHistoryEntryType;
   onClick?: () => void;
+  onDoubleClick?: () => void;
 }
 
 interface DataSourceListProps {

@@ -68,7 +68,7 @@ export interface RowData {
   isAdmin: boolean;
   isLoading?: boolean;
   buttonOnClick?: (e: MouseEvent) => void;
-  onClick?: () => void;
+  onDoubleClick?: () => void;
   menuItems?: MenuItem[]; // changed from moreMenuItems
 }
 
@@ -373,7 +373,7 @@ export const SpaceResourcesList = ({
             setSelectedDataSourceView(dataSourceView);
             setShowConnectorPermissionsModal(true);
           },
-          onClick: () => onSelect(dataSourceView.sId),
+          onDoubleClick: () => onSelect(dataSourceView.sId),
         };
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelect is not stable, mutating the agents list which prevent pagination to work

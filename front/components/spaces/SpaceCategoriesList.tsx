@@ -35,7 +35,7 @@ type RowData = {
   icon: ComponentType;
   usage: AgentsUsageType;
   count: number;
-  onClick?: () => void;
+  onDoubleClick?: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;
@@ -111,7 +111,7 @@ export const SpaceCategoriesList = ({
                 ...spaceInfo.categories[category],
                 name: CATEGORY_DETAILS[category].label,
                 icon: CATEGORY_DETAILS[category].icon,
-                onClick: () => onSelect(category),
+                onDoubleClick: () => onSelect(category),
               }
             : null
         )

@@ -59,7 +59,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           id: node.internalId,
           title: node.title,
           icon: getVisualForDataSourceViewContentNode(node),
-          onClick: node.expandable ? () => addNodeEntry(node) : undefined,
+          onDoubleClick: node.expandable ? () => addNodeEntry(node) : undefined,
           entry: {
             type: "node",
             node,

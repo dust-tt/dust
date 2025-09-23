@@ -70,7 +70,7 @@ export function DataSourceViewTable({
           return {
             id: dsv.sId,
             title: getDataSourceNameFromView(dsv),
-            onClick: () => setDataSourceViewEntry(dsv),
+            onDoubleClick: () => setDataSourceViewEntry(dsv),
             icon,
             entry: {
               type: "data_source",
