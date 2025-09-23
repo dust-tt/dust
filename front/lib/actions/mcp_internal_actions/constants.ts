@@ -186,11 +186,14 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
+  // TODO(seb): remove soonish
   [TABLE_QUERY_SERVER_NAME]: {
     id: 4,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: () => {
+      return true;
+    },
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
