@@ -35,6 +35,8 @@ const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
  *     description: Skeleton endpoint that verifies workspace and webhook source and logs receipt.
  *     tags:
  *       - Triggers
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId

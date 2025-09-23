@@ -9,7 +9,7 @@
     "dev:worker": "./admin/dev_worker.sh",
     "lint:test-filenames": "BAD_FILES=$(find pages -type f -name '*.test.ts' | grep -E '/[^/]*(\\[|\\])[^/]*$'); if [ -n \"$BAD_FILES\" ]; then echo \"Error: Found .test.ts files in 'pages' directory with brackets [] in their names (this can break endpoints):\"; echo \"$BAD_FILES\"; exit 1; else echo \"Filename check: OK. No .test.ts files with brackets found in 'pages'.\"; exit 0; fi",
     "lint": "npm run lint:test-filenames && next lint",
-    "docs": "npx next-swagger-doc-cli swagger.json 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || { npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json && npm run format; }",
+    "docs": "npx next-swagger-doc-cli swagger.json 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
