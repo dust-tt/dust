@@ -1,8 +1,8 @@
 import {
   Checkbox,
+  CodeBlockWithExtendedSupport,
   CollapsibleComponent,
   Label,
-  CodeBlockWithExtendedSupport,
 } from "@dust-tt/sparkle";
 
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
