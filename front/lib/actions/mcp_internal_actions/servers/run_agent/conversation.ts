@@ -63,12 +63,16 @@ export async function getOrCreateConversation(
 
     if (convRes.isErr()) {
       // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end.
-      const tracked = convRes.error.type !== "invalid_request_error";
+      // not trigger an alert on our end. For user-side errors, surface the
+      // underlying message to the model.
+      const isUserSide = convRes.error.type === "invalid_request_error";
+      const message = isUserSide
+        ? convRes.error.message
+        : "Failed to get conversation";
       return new Err(
-        new MCPError("Failed to get conversation", {
+        new MCPError(message, {
           cause: convRes.error,
-          tracked,
+          tracked: !isUserSide,
         })
       );
     }
@@ -136,12 +140,16 @@ export async function getOrCreateConversation(
 
     if (messageRes.isErr()) {
       // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end.
-      const tracked = messageRes.error.type !== "invalid_request_error";
+      // not trigger an alert on our end. For user-side errors, surface the
+      // underlying message to the model.
+      const isUserSide = messageRes.error.type === "invalid_request_error";
+      const message = isUserSide
+        ? messageRes.error.message
+        : "Failed to create message";
       return new Err(
-        new MCPError("Failed to create message", {
+        new MCPError(message, {
           cause: messageRes.error,
-          tracked,
+          tracked: !isUserSide,
         })
       );
     }
@@ -152,12 +160,16 @@ export async function getOrCreateConversation(
 
     if (convRes.isErr()) {
       // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end.
-      const tracked = convRes.error.type !== "invalid_request_error";
+      // not trigger an alert on our end. For user-side errors, surface the
+      // underlying message to the model.
+      const isUserSide = convRes.error.type === "invalid_request_error";
+      const message = isUserSide
+        ? convRes.error.message
+        : "Failed to get conversation";
       return new Err(
-        new MCPError("Failed to get conversation", {
+        new MCPError(message, {
           cause: convRes.error,
-          tracked,
+          tracked: !isUserSide,
         })
       );
     }
@@ -205,13 +217,16 @@ export async function getOrCreateConversation(
     );
 
     // Do not track invalid request errors, since they are user-side and should
-    // not trigger an alert on our end.
-    const tracked = convRes.error.type !== "invalid_request_error";
-
+    // not trigger an alert on our end. For user-side errors, surface the
+    // underlying message to the model.
+    const isUserSide = convRes.error.type === "invalid_request_error";
+    const message = isUserSide
+      ? convRes.error.message
+      : "Failed to create conversation";
     return new Err(
-      new MCPError("Failed to create conversation", {
+      new MCPError(message, {
         cause: convRes.error,
-        tracked,
+        tracked: !isUserSide,
       })
     );
   }
