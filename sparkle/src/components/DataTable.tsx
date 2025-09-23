@@ -68,6 +68,7 @@ declare module "@tanstack/react-table" {
 
 interface TBaseData {
   onClick?: () => void;
+  onDoubleClick?: () => void;
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
   menuItems?: MenuItem[];
 }
@@ -286,6 +287,7 @@ export function DataTable<TData extends TBaseData>({
                 onClick={
                   enableRowSelection ? handleRowClick : row.original.onClick
                 }
+                onDoubleClick={row.original.onDoubleClick}
                 rowData={row.original}
                 {...(enableRowSelection && {
                   "data-selected": row.getIsSelected(),
@@ -563,6 +565,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
                   onClick={
                     enableRowSelection ? handleRowClick : row.original.onClick
                   }
+                  onDoubleClick={row.original.onDoubleClick}
                   rowData={row.original}
                   className="s-absolute s-w-full"
                   {...(enableRowSelection && {
@@ -716,6 +719,7 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   widthClassName: string;
   "data-selected"?: boolean;
   rowData?: TBaseData;
@@ -725,6 +729,7 @@ DataTable.Row = function Row({
   children,
   className,
   onClick,
+  onDoubleClick,
   widthClassName,
   rowData,
   ...props
@@ -749,13 +754,14 @@ DataTable.Row = function Row({
         className={cn(
           "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
           "s-border-separator dark:s-border-separator-night",
-          onClick &&
+          (onClick || onDoubleClick) &&
             "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
           props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
           widthClassName,
           className
         )}
         onClick={onClick || undefined}
+        onDoubleClick={onDoubleClick || undefined}
         onContextMenu={handleContextMenu}
         {...props}
       >
