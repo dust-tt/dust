@@ -21,8 +21,8 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type {
   AgentBuilderFormData,
   MCPFormData,
+  MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
@@ -186,16 +186,16 @@ export function MCPServerViewsSheet({
         }
       }
 
-      // Legacy check for backward compatibility - tools can still be filtered by name/configurability
+      // Avoid name-based filtering to prevent collisions with user-defined action names.
+      // For backward compatibility with older actions, only filter if there is an MCP action
+      // explicitly tied to this server view and that action is non-configurable.
       const selectedAction = actions.find(
-        (action) => action.name === view.server.name
+        (action) =>
+          action.type === "MCP" &&
+          action.configuration &&
+          action.configuration.mcpServerViewId === view.sId
       );
-
-      if (selectedAction) {
-        return !selectedAction.configurable; // Should filter out if not configurable
-      }
-
-      return false;
+      return !!selectedAction;
     },
     []
   );
