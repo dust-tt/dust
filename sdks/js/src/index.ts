@@ -1,6 +1,7 @@
 import { createParser } from "eventsource-parser";
 import { z } from "zod";
 
+import { normalizeError } from "./error_utils";
 import {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
@@ -89,11 +90,11 @@ import {
   ValidateActionResponseType,
 } from "./types";
 
+export * from "./error_utils";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
 export * from "./types";
-export * from "./error_utils";
 
 interface DustResponse {
   status: number;
