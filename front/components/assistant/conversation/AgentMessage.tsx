@@ -156,7 +156,12 @@ export function AgentMessage({
     agentMessageToRender.citations ?? {}
   ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
     if (citation) {
-      const IconComponent = getCitationIcon(citation.provider, isDark);
+      const IconComponent = getCitationIcon(
+        citation.provider, 
+        isDark, 
+        citation.faviconUrl, 
+        citation.href
+      );
       return {
         ...acc,
         [key]: {

@@ -66,7 +66,7 @@ export function FaviconIcon({
   return (
     <div
       className={cn(
-        "s-flex s-items-center s-justify-center s-relative",
+        "s-relative s-flex s-items-center s-justify-center",
         faviconVariants({ size }),
         className
       )}
