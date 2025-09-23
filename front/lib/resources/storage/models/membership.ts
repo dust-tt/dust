@@ -56,6 +56,11 @@ MembershipModel.init(
       { fields: ["startAt"] },
       { fields: ["endAt"] },
       { fields: ["workspaceId", "userId", "startAt", "endAt"] },
+      { fields: ["workspaceId", "endAt"] },
+      {
+        fields: ["workspaceId", "startAt"],
+        where: { endAt: null },
+      },
     ],
   }
 );
