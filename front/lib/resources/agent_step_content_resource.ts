@@ -287,7 +287,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         ].createdAt.toISOString()
       : null;
 
-    const resources = actualStepContents.map((stepContent) => {
+    const data = actualStepContents.map((stepContent) => {
       assert(
         stepContent.agentMessage?.message?.conversation,
         "Missing required relations"
@@ -301,7 +301,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     return {
-      data: resources,
+      data,
       totalCount,
       nextCursor,
     };
