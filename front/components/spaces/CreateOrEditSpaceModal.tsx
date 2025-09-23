@@ -136,13 +136,6 @@ export function CreateOrEditSpaceModal({
         setManagementType("manual");
       }
 
-      let initialMembers: UserType[] = [];
-      if (spaceMembers && spaceInfo?.isRestricted) {
-        initialMembers = spaceMembers;
-      } else if (!space) {
-        initialMembers = [];
-      }
-
       // Initialize selected groups based on space's groupIds (only if workos feature is enabled)
       if (
         planAllowsSCIM &&
@@ -160,13 +153,20 @@ export function CreateOrEditSpaceModal({
 
       setSpaceName(spaceInfo?.name ?? "");
 
-      const shouldBeRestricted = spaceInfo
+      const isRestricted = spaceInfo
         ? spaceInfo.isRestricted
         : defaultRestricted ?? false;
-      setIsRestricted(shouldBeRestricted);
+      setIsRestricted(isRestricted);
+
+      let initialMembers: UserType[] = [];
+      if (spaceMembers && isRestricted) {
+        initialMembers = spaceMembers;
+      } else if (!space) {
+        initialMembers = [];
+      }
 
       // Auto-add current user when opening with restricted access for new spaces
-      if (shouldBeRestricted && !space && user && initialMembers.length === 0) {
+      if (isRestricted && !space && user && initialMembers.length === 0) {
         initialMembers = [user];
       }
 
