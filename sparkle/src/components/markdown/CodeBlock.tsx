@@ -17,7 +17,7 @@ export const codeBlockVariants = cva(
     variants: {
       variant: {
         surface: [
-          "s-bg-muted dark:s-bg-muted-night",
+          "s-bg-muted/70 dark:s-bg-muted-night/70",
           "s-text-golden-600 dark:s-text-golden-600-night",
         ],
       },
