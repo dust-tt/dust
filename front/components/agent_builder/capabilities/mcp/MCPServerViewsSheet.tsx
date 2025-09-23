@@ -21,8 +21,8 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type {
   AgentBuilderFormData,
   MCPFormData,
+  MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
@@ -68,6 +68,7 @@ import {
   getDefaultMCPAction,
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -137,6 +138,7 @@ export function MCPServerViewsSheet({
   actions,
   getAgentInstructions,
 }: MCPServerViewsSheetProps) {
+  const confirm = React.useContext(ConfirmContext);
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
@@ -786,7 +788,21 @@ export function MCPServerViewsSheet({
   return (
     <MultiPageSheet
       open={isOpen}
-      onOpenChange={(open) => {
+      onOpenChange={async (open) => {
+        if (!open && selectedToolsInSheet.length > 0) {
+          const confirmed = await confirm({
+            title: "Unsaved changes",
+            message:
+              "You have selected tools that are not added yet. Are you sure you want to close without adding them?",
+            validateLabel: "Discard selection",
+            validateVariant: "warning",
+          });
+
+          if (!confirmed) {
+            return;
+          }
+        }
+
         setIsOpen(open);
 
         if (!open && currentMode === "add") {
