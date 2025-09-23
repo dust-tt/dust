@@ -1,7 +1,6 @@
 import uniqueId from "lodash/uniqueId";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
@@ -30,16 +29,14 @@ export function transformAgentConfigurationToFormData(
       slackChannels: [], // Will be populated reactively if needed
       tags: agentConfiguration.tags,
     },
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    instructions: agentConfiguration.instructions || "",
+    instructions: agentConfiguration.instructions ?? "",
     generationSettings: {
       modelSettings: {
         modelId: agentConfiguration.model.modelId,
         providerId: agentConfiguration.model.providerId,
       },
       temperature: agentConfiguration.model.temperature,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
+      reasoningEffort: agentConfiguration.model.reasoningEffort ?? "none",
       responseFormat: agentConfiguration.model.responseFormat,
     },
     actions: [], // Will be populated reactively from useAgentConfigurationActions hook
@@ -48,17 +45,12 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
-function getRandomDroidAvatar(): string {
-  const randomIndex = Math.floor(Math.random() * DROID_AVATAR_URLS.length);
-  return DROID_AVATAR_URLS[randomIndex];
-}
-
 export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
   return {
     agentSettings: {
       name: "",
       description: "",
-      pictureUrl: getRandomDroidAvatar(),
+      pictureUrl: undefined,
       scope: "hidden",
       editors: [user],
       slackProvider: null,

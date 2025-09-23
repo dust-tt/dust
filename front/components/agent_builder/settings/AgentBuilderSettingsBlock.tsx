@@ -375,12 +375,10 @@ function AgentPictureInput() {
         onPick={field.onChange}
         droidAvatarUrls={DROID_AVATAR_URLS}
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        avatarUrl={field.value || null}
+        avatarUrl={field.value ?? null}
       />
       <div className="group relative">
-        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-        <Avatar size="lg" visual={field.value || null} />
+        <Avatar size="lg" visual={field.value ?? null} />
         <Button
           variant="outline"
           size="sm"
