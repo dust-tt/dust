@@ -15,14 +15,24 @@ import type { ModelId } from "@connectors/types";
 const CatchAllCodec = t.record(t.string, t.unknown);
 
 const GongUserCodec = t.intersection([
-  t.partial({
-    active: t.boolean,
-    created: t.string,
-    emailAddress: t.string,
-    firstName: t.string,
-    id: t.string,
-    lastName: t.string,
-  }),
+  t.union([
+    t.type({
+      active: t.undefined,
+      created: t.undefined,
+      emailAddress: t.undefined,
+      firstName: t.undefined,
+      id: t.undefined,
+      lastName: t.undefined,
+    }),
+    t.partial({
+      active: t.boolean,
+      created: t.string,
+      emailAddress: t.string,
+      firstName: t.string,
+      id: t.string,
+      lastName: t.string,
+    }),
+  ]),
   CatchAllCodec,
 ]);
 
