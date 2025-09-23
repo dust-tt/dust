@@ -729,7 +729,6 @@ DataTable.Row = function Row({
   rowData,
   ...props
 }: RowProps) {
-  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
     x: number;
     y: number;
@@ -742,7 +741,6 @@ DataTable.Row = function Row({
 
     event.preventDefault();
     setContextMenuPosition({ x: event.clientX, y: event.clientY });
-    setContextMenuOpen(true);
   };
 
   return (
@@ -764,10 +762,10 @@ DataTable.Row = function Row({
         {children}
       </tr>
 
-      {contextMenuOpen && rowData?.menuItems?.length && (
+      {contextMenuPosition && rowData?.menuItems?.length && (
         <DropdownMenu
-          open={contextMenuOpen}
-          onOpenChange={setContextMenuOpen}
+          open={!!contextMenuPosition}
+          onOpenChange={(open) => !open && setContextMenuPosition(null)}
           modal={false}
         >
           <DropdownMenuPortal>
@@ -782,7 +780,9 @@ DataTable.Row = function Row({
             >
               <DropdownMenuGroup>
                 {rowData?.menuItems?.map((item, index) =>
-                  renderMenuItem(item, index, () => setContextMenuOpen(false))
+                  renderMenuItem(item, index, () =>
+                    setContextMenuPosition(null)
+                  )
                 )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
