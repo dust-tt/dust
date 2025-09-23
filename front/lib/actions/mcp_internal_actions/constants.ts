@@ -8,6 +8,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { InternalAllowedIconType } from "@app/lib/actions/mcp_icons";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
@@ -1428,6 +1429,12 @@ export const getInternalMCPServerNameFromSId = (
   }
 
   return null;
+};
+
+export const getInternalMCPServerIconByName = (
+  name: InternalMCPServerNameType
+): InternalAllowedIconType => {
+  return INTERNAL_MCP_SERVERS[name].serverInfo.icon ?? undefined;
 };
 
 export const isInternalMCPServerName = (
