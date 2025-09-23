@@ -1,3 +1,5 @@
+import { APIError } from "@dust-tt/client";
+
 export class MCPServerNotFoundError extends Error {
   constructor(message: string) {
     super(message);
@@ -15,7 +17,7 @@ export class MCPError extends Error {
       tracked = true,
       code,
       cause,
-    }: { tracked?: boolean; code?: number; cause?: unknown } = {}
+    }: { tracked?: boolean; code?: number; cause?: Error | APIError } = {}
   ) {
     super(message, { cause });
     this.tracked = tracked;
