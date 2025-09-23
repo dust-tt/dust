@@ -146,6 +146,7 @@ export async function retryBlockedActions(
     {
       // Resume from the step where the action was created.
       startStep: lastStep,
+      ignoreExistingWorkflow: true,
     }
   );
 

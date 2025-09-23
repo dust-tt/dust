@@ -221,7 +221,12 @@ export async function runAgentLoop(
   {
     executionMode = "auto",
     startStep,
-  }: { executionMode?: ExecutionMode; startStep: number }
+    ignoreExistingWorkflow = false,
+  }: {
+    executionMode?: ExecutionMode;
+    startStep: number;
+    ignoreExistingWorkflow?: boolean;
+  }
 ): Promise<void> {
   const authType = auth.toJSON();
 
@@ -266,6 +271,7 @@ export async function runAgentLoop(
       runAsynchronousAgentArgs: runAgentArgsWithTiming.idArgs,
       startStep,
       initialStartTime: runAgentArgsWithTiming.initialStartTime,
+      ignoreExistingWorkflow,
     });
   }
 }
