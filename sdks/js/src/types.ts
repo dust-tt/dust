@@ -642,6 +642,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
+  | "confluence_tool"
   | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
@@ -2737,6 +2738,7 @@ export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
 const OAuthProviderSchema = FlexibleEnumSchema<
   | "confluence"
+  | "confluence_tools"
   | "freshservice"
   | "github"
   | "google_drive"
@@ -2773,6 +2775,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTimeIcon"
   | "AsanaLogo"
   | "CommandLineIcon"
+  | "ConfluenceLogo"
   | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"

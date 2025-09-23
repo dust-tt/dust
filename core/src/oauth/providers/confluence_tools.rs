@@ -19,11 +19,12 @@ use tracing::info;
 use super::utils::ProviderHttpRequestError;
 
 lazy_static! {
-    static ref OAUTH_CONFLUENCE_MCP_CLIENT_ID: String = env::var("OAUTH_CONFLUENCE_MCP_CLIENT_ID")
-        .expect("OAUTH_CONFLUENCE_MCP_CLIENT_ID must be set");
-    static ref OAUTH_CONFLUENCE_MCP_CLIENT_SECRET: String =
-        env::var("OAUTH_CONFLUENCE_MCP_CLIENT_SECRET")
-            .expect("OAUTH_CONFLUENCE_MCP_CLIENT_SECRET must be set");
+    static ref OAUTH_CONFLUENCE_TOOLS_CLIENT_ID: String =
+        env::var("OAUTH_CONFLUENCE_TOOLS_CLIENT_ID")
+            .expect("OAUTH_CONFLUENCE_TOOLS_CLIENT_ID must be set");
+    static ref OAUTH_CONFLUENCE_TOOLS_CLIENT_SECRET: String =
+        env::var("OAUTH_CONFLUENCE_TOOLS_CLIENT_SECRET")
+            .expect("OAUTH_CONFLUENCE_TOOLS_CLIENT_SECRET must be set");
 }
 
 /// Confluence tools use case for MCP actions.
@@ -42,8 +43,8 @@ impl ConfluenceToolsConnectionProvider {
 
     fn get_credentials(&self, _use_case: &ConfluenceToolsUseCase) -> (String, String) {
         (
-            OAUTH_CONFLUENCE_MCP_CLIENT_ID.clone(),
-            OAUTH_CONFLUENCE_MCP_CLIENT_SECRET.clone(),
+            OAUTH_CONFLUENCE_TOOLS_CLIENT_ID.clone(),
+            OAUTH_CONFLUENCE_TOOLS_CLIENT_SECRET.clone(),
         )
     }
 }

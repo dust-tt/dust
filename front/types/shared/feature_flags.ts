@@ -33,6 +33,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Collaborative editing features",
     stage: "dust_only",
   },
+  confluence_tool: {
+    description: "Confluence MCP tool",
+    stage: "on_demand",
+  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
