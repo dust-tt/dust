@@ -170,7 +170,7 @@ export function MCPRunAgentActionDetails({
       const IconComponent = getCitationIcon(
         citation.provider, 
         isDark, 
-        citation.faviconUrl, 
+        undefined, 
         citation.href
       );
       markdownCitations[key] = {
