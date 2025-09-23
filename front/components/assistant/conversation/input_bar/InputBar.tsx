@@ -321,10 +321,10 @@ export function AssistantInputBar({
               isStopping
                 ? "Stopping..."
                 : generationContext.generatingMessages.filter(
-                    (m) => m.conversationId === conversationId
-                  ).length > 1
-                ? "Stop all agents"
-                : "Stop agent"
+                      (m) => m.conversationId === conversationId
+                    ).length > 1
+                  ? "Stop all agents"
+                  : "Stop agent"
             }
             icon={StopIcon}
             onClick={handleStopGeneration}
