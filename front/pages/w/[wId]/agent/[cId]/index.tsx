@@ -91,12 +91,7 @@ export default function AgentConversation({
     } else {
       setAgentIdToMention(null);
     }
-  }, [
-    agent,
-    setConversationKey,
-    initialConversationId,
-    activeConversationId,
-  ]);
+  }, [agent, setConversationKey, initialConversationId, activeConversationId]);
 
   return (
     <ConversationContainer
@@ -110,10 +105,7 @@ export default function AgentConversation({
   );
 }
 
-AgentConversation.getLayout = (
-  page: React.ReactElement,
-  pageProps: any
-) => {
+AgentConversation.getLayout = (page: React.ReactElement, pageProps: any) => {
   return (
     <AppRootLayout>
       <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
