@@ -167,28 +167,8 @@ export function MCPServerViewsSheet({
 
   const hasReasoningModel = reasoningModels.length > 0;
 
-  // Utility function to check if a server view should be filtered out based on allowMultipleInstances
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
-      // For servers that don't allow multiple instances, check if any action is using this server type
-      if (!view.server.allowMultipleInstances) {
-        const serverAlreadyUsed = actions.some((action) => {
-          // Check if this is an MCP action with the same server ID
-          return (
-            action.type === "MCP" &&
-            action.configuration &&
-            action.configuration.mcpServerViewId === view.sId
-          );
-        });
-
-        if (serverAlreadyUsed) {
-          return true;
-        }
-      }
-
-      // Avoid name-based filtering to prevent collisions with user-defined action names.
-      // For backward compatibility with older actions, only filter if there is an MCP action
-      // explicitly tied to this server view and that action is non-configurable.
       const selectedAction = actions.find(
         (action) =>
           action.type === "MCP" &&
