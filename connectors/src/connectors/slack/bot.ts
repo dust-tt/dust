@@ -61,6 +61,7 @@ import {
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -445,11 +446,20 @@ async function processErrorResult(
         channelId: slackChannel,
         useCase: "bot",
       });
-      await slackClient.chat.update({
-        ...errorPost,
-        channel: slackChannel,
-        ts: mainMessage.ts,
-      });
+
+      const mainMessageTs = mainMessage.ts;
+
+      await throttleWithRedis(
+        50,
+        `${connector.id}-chat-update`,
+        false,
+        async () =>
+          slackClient.chat.update({
+            ...errorPost,
+            channel: slackChannel,
+            ts: mainMessageTs,
+          })
+      );
     } else {
       reportSlackUsage({
         connectorId: connector.id,

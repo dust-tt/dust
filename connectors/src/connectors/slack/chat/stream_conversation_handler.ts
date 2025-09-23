@@ -26,11 +26,11 @@ import {
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
-import { isWebAPIRateLimitedError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -68,60 +68,6 @@ interface StreamConversationToSlackParams {
   agentConfigurations: LightAgentConfigurationType[];
 }
 
-interface SlackUpdateState {
-  updateCount: number;
-  lastUpdateTime: number;
-}
-
-/**
- * Determines if a Slack update should be skipped based on exponential backoff.
- *
- * This is a best-effort attempt to limit the number of API calls to Slack to avoid hitting their
- * rate limits while still providing a fluid experience at the beginning of the conversation.
- *
- * The strategy uses exponential backoff:
- * - First 3 updates: no delay (instant feedback)
- * - Updates 4-5: 1s minimum spacing
- * - Updates 6-8: 3s minimum spacing
- * - Updates 9-11: 6s minimum spacing
- * - Updates 12-15: 10s minimum spacing
- * - Updates 16+: 15s minimum spacing
- *
- * This results in ~12-14 updates max per minute.
- *
- * @param updateCount - Number of updates sent so far in this conversation
- * @param lastUpdateTime - Timestamp of the last update (ms since epoch)
- * @returns true if the update should be skipped, false otherwise
- */
-function shouldSkipSlackUpdate({
-  updateCount,
-  lastUpdateTime,
-}: SlackUpdateState): boolean {
-  const timeSinceLastUpdate = Date.now() - lastUpdateTime;
-  const minSpacing = getRequiredDelay(updateCount);
-  return timeSinceLastUpdate < minSpacing;
-}
-
-/**
- * Calculates the required delay in milliseconds based on update count.
- * Uses exponential backoff to respect Slack's rate limits.
- */
-function getRequiredDelay(updateCount: number): number {
-  if (updateCount >= 16) {
-    return 15_000; // 15s.
-  } else if (updateCount >= 12) {
-    return 10_000; // 10s.
-  } else if (updateCount >= 9) {
-    return 6_000; // 6s.
-  } else if (updateCount >= 6) {
-    return 3_000; // 3s.
-  } else if (updateCount >= 4) {
-    return 1_000; // 1s.
-  }
-  // Updates 1-3: no delay
-  return 0;
-}
-
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams
@@ -129,17 +75,15 @@ export async function streamConversationToSlack(
   const { assistantName, agentConfigurations } = conversationData;
 
   // Immediately post the conversation URL once available.
-  await postSlackMessageUpdate(
-    {
-      messageUpdate: {
-        isThinking: true,
-        assistantName,
-        agentConfigurations,
-      },
-      ...conversationData,
+  await postSlackMessageUpdate({
+    messageUpdate: {
+      isThinking: true,
+      assistantName,
+      agentConfigurations,
     },
-    { adhereToRateLimit: false }
-  );
+    ...conversationData,
+    canBeIgnored: false,
+  });
 
   return streamAgentAnswerToSlack(dustAPI, conversationData);
 }
@@ -173,12 +117,6 @@ async function streamAgentAnswerToSlack(
     slackUserId,
   } = slack;
 
-  // Track update count and timing for exponential backoff.
-  let updateState: SlackUpdateState = {
-    updateCount: 0,
-    lastUpdateTime: Date.now(),
-  };
-
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
     userMessageId: userMessage.sId,
@@ -194,20 +132,17 @@ async function streamAgentAnswerToSlack(
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
-        updateState = await postSlackMessageUpdate(
-          {
-            messageUpdate: {
-              isThinking: true,
-              assistantName,
-              agentConfigurations,
-              text: answer,
-              thinkingAction: TOOL_RUNNING_LABEL,
-            },
-            ...conversationData,
-            updateState,
+        await postSlackMessageUpdate({
+          messageUpdate: {
+            isThinking: true,
+            assistantName,
+            agentConfigurations,
+            text: answer,
+            thinkingAction: TOOL_RUNNING_LABEL,
           },
-          { adhereToRateLimit: false }
-        );
+          ...conversationData,
+          canBeIgnored: false,
+        });
 
         break;
       }
@@ -267,7 +202,7 @@ async function streamAgentAnswerToSlack(
             connector.workspaceId,
             conversation.sId
           );
-          updateState = await postSlackMessageUpdate({
+          await postSlackMessageUpdate({
             messageUpdate: {
               text:
                 "The agent took an action that requires personal authentication. " +
@@ -276,7 +211,7 @@ async function streamAgentAnswerToSlack(
               agentConfigurations,
             },
             ...conversationData,
-            updateState,
+            canBeIgnored: false,
           });
           return new Ok(undefined);
         }
@@ -321,7 +256,7 @@ async function streamAgentAnswerToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
-        updateState = await postSlackMessageUpdate({
+        await postSlackMessageUpdate({
           messageUpdate: {
             text: slackContent,
             assistantName,
@@ -329,7 +264,7 @@ async function streamAgentAnswerToSlack(
             footnotes,
           },
           ...conversationData,
-          updateState,
+          canBeIgnored: true,
         });
         break;
       }
@@ -356,47 +291,40 @@ async function streamAgentAnswerToSlack(
         if (shouldSplitMessage) {
           const splitMessages = splitContentForSlack(slackContent);
 
-          updateState = await postSlackMessageUpdate(
-            {
-              messageUpdate: {
-                text: splitMessages[0],
-                assistantName,
-                agentConfigurations,
-                footnotes,
-                conversationId: conversation.sId,
-                messageId,
-              },
-              ...conversationData,
-              updateState,
+          await postSlackMessageUpdate({
+            messageUpdate: {
+              text: splitMessages[0],
+              assistantName,
+              agentConfigurations,
+              footnotes,
+              conversationId: conversation.sId,
+              messageId,
             },
-            { adhereToRateLimit: false }
-          );
+            ...conversationData,
+            canBeIgnored: false,
+          });
 
           // Post additional messages as thread replies
           if (splitMessages.length > 1) {
             await postThreadFollowUpMessages(
               splitMessages.slice(1),
-              conversationData,
-              updateState
+              conversationData
             );
           }
         } else {
           // Use normal single message update (with truncation if needed)
-          updateState = await postSlackMessageUpdate(
-            {
-              messageUpdate: {
-                text: slackContent,
-                assistantName,
-                agentConfigurations,
-                footnotes,
-                conversationId: conversation.sId,
-                messageId,
-              },
-              ...conversationData,
-              updateState,
+          await postSlackMessageUpdate({
+            messageUpdate: {
+              text: slackContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+              conversationId: conversation.sId,
+              messageId,
             },
-            { adhereToRateLimit: false }
-          );
+            ...conversationData,
+            canBeIgnored: false,
+          });
         }
         // Post ephemeral message with feedback buttons and agent selection
         if (
@@ -449,19 +377,16 @@ async function streamAgentAnswerToSlack(
           normalizeContentForSlack(formattedContent)
         );
 
-        await postSlackMessageUpdate(
-          {
-            messageUpdate: {
-              text: slackContent,
-              assistantName,
-              agentConfigurations,
-              footnotes,
-            },
-            ...conversationData,
-            updateState,
+        await postSlackMessageUpdate({
+          messageUpdate: {
+            text: slackContent,
+            assistantName,
+            agentConfigurations,
+            footnotes,
           },
-          { adhereToRateLimit: false }
-        );
+          ...conversationData,
+          canBeIgnored: false,
+        });
 
         return new Ok(undefined);
       }
@@ -480,114 +405,60 @@ async function streamAgentAnswerToSlack(
   );
 }
 
-async function postSlackMessageUpdate(
-  {
-    messageUpdate,
-    slack,
-    connector,
-    conversation,
-    mainMessage,
-    updateState,
-  }: {
-    messageUpdate: SlackMessageUpdate;
-    slack: {
-      slackChannelId: string;
-      slackClient: WebClient;
-      slackMessageTs: string;
-      slackUserInfo: SlackUserInfo;
-      slackUserId: string | null;
-    };
-    connector: ConnectorResource;
-    conversation: ConversationPublicType;
-    mainMessage: ChatPostMessageResponse;
-    updateState?: SlackUpdateState;
-  },
-  { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
-    adhereToRateLimit: true,
-  }
-): Promise<{ updateCount: number; lastUpdateTime: number }> {
+async function postSlackMessageUpdate({
+  messageUpdate,
+  slack,
+  connector,
+  conversation,
+  mainMessage,
+  canBeIgnored,
+}: {
+  messageUpdate: SlackMessageUpdate;
+  slack: {
+    slackChannelId: string;
+    slackClient: WebClient;
+    slackMessageTs: string;
+    slackUserInfo: SlackUserInfo;
+    slackUserId: string | null;
+  };
+  connector: ConnectorResource;
+  conversation: ConversationPublicType;
+  mainMessage: ChatPostMessageResponse;
+  canBeIgnored: boolean;
+}): Promise<void> {
   const { slackChannelId, slackClient } = slack;
   const conversationUrl = makeConversationUrl(
     connector.workspaceId,
     conversation.sId
   );
 
-  // Use provided state or initialize
-  let { updateCount = 0, lastUpdateTime = Date.now() } = updateState || {};
+  const response = await throttleWithRedis(
+    50,
+    `${connector.id}-chat-update`,
+    canBeIgnored,
+    async () =>
+      slackClient.chat.update({
+        ...makeMessageUpdateBlocksAndText(
+          conversationUrl,
+          connector.workspaceId,
+          messageUpdate
+        ),
+        channel: slackChannelId,
+        ts: mainMessage.ts as string,
+      })
+  );
 
-  if (adhereToRateLimit) {
-    const shouldSkip = shouldSkipSlackUpdate({ updateCount, lastUpdateTime });
-    if (shouldSkip) {
-      logger.info(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          updateCount,
-          skippedDueToBackoff: true,
-        },
-        "Skipping Slack update due to rate limiting"
-      );
-      return { updateCount, lastUpdateTime };
-    }
+  if (!canBeIgnored && response?.error) {
+    logger.error(
+      {
+        provider: "slack",
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        err: response.error,
+      },
+      "Failed to update Slack message."
+    );
   }
-
-  try {
-    const response = await slackClient.chat.update({
-      ...makeMessageUpdateBlocksAndText(
-        conversationUrl,
-        connector.workspaceId,
-        messageUpdate
-      ),
-      channel: slackChannelId,
-      ts: mainMessage.ts as string,
-    });
-
-    if (response.error) {
-      logger.error(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          err: response.error,
-        },
-        "Failed to update Slack message."
-      );
-    }
-  } catch (error) {
-    // When adhering to rate limits, swallow rate limit errors gracefully to avoid displaying the
-    // SLACK_RATE_LIMIT_ERROR_MESSAGE.
-    if (adhereToRateLimit && isWebAPIRateLimitedError(error)) {
-      logger.info(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          updateCount,
-          rateLimitError: true,
-        },
-        "Swallowing Slack rate limit error when adhering to rate limits"
-      );
-    } else {
-      // Re-throw non-rate-limit errors or rate-limit errors when not adhering to rate limits.
-      logger.info(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          error,
-          updateCount,
-          lastUpdateTime,
-          rateLimitError: isWebAPIRateLimitedError(error),
-        },
-        "Re-throwing Slack error when not trying to adhere to rate limits"
-      );
-      throw error;
-    }
-  }
-
-  // Always update state when we make an API call (regardless of success or adhereToRateLimit).
-  // This ensures we track all updates for accurate rate limiting.
-  updateCount++;
-  lastUpdateTime = Date.now();
-
-  return { updateCount, lastUpdateTime };
 }
 
 /**
@@ -667,59 +538,28 @@ function splitContentForSlack(
  */
 async function postThreadFollowUpMessages(
   followUpMessages: string[],
-  conversationData: StreamConversationToSlackParams,
-  updateState: SlackUpdateState
+  conversationData: StreamConversationToSlackParams
 ): Promise<void> {
   const { slack, connector, conversation, mainMessage } = conversationData;
   const { slackChannelId, slackClient } = slack;
 
-  let { updateCount = 0, lastUpdateTime = Date.now() } = updateState || {};
-
   for (let i = 0; i < followUpMessages.length; i++) {
-    try {
-      if (shouldSkipSlackUpdate({ updateCount, lastUpdateTime })) {
-        const requiredDelay = getRequiredDelay(updateCount);
-        await new Promise((resolve) => setTimeout(resolve, requiredDelay));
-      }
+    const threadResponse = await slackClient.chat.postMessage({
+      channel: slackChannelId,
+      text: followUpMessages[i] || "",
+      thread_ts: mainMessage.ts,
+    });
 
-      const threadResponse = await slackClient.chat.postMessage({
-        channel: slackChannelId,
-        text: followUpMessages[i] || "",
-        thread_ts: mainMessage.ts,
-      });
-
-      if (threadResponse.error) {
-        logger.error(
-          {
-            connectorId: connector.id,
-            conversationId: conversation.sId,
-            err: threadResponse.error,
-            messageIndex: i,
-          },
-          "Failed to post thread follow-up message."
-        );
-      }
-
-      updateCount++;
-      lastUpdateTime = Date.now();
-    } catch (threadError) {
-      if (isWebAPIRateLimitedError(threadError)) {
-        logger.info(
-          {
-            connectorId: connector.id,
-            conversationId: conversation.sId,
-            updateCount,
-            rateLimitError: true,
-            messageIndex: i,
-          },
-          "Swallowing Slack rate limit error"
-        );
-        // Will not continue with remaining messages
-        return;
-      } else {
-        // Re-throw non-rate-limit errors
-        throw threadError;
-      }
+    if (threadResponse.error) {
+      logger.error(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          err: threadResponse.error,
+          messageIndex: i,
+        },
+        "Failed to post thread follow-up message."
+      );
     }
   }
 }

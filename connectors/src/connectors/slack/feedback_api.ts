@@ -6,6 +6,7 @@ import {
   getSlackUserInfo,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { apiConfig } from "@connectors/lib/api/config";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -205,12 +206,18 @@ export async function submitFeedbackToAPI({
             }
           }
 
-          await slackClient.chat.update({
-            channel: slackChannelId,
-            ts: slackMessageTs,
-            blocks: updatedBlocks,
-            text: currentMessage.text || "",
-          });
+          await throttleWithRedis(
+            50,
+            `${connector.id}-chat-update`,
+            false,
+            async () =>
+              slackClient.chat.update({
+                channel: slackChannelId,
+                ts: slackMessageTs,
+                blocks: updatedBlocks,
+                text: currentMessage.text || "",
+              })
+          );
         } else {
           logger.warn(
             {
