@@ -16,6 +16,12 @@ export function middleware(request: NextRequest) {
 
   const url = request.nextUrl.pathname;
 
+  // Redirect assistant URLs to agent URLs (but not API routes)
+  if (url.includes('/assistant/') && !url.startsWith('/api/')) {
+    const newUrl = url.replace('/assistant/', '/agent/');
+    return NextResponse.redirect(new URL(newUrl, request.url));
+  }
+
   // The CASA test attempts to at least double encode the string to bypass checks hence why we
   // attempt to handle nested encoding up to 8 times.
   let decodedUrl = url;

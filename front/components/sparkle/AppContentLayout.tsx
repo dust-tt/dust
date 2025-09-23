@@ -21,7 +21,7 @@ export const appLayoutBack = async (
   // counts the default page as an entry in the history stack, leading to a history length of 2.
   // Directly opening a link without the "new tab" page results in a history length of 1.
   if (window.history.length < 3) {
-    await router.push(`/w/${owner.sId}/assistant/new`);
+    await router.push(`/w/${owner.sId}/agent/new`);
   } else {
     // Set up beforePopState to intercept the back navigation and clean query params.
     router.beforePopState(({ as }) => {

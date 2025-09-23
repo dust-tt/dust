@@ -284,7 +284,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     setSidebarOpen(false);
     const { cId } = router.query;
     const isNewConversation =
-      router.pathname === "/w/[wId]/assistant/[cId]" &&
+      (router.pathname === "/w/[wId]/assistant/[cId]" || router.pathname === "/w/[wId]/agent/[cId]") &&
       typeof cId === "string" &&
       cId === "new";
     if (isNewConversation) {
@@ -333,7 +333,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
                 <Button
                   label="New"
-                  href={`/w/${owner.sId}/assistant/new`}
+                  href={`/w/${owner.sId}/agent/new`}
                   icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
@@ -552,7 +552,7 @@ const RenderConversation = ({
               await new Promise((resolve) => setTimeout(resolve, 600));
             }
             await router.push(
-              `/w/${owner.sId}/assistant/${conversation.sId}`,
+              `/w/${owner.sId}/agent/${conversation.sId}`,
               undefined,
               {
                 shallow: true,

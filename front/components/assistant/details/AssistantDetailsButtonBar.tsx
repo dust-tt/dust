@@ -236,7 +236,7 @@ export function AssistantDetailsButtonBar({
         icon={ChatBubbleBottomCenterTextIcon}
         size="sm"
         variant="outline"
-        href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
+        href={`/w/${owner.sId}/agent/new?assistant=${agentConfiguration.sId}`}
       />
 
       {agentConfiguration.scope !== "global" &&

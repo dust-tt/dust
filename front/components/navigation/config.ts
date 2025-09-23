@@ -115,13 +115,13 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "conversations",
     label: "Chat",
-    href: `/w/${owner.sId}/assistant/new`,
+    href: `/w/${owner.sId}/agent/new`,
     icon: ChatBubbleLeftRightIcon,
     sizing: "hug",
     isCurrent: (currentRoute) =>
       [
-        "/w/[wId]/assistant/new",
-        "/w/[wId]/assistant/[cId]",
+        "/w/[wId]/agent/new",
+        "/w/[wId]/agent/[cId]",
         "/w/[wId]/assistants",
       ].includes(currentRoute),
   });
