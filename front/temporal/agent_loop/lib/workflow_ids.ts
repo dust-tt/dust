@@ -2,12 +2,10 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
 
 export function makeAgentLoopWorkflowId(
-  authType: AuthenticatorType,
-  runAgentArgs: RunAgentAsynchronousArgs
+  workspaceId: string | null,
+  conversationId: string,
+  agentMessageId: string
 ) {
-  const { workspaceId } = authType;
-  const { agentMessageId, conversationId } = runAgentArgs;
-
   return `agent-loop-workflow-${workspaceId}-${conversationId}-${agentMessageId}`;
 }
 

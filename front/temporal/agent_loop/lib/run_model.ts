@@ -51,8 +51,8 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
+import { heartbeat } from "@temporalio/activity";
 
-const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
 
 // This method is used by the multi-actions execution loop to pick the next
@@ -450,9 +450,6 @@ export async function runModelActivity(
     >;
   } | null = null;
 
-  let shouldYieldCancel = false;
-  let lastCheckCancellation = Date.now();
-  const redis = await getRedisClient({ origin: "assistant_generation" });
   let isGeneration = true;
 
   const contentParser = new AgentMessageContentParser(
@@ -460,27 +457,6 @@ export async function runModelActivity(
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
-
-  async function checkCancellation() {
-    try {
-      const cancelled = await redis.get(
-        `assistant:generation:cancelled:${agentMessage.sId}`
-      );
-      if (cancelled === "1") {
-        shouldYieldCancel = true;
-        await redis.set(
-          `assistant:generation:cancelled:${agentMessage.sId}`,
-          0,
-          {
-            EX: 3600, // 1 hour
-          }
-        );
-      }
-    } catch (error) {
-      localLogger.error({ error }, "Error checking cancellation");
-      return false;
-    }
-  }
 
   let nativeChainOfThought = "";
 
@@ -497,32 +473,8 @@ export async function runModelActivity(
       return handlePossiblyRetryableError(event.content.message);
     }
 
-    const currentTimestamp = Date.now();
-    if (
-      currentTimestamp - lastCheckCancellation >=
-      CANCELLATION_CHECK_INTERVAL
-    ) {
-      void checkCancellation(); // Trigger the async function without awaiting
-      lastCheckCancellation = currentTimestamp;
-    }
-
-    if (shouldYieldCancel) {
-      await flushParserTokens();
-      await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "agent_generation_cancelled",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-        },
-        agentMessageRow,
-        conversation,
-        step,
-      });
-      localLogger.error("Agent generation cancelled");
-
-      return null;
-    }
+    // Heartbeat allows the activity to be cancelled, e.g. on a "Stop agent" request.
+    heartbeat();
 
     if (event.type === "tokens" && isGeneration) {
       for await (const tokenEvent of contentParser.emitTokens(

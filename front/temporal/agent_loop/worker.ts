@@ -5,7 +5,10 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { notifyWorkflowError } from "@app/temporal/agent_loop/activities/common";
+import {
+  notifyWorkflowError,
+  finalizeCancellationActivity,
+} from "@app/temporal/agent_loop/activities/common";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
   logAgentLoopPhaseCompletionActivity,
@@ -31,6 +34,7 @@ export async function runAgentLoopWorker() {
       logAgentLoopPhaseStartActivity,
       logAgentLoopStepCompletionActivity,
       notifyWorkflowError,
+      finalizeCancellationActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,

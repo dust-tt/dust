@@ -28,8 +28,9 @@ export async function launchAgentLoopWorkflow({
   const client = await getTemporalClientForAgentNamespace();
 
   const workflowId = makeAgentLoopWorkflowId(
-    authType,
-    runAsynchronousAgentArgs
+    authType.workspaceId,
+    runAsynchronousAgentArgs.conversationId,
+    runAsynchronousAgentArgs.agentMessageId
   );
 
   try {
