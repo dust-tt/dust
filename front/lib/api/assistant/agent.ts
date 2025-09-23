@@ -11,6 +11,7 @@ import {
   LONG_RUNNING_TOOL_THRESHOLD_MS,
   SYNC_TO_ASYNC_TIMEOUT_MS,
 } from "@app/lib/constants/timeouts";
+import type { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { wakeLock } from "@app/lib/wake_lock";
 import {
@@ -227,7 +228,7 @@ export async function runAgentLoop(
     executionMode?: ExecutionMode;
     startStep: number;
   }
-): Promise<Result<undefined, Error>> {
+): Promise<Result<undefined, Error | DustError<"agent_loop_already_running">>> {
   const authType = auth.toJSON();
 
   // Capture initial start time and log total execution start.

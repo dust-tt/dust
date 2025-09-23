@@ -7,6 +7,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { AgentMessageType, WithAPIErrorResponse } from "@app/types";
@@ -89,12 +90,26 @@ async function handler(
         );
 
         if (retryBlockedActionsRes.isErr()) {
+          const { error } = retryBlockedActionsRes;
           logger.error(
             {
-              error: retryBlockedActionsRes.error,
+              error,
             },
             "Error retrying blocked actions"
           );
+
+          if (
+            error instanceof DustError &&
+            error.code === "agent_loop_already_running"
+          ) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          }
 
           return apiError(req, res, {
             status_code: 500,

@@ -1,6 +1,7 @@
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import type { AuthenticatorType } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
@@ -21,7 +22,9 @@ export async function launchAgentLoopWorkflow({
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
   startStep: number;
   initialStartTime: number;
-}): Promise<Result<undefined, Error>> {
+}): Promise<
+  Result<undefined, Error | DustError<"agent_loop_already_running">>
+> {
   const client = await getTemporalClientForAgentNamespace();
 
   const workflowId = makeAgentLoopWorkflowId(
@@ -52,9 +55,10 @@ export async function launchAgentLoopWorkflow({
     );
 
     return new Err(
-      new Error("Cannot start agent loop: workflow already running.", {
-        cause: error,
-      })
+      new DustError(
+        "agent_loop_already_running",
+        "Agent loop already running for this message."
+      )
     );
   }
 
