@@ -12,10 +12,8 @@ import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  ConfigurableToolInputSchemas,
-  parseAgentConfigurationUri,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { WebsearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeInternalMCPServer,
@@ -326,3 +324,8 @@ const createServer = (
 };
 
 export default createServer;
+
+function parseAgentConfigurationUri(uri: string): string | null {
+  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
+  return match ? match[2] : null;
+}

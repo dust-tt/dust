@@ -216,9 +216,3 @@ export const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   Record<InternalToolInputMimeType, JSONSchema>,
   typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
 >;
-
-// TODO we should not need this here, this should stay in webtools_edge
-export function parseAgentConfigurationUri(uri: string): string | null {
-  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
-  return match ? match[2] : null;
-}

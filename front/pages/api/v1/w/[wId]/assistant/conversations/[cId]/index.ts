@@ -57,7 +57,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  *     tags:
  *       - Conversations
  *     security:
- *       - OauthToken: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: wId

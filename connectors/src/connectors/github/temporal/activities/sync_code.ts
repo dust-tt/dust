@@ -114,7 +114,7 @@ export async function githubExtractToGcsActivity({
   const repoInfo = repoInfoRes.value;
 
   // If repo is too large, simply return null, to be handled by the caller.
-  if (isRepoTooLarge(repoInfo)) {
+  if (isRepoTooLarge(repoInfo, connector)) {
     return null;
   }
 

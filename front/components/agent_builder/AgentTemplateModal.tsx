@@ -75,6 +75,7 @@ export function AgentTemplateModal({
               <Page.SectionHeader title="Instructions" />
               <ReadOnlyTextArea
                 content={assistantTemplate.presetInstructions}
+                minRows={10}
               />
             </div>
           </SheetContainer>

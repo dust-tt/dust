@@ -4,6 +4,7 @@
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
+import { validate } from "uuid";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -130,6 +131,10 @@ export class FileResource extends BaseResource<FileModel> {
     content: string;
     shareScope: FileShareScope;
   } | null> {
+    if (!validate(token)) {
+      return null;
+    }
+
     const shareableFile = await ShareableFileModel.findOne({
       where: { token },
     });
@@ -141,6 +146,7 @@ export class FileResource extends BaseResource<FileModel> {
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
+
     if (!workspace) {
       return null;
     }

@@ -141,7 +141,6 @@ export const getTopNavigationTabs = (
     nav.push({
       id: "settings",
       label: "Admin",
-      hideLabel: true,
       icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
