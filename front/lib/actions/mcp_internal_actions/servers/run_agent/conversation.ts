@@ -19,6 +19,7 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 
 export async function getOrCreateConversation(
   api: DustAPI,
@@ -49,7 +50,7 @@ export async function getOrCreateConversation(
       isNewConversation: boolean;
       userMessageId: string;
     },
-    Error
+    MCPError
   >
 > {
   const { agentMessage, stepContext } = agentLoopContext;
@@ -61,7 +62,15 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      return new Err(new Error("Failed to get conversation"));
+      // Do not track invalid request errors, since they are user-side and should
+      // not trigger an alert on our end.
+      const tracked = convRes.error.type !== "invalid_request_error";
+      return new Err(
+        new MCPError("Failed to get conversation", {
+          cause: convRes.error,
+          tracked,
+        })
+      );
     }
 
     return new Ok({
@@ -126,7 +135,15 @@ export async function getOrCreateConversation(
     });
 
     if (messageRes.isErr()) {
-      return new Err(new Error("Failed to create message"));
+      // Do not track invalid request errors, since they are user-side and should
+      // not trigger an alert on our end.
+      const tracked = messageRes.error.type !== "invalid_request_error";
+      return new Err(
+        new MCPError("Failed to create message", {
+          cause: messageRes.error,
+          tracked,
+        })
+      );
     }
 
     const convRes = await api.getConversation({
@@ -134,7 +151,15 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      return new Err(new Error("Failed to get conversation"));
+      // Do not track invalid request errors, since they are user-side and should
+      // not trigger an alert on our end.
+      const tracked = convRes.error.type !== "invalid_request_error";
+      return new Err(
+        new MCPError("Failed to get conversation", {
+          cause: convRes.error,
+          tracked,
+        })
+      );
     }
 
     return new Ok({
@@ -179,13 +204,22 @@ export async function getOrCreateConversation(
       "Failed to create conversation"
     );
 
-    return new Err(new Error("Failed to create conversation"));
+    // Do not track invalid request errors, since they are user-side and should
+    // not trigger an alert on our end.
+    const tracked = convRes.error.type !== "invalid_request_error";
+
+    return new Err(
+      new MCPError("Failed to create conversation", {
+        cause: convRes.error,
+        tracked,
+      })
+    );
   }
 
   const { conversation, message: createdUserMessage } = convRes.value;
 
   if (!createdUserMessage) {
-    return new Err(new Error("Failed to retrieve the created message."));
+    return new Err(new MCPError("Failed to retrieve the created message."));
   }
 
   return new Ok({

@@ -11,9 +11,13 @@ export class MCPError extends Error {
 
   constructor(
     message: string,
-    { tracked = true, code }: { tracked?: boolean; code?: number } = {}
+    {
+      tracked = true,
+      code,
+      cause,
+    }: { tracked?: boolean; code?: number; cause?: unknown } = {}
   ) {
-    super(message);
+    super(message, { cause });
     this.tracked = tracked;
     this.code = code;
   }
