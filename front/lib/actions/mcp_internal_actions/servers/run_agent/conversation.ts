@@ -4,6 +4,7 @@ import type {
   PublicPostContentFragmentRequestBody,
 } from "@dust-tt/client";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
@@ -49,7 +50,7 @@ export async function getOrCreateConversation(
       isNewConversation: boolean;
       userMessageId: string;
     },
-    Error
+    MCPError
   >
 > {
   const { agentMessage, stepContext } = agentLoopContext;
@@ -61,7 +62,19 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      return new Err(new Error("Failed to get conversation"));
+      // Do not track invalid request errors, since they are user-side and should
+      // not trigger an alert on our end. For user-side errors, surface the
+      // underlying message to the model.
+      const isUserSide = convRes.error.type === "invalid_request_error";
+      const message = isUserSide
+        ? convRes.error.message
+        : "Failed to get conversation";
+      return new Err(
+        new MCPError(message, {
+          cause: convRes.error,
+          tracked: !isUserSide,
+        })
+      );
     }
 
     return new Ok({
@@ -126,7 +139,19 @@ export async function getOrCreateConversation(
     });
 
     if (messageRes.isErr()) {
-      return new Err(new Error("Failed to create message"));
+      // Do not track invalid request errors, since they are user-side and should
+      // not trigger an alert on our end. For user-side errors, surface the
+      // underlying message to the model.
+      const isUserSide = messageRes.error.type === "invalid_request_error";
+      const message = isUserSide
+        ? messageRes.error.message
+        : "Failed to create message";
+      return new Err(
+        new MCPError(message, {
+          cause: messageRes.error,
+          tracked: !isUserSide,
+        })
+      );
     }
 
     const convRes = await api.getConversation({
@@ -134,7 +159,19 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      return new Err(new Error("Failed to get conversation"));
+      // Do not track invalid request errors, since they are user-side and should
+      // not trigger an alert on our end. For user-side errors, surface the
+      // underlying message to the model.
+      const isUserSide = convRes.error.type === "invalid_request_error";
+      const message = isUserSide
+        ? convRes.error.message
+        : "Failed to get conversation";
+      return new Err(
+        new MCPError(message, {
+          cause: convRes.error,
+          tracked: !isUserSide,
+        })
+      );
     }
 
     return new Ok({
@@ -179,13 +216,25 @@ export async function getOrCreateConversation(
       "Failed to create conversation"
     );
 
-    return new Err(new Error("Failed to create conversation"));
+    // Do not track invalid request errors, since they are user-side and should
+    // not trigger an alert on our end. For user-side errors, surface the
+    // underlying message to the model.
+    const isUserSide = convRes.error.type === "invalid_request_error";
+    const message = isUserSide
+      ? convRes.error.message
+      : "Failed to create conversation";
+    return new Err(
+      new MCPError(message, {
+        cause: convRes.error,
+        tracked: !isUserSide,
+      })
+    );
   }
 
   const { conversation, message: createdUserMessage } = convRes.value;
 
   if (!createdUserMessage) {
-    return new Err(new Error("Failed to retrieve the created message."));
+    return new Err(new MCPError("Failed to retrieve the created message."));
   }
 
   return new Ok({

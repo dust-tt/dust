@@ -360,7 +360,7 @@ ${query}`
         );
 
         if (convRes.isErr()) {
-          return new Err(new MCPError(convRes.error.message));
+          return new Err(convRes.error);
         }
 
         if (isHandoff) {
