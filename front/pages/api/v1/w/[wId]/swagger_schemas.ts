@@ -7,6 +7,11 @@
  *       type: http
  *       scheme: bearer
  *       description: Your DUST API key is a Bearer token.
+ *     WebhookSignature:
+ *       type: apiKey
+ *       in: header
+ *       name: x-hub-signature
+ *       description: Signature of the payload using a shared secret. The actual header name is configured dynamically in the webhook endpoint.
  *   schemas:
  *     User:
  *       type: object
