@@ -84,7 +84,7 @@ const MultiPageSheetFooter = ({
         <div>{leftButton && <Button {...leftButton} />}</div>
         <div className="s-flex s-gap-2">
           {centerButton && <Button {...centerButton} />}
-          {rightButton && <Button {...rightButton} />}
+          {rightButton && <Button data-sheet-save="true" {...rightButton} />}
         </div>
       </div>
     </div>
