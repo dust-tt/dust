@@ -32,7 +32,7 @@ const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
  * /api/v1/w/{wId}/triggers/hooks/{webhookSourceId}:
  *   post:
  *     summary: Receive external webhook to trigger flows
- *     description: Skeleton endpoint that verifies workspace and webhook source and logs receipt.
+ *     description: Endpoint that receives external webhooks, verifies signatures, applies rate limiting, and triggers associated agent workflows.
  *     tags:
  *       - Triggers
  *     parameters:
@@ -54,15 +54,156 @@ const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
  *         application/json:
  *           schema:
  *             type: object
+ *             description: The webhook payload - can be any valid JSON object
+ *             additionalProperties: true
+ *     security:
+ *       - WebhookSignature: []
  *     responses:
  *       200:
- *         description: Webhook received
+ *         description: Webhook received and processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   enum: [true]
+ *                   description: Always true for successful requests
+ *               required:
+ *                 - success
  *       400:
- *         description: Invalid request
+ *         description: Invalid request - Content-Type not application/json, invalid route parameters, or webhook misconfiguration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: ["invalid_request_error", "webhook_source_misconfiguration"]
+ *                       description: Error type identifier
+ *                     message:
+ *                       type: string
+ *                       description: Human-readable error message
+ *                   required:
+ *                     - type
+ *                     - message
+ *               required:
+ *                 - error
+ *       401:
+ *         description: Authentication failed - Missing or invalid webhook signature
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: ["not_authenticated"]
+ *                       description: Error type identifier
+ *                     message:
+ *                       type: string
+ *                       description: Human-readable error message
+ *                   required:
+ *                     - type
+ *                     - message
+ *               required:
+ *                 - error
  *       404:
- *         description: Workspace or webhook source not found
+ *         description: Resource not found - Workspace or webhook source does not exist
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: ["workspace_not_found", "webhook_source_not_found"]
+ *                       description: Error type identifier
+ *                     message:
+ *                       type: string
+ *                       description: Human-readable error message
+ *                   required:
+ *                     - type
+ *                     - message
+ *               required:
+ *                 - error
  *       405:
- *         description: Method not allowed
+ *         description: Method not allowed - Only POST requests are supported
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: ["method_not_supported_error"]
+ *                       description: Error type identifier
+ *                     message:
+ *                       type: string
+ *                       description: Human-readable error message
+ *                   required:
+ *                     - type
+ *                     - message
+ *               required:
+ *                 - error
+ *       429:
+ *         description: Rate limit exceeded - Too many webhook triggers for the workspace
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: ["rate_limit_error"]
+ *                       description: Error type identifier
+ *                     message:
+ *                       type: string
+ *                       description: Human-readable error message with rate limit details
+ *                   required:
+ *                     - type
+ *                     - message
+ *               required:
+ *                 - error
+ *       500:
+ *         description: Internal server error - Error creating content fragment or launching agent workflows
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: ["internal_server_error"]
+ *                       description: Error type identifier
+ *                     message:
+ *                       type: string
+ *                       description: Human-readable error message
+ *                   required:
+ *                     - type
+ *                     - message
+ *               required:
+ *                 - error
  */
 
 export const config = {
