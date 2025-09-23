@@ -9,6 +9,7 @@ import {
   CitationTitle,
   DocumentIcon,
   DoubleIcon,
+  FaviconIcon,
   FolderIcon,
   Icon,
   ImageIcon,
@@ -140,10 +141,16 @@ export function contentFragmentToAttachmentCitation(
   if (contentFragment.contentFragmentType === "content_node") {
     const { provider, nodeType } = contentFragment.contentNodeData;
     const logo = getConnectorProviderLogoWithFallback({ provider });
-
+    console.log("logo", logo);
+    console.log("contentFragment.sourceUrl", contentFragment.sourceUrl);
+    console.log("provider", provider);
     const visual =
       !provider || provider === "webcrawler" ? (
-        <Icon visual={logo} size="md" />
+        contentFragment.sourceUrl ? (
+          <FaviconIcon websiteUrl={contentFragment.sourceUrl} size="md" />
+        ) : (
+          <Icon visual={logo} size="md" />
+        )
       ) : (
         <DoubleIcon
           mainIcon={
