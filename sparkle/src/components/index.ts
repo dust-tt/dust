@@ -48,6 +48,7 @@ export {
   ConversationMessageHeader,
 } from "./ConversationMessage";
 export { Counter } from "./Counter";
+export { FaviconIcon } from "./FaviconIcon";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {
   createRadioSelectionColumn,
