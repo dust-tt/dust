@@ -1,4 +1,3 @@
-import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
@@ -8,6 +7,7 @@ import {
 } from "./mcp_icon_types";
 import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
+import { TIMEZONE_NAMES } from "./timezone_names";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -357,7 +357,7 @@ export class Err<E> {
 export type Result<T, E> = Ok<T> | Err<E>;
 
 // Custom codec to validate the timezone
-const Timezone = z.string().refine((s) => moment.tz.names().includes(s), {
+const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
   message: "Invalid timezone",
 });
 

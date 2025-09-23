@@ -167,7 +167,12 @@ export function MCPRunAgentActionDetails({
     }
     const markdownCitations: { [key: string]: MarkdownCitation } = {};
     Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
-      const IconComponent = getCitationIcon(citation.provider, isDark);
+      const IconComponent = getCitationIcon(
+        citation.provider,
+        isDark,
+        undefined,
+        citation.href
+      );
       markdownCitations[key] = {
         title: citation.title,
         href: citation.href,
