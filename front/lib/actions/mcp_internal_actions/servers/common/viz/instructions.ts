@@ -105,15 +105,21 @@ import Papa from "papaparse";
 function DataChart() {
   const file = useFile("fil_abc123"); 
   const [data, setData] = useState([]);
+  const [fileContent, setFileContent] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadFile = async () => {
       if (file) {
+       // For text files
         const text = await file.text();
         const parsed = Papa.parse(text, { header: true, skipEmptyLines: "greedy" });
         setData(parsed.data);
         setLoading(false);
+
+        // For binary files
+        const arrayBuffer = await file.arrayBuffer();
+        setFileContent(arrayBuffer);
       }
     };
     loadFile();
