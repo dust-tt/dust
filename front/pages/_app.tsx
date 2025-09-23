@@ -13,7 +13,11 @@ import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect } from "react";
 
-const { NEXT_PUBLIC_POSTHOG_KEY, NODE_ENV } = process.env;
+// Important: avoid destructuring process.env on the client.
+// Next.js replaces direct property access (process.env.NEXT_PUBLIC_*) at build time,
+// but destructuring `process.env` does not get inlined.
+const NEXT_PUBLIC_POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const NODE_ENV = process.env.NODE_ENV;
 
 // Log PostHog configuration for debugging
 console.log("[PostHog] Environment check:", {
