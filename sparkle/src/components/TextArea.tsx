@@ -110,11 +110,18 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 );
 TextArea.displayName = "TextArea";
 
-const ReadOnlyTextArea = ({ content }: { content: string | null }) => {
+const ReadOnlyTextArea = ({
+  content,
+  minRows = 10,
+}: {
+  content: string | null;
+  minRows: number;
+}) => {
   return (
     <TextArea
       disabled
       isDisplay
+      minRows={minRows}
       className={cn(
         "s-copy-sm s-h-full s-min-h-60 s-w-full s-min-w-0 s-rounded-xl",
         "s-resize-none s-border-border s-bg-muted-background",

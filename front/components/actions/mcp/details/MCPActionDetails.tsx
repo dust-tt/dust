@@ -26,6 +26,7 @@ import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MC
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
@@ -37,6 +38,7 @@ import {
   FILESYSTEM_LIST_TOOL_NAME,
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
+  getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
   PROCESS_TOOL_NAME,
   QUERY_TABLES_TOOL_NAME,
@@ -286,11 +288,17 @@ export function GenericActionDetails({
       ? `: ${asDisplayName(action.functionCallName)}`
       : "");
 
+  const actionIcon =
+    action.internalMCPServerName &&
+    InternalActionIcons[
+      getInternalMCPServerIconByName(action.internalMCPServerName)
+    ];
+
   return (
     <ActionDetailsWrapper
       viewType={viewType}
       actionName={actionName}
-      visual={MCP_SPECIFICATION.cardIcon}
+      visual={actionIcon ?? MCP_SPECIFICATION.cardIcon}
     >
       {viewType !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
