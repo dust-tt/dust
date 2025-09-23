@@ -109,7 +109,7 @@ function isStreamTerminationError(e: unknown): boolean {
     return false;
   }
   const err = normalizeError(e);
-  const msg = err.message || String(e);
+  const msg = err.message;
   const name = err.name || "";
 
   // Common patterns from undici/fetch when a stream is cut or aborted.
