@@ -1,4 +1,3 @@
-import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
@@ -356,8 +355,16 @@ export class Err<E> {
 
 export type Result<T, E> = Ok<T> | Err<E>;
 
-// Custom codec to validate the timezone
-const Timezone = z.string().refine((s) => moment.tz.names().includes(s), {
+const validateTimezone = (s: string): boolean => {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: s });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const Timezone = z.string().refine(validateTimezone, {
   message: "Invalid timezone",
 });
 
