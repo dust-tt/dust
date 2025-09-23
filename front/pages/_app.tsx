@@ -12,6 +12,8 @@ import { useRouter } from "next/router";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect } from "react";
+
+const { NEXT_PUBLIC_POSTHOG_KEY, NODE_ENV } = process.env;
 import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
@@ -56,13 +58,13 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
 
     if (isPublicPage && hasAcceptedCookies) {
       // Only initialize if not already initialized
-      if (!posthog.__loaded && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-        posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+      if (!posthog.__loaded && NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.init(NEXT_PUBLIC_POSTHOG_KEY, {
           api_host: "/ingest",
           person_profiles: "identified_only",
           defaults: "2025-05-24",
           loaded: (posthog) => {
-            if (process.env.NODE_ENV === "development") {
+            if (NODE_ENV === "development") {
               posthog.debug();
             }
           },
