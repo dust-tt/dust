@@ -3939,9 +3939,7 @@
       "get": {
         "summary": "List available MCP server views.",
         "description": "Retrieves a list of enabled MCP server views (aka tools) for a specific space of the authenticated workspace.",
-        "tags": [
-          "Tools"
-        ],
+        "tags": ["Tools"],
         "security": [
           {
             "BearerAuth": []
@@ -4058,6 +4056,244 @@
           },
           "500": {
             "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/api/v1/w/{wId}/triggers/hooks/{webhookSourceId}": {
+      "post": {
+        "summary": "Receive external webhook to trigger flows",
+        "description": "Endpoint that receives external webhooks, verifies signatures, applies rate limiting, and triggers associated agent workflows.",
+        "tags": ["Triggers"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "Workspace ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "webhookSourceId",
+            "required": true,
+            "description": "Webhook source ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "The webhook payload - can be any valid JSON object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "WebhookSignature": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook received and processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [true],
+                      "description": "Always true for successful requests"
+                    }
+                  },
+                  "required": ["success"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request - Content-Type not application/json, invalid route parameters, or webhook misconfiguration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_request_error",
+                            "webhook_source_misconfiguration"
+                          ],
+                          "description": "Error type identifier"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Human-readable error message"
+                        }
+                      },
+                      "required": ["type", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed - Missing or invalid webhook signature",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["not_authenticated"],
+                          "description": "Error type identifier"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Human-readable error message"
+                        }
+                      },
+                      "required": ["type", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found - Workspace or webhook source does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "workspace_not_found",
+                            "webhook_source_not_found"
+                          ],
+                          "description": "Error type identifier"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Human-readable error message"
+                        }
+                      },
+                      "required": ["type", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed - Only POST requests are supported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["method_not_supported_error"],
+                          "description": "Error type identifier"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Human-readable error message"
+                        }
+                      },
+                      "required": ["type", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded - Too many webhook triggers for the workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["rate_limit_error"],
+                          "description": "Error type identifier"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Human-readable error message with rate limit details"
+                        }
+                      },
+                      "required": ["type", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error - Error creating content fragment or launching agent workflows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["internal_server_error"],
+                          "description": "Error type identifier"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Human-readable error message"
+                        }
+                      },
+                      "required": ["type", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
           }
         }
       }
@@ -5091,10 +5327,7 @@
           },
           "serverType": {
             "type": "string",
-            "enum": [
-              "remote",
-              "internal"
-            ],
+            "enum": ["remote", "internal"],
             "description": "Type of the MCP server",
             "example": "remote"
           },
@@ -5139,15 +5372,10 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": [
-                        "platform_actions",
-                        "personal_actions"
-                      ]
+                      "enum": ["platform_actions", "personal_actions"]
                     },
                     "description": "Supported use cases for the authorization",
-                    "example": [
-                      "platform_actions"
-                    ]
+                    "example": ["platform_actions"]
                   },
                   "scope": {
                     "type": "string",
@@ -5207,10 +5435,7 @@
           "oAuthUseCase": {
             "type": "string",
             "nullable": true,
-            "enum": [
-              "platform_actions",
-              "personal_actions"
-            ],
+            "enum": ["platform_actions", "personal_actions"],
             "description": "OAuth use case for the MCP server view",
             "example": "platform_actions"
           },
@@ -5247,6 +5472,12 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Your DUST API key is a Bearer token."
+      },
+      "WebhookSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-hub-signature",
+        "description": "Signature of the payload using a shared secret. The actual header name is configured dynamically in the webhook endpoint."
       }
     }
   },
