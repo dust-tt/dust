@@ -773,6 +773,7 @@ DataTable.Row = function Row({
           <DropdownMenuPortal>
             <DropdownMenuContent
               align="start"
+              className="s-whitespace-nowrap"
               style={{
                 position: "fixed",
                 left: contextMenuPosition?.x || 0,

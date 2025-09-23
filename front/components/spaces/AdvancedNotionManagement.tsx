@@ -30,7 +30,6 @@ interface TableData {
   method: "sync" | "delete";
   error_message?: string;
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
 }
 

@@ -131,7 +131,6 @@ interface DomainRowData {
   workspaceVerifiedDomain?: WorkspaceDomain;
   status: string;
   onClick?: () => void;
-  moreMenuItems?: any[];
 }
 
 function DomainVerificationTable({
