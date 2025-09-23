@@ -32,7 +32,7 @@ type RowData = {
   description: string;
   icon: ComponentType;
   workspaceId: string;
-  onClick?: () => void;
+  onDoubleClick?: () => void;
 };
 
 const getTableColumns = (): ColumnDef<RowData, string>[] => {
@@ -180,7 +180,7 @@ export const SpaceAppsList = ({
         description: app.description ?? "",
         icon: CommandLineIcon,
         workspaceId: owner.sId,
-        onClick: () => onSelect(app.sId),
+        onDoubleClick: () => onSelect(app.sId),
       })) || [],
     [apps, onSelect, owner]
   );
