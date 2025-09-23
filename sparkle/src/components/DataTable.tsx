@@ -918,9 +918,7 @@ DataTable.MoreButton = function MoreButton({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
-        <DropdownMenuGroup>
-          {menuItems.map((item, index) => renderMenuItem(item, index))}
-        </DropdownMenuGroup>
+        <DropdownMenuGroup>{menuItems.map(renderMenuItem)}</DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
