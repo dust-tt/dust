@@ -276,11 +276,11 @@ export function MCPRunAgentActionDetails({
               <CollapsibleComponent
                 rootProps={{ defaultOpen: true }}
                 triggerChildren={
-                  <div className="flex items-center gap-4">
+                  <div className="space-between flex items-center gap-4">
                     <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                       @{childAgent.name}'s Answer
                     </span>
-                    <div>
+                    <div className="ml-auto">
                       {conversationUrl && (
                         <Button
                           icon={ExternalLinkIcon}
