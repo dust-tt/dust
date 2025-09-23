@@ -93,6 +93,7 @@ export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
 export * from "./types";
+export * from "./error_utils";
 
 interface DustResponse {
   status: number;
@@ -106,8 +107,9 @@ function isStreamTerminationError(e: unknown): boolean {
   if (!e) {
     return false;
   }
-  const msg = typeof e === "string" ? e : (e as Error)?.message ?? String(e);
-  const name = (e as Error)?.name ?? "";
+  const err = normalizeError(e);
+  const msg = err.message || String(e);
+  const name = err.name || "";
 
   // Common patterns from undici/fetch when a stream is cut or aborted.
   const patterns = [
