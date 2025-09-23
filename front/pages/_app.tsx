@@ -18,7 +18,7 @@ const { NEXT_PUBLIC_POSTHOG_KEY, NODE_ENV } = process.env;
 // Log PostHog configuration for debugging
 console.log("[PostHog] Environment check:", {
   hasKey: !!NEXT_PUBLIC_POSTHOG_KEY,
-  keyLength: NEXT_PUBLIC_POSTHOG_KEY?.length || 0,
+  keyLength: NEXT_PUBLIC_POSTHOG_KEY?.length ?? 0,
   keyPrefix: NEXT_PUBLIC_POSTHOG_KEY?.substring(0, 10),
   nodeEnv: NODE_ENV,
 });
