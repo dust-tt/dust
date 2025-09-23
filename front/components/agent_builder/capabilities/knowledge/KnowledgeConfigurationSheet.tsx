@@ -293,7 +293,7 @@ function KnowledgeConfigurationSheetContent({
     }
   }, [currentPageId, setFocus]);
 
-  // Prefill name field with processing method display name when mcpServerView changes
+  // Prefill name field with processing method display name when mcpServerView.id changes
   useEffect(() => {
     if (mcpServerView && !isEditing) {
       const processingMethodName = getMcpServerViewDisplayName(mcpServerView);
@@ -306,7 +306,12 @@ function KnowledgeConfigurationSheetContent({
         });
       }
     }
-  }, [mcpServerView, isEditing, setValue, getValues]);
+    // We only watch mcpServerView?.id instead of the full object because:
+    // 1. When id changes, the entire mcpServerView object updates with new values
+    // 2. Object reference can change even if the mcpServerView content is the same
+    // 3. Watching the id ensures we re-run when the server actually changes, avoiding name change on form invalidation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcpServerView?.id, isEditing, setValue, getValues]);
 
   const handlePageChange = useCallback(
     (pageId: string) => {
