@@ -126,6 +126,7 @@ module.exports = {
     ];
   },
   poweredByHeader: false,
+  skipTrailingSlashRedirect: true,
   async headers() {
     return [
       {
