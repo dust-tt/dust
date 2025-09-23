@@ -1,3 +1,4 @@
+import assert from "assert";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -15,10 +16,10 @@ import type { WithAPIErrorResponse } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 
 export type GetMCPActionsResult = {
-  actions: AgentMCPActionType[] & {
+  actions: (AgentMCPActionType & {
     conversationId: string;
     messageId: string;
-  };
+  })[];
   nextCursor: string | null;
   totalCount: number;
 };
@@ -116,23 +117,32 @@ async function handler(
         });
       }
 
-      const { stepContents, totalCount, nextCursor } =
+      const { data, totalCount, nextCursor } =
         await AgentStepContentResource.listFunctionCallsForAgent(auth, {
           agentConfiguration,
           limit,
           cursor: cursorDate,
         });
 
+      const contentById = new Map(data.map((s) => [s.stepContent.id, s]));
+
       const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
-        stepContents,
+        stepContents: data.map((s) => s.stepContent),
+      });
+
+      const resultActions = actions.map((a) => {
+        const stepContent = contentById.get(a.stepContentId);
+        assert(stepContent, "Step content not found.");
+
+        return {
+          ...a.toJSON(),
+          conversationId: stepContent.conversationId,
+          messageId: stepContent.messageId,
+        };
       });
 
       return res.status(200).json({
-        actions: actions.map((a) => ({
-          ...a.toJSON(),
-          conversationId: a.stepContent.agentMessage.message.conversation.sId,
-          messageId: a.stepContent.agentMessage.message.sId,
-        })),
+        actions: resultActions,
         nextCursor,
         totalCount,
       });

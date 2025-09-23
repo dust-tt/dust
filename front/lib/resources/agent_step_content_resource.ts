@@ -213,7 +213,11 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       cursor?: Date;
     }
   ): Promise<{
-    stepContents: AgentStepContentResource[];
+    data: {
+      stepContent: AgentStepContentResource;
+      conversationId: string;
+      messageId: string;
+    }[];
     totalCount: number;
     nextCursor: string | null;
   }> {
@@ -284,11 +288,20 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       : null;
 
     const resources = actualStepContents.map((stepContent) => {
-      return new this(this.model, stepContent.get());
+      assert(
+        stepContent.agentMessage?.message?.conversation,
+        "Missing required relations"
+      );
+
+      return {
+        stepContent: new this(this.model, stepContent.get()),
+        conversationId: stepContent.agentMessage.message.conversation.sId,
+        messageId: stepContent.agentMessage.message.sId,
+      };
     });
 
     return {
-      stepContents: resources,
+      data: resources,
       totalCount,
       nextCursor,
     };
