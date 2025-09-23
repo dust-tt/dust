@@ -1,4 +1,4 @@
-import { APIError } from "@dust-tt/client";
+import type { APIError } from "@app/types";
 
 export class MCPServerNotFoundError extends Error {
   constructor(message: string) {
