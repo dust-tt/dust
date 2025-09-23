@@ -374,7 +374,7 @@ export function getDataSourceFileSystemAction(
     dataSources: dataSourceViews.map((dsView) => ({
       dataSourceViewId: dsView.sId,
       workspaceId: workspaceId,
-      filter: { parents: null },
+      filter: { parents: null, tags: null },
     })),
     tables: null,
     childAgentId: null,
@@ -407,7 +407,7 @@ export function getDataWarehousesAction(
     dataSources: dataSourceViews.map((dsView) => ({
       dataSourceViewId: dsView.sId,
       workspaceId: workspaceId,
-      filter: { parents: null },
+      filter: { parents: null, tags: null },
     })),
     tables: null,
     childAgentId: null,
