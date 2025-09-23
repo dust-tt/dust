@@ -104,7 +104,11 @@ export function makeMCPActionCitation(
   return {
     href: result.uri,
     title: result.text,
-    icon: result.uri ? <FaviconIcon websiteUrl={result.uri} size="sm" /> : <DocumentTextIcon />,
+    icon: result.uri ? (
+      <FaviconIcon websiteUrl={result.uri} size="sm" />
+    ) : (
+      <DocumentTextIcon />
+    ),
   };
 }
 
@@ -148,7 +152,11 @@ export const getCitationsFromActions = (
         runAgentRefs[ref] = {
           href: citation.href ?? "",
           title: citation.title,
-          icon: citation.href ? <FaviconIcon websiteUrl={citation.href} size="sm" /> : <DocumentTextIcon />,
+          icon: citation.href ? (
+            <FaviconIcon websiteUrl={citation.href} size="sm" />
+          ) : (
+            <DocumentTextIcon />
+          ),
         };
       });
     }
