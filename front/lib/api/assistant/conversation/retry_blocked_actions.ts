@@ -137,7 +137,7 @@ export async function retryBlockedActions(
     return runAgentDataRes;
   }
 
-  await runAgentLoop(
+  return runAgentLoop(
     auth,
     {
       sync: true,
@@ -146,9 +146,6 @@ export async function retryBlockedActions(
     {
       // Resume from the step where the action was created.
       startStep: lastStep,
-      ignoreExistingWorkflow: true,
     }
   );
-
-  return new Ok(undefined);
 }

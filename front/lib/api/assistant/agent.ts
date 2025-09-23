@@ -29,6 +29,8 @@ import {
   SyncTimeoutError,
 } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type { Result } from "@app/types";
+import { Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ExecutionMode,
@@ -221,13 +223,11 @@ export async function runAgentLoop(
   {
     executionMode = "auto",
     startStep,
-    ignoreExistingWorkflow = false,
   }: {
     executionMode?: ExecutionMode;
     startStep: number;
-    ignoreExistingWorkflow?: boolean;
   }
-): Promise<void> {
+): Promise<Result<undefined, Error>> {
   const authType = auth.toJSON();
 
   // Capture initial start time and log total execution start.
@@ -266,12 +266,13 @@ export async function runAgentLoop(
       startStep,
     });
   } else {
-    await launchAgentLoopWorkflow({
+    return launchAgentLoopWorkflow({
       authType,
       runAsynchronousAgentArgs: runAgentArgsWithTiming.idArgs,
       startStep,
       initialStartTime: runAgentArgsWithTiming.initialStartTime,
-      ignoreExistingWorkflow,
     });
   }
+
+  return new Ok(undefined);
 }

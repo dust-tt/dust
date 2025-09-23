@@ -5,7 +5,7 @@ import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
 
 import { QUEUE_NAME } from "./config";
@@ -16,13 +16,11 @@ export async function launchAgentLoopWorkflow({
   runAsynchronousAgentArgs,
   startStep,
   initialStartTime,
-  ignoreExistingWorkflow,
 }: {
   authType: AuthenticatorType;
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
   startStep: number;
   initialStartTime: number;
-  ignoreExistingWorkflow?: boolean;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForAgentNamespace();
 
@@ -40,12 +38,10 @@ export async function launchAgentLoopWorkflow({
       workflowId,
     });
   } catch (error) {
-    if (
-      !(error instanceof WorkflowExecutionAlreadyStartedError) ||
-      !ignoreExistingWorkflow
-    ) {
+    if (!(error instanceof WorkflowExecutionAlreadyStartedError)) {
       throw error;
     }
+
     logger.warn(
       {
         workflowId,
@@ -53,6 +49,12 @@ export async function launchAgentLoopWorkflow({
         workspaceId: authType.workspaceId,
       },
       "Attempting to launch an agent loop workflow when there's already one running."
+    );
+
+    return new Err(
+      new Error("Cannot start agent loop: workflow already running.", {
+        cause: error,
+      })
     );
   }
 
