@@ -281,9 +281,23 @@ export function MCPRunAgentActionDetails({
               <CollapsibleComponent
                 rootProps={{ defaultOpen: true }}
                 triggerChildren={
-                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                    @{childAgent.name}'s Answer
-                  </span>
+                  <div className="flex w-full items-center gap-4">
+                    <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      @{childAgent.name}'s Answer
+                    </span>
+                    <div className="ml-auto">
+                      {conversationUrl && (
+                        <Button
+                          icon={ExternalLinkIcon}
+                          label="View full conversation"
+                          variant="outline"
+                          onClick={() => window.open(conversationUrl, "_blank")}
+                          size="xs"
+                          className="!p-1"
+                        />
+                      )}
+                    </div>
+                  </div>
                 }
                 contentChildren={
                   <div className="flex flex-col gap-4">
@@ -384,18 +398,6 @@ export function MCPRunAgentActionDetails({
                   />
                 ))}
               </div>
-            )}
-          </div>
-          <div>
-            {conversationUrl && (
-              <Button
-                icon={ExternalLinkIcon}
-                label="View full conversation"
-                variant="outline"
-                onClick={() => window.open(conversationUrl, "_blank")}
-                size="xs"
-                className="!p-1"
-              />
             )}
           </div>
         </div>

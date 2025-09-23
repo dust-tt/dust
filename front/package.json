@@ -27,7 +27,7 @@
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/sparkle": "^0.2.626",
+    "@dust-tt/sparkle": "^0.2.627",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
     "@heroicons/react": "^2.0.11",
