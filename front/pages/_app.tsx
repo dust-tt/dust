@@ -46,9 +46,9 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const [cookies] = useCookies(["dust-cookies-accepted"]);
 
   // Check if user has accepted cookies
-  const hasAcceptedCookies = ["true", "auto"].includes(
-    cookies["dust-cookies-accepted"]
-  );
+  const cookieValue = cookies["dust-cookies-accepted"];
+  const hasAcceptedCookies =
+    cookieValue === "true" || cookieValue === "auto" || cookieValue === true;
 
   // Initialize PostHog only for public pages (not under /w/) and if cookies are accepted
   useEffect(() => {
@@ -56,13 +56,15 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
 
     if (isPublicPage && hasAcceptedCookies) {
       // Only initialize if not already initialized
-      if (!posthog.__loaded) {
-        posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-          api_host: "/ingest", // Using proxy to avoid ad blockers
-          person_profiles: "identified_only", // Only create profiles for identified users
+      if (!posthog.__loaded && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+        posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+          api_host: "/ingest",
+          person_profiles: "identified_only",
           defaults: "2025-05-24",
           loaded: (posthog) => {
-            if (process.env.NODE_ENV === "development") posthog.debug();
+            if (process.env.NODE_ENV === "development") {
+              posthog.debug();
+            }
           },
         });
       } else {
