@@ -383,7 +383,11 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-6">
           <ProcessingMethodSection />
 
-          <NameSection title="Name" placeholder="Name ..." />
+          <NameSection
+            title="Name"
+            placeholder="Name ..."
+            triggerValidationOnChange={true}
+          />
 
           {toolsConfigurations.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
@@ -393,7 +397,12 @@ function KnowledgeConfigurationSheetContent({
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 
-          {config && <DescriptionSection {...config?.descriptionConfig} />}
+          {config && (
+            <DescriptionSection
+              {...config?.descriptionConfig}
+              triggerValidationOnChange={true}
+            />
+          )}
 
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
