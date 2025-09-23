@@ -7,7 +7,10 @@ import type { GongUserBlob } from "@connectors/resources/gong_resources";
 import { GongUserResource } from "@connectors/resources/gong_resources";
 import { concurrentExecutor } from "@connectors/types";
 
-export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob {
+export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob | null {
+  if (!user.emailAddress || !user.id) {
+    return null;
+  }
   return {
     email: user.emailAddress,
     gongId: user.id,
@@ -47,11 +50,11 @@ export async function getGongUsers(
         return null;
       }
 
-      const newUser = await GongUserResource.makeNew(
-        connector,
-        getUserBlobFromGongAPI(user)
-      );
-      users.push(newUser);
+      const userBlob = getUserBlobFromGongAPI(user);
+      if (userBlob) {
+        const newUser = await GongUserResource.makeNew(connector, userBlob);
+        users.push(newUser);
+      }
     },
     { concurrency: 10 }
   );
