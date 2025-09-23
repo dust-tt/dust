@@ -398,6 +398,7 @@ export function ConversationContainer({
             assistantToMention.current = assistant;
           }}
           owner={owner}
+          user={user}
         />
       )}
 
