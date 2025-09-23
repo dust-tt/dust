@@ -5,7 +5,11 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  ConversationModel,
+  Message,
+} from "@app/lib/models/assistant/conversation";
 import { createCallbackReader } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { GenerationTokensEvent } from "@app/types";
@@ -15,6 +19,9 @@ import type {
   AgentGenerationCancelledEvent,
 } from "@app/types";
 import type { AgentMessageNewEvent, UserMessageNewEvent } from "@app/types";
+import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 
 export async function* getConversationEvents({
   conversationId,
@@ -104,7 +111,7 @@ export async function cancelMessageGenerationEvent(
   const redis = await getRedisClient({ origin: "cancel_message_generation" });
 
   try {
-    const tasks = messageIds.map((messageId) => {
+    const tasks = messageIds.map(async (messageId) => {
       // Submit event to redis stream so we stop the generation
       const redisTask = redis.set(
         `assistant:generation:cancelled:${messageId}`,
@@ -120,12 +127,50 @@ export async function cancelMessageGenerationEvent(
           workspaceId: auth.getNonNullableWorkspace().id,
           sId: messageId,
         },
+        include: [
+          {
+            model: AgentMessage,
+            as: "agentMessage",
+            required: false,
+            attributes: ["sId"],
+          },
+          {
+            model: ConversationModel,
+            as: "conversation",
+            required: true,
+            attributes: ["sId"],
+          },
+        ],
       }).then(async (message) => {
         if (message && message.agentMessageId) {
           await AgentMessage.update(
             { status: "cancelled" },
             { where: { id: message.agentMessageId } }
           );
+
+          // Signal the associated Temporal workflow to cancel activities and finish.
+          try {
+            const client = await getTemporalClientForAgentNamespace();
+            const workspaceSId = auth.getNonNullableWorkspace().sId;
+            const conversationSId = message.conversation?.sId;
+            const agentMessageSId = message.agentMessage?.sId;
+
+            if (workspaceSId && conversationSId && agentMessageSId) {
+              const workflowId = makeAgentLoopWorkflowId(
+                workspaceSId,
+                conversationSId,
+                agentMessageSId
+              );
+              const handle = client.workflow.getHandle(workflowId);
+              await handle.signal(cancelAgentLoopSignal);
+            }
+          } catch (signalError) {
+            // Swallow errors from signaling (workflow might not exist anymore)
+            logger.warn(
+              { error: signalError, messageId },
+              "Failed to signal agent loop workflow for cancellation"
+            );
+          }
         }
       });
 
