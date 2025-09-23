@@ -6,6 +6,7 @@ import {
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  GlobeAltIcon,
   LockIcon,
   PlanetIcon,
   ShapesIcon,
@@ -195,7 +196,7 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace Settings",
-          icon: PlanetIcon,
+          icon: GlobeAltIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
