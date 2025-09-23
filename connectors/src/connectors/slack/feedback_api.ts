@@ -5,6 +5,7 @@ import {
   getSlackClient,
   getSlackUserInfo,
 } from "@connectors/connectors/slack/lib/slack_client";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
@@ -207,7 +208,7 @@ export async function submitFeedbackToAPI({
           }
 
           await throttleWithRedis(
-            50,
+            RATE_LIMITS["chat.update"],
             `${connector.id}-chat-update`,
             false,
             async () =>

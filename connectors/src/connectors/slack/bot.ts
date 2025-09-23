@@ -51,6 +51,7 @@ import {
   isBotAllowed,
   notifyIfSlackUserIsNotAllowed,
 } from "@connectors/connectors/slack/lib/workspace_limits";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
@@ -450,7 +451,7 @@ async function processErrorResult(
       const mainMessageTs = mainMessage.ts;
 
       await throttleWithRedis(
-        50,
+        RATE_LIMITS["chat.update"],
         `${connector.id}-chat-update`,
         false,
         async () =>

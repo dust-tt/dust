@@ -43,17 +43,17 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBe(0);
+      expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.getTimestamps).toHaveBeenCalledOnce();
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
       expect(mocks.removeTimestamp).not.toHaveBeenCalled();
     });
 
-    it("should allow request when exactly at allowed limit (90% of rate limit)", async () => {
+    it("should allow request when exactly at rate limit", async () => {
       const now = Date.now();
-      // For rate limit of 100, allowed is 90. Create 89 existing timestamps
+      // For rate limit of 100, create 99 existing timestamps
       const existingTimestamps = Array.from(
-        { length: 89 },
+        { length: 99 },
         (_, i) => now - i * 1000
       );
       const mocks = createMockFunctions(existingTimestamps);
@@ -67,15 +67,15 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBe(0);
+      expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
     });
 
     it("should throttle request when over rate limit", async () => {
       const now = Date.now();
-      // For rate limit of 100, allowed is 90. Create 90 existing timestamps within the last minute
+      // For rate limit of 100, create 100 existing timestamps within the last minute
       const existingTimestamps = Array.from(
-        { length: 90 },
+        { length: 100 },
         (_, i) => now - i * 500
       ); // 500ms apart to stay within 1 minute
       const mocks = createMockFunctions(existingTimestamps);
@@ -89,7 +89,8 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBeGreaterThan(0);
+      expect(result.delay).toBeGreaterThan(0);
+      expect(result.skip).toBe(false);
       // Should add future timestamp
       expect(mocks.addTimestamp).toHaveBeenCalled();
       const addedTimestamp = mocks.addTimestamp.mock.calls[0]?.[0];
@@ -98,56 +99,38 @@ describe("throttle", () => {
     });
   });
 
-  describe("safety margin (90% rule)", () => {
-    it("should apply 90% safety margin correctly", async () => {
+  describe("rate limit enforcement", () => {
+    it("should enforce rate limit correctly", async () => {
       const now = Date.now();
 
       // Test with different rate limits
       const testCases = [
-        { rateLimitPerMinute: 100, expectedAllowed: 90 },
-        { rateLimitPerMinute: 60, expectedAllowed: 54 },
-        { rateLimitPerMinute: 10, expectedAllowed: 9 },
-        { rateLimitPerMinute: 1, expectedAllowed: 0 }, // Math.floor(1 * 0.9) = 0
+        { rateLimitPerMinute: 100, expectedAllowed: 100 },
+        { rateLimitPerMinute: 60, expectedAllowed: 60 },
+        { rateLimitPerMinute: 10, expectedAllowed: 10 },
+        { rateLimitPerMinute: 1, expectedAllowed: 1 },
       ];
 
       for (const { rateLimitPerMinute, expectedAllowed } of testCases) {
         // Create exactly the allowed number of timestamps to test the edge case
-        const existingTimestamps =
-          expectedAllowed > 0
-            ? Array.from({ length: expectedAllowed }, (_, i) => now - i * 500)
-            : [];
+        const existingTimestamps = Array.from(
+          { length: expectedAllowed },
+          (_, i) => now - i * 500
+        );
         const mocks = createMockFunctions(existingTimestamps);
 
-        if (expectedAllowed === 0) {
-          // When expectedAllowed is 0 (e.g., rate limit of 1), the function should throw an error
-          await expect(
-            throttle({
-              rateLimitPerMinute,
-              canBeIgnored: false,
-              now,
-              getTimestamps: mocks.getTimestamps,
-              addTimestamp: mocks.addTimestamp,
-              removeTimestamp: mocks.removeTimestamp,
-            })
-          ).rejects.toThrow("Rate limit too low");
-        } else {
-          const result = await throttle({
-            rateLimitPerMinute,
-            canBeIgnored: false,
-            now,
-            getTimestamps: mocks.getTimestamps,
-            addTimestamp: mocks.addTimestamp,
-            removeTimestamp: mocks.removeTimestamp,
-          });
+        const result = await throttle({
+          rateLimitPerMinute,
+          canBeIgnored: false,
+          now,
+          getTimestamps: mocks.getTimestamps,
+          addTimestamp: mocks.addTimestamp,
+          removeTimestamp: mocks.removeTimestamp,
+        });
 
-          // When we have exactly the allowed number, adding one more should trigger throttling
-          if (expectedAllowed === existingTimestamps.length) {
-            // We're at the limit, so adding one more should cause throttling
-            expect(result).toBeGreaterThan(0);
-          } else {
-            expect(result).toBe(0); // Should still allow
-          }
-        }
+        // When we have exactly the allowed number, adding one more should trigger throttling
+        expect(result.delay).toBeGreaterThan(0);
+        expect(result.skip).toBe(false);
       }
     });
   });
@@ -199,18 +182,18 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBe(0);
+      expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.removeTimestamp).not.toHaveBeenCalled();
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
     });
   });
 
   describe("canBeIgnored functionality", () => {
-    it("should return -1 when canBeIgnored is true and over limit", async () => {
+    it("should return skip=true when canBeIgnored is true and over limit", async () => {
       const now = Date.now();
-      // Create 90 timestamps (at the 90% limit for rate limit of 100) within the last minute
+      // Create 100 timestamps (at the rate limit for rate limit of 100) within the last minute
       const existingTimestamps = Array.from(
-        { length: 90 },
+        { length: 100 },
         (_, i) => now - i * 500
       );
       const mocks = createMockFunctions(existingTimestamps);
@@ -224,7 +207,7 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBe(-1);
+      expect(result).toEqual({ delay: undefined, skip: true });
       // Should not add timestamp when ignoring
       expect(mocks.addTimestamp).not.toHaveBeenCalled();
     });
@@ -242,15 +225,15 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBe(0);
+      expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
     });
 
     it("should calculate delay when canBeIgnored is false and over limit", async () => {
       const now = Date.now();
-      // Create 90 timestamps (at the 90% limit for rate limit of 100) within the last minute
+      // Create 100 timestamps (at the rate limit for rate limit of 100) within the last minute
       const existingTimestamps = Array.from(
-        { length: 90 },
+        { length: 100 },
         (_, i) => now - i * 500
       );
       const mocks = createMockFunctions(existingTimestamps);
@@ -264,8 +247,9 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBeGreaterThan(0);
-      expect(result).toBeLessThanOrEqual(60 * 1000); // Should be within 1 minute
+      expect(result.delay).toBeGreaterThan(0);
+      expect(result.delay).toBeLessThanOrEqual(60 * 1000); // Should be within 1 minute
+      expect(result.skip).toBe(false);
       expect(mocks.addTimestamp).toHaveBeenCalled();
     });
   });
@@ -275,11 +259,11 @@ describe("throttle", () => {
       const now = Date.now();
       const oldestInWindow = now - 30 * 1000; // 30 seconds ago
 
-      // Create exactly 90 timestamps (90% of 100), with the oldest being 30 seconds ago
+      // Create exactly 100 timestamps (100% of 100), with the oldest being 30 seconds ago
       // Fill the rest with timestamps between oldestInWindow and now
       const existingTimestamps = [
         oldestInWindow,
-        ...Array.from({ length: 89 }, (_, i) => oldestInWindow + (i + 1) * 300), // Spread evenly
+        ...Array.from({ length: 99 }, (_, i) => oldestInWindow + (i + 1) * 300), // Spread evenly
       ];
       const mocks = createMockFunctions(existingTimestamps);
 
@@ -292,11 +276,12 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      // With the fixed algorithm, we wait for the oldest timestamp to expire
+      // With the algorithm, we wait for the oldest timestamp to expire
       // Expected delay: (oldestInWindow + 60000) - now = 30 seconds
       const expectedDelay = oldestInWindow + 60 * 1000 - now;
-      expect(result).toBe(expectedDelay);
-      expect(result).toBe(30 * 1000);
+      expect(result.delay).toBe(expectedDelay);
+      expect(result.delay).toBe(30 * 1000);
+      expect(result.skip).toBe(false);
     });
 
     it("should return 0 delay when calculated delay is negative", async () => {
@@ -306,7 +291,7 @@ describe("throttle", () => {
 
       const existingTimestamps = [
         oldestInWindow,
-        ...Array.from({ length: 89 }, (_, i) => now - i * 1000 - 1000),
+        ...Array.from({ length: 99 }, (_, i) => now - i * 1000 - 1000),
       ];
       const mocks = createMockFunctions(existingTimestamps);
 
@@ -320,7 +305,8 @@ describe("throttle", () => {
       });
 
       // Math.max(0, delay) should ensure non-negative result
-      expect(result).toBe(0);
+      expect(result.delay).toBe(0);
+      expect(result.skip).toBe(false);
     });
 
     it("should add future timestamp when throttling", async () => {
@@ -329,7 +315,7 @@ describe("throttle", () => {
 
       const existingTimestamps = [
         oldestInWindow,
-        ...Array.from({ length: 89 }, (_, i) => oldestInWindow + (i + 1) * 300),
+        ...Array.from({ length: 99 }, (_, i) => oldestInWindow + (i + 1) * 300),
       ];
       const mocks = createMockFunctions(existingTimestamps);
 
@@ -352,43 +338,40 @@ describe("throttle", () => {
   });
 
   describe("edge cases", () => {
-    it("should throw error for rate limit of 1", async () => {
+    it("should handle rate limit of 1", async () => {
       const mocks = createMockFunctions([]);
       const now = Date.now();
 
-      await expect(
-        throttle({
-          rateLimitPerMinute: 1,
-          canBeIgnored: false,
-          now,
-          getTimestamps: mocks.getTimestamps,
-          addTimestamp: mocks.addTimestamp,
-          removeTimestamp: mocks.removeTimestamp,
-        })
-      ).rejects.toThrow(
-        "Rate limit too low: 1 requests per minute results in 0 allowed requests after applying 90% safety margin. Consider using a higher rate limit (minimum 2 requests per minute recommended)."
-      );
+      const result = await throttle({
+        rateLimitPerMinute: 1,
+        canBeIgnored: false,
+        now,
+        getTimestamps: mocks.getTimestamps,
+        addTimestamp: mocks.addTimestamp,
+        removeTimestamp: mocks.removeTimestamp,
+      });
 
-      // No timestamps should be added when throwing error
-      expect(mocks.addTimestamp).not.toHaveBeenCalled();
+      expect(result).toEqual({ delay: 0, skip: false });
+      expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
     });
 
-    it("should throw error for rate limit of 1 even when canBeIgnored is true", async () => {
-      const mocks = createMockFunctions([]);
+    it("should throttle when rate limit of 1 is exceeded", async () => {
       const now = Date.now();
+      const existingTimestamps = [now - 30 * 1000]; // One timestamp from 30 seconds ago
+      const mocks = createMockFunctions(existingTimestamps);
 
-      await expect(
-        throttle({
-          rateLimitPerMinute: 1,
-          canBeIgnored: true,
-          now,
-          getTimestamps: mocks.getTimestamps,
-          addTimestamp: mocks.addTimestamp,
-          removeTimestamp: mocks.removeTimestamp,
-        })
-      ).rejects.toThrow(
-        "Rate limit too low: 1 requests per minute results in 0 allowed requests after applying 90% safety margin. Consider using a higher rate limit (minimum 2 requests per minute recommended)."
-      );
+      const result = await throttle({
+        rateLimitPerMinute: 1,
+        canBeIgnored: false,
+        now,
+        getTimestamps: mocks.getTimestamps,
+        addTimestamp: mocks.addTimestamp,
+        removeTimestamp: mocks.removeTimestamp,
+      });
+
+      expect(result.delay).toBeGreaterThan(0);
+      expect(result.skip).toBe(false);
+      expect(mocks.addTimestamp).toHaveBeenCalled();
     });
 
     it("should handle very high rate limits", async () => {
@@ -404,7 +387,7 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBe(0);
+      expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
     });
 
@@ -460,7 +443,7 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      expect(result).toBe(0);
+      expect(result).toEqual({ delay: 0, skip: false });
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
       // No timestamps should be removed (all are within the window)
       expect(mocks.removeTimestamp).not.toHaveBeenCalled();
@@ -471,7 +454,7 @@ describe("throttle", () => {
     it("should use correct timestamp when over capacity", async () => {
       const now = 60000;
 
-      // Scenario: We have 11 timestamps but only allow 9 (90% of 10)
+      // Scenario: We have 11 timestamps but only allow 10 (100% of 10)
       // This can happen due to race conditions or cleanup delays
       const unsortedTimestamps = [
         50000,
@@ -490,7 +473,7 @@ describe("throttle", () => {
       const mocks = createMockFunctions(unsortedTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 10, // 90% = 9 allowed
+        rateLimitPerMinute: 10, // 100% = 10 allowed
         canBeIgnored: false,
         now,
         getTimestamps: mocks.getTimestamps,
@@ -500,36 +483,37 @@ describe("throttle", () => {
 
       // The algorithm should:
       // 1. Sort timestamps: [5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000]
-      // 2. Pick index [11 - 9] = [2] = 15000
-      // 3. Calculate delay: (15000 + 60000) - 60000 = 15000ms
+      // 2. Pick index [11 - 10] = [1] = 10000
+      // 3. Calculate delay: (10000 + 60000) - 60000 = 10000ms
 
       const sortedTimestamps = [...unsortedTimestamps].sort((a, b) => a - b);
-      const targetIndex = unsortedTimestamps.length - 9; // 11 - 9 = 2
-      const targetTimestamp = sortedTimestamps[targetIndex]; // 15000
-      const expectedDelay = targetTimestamp! + 60000 - now; // 15000
+      const targetIndex = unsortedTimestamps.length - 10; // 11 - 10 = 1
+      const targetTimestamp = sortedTimestamps[targetIndex]; // 10000
+      const expectedDelay = targetTimestamp! + 60000 - now; // 10000
 
-      expect(result).toBe(expectedDelay);
-      expect(result).toBe(15000);
+      expect(result.delay).toBe(expectedDelay);
+      expect(result.delay).toBe(10000);
+      expect(result.skip).toBe(false);
 
       // Verify the timestamp was used for scheduling
       expect(mocks.addTimestamp).toHaveBeenCalledWith(targetTimestamp! + 60000);
-      expect(mocks.addTimestamp).toHaveBeenCalledWith(75000);
+      expect(mocks.addTimestamp).toHaveBeenCalledWith(70000);
     });
 
     it("should handle exactly at capacity correctly", async () => {
       const now = 60000;
 
-      // Scenario: We have exactly 9 timestamps (the allowed amount)
+      // Scenario: We have exactly 10 timestamps (the allowed amount)
       const unsortedTimestamps = [
-        45000, 10000, 50000, 15000, 40000, 20000, 35000, 25000, 30000,
+        45000, 10000, 50000, 15000, 40000, 20000, 35000, 25000, 30000, 5000,
       ];
 
-      // When exactly at capacity, the algorithm picks sortedTimestamps[9-9] = sortedTimestamps[0] (the oldest)
+      // When exactly at capacity, the algorithm picks sortedTimestamps[10-10] = sortedTimestamps[0] (the oldest)
 
       const mocks = createMockFunctions(unsortedTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 10, // 90% = 9 allowed
+        rateLimitPerMinute: 10, // 100% = 10 allowed
         canBeIgnored: false,
         now,
         getTimestamps: mocks.getTimestamps,
@@ -538,16 +522,12 @@ describe("throttle", () => {
       });
 
       const sortedTimestamps = [...unsortedTimestamps].sort((a, b) => a - b);
-      const oldestTimestamp = sortedTimestamps[0]; // 10000
-      const expectedDelay = oldestTimestamp! + 60000 - now; // 10000
+      const oldestTimestamp = sortedTimestamps[0]; // 5000
+      const expectedDelay = oldestTimestamp! + 60000 - now; // 5000
 
-      expect(result).toBe(expectedDelay);
-      expect(result).toBe(10000);
-
-      console.log(
-        "At capacity - algorithm picks the oldest timestamp:",
-        oldestTimestamp
-      );
+      expect(result.delay).toBe(expectedDelay);
+      expect(result.delay).toBe(5000);
+      expect(result.skip).toBe(false);
     });
 
     it("should handle unsorted timestamps correctly", async () => {
@@ -579,21 +559,14 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      // Algorithm: sortedTimestamps[11-9] = sortedTimestamps[2] = 15000
+      // Algorithm: sortedTimestamps[11-10] = sortedTimestamps[1] = 10000
       const sortedTimestamps = [...unsortedTimestamps].sort((a, b) => a - b);
-      const targetTimestamp = sortedTimestamps[2]; // 15000
+      const targetTimestamp = sortedTimestamps[1]; // 10000
       const expectedDelay = targetTimestamp! + 60000 - now;
 
-      expect(result).toBe(expectedDelay);
-      expect(result).toBe(15000);
-
-      console.log(
-        "Algorithm picks timestamp:",
-        targetTimestamp,
-        "→ delay:",
-        expectedDelay
-      );
-      console.log("Sorted timestamps:", sortedTimestamps.slice(0, 5), "...");
+      expect(result.delay).toBe(expectedDelay);
+      expect(result.delay).toBe(10000);
+      expect(result.skip).toBe(false);
     });
   });
 
@@ -623,8 +596,8 @@ describe("throttle", () => {
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      // Should allow the request (3 valid + 1 new = 4, well under 90)
-      expect(result).toBe(0);
+      // Should allow the request (3 valid + 1 new = 4, well under 100)
+      expect(result).toEqual({ delay: 0, skip: false });
 
       // Should remove 3 expired timestamps
       expect(mocks.removeTimestamp).toHaveBeenCalledTimes(3);
@@ -653,13 +626,13 @@ describe("throttle", () => {
         }),
       };
 
-      // Simulate 100 requests in quick succession
-      const results: number[] = [];
-      for (let i = 0; i < 100; i++) {
+      // Simulate 110 requests in quick succession
+      const results: { delay: number | undefined; skip: boolean }[] = [];
+      for (let i = 0; i < 110; i++) {
         const now = baseTime + i * 100; // 100ms apart
 
         const result = await throttle({
-          rateLimitPerMinute: 100, // 90 allowed due to safety margin
+          rateLimitPerMinute: 100, // 100 allowed without safety margin
           canBeIgnored: false,
           now,
           getTimestamps: mocks.getTimestamps,
@@ -670,11 +643,15 @@ describe("throttle", () => {
         results.push(result);
       }
 
-      // First 90 should be allowed (return 0)
-      expect(results.slice(0, 90).every((r) => r === 0)).toBe(true);
+      // First 100 should be allowed (delay: 0, skip: false)
+      expect(
+        results.slice(0, 100).every((r) => r.delay === 0 && r.skip === false)
+      ).toBe(true);
 
-      // Remaining 10 should be throttled (return > 0)
-      expect(results.slice(90).every((r) => r > 0)).toBe(true);
+      // Remaining 10 should be throttled (delay > 0, skip: false)
+      expect(
+        results.slice(100).every((r) => r.delay! > 0 && r.skip === false)
+      ).toBe(true);
     });
   });
 });

@@ -27,6 +27,7 @@ import {
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
@@ -433,7 +434,7 @@ async function postSlackMessageUpdate({
   );
 
   const response = await throttleWithRedis(
-    50,
+    RATE_LIMITS["chat.update"],
     `${connector.id}-chat-update`,
     canBeIgnored,
     async () =>
