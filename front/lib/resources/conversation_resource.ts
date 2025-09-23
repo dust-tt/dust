@@ -352,8 +352,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_access_restricted"));
     }
 
-    const { actionRequired, unread } =
-      await ConversationResource.getActionRequiredAndUnreadForUser(
+    const { actionRequired, unread, favorite } =
+      await ConversationResource.getConversationStatusForUser(
         auth,
         conversation.id
       );
@@ -369,6 +369,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggerId: conversation.triggerSId(),
       actionRequired,
       unread,
+      favorite,
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
     });
@@ -414,6 +415,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         "conversationId",
         "unread",
         "actionRequired",
+        "favorite",
       ],
       where: {
         userId: user.id,
@@ -441,6 +443,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           updated: p.updatedAt.getTime(),
           unread: p.unread,
           actionRequired: p.actionRequired,
+          favorite: p.favorite,
           sId: c.sId,
           owner,
           title: c.title,
@@ -480,11 +483,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return Promise.all(
       conversations.map(async (c) => {
-        const { actionRequired, unread } =
-          await ConversationResource.getActionRequiredAndUnreadForUser(
-            auth,
-            c.id
-          );
+        const { actionRequired, unread, favorite } =
+          await ConversationResource.getConversationStatusForUser(auth, c.id);
 
         return {
           id: c.id,
@@ -497,6 +497,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           triggerId: triggerId,
           actionRequired,
           unread,
+          favorite,
           requestedGroupIds: new this(
             this.model,
             c
@@ -600,14 +601,38 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated);
   }
 
-  static async getActionRequiredAndUnreadForUser(
+  static async setFavorite(
     auth: Authenticator,
-    id: number
+    {
+      conversation,
+      favorite,
+    }: { conversation: ConversationWithoutContentType; favorite: boolean }
   ) {
+    if (!auth.user()) {
+      return new Err(new Error("user_not_authenticated"));
+    }
+
+    const updated = await ConversationParticipantModel.update(
+      { favorite },
+      {
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: auth.getNonNullableUser().id,
+        },
+        // Do not update `updatedAt.
+        silent: true,
+      }
+    );
+    return new Ok(updated);
+  }
+
+  static async getConversationStatusForUser(auth: Authenticator, id: number) {
     if (!auth.user()) {
       return {
         actionRequired: false,
         unread: false,
+        favorite: false,
       };
     }
 
@@ -622,6 +647,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return {
       actionRequired: participant?.actionRequired ?? false,
       unread: participant?.unread ?? false,
+      favorite: participant?.favorite ?? false,
     };
   }
 
@@ -668,6 +694,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             workspaceId: conversation.owner.id,
             unread: false,
             actionRequired: false,
+            favorite: false,
           },
           { transaction: t }
         );

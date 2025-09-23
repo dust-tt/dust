@@ -118,8 +118,8 @@ export async function getConversation(
     (content[m.rank] as any).push(m);
   }
 
-  const { actionRequired, unread } =
-    await ConversationResource.getActionRequiredAndUnreadForUser(
+  const { actionRequired, unread, favorite } =
+    await ConversationResource.getConversationStatusForUser(
       auth,
       conversation.id
     );
@@ -136,6 +136,7 @@ export async function getConversation(
     content,
     actionRequired,
     unread,
+    favorite,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
   });

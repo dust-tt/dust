@@ -22,6 +22,7 @@ import {
   RobotIcon,
   SearchInput,
   Spinner,
+  StarIcon,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -93,6 +94,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -215,6 +217,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
           removeDiacritics(conversation.title ?? "").toLowerCase()
         )
       ) {
+        return;
+      }
+
+      if (showFavoritesOnly && !conversation.favorite) {
         return;
       }
 
@@ -409,6 +415,18 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 </DropdownMenu>
               </div>
             )}
+            <div className="mb-2 flex flex-wrap gap-2 px-2">
+              <Button
+                size="xs"
+                variant={showFavoritesOnly ? "primary" : "outline"}
+                label={"Favorites"}
+                onClick={() => {
+                  setShowFavoritesOnly(!showFavoritesOnly);
+                  setConversationsPage(0);
+                }}
+              />
+            </div>
+
             {isConversationsError && (
               <Label className="px-3 py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
                 Error loading conversations

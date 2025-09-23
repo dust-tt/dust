@@ -266,6 +266,69 @@ export const useDeleteConversation = (owner: LightWorkspaceType) => {
   return doDelete;
 };
 
+export const useFavoriteConversation = (owner: LightWorkspaceType) => {
+  const sendNotification = useSendNotification();
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+  });
+
+  const toggleFavorite = useCallback(
+    async (
+      conversation: ConversationWithoutContentType,
+      favorite: boolean
+    ): Promise<boolean> => {
+      if (!conversation) {
+        return false;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ favorite } as PatchConversationsRequestBody),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to update conversation favorite status");
+        }
+
+        void mutateConversations((prevState) => {
+          return {
+            ...prevState,
+            conversations:
+              prevState?.conversations.map((c) =>
+                c.sId === conversation.sId ? { ...c, favorite } : c
+              ) ?? [],
+          };
+        });
+
+        sendNotification({
+          type: "success",
+          title: favorite
+            ? "Conversation added to favorites"
+            : "Conversation removed from favorites",
+        });
+
+        return true;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update favorite status",
+        });
+        return false;
+      }
+    },
+    [owner.sId, mutateConversations, sendNotification]
+  );
+
+  return toggleFavorite;
+};
+
 export function useAddDeleteConversationTool({
   conversationId,
   workspaceId,

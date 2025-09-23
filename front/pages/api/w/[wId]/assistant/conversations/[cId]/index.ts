@@ -25,6 +25,9 @@ const PatchConversationsRequestBodySchema = t.union([
   t.type({
     read: t.literal(true),
   }),
+  t.type({
+    favorite: t.boolean,
+  }),
 ]);
 
 export type PatchConversationsRequestBody = t.TypeOf<
@@ -126,6 +129,13 @@ async function handler(
         } else if ("read" in bodyValidation.right) {
           await ConversationResource.markAsRead(auth, {
             conversation,
+          });
+
+          return res.status(200).json({ success: true });
+        } else if ("favorite" in bodyValidation.right) {
+          await ConversationResource.setFavorite(auth, {
+            conversation,
+            favorite: bodyValidation.right.favorite,
           });
 
           return res.status(200).json({ success: true });

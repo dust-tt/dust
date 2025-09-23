@@ -1,6 +1,5 @@
 import type {
   DropdownMenu,
-  DropdownMenuItemProps,
   NotificationType,
 } from "@dust-tt/sparkle";
 import {

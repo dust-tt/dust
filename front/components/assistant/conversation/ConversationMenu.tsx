@@ -10,6 +10,7 @@ import {
   MoreIcon,
   PencilSquareIcon,
   PlusCircleIcon,
+  StarIcon,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -24,6 +25,7 @@ import {
   useConversationParticipants,
   useConversationParticipationOption,
   useDeleteConversation,
+  useFavoriteConversation,
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
@@ -72,10 +74,18 @@ export function ConversationMenu({
   const shareLink = `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`;
 
   const doDelete = useDeleteConversation(owner);
+  const toggleFavorite = useFavoriteConversation(owner);
+  
   const leaveOrDelete = useCallback(async () => {
     const res = await doDelete(conversation);
     res && void router.push(`/w/${owner.sId}/assistant/new`);
   }, [conversation, doDelete, owner.sId, router]);
+
+  const handleFavoriteToggle = useCallback(async () => {
+    if (conversation) {
+      await toggleFavorite(conversation, !conversation.favorite);
+    }
+  }, [conversation, toggleFavorite]);
 
   const copyConversationLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink || "");
@@ -168,6 +178,11 @@ export function ConversationMenu({
             label="Rename"
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
+          />
+          <DropdownMenuItem
+            label={conversation?.favorite ? "Remove from favorites" : "Add to favorites"}
+            onClick={handleFavoriteToggle}
+            icon={StarIcon}
           />
           <ConversationActionMenuItem />
           <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
