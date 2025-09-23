@@ -26,8 +26,11 @@ export function DescriptionSection({
   const descriptionValue = useWatch({ name: DESCRIPTION_FIELD_NAME });
   const { trigger } = useFormContext();
 
+  // force the validation on empty field so it is validated initially
   useEffect(() => {
-    void trigger(DESCRIPTION_FIELD_NAME); // empty desc will trigger error message
+    if (!descriptionValue || `${descriptionValue}`.trim().length === 0) {
+      void trigger(DESCRIPTION_FIELD_NAME);
+    }
   }, [descriptionValue, trigger]);
 
   return (
