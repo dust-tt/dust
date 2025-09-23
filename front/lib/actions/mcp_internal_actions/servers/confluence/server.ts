@@ -6,6 +6,7 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { normalizeError } from "@app/types";
 
 const createServer = (): McpServer => {
   const server = makeInternalMCPServer("confluence");
@@ -88,7 +89,7 @@ const createServer = (): McpServer => {
         });
       } catch (error) {
         return makeMCPToolTextError(
-          `Error retrieving page: ${error instanceof Error ? error.message : String(error)}`
+          `Error retrieving page: ${normalizeError(error).message}`
         );
       }
     }
