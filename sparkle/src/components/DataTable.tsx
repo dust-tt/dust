@@ -766,7 +766,7 @@ DataTable.Row = function Row({
         <DropdownMenu
           open={!!contextMenuPosition}
           onOpenChange={(open) => !open && setContextMenuPosition(null)}
-          modal={true}
+          modal
         >
           <DropdownMenuPortal>
             <DropdownMenuContent
