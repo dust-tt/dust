@@ -36,7 +36,7 @@ export function MCPServerDetailsInfo({
         </div>
       )}
       <Separator />
-      <MCPServerViewForm mcpServerView={mcpServerView} owner={owner} />
+      <MCPServerViewForm mcpServerView={mcpServerView} />
       {mcpServerView.server.authorization && (
         <>
           <Separator />
@@ -44,11 +44,7 @@ export function MCPServerDetailsInfo({
         </>
       )}
       {isRemoteMCPServerType(mcpServerView.server) && (
-        <RemoteMCPForm
-          mcpServerView={mcpServerView}
-          mcpServer={mcpServerView.server}
-          owner={owner}
-        />
+        <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
       )}
 
       <Separator className="mb-4 mt-4" />
