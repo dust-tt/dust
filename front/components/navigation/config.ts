@@ -119,11 +119,7 @@ export const getTopNavigationTabs = (
     icon: ChatBubbleLeftRightIcon,
     sizing: "hug",
     isCurrent: (currentRoute) =>
-      [
-        "/w/[wId]/agent/new",
-        "/w/[wId]/agent/[cId]",
-        "/w/[wId]/assistants",
-      ].includes(currentRoute),
+      ["/w/[wId]/agent/new", "/w/[wId]/agent/[cId]"].includes(currentRoute),
   });
 
   nav.push({
