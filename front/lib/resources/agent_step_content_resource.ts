@@ -3,8 +3,10 @@ import _ from "lodash";
 import type {
   Attributes,
   CreationAttributes,
+  IncludeOptions,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -12,13 +14,17 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  ConversationModel,
+  Message,
+} from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
+import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type {
   AgentStepContentType,
@@ -193,6 +199,99 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       (content) =>
         new AgentStepContentResource(AgentStepContentModel, content.get())
     );
+  }
+
+  static async listFunctionCallsForAgent(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      limit,
+      cursor,
+    }: {
+      agentConfiguration: LightAgentConfigurationType;
+      limit: number;
+      cursor?: Date;
+    }
+  ): Promise<{
+    stepContents: AgentStepContentResource[];
+    totalCount: number;
+    nextCursor: string | null;
+  }> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const whereClause: WhereOptions<AgentStepContentModel> = {
+      workspaceId: owner.id,
+      type: "function_call",
+    };
+
+    if (cursor) {
+      whereClause.createdAt = {
+        [Op.lt]: cursor,
+      };
+    }
+
+    const includeClause: IncludeOptions[] = [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+        where: {
+          agentConfigurationId: agentConfiguration.sId,
+        },
+        include: [
+          {
+            model: Message,
+            as: "message",
+            required: true,
+            include: [
+              {
+                model: ConversationModel,
+                as: "conversation",
+                required: true,
+                where: {
+                  visibility: { [Op.ne]: "deleted" },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const [totalCount, stepContents] = await Promise.all([
+      AgentStepContentModel.count({
+        include: includeClause,
+        where: whereClause,
+        distinct: true,
+      }),
+      AgentStepContentModel.findAll({
+        include: includeClause,
+        where: whereClause,
+        order: [["createdAt", "DESC"]],
+        limit: limit + 1,
+      }),
+    ]);
+
+    const hasMore = stepContents.length > limit;
+    const actualStepContents = hasMore
+      ? stepContents.slice(0, limit)
+      : stepContents;
+
+    const nextCursor = hasMore
+      ? actualStepContents[
+          actualStepContents.length - 1
+        ].createdAt.toISOString()
+      : null;
+
+    const resources = actualStepContents.map((stepContent) => {
+      return new this(this.model, stepContent.get());
+    });
+
+    return {
+      stepContents: resources,
+      totalCount,
+      nextCursor,
+    };
   }
 
   isFunctionCallContent(): this is AgentStepContentResource & {
