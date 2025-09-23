@@ -68,8 +68,8 @@ declare module "@tanstack/react-table" {
 
 interface TBaseData {
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
+  menuItems?: MenuItem[];
 }
 
 interface ColumnBreakpoint {
@@ -286,6 +286,7 @@ export function DataTable<TData extends TBaseData>({
                 onClick={
                   enableRowSelection ? handleRowClick : row.original.onClick
                 }
+                rowData={row.original}
                 {...(enableRowSelection && {
                   "data-selected": row.getIsSelected(),
                 })}
@@ -562,6 +563,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
                   onClick={
                     enableRowSelection ? handleRowClick : row.original.onClick
                   }
+                  rowData={row.original}
                   className="s-absolute s-w-full"
                   {...(enableRowSelection && {
                     "data-selected": row.getIsSelected(),
@@ -716,6 +718,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   onClick?: () => void;
   widthClassName: string;
   "data-selected"?: boolean;
+  rowData?: TBaseData;
 }
 
 DataTable.Row = function Row({
@@ -723,24 +726,70 @@ DataTable.Row = function Row({
   className,
   onClick,
   widthClassName,
+  rowData,
   ...props
 }: RowProps) {
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const handleContextMenu = (event: React.MouseEvent) => {
+    if (!rowData?.menuItems?.length) {
+      return;
+    }
+
+    event.preventDefault();
+    setContextMenuPosition({ x: event.clientX, y: event.clientY });
+  };
+
   return (
-    <tr
-      className={cn(
-        "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
-        "s-border-separator dark:s-border-separator-night",
-        onClick &&
-          "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
-        props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
-        widthClassName,
-        className
+    <>
+      <tr
+        className={cn(
+          "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
+          "s-border-separator dark:s-border-separator-night",
+          onClick &&
+            "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
+          props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
+          widthClassName,
+          className
+        )}
+        onClick={onClick || undefined}
+        onContextMenu={handleContextMenu}
+        {...props}
+      >
+        {children}
+      </tr>
+
+      {contextMenuPosition && rowData?.menuItems?.length && (
+        <DropdownMenu
+          open={!!contextMenuPosition}
+          onOpenChange={(open) => !open && setContextMenuPosition(null)}
+          modal={false}
+        >
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              align="start"
+              className="s-whitespace-nowrap"
+              style={{
+                position: "fixed",
+                left: contextMenuPosition?.x || 0,
+                top: contextMenuPosition?.y || 0,
+              }}
+            >
+              <DropdownMenuGroup>
+                {rowData?.menuItems?.map((item, index) =>
+                  renderMenuItem(item, index, () =>
+                    setContextMenuPosition(null)
+                  )
+                )}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
       )}
-      onClick={onClick || undefined}
-      {...props}
-    >
-      {children}
-    </tr>
+    </>
   );
 };
 
@@ -769,6 +818,71 @@ interface SubmenuMenuItem extends BaseMenuItem {
 
 export type MenuItem = RegularMenuItem | SubmenuMenuItem;
 
+// Shared menu rendering functions
+const renderSubmenuItem = (
+  item: SubmenuMenuItem,
+  index: number,
+  onItemClick?: () => void
+) => (
+  <DropdownMenuSub key={`${item.label}-${index}`}>
+    <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
+    <DropdownMenuPortal>
+      <DropdownMenuSubContent>
+        <ScrollArea
+          className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
+          hideScrollBar
+        >
+          {item.items.map((subItem) => (
+            <DropdownMenuItem
+              key={subItem.id}
+              label={subItem.name}
+              onClick={(event) => {
+                event.stopPropagation();
+                item.onSelect(subItem.id);
+                onItemClick?.();
+              }}
+            />
+          ))}
+          <ScrollBar className="s-py-0" />
+        </ScrollArea>
+      </DropdownMenuSubContent>
+    </DropdownMenuPortal>
+  </DropdownMenuSub>
+);
+
+const renderRegularItem = (
+  item: RegularMenuItem,
+  index: number,
+  onItemClick?: () => void
+) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { kind, ...itemProps } = item;
+  return (
+    <DropdownMenuItem
+      key={`item-${index}`}
+      {...itemProps}
+      onClick={(event) => {
+        event.stopPropagation();
+        itemProps.onClick?.(event);
+        onItemClick?.();
+      }}
+    />
+  );
+};
+
+const renderMenuItem = (
+  item: MenuItem,
+  index: number,
+  onItemClick?: () => void
+) => {
+  switch (item.kind) {
+    case "submenu":
+      return renderSubmenuItem(item, index, onItemClick);
+    case "item":
+      return renderRegularItem(item, index, onItemClick);
+  }
+};
+
 export interface DataTableMoreButtonProps {
   className?: string;
   menuItems?: MenuItem[];
@@ -787,56 +901,6 @@ DataTable.MoreButton = function MoreButton({
     return null;
   }
 
-  const renderSubmenuItem = (item: SubmenuMenuItem, index: number) => (
-    <DropdownMenuSub key={`${item.label}-${index}`}>
-      <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
-      <DropdownMenuPortal>
-        <DropdownMenuSubContent>
-          <ScrollArea
-            className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
-            hideScrollBar
-          >
-            {item.items.map((subItem) => (
-              <DropdownMenuItem
-                key={subItem.id}
-                label={subItem.name}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  item.onSelect(subItem.id);
-                }}
-              />
-            ))}
-            <ScrollBar className="s-py-0" />
-          </ScrollArea>
-        </DropdownMenuSubContent>
-      </DropdownMenuPortal>
-    </DropdownMenuSub>
-  );
-
-  const renderRegularItem = (item: RegularMenuItem, index: number) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { kind, ...itemProps } = item;
-    return (
-      <DropdownMenuItem
-        key={`item-${index}`}
-        {...itemProps}
-        onClick={(event) => {
-          event.stopPropagation();
-          itemProps.onClick?.(event);
-        }}
-      />
-    );
-  };
-
-  const renderMenuItem = (item: MenuItem, index: number) => {
-    switch (item.kind) {
-      case "submenu":
-        return renderSubmenuItem(item, index);
-      case "item":
-        return renderRegularItem(item, index);
-    }
-  };
-
   return (
     <DropdownMenu modal={false} {...dropdownMenuProps}>
       <DropdownMenuTrigger
@@ -854,7 +918,9 @@ DataTable.MoreButton = function MoreButton({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
-        <DropdownMenuGroup>{menuItems.map(renderMenuItem)}</DropdownMenuGroup>
+        <DropdownMenuGroup>
+          {menuItems.map((item, index) => renderMenuItem(item, index))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
