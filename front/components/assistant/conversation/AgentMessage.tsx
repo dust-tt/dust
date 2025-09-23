@@ -156,7 +156,12 @@ export function AgentMessage({
     agentMessageToRender.citations ?? {}
   ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
     if (citation) {
-      const IconComponent = getCitationIcon(citation.provider, isDark);
+      const IconComponent = getCitationIcon(
+        citation.provider, 
+        isDark, 
+        citation.faviconUrl, 
+        citation.href
+      );
       return {
         ...acc,
         [key]: {
@@ -181,6 +186,19 @@ export function AgentMessage({
   // happen.
   const isAtBottom = React.useRef(true);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  const streamingSignature = React.useMemo(() => {
+    return [
+      messageStreamState.agentState,
+      messageStreamState.message.content ?? "",
+      messageStreamState.message.chainOfThought ?? "",
+      messageStreamState.message.actions.length,
+    ].join("::");
+  }, [
+    messageStreamState.agentState,
+    messageStreamState.message.actions.length,
+    messageStreamState.message.chainOfThought,
+    messageStreamState.message.content,
+  ]);
   React.useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -201,6 +219,24 @@ export function AgentMessage({
       }
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!shouldStream) {
+      return;
+    }
+
+    if (!isAtBottom.current) {
+      return;
+    }
+
+    const anchor = bottomRef.current;
+
+    if (!anchor) {
+      return;
+    }
+
+    anchor.scrollIntoView({ behavior: "smooth" });
+  }, [shouldStream, streamingSignature]);
 
   // GenerationContext: to know if we are generating or not.
   const generationContext = React.useContext(GenerationContext);

@@ -115,7 +115,7 @@ const ReadOnlyTextArea = ({
   minRows = 10,
 }: {
   content: string | null;
-  minRows: number;
+  minRows?: number;
 }) => {
   return (
     <TextArea
