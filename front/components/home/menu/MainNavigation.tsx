@@ -60,9 +60,9 @@ export function MainNavigation() {
                         )}
                       >
                         {item.items &&
-                          item.items.map((item, itemIndex) => (
+                          item.items.map((item) => (
                             <ListItem
-                              key={item.title || `spacer-${itemIndex}`}
+                              key={item.title}
                               title={item.title}
                               href={item.href}
                               isExternal={item.isExternal}
