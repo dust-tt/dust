@@ -106,6 +106,8 @@ async function handler(
         const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
           workspaceId: workspace.id,
           name,
+          description: null,
+          icon: null,
           secret,
           signatureHeader,
           signatureAlgorithm,

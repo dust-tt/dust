@@ -16,6 +16,8 @@ export type WebhookSourceType = {
   id: ModelId;
   sId: string;
   name: string;
+  description: string | null;
+  icon: string | null;
   secret: string | null;
   signatureHeader: string | null;
   signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
@@ -60,4 +62,13 @@ export type PatchWebhookSourceViewBody = z.infer<
 
 export const patchWebhookSourceViewBodySchema = z.object({
   name: z.string().min(1, "Name is required."),
+});
+
+export type PatchWebhookSourceBody = z.infer<
+  typeof patchWebhookSourceBodySchema
+>;
+
+export const patchWebhookSourceBodySchema = z.object({
+  description: z.string().nullable().optional(),
+  icon: z.string().nullable().optional(),
 });

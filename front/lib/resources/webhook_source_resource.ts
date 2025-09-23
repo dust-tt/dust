@@ -141,6 +141,50 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     });
   }
 
+  async updateSource(
+    auth: Authenticator,
+    updates: {
+      description?: string | null;
+      icon?: string | null;
+    },
+    { transaction }: { transaction?: Transaction | undefined } = {}
+  ): Promise<Result<WebhookSourceResource, Error>> {
+    assert(
+      await SpaceResource.canAdministrateSystemSpace(auth),
+      "The user is not authorized to update a webhook source"
+    );
+
+    try {
+      const updatedWebhookSource = await WebhookSourceModel.update(
+        {
+          ...(updates.description !== undefined && { description: updates.description }),
+          ...(updates.icon !== undefined && { icon: updates.icon }),
+        },
+        {
+          where: {
+            id: this.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          returning: true,
+          transaction,
+        }
+      );
+
+      if (updatedWebhookSource[1].length === 0) {
+        return new Err(new Error("Webhook source not found"));
+      }
+
+      return new Ok(
+        new WebhookSourceResource(
+          WebhookSourceModel,
+          updatedWebhookSource[1][0].get()
+        )
+      );
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
@@ -217,6 +261,8 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       id: this.id,
       sId: this.sId(),
       name: this.name,
+      description: this.description,
+      icon: this.icon,
       secret,
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,

@@ -9,15 +9,21 @@ interface WebhookSourceDetailsHeaderProps {
 export function WebhookSourceDetailsHeader({
   webhookSourceView,
 }: WebhookSourceDetailsHeaderProps) {
+  const displayDescription = webhookSourceView.webhookSource.description ?? "Webhook source for triggering assistants.";
+  
   return (
     <div className="items-top flex flex-col gap-3 sm:flex-row">
-      <Avatar icon={ActionGlobeAltIcon} size="md" />
+      {webhookSourceView.webhookSource.icon ? (
+        <Avatar emoji={webhookSourceView.webhookSource.icon} size="md" />
+      ) : (
+        <Avatar icon={ActionGlobeAltIcon} size="md" />
+      )}
       <div className="flex grow flex-col gap-0 pr-9">
         <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
           {webhookSourceView.customName ?? webhookSourceView.webhookSource.name}
         </h2>
         <div className="line-clamp-1 overflow-hidden text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Webhook source for triggering assistants.
+          {displayDescription}
         </div>
       </div>
     </div>
