@@ -179,7 +179,6 @@ export function WebhookSourceDetailsInfo({
                   webhookSourceView.webhookSource.signatureHeader
                 }
               />
-              <div className="mt-4" />
             </>
           )}
       </div>
