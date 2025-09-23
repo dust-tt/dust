@@ -567,6 +567,17 @@ async function postSlackMessageUpdate(
       );
     } else {
       // Re-throw non-rate-limit errors or rate-limit errors when not adhering to rate limits.
+      logger.info(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          error,
+          updateCount,
+          lastUpdateTime,
+          rateLimitError: isWebAPIRateLimitedError(error),
+        },
+        "Re-throwing Slack error when not trying to adhere to rate limits"
+      );
       throw error;
     }
   }
