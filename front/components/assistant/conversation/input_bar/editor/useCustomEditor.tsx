@@ -236,7 +236,9 @@ const useCustomEditor = ({
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
-      suggestion: suggestionHandler,
+      // Ensure queries can contain spaces (e.g., @Sales Team → decomposes to
+      // text and keeps the dropdown active over the full label).
+      suggestion: { ...suggestionHandler, allowSpaces: true },
     }),
     Placeholder.configure({
       placeholder: "Ask an @agent a question, or get some @help",
