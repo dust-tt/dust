@@ -1,6 +1,5 @@
 import {
   BarChartIcon,
-  BookOpenIcon,
   BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
@@ -129,7 +128,7 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "data_sources",
     label: "Spaces",
-    icon: BookOpenIcon,
+    icon: PlanetIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces/"),
