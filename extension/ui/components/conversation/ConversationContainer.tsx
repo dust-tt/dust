@@ -276,9 +276,8 @@ export function ConversationContainer({
   return (
     <GenerationContextProvider>
       <div className="h-full flex flex-col">
-        <div className="pb-2 w-full">
+        <div className="pb-4 w-full">
           <Page.Header title={greeting} />
-          <Page.SectionHeader title="Start a conversation" />
         </div>
         <div id="assistant-input-header" className="w-full pb-4">
           <AssistantInputBar
