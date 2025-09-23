@@ -906,10 +906,9 @@ export class DustAPI {
             }
             await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
             continue;
-          } else {
-            const error = res.error;
-            throw new Error(`Error requesting event stream: ${error.message}`);
           }
+          const error = res.error;
+          throw new Error(`Error requesting event stream: ${error.message}`);
         }
 
         if (!res.value.response.ok || !res.value.response.body) {
