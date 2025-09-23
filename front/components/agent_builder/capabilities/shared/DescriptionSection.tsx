@@ -1,4 +1,6 @@
 import { TextArea } from "@dust-tt/sparkle";
+import { useEffect } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
 
@@ -21,6 +23,13 @@ export function DescriptionSection({
   maxLength,
   triggerValidationOnChange = false,
 }: DescriptionSectionProps) {
+  const descriptionValue = useWatch({ name: DESCRIPTION_FIELD_NAME });
+  const { trigger } = useFormContext();
+
+  useEffect(() => {
+    void trigger(DESCRIPTION_FIELD_NAME); // empty desc will trigger error message
+  }, [descriptionValue, trigger]);
+
   return (
     <BaseFormFieldSection
       title={title}

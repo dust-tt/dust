@@ -1,5 +1,6 @@
 import { Input } from "@dust-tt/sparkle";
-import { forwardRef } from "react";
+import { forwardRef, useEffect } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
 
@@ -26,6 +27,13 @@ export const NameSection = forwardRef<HTMLInputElement, NameSectionProps>(
     },
     ref
   ) => {
+    const nameValue = useWatch({ name: NAME_FIELD_NAME });
+    const { trigger } = useFormContext();
+
+    useEffect(() => {
+      void trigger(NAME_FIELD_NAME); // empty name will trigger error message
+    }, [nameValue, trigger]);
+
     return (
       <BaseFormFieldSection
         title={title}
