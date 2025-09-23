@@ -20,14 +20,117 @@ describe("throttle", () => {
       }
     });
 
+    const acquireLock = vi.fn(async () => {});
+    const releaseLock = vi.fn(async () => {});
+
     return {
       getTimestamps,
       addTimestamp,
       removeTimestamp,
+      acquireLock,
+      releaseLock,
       getCurrentTimestamps: () => [...timestamps],
       getRemovedTimestamps: () => [...removedTimestamps],
     };
   };
+
+  describe("lock functionality", () => {
+    it("should acquire and release lock on successful operation", async () => {
+      const mocks = createMockFunctions();
+      const now = Date.now();
+
+      await throttle({
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
+        canBeIgnored: false,
+        now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
+        getTimestamps: mocks.getTimestamps,
+        addTimestamp: mocks.addTimestamp,
+        removeTimestamp: mocks.removeTimestamp,
+      });
+
+      expect(mocks.acquireLock).toHaveBeenCalledOnce();
+      expect(mocks.releaseLock).toHaveBeenCalledOnce();
+      // Verify lock is acquired before release
+      expect(mocks.acquireLock).toHaveBeenCalledBefore(mocks.releaseLock);
+    });
+
+    it("should release lock even when an error occurs", async () => {
+      const mocks = createMockFunctions();
+      const now = Date.now();
+
+      // Make getTimestamps throw an error
+      mocks.getTimestamps.mockRejectedValueOnce(new Error("Database error"));
+
+      await expect(
+        throttle({
+          rateLimit: { limit: 100, windowInMs: 60 * 1000 },
+          canBeIgnored: false,
+          now,
+          acquireLock: mocks.acquireLock,
+          releaseLock: mocks.releaseLock,
+          getTimestamps: mocks.getTimestamps,
+          addTimestamp: mocks.addTimestamp,
+          removeTimestamp: mocks.removeTimestamp,
+        })
+      ).rejects.toThrow("Database error");
+
+      expect(mocks.acquireLock).toHaveBeenCalledOnce();
+      expect(mocks.releaseLock).toHaveBeenCalledOnce();
+    });
+
+    it("should release lock when canBeIgnored returns skip", async () => {
+      const now = Date.now();
+      // Create 100 timestamps to trigger skip behavior
+      const existingTimestamps = Array.from(
+        { length: 100 },
+        (_, i) => now - i * 500
+      );
+      const mocks = createMockFunctions(existingTimestamps);
+
+      const result = await throttle({
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
+        canBeIgnored: true,
+        now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
+        getTimestamps: mocks.getTimestamps,
+        addTimestamp: mocks.addTimestamp,
+        removeTimestamp: mocks.removeTimestamp,
+      });
+
+      expect(result).toEqual({ delay: undefined, skip: true });
+      expect(mocks.acquireLock).toHaveBeenCalledOnce();
+      expect(mocks.releaseLock).toHaveBeenCalledOnce();
+    });
+
+    it("should release lock when throttling with delay", async () => {
+      const now = Date.now();
+      // Create 100 timestamps to trigger throttling
+      const existingTimestamps = Array.from(
+        { length: 100 },
+        (_, i) => now - i * 500
+      );
+      const mocks = createMockFunctions(existingTimestamps);
+
+      const result = await throttle({
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
+        canBeIgnored: false,
+        now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
+        getTimestamps: mocks.getTimestamps,
+        addTimestamp: mocks.addTimestamp,
+        removeTimestamp: mocks.removeTimestamp,
+      });
+
+      expect(result.delay).toBeGreaterThan(0);
+      expect(result.skip).toBe(false);
+      expect(mocks.acquireLock).toHaveBeenCalledOnce();
+      expect(mocks.releaseLock).toHaveBeenCalledOnce();
+    });
+  });
 
   describe("basic functionality", () => {
     it("should allow request when under rate limit", async () => {
@@ -35,9 +138,11 @@ describe("throttle", () => {
       const now = Date.now();
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -47,6 +152,8 @@ describe("throttle", () => {
       expect(mocks.getTimestamps).toHaveBeenCalledOnce();
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
       expect(mocks.removeTimestamp).not.toHaveBeenCalled();
+      expect(mocks.acquireLock).toHaveBeenCalledOnce();
+      expect(mocks.releaseLock).toHaveBeenCalledOnce();
     });
 
     it("should allow request when exactly at rate limit", async () => {
@@ -59,9 +166,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -81,9 +190,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -96,6 +207,8 @@ describe("throttle", () => {
       const addedTimestamp = mocks.addTimestamp.mock.calls[0]?.[0];
       expect(addedTimestamp).toBeDefined();
       expect(addedTimestamp!).toBeGreaterThan(now);
+      expect(mocks.acquireLock).toHaveBeenCalledOnce();
+      expect(mocks.releaseLock).toHaveBeenCalledOnce();
     });
   });
 
@@ -105,13 +218,13 @@ describe("throttle", () => {
 
       // Test with different rate limits
       const testCases = [
-        { rateLimitPerMinute: 100, expectedAllowed: 100 },
-        { rateLimitPerMinute: 60, expectedAllowed: 60 },
-        { rateLimitPerMinute: 10, expectedAllowed: 10 },
-        { rateLimitPerMinute: 1, expectedAllowed: 1 },
+        { rateLimitValue: 100, expectedAllowed: 100 },
+        { rateLimitValue: 60, expectedAllowed: 60 },
+        { rateLimitValue: 10, expectedAllowed: 10 },
+        { rateLimitValue: 1, expectedAllowed: 1 },
       ];
 
-      for (const { rateLimitPerMinute, expectedAllowed } of testCases) {
+      for (const { rateLimitValue, expectedAllowed } of testCases) {
         // Create exactly the allowed number of timestamps to test the edge case
         const existingTimestamps = Array.from(
           { length: expectedAllowed },
@@ -120,9 +233,11 @@ describe("throttle", () => {
         const mocks = createMockFunctions(existingTimestamps);
 
         const result = await throttle({
-          rateLimitPerMinute,
+          rateLimit: { limit: rateLimitValue, windowInMs: 60 * 1000 },
           canBeIgnored: false,
           now,
+          acquireLock: mocks.acquireLock,
+          releaseLock: mocks.releaseLock,
           getTimestamps: mocks.getTimestamps,
           addTimestamp: mocks.addTimestamp,
           removeTimestamp: mocks.removeTimestamp,
@@ -136,7 +251,7 @@ describe("throttle", () => {
   });
 
   describe("timestamp cleanup", () => {
-    it("should remove expired timestamps older than 1 minute", async () => {
+    it("should remove expired timestamps older than window", async () => {
       const now = Date.now();
 
       const existingTimestamps = [
@@ -150,9 +265,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -174,9 +291,11 @@ describe("throttle", () => {
       const now = Date.now();
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -199,9 +318,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: true,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -210,6 +331,8 @@ describe("throttle", () => {
       expect(result).toEqual({ delay: undefined, skip: true });
       // Should not add timestamp when ignoring
       expect(mocks.addTimestamp).not.toHaveBeenCalled();
+      expect(mocks.acquireLock).toHaveBeenCalledOnce();
+      expect(mocks.releaseLock).toHaveBeenCalledOnce();
     });
 
     it("should still allow request when canBeIgnored is true but under limit", async () => {
@@ -217,9 +340,11 @@ describe("throttle", () => {
       const now = Date.now();
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: true,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -239,9 +364,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -268,9 +395,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -296,9 +425,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -320,9 +451,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -343,9 +476,11 @@ describe("throttle", () => {
       const now = Date.now();
 
       const result = await throttle({
-        rateLimitPerMinute: 1,
+        rateLimit: { limit: 1, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -361,9 +496,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 1,
+        rateLimit: { limit: 1, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -379,9 +516,11 @@ describe("throttle", () => {
       const now = Date.now();
 
       const result = await throttle({
-        rateLimitPerMinute: 10000,
+        rateLimit: { limit: 10000, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -391,35 +530,38 @@ describe("throttle", () => {
       expect(mocks.addTimestamp).toHaveBeenCalledWith(now);
     });
 
-    it("should handle timestamps exactly at the 1-minute boundary", async () => {
+    it("should handle timestamps exactly at the window boundary", async () => {
       const now = Date.now();
-      const exactlyOneMinuteAgo = now - 60 * 1000;
-      const justOverOneMinuteAgo = now - 60 * 1000 - 1;
-      const wayOverOneMinuteAgo = now - 120 * 1000;
+      const windowInMs = 60 * 1000;
+      const exactlyAtBoundary = now - windowInMs;
+      const justOverBoundary = now - windowInMs - 1;
+      const wayOverBoundary = now - windowInMs * 2;
 
       const existingTimestamps = [
-        exactlyOneMinuteAgo, // Should be removed (exactly at boundary - condition is timestamp > oneMinuteAgo)
-        justOverOneMinuteAgo, // Should be removed (just over boundary)
-        wayOverOneMinuteAgo, // Should be removed (way over boundary)
+        exactlyAtBoundary, // Should be removed (exactly at boundary - condition is timestamp > windowStart)
+        justOverBoundary, // Should be removed (just over boundary)
+        wayOverBoundary, // Should be removed (way over boundary)
       ];
 
       const mocks = createMockFunctions(existingTimestamps);
 
       await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
       });
 
-      // All 3 timestamps should be removed because the condition is timestamp > oneMinuteAgo
+      // All 3 timestamps should be removed because the condition is timestamp > windowStart
       // This means timestamps exactly at the boundary (==) are also removed
       expect(mocks.removeTimestamp).toHaveBeenCalledTimes(3);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(exactlyOneMinuteAgo);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(justOverOneMinuteAgo);
-      expect(mocks.removeTimestamp).toHaveBeenCalledWith(wayOverOneMinuteAgo);
+      expect(mocks.removeTimestamp).toHaveBeenCalledWith(exactlyAtBoundary);
+      expect(mocks.removeTimestamp).toHaveBeenCalledWith(justOverBoundary);
+      expect(mocks.removeTimestamp).toHaveBeenCalledWith(wayOverBoundary);
     });
 
     it("should handle duplicate timestamps", async () => {
@@ -435,9 +577,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -473,9 +617,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(unsortedTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 10, // 100% = 10 allowed
+        rateLimit: { limit: 10, windowInMs: 60 * 1000 }, // 100% = 10 allowed
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -513,9 +659,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(unsortedTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 10, // 100% = 10 allowed
+        rateLimit: { limit: 10, windowInMs: 60 * 1000 }, // 100% = 10 allowed
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -551,9 +699,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(unsortedTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 10,
+        rateLimit: { limit: 10, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -588,9 +738,11 @@ describe("throttle", () => {
       const mocks = createMockFunctions(existingTimestamps);
 
       const result = await throttle({
-        rateLimitPerMinute: 100,
+        rateLimit: { limit: 100, windowInMs: 60 * 1000 },
         canBeIgnored: false,
         now,
+        acquireLock: mocks.acquireLock,
+        releaseLock: mocks.releaseLock,
         getTimestamps: mocks.getTimestamps,
         addTimestamp: mocks.addTimestamp,
         removeTimestamp: mocks.removeTimestamp,
@@ -624,6 +776,8 @@ describe("throttle", () => {
             timestamps.splice(index, 1);
           }
         }),
+        acquireLock: vi.fn(async () => {}),
+        releaseLock: vi.fn(async () => {}),
       };
 
       // Simulate 110 requests in quick succession
@@ -632,9 +786,11 @@ describe("throttle", () => {
         const now = baseTime + i * 100; // 100ms apart
 
         const result = await throttle({
-          rateLimitPerMinute: 100, // 100 allowed without safety margin
+          rateLimit: { limit: 100, windowInMs: 60 * 1000 }, // 100 allowed without safety margin
           canBeIgnored: false,
           now,
+          acquireLock: mocks.acquireLock,
+          releaseLock: mocks.releaseLock,
           getTimestamps: mocks.getTimestamps,
           addTimestamp: mocks.addTimestamp,
           removeTimestamp: mocks.removeTimestamp,

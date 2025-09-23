@@ -3,14 +3,21 @@ import _ from "lodash";
 import { redisClient } from "@connectors/lib/redis";
 import logger from "@connectors/logger/logger";
 
+export type RateLimit = {
+  limit: number;
+  windowInMs: number;
+};
+
 export async function throttleWithRedis<T>(
-  rateLimitPerMinute: number,
+  rateLimit: RateLimit,
   key: string,
   canBeIgnored: boolean,
   func: () => Promise<T>
 ): Promise<T | undefined> {
   const client = await redisClient({ origin: "throttle" });
   const redisKey = `throttle:${key}`;
+  const lockKey = `lock:${redisKey}`;
+
   const getTimestamps = async () => {
     const timestamps = await client.lRange(redisKey, 0, -1);
     return timestamps.map(Number);
@@ -22,40 +29,39 @@ export async function throttleWithRedis<T>(
     await client.lRem(redisKey, 1, timestamp.toString());
   };
 
-  // Try to acquire a lock
-  const lockKey = `lock:${redisKey}`;
-  const acquiredLockTimeout = 3000;
-  const start = Date.now();
+  const acquireLock = async () => {
+    const acquiredLockTimeout = 3000;
+    const start = Date.now();
 
-  let acquiredLock = false;
-  while (Date.now() - start < acquiredLockTimeout) {
-    const lock = await client.set(lockKey, "1", { NX: true, PX: 3000 });
-    if (lock === "OK") {
-      acquiredLock = true;
-      break;
+    let acquiredLock = false;
+    while (Date.now() - start < acquiredLockTimeout) {
+      const lock = await client.set(lockKey, "1", { NX: true, PX: 3000 });
+      if (lock === "OK") {
+        acquiredLock = true;
+        break;
+      }
+      // Sleep for 100ms before retrying
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    // Sleep for 100ms before retrying
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+    if (!acquiredLock) {
+      throw new Error("Failed to acquire lock for throttling");
+    }
+  };
 
-  if (!acquiredLock) {
-    throw new Error("Failed to acquire lock for throttling");
-  }
-
-  let throttleRes: { delay: number | undefined; skip: boolean } | undefined;
-  try {
-    throttleRes = await throttle({
-      rateLimitPerMinute,
-      canBeIgnored,
-      now: new Date().getTime(),
-      getTimestamps,
-      addTimestamp,
-      removeTimestamp,
-    });
-  } finally {
-    // Release the lock
+  const releaseLock = async () => {
     await client.del(lockKey);
-  }
+  };
+
+  const throttleRes = await throttle({
+    rateLimit,
+    canBeIgnored,
+    now: new Date().getTime(),
+    acquireLock,
+    releaseLock,
+    getTimestamps,
+    addTimestamp,
+    removeTimestamp,
+  });
 
   if (throttleRes.skip) {
     // Ignore the request
@@ -73,64 +79,74 @@ export async function throttleWithRedis<T>(
 }
 
 export async function throttle({
-  rateLimitPerMinute,
+  rateLimit,
   canBeIgnored,
   now,
+  acquireLock,
+  releaseLock,
   getTimestamps,
   addTimestamp,
   removeTimestamp,
 }: {
-  rateLimitPerMinute: number;
+  rateLimit: RateLimit;
   canBeIgnored: boolean;
   now: number;
+  acquireLock: () => Promise<void>;
+  releaseLock: () => Promise<void>;
   getTimestamps: () => Promise<number[]>;
   addTimestamp: (timestamp: number) => Promise<void>;
   removeTimestamp: (timestamp: number) => Promise<void>;
 }): Promise<{ delay: number | undefined; skip: boolean }> {
-  // Get timestamps data.
-  const rawTimestamps = await getTimestamps();
+  await acquireLock();
 
-  // Trim anything older than 1 minute in data.
-  const oneMinuteAgo = now - 60 * 1000;
-  const timestamps = rawTimestamps.filter((timestamp) => {
-    return timestamp > oneMinuteAgo;
-  });
+  try {
+    // Get timestamps data.
+    const rawTimestamps = await getTimestamps();
 
-  // Remove the expired timestamps entries.
-  const diff = _.difference(rawTimestamps, timestamps);
-  for (const timestamp of diff) {
-    await removeTimestamp(timestamp);
-  }
+    // Trim anything older than the window in ms
+    const windowStart = now - rateLimit.windowInMs;
+    const timestamps = rawTimestamps.filter((timestamp) => {
+      return timestamp > windowStart;
+    });
 
-  // Check if the list of timestamps is less than the rate limit per minute.
-  if (timestamps.length < rateLimitPerMinute) {
-    // Add the current timestamp to the timestamps
-    await addTimestamp(now);
-    return { delay: 0, skip: false }; // OK
-  } else {
-    if (canBeIgnored) {
-      return { delay: undefined, skip: true }; // The caller said the request can be ignored, we don't add it and we return -1 to indicate that the request can be ignored.
+    // Remove the expired timestamps entries.
+    const diff = _.difference(rawTimestamps, timestamps);
+    for (const timestamp of diff) {
+      await removeTimestamp(timestamp);
     }
 
-    // Sort timestamps first just in case (they should be sorted already)
-    const sortedTimestamps = [...timestamps].sort((a, b) => a - b);
-    const lastEntryInWindow =
-      sortedTimestamps[timestamps.length - rateLimitPerMinute];
+    // Check if the list of timestamps is less than the rate limit.
+    if (timestamps.length < rateLimit.limit) {
+      // Add the current timestamp to the timestamps
+      await addTimestamp(now);
+      return { delay: 0, skip: false }; // OK
+    } else {
+      if (canBeIgnored) {
+        return { delay: undefined, skip: true }; // The caller said the request can be ignored, we don't add it and we indicate that the request can be ignored.
+      }
 
-    // This should never happen since we checked timestamps.length >= rateLimitPerMinute above
-    if (lastEntryInWindow === undefined) {
-      throw new Error(
-        "Unexpected: no timestamp found at calculated index when timestamps array should not be empty"
-      );
+      // Sort timestamps first just in case (they should be sorted already)
+      const sortedTimestamps = [...timestamps].sort((a, b) => a - b);
+      const lastEntryInWindow =
+        sortedTimestamps[timestamps.length - rateLimit.limit];
+
+      // This should never happen since we checked timestamps.length >= rateLimit.limit above
+      if (lastEntryInWindow === undefined) {
+        throw new Error(
+          "Unexpected: no timestamp found at calculated index when timestamps array should not be empty"
+        );
+      }
+
+      const nextEntryTimestamp = lastEntryInWindow + rateLimit.windowInMs;
+
+      const delay = nextEntryTimestamp - now;
+
+      // Add the future timestamp when the request will be allowed
+      await addTimestamp(nextEntryTimestamp);
+
+      return { delay: Math.max(0, delay), skip: false };
     }
-
-    const nextEntryTimestamp = lastEntryInWindow + 60 * 1000;
-
-    const delay = nextEntryTimestamp - now;
-
-    // Add the future timestamp when the request will be allowed
-    await addTimestamp(nextEntryTimestamp);
-
-    return { delay: Math.max(0, delay), skip: false };
+  } finally {
+    await releaseLock();
   }
 }
