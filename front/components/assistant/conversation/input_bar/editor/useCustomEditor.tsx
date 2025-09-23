@@ -239,7 +239,7 @@ const useCustomEditor = ({
       suggestion: suggestionHandler,
     }),
     Placeholder.configure({
-      placeholder: "Ask a question or get some @help",
+      placeholder: "Ask an @agent a question, or get some @help",
       emptyNodeClass:
         "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
     }),
