@@ -96,5 +96,6 @@ RemoteMCPServerModel.init(
   {
     sequelize: frontSequelize,
     modelName: "remote_mcp_server",
+    indexes: [{ fields: ["workspaceId"], concurrently: true }],
   }
 );

@@ -1,9 +1,4 @@
-import type {
-  BelongsToGetAssociationMixin,
-  CreationOptional,
-  ForeignKey,
-  NonAttribute,
-} from "sequelize";
+import type { BelongsToGetAssociationMixin, CreationOptional, ForeignKey, NonAttribute, } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
