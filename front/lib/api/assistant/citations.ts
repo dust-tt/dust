@@ -3,8 +3,8 @@ import {
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { rand } from "@app/lib/utils/seeded_random";
 import { getFaviconUrl } from "@app/lib/utils/favicon";
+import { rand } from "@app/lib/utils/seeded_random";
 import type {
   AgentMessageType,
   CitationType,
@@ -100,10 +100,11 @@ export function getCitationsFromActions(
     if (result.resource.refs) {
       Object.entries(result.resource.refs).forEach(([ref, citation]) => {
         const href = citation.href ?? "";
-        const faviconUrl = citation.provider === "webcrawler" && href 
-          ? getFaviconUrl(href) 
-          : undefined;
-        
+        const faviconUrl =
+          citation.provider === "webcrawler" && href
+            ? getFaviconUrl(href)
+            : undefined;
+
         runAgentRefs[ref] = {
           href,
           title: citation.title,

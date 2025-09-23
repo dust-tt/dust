@@ -1,8 +1,4 @@
-import type {
-  DropdownMenu,
-  DropdownMenuItemProps,
-  NotificationType,
-} from "@dust-tt/sparkle";
+import type { DropdownMenu, NotificationType } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
