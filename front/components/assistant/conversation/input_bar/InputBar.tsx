@@ -317,7 +317,15 @@ export function AssistantInputBar({
         <div className="flex justify-center px-4 pb-4">
           <Button
             variant="outline"
-            label={isStopping ? "Stopping generation..." : "Stop generation"}
+            label={
+              isStopping
+                ? "Stopping..."
+                : generationContext.generatingMessages.filter(
+                    (m) => m.conversationId === conversationId
+                  ).length > 1
+                ? "Stop all agents"
+                : "Stop agent"
+            }
             icon={StopIcon}
             onClick={handleStopGeneration}
             disabled={isStopping}
