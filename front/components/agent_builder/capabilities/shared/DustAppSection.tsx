@@ -57,7 +57,14 @@ function AppSelectionTable({ tableData, columns }: AppSelectionTableProps) {
   );
 }
 
-export function DustAppSection() {
+export function DustAppSection(
+  { dustAppConfiguration }: {
+    dustAppConfiguration?: {
+      description?: string;
+      default?: { appId: string };
+    };
+  }
+) {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -78,7 +85,9 @@ export function DustAppSection() {
   });
 
   useEffect(() => {
-    const configuredAppId = field.value?.appId;
+    const configuredAppId = field.value?.appId ?? dustAppConfiguration?.default?.appId;
+
+    console.log("configuredAppId", configuredAppId);
     if (!configuredAppId || isAppsLoading) {
       return;
     }
@@ -93,7 +102,7 @@ export function DustAppSection() {
         setSelectedSpace(nextSpace);
       }
     }
-  }, [field.value?.appId, apps, isAppsLoading, selectedSpace, spaces]);
+  }, [field.value?.appId, dustAppConfiguration?.default?.appId, apps, isAppsLoading, selectedSpace, spaces]);
 
   const availableApps = useMemo(
     () =>
@@ -114,6 +123,7 @@ export function DustAppSection() {
       description: app.description,
       type: "dust_app_run_configuration",
     };
+    console.log("config", config);
     field.onChange(config);
   };
 

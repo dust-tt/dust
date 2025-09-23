@@ -7,63 +7,40 @@ import type {
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { parseAgentConfigurationUri } from "@app/lib/actions/mcp_internal_actions/servers/webtools_edge";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { isModelId, isModelProviderId,isReasoningEffortId } from "@app/types";
 import type {
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffortIdType,
-} from "@app/types/assistant/assistant";
-import {
-  MODEL_IDS,
-  MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
 } from "@app/types/assistant/assistant";
 
 /**
  * Type guard to validate reasoning model default values against schema constraints
  * Returns a properly typed reasoning model object that matches the schema requirements
  */
-function getValidatedReasoningModel(value: unknown): {
+function getValidatedReasoningModel(value?: {
+  modelId: string;
+  providerId: string;
+  temperature: number;
+  reasoningEffort: string;
+}): {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
   temperature: number | null;
   reasoningEffort: ReasoningEffortIdType | null;
 } | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const obj = value as Record<string, unknown>;
-
-  // Validate required fields
-  if (
-    typeof obj.modelId !== "string" ||
-    !MODEL_IDS.includes(obj.modelId as ModelIdType) ||
-    typeof obj.providerId !== "string" ||
-    !MODEL_PROVIDER_IDS.includes(obj.providerId as ModelProviderIdType)
-  ) {
-    return null;
-  }
-
-  // Validate optional temperature
-  const temperature =
-    typeof obj.temperature === "number" &&
-    obj.temperature >= 0 &&
-    obj.temperature <= 1
-      ? obj.temperature
-      : null;
-
-  // Validate optional reasoningEffort
-  const reasoningEffort =
-    typeof obj.reasoningEffort === "string" &&
-    REASONING_EFFORT_IDS.includes(obj.reasoningEffort as ReasoningEffortIdType)
-      ? (obj.reasoningEffort as ReasoningEffortIdType)
-      : null;
-
-  return {
-    modelId: obj.modelId as ModelIdType,
-    providerId: obj.providerId as ModelProviderIdType,
-    temperature,
-    reasoningEffort,
+  
+  return !value || 
+  !isModelId(value.modelId) || 
+  !isModelProviderId(value.providerId) || 
+  !isReasoningEffortId(value.reasoningEffort) 
+  
+  ? null 
+  : {
+    modelId: value.modelId,
+    providerId: value.providerId,
+    temperature: value.temperature,
+    reasoningEffort: value.reasoningEffort,
   };
 }
 

@@ -629,8 +629,10 @@ export function MCPServerViewsSheet({
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.mayRequireDustAppConfiguration && (
-                  <DustAppSection />
+                {toolsConfigurations.dustAppConfiguration && (
+                  <DustAppSection 
+                    dustAppConfiguration={toolsConfigurations.dustAppConfiguration}
+                  />
                 )}
 
                 {toolsConfigurations.mayRequireSecretConfiguration && (

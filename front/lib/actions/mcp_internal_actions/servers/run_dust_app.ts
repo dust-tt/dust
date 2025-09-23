@@ -512,7 +512,12 @@ export default async function createServer(
       "Run a Dust App with specified parameters.",
       {
         dustApp:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP],
+          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP].default(
+            {
+              appId: "my_app_id",
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+            }
+          ),
       },
       async () => {
         return {

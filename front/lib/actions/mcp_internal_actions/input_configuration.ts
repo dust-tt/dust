@@ -528,6 +528,10 @@ export interface MCPServerToolsConfigurations {
       reasoningEffort: string;
     };
   };
+  dustAppConfiguration?: {
+    description?: string;
+    default?: { appId: string };
+  };
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
   stringConfigurations: {
@@ -562,7 +566,6 @@ export interface MCPServerToolsConfigurations {
       default?: string;
     }
   >;
-  mayRequireDustAppConfiguration: boolean;
   mayRequireSecretConfiguration: boolean;
   configurable: "no" | "optional" | "required";
 }
@@ -579,7 +582,6 @@ export function getMCPServerToolsConfigurations(
       booleanConfigurations: [],
       enumConfigurations: {},
       listConfigurations: {},
-      mayRequireDustAppConfiguration: false,
       mayRequireSecretConfiguration: false,
       configurable: "optional",
     };
@@ -761,6 +763,20 @@ export function getMCPServerToolsConfigurations(
     }))
     .at(0);
 
+  const dustAppConfiguration =
+    Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+      })
+    ).map((schema) => ({
+      description: schema.description,
+      default: extractSchemaDefault(schema, (v: unknown): v is { appId: string } =>
+        v !== null && typeof v === "object" && "appId" in v
+      ),
+    }))
+    .at(0);
+
   // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
   const disabledToolNames =
     mcpServerView.toolsMetadata
@@ -779,6 +795,9 @@ export function getMCPServerToolsConfigurations(
   const mayRequireJsonSchemaConfiguration = enabledTools.some(
     (tool) => tool.inputSchema?.properties?.jsonSchema
   );
+
+  const mayRequireSecretConfiguration =
+    mcpServerView.server.requiresSecret === true;
 
   const stringConfigurations = Object.entries(
     findPathsToConfiguration({
@@ -946,23 +965,13 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const mayRequireDustAppConfiguration =
-    Object.keys(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
-      })
-    ).length > 0;
-
-  const mayRequireSecretConfiguration =
-    mcpServerView.server.requiresSecret === true;
-
   const configurableStates = [
     getConfigurableStateForOptional(dataSourceConfiguration),
     getConfigurableStateForOptional(dataWarehouseConfiguration),
     getConfigurableStateForOptional(tableConfiguration),
     getConfigurableStateForOptional(childAgentConfiguration),
     getConfigurableStateForOptional(reasoningConfiguration),
+    getConfigurableStateForOptional(dustAppConfiguration),
     getConfigurableStateForArray(stringConfigurations),
     getConfigurableStateForArray(numberConfigurations),
     getConfigurableStateForArray(booleanConfigurations),
@@ -978,7 +987,6 @@ export function getMCPServerToolsConfigurations(
 
   const configurable =
     mayRequireSecretConfiguration ||
-    mayRequireDustAppConfiguration ||
     mayRequireJsonSchemaConfiguration ||
     mayRequireTimeFrameConfiguration
       ? "optional"
@@ -992,12 +1000,12 @@ export function getMCPServerToolsConfigurations(
     reasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
+    dustAppConfiguration,
     stringConfigurations,
     numberConfigurations,
     booleanConfigurations,
     enumConfigurations,
     listConfigurations,
-    mayRequireDustAppConfiguration,
     mayRequireSecretConfiguration,
     configurable,
   };

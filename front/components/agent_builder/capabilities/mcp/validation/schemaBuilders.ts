@@ -65,7 +65,7 @@ export function createDynamicConfigurationFields(
           message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
-    dustAppConfiguration: toolsConfigurations.mayRequireDustAppConfiguration
+    dustAppConfiguration: toolsConfigurations.dustAppConfiguration
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.dustApp.required,
         })
