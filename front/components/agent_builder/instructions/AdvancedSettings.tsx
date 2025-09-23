@@ -20,7 +20,6 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { CreativityLevelSubmenu } from "@app/components/agent_builder/instructions/CreativityLevelSubmenu";
 import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
 import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
 import { isInvalidJson } from "@app/components/agent_builder/utils";
@@ -89,8 +88,6 @@ export function AdvancedSettings() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <ModelSelectionSubmenu models={models} />
-
-          <CreativityLevelSubmenu />
 
           <ReasoningEffortSubmenu />
 
