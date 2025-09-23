@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { ShareableFileResource } from "@app/lib/resources/shareable_file_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { apiError } from "@app/logger/withlogging";
@@ -147,14 +148,18 @@ async function handler(
         });
         owner.workOSOrganizationId = body.workOSOrganizationId;
       } else if ("allowContentCreationFileSharing" in body) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        const previousMetadata = owner.metadata || {};
+        const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,
           allowContentCreationFileSharing: body.allowContentCreationFileSharing,
         };
         await w.update({ metadata: newMetadata });
         owner.metadata = newMetadata;
+
+        // if public sharing is disabled, downgrade share scope of all public files to workspace
+        if (!body.allowContentCreationFileSharing) {
+          await ShareableFileResource.updatePublicShareScopeToWorkspace(auth);
+        }
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const [affectedCount] = await WorkspaceHasDomainModel.update(

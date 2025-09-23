@@ -30,6 +30,7 @@ export const relocateUserPlugin = createPlugin({
               ? "US (us-central1)"
               : "Europe (europe-west1)",
         })),
+        multiple: false,
       },
     },
   },
@@ -42,10 +43,10 @@ export const relocateUserPlugin = createPlugin({
     }
 
     // Validate region
-    if (!SUPPORTED_REGIONS.includes(newRegion as RegionType)) {
+    if (!SUPPORTED_REGIONS.includes(newRegion[0] as RegionType)) {
       return new Err(
         new Error(
-          `Invalid region: ${newRegion}. Supported regions: ${SUPPORTED_REGIONS.join(", ")}`
+          `Invalid region: ${newRegion[0]}. Supported regions: ${SUPPORTED_REGIONS.join(", ")}`
         )
       );
     }
@@ -70,13 +71,13 @@ export const relocateUserPlugin = createPlugin({
       await getWorkOS().userManagement.updateUser({
         userId: user.workOSUserId,
         metadata: {
-          region: newRegion as RegionType,
+          region: newRegion[0] as RegionType,
         },
       });
 
       return new Ok({
         display: "text",
-        value: `User ${user.email} (${userId}) successfully relocated to region ${newRegion}.`,
+        value: `User ${user.email} (${userId}) successfully relocated to region ${newRegion[0]}.`,
       });
     } catch (error) {
       return new Err(

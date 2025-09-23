@@ -3,12 +3,18 @@ import type { NextApiResponse } from "next";
 
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { Authenticator } from "@app/lib/auth";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  getTimeframeSecondsFromLiteral,
+  rateLimiter,
+} from "@app/lib/utils/rate_limiter";
+import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -18,6 +24,8 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { Err } from "@app/types";
+
+const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
 
 /**
  * @swagger
@@ -69,7 +77,7 @@ async function handler(
   req: NextApiRequestWithContext,
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
-  const { method } = req;
+  const { method, body } = req;
 
   if (method !== "POST") {
     return apiError(req, res, {
@@ -77,6 +85,17 @@ async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "The method passed is not supported, POST is expected.",
+      },
+    });
+  }
+
+  const contentType = req.headers["content-type"];
+  if (!contentType || !contentType.includes("application/json")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Content-Type must be application/json.",
       },
     });
   }
@@ -111,6 +130,7 @@ async function handler(
     auth,
     webhookSourceId
   );
+
   if (!webhookSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -119,6 +139,87 @@ async function handler(
         message: `Webhook source ${webhookSourceId} not found in workspace ${wId}.`,
       },
     });
+  }
+
+  // Validate webhook signature if secret is configured
+  if (webhookSource.secret) {
+    const signatureHeader = webhookSource.signatureHeader;
+    const algorithm = webhookSource.signatureAlgorithm;
+
+    if (!signatureHeader || !algorithm) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "webhook_source_misconfiguration",
+          message: `Webhook source ${webhookSourceId} is missing header or algorithm configuration.`,
+        },
+      });
+    }
+    const signature = req.headers[signatureHeader.toLowerCase()] as string;
+
+    if (!signature) {
+      return apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message: `Missing signature header: ${signatureHeader}`,
+        },
+      });
+    }
+
+    const stringifiedBody = JSON.stringify(body);
+
+    const isValid = verifySignature({
+      signedContent: stringifiedBody,
+      secret: webhookSource.secret,
+      signature,
+      algorithm,
+    });
+
+    if (!isValid) {
+      logger.warn(
+        {
+          webhookSourceId: webhookSource.id,
+          workspaceId: workspace.id,
+        },
+        "Invalid webhook signature"
+      );
+      return apiError(req, res, {
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message: "Invalid webhook signature.",
+        },
+      });
+    }
+  }
+
+  // Rate limiting: 10% of workspace message limit
+  const plan = auth.getNonNullablePlan();
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  if (maxMessages !== -1) {
+    const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+    const webhookLimit = Math.ceil(
+      maxMessages * activeSeats * WORKSPACE_MESSAGE_LIMIT_MULTIPLIER
+    ); // 10% of workspace message limit
+
+    const remaining = await rateLimiter({
+      key: `workspace:${workspace.sId}:webhook_triggers:${maxMessagesTimeframe}`,
+      maxPerTimeframe: webhookLimit,
+      timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+      logger,
+    });
+
+    if (remaining <= 0) {
+      return apiError(req, res, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message: `Webhook triggers rate limit exceeded. You can trigger up to ${webhookLimit} webhooks per ${maxMessagesTimeframe}.`,
+        },
+      });
+    }
   }
 
   // Fetch all triggers based on the webhook source id

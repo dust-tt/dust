@@ -6,13 +6,18 @@ import type { LightWorkspaceType } from "@app/types";
 
 interface PluginRunsDataTableProps {
   owner: LightWorkspaceType;
+  loadOnInit?: boolean;
 }
 
-export function PluginRunsDataTable({ owner }: PluginRunsDataTableProps) {
+export function PluginRunsDataTable({
+  owner,
+  loadOnInit,
+}: PluginRunsDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="Plugin audit logs"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokePluginRuns}
     >
       {(data) => (

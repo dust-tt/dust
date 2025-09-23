@@ -506,6 +506,14 @@ export async function githubCodeSyncStatelessWorkflow({
     return;
   }
 
+  // upserting the root folder for the repository
+  await githubUpsertRepositoryFolderActivity({
+    connectorId,
+    repoId,
+    repoName,
+    repoLogin,
+  });
+
   // First, get the tar file from the GitHub API and upload it to GCS.
   const extractResult = await githubExtractToGcsActivity({
     connectorId,
@@ -607,6 +615,15 @@ export async function githubIssueSyncWorkflow(
       debounceCount += 1;
       continue;
     }
+
+    // upserting the root folder for the repository
+    await githubUpsertRepositoryFolderActivity({
+      connectorId,
+      repoId,
+      repoName,
+      repoLogin,
+    });
+
     await githubUpsertIssueActivity(
       connectorId,
       repoName,
@@ -642,6 +659,15 @@ export async function githubDiscussionSyncWorkflow(
       debounceCount += 1;
       continue;
     }
+
+    // upserting the root folder for the repository
+    await githubUpsertRepositoryFolderActivity({
+      connectorId,
+      repoId,
+      repoName,
+      repoLogin,
+    });
+
     await githubUpsertDiscussionActivity(
       connectorId,
       repoName,

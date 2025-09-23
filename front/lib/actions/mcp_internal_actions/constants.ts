@@ -187,11 +187,14 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
+  // TODO(seb): remove soonish
   [TABLE_QUERY_SERVER_NAME]: {
     id: 4,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: () => {
+      return true;
+    },
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
@@ -355,7 +358,7 @@ The directive should be used to display a clickable version of the agent name in
   run_dust_app: {
     id: 10,
     availability: "auto",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
@@ -1204,15 +1207,12 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  query_tables_v2: {
+  [TABLE_QUERY_V2_SERVER_NAME]: {
     id: 1009,
     availability: "auto",
     allowMultipleInstances: false,
-    // We'll eventually switch everyone to this new tables query toolset.
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("exploded_tables_query");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,

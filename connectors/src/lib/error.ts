@@ -104,6 +104,17 @@ export class WorkspaceQuotaExceededError extends Error {
   constructor(readonly innerError?: Error) {
     super(innerError?.message);
     this.name = "WorkspaceQuotaExceededError";
+    this.message =
+      "The workspace quota has been exceeded. This will pause the connector. Action: not anything straightforward, the limit is hardcoded in the workspace quota function. It should realistically never happen for big workspaces.";
+  }
+}
+
+export class DataSourceQuotaExceededError extends Error {
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message);
+    this.name = "DataSourceQuotaExceededError";
+    this.message =
+      "A file size exceeded the allowed size. Action: temporary increase the plan limit for file size to let the activity succeed.";
   }
 }
 

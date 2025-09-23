@@ -1,6 +1,7 @@
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   ArrowDownOnSquareIcon,
+  ArrowGoBackIcon,
   Button,
   CodeBlock,
   CommandLineIcon,
@@ -25,6 +26,7 @@ import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigati
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isUsingConversationFiles } from "@app/lib/files";
+import { useVisualizationRevert } from "@app/lib/swr/conversations";
 import { useFileContent } from "@app/lib/swr/files";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type {
@@ -96,6 +98,7 @@ interface ClientExecutableRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
   owner: LightWorkspaceType;
+  lastEditedByAgentConfigurationId?: string;
   contentHash?: string;
 }
 
@@ -103,6 +106,7 @@ export function ClientExecutableRenderer({
   conversation,
   fileId,
   owner,
+  lastEditedByAgentConfigurationId,
   contentHash,
 }: ClientExecutableRendererProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
@@ -127,6 +131,13 @@ export function ClientExecutableRenderer({
   });
 
   const { fileMetadata } = useFileMetadata({ fileId, owner });
+
+  // Ideally we should not show the revert button when it's not applicable (e.g. there is no edit)
+  // but it's not easy to compute here so we show the button all the time for now.
+  const { handleVisualizationRevert } = useVisualizationRevert({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+  });
 
   const isFileUsingConversationFiles = React.useMemo(
     () => (fileContent ? isUsingConversationFiles(fileContent) : false),
@@ -221,6 +232,21 @@ export function ClientExecutableRenderer({
   return (
     <div className="flex h-full flex-col">
       <ContentCreationHeader onClose={onClosePanel}>
+        {lastEditedByAgentConfigurationId && (
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={ArrowGoBackIcon}
+            tooltip={"Revert the last change"}
+            onClick={() =>
+              handleVisualizationRevert({
+                fileId,
+                agentConfigurationId: lastEditedByAgentConfigurationId,
+              })
+            }
+          />
+        )}
+
         <Button
           icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
           variant="ghost"

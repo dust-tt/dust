@@ -1,4 +1,3 @@
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isRunAgentResultResourceType,
   isSearchResultResourceType,
@@ -11,11 +10,12 @@ import type {
   LightAgentMessageType,
 } from "@app/types";
 import { removeNulls } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");
 
-export const getRefs = () => {
+export function getRefs() {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789".split("");
   if (REFS === null) {
     REFS = [];
@@ -30,7 +30,7 @@ export const getRefs = () => {
     REFS.sort(() => (getRand() > 0.5 ? 1 : -1));
   }
   return REFS;
-};
+}
 
 /**
  * Prompt to remind agents how to cite documents or web pages.
@@ -48,9 +48,14 @@ export function citationMetaPrompt(isUsingRunAgent: boolean) {
   );
 }
 
-export const getCitationsFromActions = (
-  actions: MCPActionType[]
-): Record<string, CitationType> => {
+export function getCitationsFromActions(
+  actions: Omit<
+    AgentMCPActionWithOutputType,
+    // TODO(2025-09-22 aubin): add proper typing for the statuses in the SDK (not really needed but
+    //  nice to have IMHO).
+    "internalMCPServerName" | "status"
+  >[]
+): Record<string, CitationType> {
   const searchResultsWithDocs = removeNulls(
     actions.flatMap((action) =>
       action.output?.filter(isSearchResultResourceType).map((o) => o.resource)
@@ -105,11 +110,11 @@ export const getCitationsFromActions = (
     ...websearchRefs,
     ...runAgentRefs,
   };
-};
+}
 
-export const getLightAgentMessageFromAgentMessage = (
+export function getLightAgentMessageFromAgentMessage(
   agentMessage: AgentMessageType
-): LightAgentMessageType => {
+): LightAgentMessageType {
   return {
     type: "agent_message",
     sId: agentMessage.sId,
@@ -138,4 +143,4 @@ export const getLightAgentMessageFromAgentMessage = (
         ...(f.hidden ? { hidden: true } : {}),
       })),
   };
-};
+}
