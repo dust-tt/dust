@@ -748,6 +748,7 @@ const ActionGeneratedFileSchema = z.object({
 
 const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
+  sId: z.string(),
   mcpServerId: z.string().nullable(),
   internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
