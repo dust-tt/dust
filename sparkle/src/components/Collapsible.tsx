@@ -90,7 +90,7 @@ const CollapsibleTrigger = React.forwardRef<
         ref={ref}
         disabled={disabled}
         className={cn(
-          "s-group/col s-flex s-items-center s-gap-1 s-font-medium focus:s-outline-none focus:s-ring-0",
+          "s-group/col s-flex s-w-full s-items-center s-gap-1 s-font-medium focus:s-outline-none focus:s-ring-0",
           disabled ? "s-cursor-default" : "s-cursor-pointer",
           className
         )}
