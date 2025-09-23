@@ -4,6 +4,7 @@ import type {
   PublicPostContentFragmentRequestBody,
 } from "@dust-tt/client";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
@@ -19,7 +20,6 @@ import type {
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { MCPError } from "@app/lib/actions/mcp_errors";
 
 export async function getOrCreateConversation(
   api: DustAPI,

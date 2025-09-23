@@ -10,7 +10,8 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { errorToString, type Result } from "@app/types";
+import type { Result } from "@app/types";
+import { errorToString } from "@app/types";
 
 /**
  * Wraps a tool callback with logging and monitoring.
