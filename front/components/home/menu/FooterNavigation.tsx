@@ -37,7 +37,7 @@ export function FooterNavigation() {
                 item.items
                   .filter((item) => item.title.trim() !== "")
                   .map((item, itemIndex) => (
-                    <React.Fragment key={item.href || `item-${itemIndex}`}>
+                    <React.Fragment key={item.href ?? `item-${itemIndex}`}>
                       {item.href ? (
                         <FooterLink
                           href={item.href}
