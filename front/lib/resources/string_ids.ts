@@ -238,53 +238,17 @@ export function generateRandomModelSId(prefix?: string): string {
 
 /**
  * Generates a long, secure, non-guessable secret composed of
- * URL-safe alphanumeric characters. It uses a cryptographically
- * secure RNG (Web Crypto's getRandomValues when available) to draw
- * random bytes, then maps them uniformly to base62 characters.
+ * URL-safe alphanumeric characters.
  *
  * length: number of characters to return (default 64).
  */
 export function generateSecureSecret(length = 64): string {
-  const bytes = getSecureRandomBytes(length);
-  return Buffer.from(bytes)
+  // Use BLAKE3 to derive `length` bytes from a fresh UUIDv4 seed.
+  const digest = blake3(uuidv4(), { length });
+  return Buffer.from(digest)
     .map(uniformByteToCode62)
     .map(alphanumFromCode62)
     .toString();
-}
-
-function hasProp<K extends PropertyKey>(
-  value: unknown,
-  key: K
-): value is Record<K, unknown> {
-  return typeof value === "object" && value !== null && key in value;
-}
-
-function hasWebCrypto(obj: unknown): obj is {
-  crypto: { getRandomValues: (arr: ArrayBufferView) => ArrayBufferView };
-} {
-  if (!hasProp(obj, "crypto")) {
-    return false;
-  }
-  const crypto = obj.crypto;
-  if (!hasProp(crypto, "getRandomValues")) {
-    return false;
-  }
-  return typeof crypto.getRandomValues === "function";
-}
-
-function getSecureRandomBytes(length: number): Uint8Array {
-  // Prefer Web Crypto API (browser and modern runtimes).
-  if (hasWebCrypto(globalThis)) {
-    const arr = new Uint8Array(length);
-    globalThis.crypto.getRandomValues(arr);
-    return arr;
-  }
-  // Best-effort fallback if Web Crypto is unavailable.
-  const arr = new Uint8Array(length);
-  for (let i = 0; i < length; i++) {
-    arr[i] = Math.floor(Math.random() * 256);
-  }
-  return arr;
 }
 
 /**
