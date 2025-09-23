@@ -163,6 +163,7 @@ async function handler(
           profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
           origin: "web",
           clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
+          mainAgentId: null,
         },
         // For now we never skip tools when interacting with agents from the web client.
         skipToolsValidation: false,

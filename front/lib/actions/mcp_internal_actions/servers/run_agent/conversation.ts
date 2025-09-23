@@ -27,6 +27,7 @@ export async function getOrCreateConversation(
     childAgentBlob,
     childAgentId,
     mainAgent,
+    rootAgentId,
     mainConversation,
     query,
     toolsetsToAdd,
@@ -36,6 +37,7 @@ export async function getOrCreateConversation(
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
     mainAgent: AgentConfigurationType;
+    rootAgentId: string | null;
     mainConversation: ConversationType;
     query: string;
     toolsetsToAdd: string[] | null;
@@ -121,7 +123,7 @@ export async function getOrCreateConversation(
               ? "run_agent"
               : "agent_handover",
           selectedMCPServerViewIds: toolsetsToAdd,
-          mainAgentId: mainAgent.sId,
+          mainAgentId: rootAgentId ?? mainAgent.sId,
         },
       },
     });

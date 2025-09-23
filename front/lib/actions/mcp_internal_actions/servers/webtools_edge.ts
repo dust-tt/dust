@@ -82,7 +82,6 @@ async function summarizeWithAgent({
         profilePictureUrl: mainAgent.pictureUrl,
         origin: "run_agent",
         selectedMCPServerViewIds: null,
-        mainAgentId: null,
       },
     },
     params: { execution: "async" },

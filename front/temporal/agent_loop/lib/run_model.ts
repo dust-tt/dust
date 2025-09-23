@@ -228,38 +228,6 @@ export async function runModelActivity(
     );
   }
 
-  // TODO This is specific to dust-deep
-  const mainAgentId = runAgentData.userMessage.context.mainAgentId;
-  if (mainAgentId) {
-    const mainAgent = await getAgentConfiguration(auth, {
-      agentId: mainAgentId,
-      variant: "full",
-    });
-    if (mainAgent) {
-      const searchActions = mainAgent.actions.filter(
-        isServerSideMCPServerConfiguration
-      );
-
-      const allDataSources = searchActions.flatMap(
-        (action) => action.dataSources ?? []
-      );
-
-      const allTables = searchActions.flatMap((action) => action.tables ?? []);
-
-      const companyDataAction = agentConfiguration.actions.find(
-        (action) => action.sId === "dust-deep-company-data-action"
-      );
-      if (
-        companyDataAction &&
-        isMCPConfigurationWithDataSource(companyDataAction)
-      ) {
-        companyDataAction.dataSources?.push(...allDataSources);
-        companyDataAction.tables?.push(...allTables);
-      }
-    }
-  }
-  // END-TODO
-
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
   // If we are on the last step, we don't show any action.

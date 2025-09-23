@@ -19,6 +19,7 @@ import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
   AgentReasoningEffort,
+  DataSourceViewType,
   ModelConfigurationType,
   WorkspaceType,
 } from "@app/types";
@@ -353,26 +354,18 @@ function getMaxReasoningModelConfig(owner: WorkspaceType): {
   return getModelConfig(owner, "anthropic");
 }
 
-function getCompanyDataAction(
-  preFetchedDataSources: PrefetchedDataSourcesType | null,
+export function getDataSourceFileSystemAction(
+  dataSourceViews: DataSourceViewType[],
+  workspaceId: string,
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null
 ): MCPServerConfigurationType | null {
-  if (!preFetchedDataSources) {
-    return null;
-  }
-
-  const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) =>
-      dsView.isInGlobalSpace &&
-      dsView.dataSource.connectorProvider !== "webcrawler"
-  );
   if (dataSourceViews.length === 0 || !dataSourcesFileSystemMCPServerView) {
     return null;
   }
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-company-data-action",
+    sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-data-source-file-system-action",
     type: "mcp_server_configuration",
     name: "company_data",
     description: "The user's internal company data.",
@@ -380,8 +373,8 @@ function getCompanyDataAction(
     internalMCPServerId: dataSourcesFileSystemMCPServerView.internalMCPServerId,
     dataSources: dataSourceViews.map((dsView) => ({
       dataSourceViewId: dsView.sId,
-      workspaceId: preFetchedDataSources.workspaceId,
-      filter: { parents: null, tags: null },
+      workspaceId: workspaceId,
+      filter: { parents: null },
     })),
     tables: null,
     childAgentId: null,
@@ -394,19 +387,12 @@ function getCompanyDataAction(
   };
 }
 
-function getCompanyDataWarehousesAction(
-  preFetchedDataSources: PrefetchedDataSourcesType | null,
+export function getDataWarehousesAction(
+  dataSourceViews: DataSourceViewType[],
+  workspaceId: string,
   dataWarehousesMCPServerView: MCPServerViewResource | null
 ): MCPServerConfigurationType | null {
-  if (!preFetchedDataSources) {
-    return null;
-  }
-
-  const globalWarehouses = preFetchedDataSources.dataSourceViews.filter(
-    (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
-  );
-
-  if (globalWarehouses.length === 0 || !dataWarehousesMCPServerView) {
+  if (dataSourceViews.length === 0 || !dataWarehousesMCPServerView) {
     return null;
   }
 
@@ -418,10 +404,10 @@ function getCompanyDataWarehousesAction(
     description: "The user's data warehouses.",
     mcpServerViewId: dataWarehousesMCPServerView.sId,
     internalMCPServerId: dataWarehousesMCPServerView.internalMCPServerId,
-    dataSources: globalWarehouses.map((dsView) => ({
+    dataSources: dataSourceViews.map((dsView) => ({
       dataSourceViewId: dsView.sId,
-      workspaceId: preFetchedDataSources.workspaceId,
-      filter: { parents: null, tags: null },
+      workspaceId: workspaceId,
+      filter: { parents: null },
     })),
     tables: null,
     childAgentId: null,
@@ -507,12 +493,33 @@ export function _getDustDeepGlobalAgent(
 
   const actions: MCPServerConfigurationType[] = [];
 
-  const companyDataAction = getCompanyDataAction(
-    preFetchedDataSources,
-    dataSourcesFileSystemMCPServerView
-  );
-  if (companyDataAction) {
-    actions.push(companyDataAction);
+  if (preFetchedDataSources) {
+    // Add company data tool with all data sources in global space (all non-webcrawler data sources)
+    const companyDataAction = getDataSourceFileSystemAction(
+      preFetchedDataSources.dataSourceViews.filter(
+        (dsView) =>
+          dsView.isInGlobalSpace &&
+          dsView.dataSource.connectorProvider !== "webcrawler"
+      ),
+      preFetchedDataSources.workspaceId,
+      dataSourcesFileSystemMCPServerView
+    );
+    if (companyDataAction) {
+      actions.push(companyDataAction);
+    }
+
+    // Add data warehouses tool with all warehouses in global space (all remote DBs)
+    const dataWarehousesAction = getDataWarehousesAction(
+      preFetchedDataSources.dataSourceViews.filter(
+        (dsView) =>
+          dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
+      ),
+      preFetchedDataSources.workspaceId,
+      dataWarehousesMCPServerView
+    );
+    if (dataWarehousesAction) {
+      actions.push(dataWarehousesAction);
+    }
   }
 
   actions.push(
@@ -525,15 +532,6 @@ export function _getDustDeepGlobalAgent(
       toolsetsMcpServerView: toolsetsMCPServerView,
     })
   );
-
-  // Add data warehouses tool with all warehouses in global space (all remote DBs)
-  const dataWarehousesAction = getCompanyDataWarehousesAction(
-    preFetchedDataSources,
-    dataWarehousesMCPServerView
-  );
-  if (dataWarehousesAction) {
-    actions.push(dataWarehousesAction);
-  }
 
   // Add Content Creation tool.
   if (contentCreationMCPServerView) {
@@ -704,8 +702,13 @@ export function _getDustTaskGlobalAgent(
 
   const actions: MCPServerConfigurationType[] = [];
 
-  const companyDataAction = getCompanyDataAction(
-    preFetchedDataSources,
+  const companyDataAction = getDataSourceFileSystemAction(
+    preFetchedDataSources?.dataSourceViews.filter(
+      (dsView) =>
+        dsView.isInGlobalSpace &&
+        dsView.dataSource.connectorProvider !== "webcrawler"
+    ) ?? [],
+    preFetchedDataSources?.workspaceId ?? "",
     dataSourcesFileSystemMCPServerView
   );
   if (companyDataAction) {
@@ -736,8 +739,11 @@ export function _getDustTaskGlobalAgent(
     });
   }
 
-  const dataWarehousesAction = getCompanyDataWarehousesAction(
-    preFetchedDataSources,
+  const dataWarehousesAction = getDataWarehousesAction(
+    preFetchedDataSources?.dataSourceViews.filter(
+      (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
+    ) ?? [],
+    preFetchedDataSources?.workspaceId ?? "",
     dataWarehousesMCPServerView
   );
   if (dataWarehousesAction) {

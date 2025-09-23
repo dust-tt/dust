@@ -9,6 +9,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { DUST_DEEP_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -55,8 +56,17 @@ const createServer = (
 
         const runContext = agentLoopContext.runContext;
         const { agentConfiguration, conversation } = runContext;
+
+        const c = agentConfiguration.actions
+          .filter(isServerSideMCPServerConfiguration)
+          .map((action) => `${action.name} (${action.mcpServerViewId})`);
+
         const instructions = agentConfiguration.instructions;
-        const query = `You have been summoned by @${agentConfiguration.name}. Its instructions are: <main_agent_instructions>${instructions ?? ""}</main_agent_instructions>`;
+        const query = `You have been summoned by @${agentConfiguration.name}. Its instructions are: <main_agent_instructions>${instructions ?? ""}</main_agent_instructions>. 
+        
+        <tools>
+        The main agent is configured to use the following tools: ${c.join(", ")}. Use these tools in priority.
+        </tools>`;
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
@@ -65,6 +75,7 @@ const createServer = (
           },
           childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
           mainAgent: agentConfiguration,
+          rootAgentId: null,
           mainConversation: conversation,
           query,
           toolsetsToAdd: null,

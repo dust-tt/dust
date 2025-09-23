@@ -43,6 +43,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { UserMessage } from "@app/lib/models/assistant/conversation";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
@@ -64,6 +65,28 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   }
   // Safe to do this because the inputs are already checked against the zod schema here.
   return new Ok(match[2]);
+}
+
+async function getRootAgentConfigurationId(
+  agentLoopContext: AgentLoopContextType
+) {
+  const parentMessageId =
+    agentLoopContext.runContext?.agentMessage?.parentMessageId;
+  if (!parentMessageId) {
+    return null;
+  }
+
+  const parentMessage = await UserMessage.findOne({
+    where: {
+      id: parentMessageId,
+    },
+  });
+
+  if (!parentMessage?.userContextMainAgentId) {
+    return null;
+  }
+
+  return parentMessage.userContextMainAgentId;
 }
 
 /**
@@ -337,6 +360,8 @@ export default async function createServer(
           await sendNotification(storeResourceNotification);
         }
 
+        const rootAgentId = await getRootAgentConfigurationId(agentLoopContext);
+
         const convRes = await getOrCreateConversation(
           api,
           agentLoopContext.runContext,
@@ -344,6 +369,7 @@ export default async function createServer(
             childAgentBlob,
             childAgentId,
             mainAgent,
+            rootAgentId,
             mainConversation,
             query: isHandoff
               ? `
