@@ -1,5 +1,6 @@
 import { DustError } from "@app/lib/error";
 import { errorToString, normalizeError } from "@dust-tt/client";
+export { errorToString, normalizeError } from "@dust-tt/client";
 
 export function normalizeAsInternalDustError(
   error: unknown
