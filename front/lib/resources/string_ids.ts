@@ -243,7 +243,6 @@ export function generateRandomModelSId(prefix?: string): string {
  * length: number of characters to return (default 64).
  */
 export function generateSecureSecret(length = 64): string {
-  // Use BLAKE3 to derive `length` bytes from a fresh UUIDv4 seed.
   const digest = blake3(uuidv4(), { length });
   return Buffer.from(digest)
     .map(uniformByteToCode62)
