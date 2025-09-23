@@ -48,7 +48,6 @@ export {
   ConversationMessageHeader,
 } from "./ConversationMessage";
 export { Counter } from "./Counter";
-export { FaviconIcon } from "./FaviconIcon";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {
   createRadioSelectionColumn,
@@ -94,6 +93,7 @@ export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
+export { FaviconIcon } from "./FaviconIcon";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
