@@ -1,6 +1,23 @@
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
-import { NavigationList, NavigationListItem, NavigationListLabel, SearchInput } from "@dust-tt/sparkle";
-import { BarChartIcon, BookOpenIcon, BracesIcon, ChatBubbleLeftRightIcon, Cog6ToothIcon, LockIcon, MagicIcon, PlanetIcon, PlusIcon, RobotIcon, ShapesIcon } from "@dust-tt/sparkle";
+import {
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
+  SearchInput,
+} from "@dust-tt/sparkle";
+import {
+  BarChartIcon,
+  BookOpenIcon,
+  BracesIcon,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
+  LockIcon,
+  MagicIcon,
+  PlanetIcon,
+  PlusIcon,
+  RobotIcon,
+  ShapesIcon,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import {
@@ -43,8 +60,6 @@ export function CommandPaletteArea({ children }: { children: ReactNode }) {
   const openPalette = useCallback(() => setIsOpen(true), []);
   const closePalette = useCallback(() => setIsOpen(false), []);
 
-  
-
   useEffect(() => {
     if (!isOpen) {
       setQuery("");
@@ -57,41 +72,91 @@ export function CommandPaletteArea({ children }: { children: ReactNode }) {
     [openPalette, closePalette]
   );
 
-  type PaletteItem = { label: string; href?: string; onSelect?: () => void; icon?: React.ComponentType };
+  type PaletteItem = {
+    label: string;
+    href?: string;
+    onSelect?: () => void;
+    icon?: React.ComponentType;
+  };
   const topLinks: PaletteItem[] = useMemo(() => {
-    if (!wId) {return [];}
+    if (!wId) {
+      return [];
+    }
     return [
-      { label: "Manage Agents", href: `/w/${wId}/builder/agents`, icon: RobotIcon },
+      {
+        label: "Manage Agents",
+        href: `/w/${wId}/builder/agents`,
+        icon: RobotIcon,
+      },
       { label: "Spaces", href: `/w/${wId}/spaces`, icon: BookOpenIcon },
       { label: "Admin", href: `/w/${wId}/members`, icon: Cog6ToothIcon },
-      { label: "Workspace Settings", href: `/w/${wId}/workspace`, icon: PlanetIcon },
+      {
+        label: "Workspace Settings",
+        href: `/w/${wId}/workspace`,
+        icon: PlanetIcon,
+      },
       { label: "Analytics", href: `/w/${wId}/analytics`, icon: BarChartIcon },
-      { label: "Subscription", href: `/w/${wId}/subscription`, icon: ShapesIcon },
-      { label: "Developers · Providers", href: `/w/${wId}/developers/providers`, icon: ShapesIcon },
-      { label: "Developers · API Keys", href: `/w/${wId}/developers/api-keys`, icon: LockIcon },
-      { label: "Developers · Secrets", href: `/w/${wId}/developers/dev-secrets`, icon: BracesIcon },
-      ...(systemSpace ? [{ label: "Tools", href: `/w/${wId}/spaces/${systemSpace.sId}/categories/actions`, icon: ShapesIcon }] : []),
-      { label: "Connections", href: `/w/${wId}/developers/providers`, icon: ShapesIcon },
+      {
+        label: "Subscription",
+        href: `/w/${wId}/subscription`,
+        icon: ShapesIcon,
+      },
+      {
+        label: "Developers · Providers",
+        href: `/w/${wId}/developers/providers`,
+        icon: ShapesIcon,
+      },
+      {
+        label: "Developers · API Keys",
+        href: `/w/${wId}/developers/api-keys`,
+        icon: LockIcon,
+      },
+      {
+        label: "Developers · Secrets",
+        href: `/w/${wId}/developers/dev-secrets`,
+        icon: BracesIcon,
+      },
+      ...(systemSpace
+        ? [
+            {
+              label: "Tools",
+              href: `/w/${wId}/spaces/${systemSpace.sId}/categories/actions`,
+              icon: ShapesIcon,
+            },
+          ]
+        : []),
+      {
+        label: "Connections",
+        href: `/w/${wId}/developers/providers`,
+        icon: ShapesIcon,
+      },
     ];
   }, [wId, systemSpace]);
 
   const conversationItems: PaletteItem[] = useMemo(() => {
-    if (!wId) {return [];}
+    if (!wId) {
+      return [];
+    }
     const list = conversations ?? [];
     const sorted = [...list].sort((a, b) => {
-      const ta = (a.updated ?? a.created) ?? 0;
-      const tb = (b.updated ?? b.created) ?? 0;
+      const ta = a.updated ?? a.created ?? 0;
+      const tb = b.updated ?? b.created ?? 0;
       return tb - ta;
     });
     return sorted.map((c) => ({
-      label: c.title && c.title.trim().length > 0 ? c.title : "Untitled conversation",
+      label:
+        c.title && c.title.trim().length > 0
+          ? c.title
+          : "Untitled conversation",
       href: `/w/${wId}/assistant/${c.sId}`,
       icon: ChatBubbleLeftRightIcon,
     }));
   }, [conversations, wId]);
 
   const actionItems: PaletteItem[] = useMemo(() => {
-    if (!wId) {return [];}
+    if (!wId) {
+      return [];
+    }
     return [
       {
         label: "Create agent",
@@ -133,19 +198,32 @@ export function CommandPaletteArea({ children }: { children: ReactNode }) {
     ];
   }, [router, wId, systemSpace?.sId]);
 
-  const filterByQuery = useCallback((items: PaletteItem[]) => {
-    if (!query) {return items;}
-    const q = query.toLowerCase();
-    return items.filter((i) => q.split(" ").some((w) => i.label.toLowerCase().includes(w)));
-  }, [query]);
+  const filterByQuery = useCallback(
+    (items: PaletteItem[]) => {
+      if (!query) {
+        return items;
+      }
+      const q = query.toLowerCase();
+      return items.filter((i) =>
+        q.split(" ").some((w) => i.label.toLowerCase().includes(w))
+      );
+    },
+    [query]
+  );
 
-  const filteredTop = useMemo(() => filterByQuery(topLinks), [filterByQuery, topLinks]);
+  const filteredTop = useMemo(
+    () => filterByQuery(topLinks),
+    [filterByQuery, topLinks]
+  );
   const filteredConversations = useMemo(
     () => filterByQuery(conversationItems),
     [filterByQuery, conversationItems]
   );
 
-  const filteredActions = useMemo(() => filterByQuery(actionItems), [filterByQuery, actionItems]);
+  const filteredActions = useMemo(
+    () => filterByQuery(actionItems),
+    [filterByQuery, actionItems]
+  );
 
   const flatResults: PaletteItem[] = useMemo(
     () => [...filteredActions, ...filteredTop, ...filteredConversations],
@@ -192,7 +270,10 @@ export function CommandPaletteArea({ children }: { children: ReactNode }) {
       }
     }
     window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true } as any);
+    return () =>
+      window.removeEventListener("keydown", onKeyDown, {
+        capture: true,
+      } as any);
   }, [isOpen, selectedIndex, router, flatResults]);
 
   return (
@@ -237,11 +318,10 @@ export function CommandPaletteArea({ children }: { children: ReactNode }) {
                   />
                 )}
                 {flatResults.length === 0 && (
-                  <div className="p-4 text-sm text-element-700">No results</div>
+                  <div className="text-element-700 p-4 text-sm">No results</div>
                 )}
               </NavigationList>
             </div>
-            
           </div>
         </DialogContent>
       </Dialog>
@@ -257,7 +337,12 @@ function Section({
   onSelect,
 }: {
   title: string;
-  items: { label: string; href?: string; onSelect?: () => void; icon?: React.ComponentType }[];
+  items: {
+    label: string;
+    href?: string;
+    onSelect?: () => void;
+    icon?: React.ComponentType;
+  }[];
   offset: number;
   selectedIndex: number;
   onSelect: () => void;
@@ -293,5 +378,3 @@ function Section({
     </div>
   );
 }
-
-
