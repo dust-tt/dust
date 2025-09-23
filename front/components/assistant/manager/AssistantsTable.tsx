@@ -1,3 +1,4 @@
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
   BracesIcon,
@@ -36,14 +37,6 @@ import type {
 import { isAdmin, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
-type MoreMenuItem = {
-  label: string;
-  icon: React.ComponentType;
-  onClick: (e: React.MouseEvent) => void;
-  variant?: "warning" | "default";
-  kind: "item";
-};
-
 type RowData = {
   sId: string;
   name: string;
@@ -54,7 +47,7 @@ type RowData = {
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
   onClick?: () => void;
-  moreMenuItems?: MoreMenuItem[];
+  menuItems?: MenuItem[];
   agentTags: TagType[];
   agentTagsAsString: string;
   action?: React.ReactNode;
@@ -232,9 +225,7 @@ const getTableColumns = ({
             </DataTable.CellContent>
           );
         }
-        return (
-          <DataTable.MoreButton menuItems={info.row.original.moreMenuItems} />
-        );
+        return <DataTable.MoreButton menuItems={info.row.original.menuItems} />;
       },
       meta: {
         className: "w-14",
@@ -337,7 +328,7 @@ export function AssistantsTable({
               setShowDetails(agentConfiguration);
             }
           },
-          moreMenuItems:
+          menuItems:
             agentConfiguration.scope !== "global" &&
             agentConfiguration.status !== "archived"
               ? [

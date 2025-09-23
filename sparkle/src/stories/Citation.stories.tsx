@@ -13,6 +13,7 @@ import {
   CitationTitle,
   DocumentIcon,
   ExternalLinkIcon,
+  FaviconIcon,
   GlobeAltIcon,
   Icon,
   ImageIcon,
@@ -69,9 +70,16 @@ export const CitationsExample = () => (
       </Citation>
       <Citation onClick={() => alert("Card clicked")} className="s-w-48">
         <CitationIcons>
-          <Icon visual={GlobeAltIcon} size="sm" />
+          <FaviconIcon websiteUrl="https://www.linkedin.com" size="sm" />
         </CitationIcons>
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
+      </Citation>
+      
+      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+        <CitationIcons>
+          <FaviconIcon websiteUrl="https://github.com" size="sm" />
+        </CitationIcons>
+        <CitationTitle>GitHub Repository</CitationTitle>
       </Citation>
 
       <Citation onClick={() => alert("Card clicked")} className="s-w-48">
@@ -183,9 +191,16 @@ export const CitationsExample = () => (
       <Citation onClick={() => alert("Close action clicked")}>
         <CitationIcons>
           <CitationIndex>4</CitationIndex>
-          <Icon visual={GlobeAltIcon} size="sm" />
+          <FaviconIcon websiteUrl="https://stackoverflow.com" size="sm" />
         </CitationIcons>
-        <CitationTitle>Hello</CitationTitle>
+        <CitationTitle>Stack Overflow Answer</CitationTitle>
+      </Citation>
+      <Citation onClick={() => alert("Close action clicked")}>
+        <CitationIcons>
+          <CitationIndex>5</CitationIndex>
+          <FaviconIcon websiteUrl="https://www.wikipedia.org" size="sm" />
+        </CitationIcons>
+        <CitationTitle>Wikipedia Article</CitationTitle>
       </Citation>
     </CitationGrid>
     Example of interactive content (list variant)

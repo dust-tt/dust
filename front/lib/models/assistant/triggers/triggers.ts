@@ -57,7 +57,7 @@ TriggerModel.init(
       allowNull: false,
     },
     customPrompt: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null,
     },

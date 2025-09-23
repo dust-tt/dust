@@ -67,7 +67,10 @@ export function AgentInfoTab({
               <div className="heading-lg text-foreground dark:text-foreground-night">
                 Instructions
               </div>
-              <ReadOnlyTextArea content={agentConfiguration.instructions} />
+              <ReadOnlyTextArea
+                content={agentConfiguration.instructions}
+                minRows={15}
+              />
             </div>
           ) : (
             "This agent has no instructions."

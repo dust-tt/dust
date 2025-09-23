@@ -1,6 +1,7 @@
 import { createParser } from "eventsource-parser";
 import { z } from "zod";
 
+import { normalizeError } from "./error_utils";
 import {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
@@ -89,6 +90,7 @@ import {
   ValidateActionResponseType,
 } from "./types";
 
+export * from "./error_utils";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
@@ -106,8 +108,9 @@ function isStreamTerminationError(e: unknown): boolean {
   if (!e) {
     return false;
   }
-  const msg = typeof e === "string" ? e : (e as Error)?.message ?? String(e);
-  const name = (e as Error)?.name ?? "";
+  const err = normalizeError(e);
+  const msg = err.message;
+  const name = err.name || "";
 
   // Common patterns from undici/fetch when a stream is cut or aborted.
   const patterns = [

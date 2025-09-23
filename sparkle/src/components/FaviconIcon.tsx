@@ -1,6 +1,21 @@
+import { cva } from "class-variance-authority";
 import React, { useCallback, useState } from "react";
 
 import { GlobeAltIcon } from "@sparkle/icons";
+import { cn } from "@sparkle/lib/utils";
+
+const faviconVariants = cva("", {
+  variants: {
+    size: {
+      sm: "s-w-4 s-h-4",
+      md: "s-w-5 s-h-5",
+      lg: "s-w-6 s-h-6",
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
 
 interface FaviconIconProps {
   faviconUrl?: string;
@@ -48,20 +63,18 @@ export function FaviconIcon({
     return <GlobeAltIcon className={className} />;
   }
 
-  const sizeClasses = {
-    sm: "s-w-4 s-h-4",
-    md: "s-w-5 s-h-5",
-    lg: "s-w-6 s-h-6",
-  };
-
   return (
     <div
-      className={`${sizeClasses[size]} ${className || ""} s-relative s-flex s-items-center s-justify-center`}
+      className={cn(
+        "s-relative s-flex s-items-center s-justify-center",
+        faviconVariants({ size }),
+        className
+      )}
     >
       <img
         src={finalFaviconUrl}
         alt="Website icon"
-        className={`${sizeClasses[size]} s-object-contain`}
+        className={cn("s-object-contain", faviconVariants({ size }))}
         onError={handleError}
         onLoad={handleLoad}
         style={{
@@ -71,7 +84,10 @@ export function FaviconIcon({
       />
       {(isLoading || hasError) && (
         <GlobeAltIcon
-          className={`${sizeClasses[size]} ${isLoading ? "s-absolute s-inset-0" : "s-hidden"}`}
+          className={cn(
+            faviconVariants({ size }),
+            isLoading ? "s-absolute s-inset-0" : "s-hidden"
+          )}
         />
       )}
     </div>

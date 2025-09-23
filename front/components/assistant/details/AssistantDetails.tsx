@@ -257,7 +257,7 @@ export function AssistantDetails({
                 <div />
               )}
             </SheetHeader>
-            <SheetContainer>
+            <SheetContainer className="pb-4">
               {agentConfiguration && (
                 <>
                   {selectedTab === "info" && (

@@ -51,6 +51,7 @@ async function handler(
   const workspace = await WorkspaceResource.fetchByModelId(
     result.file.workspaceId
   );
+
   if (!workspace) {
     return apiError(req, res, {
       status_code: 404,

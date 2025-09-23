@@ -130,6 +130,22 @@ const SheetContent = React.forwardRef<
       [preventAutoFocusOnOpen, onOpenAutoFocus]
     );
 
+    const onKeyDownCapture = React.useCallback(
+      (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+          const root = e.currentTarget as HTMLElement;
+          const target = root.querySelector<HTMLButtonElement>(
+            '[data-sheet-save="true"]:not(:disabled)'
+          );
+          if (target) {
+            e.preventDefault();
+            target.click();
+          }
+        }
+      },
+      []
+    );
+
     return (
       <SheetPortal>
         <SheetOverlay />
@@ -143,6 +159,7 @@ const SheetContent = React.forwardRef<
             )}
             onCloseAutoFocus={handleCloseAutoFocus}
             onOpenAutoFocus={handleOpenAutoFocus}
+            onKeyDownCapture={onKeyDownCapture}
             {...props}
           >
             {children}
@@ -233,45 +250,47 @@ const SheetFooter = ({
   rightEndButtonProps,
   sheetCloseClassName,
   ...props
-}: SheetFooterProps) => (
-  <div
-    className={cn(
-      "s-flex s-flex-none s-flex-col s-gap-2",
-      "s-border-border dark:s-border-border-night",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <div className="s-flex s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3 dark:s-border-border-night">
-      {leftButtonProps &&
-        (leftButtonProps.disabled ? (
-          <Button {...leftButtonProps} />
-        ) : (
-          <SheetClose className={sheetCloseClassName} asChild>
+}: SheetFooterProps) => {
+  return (
+    <div
+      className={cn(
+        "s-flex s-flex-none s-flex-col s-gap-2",
+        "s-border-border dark:s-border-border-night",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <div className="s-flex s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3 dark:s-border-border-night">
+        {leftButtonProps &&
+          (leftButtonProps.disabled ? (
             <Button {...leftButtonProps} />
-          </SheetClose>
-        ))}
-      <div className="s-flex-grow" />
-      {rightButtonProps &&
-        (rightButtonProps.disabled ? (
-          <Button {...rightButtonProps} />
-        ) : (
-          <SheetClose className={sheetCloseClassName} asChild>
-            <Button {...rightButtonProps} />
-          </SheetClose>
-        ))}
-      {rightEndButtonProps &&
-        (rightEndButtonProps.disabled ? (
-          <Button {...rightEndButtonProps} />
-        ) : (
-          <SheetClose className={sheetCloseClassName} asChild>
+          ) : (
+            <SheetClose className={sheetCloseClassName} asChild>
+              <Button {...leftButtonProps} />
+            </SheetClose>
+          ))}
+        <div className="s-flex-grow" />
+        {rightButtonProps &&
+          (rightButtonProps.disabled ? (
+            <Button data-sheet-save="true" {...rightButtonProps} />
+          ) : (
+            <SheetClose className={sheetCloseClassName} asChild>
+              <Button data-sheet-save="true" {...rightButtonProps} />
+            </SheetClose>
+          ))}
+        {rightEndButtonProps &&
+          (rightEndButtonProps.disabled ? (
             <Button {...rightEndButtonProps} />
-          </SheetClose>
-        ))}
+          ) : (
+            <SheetClose className={sheetCloseClassName} asChild>
+              <Button {...rightEndButtonProps} />
+            </SheetClose>
+          ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 SheetFooter.displayName = "SheetFooter";
 
 interface SheetTitleProps

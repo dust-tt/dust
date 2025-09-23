@@ -81,6 +81,7 @@ async function handler(
 
       const pluginList = plugins
         .filter((p) => !resourceId || p.isApplicableTo(auth, resource))
+        .filter((p) => !p.manifest.isHidden)
         .map((p) => ({
           id: p.manifest.id,
           name: p.manifest.name,
