@@ -1,11 +1,11 @@
 import uniqueId from "lodash/uniqueId";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { UserType } from "@app/types";
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType, UserType } from "@app/types";
 import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
 
 /**
@@ -48,12 +48,17 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
+function getRandomDroidAvatar(): string {
+  const randomIndex = Math.floor(Math.random() * DROID_AVATAR_URLS.length);
+  return DROID_AVATAR_URLS[randomIndex];
+}
+
 export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
   return {
     agentSettings: {
       name: "",
       description: "",
-      pictureUrl: "",
+      pictureUrl: getRandomDroidAvatar(),
       scope: "hidden",
       editors: [user],
       slackProvider: null,
