@@ -59,47 +59,31 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const router = useRouter();
   const [cookies] = useCookies(["dust-cookies-accepted"]);
 
-  // Check if user has accepted cookies
   const cookieValue = cookies["dust-cookies-accepted"];
   const hasAcceptedCookies =
     cookieValue === "true" || cookieValue === "auto" || cookieValue === true;
 
-  // Initialize PostHog only for public pages (not under /w/) and if cookies are accepted
+  // Initialize PostHog only for public pages (not under /w/) and if cookies are accepted.
   useEffect(() => {
     const isPublicPage = !router.pathname.startsWith("/w/");
 
     if (isPublicPage && hasAcceptedCookies) {
-      // Only initialize if not already initialized
       if (!posthog.__loaded && NEXT_PUBLIC_POSTHOG_KEY) {
-        console.log("[PostHog] Initializing with key:", {
-          keyPrefix: NEXT_PUBLIC_POSTHOG_KEY.substring(0, 10),
-          apiHost: "/ingest",
-        });
         posthog.init(NEXT_PUBLIC_POSTHOG_KEY, {
           api_host: "/ingest",
           person_profiles: "identified_only",
           defaults: "2025-05-24",
           loaded: (posthog) => {
-            console.log("[PostHog] Successfully loaded");
             if (NODE_ENV === "development") {
               posthog.debug();
             }
           },
         });
       } else if (posthog.__loaded) {
-        console.log("[PostHog] Already loaded, re-enabling capturing");
-        // Re-enable capturing if previously opted out
+        // Re-enable capturing if previously opted out.
         posthog.opt_in_capturing();
-      } else {
-        console.log("[PostHog] Not initializing - no key available");
       }
     } else {
-      // Opt out of capturing if on webapp pages or cookies not accepted
-      console.log("[PostHog] Not initializing:", {
-        isPublicPage,
-        hasAcceptedCookies,
-        pathname: router.pathname,
-      });
       if (posthog.__loaded) {
         posthog.opt_out_capturing();
       }
