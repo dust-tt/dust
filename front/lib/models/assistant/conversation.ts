@@ -259,7 +259,10 @@ UserMessage.init(
   {
     modelName: "user_message",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["userContextOrigin"], concurrently: true }],
+    indexes: [
+      { fields: ["userContextOrigin"], concurrently: true },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );
 
@@ -364,6 +367,7 @@ AgentMessage.init(
   {
     modelName: "agent_message",
     sequelize: frontSequelize,
+    indexes: [{ fields: ["workspaceId"], concurrently: true }],
   }
 );
 
@@ -436,6 +440,7 @@ AgentMessageFeedback.init(
         unique: true,
         name: "agent_message_feedbacks_agent_configuration_id_agent_message_id",
       },
+      { fields: ["workspaceId"], concurrently: true },
     ],
   }
 );
@@ -659,6 +664,7 @@ MessageReaction.init(
         fields: ["userId"],
         concurrently: true,
       },
+      { fields: ["workspaceId"], concurrently: true },
     ],
   }
 );

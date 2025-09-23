@@ -95,7 +95,11 @@ RunUsageModel.init(
   {
     modelName: "run_usages",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["runId"] }, { fields: ["providerId", "modelId"] }],
+    indexes: [
+      { fields: ["runId"] },
+      { fields: ["providerId", "modelId"] },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );
 
