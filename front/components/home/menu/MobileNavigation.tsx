@@ -68,8 +68,8 @@ export function MobileNavigation() {
                     </div>
                   )}
                   {item?.items?.length &&
-                    item.items.map((item, itemIndex) => (
-                      <React.Fragment key={item.href ?? `item-${itemIndex}`}>
+                    item.items.map((item) => (
+                      <React.Fragment key={item.href}>
                         {item.href ? (
                           <MobileLink
                             href={item.href}
