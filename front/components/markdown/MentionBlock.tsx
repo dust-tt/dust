@@ -48,10 +48,10 @@ function MentionBlock({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <span className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-white px-2 py-1 align-middle leading-none dark:border-border-night dark:bg-black">
-          <Avatar size="xs" visual={pictureUrl} />
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-            {agentName}
+        <span className="inline-flex cursor-pointer items-center gap-1 align-middle leading-none">
+          <Avatar size="xs" className="h-4 w-4 rounded-[3px]" visual={pictureUrl} />
+          <span className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            @{agentName}
           </span>
         </span>
       </DropdownMenuTrigger>
