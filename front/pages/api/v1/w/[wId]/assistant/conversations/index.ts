@@ -369,7 +369,6 @@ async function handler(
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
-          mainAgentId: message.context.mainAgentId ?? null,
         };
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.

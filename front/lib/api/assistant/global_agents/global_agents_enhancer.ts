@@ -4,7 +4,7 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   Result,
-  UserMessageContext,
+  UserMessageType,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
@@ -12,7 +12,7 @@ export async function enhanceGlobalAgent(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType,
   agentMessage: AgentMessageType,
-  userMessageContext: UserMessageContext
+  userMessage: UserMessageType
 ): Promise<Result<AgentConfigurationType, Error>> {
   switch (agentConfiguration.sId) {
     case GLOBAL_AGENTS_SID.DUST_DEEP:
@@ -20,7 +20,7 @@ export async function enhanceGlobalAgent(
         auth,
         agentConfiguration,
         agentMessage,
-        userMessageContext
+        userMessage
       );
     default:
       return new Ok(agentConfiguration);

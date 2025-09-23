@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { enhanceDustDeep } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep-enhancer";
 import { enhanceGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents_enhancer";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -165,7 +164,7 @@ export async function getRunAgentData(
     auth,
     agentConfiguration,
     agentMessage,
-    userMessage.context
+    userMessage
   );
   if (enhanceResult.isErr()) {
     return enhanceResult;

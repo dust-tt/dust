@@ -19,21 +19,11 @@ import type {
   AgentMessageType,
   DataSourceViewType,
   Result,
-  UserMessageContext,
+  UserMessageType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { removeNulls } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-
-async function fetchMainAgentConfiguration(
-  auth: Authenticator,
-  mainAgentId: string
-): Promise<AgentConfigurationType | null> {
-  return getAgentConfiguration(auth, {
-    agentId: mainAgentId,
-    variant: "full",
-  });
-}
 
 async function fetchDataSourceViews(
   auth: Authenticator,
@@ -157,18 +147,33 @@ export async function enhanceDustDeep(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType,
   agentMessage: AgentMessageType,
-  userMessageContext: UserMessageContext
+  userMessage: UserMessageType
 ): Promise<Result<AgentConfigurationType, Error>> {
   try {
-    const mainAgentId = userMessageContext.mainAgentId;
-    if (!mainAgentId) {
+    const content = userMessage.content;
+
+    // Extract main agent id from content if specified in <main_agent> tags
+    const mainAgentMatch = content.match(/<main_agent>(.*?)<\/main_agent>/s);
+    const mainAgentFromContent = mainAgentMatch
+      ? mainAgentMatch[1].trim()
+      : null;
+
+    if (!mainAgentFromContent) {
       return new Ok(agentConfiguration);
     }
 
-    const mainAgent = await fetchMainAgentConfiguration(auth, mainAgentId);
+    const mainAgent = await getAgentConfiguration(auth, {
+      agentId: mainAgentFromContent,
+      variant: "full",
+    });
     if (!mainAgent) {
       return new Ok(agentConfiguration);
     }
+
+    agentConfiguration.instructions =
+      (mainAgent.instructions ?? "") +
+      "\n\n" +
+      (agentConfiguration.instructions ?? "");
 
     // Add the actions from the main agent to the agent configuration
     agentConfiguration.actions.push(...mainAgent.actions);
