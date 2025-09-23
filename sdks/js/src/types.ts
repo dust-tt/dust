@@ -7,6 +7,7 @@ import {
 } from "./mcp_icon_types";
 import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
+import { TIMEZONE_NAMES } from "./timezone_names";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -355,16 +356,8 @@ export class Err<E> {
 
 export type Result<T, E> = Ok<T> | Err<E>;
 
-const validateTimezone = (s: string): boolean => {
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone: s });
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const Timezone = z.string().refine(validateTimezone, {
+// Custom codec to validate the timezone
+const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
   message: "Invalid timezone",
 });
 
