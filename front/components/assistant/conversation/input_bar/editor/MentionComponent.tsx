@@ -1,4 +1,5 @@
 import {
+  Avatar,
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,7 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
@@ -31,6 +33,13 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
 
   const { id: agentSId, label: agentName } = node.attrs;
 
+  const { agentConfiguration } = useAgentConfiguration({
+    workspaceId: owner?.sId ?? "",
+    agentConfigurationId: agentSId,
+    disabled: !owner || !agentSId,
+  });
+  const pictureUrl = agentConfiguration?.pictureUrl;
+
   const handleStartConversation = async () => {
     if (!owner) {
       return;
@@ -44,11 +53,14 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
   };
 
   return (
-    <NodeViewWrapper className="inline-flex">
+    <NodeViewWrapper className="inline-flex align-middle">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <span className="inline-block cursor-pointer font-medium text-highlight-500">
-            @{agentName}
+          <span className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-white px-2 py-1 align-middle leading-none dark:border-border-night dark:bg-black">
+            <Avatar size="xs" visual={pictureUrl} />
+            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              {agentName}
+            </span>
           </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start">

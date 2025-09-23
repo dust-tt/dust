@@ -1,4 +1,5 @@
 import {
+  Avatar,
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,7 @@ import { useRouter } from "next/router";
 import { visit } from "unist-util-visit";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
@@ -27,6 +29,13 @@ function MentionBlock({
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("assistantDetails");
 
+  const { agentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentSId,
+    disabled: !agentSId,
+  });
+  const pictureUrl = agentConfiguration?.pictureUrl;
+
   const handleStartConversation = async () => {
     await router.push(`/w/${owner.sId}/assistant/new?assistant=${agentSId}`);
   };
@@ -39,8 +48,11 @@ function MentionBlock({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <span className="inline-block cursor-pointer font-medium text-highlight-500">
-          @{agentName}
+        <span className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-white px-2 py-1 align-middle leading-none dark:border-border-night dark:bg-black">
+          <Avatar size="xs" visual={pictureUrl} />
+          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            {agentName}
+          </span>
         </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
