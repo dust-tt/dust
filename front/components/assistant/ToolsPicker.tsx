@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
@@ -130,7 +131,7 @@ export function ToolsPicker({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="h-96 w-96"
+        className="h-fit max-h-96 w-96"
         align="start"
         dropdownHeaders={
           <>
@@ -161,51 +162,16 @@ export function ToolsPicker({
       >
         {filteredServerViews.length > 0 ? (
           <>
-            <DropdownMenuLabel label="Selected" />
-            {filteredServerViewsSelected.length > 0 ? (
-              filteredServerViewsSelected
-                .sort(mcpServerViewSortingFn)
-                .map((v) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={`tools-picker-${v.sId}`}
-                      icon={() => getAvatar(v.server, "xs")}
-                      label={getMcpServerViewDisplayName(v)}
-                      description={getMcpServerViewDescription(v)}
-                      truncateText
-                      checked={true}
-                      onClick={(e) => {
-                        onDeselect(v);
-                        e.stopPropagation();
-                        e.preventDefault();
-                      }}
-                    />
-                  );
-                })
-            ) : (
-              <DropdownMenuCheckboxItem
-                id="tools-picker-no-selected"
-                icon={() => <Icon visual={BoltIcon} size="xs" />}
-                className="italic"
-                label="No tools selected"
-                description="Select tools to use in this conversation"
-                disabled
-              />
-            )}
-            {filteredServerViewsUnselected.length > 0 && (
-              <DropdownMenuLabel label="All" />
-            )}
             {filteredServerViewsUnselected
               .sort(mcpServerViewSortingFn)
               .map((v) => {
                 return (
-                  <DropdownMenuCheckboxItem
+                  <DropdownMenuItem
                     key={`tools-picker-${v.sId}`}
                     icon={() => getAvatar(v.server, "xs")}
                     label={getMcpServerViewDisplayName(v)}
                     description={getMcpServerViewDescription(v)}
                     truncateText
-                    checked={false}
                     onClick={(e) => {
                       onSelect(v);
                       e.stopPropagation();
@@ -214,6 +180,16 @@ export function ToolsPicker({
                   />
                 );
               })}
+            {filteredServerViewsUnselected.length === 0 && (
+              <DropdownMenuItem
+                id="tools-picker-no-selected"
+                icon={() => <Icon visual={BoltIcon} size="xs" />}
+                className="italic"
+                label="No more tools to select"
+                description="All available tools are already selected"
+                disabled
+              />
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">

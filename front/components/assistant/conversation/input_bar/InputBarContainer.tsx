@@ -289,106 +289,108 @@ const InputBarContainer = ({
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        <div className="flex items-center justify-between px-1 px-2 py-1.5 sm:pb-3 sm:pr-3">
-          <div className="flex items-center">
-            {actions.includes("attachment") && (
-              <>
-                <input
-                  accept={getSupportedFileExtensions().join(",")}
-                  onChange={async (e) => {
-                    await fileUploaderService.handleFileChange(e);
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = "";
-                    }
-                    editorService.focusEnd();
-                  }}
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  type="file"
-                  multiple={true}
-                />
-                <InputBarAttachmentsPicker
-                  fileUploaderService={fileUploaderService}
+        <div className="flex w-full flex-col px-1 px-2 py-1.5 sm:pb-2 sm:pr-3">
+          <div className="flex items-center justify-between pb-1">
+            <div className="flex items-center">
+              {actions.includes("attachment") && (
+                <>
+                  <input
+                    accept={getSupportedFileExtensions().join(",")}
+                    onChange={async (e) => {
+                      await fileUploaderService.handleFileChange(e);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                      }
+                      editorService.focusEnd();
+                    }}
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    type="file"
+                    multiple={true}
+                  />
+                  <InputBarAttachmentsPicker
+                    fileUploaderService={fileUploaderService}
+                    owner={owner}
+                    isLoading={false}
+                    onNodeSelect={onNodeSelect}
+                    onNodeUnselect={onNodeUnselect}
+                    attachedNodes={attachedNodes}
+                    disabled={disableTextInput}
+                  />
+                </>
+              )}
+              {actions.includes("tools") && (
+                <ToolsPicker
                   owner={owner}
-                  isLoading={false}
-                  onNodeSelect={onNodeSelect}
-                  onNodeUnselect={onNodeUnselect}
-                  attachedNodes={attachedNodes}
-                  disabled={disableTextInput}
-                />
-              </>
-            )}
-            {actions.includes("tools") && (
-              <ToolsPicker
-                owner={owner}
-                selectedMCPServerViews={selectedMCPServerViews}
-                onSelect={onMCPServerViewSelect}
-                onDeselect={onMCPServerViewDeselect}
-                disabled={disableTextInput}
-              />
-            )}
-            {(actions.includes("assistants-list") ||
-              actions.includes("assistants-list-with-actions")) && (
-              <AssistantPicker
-                owner={owner}
-                size="xs"
-                onItemClick={(c) => {
-                  editorService.insertMention({ id: c.sId, label: c.name });
-                }}
-                assistants={allAssistants}
-                showDropdownArrow={false}
-                showFooterButtons={actions.includes(
-                  "assistants-list-with-actions"
-                )}
-                disabled={disableTextInput}
-              />
-            )}
-            <div className="flex flex-wrap items-center">
-              {selectedMCPServerViews.map((msv) => (
-                <Chip
-                  key={msv.sId}
-                  size="xs"
-                  label={getMcpServerViewDisplayName(msv)}
-                  icon={getIcon(msv.server.icon)}
-                  className="ml-1 bg-background text-foreground dark:bg-background-night dark:text-foreground-night"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="grow" />
-          <div className="flex items-center gap-2 md:gap-1">
-            {featureFlags.hasFeature("simple_audio_transcription") &&
-              actions.includes("voice") && (
-                <VoicePicker
-                  voiceTranscriberService={voiceTranscriberService}
+                  selectedMCPServerViews={selectedMCPServerViews}
+                  onSelect={onMCPServerViewSelect}
+                  onDeselect={onMCPServerViewDeselect}
                   disabled={disableTextInput}
                 />
               )}
-            <Button
-              size="xs"
-              isLoading={disableSendButton}
-              icon={ArrowUpIcon}
-              variant="highlight"
-              disabled={
-                editorService.isEmpty() ||
-                disableSendButton ||
-                voiceTranscriberService.isRecording ||
-                voiceTranscriberService.isTranscribing
-              }
-              onClick={async () => {
-                onEnterKeyDown(
-                  editorService.isEmpty(),
-                  editorService.getMarkdownAndMentions(),
-                  () => {
-                    editorService.clearEditor();
-                  },
-                  editorService.setLoading
-                );
-              }}
-            />
+              {(actions.includes("assistants-list") ||
+                actions.includes("assistants-list-with-actions")) && (
+                <AssistantPicker
+                  owner={owner}
+                  size="xs"
+                  onItemClick={(c) => {
+                    editorService.insertMention({ id: c.sId, label: c.name });
+                  }}
+                  assistants={allAssistants}
+                  showDropdownArrow={false}
+                  showFooterButtons={actions.includes(
+                    "assistants-list-with-actions"
+                  )}
+                  disabled={disableTextInput}
+                />
+              )}
+            </div>
+            <div className="grow" />
+            <div className="flex items-center gap-2 md:gap-1">
+              {featureFlags.hasFeature("simple_audio_transcription") &&
+                actions.includes("voice") && (
+                  <VoicePicker
+                    voiceTranscriberService={voiceTranscriberService}
+                    disabled={disableTextInput}
+                  />
+                )}
+              <Button
+                size="xs"
+                isLoading={disableSendButton}
+                icon={ArrowUpIcon}
+                variant="highlight"
+                disabled={
+                  editorService.isEmpty() ||
+                  disableSendButton ||
+                  voiceTranscriberService.isRecording ||
+                  voiceTranscriberService.isTranscribing
+                }
+                onClick={async () => {
+                  onEnterKeyDown(
+                    editorService.isEmpty(),
+                    editorService.getMarkdownAndMentions(),
+                    () => {
+                      editorService.clearEditor();
+                    },
+                    editorService.setLoading
+                  );
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center">
+            {selectedMCPServerViews.map((msv) => (
+              <Chip
+                key={msv.sId}
+                size="xs"
+                label={getMcpServerViewDisplayName(msv)}
+                icon={getIcon(msv.server.icon)}
+                className="m-0.5 bg-background text-foreground dark:bg-background-night dark:text-foreground-night"
+                onRemove={() => {
+                  onMCPServerViewDeselect(msv);
+                }}
+              />
+            ))}
           </div>
         </div>
       </div>
