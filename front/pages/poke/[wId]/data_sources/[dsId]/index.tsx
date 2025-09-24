@@ -13,7 +13,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import capitalize from "lodash/capitalize";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -50,6 +49,7 @@ import {
   isSlackAutoReadPatterns,
   safeParseJSON,
 } from "@app/types";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -565,7 +565,10 @@ const DataSourcePage = ({
       {dataSource.connectorProvider && (
         <p>
           The data displayed here is fetched from <b>connectors</b>, please
-          refer to the method {capitalize(dataSource.connectorProvider)}
+          refer to the method{" "}
+          {capitalize(dataSource.connectorProvider)
+            .replace(/_\w/g, (char) => char.toUpperCase())
+            .replace("_", "")}
           ConnectorManager.retrievePermissions
         </p>
       )}
