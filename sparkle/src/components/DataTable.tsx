@@ -236,7 +236,11 @@ export function DataTable<TData extends TBaseData>({
                   <DataTable.Head
                     column={header.column}
                     key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
+                    onClick={
+                      header.column.getCanSort()
+                        ? header.column.getToggleSortingHandler()
+                        : undefined
+                    }
                     className={cn(
                       header.column.getCanSort() ? "s-cursor-pointer" : ""
                     )}
@@ -351,6 +355,8 @@ export function ScrollableDataTable<TData extends TBaseData>({
   columnsBreakpoints = {},
   maxHeight,
   onLoadMore,
+  sorting,
+  setSorting,
   isLoading = false,
   rowSelection,
   setRowSelection,
@@ -362,6 +368,8 @@ export function ScrollableDataTable<TData extends TBaseData>({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
+
+  const isSorting = !!setSorting;
 
   // Monitor table width changes
   useEffect(() => {
@@ -381,6 +389,15 @@ export function ScrollableDataTable<TData extends TBaseData>({
       resizeObserver.disconnect();
     };
   }, []);
+
+  const onSortingChange =
+    sorting && setSorting
+      ? (updater: Updater<SortingState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(sorting) : updater;
+          setSorting(newValue);
+        }
+      : undefined;
 
   const onRowSelectionChange =
     rowSelection && setRowSelection
@@ -402,7 +419,15 @@ export function ScrollableDataTable<TData extends TBaseData>({
     }),
     state: {
       ...(enableRowSelection && { rowSelection }),
+      ...(isSorting && {
+        sorting,
+      }),
     },
+    manualSorting: isSorting,
+    ...(isSorting && {
+      onSortingChange: onSortingChange,
+    }),
+    enableSortingRemoval: true,
     enableRowSelection,
     enableMultiRowSelection,
     getRowId,
@@ -520,19 +545,47 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     <DataTable.Head
                       column={header.column}
                       key={header.id}
-                      className="s-max-w-0"
+                      onClick={
+                        isSorting && header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                      className={cn(
+                        "s-max-w-0",
+                        header.column.getCanSort() && isSorting
+                          ? "s-cursor-pointer"
+                          : ""
+                      )}
                       style={{
                         width: columnSizing[header.id],
                         minWidth: columnSizing[header.id],
                       }}
                     >
-                      <div className="s-flex s-w-full s-items-center s-space-x-1">
+                      <div className="s-flex s-w-full s-items-center s-space-x-1 s-whitespace-nowrap">
                         <span className="s-truncate">
                           {flexRender(
                             header.column.columnDef.header,
                             header.getContext()
                           )}
                         </span>
+                        {isSorting && header.column.getCanSort() && (
+                          <Icon
+                            visual={
+                              header.column.getIsSorted() === "asc"
+                                ? ArrowUpIcon
+                                : header.column.getIsSorted() === "desc"
+                                  ? ArrowDownIcon
+                                  : ArrowDownIcon
+                            }
+                            size="xs"
+                            className={cn(
+                              "s-ml-1",
+                              header.column.getIsSorted()
+                                ? "s-opacity-100"
+                                : "s-opacity-0"
+                            )}
+                          />
+                        )}
                       </div>
                     </DataTable.Head>
                   );
