@@ -127,7 +127,7 @@ export function ConversationMenu({
   };
 
   return (
-    <>
+    <div onClick={(e) => e.stopPropagation()}>
       <DeleteConversationsDialog
         isOpen={showDeleteDialog}
         type="selection"
@@ -184,12 +184,12 @@ export function ConversationMenu({
 
           {shareLink && (
             <>
-          <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
-          <DropdownMenuItem
-            label="Copy the link"
-            onClick={copyConversationLink}
-            icon={LinkIcon}
-          />
+              <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
+              <DropdownMenuItem
+                label="Copy the link"
+                onClick={copyConversationLink}
+                icon={LinkIcon}
+              />
             </>
           )}
 
@@ -240,6 +240,6 @@ export function ConversationMenu({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-    </>
+    </div>
   );
 }
