@@ -13,7 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { SCOPE_INFO } from "@app/components/assistant/details/AssistantDetails";
@@ -21,6 +21,7 @@ import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgent
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { fetcher } from "@app/lib/swr/swr";
 import { useTags } from "@app/lib/swr/tags";
 import {
   classNames,
@@ -28,6 +29,7 @@ import {
   tagsSorter,
 } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import type { GetAgentEditorsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
 import type {
   AgentConfigurationScope,
   AgentUsageType,
@@ -45,7 +47,6 @@ type RowData = {
   description: string;
   pictureUrl: string;
   editors: UserType[];
-  lastAuthors: string[];
   usage: AgentUsageType | undefined;
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
@@ -64,13 +65,11 @@ const getTableColumns = ({
   tags,
   isBatchEdit,
   mutateAgentConfigurations,
-  currentUser,
 }: {
   owner: WorkspaceType;
   tags: TagType[];
   isBatchEdit: boolean;
   mutateAgentConfigurations: () => Promise<any>;
-  currentUser: UserType;
 }) => {
   return [
     ...(isBatchEdit
@@ -139,7 +138,6 @@ const getTableColumns = ({
       accessorKey: "editors",
       cell: (info: CellContext<RowData, UserType[]>) => {
         const editors = info.row.original.editors;
-        const lastAuthors = info.row.original.lastAuthors;
 
         const buildAvatarGroup = (
           items: {
@@ -163,7 +161,7 @@ const getTableColumns = ({
               {visibleItems.map(({ key, displayName, tooltipName, visual }) => (
                 <Tooltip
                   key={key}
-                  tooltipTriggerAsChild
+                  tooltipTriggerAsChild={true}
                   label={tooltipName}
                   trigger={
                     <Avatar
@@ -179,7 +177,7 @@ const getTableColumns = ({
               {overflowCount > 0 && (
                 <Tooltip
                   key={overflowKey}
-                  tooltipTriggerAsChild
+                  tooltipTriggerAsChild={true}
                   label={items
                     .slice(MAX_VISIBLE)
                     .map((item) => item.tooltipName)
@@ -207,16 +205,8 @@ const getTableColumns = ({
           visual: editor.image,
         }));
 
-        const lastAuthorItems = lastAuthors.map((authorName, index) => ({
-          key: `author-${info.row.original.sId}-${index}`,
-          displayName: authorName === "Me" ? currentUser.fullName : authorName,
-          tooltipName: authorName === "Me" ? currentUser.fullName : authorName,
-          visual: authorName === "Me" ? currentUser.image : undefined,
-        }));
-
-        const allItems = [...editorItems, ...lastAuthorItems];
         const combinedGroup = buildAvatarGroup(
-          allItems,
+          editorItems,
           `combined-overflow-${info.row.original.sId}`
         );
 
@@ -335,7 +325,6 @@ const getTableColumns = ({
 
 type AssistantsTableProps = {
   owner: WorkspaceType;
-  user: UserType;
   agents: LightAgentConfigurationType[];
   setShowDetails: (agent: LightAgentConfigurationType) => void;
   handleToggleAgentStatus: (
@@ -351,7 +340,6 @@ type AssistantsTableProps = {
 
 export function AssistantsTable({
   owner,
-  user,
   agents,
   setShowDetails,
   handleToggleAgentStatus,
@@ -364,6 +352,51 @@ export function AssistantsTable({
 }: AssistantsTableProps) {
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
+
+  const fetchAgentEditors = useCallback(
+    async (agentConfigurationId: string) => {
+      if (!agentConfigurationId) {
+        return [] as UserType[];
+      }
+
+      const response = (await fetcher(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`
+      )) as GetAgentEditorsResponseBody;
+
+      return response.editors ?? [];
+    },
+    [owner.sId]
+  );
+
+  const [editorsByAgentId, setEditorsByAgentId] = useState<
+    Record<string, UserType[]>
+  >({});
+
+  useEffect(() => {
+    if (!agents.length) {
+      setEditorsByAgentId({});
+      return;
+    }
+
+    const loadEditors = async () => {
+      const editorsByAgentId: Record<string, UserType[]> = {};
+
+      await Promise.all(
+        agents.map(async (agent) => {
+          try {
+            const editors = await fetchAgentEditors(agent.sId);
+            editorsByAgentId[agent.sId] = editors;
+          } catch (error) {
+            editorsByAgentId[agent.sId] = [];
+          }
+        })
+      );
+
+      setEditorsByAgentId(editorsByAgentId);
+    };
+
+    void loadEditors();
+  }, [agents, fetchAgentEditors]);
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<{
     open: boolean;
@@ -396,10 +429,10 @@ export function AssistantsTable({
           pictureUrl: agentConfiguration.pictureUrl,
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
-          editors: agentConfiguration.editors ?? [],
-          lastAuthors: agentConfiguration.lastAuthors
-            ? [...agentConfiguration.lastAuthors]
-            : [],
+          editors:
+            editorsByAgentId[agentConfiguration.sId] ??
+            agentConfiguration.editors ??
+            [],
           scope: agentConfiguration.scope,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
@@ -511,6 +544,7 @@ export function AssistantsTable({
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleToggleAgentStatus & router are not stable, mutating the agents list which prevent pagination to work
     [
+      editorsByAgentId,
       agents,
       owner,
       setShowDetails,
@@ -545,7 +579,6 @@ export function AssistantsTable({
               tags: sortedTags,
               isBatchEdit,
               mutateAgentConfigurations,
-              currentUser: user,
             })}
             pagination={pagination}
             setPagination={setPagination}

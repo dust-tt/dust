@@ -418,7 +418,6 @@ export default function WorkspaceAssistants({
                   selection={selection}
                   setSelection={setSelection}
                   owner={owner}
-                  user={user}
                   agents={agentsByTab[activeTab]}
                   setShowDetails={setShowDetails}
                   handleToggleAgentStatus={handleToggleAgentStatus}
