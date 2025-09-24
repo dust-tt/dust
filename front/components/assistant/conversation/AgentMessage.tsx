@@ -409,7 +409,10 @@ export function AgentMessage({
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ messageIds: [message.sId] }),
+              body: JSON.stringify({
+                action: "cancel",
+                messageIds: [message.sId],
+              }),
             }
           );
         }}
