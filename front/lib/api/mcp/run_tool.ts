@@ -32,6 +32,8 @@ import type {
   ConversationType,
 } from "@app/types";
 import { removeNulls } from "@app/types";
+import { Context } from "@temporalio/activity";
+import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.
@@ -126,14 +128,19 @@ export async function* runToolWithStreaming(
     if (isMCPTimeoutError) {
       errorMessage = `The execution of tool ${action.functionCallName} timed out.`;
 
-      // If the tool should be retried on interrupt, we throw an error so the workflow retries the
-      // `runTool` activity. If the tool should not be retried on interrupt, the error is returned to
-      // the model, to let it decide what to do.
+      // If the tool should not be retried on interrupt, the error is returned
+      // to the model, to let it decide what to do. If the tool should be
+      // retried on interrupt, we throw an error so the workflow retries the
+      // `runTool` activity, unless it's the last attempt.
       const retryPolicy =
         getRetryPolicyFromToolConfiguration(toolConfiguration);
       if (retryPolicy === "retry_on_interrupt") {
-        errorMessage += `Error: ${toolError.message}`;
-        throw new Error(errorMessage, { cause: toolError });
+        const info = Context.current().info;
+        const isLastAttempt = info.attempt === RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
+        if (!isLastAttempt) {
+          errorMessage += `Error: ${toolError.message}`;
+          throw new Error(errorMessage, { cause: toolError });
+        }
       }
     } else {
       errorMessage = `The tool ${action.functionCallName} failed with the following error: ${toolError.message}`;
