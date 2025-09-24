@@ -19,12 +19,6 @@ import { useEffect } from "react";
 const NEXT_PUBLIC_POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const NODE_ENV = process.env.NODE_ENV;
 
-// Log PostHog configuration for debugging
-console.log("[PostHog] Environment check:", {
-  hasKey: !!NEXT_PUBLIC_POSTHOG_KEY,
-  keyLength: NEXT_PUBLIC_POSTHOG_KEY?.length ?? 0,
-  nodeEnv: NODE_ENV,
-});
 import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
@@ -79,26 +73,19 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
           person_profiles: "identified_only",
           defaults: "2025-05-24",
           loaded: (posthog) => {
-            console.log("[PostHog] Successfully loaded");
             if (NODE_ENV === "development") {
               posthog.debug();
             }
           },
         });
       } else if (posthog.__loaded) {
-        console.log("[PostHog] Already loaded, re-enabling capturing");
         // Re-enable capturing if previously opted out
         posthog.opt_in_capturing();
       } else {
-        console.log("[PostHog] Not initializing - no key available");
+        console.log("[PH] Not initializing - no key available");
       }
     } else {
       // Opt out of capturing if on webapp pages or cookies not accepted
-      console.log("[PostHog] Not initializing:", {
-        isPublicPage,
-        hasAcceptedCookies,
-        pathname: router.pathname,
-      });
       if (posthog.__loaded) {
         posthog.opt_out_capturing();
       }
