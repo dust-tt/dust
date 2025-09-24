@@ -421,7 +421,6 @@ export function AgentMessage({
     );
   }
 
-
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
     const existingIndex = activeReferences.find((r) => r.index === index);
