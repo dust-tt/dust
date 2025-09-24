@@ -186,14 +186,19 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     accessorKey: "lastUpdatedAt",
     enableSorting: true,
     meta: {
-      className: "w-20",
+      className: "w-24",
     },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.BasicCellContent
         className="justify-end"
         label={
           info.getValue()
-            ? formatTimestampToFriendlyDate(info.getValue(), "compact")
+            ? formatTimestampToFriendlyDate(info.getValue(), "compactWithDay")
+            : "-"
+        }
+        tooltip={
+          info.getValue()
+            ? formatTimestampToFriendlyDate(info.getValue(), "long")
             : "-"
         }
       />
