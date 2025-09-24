@@ -320,7 +320,13 @@ export function AssistantInputBar({
             label={
               isStopping
                 ? "Stopping..."
-                : generationContext.generatingMessages.filter(
+const getStopButtonLabel = () => {
+  if (isStopping) return "Stopping...";
+  const generatingCount = generationContext.generatingMessages.filter(
+    (m) => m.conversationId === conversationId
+  ).length;
+  return generatingCount > 1 ? "Stop all agents" : "Stop agent";
+};
                       (m) => m.conversationId === conversationId
                     ).length > 1
                   ? "Stop all agents"
