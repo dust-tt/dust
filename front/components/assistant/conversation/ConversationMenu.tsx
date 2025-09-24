@@ -197,7 +197,7 @@ export function ConversationMenu({
                         />
                       }
                       disabled
-                      className="!text-foreground"
+                      className="!text-foreground dark:!text-foreground-night"
                     />
                   ))}
                 </>
@@ -217,7 +217,7 @@ export function ConversationMenu({
                         />
                       }
                       disabled
-                      className="!text-foreground"
+                      className="!text-foreground dark:!text-foreground-night"
                     />
                   ))}
                 </>
