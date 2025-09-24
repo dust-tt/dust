@@ -421,7 +421,6 @@ export function AgentMessage({
     );
   }
 
-  // Stop/Retry toggle handled above to keep a single position.
 
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
