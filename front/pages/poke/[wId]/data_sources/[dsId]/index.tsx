@@ -13,6 +13,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
+import capitalize from "lodash/capitalize";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -561,9 +562,13 @@ const DataSourcePage = ({
           {owner.name}
         </a>
       </h3>
-      <p>
-        The data displayed here is fetched from <b>connectors</b>.
-      </p>
+      {dataSource.connectorProvider && (
+        <p>
+          The data displayed here is fetched from <b>connectors</b>, please
+          refer to the method {capitalize(dataSource.connectorProvider)}
+          ConnectorManager.retrievePermissions
+        </p>
+      )}
 
       <div className="flex flex-row gap-x-6">
         <ViewDataSourceTable

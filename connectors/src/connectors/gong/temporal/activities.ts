@@ -30,6 +30,7 @@ import {
   GongUserResource,
 } from "@connectors/resources/gong_resources";
 import type { ModelId } from "@connectors/types";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 
 const GARBAGE_COLLECT_BATCH_SIZE = 100;
 
@@ -275,7 +276,7 @@ export async function gongListAndSaveUsersActivity({
 
     await GongUserResource.batchCreate(
       connector,
-      users.map(getUserBlobFromGongAPI)
+      removeNulls(users.map(getUserBlobFromGongAPI))
     );
 
     pageCursor = nextPageCursor;

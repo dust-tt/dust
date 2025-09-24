@@ -33,6 +33,7 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -44,7 +45,11 @@ import {
   tagsSorter,
 } from "@app/lib/utils";
 import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
@@ -75,7 +80,7 @@ const OTHERS_TAG: TagType = {
 type AgentGridProps = {
   agentConfigurations: LightAgentConfigurationType[];
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
-  handleMoreClick: (agent: LightAgentConfigurationType) => void;
+  handleMoreClick: (agentId: string) => void;
 };
 export const AgentGrid = ({
   agentConfigurations,
@@ -137,7 +142,7 @@ export const AgentGrid = ({
               <AssistantCardMore
                 onClick={(e: Event) => {
                   e.stopPropagation();
-                  handleMoreClick(agent);
+                  handleMoreClick(agent.sId);
                 }}
               />
             }
@@ -153,6 +158,7 @@ interface AssistantBrowserProps {
   agentConfigurations: LightAgentConfigurationType[];
   isLoading: boolean;
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
+  user: UserType;
 }
 
 export function AssistantBrowser({
@@ -160,12 +166,16 @@ export function AssistantBrowser({
   agentConfigurations,
   isLoading,
   handleAssistantClick,
+  user,
 }: AssistantBrowserProps) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [selectedTab, setSelectedTab] = useHashParam(
     "selectedTab",
     "favorites"
   );
+  const [displayedAssistantId, setDisplayedAssistantId] = useState<
+    string | null
+  >(null);
 
   const router = useRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
@@ -299,10 +309,6 @@ export function AssistantBrowser({
     }
   }, [noTagsDefined]);
 
-  const handleMoreClick = (agent: LightAgentConfigurationType) => {
-    setQueryParam(router, "assistantDetails", agent.sId);
-  };
-
   return (
     <>
       {/* Search bar */}
@@ -398,6 +404,13 @@ export function AssistantBrowser({
           </div>
         </div>
       </div>
+
+      <AssistantDetails
+        owner={owner}
+        user={user}
+        assistantId={displayedAssistantId}
+        onClose={() => setDisplayedAssistantId(null)}
+      />
 
       {/* Agent tabs */}
       <div className="w-full">
@@ -508,7 +521,7 @@ export function AssistantBrowser({
                       );
                     })}
                     handleAssistantClick={handleAssistantClick}
-                    handleMoreClick={handleMoreClick}
+                    handleMoreClick={setDisplayedAssistantId}
                   />
                 </React.Fragment>
               ))}
@@ -519,7 +532,7 @@ export function AssistantBrowser({
           <AgentGrid
             agentConfigurations={agentsByTab[viewTab]}
             handleAssistantClick={handleAssistantClick}
-            handleMoreClick={handleMoreClick}
+            handleMoreClick={setDisplayedAssistantId}
           />
         )
       )}

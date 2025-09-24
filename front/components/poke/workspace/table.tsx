@@ -65,7 +65,7 @@ export function WorkspaceInfoTable({
   };
   return (
     <div className="flex justify-between gap-3">
-      <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-md flex-grow pb-4 font-bold">Workspace info</h2>
         </div>
@@ -134,7 +134,7 @@ export function WorkspaceInfoTable({
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Verified Domains</PokeTableCell>
-              <PokeTableCell>
+              <PokeTableCell className="max-w-sm break-words">
                 {workspaceVerifiedDomains.map((d) => d.domain).join(", ")}
               </PokeTableCell>
             </PokeTableRow>
@@ -142,7 +142,7 @@ export function WorkspaceInfoTable({
               <PokeTableCell className="max-w-48">
                 Extension blacklisted domains/URLs
               </PokeTableCell>
-              <PokeTableCell>
+              <PokeTableCell className="max-w-sm break-words">
                 {extensionConfig?.blacklistedDomains.length
                   ? extensionConfig.blacklistedDomains.join(", ")
                   : "None"}

@@ -22,6 +22,7 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentConfigurationType,
@@ -332,9 +333,21 @@ export async function createOrUpgradeAgentConfiguration({
       agentConfigurationRes.value
     );
     if (res.isErr()) {
+      logger.error(
+        {
+          error: res.error,
+          agentConfigurationId: agentConfigurationRes.value.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          mcpServerViewId: action.mcpServerViewId,
+        },
+        "Failed to create agent action configuration."
+      );
       // If we fail to create an action, we should delete the agent configuration
       // we just created and re-throw the error.
-      await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+      await unsafeHardDeleteAgentConfiguration(
+        auth,
+        agentConfigurationRes.value
+      );
       return res;
     }
     actionConfigs.push(res.value);
