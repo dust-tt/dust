@@ -7,7 +7,7 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -30,10 +30,15 @@ export const EditConversationTitleDialog = ({
   const { mutate } = useSWRConfig();
   const [title, setTitle] = useState<string>(currentTitle);
   const sendNotification = useSendNotification();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setTitle(currentTitle);
+      // Focus the input after the dialog has opened
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
     }
   }, [isOpen, currentTitle]);
 
@@ -70,6 +75,7 @@ export const EditConversationTitleDialog = ({
         </DialogHeader>
         <DialogContainer>
           <Input
+            ref={inputRef}
             placeholder="Enter new title..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
