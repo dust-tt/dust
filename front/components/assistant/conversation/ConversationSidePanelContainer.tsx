@@ -60,7 +60,7 @@ export default function ConversationSidePanelContainer({
           currentPanel && "absolute inset-0 md:relative md:inset-auto"
         )}
       >
-        {currentPanel && (
+        {currentPanel && conversation && (
           <ConversationSidePanelContent
             conversation={conversation}
             owner={owner}
