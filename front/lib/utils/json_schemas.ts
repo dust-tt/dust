@@ -7,6 +7,7 @@ import type {
 import isEqual from "lodash/isEqual";
 
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import logger from "@app/logger/logger";
 
 /**
  * Type guard to check if a value is a JSONSchema object
@@ -70,7 +71,7 @@ export function followInternalRef(
     ref
       .replace("#/", "")
       .split("/")
-      .filter((key) => key != "properties")
+      .filter((key) => key !== "properties")
   );
 }
 
@@ -116,7 +117,7 @@ export function findSchemaAtPath(
  */
 export function setValueAtPath(
   obj: Record<string, unknown>,
-  path: string[],
+  path: (string | number)[],
   value: ConfigurableToolInputType | string | number | boolean
 ): void {
   if (path.length === 0) {
@@ -127,6 +128,16 @@ export function setValueAtPath(
   for (let i = 0; i < path.length - 1; i++) {
     const key = path[i];
     current = current[key] as Record<string, unknown>;
+    if (!current) {
+      logger.error(
+        {
+          path,
+          obj,
+        },
+        "Invalid path in setValueAtPath."
+      );
+      throw new Error("Invalid path in setValueAtPath.");
+    }
   }
 
   current[path[path.length - 1]] = value;
@@ -138,7 +149,7 @@ export function setValueAtPath(
  */
 export function getValueAtPath(
   obj: Record<string, unknown>,
-  path: string[]
+  path: (string | number)[]
 ): unknown {
   if (path.length === 0) {
     return obj;
@@ -146,7 +157,7 @@ export function getValueAtPath(
 
   let current: unknown = obj;
   for (const key of path) {
-    if (current && typeof current === "object" && current !== null) {
+    if (current && typeof current === "object") {
       current = (current as Record<string, unknown>)[key];
     } else {
       return undefined;
@@ -184,8 +195,8 @@ export function validateJsonSchema(value: object | string | null | undefined): {
 
 export function iterateOverSchemaPropertiesRecursive(
   inputSchema: JSONSchema,
-  callback: (fullPath: string[], propSchema: JSONSchema) => boolean,
-  path: string[] = []
+  callback: (fullPath: (string | number)[], propSchema: JSONSchema) => boolean,
+  path: (string | number)[] = []
 ): void {
   if (!isJSONSchemaObject(inputSchema)) {
     return;
@@ -226,7 +237,8 @@ export function iterateOverSchemaPropertiesRecursive(
         if (isJSONSchemaObject(item)) {
           iterateOverSchemaPropertiesRecursive(item, callback, [
             ...path,
-            `items[${i}]`,
+            "items",
+            i,
           ]);
         }
       }
