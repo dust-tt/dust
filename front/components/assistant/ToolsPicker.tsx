@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   LoadingBlock,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -164,6 +165,21 @@ export function ToolsPicker({
                   setIsOpen(false);
                 }
               }}
+              button={
+                <Button
+                  type="submit"
+                  variant="ghost-secondary"
+                  size="sm"
+                  icon={TrashIcon}
+                  tooltip="Clear all selected tools"
+                  onClick={(e: Event) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    selectedMCPServerViews.forEach((v) => onDeselect(v));
+                    setSearchText("");
+                  }}
+                />
+              }
             />
             <DropdownMenuSeparator />
           </>
