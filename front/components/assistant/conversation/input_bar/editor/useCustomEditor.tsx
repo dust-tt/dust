@@ -1,4 +1,3 @@
-import { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
@@ -15,6 +14,7 @@ import { URLDetectionExtension } from "@app/components/assistant/conversation/in
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
+import { mentionPluginKey } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { isMobile } from "@app/lib/utils";
@@ -292,7 +292,7 @@ const useCustomEditor = ({
           (isCmdEnterForSubmission && event.key === "Enter" && event.metaKey);
 
         if (isSubmissionKey) {
-          const mentionPluginState = MentionPluginKey.getState(view.state);
+          const mentionPluginState = mentionPluginKey.getState(view.state);
           // Let the mention extension handle the event if its dropdown is currently opened.
           if (mentionPluginState?.active) {
             return false;
