@@ -131,8 +131,13 @@ const InputBarContainer = ({
     owner,
     fileUploaderService,
     onTranscribeDelta: (delta) => {
-      editorService.insertText(delta);
+      // editorService.insertText(delta);
+      editorService.insertAnimatedText(delta);
+      // =======
+      //       editorService.insertLoadingText(delta);
+      // >>>>>>> Stashed changes
     },
+
   });
 
   // Update the editor ref when the editor is created.
