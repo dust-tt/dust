@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
-  Spinner,
+  LoadingBlock,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -27,6 +27,24 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types";
+
+function ToolsPickerLoading({ count = 5 }: { count?: number }) {
+  return (
+    <div className="py-1">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={`tools-picker-loading-${i}`} className="px-1 py-1">
+          <div className="flex items-center gap-3 rounded-md p-2">
+            <LoadingBlock className="h-5 w-5 rounded-full" />
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <LoadingBlock className="h-4 w-[80%]" />
+              <LoadingBlock className="h-3 w-[60%]" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface ToolsPickerProps {
   owner: WorkspaceType;
@@ -210,13 +228,11 @@ export function ToolsPicker({
                 );
               })}
           </>
+        ) : isAutoServerViewsLoading || isManualServerViewsLoading ? (
+          <ToolsPickerLoading />
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-            {isAutoServerViewsLoading || isManualServerViewsLoading ? (
-              <Spinner size="sm" />
-            ) : (
-              "No results found"
-            )}
+            No results found
           </div>
         )}
       </DropdownMenuContent>
