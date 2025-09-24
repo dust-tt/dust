@@ -1,13 +1,16 @@
+import { Button, MoreIcon } from "@dust-tt/sparkle";
+
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import { ConversationMenu } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/lib/swr/conversations";
+import { useUser } from "@app/lib/swr/user";
 import type { WorkspaceType } from "@app/types";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const { activeConversationId } = useConversationsNavigation();
-
+  const { user } = useUser();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
@@ -35,6 +38,19 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             activeConversationId={activeConversationId}
             conversation={conversation}
             owner={owner}
+            trigger={
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={MoreIcon}
+                aria-label="Conversation menu"
+                disabled={
+                  activeConversationId === null ||
+                  conversation === null ||
+                  user === null
+                }
+              />
+            }
             isConversationDisplayed={true}
           />
         </div>

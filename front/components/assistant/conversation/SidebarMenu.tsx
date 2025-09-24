@@ -2,7 +2,6 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
-  cn,
   DocumentIcon,
   DotIcon,
   DropdownMenu,
@@ -19,6 +18,7 @@ import {
   MoreIcon,
   NavigationList,
   NavigationListItem,
+  NavigationListItemAction,
   NavigationListLabel,
   RobotIcon,
   SearchInput,
@@ -545,16 +545,12 @@ const RenderConversation = ({
                 : undefined
           }
           label={conversationLabel}
-          className={cn(
-            "group relative w-full max-w-full [&:has([data-state=open])_span]:!pr-8 [&:hover_span]:!pr-8 [&[data-selected=true]_span]:!pr-8 [&_span]:!pr-0",
-            conversation.unread ? "font-medium" : ""
-          )}
           moreMenu={
             <ConversationMenu
               activeConversationId={conversation.sId}
               conversation={conversation}
               owner={owner}
-              className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 hover:border-transparent hover:bg-transparent active:bg-transparent group-hover:opacity-100 group-data-[selected=true]:opacity-100"
+              trigger={<NavigationListItemAction />}
               isConversationDisplayed={router.query.cId === conversation.sId}
             />
           }

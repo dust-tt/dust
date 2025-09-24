@@ -1,20 +1,18 @@
 import {
   Avatar,
-  Button,
-  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
   LinkIcon,
-  MoreIcon,
   PencilSquareIcon,
   PlusCircleIcon,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
 
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
@@ -35,13 +33,13 @@ export function ConversationMenu({
   activeConversationId,
   conversation,
   owner,
-  className,
+  trigger,
   isConversationDisplayed,
 }: {
   activeConversationId: string | null;
   conversation: ConversationWithoutContentType | null;
   owner: WorkspaceType;
-  className?: string;
+  trigger: ReactElement;
   isConversationDisplayed: boolean;
 }) {
   const { user } = useUser();
@@ -159,19 +157,7 @@ export function ConversationMenu({
         open={isMenuOpen}
         onOpenChange={setIsMenuOpen}
       >
-        <DropdownMenuTrigger asChild className={cn(className)}>
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={MoreIcon}
-            aria-label="Conversation menu"
-            disabled={
-              activeConversationId === null ||
-              conversation === null ||
-              user === null
-            }
-          />
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuLabel>Conversation</DropdownMenuLabel>
           <DropdownMenuItem
