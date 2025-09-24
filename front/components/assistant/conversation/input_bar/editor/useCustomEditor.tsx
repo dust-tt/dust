@@ -27,6 +27,8 @@ export interface EditorMention {
   label: string;
 }
 
+const DEFAULT_LONG_TEXT_PASTE_THRESHOLD = { maxChars: 1000, maxLines: 15 };
+
 function getTextAndMentionsFromNode(node?: JSONContent) {
   let textContent = "";
   let mentions: EditorMention[] = [];
@@ -65,6 +67,18 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   }
 
   return { text: textContent, mentions: mentions };
+}
+
+function isLongTextPaste(
+  text: string,
+  threshold?: { maxChars?: number; maxLines?: number }
+) {
+  const maxChars =
+    threshold?.maxChars ?? DEFAULT_LONG_TEXT_PASTE_THRESHOLD.maxChars;
+  const maxLines =
+    threshold?.maxLines ?? DEFAULT_LONG_TEXT_PASTE_THRESHOLD.maxLines;
+  const lineCount = (text.match(/\n/g)?.length ?? 0) + 1;
+  return text.length > maxChars || lineCount > maxLines;
 }
 
 const useEditorService = (editor: Editor | null) => {
@@ -212,6 +226,10 @@ export interface CustomEditorProps {
     };
   };
   owner: WorkspaceType;
+  // If provided, large pasted text will be routed to this callback
+  onLongTextPaste?: (text: string) => void;
+  // Optional override for what counts as a long paste
+  longTextPasteThreshold?: { maxChars?: number; maxLines?: number };
 }
 
 const useCustomEditor = ({
@@ -221,6 +239,8 @@ const useCustomEditor = ({
   onUrlDetected,
   suggestionHandler,
   owner,
+  onLongTextPaste,
+  longTextPasteThreshold,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -273,6 +293,18 @@ const useCustomEditor = ({
     editorProps: {
       attributes: {
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
+      },
+      handlePaste: (view, event) => {
+        const text = event.clipboardData?.getData("text/plain") ?? "";
+        if (!text || !onLongTextPaste) {
+          return false;
+        }
+        if (isLongTextPaste(text, longTextPasteThreshold)) {
+          event.preventDefault();
+          onLongTextPaste(text);
+          return true;
+        }
+        return false;
       },
       handleKeyDown: (view, event) => {
         const submitMessageKey = localStorage.getItem("submitMessageKey");

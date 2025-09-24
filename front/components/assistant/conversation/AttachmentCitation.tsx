@@ -8,6 +8,7 @@ import {
   CitationTitle,
   DocumentIcon,
   DoubleIcon,
+  DoubleQuotesIcon,
   FolderIcon,
   Icon,
   ImageIcon,
@@ -24,6 +25,12 @@ import {
   isFileContentFragment,
 } from "@app/types";
 
+import {
+  getDisplayDateFromPastedFileId,
+  getDisplayNameFromPastedFileId,
+  isPastedFile,
+} from "./input_bar/pasted_utils";
+
 export type FileAttachment = {
   type: "file";
   id: string;
@@ -32,6 +39,7 @@ export type FileAttachment = {
   contentType?: SupportedFileContentType;
   isUploading: boolean;
   onRemove: () => void;
+  description?: string;
 };
 
 export type NodeAttachment = {
@@ -62,6 +70,7 @@ interface FileAttachmentCitation extends BaseAttachmentCitation {
   spaceName?: never;
   path?: never;
   spaceIcon?: never;
+  description?: string;
 }
 
 interface NodeAttachmentCitation extends BaseAttachmentCitation {
@@ -80,11 +89,28 @@ export type AttachmentCitation =
 type AttachmentCitationProps = {
   attachmentCitation: AttachmentCitation;
   onRemove?: () => void;
+  onClick?: () => void;
 };
+
+function iconForContent(contentType: string | undefined): React.ComponentType {
+  if (!contentType) {
+    return DocumentIcon;
+  }
+  const isImageType = contentType.startsWith("image/");
+  const isAudioType = contentType.startsWith("audio/");
+  return isImageType
+    ? ImageIcon
+    : isAudioType
+      ? ActionVolumeUpIcon
+      : isPastedFile(contentType)
+        ? DoubleQuotesIcon
+        : DocumentIcon;
+}
 
 export function AttachmentCitation({
   attachmentCitation,
   onRemove,
+  onClick,
 }: AttachmentCitationProps) {
   const tooltipContent =
     attachmentCitation.type === "file" ? (
@@ -106,7 +132,13 @@ export function AttachmentCitation({
     <Tooltip
       trigger={
         <Citation
-          href={attachmentCitation.sourceUrl ?? undefined}
+          href={onClick ? undefined : attachmentCitation.sourceUrl ?? undefined}
+          onClick={(e) => {
+            if (onClick) {
+              e.preventDefault();
+              onClick();
+            }
+          }}
           isLoading={
             attachmentCitation.type === "file" && attachmentCitation.isUploading
           }
@@ -128,6 +160,12 @@ export function AttachmentCitation({
           <CitationTitle className="truncate text-ellipsis">
             {attachmentCitation.title}
           </CitationTitle>
+          {attachmentCitation.type === "file" &&
+            attachmentCitation.description && (
+              <CitationDescription className="truncate text-ellipsis">
+                {attachmentCitation.description}
+              </CitationDescription>
+            )}
           {attachmentCitation.type === "node" && (
             <CitationDescription className="truncate text-ellipsis">
               <span>
@@ -148,13 +186,7 @@ export function contentFragmentToAttachmentCitation(
 ): AttachmentCitation {
   // Handle expired content fragments
   if (contentFragment.expiredReason) {
-    const isImageType = contentFragment.contentType.startsWith("image/");
-    const isAudioType = contentFragment.contentType.startsWith("audio/");
-    const visual = isImageType
-      ? ImageIcon
-      : isAudioType
-        ? ActionVolumeUpIcon
-        : DocumentIcon;
+    const visual = iconForContent(contentFragment.contentType);
     return {
       type: "file",
       id: contentFragment.sId,
@@ -198,19 +230,23 @@ export function contentFragmentToAttachmentCitation(
       spaceName: contentFragment.contentNodeData.spaceName,
     };
   } else if (isFileContentFragment(contentFragment)) {
-    const isImageType = contentFragment.contentType.startsWith("image/");
-    const isAudioType = contentFragment.contentType.startsWith("audio/");
-    const visual = isImageType
-      ? ImageIcon
-      : isAudioType
-        ? ActionVolumeUpIcon
-        : DocumentIcon;
+    const visual = iconForContent(contentFragment.contentType);
+
+    // Compute custom title/description for pasted files
+    const isPasted = isPastedFile(contentFragment.contentType);
+    const title = isPasted
+      ? getDisplayNameFromPastedFileId(contentFragment.title)
+      : contentFragment.title;
+    const description = isPasted
+      ? getDisplayDateFromPastedFileId(contentFragment.title)
+      : undefined;
     return {
       type: "file",
       id: contentFragment.sId,
-      title: contentFragment.title,
+      title,
       sourceUrl: contentFragment.sourceUrl,
       visual: <Icon visual={visual} size="md" />,
+      description,
     };
   } else {
     assertNever(contentFragment);
@@ -221,14 +257,7 @@ export function attachmentToAttachmentCitation(
   attachment: Attachment
 ): AttachmentCitation {
   if (attachment.type === "file") {
-    const isImageType = attachment.contentType?.startsWith("image/");
-    const isAudioType = attachment.contentType?.startsWith("audio/");
-    const visual = isImageType
-      ? ImageIcon
-      : isAudioType
-        ? ActionVolumeUpIcon
-        : DocumentIcon;
-
+    const visual = iconForContent(attachment.contentType);
     return {
       type: "file",
       id: attachment.id,
@@ -237,6 +266,7 @@ export function attachmentToAttachmentCitation(
       isUploading: attachment.isUploading,
       visual: <Icon visual={visual} size="md" />,
       sourceUrl: null,
+      description: attachment.description,
     };
   } else {
     return {

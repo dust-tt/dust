@@ -43,6 +43,8 @@ import type {
 import { assertNever } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
+import { getPastedFileName } from "./pasted_utils";
+
 export const INPUT_BAR_ACTIONS = [
   "tools",
   "attachment",
@@ -98,6 +100,7 @@ const InputBarContainer = ({
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
+  const [pastedCount, setPastedCount] = useState(0);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -128,6 +131,31 @@ const InputBarContainer = ({
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
     owner,
+    onLongTextPaste: async (text: string) => {
+      try {
+        const newCount = pastedCount + 1;
+        setPastedCount(newCount);
+        const filename = getPastedFileName(newCount);
+        const file = new File([text], filename, {
+          type: "text/vnd.dust.attachment.pasted",
+        });
+
+        const uploaded = await fileUploaderService.handleFilesUpload([file]);
+        if (!(uploaded && uploaded.length > 0)) {
+          sendNotification({
+            type: "error",
+            title: "Failed to attach pasted text",
+            description: "Upload was rejected or failed.",
+          });
+        }
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to attach pasted text",
+          description: e instanceof Error ? e.message : undefined,
+        });
+      }
+    },
   });
 
   const voiceTranscriberService = useVoiceTranscriberService({
