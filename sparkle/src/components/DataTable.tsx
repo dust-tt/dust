@@ -242,7 +242,7 @@ export function DataTable<TData extends TBaseData>({
                         : undefined
                     }
                     className={cn(
-                      header.column.getCanSort() ? "s-cursor-pointer" : ""
+                      header.column.getCanSort() && "s-cursor-pointer"
                     )}
                   >
                     <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
@@ -255,9 +255,7 @@ export function DataTable<TData extends TBaseData>({
                           visual={
                             header.column.getIsSorted() === "asc"
                               ? ArrowUpIcon
-                              : header.column.getIsSorted() === "desc"
-                                ? ArrowDownIcon
-                                : ArrowDownIcon
+                              : ArrowDownIcon
                           }
                           size="xs"
                           className={cn(
@@ -552,9 +550,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
                       }
                       className={cn(
                         "s-max-w-0",
-                        header.column.getCanSort() && isSorting
-                          ? "s-cursor-pointer"
-                          : ""
+                        header.column.getCanSort() &&
+                          isSorting &&
+                          "s-cursor-pointer"
                       )}
                       style={{
                         width: columnSizing[header.id],
@@ -573,9 +571,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
                             visual={
                               header.column.getIsSorted() === "asc"
                                 ? ArrowUpIcon
-                                : header.column.getIsSorted() === "desc"
-                                  ? ArrowDownIcon
-                                  : ArrowDownIcon
+                                : ArrowDownIcon
                             }
                             size="xs"
                             className={cn(
