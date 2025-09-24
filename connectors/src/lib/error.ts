@@ -62,6 +62,23 @@ export class ProviderRateLimitError extends ProviderWorkflowError {
   }
 }
 
+// Transient upstream error with optional retryAfterMs hint for backoff.
+export class ProviderTransientError extends ProviderWorkflowError {
+  constructor(
+    provider: ConnectorProvider,
+    message: string,
+    originalError: Error | APIError | undefined,
+    readonly retryAfterMs: number
+  ) {
+    super(
+      provider,
+      message,
+      "transient_upstream_activity_error",
+      originalError
+    );
+  }
+}
+
 export class HTTPError extends Error {
   readonly statusCode: number;
   constructor(message: string, statusCode: number) {
@@ -87,6 +104,17 @@ export class WorkspaceQuotaExceededError extends Error {
   constructor(readonly innerError?: Error) {
     super(innerError?.message);
     this.name = "WorkspaceQuotaExceededError";
+    this.message =
+      "The workspace quota has been exceeded. This will pause the connector. Action: not anything straightforward, the limit is hardcoded in the workspace quota function. It should realistically never happen for big workspaces.";
+  }
+}
+
+export class DataSourceQuotaExceededError extends Error {
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message);
+    this.name = "DataSourceQuotaExceededError";
+    this.message =
+      "A file size exceeded the allowed size. Action: temporary increase the plan limit for file size to let the activity succeed.";
   }
 }
 

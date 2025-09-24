@@ -7,7 +7,6 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import { buildActionBaseParams } from "@app/temporal/agent_loop/lib/action_utils";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
@@ -63,21 +62,8 @@ export async function runToolActivity(
   );
   assert(action, "Action not found");
 
-  const mcpServerId = action.toolConfiguration.toolServerId;
-
-  const actionBaseParams = await buildActionBaseParams({
-    agentMessageId: action.agentMessageId,
-    citationsAllocated: action.citationsAllocated,
-    mcpServerConfigurationId: action.mcpServerConfigurationId,
-    mcpServerId,
-    step,
-    stepContentId: action.stepContentId,
-    status: action.status,
-  });
-
   const eventStream = runToolWithStreaming(auth, {
     action,
-    actionBaseParams,
     agentConfiguration,
     agentMessage,
     conversation,

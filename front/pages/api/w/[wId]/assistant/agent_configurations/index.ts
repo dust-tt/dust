@@ -13,6 +13,7 @@ import {
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -22,6 +23,7 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentConfigurationType,
@@ -78,8 +80,15 @@ async function handler(
         });
       }
 
-      const { view, limit, withUsage, withAuthors, withFeedbacks, sort } =
-        queryValidation.right;
+      const {
+        view,
+        limit,
+        withUsage,
+        withAuthors,
+        withFeedbacks,
+        withEditors,
+        sort,
+      } = queryValidation.right;
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
       viewParam = viewParam === "assistant-search" ? "list" : viewParam;
@@ -140,6 +149,15 @@ async function handler(
           }
         );
       }
+
+      if (withEditors === "true") {
+        const editors = await getAgentsEditors(auth, agentConfigurations);
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          editors: editors[agentConfiguration.sId],
+        }));
+      }
+
       if (withFeedbacks === "true") {
         const feedbacks =
           await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
@@ -325,15 +343,28 @@ export async function createOrUpgradeAgentConfiguration({
         childAgentId: action.childAgentId,
         additionalConfiguration: action.additionalConfiguration,
         dustAppConfiguration: action.dustAppConfiguration,
+        secretName: action.secretName,
         timeFrame: action.timeFrame,
         jsonSchema: action.jsonSchema,
       } as ServerSideMCPServerConfigurationType,
       agentConfigurationRes.value
     );
     if (res.isErr()) {
+      logger.error(
+        {
+          error: res.error,
+          agentConfigurationId: agentConfigurationRes.value.sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          mcpServerViewId: action.mcpServerViewId,
+        },
+        "Failed to create agent action configuration."
+      );
       // If we fail to create an action, we should delete the agent configuration
       // we just created and re-throw the error.
-      await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+      await unsafeHardDeleteAgentConfiguration(
+        auth,
+        agentConfigurationRes.value
+      );
       return res;
     }
     actionConfigs.push(res.value);

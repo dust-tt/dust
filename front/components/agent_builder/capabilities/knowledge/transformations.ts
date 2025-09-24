@@ -144,6 +144,28 @@ export function transformSelectionConfigurationsToTree(
       continue;
     }
 
+    // UI reconstruction guard:
+    // When a configuration only contains exclusions (selectedResources empty
+    // and excludedResources non-empty), it represents "select all in the
+    // data source except the excluded ones". Historically some payloads may
+    // serialize this with `isSelectAll: false`. To faithfully reconstruct the
+    // UI selection state, we still need to include the parent data source in
+    // the `in` paths so the list shows a selected source with partial state
+    // and the footer appears.
+    if (
+      !config.isSelectAll &&
+      config.selectedResources.length === 0 &&
+      config.excludedResources.length > 0
+    ) {
+      inPaths.push({
+        path: baseParts,
+        name: dataSourceView.dataSource.name,
+        type: "data_source",
+        dataSourceView,
+        tagsFilter: config.tagsFilter,
+      });
+    }
+
     if (config.selectedResources.length > 0) {
       for (const node of config.selectedResources) {
         if (node.parentInternalId) {

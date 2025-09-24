@@ -4,6 +4,7 @@ import { fromError } from "zod-validation-error";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateSecureSecret } from "@app/lib/resources/string_ids";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -106,7 +107,8 @@ async function handler(
         const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
           workspaceId: workspace.id,
           name,
-          secret,
+          secret:
+            secret && secret.length > 0 ? secret : generateSecureSecret(64),
           signatureHeader,
           signatureAlgorithm,
           customHeaders,
@@ -122,7 +124,7 @@ async function handler(
           const systemView =
             await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
               auth,
-              webhookSource.id
+              webhookSource.sId
             );
 
           if (systemView === null) {

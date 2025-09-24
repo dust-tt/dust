@@ -37,6 +37,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -110,7 +111,7 @@ const ConversationLayoutContent = ({
 
   const assistantSId = useMemo(() => {
     const sid = router.query.assistantDetails ?? [];
-    if (sid && typeof sid === "string") {
+    if (isString(sid)) {
       return sid;
     }
     return null;

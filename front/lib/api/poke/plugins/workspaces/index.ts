@@ -18,5 +18,6 @@ export * from "./restore_conversation";
 export * from "./revoke_users";
 export * from "./set_public_api_limits";
 export * from "./toggle_feature_flag";
+export * from "./upgrade_downgrade";
 export * from "./upgrade_to_business_plan";
 export * from "./user_identity_merge";

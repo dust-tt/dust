@@ -81,6 +81,7 @@ function KnowledgeFooterItem({
     <ContextItem
       key={item.path}
       title={item.name}
+      truncateSubElement
       visual={<Icon size="sm" visual={VisualComponent} />}
       action={
         <Button
@@ -116,7 +117,7 @@ export function KnowledgeFooter() {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="rounded-xl bg-muted dark:bg-muted-night">
-          <ContextItem.List className="max-h-40 overflow-x-scroll">
+          <ContextItem.List className="max-h-40 overflow-y-auto">
             {field.value.in.map((item) => (
               <KnowledgeFooterItem key={item.path} item={item} />
             ))}

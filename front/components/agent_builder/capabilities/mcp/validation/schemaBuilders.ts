@@ -9,6 +9,7 @@ import {
   mcpServerViewIdSchema,
   mcpTimeFrameSchema,
   reasoningModelSchema,
+  secretNameSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { VALIDATION_MESSAGES } from "@app/components/agent_builder/capabilities/mcp/utils/validationMessages";
 import type { MCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -51,25 +52,31 @@ export function createBaseConfigurationFields() {
  * Uses direct conditional logic for clarity
  */
 export function createDynamicConfigurationFields(
-  requirements: MCPServerToolsConfigurations
+  toolsConfigurations: MCPServerToolsConfigurations
 ) {
   return {
-    childAgentId: requirements.mayRequireChildAgentConfiguration
+    childAgentId: toolsConfigurations.childAgentConfiguration
       ? childAgentIdSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.childAgent.required,
         })
       : z.null(),
-    reasoningModel: requirements.mayRequireReasoningConfiguration
+    reasoningModel: toolsConfigurations.reasoningConfiguration
       ? reasoningModelSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
-    dustAppConfiguration: requirements.mayRequireDustAppConfiguration
+    dustAppConfiguration: toolsConfigurations.mayRequireDustAppConfiguration
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
-    additionalConfiguration: createAdditionalConfigurationSchema(requirements),
+    secretName: toolsConfigurations.mayRequireSecretConfiguration
+      ? secretNameSchema.refine((val) => val !== null, {
+          message: VALIDATION_MESSAGES.secret.required,
+        })
+      : z.null(),
+    additionalConfiguration:
+      createAdditionalConfigurationSchema(toolsConfigurations),
   };
 }
 
@@ -78,14 +85,14 @@ export function createDynamicConfigurationFields(
  * Handles dynamic field validation based on requirements
  */
 function createAdditionalConfigurationSchema(
-  requirements: MCPServerToolsConfigurations
+  toolsConfigurations: MCPServerToolsConfigurations
 ) {
   const hasRequiredFields =
-    requirements.stringConfigurations.length > 0 ||
-    requirements.numberConfigurations.length > 0 ||
-    requirements.booleanConfigurations.length > 0 ||
-    Object.keys(requirements.enumConfigurations).length > 0 ||
-    Object.keys(requirements.listConfigurations).length > 0;
+    toolsConfigurations.stringConfigurations.length > 0 ||
+    toolsConfigurations.numberConfigurations.length > 0 ||
+    toolsConfigurations.booleanConfigurations.length > 0 ||
+    Object.keys(toolsConfigurations.enumConfigurations).length > 0 ||
+    Object.keys(toolsConfigurations.listConfigurations).length > 0;
 
   if (!hasRequiredFields) {
     return z.object({});
@@ -124,25 +131,32 @@ function createAdditionalConfigurationSchema(
       } else {
         // This is a leaf value - determine type based on requirements
         if (
-          requirements.stringConfigurations.some((item) => item.key === path)
+          toolsConfigurations.stringConfigurations.some(
+            (item) => item.key === path
+          )
         ) {
           nestedStructure[rootKey] = z.string().min(1);
         } else if (
-          requirements.numberConfigurations.some((item) => item.key === path)
+          toolsConfigurations.numberConfigurations.some(
+            (item) => item.key === path
+          )
         ) {
           nestedStructure[rootKey] = z.coerce.number();
         } else if (
-          requirements.booleanConfigurations.some((item) => item.key === path)
+          toolsConfigurations.booleanConfigurations.some(
+            (item) => item.key === path
+          )
         ) {
           nestedStructure[rootKey] = z.coerce.boolean();
-        } else if (requirements.enumConfigurations[path]) {
-          nestedStructure[rootKey] = z.enum(
-            requirements.enumConfigurations[path].options as [
-              string,
-              ...string[],
-            ]
-          );
-        } else if (requirements.listConfigurations[rootKey]) {
+        } else if (toolsConfigurations.enumConfigurations[path]) {
+          const enumOptions =
+            toolsConfigurations.enumConfigurations[path].options;
+          const enumValues = enumOptions.map((option) => option.value) as [
+            string,
+            ...string[],
+          ];
+          nestedStructure[rootKey] = z.enum(enumValues);
+        } else if (toolsConfigurations.listConfigurations[rootKey]) {
           nestedStructure[rootKey] = z
             .array(z.string())
             .min(1, `You must select at least one value for "${rootKey}"`);
@@ -154,11 +168,11 @@ function createAdditionalConfigurationSchema(
   };
 
   return buildNestedSchema([
-    ...requirements.stringConfigurations.map((item) => item.key),
-    ...requirements.numberConfigurations.map((item) => item.key),
-    ...requirements.booleanConfigurations.map((item) => item.key),
-    ...Object.keys(requirements.enumConfigurations),
-    ...Object.keys(requirements.listConfigurations),
+    ...toolsConfigurations.stringConfigurations.map((item) => item.key),
+    ...toolsConfigurations.numberConfigurations.map((item) => item.key),
+    ...toolsConfigurations.booleanConfigurations.map((item) => item.key),
+    ...Object.keys(toolsConfigurations.enumConfigurations),
+    ...Object.keys(toolsConfigurations.listConfigurations),
   ]);
 }
 

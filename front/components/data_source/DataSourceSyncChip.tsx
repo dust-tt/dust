@@ -147,10 +147,6 @@ export default function ConnectorSyncingChip({
       </Chip>
     );
   } else {
-    return (
-      <Chip>
-        Last Sync ~ {timeAgoFrom(connector.lastSyncSuccessfulTime)} ago
-      </Chip>
-    );
+    return <Chip>{timeAgoFrom(connector.lastSyncSuccessfulTime)} ago</Chip>;
   }
 }

@@ -6,7 +6,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  LockIcon,
   NavigationList,
   NavigationListItem,
   NavigationListItemAction,
@@ -79,6 +78,16 @@ export const Demo = () => {
               <NavigationListLabel label={section.label} />
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
+                // Add status based on index for demonstration
+                const getStatus = (idx: number) => {
+                  if (idx % 5 === 0) {
+                    return "unread";
+                  }
+                  if (idx % 3 === 0) {
+                    return "blocked";
+                  }
+                  return "idle";
+                };
                 return (
                   <NavigationListItem
                     key={index}
@@ -94,7 +103,7 @@ export const Demo = () => {
                     label={title}
                     className="s-w-full"
                     moreMenu={getMoreMenu(title)}
-                    icon={LockIcon}
+                    status={getStatus(index)}
                   />
                 );
               })}
@@ -109,6 +118,16 @@ export const Demo = () => {
               <NavigationListLabel label={section.label} isSticky />
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
+                // Add status based on index for demonstration.
+                const getStatus = (idx: number) => {
+                  if (idx % 5 === 0) {
+                    return "unread";
+                  }
+                  if (idx % 3 === 0) {
+                    return "blocked";
+                  }
+                  return "idle";
+                };
                 return (
                   <NavigationListItem
                     key={index}
@@ -124,7 +143,7 @@ export const Demo = () => {
                     label={title}
                     className="s-w-full"
                     moreMenu={getMoreMenu(title)}
-                    icon={LockIcon}
+                    status={getStatus(index)}
                   />
                 );
               })}

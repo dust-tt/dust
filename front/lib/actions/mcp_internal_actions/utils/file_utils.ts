@@ -67,7 +67,7 @@ export async function getFileFromConversationAttachment(
         }
       }
     } else if (isAgentMessageType(m)) {
-      const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
+      const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
         if (isContentCreationFileContentType(f.contentType)) {

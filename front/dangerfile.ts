@@ -64,7 +64,7 @@ function checkDeployPlanSection() {
   const match = PRDescription.match(deployPlanSectionRegex);
   if (!match || match[1].trim().length < 20) {
     fail(
-      "Please include a detailed Deploy Plan section in your PR description."
+      "Please include a detailed Deploy Plan section in your PR description, at least 20 characters long."
     );
   }
 }

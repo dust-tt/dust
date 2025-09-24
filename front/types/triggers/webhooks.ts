@@ -39,13 +39,26 @@ export type WebhookSourceWithViews = WebhookSourceType & {
   views: WebhookSourceViewType[];
 };
 
+export type WebhookSourceWithSystemView = WebhookSourceWithViews & {
+  systemView: WebhookSourceViewType | null;
+};
+
 export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
 
 export const PostWebhookSourcesSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  secret: z.string().min(1, "Secret is required"),
+  // Secret can be omitted or empty when auto-generated server-side.
+  secret: z.string().nullable(),
   signatureHeader: z.string().min(1, "Signature header is required"),
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
   customHeaders: z.record(z.string(), z.string()).nullable(),
   includeGlobal: z.boolean().optional(),
+});
+
+export type PatchWebhookSourceViewBody = z.infer<
+  typeof patchWebhookSourceViewBodySchema
+>;
+
+export const patchWebhookSourceViewBodySchema = z.object({
+  name: z.string().min(1, "Name is required."),
 });

@@ -10,7 +10,7 @@ const CONTENT_SECURITY_POLICIES = [
   `style-src 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com;`,
   `style-src-elem 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com *.gstatic.com;`,
   `img-src 'self' data: blob: webkit-fake-url: https:;`,
-  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com;`,
+  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.hsappstatic.net *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com;`,
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net *.hsforms.com${isDev ? " http://localhost:3007" : ""};`,
   `font-src 'self' data: dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.gstatic.com *.wistia.net fonts.cdnfonts.com migaku-public-data.migaku.com;`,
   `media-src 'self' data:;`,
@@ -126,6 +126,7 @@ module.exports = {
     ];
   },
   poweredByHeader: false,
+  skipTrailingSlashRedirect: true,
   async headers() {
     return [
       {
@@ -154,6 +155,15 @@ module.exports = {
       {
         source: "/api/v1/w/:wId/vaults",
         destination: "/api/v1/w/:wId/spaces",
+      },
+      // Posthog tracking
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://eu-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://eu.i.posthog.com/:path*",
       },
     ];
   },

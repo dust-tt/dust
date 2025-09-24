@@ -112,7 +112,14 @@ export async function getUserWithWorkspaces<T extends boolean>(
 
   return {
     ...user.toJSON(),
-    organizations,
+    organizations: organizations.map((org) => ({
+      id: org.id,
+      name: org.name,
+      createdAt: org.createdAt,
+      updatedAt: org.updatedAt,
+      metadata: org.metadata,
+      externalId: org.externalId,
+    })),
     workspaces: workspaces.map((w) => {
       return {
         ...renderLightWorkspaceType({

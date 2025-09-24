@@ -9,14 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   FormProvider,
   useForm,
@@ -40,12 +33,14 @@ import { isValidPage } from "@app/components/agent_builder/capabilities/mcp/util
 import { CustomCheckboxSection } from "@app/components/agent_builder/capabilities/shared/CustomCheckboxSection";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
-import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
+import {
+  NAME_FIELD_NAME,
+  NameSection,
+} from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ProcessingMethodSection } from "@app/components/agent_builder/capabilities/shared/ProcessingMethodSection";
 import { SelectedDataSources } from "@app/components/agent_builder/capabilities/shared/SelectedDataSources";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   AgentBuilderAction,
   CapabilityFormData,
@@ -154,7 +149,6 @@ function KnowledgeConfigurationSheetForm({
   onCancel,
   setIsDirty,
 }: KnowledgeConfigurationSheetFormProps) {
-  const { spaces } = useSpacesContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const handleSave = (formData: CapabilityFormData) => {
@@ -168,8 +162,9 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      toolsConfigurations.mayRequireDataSourceConfiguration ||
-      toolsConfigurations.mayRequireDataWarehouseConfiguration
+      toolsConfigurations.dataSourceConfiguration ??
+      toolsConfigurations.dataWarehouseConfiguration ??
+      false
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -230,7 +225,7 @@ function KnowledgeConfigurationSheetForm({
 
   return (
     <FormProvider {...form}>
-      <DataSourceBuilderProvider spaces={spaces}>
+      <DataSourceBuilderProvider>
         <KnowledgePageProvider initialPageId={getInitialPageId(isEditing)}>
           <KnowledgeConfigurationSheetContent
             onSave={form.handleSubmit(handleSave)}
@@ -258,8 +253,8 @@ function KnowledgeConfigurationSheetContent({
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
-  const nameSectionRef = useRef<HTMLInputElement>(null);
-  const { setValue, getValues } = useFormContext<CapabilityFormData>();
+  const { setValue, getValues, setFocus } =
+    useFormContext<CapabilityFormData>();
   const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
@@ -268,7 +263,12 @@ function KnowledgeConfigurationSheetContent({
 
   const hasSourceSelection = useWatch({
     compute: (formData: CapabilityFormData) => {
-      return formData.sources.in.length > 0;
+      // Check if we have actual selections: either explicit inclusions or "select all with exclusions"
+      const hasExplicitInclusions = formData.sources.in.length > 0;
+      const hasSelectAllWithExclusions =
+        formData.sources.in.length === 0 && formData.sources.notIn.length > 0;
+
+      return hasExplicitInclusions || hasSelectAllWithExclusions;
     },
   });
 
@@ -286,11 +286,14 @@ function KnowledgeConfigurationSheetContent({
   // Focus NameSection input when navigating to CONFIGURATION page
   useEffect(() => {
     if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION) {
-      nameSectionRef.current?.focus();
+      const t = setTimeout(() => {
+        setFocus(NAME_FIELD_NAME);
+      }, 250);
+      return () => clearTimeout(t);
     }
-  }, [currentPageId]);
+  }, [currentPageId, setFocus]);
 
-  // Prefill name field with processing method display name when mcpServerView changes
+  // Prefill name field with processing method display name when mcpServerView.id changes
   useEffect(() => {
     if (mcpServerView && !isEditing) {
       const processingMethodName = getMcpServerViewDisplayName(mcpServerView);
@@ -303,7 +306,12 @@ function KnowledgeConfigurationSheetContent({
         });
       }
     }
-  }, [mcpServerView, isEditing, setValue, getValues]);
+    // We only watch mcpServerView?.id instead of the full object because:
+    // 1. When id changes, the entire mcpServerView object updates with new values
+    // 2. Object reference can change even if the mcpServerView content is the same
+    // 3. Watching the id ensures we re-run when the server actually changes, avoiding name change on form invalidation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcpServerView?.id, isEditing, setValue, getValues]);
 
   const handlePageChange = useCallback(
     (pageId: string) => {
@@ -349,10 +357,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: toolsConfigurations.mayRequireTableConfiguration
+      title: toolsConfigurations.tableConfiguration
         ? "Select Tables"
         : "Select Data Sources",
-      description: toolsConfigurations.mayRequireTableConfiguration
+      description: toolsConfigurations.tableConfiguration
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
@@ -376,9 +384,9 @@ function KnowledgeConfigurationSheetContent({
           <ProcessingMethodSection />
 
           <NameSection
-            ref={nameSectionRef}
             title="Name"
             placeholder="Name ..."
+            triggerValidationOnChange={true}
           />
 
           {toolsConfigurations.mayRequireTimeFrameConfiguration && (
@@ -389,7 +397,12 @@ function KnowledgeConfigurationSheetContent({
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 
-          {config && <DescriptionSection {...config?.descriptionConfig} />}
+          {config && (
+            <DescriptionSection
+              {...config?.descriptionConfig}
+              triggerValidationOnChange={true}
+            />
+          )}
 
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&

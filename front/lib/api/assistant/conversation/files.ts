@@ -4,18 +4,20 @@ import { isAgentMessageType } from "@app/types";
 
 export function listGeneratedFiles(
   conversation: ConversationType
-): Array<ActionGeneratedFileType> {
-  const files: Array<ActionGeneratedFileType> = [];
+): ActionGeneratedFileType[] {
+  const files: ActionGeneratedFileType[] = [];
 
   for (const versions of conversation.content) {
     const message = versions[versions.length - 1];
 
     if (isAgentMessageType(message)) {
-      const generatedFiles = message.actions.flatMap((action) =>
-        action.getGeneratedFiles()
+      const generatedFiles = message.actions.flatMap(
+        (action) => action.generatedFiles
       );
 
-      files.push(...generatedFiles);
+      files.push(
+        ...generatedFiles.filter((generatedFile) => !generatedFile.hidden)
+      );
     }
   }
 

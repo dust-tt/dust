@@ -70,7 +70,7 @@ function validateTailwindCode(code: string): void {
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
-  { allowedVisualizationOrigin }: { allowedVisualizationOrigin?: string }
+  { allowedOrigins }: { allowedOrigins: string[] }
 ) {
   const [error, setError] = useState<Error | null>(null);
 
@@ -108,9 +108,7 @@ export function useVisualizationAPI(
         return null;
       }
 
-      const file = new File([blob], "fileId", { type: blob.type });
-
-      return file;
+      return new File([blob], "fileId", { type: blob.type });
     },
     [sendCrossDocumentMessage]
   );
@@ -145,12 +143,9 @@ export function useVisualizationAPI(
       handler: (data: SupportedMessage) => void
     ): (() => void) => {
       const messageHandler = (event: MessageEvent) => {
-        if (
-          allowedVisualizationOrigin &&
-          event.origin !== allowedVisualizationOrigin
-        ) {
+        if (!allowedOrigins.includes(event.origin)) {
           console.log(
-            `Ignored message from unauthorized origin: ${event.origin}, expected: ${allowedVisualizationOrigin}`
+            `Ignored message from unauthorized origin: ${event.origin}, expected one of: ${allowedOrigins.join(", ")}`
           );
           return;
         }
@@ -173,7 +168,7 @@ export function useVisualizationAPI(
       // Return cleanup function
       return () => window.removeEventListener("message", messageHandler);
     },
-    [allowedVisualizationOrigin]
+    [allowedOrigins]
   );
 
   return {
@@ -236,23 +231,23 @@ interface RunnerParams {
 
 export function VisualizationWrapperWithErrorBoundary({
   identifier,
-  allowedVisualizationOrigin,
+  allowedOrigins,
   isFullHeight = false,
 }: {
   identifier: string;
-  allowedVisualizationOrigin: string | undefined;
+  allowedOrigins: string[];
   isFullHeight?: boolean;
 }) {
   const sendCrossDocumentMessage = useMemo(
     () =>
       makeSendCrossDocumentMessage({
         identifier,
-        allowedVisualizationOrigin,
+        allowedOrigins,
       }),
-    [identifier, allowedVisualizationOrigin]
+    [identifier, allowedOrigins]
   );
   const api = useVisualizationAPI(sendCrossDocumentMessage, {
-    allowedVisualizationOrigin,
+    allowedOrigins,
   });
 
   return (
@@ -476,10 +471,10 @@ export function VisualizationWrapper({
 
 export function makeSendCrossDocumentMessage({
   identifier,
-  allowedVisualizationOrigin,
+  allowedOrigins,
 }: {
   identifier: string;
-  allowedVisualizationOrigin: string | undefined;
+  allowedOrigins: string[];
 }) {
   return <T extends VisualizationRPCCommand>(
     command: T,
@@ -488,11 +483,8 @@ export function makeSendCrossDocumentMessage({
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
-        if (event.origin !== allowedVisualizationOrigin) {
-          console.log(
-            `Ignored message from unauthorized origin: ${event.origin}`
-          );
-
+        if (!allowedOrigins.includes(event.origin)) {
+          console.log(`Ignored message from unauthorized origin: ${event.origin}`);
           // Simply ignore messages from unauthorized origins.
           return;
         }

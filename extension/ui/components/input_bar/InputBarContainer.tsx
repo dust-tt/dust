@@ -283,7 +283,8 @@ export const InputBarContainer = ({
           disabled={
             isSubmitting ||
             editorService.isEmpty() ||
-            fileUploaderService.isProcessingFiles
+            fileUploaderService.isProcessingFiles ||
+            fileUploaderService.isCapturing
           }
         />
       </div>

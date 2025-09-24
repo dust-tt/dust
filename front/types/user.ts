@@ -1,5 +1,5 @@
-import type { Organization } from "@workos-inc/node";
 import * as t from "io-ts";
+import { WorkOSOrganizationType } from "@dust-tt/client";
 
 import type {
   EmbeddingProviderIdType,
@@ -108,14 +108,14 @@ export type UserTypeWithWorkspace = UserType & {
 
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
-  organizations?: Organization[];
+  organizations?: WorkOSOrganizationType[];
   origin?: MembershipOriginType;
   selectedWorkspace?: string;
 };
 
 export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];
-  organizations: Organization[];
+  organizations: WorkOSOrganizationType[];
   selectedWorkspace?: string;
 };
 

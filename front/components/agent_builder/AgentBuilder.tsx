@@ -188,8 +188,12 @@ export default function AgentBuilder({
       agentSettings: {
         ...baseValues.agentSettings,
         slackProvider,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        editors: agentConfiguration || editors.length > 0 ? editors : [user],
+        editors: duplicateAgentId
+          ? [user]
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            agentConfiguration || editors.length > 0
+            ? editors
+            : [user],
         slackChannels: agentSlackChannels,
       },
     };
@@ -244,6 +248,7 @@ export default function AgentBuilder({
         areSlackChannelsChanged: form.getFieldState(
           "agentSettings.slackChannels"
         ).isDirty,
+        currentUserId: user.id,
       });
 
       if (!result.isOk()) {

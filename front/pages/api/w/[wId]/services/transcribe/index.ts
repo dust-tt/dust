@@ -2,6 +2,8 @@ import formidable from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
 import {
   transcribeFile,
   transcribeStream,
@@ -23,7 +25,8 @@ export type PostTranscribeResponseBody = { text: string };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostTranscribeResponseBody | void>>
+  res: NextApiResponse<WithAPIErrorResponse<PostTranscribeResponseBody | void>>,
+  auth: Authenticator
 ) {
   const { wId } = req.query;
   if (!wId || typeof wId !== "string") {
@@ -112,8 +115,13 @@ async function handler(
           break;
 
         case "fullTranscript":
+          const fullTranscript = await findAgentsInMessage(
+            auth,
+            chunk.fullTranscript
+          );
+
           res.write(
-            `data: ${JSON.stringify({ type: "fullTranscript", fullTranscript: chunk.fullTranscript })}\n\n`
+            `data: ${JSON.stringify({ type: "fullTranscript", fullTranscript })}\n\n`
           );
           stop = true;
           break;

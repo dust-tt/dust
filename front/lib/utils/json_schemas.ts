@@ -1,4 +1,5 @@
 import Ajv from "ajv";
+import addFormats from "ajv-formats";
 import type {
   JSONSchema7 as JSONSchema,
   JSONSchema7Definition as JSONSchemaDefinition,
@@ -146,6 +147,7 @@ export function validateJsonSchema(value: object | string | null | undefined): {
   try {
     const parsed = typeof value !== "object" ? JSON.parse(value) : value;
     const ajv = new Ajv();
+    addFormats(ajv); // Adds "date", "date-time", "time", "email" and many other common formats.
     ajv.compile(parsed); // Throws an error if the schema is invalid
     return { isValid: true };
   } catch (e) {

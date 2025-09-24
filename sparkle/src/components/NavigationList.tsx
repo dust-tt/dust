@@ -70,6 +70,7 @@ interface NavigationListItemProps
   label?: string;
   icon?: React.ComponentType;
   moreMenu?: React.ReactNode;
+  status?: "idle" | "unread" | "blocked";
 }
 
 const NavigationListItem = React.forwardRef<
@@ -88,6 +89,7 @@ const NavigationListItem = React.forwardRef<
       replace,
       shallow,
       moreMenu,
+      status = "idle",
       ...props
     },
     ref
@@ -99,6 +101,19 @@ const NavigationListItem = React.forwardRef<
         setIsPressed(true);
       }
     };
+
+    const getStatusDotColor = () => {
+      switch (status) {
+        case "unread":
+          return "s-bg-highlight-500 dark:s-bg-highlight-500-night";
+        case "blocked":
+          return "s-bg-warning-500 dark:s-bg-warning-500-night";
+        default:
+          return "";
+      }
+    };
+
+    const shouldShowStatusDot = status === "unread" || status === "blocked";
 
     return (
       <div
@@ -132,6 +147,14 @@ const NavigationListItem = React.forwardRef<
             onMouseDown={handleMouseDown}
             onMouseUp={() => setIsPressed(false)}
           >
+            {shouldShowStatusDot && (
+              <div
+                className={cn(
+                  "s-h-2 s-w-2 s-flex-shrink-0 s-rounded-full",
+                  getStatusDotColor()
+                )}
+              />
+            )}
             {icon && <Icon visual={icon} size="sm" />}
             {label && (
               <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">

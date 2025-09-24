@@ -612,6 +612,101 @@ const createServer = (): McpServer => {
     }
   );
 
+  server.tool(
+    "rename_worksheet",
+    "Rename a worksheet in a Google Sheets spreadsheet.",
+    {
+      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      sheetId: z.number().describe("The ID of the worksheet to rename."),
+      newTitle: z.string().describe("The new title for the worksheet."),
+    },
+    async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
+      const sheets = await getSheetsClient(authInfo);
+      if (!sheets) {
+        return makeMCPToolTextError(
+          "Failed to authenticate with Google Sheets"
+        );
+      }
+
+      try {
+        const res = await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [
+              {
+                updateSheetProperties: {
+                  properties: {
+                    sheetId,
+                    title: newTitle,
+                  },
+                  fields: "title",
+                },
+              },
+            ],
+          },
+        });
+
+        return makeMCPToolJSONSuccess({
+          result: res.data,
+        });
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to rename worksheet"
+        );
+      }
+    }
+  );
+
+  server.tool(
+    "move_worksheet",
+    "Move a worksheet to a new position in a Google Sheets spreadsheet.",
+    {
+      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      sheetId: z.number().describe("The ID of the worksheet to move."),
+      newIndex: z
+        .number()
+        .min(0)
+        .describe(
+          "The new zero-based index position for the worksheet. 0 = first position, 1 = second position, etc."
+        ),
+    },
+    async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {
+      const sheets = await getSheetsClient(authInfo);
+      if (!sheets) {
+        return makeMCPToolTextError(
+          "Failed to authenticate with Google Sheets"
+        );
+      }
+
+      try {
+        const res = await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [
+              {
+                updateSheetProperties: {
+                  properties: {
+                    sheetId,
+                    index: newIndex,
+                  },
+                  fields: "index",
+                },
+              },
+            ],
+          },
+        });
+
+        return makeMCPToolJSONSuccess({
+          result: res.data,
+        });
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to move worksheet"
+        );
+      }
+    }
+  );
+
   return server;
 };
 

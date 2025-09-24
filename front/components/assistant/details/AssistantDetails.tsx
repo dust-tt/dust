@@ -16,6 +16,7 @@ import {
   SheetTitle,
   Spinner,
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
   UserGroupIcon,
@@ -208,8 +209,10 @@ export function AssistantDetails({
           </div>
         ) : (
           <>
-            <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
+            <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
               <DescriptionSection />
+            </SheetHeader>
+            <SheetContainer className="pb-4">
               {showEditorsTabs || showPerformanceTabs ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
@@ -252,49 +255,51 @@ export function AssistantDetails({
                       />
                     )}
                   </TabsList>
+                  {agentConfiguration && (
+                    <div className="mt-4">
+                      <TabsContent value="info">
+                        <AgentInfoTab
+                          agentConfiguration={agentConfiguration}
+                          owner={owner}
+                        />
+                      </TabsContent>
+                      <TabsContent value="triggers">
+                        <AgentTriggersTab
+                          agentConfiguration={agentConfiguration}
+                          owner={owner}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="performance">
+                        <AgentPerformanceTab
+                          agentConfiguration={agentConfiguration}
+                          owner={owner}
+                          gridMode={false}
+                        />
+                      </TabsContent>
+                      <TabsContent value="editors">
+                        <AgentEditorsTab
+                          owner={owner}
+                          user={user}
+                          agentConfiguration={agentConfiguration}
+                        />
+                      </TabsContent>
+                      <TabsContent value="agent_memory">
+                        <AgentMemoryTab
+                          owner={owner}
+                          agentConfiguration={agentConfiguration}
+                        />
+                      </TabsContent>
+                    </div>
+                  )}
                 </Tabs>
+              ) : agentConfiguration ? (
+                <AgentInfoTab
+                  agentConfiguration={agentConfiguration}
+                  owner={owner}
+                />
               ) : (
                 <div />
-              )}
-            </SheetHeader>
-            <SheetContainer>
-              {agentConfiguration && (
-                <>
-                  {selectedTab === "info" && (
-                    <AgentInfoTab
-                      agentConfiguration={agentConfiguration}
-                      owner={owner}
-                    />
-                  )}
-                  {showTriggersTabs && selectedTab === "triggers" && (
-                    <AgentTriggersTab
-                      agentConfiguration={agentConfiguration}
-                      owner={owner}
-                    />
-                  )}
-                  {selectedTab === "performance" && (
-                    <AgentPerformanceTab
-                      agentConfiguration={agentConfiguration}
-                      owner={owner}
-                      gridMode={false}
-                    />
-                  )}
-                  {showEditorsTabs && selectedTab === "editors" && (
-                    <AgentEditorsTab
-                      owner={owner}
-                      user={user}
-                      agentConfiguration={agentConfiguration}
-                    />
-                  )}
-                  {showAgentMemory && selectedTab === "agent_memory" && (
-                    <>
-                      <AgentMemoryTab
-                        owner={owner}
-                        agentConfiguration={agentConfiguration}
-                      />
-                    </>
-                  )}
-                </>
               )}
               {isAgentConfigurationError?.error.type ===
                 "agent_configuration_not_found" && (

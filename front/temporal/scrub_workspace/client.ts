@@ -5,7 +5,7 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import {
   immediateWorkspaceScrubWorkflow,
-  scheduleWorkspaceScrubWorkflow,
+  scheduleWorkspaceScrubWorkflowV2,
 } from "@app/temporal/scrub_workspace/workflows";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -21,7 +21,7 @@ export async function launchScheduleWorkspaceScrubWorkflow({
   const workflowId = getWorkflowId(workspaceId);
 
   try {
-    await client.workflow.start(scheduleWorkspaceScrubWorkflow, {
+    await client.workflow.start(scheduleWorkspaceScrubWorkflowV2, {
       args: [{ workspaceId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
@@ -92,7 +92,7 @@ export async function terminateScheduleWorkspaceScrubWorkflow({
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = getWorkflowId(workspaceId);
   try {
-    const handle: WorkflowHandle<typeof scheduleWorkspaceScrubWorkflow> =
+    const handle: WorkflowHandle<typeof scheduleWorkspaceScrubWorkflowV2> =
       client.workflow.getHandle(workflowId);
     await handle.terminate();
     logger.info(

@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
@@ -37,7 +38,14 @@ export const CreateWebhookSourceSchema = PostWebhookSourcesSchema.extend({
     .string()
     .nullable()
     .refine(validateCustomHeadersFromString, "Invalid JSON format"),
-});
+  autoGenerate: z.boolean().default(true),
+}).refine(
+  (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
+  {
+    message: "Secret is required",
+    path: ["secret"],
+  }
+);
 
 export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
@@ -68,21 +76,54 @@ export function CreateWebhookSourceFormContent({
         )}
       />
 
-      <Controller
-        control={form.control}
-        name="secret"
-        render={({ field }) => (
-          <Input
-            {...field}
-            label="Secret"
-            type="password"
-            placeholder="Secret for validation..."
-            isError={form.formState.errors.secret !== undefined}
-            message={form.formState.errors.secret?.message}
-            messageStatus="error"
+      <div>
+        <Label>Secret</Label>
+        <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <i>
+            Note: You will be able to see and copy this secret for the first 10
+            minutes after creating the webhook.
+          </i>
+        </p>
+        <div className="mb-3 flex items-center justify-between">
+          <Label>Auto-generate</Label>
+          <Controller
+            control={form.control}
+            name="autoGenerate"
+            render={({ field }) => (
+              <SliderToggle
+                selected={field.value}
+                onClick={() => {
+                  const next = !field.value;
+                  field.onChange(next);
+                  if (next) {
+                    form.setValue("secret", "");
+                  }
+                }}
+              />
+            )}
+          />
+        </div>
+
+        {!form.watch("autoGenerate") && (
+          <Controller
+            control={form.control}
+            name="secret"
+            render={({ field }) => (
+              <div className="mt-2">
+                <Input
+                  {...field}
+                  id="secret"
+                  type="password"
+                  placeholder="Secret for validation..."
+                  isError={form.formState.errors.secret !== undefined}
+                  message={form.formState.errors.secret?.message}
+                  messageStatus="error"
+                />
+              </div>
+            )}
           />
         )}
-      />
+      </div>
 
       <Controller
         control={form.control}

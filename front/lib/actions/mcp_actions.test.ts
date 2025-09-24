@@ -75,6 +75,7 @@ async function setupTest() {
     mcpServerViewId: "mcpServerId",
     dustAppConfiguration: null,
     internalMCPServerId: internalMCPServer.id,
+    secretName: null,
   };
 
   return {
@@ -195,6 +196,7 @@ describe("getPrefixedToolName", () => {
     additionalConfiguration: {},
     dustAppConfiguration: null,
     internalMCPServerId: null,
+    secretName: null,
   };
 
   it("should correctly prefix and slugify tool names", () => {

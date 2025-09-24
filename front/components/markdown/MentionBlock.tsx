@@ -43,7 +43,7 @@ function MentionBlock({
           @{agentName}
         </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="start">
         <DropdownMenuItem
           onClick={handleStartConversation}
           icon={() => <ChatBubbleBottomCenterTextIcon />}

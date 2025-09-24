@@ -11,19 +11,21 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import type { CustomRemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type {
+  CustomRemoteMCPToolStakeLevelType,
+  MCPToolStakeLevelType,
+} from "@app/lib/actions/constants";
 import {
   CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  isRemoteMCPServerType,
+} from "@app/lib/actions/mcp_helper";
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  useMCPServerToolsSettings,
-  useUpdateMCPServerToolsSettings,
-} from "@app/lib/swr/mcp_servers";
+import { useUpdateMCPServerToolsSettings } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isAdmin } from "@app/types";
 
@@ -33,7 +35,7 @@ interface ToolsListProps {
   disableUpdates?: boolean;
 }
 
-// We disable buttons for Assistant Builder view because it would feel like
+// We disable buttons for agent builder view because it would feel like
 // you can configure per agent
 export function ToolsList({
   owner,
@@ -52,14 +54,20 @@ export function ToolsList({
     () => mcpServerView.server.tools,
     [mcpServerView.server.tools]
   );
-  const { toolsSettings } = useMCPServerToolsSettings({
-    owner,
-    serverId: mcpServerView.server.sId,
-  });
+  const toolsMetadata = useMemo(() => {
+    const map: Record<
+      string,
+      { permission: MCPToolStakeLevelType; enabled: boolean }
+    > = {};
+    for (const tool of mcpServerView.toolsMetadata ?? []) {
+      map[tool.toolName] = tool;
+    }
+    return map;
+  }, [mcpServerView.toolsMetadata]);
 
   const { updateToolSettings } = useUpdateMCPServerToolsSettings({
     owner,
-    serverId: mcpServerView.server.sId,
+    mcpServerView,
   });
 
   const getAvailableStakeLevelsForTool = (toolName: string) => {
@@ -88,14 +96,12 @@ export function ToolsList({
   };
 
   const getToolPermission = (toolName: string) => {
-    return toolsSettings[toolName]
-      ? toolsSettings[toolName].permission
-      : FALLBACK_MCP_TOOL_STAKE_LEVEL;
+    return toolsMetadata[toolName]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL;
   };
 
   const getToolEnabled = (toolName: string) => {
     // Default tools to be enabled by default
-    return toolsSettings[toolName] ? toolsSettings[toolName].enabled : true;
+    return toolsMetadata[toolName]?.enabled ?? true;
   };
 
   const toolPermissionLabel: Record<string, string> = {

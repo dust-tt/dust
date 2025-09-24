@@ -3,11 +3,12 @@ import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   CancellationScope,
   proxyActivities,
+  setHandler,
   startChild,
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { MAX_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
+import { DEFAULT_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
@@ -18,10 +19,13 @@ import type * as runToolActivities from "@app/temporal/agent_loop/activities/run
 import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
 import { executeAgentLoop } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
 import type {
   RunAgentArgs,
   RunAgentAsynchronousArgs,
 } from "@app/types/assistant/agent_run";
+
+const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
 
 const logMetricsActivities = proxyActivities<
   typeof logAgentLoopMetricsActivities
@@ -36,22 +40,17 @@ const activities: AgentLoopActivities = {
     startToCloseTimeout: "10 minutes",
   }).runModelAndCreateActionsActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
-    // The activity timeout should be slightly longer than the max timeout of
-    // the tool, to avoid the activity being killed before the tool timeout.
-    startToCloseTimeout: `${
-      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 2
-    } minutes`,
+    // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
+    startToCloseTimeout: toolActivityStartToCloseTimeout,
     retry: {
       // Do not retry tool activities. Those are not idempotent.
       maximumAttempts: 1,
     },
   }).runToolActivity,
   runRetryableToolActivity: proxyActivities<typeof runToolActivities>({
-    startToCloseTimeout: `${
-      MAX_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 2
-    } minutes`,
+    startToCloseTimeout: toolActivityStartToCloseTimeout,
     retry: {
-      maximumAttempts: 5,
+      maximumAttempts: 15,
     },
   }).runToolActivity,
   publishDeferredEventsActivity: proxyActivities<
@@ -73,7 +72,9 @@ const { ensureConversationTitleActivity } = proxyActivities<
   startToCloseTimeout: "5 minutes",
 });
 
-const { notifyWorkflowError } = proxyActivities<typeof commonActivities>({
+const { notifyWorkflowError, finalizeCancellationActivity } = proxyActivities<
+  typeof commonActivities
+>({
   startToCloseTimeout: "2 minutes",
   retry: {
     maximumAttempts: 5,
@@ -119,6 +120,15 @@ export async function agentLoopWorkflow({
     typeof agentLoopConversationTitleWorkflow
   > | null = null;
 
+  // Allow cancellation of in-flight activities via signal-triggered scope cancellation.
+  let cancelRequested = false;
+  const executionScope = new CancellationScope();
+
+  setHandler(cancelAgentLoopSignal, () => {
+    cancelRequested = true;
+    executionScope.cancel();
+  });
+
   try {
     // If conversation title is not set, launch a child workflow to generate the conversation title in
     // the background. If a workflow with the same ID is already running, ignore the error and
@@ -146,8 +156,10 @@ export async function agentLoopWorkflow({
     }
 
     // In Temporal workflows, we don't pass syncStartTime since async execution doesn't need timeout.
-    await executeAgentLoop(authType, runAgentArgs, activities, {
-      startStep,
+    await executionScope.run(async () => {
+      await executeAgentLoop(authType, runAgentArgs, activities, {
+        startStep,
+      });
     });
 
     if (childWorkflowHandle) {
@@ -158,13 +170,23 @@ export async function agentLoopWorkflow({
 
     // Notify error in a non-cancellable scope to ensure it runs even if workflow is cancelled
     await CancellationScope.nonCancellable(async () => {
-      await notifyWorkflowError(authType, {
-        conversationId: runAsynchronousAgentArgs.conversationId,
-        agentMessageId: runAsynchronousAgentArgs.agentMessageId,
-        agentMessageVersion: runAsynchronousAgentArgs.agentMessageVersion,
-        error: workflowError,
-      });
+      if (cancelRequested) {
+        // Run finalization tasks on cancellation (dummy for now).
+        await finalizeCancellationActivity(authType, runAsynchronousAgentArgs);
+      } else {
+        await notifyWorkflowError(authType, {
+          conversationId: runAsynchronousAgentArgs.conversationId,
+          agentMessageId: runAsynchronousAgentArgs.agentMessageId,
+          agentMessageVersion: runAsynchronousAgentArgs.agentMessageVersion,
+          error: workflowError,
+        });
+      }
     });
+
+    // If cancellation was explicitly requested via signal, finish gracefully without rethrowing.
+    if (cancelRequested) {
+      return;
+    }
 
     throw err;
   }

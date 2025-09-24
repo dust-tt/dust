@@ -10,34 +10,27 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
+import type { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
-import type { ModelId, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
-import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
+import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
+import type {
+  AgentStepContentType,
+  FunctionCallContentType,
+} from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -119,24 +112,27 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
-  get sId(): string {
-    return AgentStepContentResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
+  public static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<AgentStepContentResource[]> {
+    const contents = await AgentStepContentModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: ids },
+      },
     });
+
+    return contents.map((content) => new this(this.model, content.get()));
   }
 
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: ModelId;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("agent_step_content", {
-      id,
-      workspaceId,
-    });
+  public static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<AgentStepContentResource | null> {
+    const stepContents = await this.fetchByModelIds(auth, [id]);
+
+    return stepContents[0] ?? null;
   }
 
   /**
@@ -161,12 +157,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     {
       agentMessageIds,
       transaction,
-      includeMCPActions = false,
       latestVersionsOnly = false,
     }: {
       agentMessageIds: ModelId[];
       transaction?: Transaction;
-      includeMCPActions?: boolean;
       latestVersionsOnly?: boolean;
     }
   ): Promise<AgentStepContentResource[]> {
@@ -193,105 +187,130 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       transaction,
     });
 
-    if (includeMCPActions) {
-      const contentIds: ModelId[] = contents.map((c) => c.id);
-
-      const mcpActionsByContentId = _.groupBy(
-        await AgentMCPActionModel.findAll({
-          where: {
-            workspaceId: owner.id,
-            stepContentId: {
-              [Op.in]: contentIds,
-            },
-          },
-        }),
-        "stepContentId"
-      );
-
-      const actionIds = Object.values(mcpActionsByContentId).flatMap((a) =>
-        a.map((a) => a.id)
-      );
-
-      const outputItemsByActionId = _.groupBy(
-        await AgentMCPActionOutputItem.findAll({
-          where: {
-            workspaceId: owner.id,
-            agentMCPActionId: {
-              [Op.in]: actionIds,
-            },
-          },
-        }),
-        "agentMCPActionId"
-      );
-
-      const fileIds = removeNulls(
-        Object.values(outputItemsByActionId).flatMap((o) =>
-          o.map((o) => o.fileId)
-        )
-      );
-
-      const fileById = _.keyBy(
-        await FileModel.findAll({
-          where: {
-            workspaceId: owner.id,
-            id: {
-              [Op.in]: fileIds,
-            },
-          },
-        }),
-        "id"
-      );
-
-      for (const outputItems of Object.values(outputItemsByActionId)) {
-        for (const item of outputItems) {
-          if (item.fileId) {
-            item.file = fileById[item.fileId.toString()];
-          }
-        }
-      }
-
-      for (const actions of Object.values(mcpActionsByContentId)) {
-        for (const action of actions) {
-          action.outputItems =
-            outputItemsByActionId[action.id.toString()] ?? [];
-        }
-      }
-
-      for (const content of contents) {
-        content.agentMCPActions =
-          mcpActionsByContentId[content.id.toString()] ?? [];
-      }
-    }
-
     if (latestVersionsOnly) {
       contents = this.filterLatestVersions(contents, [
         "agentMessageId",
         "step",
         "index",
       ]);
-
-      // Also filter MCP actions to latest versions
-      if (includeMCPActions) {
-        contents.forEach((c) => {
-          if (!("agentMCPActions" in c)) {
-            return;
-          }
-          const maxVersionAction = _.maxBy(
-            c.agentMCPActions as AgentMCPActionModel[],
-            "version"
-          );
-          c.agentMCPActions = maxVersionAction ? [maxVersionAction] : [];
-        });
-      }
     }
 
     return contents.map(
       (content) =>
-        new AgentStepContentResource(AgentStepContentModel, {
-          ...content.get(),
-          agentMCPActions: content.agentMCPActions,
-        })
+        new AgentStepContentResource(AgentStepContentModel, content.get())
     );
+  }
+
+  static async listFunctionCallsForAgent(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      limit,
+      cursor,
+    }: {
+      agentConfiguration: LightAgentConfigurationType;
+      limit: number;
+      cursor?: Date;
+    }
+  ): Promise<{
+    data: {
+      stepContent: AgentStepContentResource;
+      conversationId: string;
+      messageId: string;
+    }[];
+    totalCount: number;
+    nextCursor: string | null;
+  }> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const whereClause: WhereOptions<AgentStepContentModel> = {
+      workspaceId: owner.id,
+      type: "function_call",
+    };
+
+    if (cursor) {
+      whereClause.createdAt = {
+        [Op.lt]: cursor,
+      };
+    }
+
+    const includeClause: IncludeOptions[] = [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+        where: {
+          agentConfigurationId: agentConfiguration.sId,
+        },
+        include: [
+          {
+            model: Message,
+            as: "message",
+            required: true,
+            include: [
+              {
+                model: ConversationModel,
+                as: "conversation",
+                required: true,
+                where: {
+                  visibility: { [Op.ne]: "deleted" },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const [totalCount, stepContents] = await Promise.all([
+      AgentStepContentModel.count({
+        include: includeClause,
+        where: whereClause,
+        distinct: true,
+      }),
+      AgentStepContentModel.findAll({
+        include: includeClause,
+        where: whereClause,
+        order: [["createdAt", "DESC"]],
+        limit: limit + 1,
+      }),
+    ]);
+
+    const hasMore = stepContents.length > limit;
+    const actualStepContents = hasMore
+      ? stepContents.slice(0, limit)
+      : stepContents;
+
+    const nextCursor = hasMore
+      ? actualStepContents[
+          actualStepContents.length - 1
+        ].createdAt.toISOString()
+      : null;
+
+    const data = actualStepContents.map((stepContent) => {
+      assert(
+        stepContent.agentMessage?.message?.conversation,
+        "Missing required relations"
+      );
+
+      return {
+        stepContent: new this(this.model, stepContent.get()),
+        conversationId: stepContent.agentMessage.message.conversation.sId,
+        messageId: stepContent.agentMessage.message.sId,
+      };
+    });
+
+    return {
+      data,
+      totalCount,
+      nextCursor,
+    };
+  }
+
+  isFunctionCallContent(): this is AgentStepContentResource & {
+    value: FunctionCallContentType;
+  } {
+    return isFunctionCallContent(this.value);
   }
 
   async delete(
@@ -340,7 +359,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       };
     }
 
-    const base: AgentStepContentType = {
+    return {
       id: this.id,
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
@@ -352,71 +371,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       type: this.type,
       value,
     };
-
-    if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
-      if (this.agentMCPActions.length === 0) {
-        base.mcpActions = [];
-      } else {
-        const { value } = this;
-        assert(
-          value.type === "function_call",
-          "Unexpected: MCP actions on non-function call step content"
-        );
-        // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
-        base.mcpActions = this.agentMCPActions.map(
-          (action: AgentMCPActionModel) => {
-            const mcpServerId = action.toolConfiguration?.toolServerId || null;
-
-            return new MCPActionType({
-              id: action.id,
-              params: JSON.parse(value.value.arguments),
-              output: removeNulls(
-                action.outputItems.map(hideFileFromActionOutput)
-              ),
-              functionCallId: value.value.id,
-              functionCallName: value.value.name,
-              mcpServerId,
-              internalMCPServerName:
-                getInternalMCPServerNameFromSId(mcpServerId),
-              agentMessageId: action.agentMessageId,
-              step: this.step,
-              mcpServerConfigurationId: action.mcpServerConfigurationId,
-              type: "tool_action",
-              status: action.status,
-              citationsAllocated: action.citationsAllocated,
-              generatedFiles: removeNulls(
-                action.outputItems.map((o) => {
-                  if (!o.file) {
-                    return null;
-                  }
-
-                  const file = o.file;
-                  const fileSid = FileResource.modelIdToSId({
-                    id: file.id,
-                    workspaceId: action.workspaceId,
-                  });
-
-                  const hidden =
-                    o.content.type === "resource" &&
-                    isToolGeneratedFile(o.content) &&
-                    o.content.resource.hidden === true;
-
-                  return {
-                    fileId: fileSid,
-                    contentType: file.contentType,
-                    title: file.fileName,
-                    snippet: file.snippet,
-                    ...(hidden ? { hidden: true } : {}),
-                  };
-                })
-              ),
-            });
-          }
-        );
-      }
-    }
-
-    return base;
   }
 
   static async createNewVersion({
@@ -461,122 +415,23 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
   }
 
-  static async getMCPActionsForAgent(
-    auth: Authenticator,
-    {
-      agentConfigurationId,
-      limit,
-      cursor,
-    }: {
-      agentConfigurationId: string;
-      limit: number;
-      cursor?: string;
-    }
-  ): Promise<Result<GetMCPActionsResult, Error>> {
-    const owner = auth.getNonNullableWorkspace();
+  get sId(): string {
+    return AgentStepContentResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
 
-    const whereClause: WhereOptions<AgentStepContentModel> = {
-      workspaceId: owner.id,
-      type: "function_call",
-    };
-
-    if (cursor) {
-      const cursorDate = new Date(cursor);
-      if (isNaN(cursorDate.getTime())) {
-        return new Err(new Error("Invalid cursor format"));
-      }
-      whereClause.createdAt = {
-        [Op.lt]: cursorDate,
-      };
-    }
-
-    const includeClause: IncludeOptions[] = [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-        where: {
-          agentConfigurationId: agentConfigurationId,
-        },
-        include: [
-          {
-            model: Message,
-            as: "message",
-            required: true,
-            include: [
-              {
-                model: ConversationModel,
-                as: "conversation",
-                required: true,
-                where: {
-                  visibility: { [Op.ne]: "deleted" },
-                },
-              },
-            ],
-          },
-        ],
-      },
-      {
-        model: AgentMCPActionModel,
-        as: "agentMCPActions",
-        required: true,
-      },
-    ];
-
-    const [totalCount, stepContents] = await Promise.all([
-      this.model.count({
-        include: includeClause,
-        where: whereClause,
-      }),
-      this.model.findAll({
-        include: includeClause,
-        where: whereClause,
-        order: [["createdAt", "DESC"]],
-        limit: limit + 1,
-      }),
-    ]);
-
-    const hasMore = stepContents.length > limit;
-    const actualStepContents = hasMore
-      ? stepContents.slice(0, limit)
-      : stepContents;
-    const nextCursor = hasMore
-      ? actualStepContents[
-          actualStepContents.length - 1
-        ].createdAt.toISOString()
-      : null;
-
-    const actions = actualStepContents.flatMap((stepContent) =>
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      (stepContent.agentMCPActions || []).map((action) => {
-        assert(
-          stepContent.agentMessage?.message?.conversation,
-          "Missing required relations"
-        );
-        assert(
-          stepContent.value.type === "function_call",
-          "Step content must be a function call"
-        );
-
-        return {
-          sId: AgentMCPActionResource.modelIdToSId({
-            id: action.id,
-            workspaceId: action.workspaceId,
-          }),
-          createdAt: action.createdAt.toISOString(),
-          functionCallName: stepContent.value.value.name,
-          params: JSON.parse(stepContent.value.value.arguments),
-          status: action.status,
-          conversationId: stepContent.agentMessage.message.conversation.sId,
-          messageId: stepContent.agentMessage.message.sId,
-        };
-      })
-    );
-
-    return new Ok({
-      actions,
-      nextCursor,
-      totalCount,
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("agent_step_content", {
+      id,
+      workspaceId,
     });
   }
 }

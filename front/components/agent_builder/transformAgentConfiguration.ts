@@ -4,8 +4,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/components/agent_builder/types";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { UserType } from "@app/types";
-import type { LightAgentConfigurationType } from "@app/types";
+import type { LightAgentConfigurationType, UserType } from "@app/types";
 import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
 
 /**
@@ -30,16 +29,14 @@ export function transformAgentConfigurationToFormData(
       slackChannels: [], // Will be populated reactively if needed
       tags: agentConfiguration.tags,
     },
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    instructions: agentConfiguration.instructions || "",
+    instructions: agentConfiguration.instructions ?? "",
     generationSettings: {
       modelSettings: {
         modelId: agentConfiguration.model.modelId,
         providerId: agentConfiguration.model.providerId,
       },
       temperature: agentConfiguration.model.temperature,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
+      reasoningEffort: agentConfiguration.model.reasoningEffort ?? "none",
       responseFormat: agentConfiguration.model.responseFormat,
     },
     actions: [], // Will be populated reactively from useAgentConfigurationActions hook
@@ -53,7 +50,7 @@ export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
     agentSettings: {
       name: "",
       description: "",
-      pictureUrl: "",
+      pictureUrl: undefined,
       scope: "hidden",
       editors: [user],
       slackProvider: null,
@@ -131,6 +128,7 @@ export function convertActionsForFormData(
     description: action.description,
     type: "MCP",
     configuration: action.configuration,
+    secretName: action.configuration.secretName,
   }));
 }
 

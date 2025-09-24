@@ -6,6 +6,65 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffortIdType,
+} from "@app/types/assistant/assistant";
+import {
+  MODEL_IDS,
+  MODEL_PROVIDER_IDS,
+  REASONING_EFFORT_IDS,
+} from "@app/types/assistant/assistant";
+
+/**
+ * Type guard to validate reasoning model default values against schema constraints
+ * Returns a properly typed reasoning model object that matches the schema requirements
+ */
+function getValidatedReasoningModel(value: unknown): {
+  modelId: ModelIdType;
+  providerId: ModelProviderIdType;
+  temperature: number | null;
+  reasoningEffort: ReasoningEffortIdType | null;
+} | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const obj = value as Record<string, unknown>;
+
+  // Validate required fields
+  if (
+    typeof obj.modelId !== "string" ||
+    !MODEL_IDS.includes(obj.modelId as ModelIdType) ||
+    typeof obj.providerId !== "string" ||
+    !MODEL_PROVIDER_IDS.includes(obj.providerId as ModelProviderIdType)
+  ) {
+    return null;
+  }
+
+  // Validate optional temperature
+  const temperature =
+    typeof obj.temperature === "number" &&
+    obj.temperature >= 0 &&
+    obj.temperature <= 1
+      ? obj.temperature
+      : null;
+
+  // Validate optional reasoningEffort
+  const reasoningEffort =
+    typeof obj.reasoningEffort === "string" &&
+    REASONING_EFFORT_IDS.includes(obj.reasoningEffort as ReasoningEffortIdType)
+      ? (obj.reasoningEffort as ReasoningEffortIdType)
+      : null;
+
+  return {
+    modelId: obj.modelId as ModelIdType,
+    providerId: obj.providerId as ModelProviderIdType,
+    temperature,
+    reasoningEffort,
+  };
+}
 
 /**
  * Creates default configuration values for MCP server based on requirements
@@ -30,6 +89,7 @@ export function getDefaultConfiguration(
     dustAppConfiguration: null,
     jsonSchema: null,
     _jsonSchemaString: null,
+    secretName: null,
   };
 
   if (!toolsConfigurations) {
@@ -37,6 +97,9 @@ export function getDefaultConfiguration(
   }
 
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
+
+  const reasoningDefault = toolsConfigurations?.reasoningConfiguration?.default;
+  defaults.reasoningModel = getValidatedReasoningModel(reasoningDefault);
 
   // Set default values for all configuration types when available
   // This provides better UX by pre-filling known defaults while still allowing
@@ -58,12 +121,12 @@ export function getDefaultConfiguration(
   // Enum configurations: use explicit default or fallback to first option
   for (const [
     key,
-    { options: enumValues, default: defaultValue },
+    { options: enumOptions, default: defaultValue },
   ] of Object.entries(toolsConfigurations.enumConfigurations)) {
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
-    } else if (enumValues.length > 0) {
-      set(additionalConfig, key, enumValues[0]);
+    } else if (enumOptions.length > 0) {
+      set(additionalConfig, key, enumOptions[0].value);
     }
   }
 

@@ -1,38 +1,32 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo } from "react";
+import { useForm } from "react-hook-form";
+
+import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
 import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  InformationCircleIcon,
-  LockIcon,
-  MoreIcon,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useEffect, useState } from "react";
-
-import { DeleteMCPServerDialog } from "@app/components/actions/mcp/DeleteMCPServerDialog";
-import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
-import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
-import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+  getInfoFormDefaults,
+  getInfoFormSchema,
+} from "@app/components/actions/mcp/forms/infoFormSchema";
+import {
+  getSuccessTitle,
+  submitMCPServerDetailsForm,
+} from "@app/components/actions/mcp/forms/submitMCPServerDetailsForm";
+import { MCPServerDetailsSheet } from "@app/components/actions/mcp/MCPServerDetailsSheet";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useSendNotification } from "@app/hooks/useNotification";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types";
+import { isAdmin, sanitizeHeadersArray } from "@app/types";
 
-type MCPServerDetailsProps = {
+interface MCPServerDetailsProps {
   owner: WorkspaceType;
   onClose: () => void;
   mcpServerView: MCPServerViewType | null;
   isOpen: boolean;
-};
+}
 
 export function MCPServerDetails({
   owner,
@@ -40,104 +34,132 @@ export function MCPServerDetails({
   isOpen,
   onClose,
 }: MCPServerDetailsProps) {
-  const [selectedTab, setSelectedTab] = useState<string>("info");
+  const { spaces } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: !isAdmin(owner),
+  });
+  const systemSpace = useMemo(
+    () => spaces.find((s) => s.kind === "system"),
+    [spaces]
+  );
+  const { mutateMCPServerViews } = useMCPServerViews({
+    owner,
+    space: systemSpace,
+    disabled: true,
+  });
+  const { mutateMCPServers } = useMCPServers({ owner, disabled: true });
+  const sendNotification = useSendNotification(true);
 
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedTab("info");
+  const defaults = useMemo<InfoFormValues>(() => {
+    if (mcpServerView) {
+      return getInfoFormDefaults(mcpServerView);
     }
-  }, [isOpen]);
+    return { name: "", description: "" };
+  }, [mcpServerView]);
 
-  const [mcpServerToDelete, setMCPServerToDelete] = useState<
-    MCPServerType | undefined
-  >();
+  const form = useForm<InfoFormValues>({
+    values: defaults,
+    mode: "onChange",
+    shouldUnregister: true,
+    resolver: mcpServerView
+      ? zodResolver(getInfoFormSchema(mcpServerView))
+      : undefined,
+  });
+
+  const onSave = async (): Promise<boolean> => {
+    let success = false;
+    await form.handleSubmit(
+      async (values) => {
+        if (!mcpServerView) {
+          success = false;
+          return;
+        }
+
+        const mutateCaches = async () => {
+          await mutateMCPServerViews();
+          await mutateMCPServers();
+        };
+
+        const result = await submitMCPServerDetailsForm({
+          owner,
+          mcpServerView,
+          initialValues: defaults,
+          values,
+          mutate: mutateCaches,
+        });
+
+        if (result.isOk()) {
+          sendNotification({
+            type: "success",
+            title: getSuccessTitle(mcpServerView),
+            description: "Your changes have been saved.",
+          });
+          // Normalize values before resetting so the form is clean
+          const normalizedValues: InfoFormValues = {
+            ...values,
+            // Ensure headers are sanitized so defaults match saved state
+            customHeaders: sanitizeHeadersArray(values.customHeaders ?? []),
+          };
+          form.reset(normalizedValues);
+          success = true;
+        } else {
+          sendNotification({
+            type: "error",
+            title: "Save failed",
+            description: result.error.message,
+          });
+          datadogLogger.error(
+            {
+              errorMessage: result.error.message,
+              serverViewId: mcpServerView.sId,
+            },
+            "[MCP Details] - Submit error"
+          );
+          success = false;
+        }
+      },
+      async (errors) => {
+        // Bubble up validation errors with clear context and focus
+        const keys = Object.keys(errors);
+        const firstErrorKey = keys[0] as keyof typeof errors | undefined;
+        if (firstErrorKey) {
+          form.setFocus(firstErrorKey as any);
+        }
+        const details =
+          keys.length > 0 ? `Invalid: ${keys.join(", ")}` : undefined;
+        datadogLogger.error(
+          {
+            fields: keys,
+            serverViewId: mcpServerView?.sId,
+          },
+          "[MCP Details] - Form validation error"
+        );
+        sendNotification({
+          type: "error",
+          title: "Validation error",
+          description:
+            details ?? "Please fix the highlighted fields and try again.",
+        });
+        success = false;
+      }
+    )();
+    return success;
+  };
+
+  const onCancel = () => {
+    form.reset(defaults);
+  };
 
   return (
-    <>
-      {mcpServerToDelete && (
-        <DeleteMCPServerDialog
-          owner={owner}
-          mcpServer={mcpServerToDelete}
-          isOpen={mcpServerToDelete !== undefined}
-          onClose={(deleted) => {
-            setMCPServerToDelete(undefined);
-            if (deleted) {
-              onClose();
-            }
-          }}
-        />
-      )}
-
-      <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent size="lg">
-          <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
-            <VisuallyHidden>
-              <SheetTitle />
-            </VisuallyHidden>
-            {mcpServerView && <MCPActionHeader mcpServerView={mcpServerView} />}
-
-            <Tabs value={selectedTab}>
-              <TabsList border={false}>
-                <TabsTrigger
-                  value="info"
-                  label="Info"
-                  icon={InformationCircleIcon}
-                  onClick={() => setSelectedTab("info")}
-                />
-                {mcpServerView?.server.availability === "manual" && (
-                  <TabsTrigger
-                    value="sharing"
-                    label="Sharing"
-                    icon={LockIcon}
-                    onClick={() => setSelectedTab("sharing")}
-                  />
-                )}
-
-                {mcpServerView?.server.availability === "manual" && (
-                  <>
-                    <div className="grow" />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button icon={MoreIcon} variant="outline" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem
-                          key="remove-mcp-server"
-                          icon={TrashIcon}
-                          label="Remove"
-                          variant="warning"
-                          onClick={() => {
-                            setMCPServerToDelete(mcpServerView.server);
-                          }}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
-                )}
-              </TabsList>
-            </Tabs>
-          </SheetHeader>
-
-          <SheetContainer>
-            {mcpServerView && (
-              <>
-                {selectedTab === "info" && (
-                  <MCPServerDetailsInfo
-                    mcpServerView={mcpServerView}
-                    owner={owner}
-                  />
-                )}
-                {selectedTab === "sharing" && (
-                  <MCPServerDetailsSharing
-                    mcpServer={mcpServerView.server}
-                    owner={owner}
-                  />
-                )}
-              </>
-            )}
-          </SheetContainer>
-        </SheetContent>
-      </Sheet>
-    </>
+    <FormProvider form={form}>
+      <MCPServerDetailsSheet
+        owner={owner}
+        mcpServerView={mcpServerView}
+        isOpen={isOpen}
+        onClose={onClose}
+        onSave={onSave}
+        onCancel={onCancel}
+      />
+    </FormProvider>
   );
 }

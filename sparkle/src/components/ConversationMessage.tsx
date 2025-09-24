@@ -53,20 +53,17 @@ const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
   },
 });
 
-const buttonsVariants = cva(
-  "s-invisible s-flex s-justify-start s-gap-2 s-pt-2 group-hover/message:s-visible",
-  {
-    variants: {
-      type: {
-        user: "s-justify-end",
-        agent: "s-justify-start",
-      },
+const buttonsVariants = cva("s-flex s-justify-start s-gap-2 s-pt-2", {
+  variants: {
+    type: {
+      user: "s-justify-end",
+      agent: "s-justify-start",
     },
-    defaultVariants: {
-      type: "agent",
-    },
-  }
-);
+  },
+  defaultVariants: {
+    type: "agent",
+  },
+});
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
@@ -222,8 +219,6 @@ export const ConversationMessageHeader = React.forwardRef<
           >
             {renderName(name)}
             {infoChip}
-          </div>
-          <div>
             <span className="s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
               {timestamp}
             </span>

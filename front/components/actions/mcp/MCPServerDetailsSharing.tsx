@@ -11,16 +11,11 @@ import { useState } from "react";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useAddMCPServerToSpace,
+  useMCPServers,
   useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_servers";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-
-type MCPServerDetailsSharingProps = {
-  mcpServer: MCPServerType;
-  owner: LightWorkspaceType;
-};
 
 type RowData = {
   name: string;
@@ -35,7 +30,7 @@ const ActionCell = ({
   space,
   owner,
 }: {
-  mcpServer: MCPServerType;
+  mcpServer?: MCPServerType;
   mcpServerView?: MCPServerViewType;
   space: SpaceType;
   owner: LightWorkspaceType;
@@ -53,7 +48,9 @@ const ActionCell = ({
           if (mcpServerView) {
             await removeFromSpace(mcpServerView, space);
           } else {
-            await addToSpace(mcpServer, space);
+            if (mcpServer) {
+              await addToSpace(mcpServer, space);
+            }
           }
           setLoading(false);
         }}
@@ -61,6 +58,11 @@ const ActionCell = ({
     </DataTable.CellContent>
   );
 };
+
+interface MCPServerDetailsSharingProps {
+  mcpServer?: MCPServerType;
+  owner: LightWorkspaceType;
+}
 
 export function MCPServerDetailsSharing({
   mcpServer,
@@ -73,15 +75,14 @@ export function MCPServerDetailsSharing({
   const { mcpServers } = useMCPServers({
     owner,
   });
-  const mcpServerWithViews = mcpServers.find((s) => s.sId === mcpServer.sId);
+  const mcpServerWithViews = mcpServers.find((s) => s.sId === mcpServer?.sId);
   const [loading, setLoading] = useState(false);
 
   const views =
     mcpServerWithViews?.views.map((v) => ({
       ...v,
       space: spaces.find((space) => space.sId === v.spaceId),
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    })) || [];
+    })) ?? [];
 
   const globalView = views.find((view) => view.space?.kind === "global");
   const globalSpace = spaces.find((space) => space.kind === "global");
@@ -140,7 +141,9 @@ export function MCPServerDetailsSharing({
                 if (!isRestricted) {
                   await removeFromSpace(globalView, globalSpace);
                 } else {
-                  await addToSpace(mcpServer, globalSpace);
+                  if (mcpServer) {
+                    await addToSpace(mcpServer, globalSpace);
+                  }
                 }
                 setLoading(false);
               }
@@ -166,6 +169,7 @@ export function MCPServerDetailsSharing({
             <SearchInput
               name="filter"
               placeholder="Search a space"
+              className="w-full"
               value={filter}
               onChange={(e) => setFilter(e)}
             />

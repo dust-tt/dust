@@ -29,6 +29,7 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -38,6 +39,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { normalizeArrays } from "@app/lib/utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -985,7 +987,24 @@ export async function restoreAgentConfiguration(
       agentConfigurationId
     );
     for (const trigger of triggers) {
-      const enableResult = await trigger.enable(auth);
+      const editor = await UserResource.fetchByModelId(trigger.editor);
+      if (!editor) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId,
+            triggerId: trigger.sId,
+          },
+          `Could not find editor ${trigger.editor} for trigger ${trigger.sId} when restoring agent ${agentConfigurationId}`
+        );
+        continue;
+      }
+
+      const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        editor.sId,
+        auth.getNonNullableWorkspace().sId
+      );
+      const enableResult = await trigger.enable(editorAuth);
       if (enableResult.isErr()) {
         logger.error(
           {
@@ -1007,11 +1026,21 @@ export async function restoreAgentConfiguration(
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
+  auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  await GroupAgentModel.destroy({
+    where: {
+      agentConfigurationId: agentConfiguration.id,
+      workspaceId,
+    },
+  });
   await AgentConfiguration.destroy({
     where: {
       id: agentConfiguration.id,
+      workspaceId,
     },
   });
 }

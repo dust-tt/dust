@@ -27,6 +27,7 @@ export const getAdminsForWorkspacesPlugin = createPlugin({
           { label: "First Admin Only", value: FIRST_ADMIN_ONLY },
           { label: "All Admins", value: ALL_ADMINS },
         ],
+        multiple: false,
       },
     },
   },
@@ -54,7 +55,7 @@ export const getAdminsForWorkspacesPlugin = createPlugin({
       });
 
       const toAdd =
-        args.returnType === FIRST_ADMIN_ONLY
+        args.returnType[0] === FIRST_ADMIN_ONLY
           ? memberships
               .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
               .slice(0, 1)

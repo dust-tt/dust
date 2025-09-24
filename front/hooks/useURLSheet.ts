@@ -13,7 +13,6 @@ export function useURLSheet(paramName: string) {
 
   const onOpenChange = useCallback(
     (open: boolean) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [paramName]: _, ...restQuery } = router.query;
       void router.push(
         {

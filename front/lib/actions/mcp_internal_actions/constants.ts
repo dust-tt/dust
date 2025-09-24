@@ -2,12 +2,13 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  MAX_MCP_REQUEST_TIMEOUT_MS,
+  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { InternalAllowedIconType } from "@app/lib/actions/mcp_icons";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
@@ -63,6 +64,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_management",
   "agent_memory",
   "agent_router",
+  "confluence",
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
@@ -84,6 +86,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "openai_usage",
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
@@ -94,6 +97,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "run_dust_app",
   "salesforce",
   "slack",
+  "slack_bot",
   "think",
   "todo_list",
   "toolsets",
@@ -185,11 +189,14 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
+  // TODO(seb): remove soonish
   [TABLE_QUERY_SERVER_NAME]: {
     id: 4,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: () => {
+      return true;
+    },
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
@@ -353,7 +360,7 @@ The directive should be used to display a clickable version of the agent name in
   run_dust_app: {
     id: 10,
     availability: "auto",
-    allowMultipleInstances: false,
+    allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
     tools_stakes: undefined,
@@ -614,6 +621,8 @@ The directive should be used to display a clickable version of the agent name in
       delete_worksheet: "low",
       format_cells: "low",
       copy_sheet: "low",
+      rename_worksheet: "low",
+      move_worksheet: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -897,10 +906,8 @@ The directive should be used to display a clickable version of the agent name in
     id: 27,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("google_drive_tool");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: {
       list_drives: "never_ask",
       search_files: "never_ask",
@@ -962,7 +969,7 @@ The directive should be used to display a clickable version of the agent name in
       version: "0.1.0",
       description: "Handoff the query to the deep research agent.",
       authorization: null,
-      icon: "ActionBrainIcon",
+      icon: "ActionAtomIcon",
       documentationUrl: null,
       instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
     },
@@ -983,6 +990,98 @@ The directive should be used to display a clickable version of the agent name in
       icon: "ActionGlobeAltIcon",
       authorization: null,
       documentationUrl: null,
+      instructions: null,
+    },
+  },
+  slack_bot: {
+    id: 31,
+    availability: "manual" as const,
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("slack_bot_mcp");
+    },
+    isPreview: false,
+    tools_stakes: {
+      list_public_channels: "never_ask" as const,
+      list_users: "never_ask" as const,
+      get_user: "never_ask" as const,
+      read_channel_history: "never_ask" as const,
+      read_thread_messages: "never_ask" as const,
+
+      post_message: "low" as const,
+      add_reaction: "low" as const,
+      remove_reaction: "low" as const,
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "slack_bot",
+      version: "1.0.0",
+      description:
+        "Slack tools using workspace bot credentials. Messages and actions will appear as coming from the Dust Slack bot rather than your personal account.",
+      authorization: {
+        provider: "slack" as const,
+        supported_use_cases: ["platform_actions"] as const,
+      },
+      icon: "SlackLogo",
+      documentationUrl: null,
+      instructions:
+        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message." +
+        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+    },
+  },
+  openai_usage: {
+    id: 32,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("openai_usage_mcp");
+    },
+    tools_stakes: {
+      get_completions_usage: "low",
+      get_organization_costs: "low",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "openai_usage",
+      version: "1.0.0",
+      description:
+        "Direct access to OpenAI APIs for tracking API consumption and costs. Requires OpenAI Admin API key configured as a secret.",
+      authorization: null,
+      icon: "OpenaiLogo",
+      documentationUrl: null,
+      instructions: null,
+      requiresSecret: true,
+    },
+  },
+  confluence: {
+    id: 33,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("confluence_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      // Read operations - never ask (no side effects)
+      get_page: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "confluence",
+      version: "1.0.0",
+      description:
+        "Basic Confluence integration for retrieving page information using the Confluence REST API.",
+      authorization: {
+        provider: "confluence_tools" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ConfluenceLogo",
+      documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
       instructions: null,
     },
   },
@@ -1013,7 +1112,7 @@ The directive should be used to display a clickable version of the agent name in
     isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: MAX_MCP_REQUEST_TIMEOUT_MS,
+    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",
@@ -1110,15 +1209,12 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  query_tables_v2: {
+  [TABLE_QUERY_V2_SERVER_NAME]: {
     id: 1009,
     availability: "auto",
     allowMultipleInstances: false,
-    // We'll eventually switch everyone to this new tables query toolset.
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("exploded_tables_query");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1382,6 +1478,12 @@ export const getInternalMCPServerNameFromSId = (
   }
 
   return null;
+};
+
+export const getInternalMCPServerIconByName = (
+  name: InternalMCPServerNameType
+): InternalAllowedIconType => {
+  return INTERNAL_MCP_SERVERS[name].serverInfo.icon ?? undefined;
 };
 
 export const isInternalMCPServerName = (

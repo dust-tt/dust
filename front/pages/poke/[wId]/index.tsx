@@ -10,6 +10,10 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
 import keyBy from "lodash/keyBy";
@@ -28,7 +32,10 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PluginRunsDataTable } from "@app/components/poke/plugins/table";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
-import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
+import {
+  ActiveSubscriptionTable,
+  PlanLimitationsTable,
+} from "@app/components/poke/subscriptions/table";
 import { TrackerDataTable } from "@app/components/poke/trackers/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
@@ -162,98 +169,151 @@ const WorkspacePage = ({
   const agentsRetention = dataRetention?.agents ?? {};
 
   return (
-    <>
-      <div className="ml-8 p-6">
-        <div className="flex justify-between gap-3">
-          <div className="flex-grow">
-            <span className="text-2xl font-bold">{owner.name}</span>
-            <div className="flex gap-4 pt-2">
-              <Button
-                href={`/poke/${owner.sId}/memberships`}
-                label="View members"
-                variant="outline"
-              />
-              <DustAppLogsModal
-                owner={owner}
-                registry={registry}
-                baseUrl={baseUrl}
-              />
-            </div>
-          </div>
-          <div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  isSelect
-                  label={`Segmentation: ${owner.segmentation ?? "none"}`}
-                  variant="outline"
-                  size="sm"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {[null, "interesting"].map((segment) => (
-                  <DropdownMenuItem
-                    label={segment ?? "none"}
-                    key={segment ?? "all"}
-                    onClick={() => {
-                      void onWorkspaceUpdate(
-                        segment as WorkspaceSegmentationType
-                      );
-                    }}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+    <div className="ml-8 p-6">
+      <div className="flex justify-between gap-3">
+        <div className="flex-grow">
+          <span className="text-2xl font-bold">{owner.name}</span>
+          <div className="flex gap-4 pt-2">
+            <Button
+              href={`/poke/${owner.sId}/memberships`}
+              label="View members"
+              variant="outline"
+            />
+            <DustAppLogsModal
+              owner={owner}
+              registry={registry}
+              baseUrl={baseUrl}
+            />
           </div>
         </div>
-
-        <div className="flex-col justify-center">
-          <div className="flex flex-col space-y-8">
-            <div className="mt-4 flex flex-col space-x-3 lg:flex-row">
-              <WorkspaceInfoTable
-                owner={owner}
-                workspaceVerifiedDomains={workspaceVerifiedDomains}
-                workspaceCreationDay={workspaceCreationDay}
-                extensionConfig={extensionConfig}
-                workspaceRetention={workspaceRetention}
-                workosEnvironmentId={workosEnvironmentId}
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                isSelect
+                label={`Segmentation: ${owner.segmentation ?? "none"}`}
+                variant="outline"
+                size="sm"
               />
-              <div className="flex flex-grow flex-col gap-4">
-                <PluginList
-                  pluginResourceTarget={{
-                    resourceId: owner.sId,
-                    resourceType: "workspaces",
-                    workspace: owner,
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {[null, "interesting"].map((segment) => (
+                <DropdownMenuItem
+                  label={segment ?? "none"}
+                  key={segment ?? "all"}
+                  onClick={() => {
+                    void onWorkspaceUpdate(
+                      segment as WorkspaceSegmentationType
+                    );
                   }}
                 />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <div className="flex-col justify-center">
+        <div className="flex flex-col space-y-8">
+          <div className="mt-4 flex flex-row items-stretch space-x-3">
+            <Tabs defaultValue="workspace" className="min-w-[512px]">
+              <TabsList>
+                <TabsTrigger value="workspace" label="Workspace" />
+                <TabsTrigger value="subscriptions" label="Subscriptions" />
+                <TabsTrigger value="planlimitations" label="Plan Limitations" />
+              </TabsList>
+              <TabsContent value="workspace">
+                <WorkspaceInfoTable
+                  owner={owner}
+                  workspaceVerifiedDomains={workspaceVerifiedDomains}
+                  workspaceCreationDay={workspaceCreationDay}
+                  extensionConfig={extensionConfig}
+                  workspaceRetention={workspaceRetention}
+                  workosEnvironmentId={workosEnvironmentId}
+                />
+              </TabsContent>
+              <TabsContent value="subscriptions">
                 <ActiveSubscriptionTable
                   owner={owner}
                   subscription={activeSubscription}
                   subscriptions={subscriptions}
                 />
-              </div>
+              </TabsContent>
+              <TabsContent value="planlimitations">
+                <PlanLimitationsTable subscription={activeSubscription} />
+              </TabsContent>
+            </Tabs>
+
+            <div className="flex flex-grow flex-col">
+              <PluginList
+                pluginResourceTarget={{
+                  resourceId: owner.sId,
+                  resourceType: "workspaces",
+                  workspace: owner,
+                }}
+              />
             </div>
-            <PluginRunsDataTable owner={owner} />
-            <DataSourceDataTable owner={owner} />
-            <DataSourceViewsDataTable owner={owner} />
-            <MCPServerViewsDataTable owner={owner} />
-            <SpaceDataTable owner={owner} />
-            <GroupDataTable owner={owner} />
-            <AssistantsDataTable
-              owner={owner}
-              agentsRetention={agentsRetention}
-            />
-            <AppDataTable owner={owner} />
-            <FeatureFlagsDataTable
-              owner={owner}
-              whitelistableFeatures={whitelistableFeatures}
-            />
-            <TrackerDataTable owner={owner} />
-            <TriggerDataTable owner={owner} />
           </div>
+          <Tabs defaultValue="datasources" className="min-h-[1024px] w-full">
+            <TabsList>
+              <TabsTrigger value="datasources" label="Data Sources" />
+              <TabsTrigger value="datasourceviews" label="Data Source Views" />
+              <TabsTrigger value="mcpviews" label="MCP Server Views" />
+              <TabsTrigger value="spaces" label="Spaces" />
+              <TabsTrigger value="groups" label="Groups" />
+              <TabsTrigger value="agents" label="Agents" />
+              <TabsTrigger value="apps" label="Apps" />
+              <TabsTrigger value="featureflags" label="Feature Flags" />
+              <TabsTrigger value="trackers" label="Trackers" />
+              <TabsTrigger value="triggers" label="Triggers" />
+              <TabsTrigger value="plugins" label="Plugins Logs" />
+            </TabsList>
+
+            <TabsContent value="datasources">
+              <DataSourceDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="datasourceviews">
+              <DataSourceViewsDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="mcpviews">
+              <MCPServerViewsDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="spaces">
+              <SpaceDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="groups">
+              <GroupDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="agents">
+              <AssistantsDataTable
+                owner={owner}
+                agentsRetention={agentsRetention}
+                loadOnInit
+              />
+            </TabsContent>
+            <TabsContent value="apps">
+              <AppDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="featureflags">
+              <FeatureFlagsDataTable
+                owner={owner}
+                whitelistableFeatures={whitelistableFeatures}
+                loadOnInit
+              />
+            </TabsContent>
+            <TabsContent value="trackers">
+              <TrackerDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="triggers">
+              <TriggerDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="plugins">
+              <PluginRunsDataTable owner={owner} loadOnInit />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

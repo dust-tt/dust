@@ -157,6 +157,11 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
   ): Promise<Result<MCPServerConnectionResource, DustError>> {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
+    const user = auth.user();
+    if (connectionType === "personal" && !user) {
+      throw new Error("Personal tools require the user to be authenticated.");
+    }
+
     const connections = await this.baseFetch(auth, {
       where: {
         serverType,

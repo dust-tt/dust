@@ -28,9 +28,18 @@ import { statsDClient } from "@connectors/logger/withlogging";
 import type { ProviderVisibility } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import { isValidDate, safeSubstring, stripNullBytes } from "@connectors/types";
-import { withRetries } from "@connectors/types";
+import { withRetries, WithRetriesError } from "@connectors/types";
 
 const MAX_CSV_SIZE = 50 * 1024 * 1024;
+
+function isTimeoutError(e: unknown): boolean {
+  return (
+    axios.isAxiosError(e) &&
+    (e.code === "ECONNABORTED" ||
+      (typeof e.message === "string" &&
+        e.message.toLowerCase().includes("timeout")))
+  );
+}
 
 const axiosWithTimeout = axios.create({
   timeout: 60000,
@@ -520,6 +529,9 @@ export async function renderPrefixSection({
   };
 }
 
+// At 5mn, likeliness of connection close increases significantly. The timeout is set at 4mn30.
+const TOKENIZE_TIMEOUT_MS = 270000;
+
 async function tokenize(text: string, ds: DataSourceConfig) {
   if (!text) {
     return [];
@@ -530,10 +542,14 @@ async function tokenize(text: string, ds: DataSourceConfig) {
     return [];
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TOKENIZE_TIMEOUT_MS);
   const tokensRes = await getDustAPI(ds).tokenize(
     sanitizedText,
-    ds.dataSourceId
+    ds.dataSourceId,
+    { signal: controller.signal }
   );
+  clearTimeout(timeoutId);
   if (tokensRes.isErr()) {
     logger.error(
       {
@@ -934,6 +950,10 @@ export async function upsertDataSourceRemoteTable({
     throw new Error("Error upserting table to Dust.");
   }
 
+  if (!dustRequestResult) {
+    throw new Error("Upload attempt finished without a response");
+  }
+
   const elapsed = new Date().getTime() - now.getTime();
 
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
@@ -1102,13 +1122,23 @@ export async function upsertDataSourceTableFromCsv({
     validateStatus: null,
   };
 
-  let dustRequestResult: AxiosResponse;
+  let dustRequestResult: AxiosResponse | undefined;
+  let currentTimeoutMs = 60000;
   try {
-    dustRequestResult = await axiosWithTimeout.post(
-      endpoint,
-      dustRequestPayload,
-      dustRequestConfig
-    );
+    dustRequestResult = await withRetries(
+      localLogger,
+      async () => {
+        currentTimeoutMs += 30000;
+        return axiosWithTimeout.post(endpoint, dustRequestPayload, {
+          ...dustRequestConfig,
+          timeout: currentTimeoutMs,
+        });
+      },
+      {
+        retries: 3,
+        shouldRetry: (e) => isTimeoutError(e),
+      }
+    )();
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
     statsDClient.increment(
@@ -1122,28 +1152,31 @@ export async function upsertDataSourceTableFromCsv({
       statsDTags
     );
     if (axios.isAxiosError(e)) {
-      const sanitizedError = {
-        ...e,
-        config: { ...e.config, data: undefined },
-      };
+      const sanitizedError = { ...e, config: { ...e.config, data: undefined } };
       localLogger.error(
         {
           error: sanitizedError,
-          payload: {
-            ...dustRequestPayload,
-            csv: tableCsv.substring(0, 100),
-          },
+          payload: { ...dustRequestPayload, csv: tableCsv.substring(0, 100) },
         },
         "Axios error uploading table to Dust."
+      );
+    } else if (
+      e instanceof WithRetriesError &&
+      e.errors.every((err) => isTimeoutError(err.error))
+    ) {
+      localLogger.warn(
+        { error: e.message },
+        "Upload to Dust failed after retries."
+      );
+      throw new TablesError(
+        "invalid_csv",
+        "Table validation timed out while uploading CSV"
       );
     } else if (e instanceof Error) {
       localLogger.error(
         {
           error: e.message,
-          payload: {
-            ...dustRequestPayload,
-            csv: tableCsv.substring(0, 100),
-          },
+          payload: { ...dustRequestPayload, csv: tableCsv.substring(0, 100) },
         },
         "Error uploading table to Dust."
       );

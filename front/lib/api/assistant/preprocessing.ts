@@ -1,3 +1,5 @@
+import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import {
   getTextContentFromMessage,
   getTextRepresentationFromMessages,
@@ -29,6 +31,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
   ErrorContentType,
@@ -178,20 +181,62 @@ export async function renderConversationForModel(
         }
       );
 
-      let systemContext = "";
+      const metadataItems: string[] = [];
+
+      const identityTokens: string[] = [];
+      if (m.context.fullName) {
+        identityTokens.push(m.context.fullName);
+      }
+      if (m.context.username) {
+        const usernameToken = m.context.fullName
+          ? `(@${m.context.username})`
+          : `@${m.context.username}`;
+        identityTokens.push(usernameToken);
+      }
+      if (m.context.email) {
+        identityTokens.push(`<${m.context.email}>`);
+      }
+      if (identityTokens.length > 0) {
+        metadataItems.push(`- Sender: ${identityTokens.join(" ")}`);
+      }
+
+      const timeZone =
+        m.context.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const formatWithTimeZone = (date: Date) =>
+        date.toLocaleString(undefined, {
+          timeZone,
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          timeZoneName: "short",
+          hour12: false,
+        });
+
+      if (m.created) {
+        metadataItems.push(
+          `- Sent at: ${formatWithTimeZone(new Date(m.created))}`
+        );
+      }
+
       if (m.context.origin === "triggered") {
-        const items = [];
-        if (m.created) {
-          items.push(`- Current date: ${new Date(m.created).toISOString()}`);
-        }
+        metadataItems.push("- Source: Scheduled trigger");
         if (m.context.lastTriggerRunAt) {
-          items.push(
-            `- Last scheduled run: ${m.context.lastTriggerRunAt.toISOString()}`
+          metadataItems.push(
+            `- Previous scheduled run: ${formatWithTimeZone(
+              new Date(m.context.lastTriggerRunAt)
+            )}`
           );
         }
-        if (items.length > 0) {
-          systemContext = `<dust_system>\n${items.join("\n")}\n</dust_system>\n\n`;
-        }
+      } else if (m.context.origin) {
+        metadataItems.push(`- Source: ${m.context.origin}`);
+      }
+
+      let systemContext = "";
+      if (metadataItems.length > 0) {
+        systemContext = `<dust_system>\n${metadataItems.join("\n")}\n</dust_system>\n\n`;
       }
 
       messages.push({
@@ -342,12 +387,63 @@ export async function renderConversationForModel(
 }
 
 type Step = {
-  contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
-  actions: Array<{
+  contents: Exclude<AgentContentItemType, ErrorContentType>[];
+  actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
-  }>;
+  }[];
 };
+
+function renderActionForMultiActionsModel(
+  action: AgentMCPActionWithOutputType,
+  model: ModelConfigurationType
+): FunctionMessageTypeModel {
+  const totalTextLength =
+    action.output?.reduce(
+      (acc, curr) => acc + (curr.type === "text" ? curr.text?.length ?? 0 : 0),
+      0
+    ) ?? 0;
+
+  if (totalTextLength > model.contextSize * 0.9) {
+    return {
+      role: "function" as const,
+      name: action.functionCallName,
+      function_call_id: action.functionCallId,
+      content:
+        "The tool returned too much content. The response cannot be processed.",
+    };
+  }
+
+  if (action.status === "denied") {
+    return {
+      role: "function" as const,
+      name: action.functionCallName,
+      function_call_id: action.functionCallId,
+      content:
+        "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
+    };
+  }
+
+  const outputItems = removeNulls(
+    action.output?.map(rewriteContentForModel) ?? []
+  );
+
+  let output;
+  if (outputItems.length === 0) {
+    output = "Successfully executed action, no output.";
+  } else if (outputItems.every((item) => isTextContent(item))) {
+    output = outputItems.map((item) => item.text).join("\n");
+  } else {
+    output = JSON.stringify(outputItems);
+  }
+
+  return {
+    role: "function" as const,
+    name: action.functionCallName,
+    function_call_id: action.functionCallId,
+    content: output,
+  };
+}
 
 async function getSteps(
   auth: Authenticator,
@@ -384,10 +480,12 @@ async function getSteps(
     // All these calls are not async, so we're not doing a Promise.all for now but might need to
     // be reconsidered in the future.
     stepByStepIndex[stepIndex].actions.push({
-      call: action.renderForFunctionCall(),
-      result: await action.renderForMultiActionsModel(auth, {
-        model,
-      }),
+      call: {
+        id: action.functionCallId,
+        name: action.functionCallName,
+        arguments: JSON.stringify(action.params),
+      },
+      result: renderActionForMultiActionsModel(action, model),
     });
   }
 

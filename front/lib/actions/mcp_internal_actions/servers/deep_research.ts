@@ -73,7 +73,7 @@ const createServer = (
         });
 
         if (convRes.isErr()) {
-          return new Err(new MCPError(convRes.error.message));
+          return new Err(convRes.error);
         }
 
         const response = makeMCPToolExit({

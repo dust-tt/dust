@@ -5,6 +5,7 @@ import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/co
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence/server";
 import { default as contentCreationServer } from "@app/lib/actions/mcp_internal_actions/servers/content_creation";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
@@ -26,6 +27,7 @@ import { default as jitToolStringSettingDebuggerServer } from "@app/lib/actions/
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday/server";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
+import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
@@ -36,6 +38,7 @@ import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
+import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
@@ -110,7 +113,7 @@ export async function getInternalMCPServer(
     case "think":
       return thinkServer();
     case "web_search_&_browse":
-      return webtoolsServer(agentLoopContext);
+      return webtoolsServer(auth, agentLoopContext);
     case "web_search_&_browse_with_summary":
       return webtoolsEdgeServer(auth, agentLoopContext);
     case "search":
@@ -125,6 +128,8 @@ export async function getInternalMCPServer(
       return missingActionCatcherServer(auth, agentLoopContext);
     case "notion":
       return notionServer(auth, agentLoopContext);
+    case "openai_usage":
+      return openaiUsageServer(auth, agentLoopContext);
     case "include_data":
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":
@@ -157,8 +162,12 @@ export async function getInternalMCPServer(
       return mondayServer();
     case "slack":
       return slackServer(auth, mcpServerId, agentLoopContext);
+    case "slack_bot":
+      return slackBotServer(auth, mcpServerId, agentLoopContext);
     case "agent_memory":
       return agentMemoryServer(auth, agentLoopContext);
+    case "confluence":
+      return confluenceServer();
     case "outlook":
       return outlookServer();
     case "outlook_calendar":

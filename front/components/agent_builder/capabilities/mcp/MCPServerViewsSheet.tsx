@@ -21,8 +21,8 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type {
   AgentBuilderFormData,
   MCPFormData,
+  MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { MCPServerConfigurationType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
@@ -53,7 +53,9 @@ import { AdditionalConfigurationSection } from "@app/components/agent_builder/ca
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
+import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
+import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
@@ -66,6 +68,7 @@ import {
   getDefaultMCPAction,
   TOOLS_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -73,9 +76,20 @@ import {
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { DEFAULT_REASONING_CONFIGURATION } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
+import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
+
+const TOP_MCP_SERVER_VIEWS = [
+  "web_search_&_browse",
+  "image_generation",
+  "agent_memory",
+  "deep_research",
+  "content_creation",
+  "slack",
+  "gmail",
+  "google_calendar",
+];
 
 export type SelectedTool =
   | {
@@ -122,7 +136,7 @@ interface MCPServerViewsSheetProps {
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
-  actions: AgentBuilderAction[];
+  selectedActions: AgentBuilderAction[];
   getAgentInstructions: () => string;
 }
 
@@ -132,16 +146,16 @@ export function MCPServerViewsSheet({
   mode,
   onModeChange,
   onActionUpdate,
-  actions,
+  selectedActions,
   getAgentInstructions,
 }: MCPServerViewsSheetProps) {
+  const confirm = React.useContext(ConfirmContext);
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
   const {
     mcpServerViews: allMcpServerViews,
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
+    mcpServerViewsWithoutKnowledge,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
@@ -165,42 +179,45 @@ export function MCPServerViewsSheet({
 
   const hasReasoningModel = reasoningModels.length > 0;
 
-  // Utility function to check if a server view should be filtered out based on allowMultipleInstances
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
-      // For servers that don't allow multiple instances, check if any action is using this server type
-      if (!view.server.allowMultipleInstances) {
-        const serverAlreadyUsed = actions.some((action) => {
-          // Check if this is an MCP action with the same server ID
-          return (
-            action.type === "MCP" &&
-            action.configuration &&
-            action.configuration.mcpServerViewId === view.sId
+      // Build the set of server.sId already selected by actions (via their selected view).
+      const selectedServerIds = new Set<string>();
+      for (const action of actions) {
+        if (
+          action.type === "MCP" &&
+          action.configuration &&
+          action.configuration.mcpServerViewId
+        ) {
+          const selectedView = allMcpServerViews.find(
+            (mcpServerView) =>
+              mcpServerView.sId === action.configuration.mcpServerViewId
           );
-        });
-
-        if (serverAlreadyUsed) {
-          return true;
+          if (selectedView) {
+            selectedServerIds.add(selectedView.server.sId);
+          }
         }
       }
-
-      // Legacy check for backward compatibility - tools can still be filtered by name/configurability
-      const selectedAction = actions.find(
-        (action) => action.name === view.server.name
-      );
-
-      if (selectedAction) {
-        return !selectedAction.configurable; // Should filter out if not configurable
-      }
-
-      return false;
+      return selectedServerIds.has(view.server.sId);
     },
-    []
+    [allMcpServerViews]
   );
 
-  const selectableDefaultMCPServerViews = useMemo(() => {
-    const filteredList = defaultMCPServerViews.filter(
-      (view) => !shouldFilterServerView(view, actions)
+  const topMCPServerViews = useMemo(() => {
+    return mcpServerViewsWithoutKnowledge.filter((view) =>
+      TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
+  }, [mcpServerViewsWithoutKnowledge]);
+
+  const nonTopMCPServerViews = useMemo(() => {
+    return mcpServerViewsWithoutKnowledge.filter(
+      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
+  }, [mcpServerViewsWithoutKnowledge]);
+
+  const selectableTopMCPServerViews = useMemo(() => {
+    const filteredList = topMCPServerViews.filter(
+      (view) => !shouldFilterServerView(view, selectedActions)
     );
 
     if (hasReasoningModel) {
@@ -208,22 +225,21 @@ export function MCPServerViewsSheet({
     }
 
     return filteredList.filter(
-      (view) =>
-        !getMCPServerToolsConfigurations(view).mayRequireReasoningConfiguration
+      (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
     );
   }, [
-    defaultMCPServerViews,
-    actions,
+    topMCPServerViews,
+    selectedActions,
     hasReasoningModel,
     shouldFilterServerView,
   ]);
 
-  const selectableNonDefaultMCPServerViews = useMemo(
+  const selectableNonTopMCPServerViews = useMemo(
     () =>
-      nonDefaultMCPServerViews.filter(
-        (view) => !shouldFilterServerView(view, actions)
+      nonTopMCPServerViews.filter(
+        (view) => !shouldFilterServerView(view, selectedActions)
       ),
-    [nonDefaultMCPServerViews, actions, shouldFilterServerView]
+    [nonTopMCPServerViews, selectedActions, shouldFilterServerView]
   );
 
   const filteredViews = useMemo(() => {
@@ -238,14 +254,10 @@ export function MCPServerViewsSheet({
           });
 
     return {
-      defaultViews: filterViews(selectableDefaultMCPServerViews),
-      nonDefaultViews: filterViews(selectableNonDefaultMCPServerViews),
+      topViews: filterViews(selectableTopMCPServerViews),
+      nonTopViews: filterViews(selectableNonTopMCPServerViews),
     };
-  }, [
-    searchTerm,
-    selectableDefaultMCPServerViews,
-    selectableNonDefaultMCPServerViews,
-  ]);
+  }, [searchTerm, selectableTopMCPServerViews, selectableNonTopMCPServerViews]);
   const showDataVisualization = useMemo(() => {
     if (!searchTerm.trim()) {
       return true;
@@ -367,11 +379,13 @@ export function MCPServerViewsSheet({
 
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const requirement = getMCPServerToolsConfigurations(mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
-    if (requirement.configurable !== "no") {
+    if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = requirement.mayRequireReasoningConfiguration;
+      const isReasoning = toolsConfigurations.reasoningConfiguration
+        ? true
+        : false;
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -387,8 +401,14 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) => model.modelId === DEFAULT_REASONING_CONFIGURATION.modelId
-          ) ?? reasoningModels[0];
+            (model) =>
+              model.modelId ===
+              toolsConfigurations.reasoningConfiguration?.default?.modelId
+          ) ??
+          reasoningModels.find(
+            (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
+          ) ??
+          reasoningModels[0];
 
         configuredAction = {
           ...action,
@@ -538,7 +558,7 @@ export function MCPServerViewsSheet({
   const pages: MultiPageSheetPage[] = [
     {
       id: TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION,
-      title: actions.length === 0 ? "Add tools" : "Add more",
+      title: selectedActions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
       content: isMCPServerViewsLoading ? (
@@ -558,8 +578,8 @@ export function MCPServerViewsSheet({
             />
           )}
           <MCPServerSelectionPage
-            defaultMcpServerViews={filteredViews.defaultViews}
-            nonDefaultMcpServerViews={filteredViews.nonDefaultViews}
+            topMCPServerViews={filteredViews.topViews}
+            nonTopMCPServerViews={filteredViews.nonTopViews}
             onItemClick={onClickMCPServer}
             dataVisualization={showDataVisualization ? dataVisualization : null}
             onDataVisualizationClick={onClickDataVisualization}
@@ -598,14 +618,21 @@ export function MCPServerViewsSheet({
                 <MCPActionHeader
                   action={configurationTool}
                   mcpServerView={mcpServerView}
-                  allowNameEdit={configurationTool.configurable}
                 />
 
-                {toolsConfigurations.mayRequireReasoningConfiguration && (
+                {configurationTool.configurable && (
+                  <NameSection
+                    title="Name"
+                    placeholder="My tool name…"
+                    triggerValidationOnChange
+                  />
+                )}
+
+                {toolsConfigurations.reasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.mayRequireChildAgentConfiguration && (
+                {toolsConfigurations.childAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
@@ -615,6 +642,10 @@ export function MCPServerViewsSheet({
 
                 {toolsConfigurations.mayRequireDustAppConfiguration && (
                   <DustAppSection />
+                )}
+
+                {toolsConfigurations.mayRequireSecretConfiguration && (
+                  <SecretSection />
                 )}
 
                 {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
@@ -706,7 +737,7 @@ export function MCPServerViewsSheet({
       const newActionName = isNewActionOrNameChanged
         ? generateUniqueActionName({
             baseName: nameToStorageFormat(formData.name),
-            existingActions: actions,
+            existingActions: selectedActions,
             selectedToolsInSheet,
           })
         : mode?.type === "edit"
@@ -766,7 +797,21 @@ export function MCPServerViewsSheet({
   return (
     <MultiPageSheet
       open={isOpen}
-      onOpenChange={(open) => {
+      onOpenChange={async (open) => {
+        if (!open && selectedToolsInSheet.length > 0) {
+          const confirmed = await confirm({
+            title: "Unsaved changes",
+            message:
+              "You have selected tools that are not added yet. Are you sure you want to close without adding them?",
+            validateLabel: "Discard selection",
+            validateVariant: "warning",
+          });
+
+          if (!confirmed) {
+            return;
+          }
+        }
+
         setIsOpen(open);
 
         if (!open && currentMode === "add") {

@@ -6,13 +6,15 @@ import type { LightWorkspaceType } from "@app/types";
 
 interface AppDataTableProps {
   owner: LightWorkspaceType;
+  loadOnInit?: boolean;
 }
 
-export function AppDataTable({ owner }: AppDataTableProps) {
+export function AppDataTable({ owner, loadOnInit }: AppDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
       header="Apps"
       owner={owner}
+      loadOnInit={loadOnInit}
       useSWRHook={usePokeApps}
     >
       {(data) => (

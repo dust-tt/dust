@@ -28,15 +28,14 @@ import type {
   ReasoningModelConfigurationType,
 } from "@app/types";
 import {
+  DEFAULT_REASONING_MODEL_ID,
   isModelId,
   isModelProviderId,
   isProviderWhitelisted,
   isReasoningEffortId,
-  O4_MINI_MODEL_ID,
 } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
-const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 const DEFAULT_REASONING_MODEL_PROVIDER_ID = "openai";
 const REASONING_GENERATION_TOKENS = 20480;
 

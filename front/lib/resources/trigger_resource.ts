@@ -7,8 +7,9 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -180,6 +181,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Err(new Error(`Trigger with sId ${sId} not found`));
     }
 
+    if (!trigger.editor || trigger.editor !== auth.getNonNullableUser().id) {
+      return new Err(
+        new Error("Only the editor of the trigger can update the trigger")
+      );
+    }
+
     await trigger.update(blob, transaction);
     const r = await trigger.upsertTemporalWorkflow(auth);
     if (r.isErr()) {
@@ -252,6 +259,139 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  static async disableAllForWorkspace(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listByWorkspace(auth);
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    // Only disable enabled triggers
+    const enabledTriggers = triggers.filter((t) => t.enabled);
+    if (enabledTriggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const disabledTriggersResult = await concurrentExecutor(
+      enabledTriggers,
+      async (trigger) => trigger.disable(auth),
+      {
+        concurrency: 10,
+      }
+    );
+
+    const failuresCount = disabledTriggersResult.filter((res) =>
+      res.isErr()
+    ).length;
+
+    if (failuresCount > 0) {
+      return new Err(new Error(`Failed to disable ${failuresCount} triggers`));
+    }
+    return new Ok(undefined);
+  }
+
+  /**
+   * We can not use the getAgentConfigurations method here, because of dependency cycle.
+   */
+  private static async getActiveAgentFromTriggers(
+    auth: Authenticator,
+    triggers: TriggerResource[]
+  ): Promise<Result<Set<string> | undefined, Error>> {
+    // Get all unique agent configuration IDs from disabled triggers
+    const agentConfigurationIds = [
+      ...new Set(triggers.map((t) => t.agentConfigurationId)),
+    ];
+
+    if (agentConfigurationIds.length === 0) {
+      return new Ok(undefined);
+    }
+
+    // Query latest versions of all agent configurations at once
+    const agentConfigs = await AgentConfiguration.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: agentConfigurationIds,
+      },
+    });
+
+    // Get only the latest version of each agent config (by latest createdAt)
+    const latestAgentConfigs = new Map<string, AgentConfiguration>();
+    for (const config of agentConfigs) {
+      const existing = latestAgentConfigs.get(config.sId);
+      if (
+        !existing ||
+        new Date(config.createdAt).getTime() >
+          new Date(existing.createdAt).getTime()
+      ) {
+        latestAgentConfigs.set(config.sId, config);
+      }
+    }
+
+    // Create a map of agent config ID to status for quick lookup
+    const activeAgentIds = new Set(
+      Array.from(latestAgentConfigs.values())
+        .filter((config) => config.status === "active")
+        .map((config) => config.sId)
+    );
+
+    return new Ok(activeAgentIds);
+  }
+
+  static async enableAllForWorkspace(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listByWorkspace(auth);
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    // Only enable disabled triggers that point to non-archived agents
+    const disabledTriggers = triggers.filter((t) => !t.enabled);
+    if (disabledTriggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const rActiveAgentIds = await this.getActiveAgentFromTriggers(
+      auth,
+      disabledTriggers
+    );
+    if (rActiveAgentIds.isErr()) {
+      return rActiveAgentIds;
+    }
+
+    const activeAgentIds = rActiveAgentIds.value;
+    if (!activeAgentIds || activeAgentIds.size === 0) {
+      return new Ok(undefined);
+    }
+
+    // Filter triggers to only include those pointing to active agents
+    const enableableTriggers = disabledTriggers.filter((trigger) =>
+      activeAgentIds.has(trigger.agentConfigurationId)
+    );
+
+    if (enableableTriggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const enabledTriggersResult = await concurrentExecutor(
+      enableableTriggers,
+      async (trigger) => trigger.enable(auth),
+      {
+        concurrency: 10,
+      }
+    );
+
+    const failuresCount = enabledTriggersResult.filter((res) =>
+      res.isErr()
+    ).length;
+
+    if (failuresCount > 0) {
+      return new Err(new Error(`Failed to enable ${failuresCount} triggers`));
+    }
+    return new Ok(undefined);
+  }
+
   async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
@@ -260,8 +400,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           trigger: this,
         });
       case "webhook":
-        // TODO: Implement webhook workflow when ready.
-        throw new Error("Webhook trigger workflows not yet implemented");
+        return new Ok(undefined);
       default:
         assertNever(this.kind);
     }
@@ -277,8 +416,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           trigger: this,
         });
       case "webhook":
-        // TODO: Implement webhook workflow when ready.
-        throw new Error("Webhook workflow removal not yet implemented");
+        return new Ok(undefined);
       default:
         assertNever(this.kind);
     }
@@ -289,10 +427,23 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
-    await this.update({ enabled: true });
+    try {
+      await this.update({ enabled: true });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+
+    const editor = await UserResource.fetchByModelId(this.editor);
+    if (!editor) {
+      return new Err(new Error("Trigger editor user not found"));
+    }
+    const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      editor.sId,
+      auth.getNonNullableWorkspace().sId
+    );
 
     // Re-register the temporal workflow
-    const r = await this.upsertTemporalWorkflow(auth);
+    const r = await this.upsertTemporalWorkflow(editorAuth);
     if (r.isErr()) {
       return r;
     }
@@ -305,7 +456,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
-    await this.update({ enabled: false });
+    try {
+      await this.update({ enabled: false });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
 
     // Remove the temporal workflow
     const r = await this.removeTemporalWorkflow(auth);

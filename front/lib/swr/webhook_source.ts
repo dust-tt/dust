@@ -1,14 +1,17 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
 import type { GetWebhookSourcesResponseBody } from "@app/pages/api/w/[wId]/webhook_sources";
+import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
+import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type {
   PostWebhookSourcesBody,
   WebhookSourceType,
+  WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
 
 export function useWebhookSourceViews({
@@ -116,4 +119,266 @@ export function useCreateWebhookSource({
   };
 
   return createWebhookSource;
+}
+
+export function useUpdateWebhookSourceView({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const updateWebhookSourceView = useCallback(
+    async (
+      webhookSourceViewId: string,
+      updates: { name: string }
+    ): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/webhook_sources/views/${webhookSourceViewId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updates),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        sendNotification({
+          type: "success",
+          title: "Successfully updated webhook source view",
+        });
+
+        return true;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update webhook source view",
+        });
+        return false;
+      }
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return { updateWebhookSourceView };
+}
+
+export function useDeleteWebhookSource({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    disabled: true,
+    owner,
+  });
+
+  const sendNotification = useSendNotification();
+
+  const deleteWebhookSource = useCallback(
+    async (webhookSourceId: string): Promise<boolean> => {
+      if (isDeleting) {
+        return false;
+      }
+
+      setIsDeleting(true);
+
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const result: DeleteWebhookSourceResponseBody = await response.json();
+
+        if (result.success) {
+          sendNotification({
+            type: "success",
+            title: "Successfully deleted webhook source",
+          });
+
+          void mutateWebhookSourcesWithViews();
+          return true;
+        } else {
+          throw new Error("Delete operation failed");
+        }
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to delete webhook source",
+        });
+        return false;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [owner.sId, isDeleting, mutateWebhookSourcesWithViews, sendNotification]
+  );
+
+  return {
+    deleteWebhookSource,
+    isDeleting,
+  };
+}
+
+export function useWebhookSourceViewsByWebhookSource({
+  owner,
+  webhookSourceId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  webhookSourceId: string;
+  disabled?: boolean;
+}) {
+  const configFetcher: Fetcher<GetSpecificWebhookSourceViewsResponseBody> =
+    fetcher;
+  const url = `/api/w/${owner.sId}/webhook_sources/${webhookSourceId}/views`;
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
+
+  return {
+    webhookSourceViews: data?.views ?? [],
+    isWebhookSourceViewsLoading: !error && !data && !disabled,
+    isWebhookSourceViewsError: error,
+    mutateWebhookSourceViews: mutate,
+  };
+}
+
+export function useAddWebhookSourceViewToSpace({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    owner,
+    disabled: true,
+  });
+
+  const createView = useCallback(
+    async ({
+      space,
+      webhookSource,
+    }: {
+      space: SpaceType;
+      webhookSource: WebhookSourceType;
+    }): Promise<void> => {
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ webhookSourceId: webhookSource.sId }),
+          }
+        );
+
+        if (!response.ok) {
+          const body = await response.json();
+          throw new Error(body.error?.message ?? "Unknown error");
+        }
+
+        sendNotification({
+          type: "success",
+          title: `Webhook source added to space ${space.name}`,
+          description: `${webhookSource.name} has been added to the ${space.name} space successfully.`,
+        });
+
+        await mutateWebhookSourcesWithViews();
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: `Failed to add webhook source to space ${space.name}`,
+          description: `Could not add ${webhookSource.name} to the ${space.name} space. Please try again.`,
+        });
+      }
+    },
+    [sendNotification, owner.sId, mutateWebhookSourcesWithViews]
+  );
+
+  return { addToSpace: createView };
+}
+
+export function useRemoveWebhookSourceViewFromSpace({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const { mutateWebhookSourcesWithViews } = useWebhookSourcesWithViews({
+    owner,
+    disabled: true,
+  });
+
+  const deleteView = useCallback(
+    async ({
+      webhookSourceView,
+      space,
+    }: {
+      webhookSourceView: WebhookSourceViewType;
+      space: SpaceType;
+    }): Promise<void> => {
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/spaces/${space.sId}/webhook_source_views/${webhookSourceView.sId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title:
+              space.kind === "system"
+                ? "Webhook source removed from workspace"
+                : "Webhook source removed from space",
+            description: `${webhookSourceView.webhookSource.name} has been removed from the ${space.name} space successfully.`,
+          });
+
+          await mutateWebhookSourcesWithViews();
+        } else {
+          const res = await response.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to remove webhook source",
+            description:
+              res.error?.message ||
+              `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
+          });
+        }
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to remove webhook source",
+          description: `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
+        });
+      }
+    },
+    [sendNotification, owner.sId, mutateWebhookSourcesWithViews]
+  );
+
+  return { removeFromSpace: deleteView };
 }

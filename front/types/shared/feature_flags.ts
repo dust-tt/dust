@@ -33,6 +33,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Collaborative editing features",
     stage: "dust_only",
   },
+  confluence_tool: {
+    description: "Confluence MCP tool",
+    stage: "on_demand",
+  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
@@ -72,10 +76,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
   },
-  google_drive_tool: {
-    description: "Google Drive MCP tool",
-    stage: "rolling_out",
-  },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
     stage: "on_demand",
@@ -107,6 +107,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   openai_o1_high_reasoning_feature: {
     description: "Access to OpenAI o1 high reasoning model",
+    stage: "on_demand",
+  },
+  openai_usage_mcp: {
+    description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
   salesforce_synced_queries: {
@@ -147,11 +151,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Activate @research agent.",
     stage: "dust_only",
   },
-  research_agent_2: {
-    description:
-      "Activate second version of @research agent (dust only for evals).",
-    stage: "dust_only",
-  },
   deep_research_as_a_tool: {
     description: "Activate deep research as a tool",
     stage: "dust_only",
@@ -184,6 +183,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   use_openai_eu_key: {
     description: "Use OpenAI EU API key instead of the default OpenAI API key",
+    stage: "on_demand",
+  },
+  slack_bot_mcp: {
+    description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;

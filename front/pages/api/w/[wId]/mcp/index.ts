@@ -28,6 +28,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { headersArrayToRecord } from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 
 export type GetMCPServersResponseBody = {
@@ -52,6 +53,10 @@ const PostQueryParamsSchema = t.union([
       t.undefined,
     ]),
     connectionId: t.union([t.string, t.undefined]),
+    customHeaders: t.union([
+      t.array(t.type({ key: t.string, value: t.string })),
+      t.undefined,
+    ]),
   }),
   t.type({
     serverType: t.literal("internal"),
@@ -161,15 +166,21 @@ async function handler(
           }
         }
 
-        const r = await fetchRemoteServerMetaDataByURL(
-          auth,
-          url,
-          bearerToken
-            ? {
-                Authorization: `Bearer ${bearerToken}`,
-              }
-            : undefined
+        // Merge custom headers (if any) with Authorization when probing the server.
+        // Note: Authorization from OAuth/sharedSecret takes precedence over custom headers.
+        const sanitizedCustomHeaders = headersArrayToRecord(
+          body.customHeaders,
+          { stripAuthorization: false }
         );
+
+        const headers = bearerToken
+          ? {
+              ...(sanitizedCustomHeaders ?? {}),
+              Authorization: `Bearer ${bearerToken}`,
+            }
+          : sanitizedCustomHeaders;
+
+        const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);
         if (r.isErr()) {
           return apiError(req, res, {
             status_code: 400,
@@ -205,6 +216,10 @@ async function handler(
           version: metadata.version,
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           sharedSecret: sharedSecret || null,
+          // Persist only user-provided custom headers (exclude Authorization)
+          customHeaders: headersArrayToRecord(body.customHeaders, {
+            stripAuthorization: true,
+          }),
           authorization,
           oAuthUseCase: body.useCase ?? null,
         });

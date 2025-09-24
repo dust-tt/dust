@@ -64,7 +64,6 @@ export function ContentCreationContainer({
       return (
         <UnsupportedContentRenderer
           fileName={fileMetadata.fileName}
-          fileId={contentId}
           contentType={fileMetadata.contentType}
         />
       );
@@ -77,8 +76,11 @@ export function ContentCreationContainer({
           <ClientExecutableRenderer
             conversation={conversation}
             fileId={contentId}
-            fileName={fileMetadata.fileName}
+            lastEditedByAgentConfigurationId={
+              fileMetadata.useCaseMetadata.lastEditedByAgentConfigurationId
+            }
             owner={owner}
+            contentHash={contentHash}
           />
         );
 
@@ -86,7 +88,6 @@ export function ContentCreationContainer({
         return (
           <UnsupportedContentRenderer
             fileName={fileMetadata.fileName}
-            fileId={contentId}
             contentType={fileMetadata.contentType}
           />
         );

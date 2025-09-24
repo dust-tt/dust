@@ -18,18 +18,28 @@ import cronstrue from "cronstrue";
 import uniqueId from "lodash/uniqueId";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
 import type {
+  AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
-  ScheduleFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { scheduleFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
 import { useUser } from "@app/lib/swr/user";
 import { debounce } from "@app/lib/utils/debounce";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
+
+const scheduleFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  customPrompt: z.string(),
+  cron: z.string().min(1, "Cron expression is required"),
+  timezone: z.string().min(1, "Timezone is required"),
+});
+
+// a ScheduleFormData must be a TriggerFormData with a cron field
+type ScheduleFormData = z.infer<typeof scheduleFormSchema>;
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
@@ -42,9 +52,30 @@ function formatTimezone(timezone: string): string {
   return `${city} (${timezone})`;
 }
 
+function isErrorWithMessage(
+  err: unknown
+): err is { error: { message: string } } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "error" in err &&
+    typeof err.error === "object" &&
+    err.error !== null &&
+    "message" in err.error &&
+    typeof err.error.message === "string"
+  );
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (isErrorWithMessage(error)) {
+    return error.error.message;
+  }
+  return "Unable to generate a schedule. Please try rephrasing.";
+}
+
 interface ScheduleEditionModalProps {
   owner: LightWorkspaceType;
-  trigger?: AgentBuilderTriggerType;
+  trigger?: AgentBuilderScheduleTriggerType;
   isOpen: boolean;
   onClose: () => void;
   onSave: (trigger: AgentBuilderTriggerType) => void;
@@ -58,7 +89,8 @@ export function ScheduleEditionModal({
   onSave,
 }: ScheduleEditionModalProps) {
   const { user } = useUser();
-  const isEditor = !trigger?.editor || trigger?.editor === user?.id;
+
+  const isEditor = (trigger?.editor ?? user?.id) === user?.id;
 
   const defaultValues: ScheduleFormData = {
     name: "Schedule",
@@ -77,6 +109,7 @@ export function ScheduleEditionModal({
     naturalDescriptionToCronRuleStatus,
     setNaturalDescriptionToCronRuleStatus,
   ] = useState<"idle" | "loading" | "error">("idle");
+  const [cronErrorMessage, setCronErrorMessage] = useState<string | null>(null);
   const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
     null
   );
@@ -117,7 +150,7 @@ export function ScheduleEditionModal({
       case "loading":
         return "Generating schedule...";
       case "error":
-        return "Unable to generate a schedule (note: it can't be more frequent than hourly). Try rephrasing.";
+        return cronErrorMessage;
       case "idle":
         if (!cron) {
           return undefined;
@@ -135,7 +168,12 @@ export function ScheduleEditionModal({
       default:
         assertNever(naturalDescriptionToCronRuleStatus);
     }
-  }, [naturalDescriptionToCronRuleStatus, cron, generatedTimezone]);
+  }, [
+    naturalDescriptionToCronRuleStatus,
+    cron,
+    generatedTimezone,
+    cronErrorMessage,
+  ]);
 
   const handleCancel = () => {
     onClose();
@@ -226,6 +264,7 @@ export function ScheduleEditionModal({
                             setNaturalDescriptionToCronRuleStatus("idle");
                           } catch (error) {
                             setNaturalDescriptionToCronRuleStatus("error");
+                            setCronErrorMessage(extractErrorMessage(error));
                             setGeneratedTimezone(null);
                           }
                         },

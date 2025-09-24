@@ -27,6 +27,7 @@ export const changeWebcrawlerFrequency = createPlugin({
           label: FREQUENCY_DISPLAY_TEXT[freq],
           value: freq,
         })),
+        multiple: false,
       },
     },
   },
@@ -56,7 +57,7 @@ export const changeWebcrawlerFrequency = createPlugin({
       command: "update-frequency",
       args: {
         connectorId: connectorId.toString(),
-        crawlFrequency: args.crawlFrequency,
+        crawlFrequency: args.crawlFrequency[0],
       },
     };
 

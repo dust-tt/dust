@@ -291,6 +291,7 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
                         value: ReasoningContent {
                             reasoning: Some(thinking.thinking),
                             metadata: metadata.to_string(),
+                            region: None,
                         },
                     });
                 }
@@ -303,6 +304,7 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
                         value: ReasoningContent {
                             reasoning: None,
                             metadata: metadata.to_string(),
+                            region: None,
                         },
                     });
                 }

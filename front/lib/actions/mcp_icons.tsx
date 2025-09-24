@@ -1,5 +1,6 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
+  ActionAtomIcon,
   ActionBrainIcon,
   ActionCloudArrowLeftRightIcon,
   ActionDocumentTextIcon,
@@ -20,6 +21,7 @@ import {
   AsanaLogo,
   Avatar,
   CommandLineIcon,
+  ConfluenceLogo,
   DriveLogo,
   FreshserviceLogo,
   GcalLogo,
@@ -31,6 +33,7 @@ import {
   LinearLogo,
   MondayLogo,
   NotionLogo,
+  OpenaiLogo,
   OutlookLogo,
   SalesforceLogo,
   SlackLogo,
@@ -46,6 +49,7 @@ export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 export const CUSTOM_SERVER_ALLOWED = Object.keys(ActionIcons);
 
 export const InternalActionIcons = {
+  ActionAtomIcon,
   ActionBrainIcon,
   ActionCloudArrowLeftRightIcon,
   ActionDocumentTextIcon,
@@ -64,6 +68,7 @@ export const InternalActionIcons = {
   ActionTimeIcon,
   AsanaLogo,
   CommandLineIcon,
+  ConfluenceLogo,
   GcalLogo,
   GithubLogo,
   GmailLogo,
@@ -75,6 +80,7 @@ export const InternalActionIcons = {
   LinearLogo,
   MondayLogo,
   NotionLogo,
+  OpenaiLogo,
   SalesforceLogo,
   SlackLogo,
   StripeLogo,

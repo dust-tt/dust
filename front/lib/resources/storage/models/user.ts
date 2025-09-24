@@ -1,5 +1,5 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
@@ -102,6 +102,11 @@ UserModel.init(
       { fields: ["provider", "providerId"] },
       { fields: ["auth0Sub"], unique: true, concurrently: true },
       { fields: ["workOSUserId"], unique: true, concurrently: true },
+      {
+        fields: ["lastLoginAt"],
+        concurrently: true,
+        where: { lastLoginAt: { [Op.ne]: null } },
+      },
       { unique: true, fields: ["sId"] },
       { fields: ["email"] },
     ],

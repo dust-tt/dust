@@ -1,3 +1,4 @@
+import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
@@ -31,8 +32,10 @@ import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getRedisClient } from "@app/lib/api/redis";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -50,7 +53,6 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
 
-const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
 
 // This method is used by the multi-actions execution loop to pick the next
@@ -448,9 +450,6 @@ export async function runModelActivity(
     >;
   } | null = null;
 
-  let shouldYieldCancel = false;
-  let lastCheckCancellation = Date.now();
-  const redis = await getRedisClient({ origin: "assistant_generation" });
   let isGeneration = true;
 
   const contentParser = new AgentMessageContentParser(
@@ -458,27 +457,6 @@ export async function runModelActivity(
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
-
-  async function checkCancellation() {
-    try {
-      const cancelled = await redis.get(
-        `assistant:generation:cancelled:${agentMessage.sId}`
-      );
-      if (cancelled === "1") {
-        shouldYieldCancel = true;
-        await redis.set(
-          `assistant:generation:cancelled:${agentMessage.sId}`,
-          0,
-          {
-            EX: 3600, // 1 hour
-          }
-        );
-      }
-    } catch (error) {
-      localLogger.error({ error }, "Error checking cancellation");
-      return false;
-    }
-  }
 
   let nativeChainOfThought = "";
 
@@ -495,32 +473,8 @@ export async function runModelActivity(
       return handlePossiblyRetryableError(event.content.message);
     }
 
-    const currentTimestamp = Date.now();
-    if (
-      currentTimestamp - lastCheckCancellation >=
-      CANCELLATION_CHECK_INTERVAL
-    ) {
-      void checkCancellation(); // Trigger the async function without awaiting
-      lastCheckCancellation = currentTimestamp;
-    }
-
-    if (shouldYieldCancel) {
-      await flushParserTokens();
-      await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "agent_generation_cancelled",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-        },
-        agentMessageRow,
-        conversation,
-        step,
-      });
-      localLogger.error("Agent generation cancelled");
-
-      return null;
-    }
+    // Heartbeat allows the activity to be cancelled, e.g. on a "Stop agent" request.
+    heartbeat();
 
     if (event.type === "tokens" && isGeneration) {
       for await (const tokenEvent of contentParser.emitTokens(
@@ -598,7 +552,21 @@ export async function runModelActivity(
             cached_tokens?: number;
           };
         } | null;
-        const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
+        const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
+
+        // Determine the region based on feature flag and current region
+        let region = "us";
+        const workspace = auth.getNonNullableWorkspace();
+        const featureFlags = await getFeatureFlags(workspace);
+
+        if (featureFlags.includes("use_openai_eu_key")) {
+          const currentRegion = regionsConfig.getCurrentRegion();
+          if (currentRegion === "europe-west1") {
+            region = "eu";
+          } else if (currentRegion === "us-central1") {
+            region = "us";
+          }
+        }
 
         const contents = (block.message.contents ?? []).map((content) => {
           if (content.type === "reasoning") {
@@ -608,6 +576,7 @@ export async function runModelActivity(
                 ...content.value,
                 tokens: 0, // Will be updated for the last reasoning item
                 provider: model.providerId,
+                region,
               },
             } satisfies ReasoningContentType;
           }
@@ -823,6 +792,7 @@ export async function runModelActivity(
         reasoningModel: null,
         timeFrame: null,
         jsonSchema: null,
+        secretName: null,
         additionalConfiguration: {},
         mcpServerViewId: mcpServerView.sId,
         dustAppConfiguration: null,

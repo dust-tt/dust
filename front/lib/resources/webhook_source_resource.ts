@@ -145,9 +145,27 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
   ): Promise<Result<undefined, Error>> {
+    assert(
+      await SpaceResource.canAdministrateSystemSpace(auth),
+      "The user is not authorized to delete a webhook source"
+    );
+
     const owner = auth.getNonNullableWorkspace();
 
     try {
+      // Directly delete the WebhookSourceViewModel to avoid a circular dependency.
+      await WebhookSourcesViewModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          webhookSourceId: this.id,
+        },
+        // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+        // bypassing the soft deletion in place.
+        hardDelete: true,
+        transaction,
+      });
+
+      // Then delete the webhook source itself
       await WebhookSourceModel.destroy({
         where: {
           id: this.id,

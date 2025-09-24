@@ -6,36 +6,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
 
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
-import type { WorkspaceType } from "@app/types";
+import { useDeleteWebhookSource } from "@app/lib/swr/webhook_source";
+import type { LightWorkspaceType } from "@app/types";
+import type { WebhookSourceType } from "@app/types/triggers/webhooks";
 
-type DeleteMCPServerDialogProps = {
-  owner: WorkspaceType;
-  onClose: (deleted: boolean) => void;
-  mcpServer: MCPServerType;
+type DeleteWebhookSourceDialogProps = {
+  owner: LightWorkspaceType;
+  onClose: () => void;
+  webhookSource: WebhookSourceType;
   isOpen: boolean;
 };
 
-export function DeleteMCPServerDialog({
+export function DeleteWebhookSourceDialog({
   owner,
-  mcpServer,
+  webhookSource,
   isOpen,
   onClose,
-}: DeleteMCPServerDialogProps) {
-  const { deleteServer } = useDeleteMCPServer(owner);
-
-  const [isLoading, setIsLoading] = useState(false);
+}: DeleteWebhookSourceDialogProps) {
+  const { deleteWebhookSource, isDeleting } = useDeleteWebhookSource({ owner });
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          onClose(false);
+          onClose();
         }
       }}
     >
@@ -46,10 +42,7 @@ export function DeleteMCPServerDialog({
         <DialogContainer>
           <div>
             Are you sure you want to remove{" "}
-            <span className="font-semibold">
-              {getMcpServerDisplayName(mcpServer)}
-            </span>{" "}
-            ?
+            <span className="font-semibold">{webhookSource.name}</span> ?
           </div>
           <div className="mt-2">
             <span className="font-semibold">This action cannot be undone.</span>
@@ -58,20 +51,20 @@ export function DeleteMCPServerDialog({
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
-            disabled: isLoading,
+            disabled: isDeleting,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            isLoading,
+            isLoading: isDeleting,
             label: "Remove",
             variant: "warning",
-            disabled: isLoading,
+            disabled: isDeleting,
             onClick: async () => {
-              setIsLoading(true);
-              await deleteServer(mcpServer);
-              setIsLoading(false);
-              onClose(true);
+              const success = await deleteWebhookSource(webhookSource.sId);
+              if (success) {
+                onClose();
+              }
             },
           }}
         />

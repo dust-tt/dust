@@ -3,10 +3,10 @@ import {
   Button,
   ContextItem,
   DocumentTextIcon,
+  GlobeAltIcon,
   Input,
   Page,
   PencilSquareIcon,
-  PlanetIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -169,7 +169,7 @@ export default function WorkspaceAdmin({
       subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
     >
       <Page.Vertical align="stretch" gap="xl">
-        <Page.Header title="Workspace Settings" icon={PlanetIcon} />
+        <Page.Header title="Workspace Settings" icon={GlobeAltIcon} />
         <Page.Vertical align="stretch" gap="md">
           <div className="flex items-center justify-between">
             <div className="flex-1">
@@ -415,7 +415,7 @@ function ContentCreationSharingToggle({ owner }: { owner: WorkspaceType }) {
       <div className="h-full border-b border-border dark:border-border-night" />
       <ContextItem
         title="Content Creation file sharing"
-        subElement="Enable Content Creation files sharing"
+        subElement="Allow public sharing of Content Creation files"
         visual={<DocumentTextIcon className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={

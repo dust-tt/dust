@@ -161,7 +161,7 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "manage",
-    includes: ["authors", "usage", "feedbacks"],
+    includes: ["authors", "usage", "feedbacks", "editors"],
   });
 
   const selectedAgents = agentConfigurations.filter((a) =>
@@ -174,7 +174,7 @@ export default function WorkspaceAssistants({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "archived",
-    includes: ["usage", "feedbacks"],
+    includes: ["usage", "feedbacks", "editors"],
     disabled: selectedTab !== "archived",
   });
 
@@ -279,6 +279,13 @@ export default function WorkspaceAssistants({
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (searchBarRef.current) {
+      searchBarRef.current.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchBarRef.current]);
+
+  useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === "/") {
         event.preventDefault();
@@ -316,7 +323,7 @@ export default function WorkspaceAssistants({
                 ref={searchBarRef}
                 className="flex-grow"
                 name="search"
-                placeholder="Search (Name)"
+                placeholder="Search (Name, Editors)"
                 value={assistantSearch}
                 onChange={(s) => {
                   setAssistantSearch(s);

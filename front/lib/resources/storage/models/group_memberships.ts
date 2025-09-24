@@ -40,7 +40,10 @@ GroupMembershipModel.init(
   {
     modelName: "group_memberships",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["userId", "groupId"] }],
+    indexes: [
+      { fields: ["userId", "groupId"] },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );
 UserModel.hasMany(GroupMembershipModel, {

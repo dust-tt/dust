@@ -216,6 +216,20 @@ async function handler(
             });
           }
         }
+
+        const isRunAgent =
+          message.context.origin === "run_agent" ||
+          message.context.origin === "agent_handover";
+        if (isRunAgent && !auth.isSystemKey()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Messages from run_agent or agent_handover must come from a system key.",
+            },
+          });
+        }
       }
 
       if (depth && depth >= MAX_CONVERSATION_DEPTH) {
