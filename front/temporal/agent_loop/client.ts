@@ -39,6 +39,14 @@ export async function launchAgentLoopWorkflow({
       ],
       taskQueue: QUEUE_NAME,
       workflowId,
+      searchAttributes: {
+        conversationId: [runAsynchronousAgentArgs.conversationId],
+        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
+      },
+      memo: {
+        conversationId: runAsynchronousAgentArgs.conversationId,
+        workspaceId: authType.workspaceId,
+      },
     });
   } catch (error) {
     if (!(error instanceof WorkflowExecutionAlreadyStartedError)) {
