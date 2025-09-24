@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { LightAgentConfigurationType, UserType } from "@app/types";
 import { removeNulls } from "@app/types";
 
@@ -37,10 +38,10 @@ export const getAgentsEditors = async (
   auth: Authenticator,
   agentConfigurations: LightAgentConfigurationType[]
 ): Promise<Record<string, UserType[]>> => {
-  const editors = await Promise.all(
-    agentConfigurations.map((agentConfiguration) =>
-      getEditors(auth, agentConfiguration)
-    )
+  const editors = await concurrentExecutor(
+    agentConfigurations,
+    (agentConfiguration) => getEditors(auth, agentConfiguration),
+    { concurrency: 10 }
   );
 
   // Return a map { agentId: [editors] }
