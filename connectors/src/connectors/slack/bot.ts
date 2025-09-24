@@ -51,6 +51,7 @@ import {
   isBotAllowed,
   notifyIfSlackUserIsNotAllowed,
 } from "@connectors/connectors/slack/lib/workspace_limits";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
@@ -61,6 +62,7 @@ import {
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -445,11 +447,20 @@ async function processErrorResult(
         channelId: slackChannel,
         useCase: "bot",
       });
-      await slackClient.chat.update({
-        ...errorPost,
-        channel: slackChannel,
-        ts: mainMessage.ts,
-      });
+
+      const mainMessageTs = mainMessage.ts;
+
+      await throttleWithRedis(
+        RATE_LIMITS["chat.update"],
+        `${connector.id}-chat-update`,
+        false,
+        async () =>
+          slackClient.chat.update({
+            ...errorPost,
+            channel: slackChannel,
+            ts: mainMessageTs,
+          })
+      );
     } else {
       reportSlackUsage({
         connectorId: connector.id,
