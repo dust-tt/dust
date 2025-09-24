@@ -19,8 +19,8 @@ import {
 
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
-import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
+  CAPABILITY_CONFIGS,
   getInitialPageId,
   getKnowledgeDefaultValues,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
@@ -366,7 +366,7 @@ function KnowledgeConfigurationSheetContent({
       icon: undefined,
       noScroll: true,
       content: <DataSourceBuilderSelector viewType="all" />,
-      footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,
+      footerContent: <KnowledgeFooter />,
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
