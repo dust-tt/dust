@@ -11,6 +11,7 @@ import {
   LONG_RUNNING_TOOL_THRESHOLD_MS,
   SYNC_TO_ASYNC_TIMEOUT_MS,
 } from "@app/lib/constants/timeouts";
+import type { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { wakeLock } from "@app/lib/wake_lock";
 import {
@@ -29,6 +30,8 @@ import {
   SyncTimeoutError,
 } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type { Result } from "@app/types";
+import { Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ExecutionMode,
@@ -221,8 +224,11 @@ export async function runAgentLoop(
   {
     executionMode = "auto",
     startStep,
-  }: { executionMode?: ExecutionMode; startStep: number }
-): Promise<void> {
+  }: {
+    executionMode?: ExecutionMode;
+    startStep: number;
+  }
+): Promise<Result<undefined, Error | DustError<"agent_loop_already_running">>> {
   const authType = auth.toJSON();
 
   // Capture initial start time and log total execution start.
@@ -261,11 +267,13 @@ export async function runAgentLoop(
       startStep,
     });
   } else {
-    await launchAgentLoopWorkflow({
+    return launchAgentLoopWorkflow({
       authType,
       runAsynchronousAgentArgs: runAgentArgsWithTiming.idArgs,
       startStep,
       initialStartTime: runAgentArgsWithTiming.initialStartTime,
     });
   }
+
+  return new Ok(undefined);
 }

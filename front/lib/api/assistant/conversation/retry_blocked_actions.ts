@@ -3,6 +3,7 @@ import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import logger from "@app/logger/logger";
@@ -91,7 +92,7 @@ export async function retryBlockedActions(
   }: {
     messageId: string;
   }
-): Promise<Result<void, Error>> {
+): Promise<Result<void, Error | DustError<"agent_loop_already_running">>> {
   const { sId: conversationId, title: conversationTitle } = conversation;
 
   const getUserMessageIdRes = await findUserMessageForRetry(
@@ -137,7 +138,7 @@ export async function retryBlockedActions(
     return runAgentDataRes;
   }
 
-  await runAgentLoop(
+  return runAgentLoop(
     auth,
     {
       sync: true,
@@ -148,6 +149,4 @@ export async function retryBlockedActions(
       startStep: lastStep,
     }
   );
-
-  return new Ok(undefined);
 }
