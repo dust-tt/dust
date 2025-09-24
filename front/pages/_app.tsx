@@ -16,21 +16,24 @@ import { useEffect } from "react";
 // Important: avoid destructuring process.env on the client.
 // Next.js replaces direct property access (process.env.NEXT_PUBLIC_*) at build time,
 // but destructuring `process.env` does not get inlined.
-const NEXT_PUBLIC_POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const NODE_ENV = process.env.NODE_ENV;
+const DATADOG_CLIENT_TOKEN = process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN;
+const DATADOG_SERVICE = process.env.NEXT_PUBLIC_DATADOG_SERVICE;
+const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
 
 import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
 
-if (process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN) {
+if (DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
-    clientToken: process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
-    env: process.env.NODE_ENV === "production" ? "prod" : "dev",
+    clientToken: DATADOG_CLIENT_TOKEN,
+    env: NODE_ENV === "production" ? "prod" : "dev",
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    service: `${process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"}-browser`,
+    service: `${DATADOG_SERVICE || "front"}-browser`,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    version: process.env.NEXT_PUBLIC_COMMIT_HASH || "",
+    version: COMMIT_HASH || "",
     site: "datadoghq.eu",
     forwardErrorsToLogs: true,
     sessionSampleRate: 100,
@@ -63,8 +66,8 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
 
     if (isPublicPage && hasAcceptedCookies) {
       // Only initialize if not already initialized
-      if (!posthog.__loaded && NEXT_PUBLIC_POSTHOG_KEY) {
-        posthog.init(NEXT_PUBLIC_POSTHOG_KEY, {
+      if (!posthog.__loaded && POSTHOG_KEY) {
+        posthog.init(POSTHOG_KEY, {
           api_host: "/ingest",
           person_profiles: "identified_only",
           defaults: "2025-05-24",
