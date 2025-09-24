@@ -78,7 +78,17 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
         // Re-enable capturing if previously opted out
         posthog.opt_in_capturing();
       } else {
-        console.log("[PH] Not initializing - no key available");
+        // Only log to Datadog when key is not available
+        datadogLogs.logger.warn(
+          "[PostHog] Not initializing - no key available",
+          {
+            isPublicPage,
+            hasAcceptedCookies,
+            posthogLoaded: posthog.__loaded,
+            pathname: router.pathname,
+            env: NODE_ENV,
+          }
+        );
       }
     } else {
       // Opt out of capturing if on webapp pages or cookies not accepted
