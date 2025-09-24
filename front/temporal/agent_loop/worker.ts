@@ -69,7 +69,7 @@ export async function runAgentLoopWorker() {
   try {
     await worker.run(); // this resolves after shutdown completes
   } catch (error) {
-    console.error("Agent loop worker error:", error);
+    logger.error({ error }, "Agent loop worker error");
   } finally {
     await connection.close();
     process.exit(0);
