@@ -157,3 +157,55 @@ export function validateJsonSchema(value: object | string | null | undefined): {
     };
   }
 }
+
+export function iterateOverSchemaPropertiesRecursive(
+  inputSchema: JSONSchema,
+  callback: (fullPath: string[], propSchema: JSONSchema) => boolean,
+  path: string[] = []
+): void {
+  if (!isJSONSchemaObject(inputSchema)) {
+    return;
+  }
+
+  // Check properties in object schemas
+  if (inputSchema.properties) {
+    for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
+      const currentPath = [...path, key];
+
+      if (isJSONSchemaObject(propSchema)) {
+        // Call the callback with the full path and property schema
+        const shouldContinue = callback(currentPath, propSchema);
+        if (shouldContinue) {
+          // Recursively check this property's schema
+          iterateOverSchemaPropertiesRecursive(
+            propSchema,
+            callback,
+            currentPath
+          );
+        }
+      }
+    }
+  }
+
+  // Check items in array schemas
+  if (inputSchema.type === "array" && inputSchema.items) {
+    if (isJSONSchemaObject(inputSchema.items)) {
+      // Single schema for all items
+      iterateOverSchemaPropertiesRecursive(inputSchema.items, callback, [
+        ...path,
+        "items",
+      ]);
+    } else if (Array.isArray(inputSchema.items)) {
+      // Array of schemas for tuple validation
+      for (let i = 0; i < inputSchema.items.length; i++) {
+        const item = inputSchema.items[i];
+        if (isJSONSchemaObject(item)) {
+          iterateOverSchemaPropertiesRecursive(item, callback, [
+            ...path,
+            `items[${i}]`,
+          ]);
+        }
+      }
+    }
+  }
+}
