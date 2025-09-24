@@ -55,35 +55,26 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const router = useRouter();
   const [cookies] = useCookies(["dust-cookies-accepted"]);
 
-  // Check if user has accepted cookies
   const cookieValue = cookies["dust-cookies-accepted"];
   const hasAcceptedCookies =
     cookieValue === "true" || cookieValue === "auto" || cookieValue === true;
 
-  // Define which pages are trackable
   const excludedPaths = ["/w/", "/poke/", "/sso-enforced", "/maintenance"];
   const isTrackablePage = !excludedPaths.some((path) =>
     router.pathname.startsWith(path)
   );
 
-  // Initialize PostHog only for trackable pages and if cookies are accepted
   useEffect(() => {
-    // Disable tracking on non-trackable pages or without cookies
-    if (!isTrackablePage || !hasAcceptedCookies) {
+    const shouldTrack = isTrackablePage && hasAcceptedCookies;
+
+    if (!shouldTrack) {
       if (posthog.__loaded) {
         posthog.opt_out_capturing();
       }
       return;
     }
 
-    // Handle trackable pages with cookies accepted
-    if (posthog.__loaded) {
-      posthog.opt_in_capturing();
-      return;
-    }
-
-    // Initialize PostHog if key is available
-    if (POSTHOG_KEY) {
+    if (!posthog.__loaded && POSTHOG_KEY) {
       posthog.init(POSTHOG_KEY, {
         api_host: "/ingest",
         person_profiles: "identified_only",
@@ -94,6 +85,8 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
           }
         },
       });
+    } else if (posthog.__loaded) {
+      posthog.opt_in_capturing();
     }
   }, [router.pathname, hasAcceptedCookies, isTrackablePage]);
 
