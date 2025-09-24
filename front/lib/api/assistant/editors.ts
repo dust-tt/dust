@@ -32,3 +32,23 @@ export const getEditors = async (
   const memberUsers = members.map((m) => m.toJSON());
   return memberUsers;
 };
+
+export const getEditorsByAgents = async (
+  auth: Authenticator,
+  agentConfigurations: LightAgentConfigurationType[]
+): Promise<Record<string, UserType[]>> => {
+  const editors = await Promise.all(
+    agentConfigurations.map((agentConfiguration) =>
+      getEditors(auth, agentConfiguration)
+    )
+  );
+
+  // Return a map { agentId: [editors] }
+  return editors.reduce(
+    (acc, editor, index) => {
+      acc[agentConfigurations[index].sId] = editor;
+      return acc;
+    },
+    {} as Record<string, UserType[]>
+  );
+};

@@ -13,7 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { SCOPE_INFO } from "@app/components/assistant/details/AssistantDetails";
@@ -21,7 +21,6 @@ import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgent
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
-import { fetcher } from "@app/lib/swr/swr";
 import { useTags } from "@app/lib/swr/tags";
 import {
   classNames,
@@ -29,7 +28,6 @@ import {
   tagsSorter,
 } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
-import type { GetAgentEditorsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/editors";
 import type {
   AgentConfigurationScope,
   AgentUsageType,
@@ -146,44 +144,19 @@ const getTableColumns = ({
             visual?: string | null;
           }[]
         ) => {
-          if (items.length === 0) {
-            return null;
-          }
-
           const MAX_VISIBLE = 4;
-          const visibleItems = items.slice(0, MAX_VISIBLE);
-          const overflowCount = items.length - visibleItems.length;
 
           return (
             <div className="flex -space-x-2">
-              {visibleItems.map(({ key, tooltipName, visual }) => (
-                <Tooltip
-                  key={key}
-                  tooltipTriggerAsChild
-                  label={tooltipName}
-                  trigger={
-                    <Avatar
-                      size="xs"
-                      visual={visual ?? undefined}
-                      name={tooltipName}
-                      isRounded
-                    />
-                  }
-                />
-              ))}
-              {overflowCount > 0 && (
-                <Tooltip
-                  key={`overflow-${info.row.original.sId}`}
-                  tooltipTriggerAsChild
-                  label={items
-                    .slice(MAX_VISIBLE)
-                    .map((item) => item.tooltipName)
-                    .join(", ")}
-                  trigger={
-                    <Avatar size="xs" name={`+${overflowCount}`} isRounded />
-                  }
-                />
-              )}
+              <Avatar.Stack
+                avatars={items.map((item) => ({
+                  name: item.tooltipName,
+                  visual: item.visual,
+                }))}
+                nbVisibleItems={MAX_VISIBLE}
+                size="xs"
+                isRounded
+              />
             </div>
           );
         };
@@ -339,51 +312,6 @@ export function AssistantsTable({
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
 
-  const fetchAgentEditors = useCallback(
-    async (agentConfigurationId: string) => {
-      if (!agentConfigurationId) {
-        return [] as UserType[];
-      }
-
-      const response = (await fetcher(
-        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`
-      )) as GetAgentEditorsResponseBody;
-
-      return response.editors ?? [];
-    },
-    [owner.sId]
-  );
-
-  const [editorsByAgentId, setEditorsByAgentId] = useState<
-    Record<string, UserType[]>
-  >({});
-
-  useEffect(() => {
-    if (!agents.length) {
-      setEditorsByAgentId({});
-      return;
-    }
-
-    const loadEditors = async () => {
-      const editorsByAgentId: Record<string, UserType[]> = {};
-
-      await Promise.all(
-        agents.map(async (agent) => {
-          try {
-            const editors = await fetchAgentEditors(agent.sId);
-            editorsByAgentId[agent.sId] = editors;
-          } catch (error) {
-            editorsByAgentId[agent.sId] = [];
-          }
-        })
-      );
-
-      setEditorsByAgentId(editorsByAgentId);
-    };
-
-    void loadEditors();
-  }, [agents, fetchAgentEditors]);
-
   const [showDeleteDialog, setShowDeleteDialog] = useState<{
     open: boolean;
     agentConfiguration: LightAgentConfigurationType | undefined;
@@ -415,10 +343,7 @@ export function AssistantsTable({
           pictureUrl: agentConfiguration.pictureUrl,
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
-          editors:
-            editorsByAgentId[agentConfiguration.sId] ??
-            agentConfiguration.editors ??
-            [],
+          editors: agentConfiguration.editors ?? [],
           scope: agentConfiguration.scope,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
@@ -530,7 +455,6 @@ export function AssistantsTable({
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleToggleAgentStatus & router are not stable, mutating the agents list which prevent pagination to work
     [
-      editorsByAgentId,
       agents,
       owner,
       setShowDetails,

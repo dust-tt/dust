@@ -218,7 +218,10 @@ export const getAgentSearchString = (
   return (
     assistant.name.toLowerCase() +
     " " +
-    assistant.editors?.join(" ").toLowerCase()
+    assistant.editors
+      ?.map((e) => e.fullName)
+      .join(" ")
+      .toLowerCase()
   );
 };
 
