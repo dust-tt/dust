@@ -31,6 +31,7 @@ export type SearchResult = {
   nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
   nextPageCursor: string | null;
+  resultsCount: number | null;
 };
 
 type SearchError = {
