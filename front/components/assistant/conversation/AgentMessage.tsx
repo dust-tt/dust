@@ -420,7 +420,8 @@ export function AgentMessage({
   if (
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
-    (!isGlobalAgent || agentMessageToRender.configuration.status !== "draft")
+    !isGlobalAgent &&
+    agentMessageToRender.configuration.status !== "draft"
   ) {
     buttons.push(
       <Separator key="separator" orientation="vertical" />,
