@@ -36,11 +36,13 @@ export function ConversationMenu({
   conversation,
   owner,
   className,
+  isConversationDisplayed,
 }: {
   activeConversationId: string | null;
   conversation: ConversationWithoutContentType | null;
   owner: WorkspaceType;
   className?: string;
+  isConversationDisplayed: boolean;
 }) {
   const { user } = useUser();
   const router = useRouter();
@@ -79,8 +81,10 @@ export function ConversationMenu({
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(async () => {
     const res = await doDelete(conversation);
-    res && void router.push(`/w/${owner.sId}/assistant/new`);
-  }, [conversation, doDelete, owner.sId, router]);
+    isConversationDisplayed &&
+      res &&
+      void router.push(`/w/${owner.sId}/assistant/new`);
+  }, [conversation, doDelete, owner.sId, router, isConversationDisplayed]);
 
   const copyConversationLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink ?? "");

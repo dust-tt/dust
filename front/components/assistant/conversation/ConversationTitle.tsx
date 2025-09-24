@@ -35,6 +35,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             activeConversationId={activeConversationId}
             conversation={conversation}
             owner={owner}
+            isConversationDisplayed={true}
           />
         </div>
       </div>
