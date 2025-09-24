@@ -91,15 +91,6 @@ async function handler(
 
         if (retryBlockedActionsRes.isErr()) {
           const { error } = retryBlockedActionsRes;
-          logger.error(
-            {
-              error,
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              conversationId,
-              messageId,
-            },
-            "Error retrying blocked actions"
-          );
 
           if (
             error instanceof DustError &&
