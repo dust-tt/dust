@@ -80,6 +80,17 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
+const TOP_MCP_SERVER_VIEWS = [
+  "web_search_&_browse",
+  "image_generation",
+  "agent_memory",
+  "deep_research",
+  "content_creation",
+  "slack",
+  "gmail",
+  "google_calendar",
+];
+
 export type SelectedTool =
   | {
       type: "MCP";
@@ -144,8 +155,7 @@ export function MCPServerViewsSheet({
   const { reasoningModels } = useModels({ owner });
   const {
     mcpServerViews: allMcpServerViews,
-    defaultMCPServerViews,
-    nonDefaultMCPServerViews,
+    mcpServerViewsWithoutKnowledge,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
 
@@ -202,8 +212,22 @@ export function MCPServerViewsSheet({
     []
   );
 
-  const selectableDefaultMCPServerViews = useMemo(() => {
-    const filteredList = defaultMCPServerViews.filter(
+  console.log("mcpServerViewsWithoutKnowledge", mcpServerViewsWithoutKnowledge);
+
+  const topMCPServerViews = useMemo(() => {
+    return mcpServerViewsWithoutKnowledge.filter((view) =>
+      TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
+  }, [mcpServerViewsWithoutKnowledge]);
+
+  const nonTopMCPServerViews = useMemo(() => {
+    return mcpServerViewsWithoutKnowledge.filter(
+      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
+  }, [mcpServerViewsWithoutKnowledge]);
+
+  const selectableTopMCPServerViews = useMemo(() => {
+    const filteredList = topMCPServerViews.filter(
       (view) => !shouldFilterServerView(view, actions)
     );
 
@@ -214,19 +238,14 @@ export function MCPServerViewsSheet({
     return filteredList.filter(
       (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
     );
-  }, [
-    defaultMCPServerViews,
-    actions,
-    hasReasoningModel,
-    shouldFilterServerView,
-  ]);
+  }, [topMCPServerViews, actions, hasReasoningModel, shouldFilterServerView]);
 
-  const selectableNonDefaultMCPServerViews = useMemo(
+  const selectableNonTopMCPServerViews = useMemo(
     () =>
-      nonDefaultMCPServerViews.filter(
+      nonTopMCPServerViews.filter(
         (view) => !shouldFilterServerView(view, actions)
       ),
-    [nonDefaultMCPServerViews, actions, shouldFilterServerView]
+    [nonTopMCPServerViews, actions, shouldFilterServerView]
   );
 
   const filteredViews = useMemo(() => {
@@ -241,14 +260,10 @@ export function MCPServerViewsSheet({
           });
 
     return {
-      defaultViews: filterViews(selectableDefaultMCPServerViews),
-      nonDefaultViews: filterViews(selectableNonDefaultMCPServerViews),
+      topViews: filterViews(selectableTopMCPServerViews),
+      nonTopViews: filterViews(selectableNonTopMCPServerViews),
     };
-  }, [
-    searchTerm,
-    selectableDefaultMCPServerViews,
-    selectableNonDefaultMCPServerViews,
-  ]);
+  }, [searchTerm, selectableTopMCPServerViews, selectableNonTopMCPServerViews]);
   const showDataVisualization = useMemo(() => {
     if (!searchTerm.trim()) {
       return true;
@@ -569,8 +584,8 @@ export function MCPServerViewsSheet({
             />
           )}
           <MCPServerSelectionPage
-            defaultMcpServerViews={filteredViews.defaultViews}
-            nonDefaultMcpServerViews={filteredViews.nonDefaultViews}
+            topMCPServerViews={filteredViews.topViews}
+            nonTopMCPServerViews={filteredViews.nonTopViews}
             onItemClick={onClickMCPServer}
             dataVisualization={showDataVisualization ? dataVisualization : null}
             onDataVisualizationClick={onClickDataVisualization}
