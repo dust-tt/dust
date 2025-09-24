@@ -70,10 +70,8 @@ export function DataSourceSearchResults({
     [spaces]
   );
 
-  // Custom isRowSelected for search results that uses the actual node path
   const isSearchRowSelected = useCallback(
-    (rowId: string, node: DataSourceViewContentNode) => {
-      // Return false if field is not available (not in form context)
+    (node: DataSourceViewContentNode) => {
       if (!field?.value) {
         return false;
       }
@@ -269,16 +267,14 @@ export function DataSourceSearchResults({
           items={listItems}
           isLoading={isLoading}
           className={cn("pb-4", isLoading && "pointer-events-none opacity-50")}
-          // Override selection state to use full path based on node
           isItemSelected={(item) => {
             const node = itemNodeMap.get(item.id);
             if (!node) {
               return false;
             }
 
-            return isSearchRowSelected(item.id, node);
+            return isSearchRowSelected(node);
           }}
-          // Override selection change to add/remove using full path
           onSelectionChange={async (item, selectionState, state) => {
             const node = itemNodeMap.get(item.id);
             if (!node) {
