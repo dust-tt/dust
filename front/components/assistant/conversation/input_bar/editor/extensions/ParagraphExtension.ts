@@ -13,7 +13,11 @@ export const ParagraphExtension = Paragraph.extend({
         // - splitBlock: fallback -> normal line break
         return this.editor.commands.first(({ commands }) => [
           () => commands.newlineInCode(),
-          () => commands.splitListItem("listItem"),
+          // Only try to split list items if the editor schema includes them
+          () =>
+            this.editor.schema.nodes.listItem
+              ? commands.splitListItem("listItem")
+              : false,
           () => commands.liftEmptyBlock(),
           () => commands.createParagraphNear(),
           () => commands.splitBlock(),
