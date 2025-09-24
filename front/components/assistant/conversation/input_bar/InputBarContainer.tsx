@@ -1,4 +1,4 @@
-import { ArrowUpIcon, Button } from "@dust-tt/sparkle";
+import { ArrowUpIcon, Button, Chip } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -39,6 +39,8 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { getAvatar, getIcon } from "@app/lib/actions/mcp_icons";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
@@ -68,7 +70,7 @@ export interface InputBarContainerProps {
   attachedNodes: DataSourceViewContentNode[];
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
-  selectedMCPServerViewIds: string[];
+  selectedMCPServerViews: MCPServerViewType[];
 }
 
 const InputBarContainer = ({
@@ -88,7 +90,7 @@ const InputBarContainer = ({
   attachedNodes,
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
-  selectedMCPServerViewIds,
+  selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
@@ -319,7 +321,7 @@ const InputBarContainer = ({
             {actions.includes("tools") && (
               <ToolsPicker
                 owner={owner}
-                selectedMCPServerViewIds={selectedMCPServerViewIds}
+                selectedMCPServerViews={selectedMCPServerViews}
                 onSelect={onMCPServerViewSelect}
                 onDeselect={onMCPServerViewDeselect}
                 disabled={disableTextInput}
@@ -341,6 +343,20 @@ const InputBarContainer = ({
                 disabled={disableTextInput}
               />
             )}
+            <div className="flex flex-wrap items-center">
+              {selectedMCPServerViews.map((msv) => (
+                <Chip
+                  key={msv.sId}
+                  size="xs"
+                  label={getMcpServerViewDisplayName(msv)}
+                  icon={getIcon(msv.server.icon)}
+                  className="ml-1 bg-background text-foreground dark:bg-background-night dark:text-foreground-night"
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
+                />
+              ))}
+            </div>
           </div>
           <div className="grow" />
           <div className="flex items-center gap-2 md:gap-1">

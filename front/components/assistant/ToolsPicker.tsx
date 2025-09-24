@@ -30,7 +30,7 @@ import type { WorkspaceType } from "@app/types";
 
 interface ToolsPickerProps {
   owner: WorkspaceType;
-  selectedMCPServerViewIds: string[];
+  selectedMCPServerViews: MCPServerViewType[];
   onSelect: (serverView: MCPServerViewType) => void;
   onDeselect: (serverView: MCPServerViewType) => void;
   isLoading?: boolean;
@@ -39,7 +39,7 @@ interface ToolsPickerProps {
 
 export function ToolsPicker({
   owner,
-  selectedMCPServerViewIds,
+  selectedMCPServerViews,
   onSelect,
   onDeselect,
   isLoading = false,
@@ -66,6 +66,11 @@ export function ToolsPicker({
     owner,
     globalSpaces,
     { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
+  );
+
+  const selectedMCPServerViewIds = useMemo(
+    () => selectedMCPServerViews.map((v) => v.sId),
+    [selectedMCPServerViews]
   );
 
   const {
