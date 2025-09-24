@@ -46,7 +46,7 @@ export function AgentEditorsTab({
   };
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       <MembersList
         currentUser={user}
         membersData={{
@@ -64,7 +64,7 @@ export function AgentEditorsTab({
       />
 
       {isCurrentUserEditor && (
-        <div className="mt-4">
+        <div>
           <AddEditorDropdown
             owner={owner}
             editors={editors}

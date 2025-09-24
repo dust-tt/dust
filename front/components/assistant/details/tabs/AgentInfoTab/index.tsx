@@ -22,7 +22,7 @@ export function AgentInfoTab({
 }) {
   const isConfigurable = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {agentConfiguration.tags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {agentConfiguration.tags.map((tag) => (
@@ -81,6 +81,6 @@ export function AgentInfoTab({
         agentConfiguration={agentConfiguration}
         owner={owner}
       />
-    </>
+    </div>
   );
 }

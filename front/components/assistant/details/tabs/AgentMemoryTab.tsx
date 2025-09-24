@@ -99,7 +99,7 @@ export function AgentMemoryTab({
   );
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {memoryToDelete && (
         <DeleteMemoryDialog
           owner={owner}
@@ -161,6 +161,6 @@ export function AgentMemoryTab({
           </>
         )}
       </div>
-    </>
+    </div>
   );
 }
