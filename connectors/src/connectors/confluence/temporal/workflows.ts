@@ -57,7 +57,7 @@ const {
 const { confluenceUpdateContentParentIdsActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "60 minutes",
+  startToCloseTimeout: "90 minutes",
   heartbeatTimeout: "5 minutes",
 });
 
