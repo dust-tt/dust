@@ -23,7 +23,6 @@ const NODE_ENV = process.env.NODE_ENV;
 console.log("[PostHog] Environment check:", {
   hasKey: !!NEXT_PUBLIC_POSTHOG_KEY,
   keyLength: NEXT_PUBLIC_POSTHOG_KEY?.length ?? 0,
-  keyPrefix: NEXT_PUBLIC_POSTHOG_KEY?.substring(0, 10),
   nodeEnv: NODE_ENV,
 });
 import { useCookies } from "react-cookie";
