@@ -43,7 +43,7 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, ModelId } from "@app/types";
+import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
@@ -461,6 +461,34 @@ export async function runModelActivity(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
+  function savePartialContent({
+    agentMessage,
+    contentParser,
+    nativeChainOfThought,
+  }: {
+    agentMessage: AgentMessageType;
+    contentParser: AgentMessageContentParser;
+    nativeChainOfThought: string;
+  }) {
+    // Persist partial content so the UI keeps what has been generated so far.
+    const partialContent = contentParser.getContent() ?? "";
+    const partialChainOfThought =
+      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
+
+    if (partialChainOfThought.length > 0) {
+      if (!agentMessage.chainOfThought) {
+        agentMessage.chainOfThought = "";
+      }
+      agentMessage.chainOfThought += partialChainOfThought;
+    }
+
+    if (partialContent.length > 0) {
+      agentMessage.content = (agentMessage.content ?? "") + partialContent;
+    }
+
+    return partialContent;
+  }
+
   async function checkCancellation() {
     try {
       const cancelled = await redis.get(
@@ -509,33 +537,11 @@ export async function runModelActivity(
     if (shouldYieldCancel) {
       await flushParserTokens();
 
-      // Persist partial content so the UI keeps what has been generated so far.
-      const partialContent = contentParser.getContent() ?? "";
-      const partialChainOfThought =
-        (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
-
-      if (partialChainOfThought.length > 0) {
-        if (!agentMessage.chainOfThought) {
-          agentMessage.chainOfThought = "";
-        }
-        agentMessage.chainOfThought += partialChainOfThought;
-      }
-      if (partialContent.length) {
-        agentMessage.content = (agentMessage.content ?? "") + partialContent;
-
-        // Persist partial text content so reload retains it
-        await AgentStepContentResource.createNewVersion({
-          workspaceId: conversation.owner.id,
-          agentMessageId: agentMessage.agentMessageId,
-          step,
-          index: 0,
-          type: "text_content",
-          value: {
-            type: "text_content",
-            value: partialContent,
-          },
-        });
-      }
+      const partialContent = savePartialContent({
+        agentMessage,
+        contentParser,
+        nativeChainOfThought,
+      });
 
       await updateResourceAndPublishEvent(auth, {
         event: {
@@ -543,6 +549,7 @@ export async function runModelActivity(
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
+          partialContent,
         },
         agentMessageRow,
         conversation,

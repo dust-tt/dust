@@ -39,7 +39,7 @@ async function processEventForDatabase(
               message: event.error.message,
               metadata: {
                 ...event.error.metadata,
-                category: event.error.metadata?.category || "",
+                category: event.error.metadata?.category ?? "",
               },
             },
           },
@@ -48,6 +48,20 @@ async function processEventForDatabase(
       break;
 
     case "agent_generation_cancelled":
+      if (event.partialContent.length > 0) {
+        // Persist partial text content so reload retains it
+        await AgentStepContentResource.createNewVersion({
+          workspaceId: agentMessageRow.workspaceId,
+          agentMessageId: agentMessageRow.id,
+          step,
+          index: 0,
+          type: "text_content",
+          value: {
+            type: "text_content",
+            value: event.partialContent,
+          },
+        });
+      }
       // Store cancellation in database.
       await agentMessageRow.update({
         status: "cancelled",
