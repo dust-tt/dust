@@ -26,9 +26,7 @@ import {
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {
-  DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
   extractDataSourceIdFromNodeId,
-  getSearchNodesSortDirection,
   isDataSourceNodeId,
   makeQueryResourceForFind,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
@@ -379,7 +377,20 @@ const createServer = (
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
-      ...DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "Maximum number of results to return. Initial searches should use 10-20."
+        ),
+      nextPageCursor: z
+        .string()
+        .optional()
+        .describe(
+          "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
+            "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
+            "the previous search result."
+        ),
     },
     withToolLogging(
       auth,

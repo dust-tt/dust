@@ -1,38 +1,8 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { z } from "zod";
 
 import type { SearchQueryResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderMimeType } from "@app/lib/actions/mcp_internal_actions/rendering";
 import { DATA_SOURCE_NODE_ID } from "@app/types";
-
-export const DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS = {
-  limit: z
-    .number()
-    .optional()
-    .describe(
-      "Maximum number of results to return. Initial searches should use 10-20."
-    ),
-  nextPageCursor: z
-    .string()
-    .optional()
-    .describe(
-      "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
-        "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
-        "the previous search result."
-    ),
-};
-
-export function getSearchNodesSortDirection(
-  field: "title" | "timestamp"
-): "asc" | "desc" {
-  switch (field) {
-    case "title":
-      return "asc"; // Alphabetical A-Z.
-
-    case "timestamp":
-      return "desc"; // Most recent first.
-  }
-}
 
 /**
  * Check if a node ID represents a data source node.
