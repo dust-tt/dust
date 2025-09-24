@@ -8,7 +8,7 @@ import {
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -43,6 +43,15 @@ export const AddActionMenu = ({
       owner,
     });
 
+  const [portalContainer, setPortalContainer] = useState<
+    HTMLElement | undefined
+  >(undefined);
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      setPortalContainer(document.body);
+    }
+  }, []);
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -53,7 +62,10 @@ export const AddActionMenu = ({
           size="sm"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[500px]">
+      <DropdownMenuContent
+        className="w-[500px]"
+        mountPortalContainer={portalContainer}
+      >
         <DropdownMenuSearchbar
           className="flex-grow items-center gap-14"
           placeholder="Search tools..."
