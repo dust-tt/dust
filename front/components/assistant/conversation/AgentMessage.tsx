@@ -353,10 +353,34 @@ export function AgentMessage({
 
   const buttons: React.ReactElement[] = [];
 
-  // Standard buttons (visible when not thinking and not failed)
+  const hasMultiAgents =
+    generationContext.generatingMessages.filter(
+      (m) => m.conversationId === conversationId
+    ).length > 1;
+
+  // Show stop agent button only when streaming with multiple agents
+  // (it feels distractive to show buttons while streaming so we would like to avoid as much as possible.
+  // However, when there are multiple agents there is no other way to stop only single agent so we need to show it here).
+  if (hasMultiAgents && agentMessageToRender.status === "created") {
+    buttons.push(
+      <Button
+        key="stop-msg-button"
+        label="Stop agent"
+        variant="ghost-secondary"
+        size="xs"
+        onClick={async () => {
+          await cancelMessage([message.sId]);
+        }}
+        icon={StopIcon}
+        className="text-muted-foreground"
+      />
+    );
+  }
+
+  // Show copy & feedback buttons only when streaming is done and it didn't fail
   if (
-    message.status !== "failed" &&
-    messageStreamState.agentState !== "thinking"
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed"
   ) {
     buttons.push(
       <Button
@@ -369,42 +393,6 @@ export function AgentMessage({
         className="text-muted-foreground"
       />
     );
-
-    // Second slot: Stop while generating, else Retry (same position).
-    if (agentMessageToRender.status === "created") {
-      buttons.push(
-        <Button
-          key="stop-msg-button"
-          tooltip="Stop agent"
-          variant="ghost-secondary"
-          size="xs"
-          onClick={async () => {
-            await cancelMessage([message.sId]);
-          }}
-          icon={StopIcon}
-          className="text-muted-foreground"
-        />
-      );
-    } else {
-      buttons.push(
-        <Button
-          key="retry-msg-button"
-          tooltip="Retry"
-          variant="ghost-secondary"
-          size="xs"
-          onClick={() => {
-            void retryHandler({
-              conversationId,
-              messageId: agentMessageToRender.sId,
-            });
-          }}
-          icon={ArrowPathIcon}
-          className="text-muted-foreground"
-          disabled={isRetryHandlerProcessing || shouldStream}
-        />
-      );
-    }
-
     // Feedback (not on global agents nor drafts).
     buttons.push(
       ...(isGlobalAgent || agentMessageToRender.configuration.status === "draft"
@@ -417,6 +405,27 @@ export function AgentMessage({
               getPopoverInfo={PopoverContent}
             />,
           ])
+    );
+  }
+
+  // Show retry button as long as it's not streaming
+  if (agentMessageToRender.status !== "created") {
+    buttons.push(
+      <Button
+        key="retry-msg-button"
+        tooltip="Retry"
+        variant="ghost-secondary"
+        size="xs"
+        onClick={() => {
+          void retryHandler({
+            conversationId,
+            messageId: agentMessageToRender.sId,
+          });
+        }}
+        icon={ArrowPathIcon}
+        className="text-muted-foreground"
+        disabled={isRetryHandlerProcessing || shouldStream}
+      />
     );
   }
 
