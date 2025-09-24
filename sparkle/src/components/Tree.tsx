@@ -68,15 +68,15 @@ export function Tree({
           className
         )}
       >
-        {modifiedChildren}
+        <div>{modifiedChildren}</div>
+        {isLoading && (
+          // add the spinner below modifiedChildren to keep the layout
+          // thus preventing re-render in case of pagination
+          <div className={cn("s-flex s-justify-center s-py-2")}>
+            <Spinner size="xs" />
+          </div>
+        )}
       </div>
-      {isLoading && (
-        // add the spinner below modifiedChildren to keep the layout
-        // thus preventing re-render in case of pagination
-        <div className={cn("s-py-2 s-pl-4", className)}>
-          <Spinner size="xs" variant="dark" />
-        </div>
-      )}
     </>
   );
 }
