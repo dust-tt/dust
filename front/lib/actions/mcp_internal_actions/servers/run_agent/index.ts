@@ -623,8 +623,8 @@ ${query}`
               return new Err(
                 new MCPError(errorMessage, {
                   tracked:
-                    isAgentErrorCategory(event.error.metadata?.category) &&
-                    [
+                    !isAgentErrorCategory(event.error.metadata?.category) ||
+                    ![
                       "retryable_model_error",
                       "context_window_exceeded",
                       "provider_internal_error",
