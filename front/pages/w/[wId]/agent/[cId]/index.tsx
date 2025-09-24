@@ -56,7 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   };
 });
 
-export default function AssistantConversation({
+export default function AgentConversation({
   conversationId: initialConversationId,
   owner,
   subscription,
@@ -68,7 +68,7 @@ export default function AssistantConversation({
 
   const { activeConversationId } = useConversationsNavigation();
 
-  const { assistant } = router.query;
+  const { agent } = router.query;
 
   // This useEffect handles whether to change the key of the ConversationContainer
   // or not. Altering the key forces a re-render of the component. A random number
@@ -85,18 +85,13 @@ export default function AssistantConversation({
       document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
 
-    const agentId = assistant ?? null;
+    const agentId = agent ?? null;
     if (agentId && typeof agentId === "string") {
       setAgentIdToMention(agentId);
     } else {
       setAgentIdToMention(null);
     }
-  }, [
-    assistant,
-    setConversationKey,
-    initialConversationId,
-    activeConversationId,
-  ]);
+  }, [agent, setConversationKey, initialConversationId, activeConversationId]);
 
   return (
     <ConversationContainer
@@ -110,10 +105,7 @@ export default function AssistantConversation({
   );
 }
 
-AssistantConversation.getLayout = (
-  page: React.ReactElement,
-  pageProps: any
-) => {
+AgentConversation.getLayout = (page: React.ReactElement, pageProps: any) => {
   return (
     <AppRootLayout>
       <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
