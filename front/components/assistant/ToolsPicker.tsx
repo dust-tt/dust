@@ -2,10 +2,8 @@ import {
   BoltIcon,
   Button,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -74,11 +72,7 @@ export function ToolsPicker({
     [selectedMCPServerViews]
   );
 
-  const {
-    filteredServerViews,
-    filteredServerViewsUnselected,
-    filteredServerViewsSelected,
-  } = useMemo(() => {
+  const { filteredServerViews, filteredServerViewsUnselected } = useMemo(() => {
     const filteredServerViews = [
       ...autoServerViews,
       ...manualServerViews,
@@ -99,9 +93,6 @@ export function ToolsPicker({
       filteredServerViews,
       filteredServerViewsUnselected: filteredServerViews.filter(
         (v) => !selectedMCPServerViewIds.includes(v.sId)
-      ),
-      filteredServerViewsSelected: filteredServerViews.filter((v) =>
-        selectedMCPServerViewIds.includes(v.sId)
       ),
     };
   }, [

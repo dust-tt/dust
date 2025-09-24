@@ -25,6 +25,8 @@ import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
@@ -39,8 +41,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatar, getIcon } from "@app/lib/actions/mcp_icons";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
