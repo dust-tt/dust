@@ -334,7 +334,10 @@ export async function createOrUpgradeAgentConfiguration({
     if (res.isErr()) {
       // If we fail to create an action, we should delete the agent configuration
       // we just created and re-throw the error.
-      await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+      await unsafeHardDeleteAgentConfiguration(
+        auth,
+        agentConfigurationRes.value
+      );
       return res;
     }
     actionConfigs.push(res.value);
