@@ -9,6 +9,7 @@ import {
   InteractiveImageGrid,
   Markdown,
   Separator,
+  StopIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -52,6 +53,7 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
+import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
@@ -151,6 +153,7 @@ export function AgentMessage({
     message,
     messageStreamState,
   });
+  const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = Object.entries(
     agentMessageToRender.citations ?? {}
@@ -348,47 +351,68 @@ export function AgentMessage({
     );
   }
 
-  const buttons =
-    message.status === "failed" || messageStreamState.agentState === "thinking"
-      ? []
-      : [
-          <Button
-            key="copy-msg-button"
-            tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-            variant="ghost-secondary"
-            size="xs"
-            onClick={handleCopyToClipboard}
-            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-            className="text-muted-foreground"
-          />,
-          <Button
-            key="retry-msg-button"
-            tooltip="Retry"
-            variant="ghost-secondary"
-            size="xs"
-            onClick={() => {
-              void retryHandler({
-                conversationId,
-                messageId: agentMessageToRender.sId,
-              });
-            }}
-            icon={ArrowPathIcon}
-            className="text-muted-foreground"
-            disabled={isRetryHandlerProcessing || shouldStream}
-          />,
-          // One cannot leave feedback on global agents.
-          ...(isGlobalAgent ||
-          agentMessageToRender.configuration.status === "draft"
-            ? []
-            : [
-                <Separator key="separator" orientation="vertical" />,
-                <FeedbackSelector
-                  key="feedback-selector"
-                  {...messageFeedback}
-                  getPopoverInfo={PopoverContent}
-                />,
-              ]),
-        ];
+  const buttons: React.ReactElement[] = [];
+
+  // Standard buttons (visible when not thinking and not failed)
+  if (
+    message.status !== "failed" &&
+    messageStreamState.agentState !== "thinking"
+  ) {
+    buttons.push(
+      <Button
+        key="copy-msg-button"
+        tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+        variant="ghost-secondary"
+        size="xs"
+        onClick={handleCopyToClipboard}
+        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+        className="text-muted-foreground"
+      />,
+      <Button
+        key="retry-msg-button"
+        tooltip="Retry"
+        variant="ghost-secondary"
+        size="xs"
+        onClick={() => {
+          void retryHandler({
+            conversationId,
+            messageId: agentMessageToRender.sId,
+          });
+        }}
+        icon={ArrowPathIcon}
+        className="text-muted-foreground"
+        disabled={isRetryHandlerProcessing || shouldStream}
+      />,
+      // One cannot leave feedback on global agents.
+      ...(isGlobalAgent || agentMessageToRender.configuration.status === "draft"
+        ? []
+        : [
+            <Separator key="separator" orientation="vertical" />,
+            <FeedbackSelector
+              key="feedback-selector"
+              {...messageFeedback}
+              getPopoverInfo={PopoverContent}
+            />,
+          ])
+    );
+  }
+
+  // Add a per-agent stop control while generating.
+  if (agentMessageToRender.status === "created") {
+    buttons.push(
+      <Button
+        key="stop-msg-button"
+        tooltip="Stop agent"
+        variant="ghost-secondary"
+        size="xs"
+        onClick={async () => {
+          await cancelMessage([message.sId]);
+        }}
+        icon={StopIcon}
+        className="text-muted-foreground"
+      />
+    );
+  }
 
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
