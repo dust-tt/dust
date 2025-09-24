@@ -99,7 +99,7 @@ export default function Welcome({
     }
 
     await router.push(
-      `/w/${owner.sId}/assistant/new?welcome=true${
+      `/w/${owner.sId}/agent/new?welcome=true${
         conversationId ? `&cId=${conversationId}` : ""
       }`
     );

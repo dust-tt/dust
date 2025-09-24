@@ -35,7 +35,7 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
     if (!owner) {
       return;
     }
-    await router.push(`/w/${owner.sId}/assistant/new?assistant=${agentSId}`);
+    await router.push(`/w/${owner.sId}/agent/new?assistant=${agentSId}`);
   };
 
   const handleSeeDetails = () => {
