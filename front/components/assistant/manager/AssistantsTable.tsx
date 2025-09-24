@@ -207,7 +207,7 @@ const getTableColumns = ({
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "short")
+              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
               : "-"
           }
         />
