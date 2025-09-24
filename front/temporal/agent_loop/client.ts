@@ -41,9 +41,11 @@ export async function launchAgentLoopWorkflow({
       workflowId,
       searchAttributes: {
         conversationId: [runAsynchronousAgentArgs.conversationId],
+        workspaceId: authType.workspaceId ? [authType.workspaceId] : undefined,
       },
       memo: {
         conversationId: runAsynchronousAgentArgs.conversationId,
+        workspaceId: authType.workspaceId,
       },
     });
   } catch (error) {
