@@ -49,7 +49,7 @@ export function AssistantDetailsButtonBar({
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+    useURLSheet("agentDetails");
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,

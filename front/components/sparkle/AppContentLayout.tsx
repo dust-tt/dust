@@ -27,8 +27,8 @@ export const appLayoutBack = async (
     router.beforePopState(({ as }) => {
       // Parse the destination URL that router.back() would navigate to.
       const urlObj = new URL(as, window.location.origin);
-      // Remove assistantDetails query parameter from the destination URL.
-      urlObj.searchParams.delete("assistantDetails");
+      // Remove agentDetails query parameter from the destination URL.
+      urlObj.searchParams.delete("agentDetails");
 
       // Reconstruct the cleaned URL.
       const cleanedUrl = urlObj.pathname + urlObj.search;

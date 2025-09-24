@@ -25,7 +25,7 @@ function MentionBlock({
 }) {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+    useURLSheet("agentDetails");
 
   const handleStartConversation = async () => {
     await router.push(`/w/${owner.sId}/agent/new?agent=${agentSId}`);
@@ -33,7 +33,7 @@ function MentionBlock({
 
   const handleSeeDetails = () => {
     onOpenChangeAssistantModal(true);
-    setQueryParam(router, "assistantDetails", agentSId);
+    setQueryParam(router, "agentDetails", agentSId);
   };
 
   return (

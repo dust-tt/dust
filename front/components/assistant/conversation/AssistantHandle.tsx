@@ -20,7 +20,7 @@ export function AssistantHandle({
 
   const href = {
     pathname: router.pathname,
-    query: { ...router.query, assistantDetails: assistant.sId },
+    query: { ...router.query, agentDetails: assistant.sId },
   };
 
   if (!canMention) {

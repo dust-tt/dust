@@ -23,8 +23,10 @@ import { InputBarProvider } from "@app/components/assistant/conversation/input_b
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -105,6 +107,17 @@ const ConversationLayoutContent = ({
     [hasFeature]
   );
 
+  // Logic for the agent details sheet
+  const { onOpenChange: onOpenChangeAssistantModal } = useURLSheet("agentDetails");
+
+  const assistantSId = useMemo(() => {
+    const sid = router.query.agentDetails ?? [];
+    if (sid && typeof sid === "string") {
+      return sid;
+    }
+    return null;
+  }, [router.query.agentDetails]);
+
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
     useWelcomeTourGuide();
@@ -161,6 +174,12 @@ const ConversationLayoutContent = ({
               onTourGuideEnd={onTourGuideEnd}
             />
           )}
+          <AssistantDetails
+            owner={owner}
+            user={user}
+            assistantId={assistantSId}
+            onClose={() => onOpenChangeAssistantModal(false)}
+          />
         </AppContentLayout>
       </InputBarProvider>
     </BlockedActionsProvider>
