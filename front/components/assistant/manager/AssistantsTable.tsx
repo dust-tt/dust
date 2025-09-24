@@ -137,43 +137,25 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, UserType[]>) => {
         const editors = info.row.original.editors;
 
-        const buildAvatarGroup = (
-          items: {
-            key: string;
-            tooltipName: string;
-            visual?: string | null;
-          }[]
-        ) => {
-          const MAX_VISIBLE = 4;
+        if (!editors) {
+          return <DataTable.BasicCellContent label="-" />;
+        }
 
-          return (
+        return (
+          <DataTable.CellContent>
             <div className="flex -space-x-2">
               <Avatar.Stack
-                avatars={items.map((item) => ({
-                  name: item.tooltipName,
-                  visual: item.visual,
+                avatars={editors.map((editor) => ({
+                  name: editor.fullName,
+                  visual: editor.image,
                 }))}
-                nbVisibleItems={MAX_VISIBLE}
+                nbVisibleItems={4}
                 size="xs"
                 isRounded
               />
             </div>
-          );
-        };
-
-        const editorItems = editors.map((editor) => ({
-          key: `editor-${editor.sId}`,
-          tooltipName: (editor.fullName || formatUserFullName(editor)) ?? "-",
-          visual: editor.image,
-        }));
-
-        const editorsGroup = buildAvatarGroup(editorItems);
-
-        if (!editorsGroup) {
-          return <DataTable.BasicCellContent label="-" />;
-        }
-
-        return <DataTable.CellContent>{editorsGroup}</DataTable.CellContent>;
+          </DataTable.CellContent>
+        );
       },
     },
     {

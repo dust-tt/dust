@@ -33,7 +33,7 @@ export const getEditors = async (
   return memberUsers;
 };
 
-export const getEditorsByAgents = async (
+export const getAgentsEditors = async (
   auth: Authenticator,
   agentConfigurations: LightAgentConfigurationType[]
 ): Promise<Record<string, UserType[]>> => {
