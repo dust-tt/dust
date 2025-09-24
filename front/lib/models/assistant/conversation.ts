@@ -262,6 +262,7 @@ UserMessage.init(
     indexes: [
       { fields: ["userContextOrigin"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "createdAt"], concurrently: true },
     ],
   }
 );
