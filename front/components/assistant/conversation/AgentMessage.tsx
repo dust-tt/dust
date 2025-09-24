@@ -358,7 +358,7 @@ export function AgentMessage({
     message.status !== "failed" &&
     messageStreamState.agentState !== "thinking"
   ) {
-    // Copy button
+    // Copy button.
     buttons.push(
       <Button
         key="copy-msg-button"
