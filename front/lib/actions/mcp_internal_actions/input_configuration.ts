@@ -19,6 +19,7 @@ import {
   areSchemasEqual,
   findSchemaAtPath,
   followInternalRef,
+  getValueAtPath,
   isJSONSchemaObject,
   iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
@@ -448,6 +449,11 @@ export function augmentInputsWithConfiguration({
   iterateOverSchemaPropertiesRecursive(inputSchema, (fullPath, propSchema) => {
     for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
       if (isSchemaConfigurable(propSchema, mimeType)) {
+        const valueAtPath = getValueAtPath(inputs, fullPath);
+        if (valueAtPath) {
+          return false;
+        }
+
         const value = generateConfiguredInput({
           owner,
           actionConfiguration,
