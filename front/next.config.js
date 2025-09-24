@@ -68,11 +68,6 @@ module.exports = {
         permanent: false,
       },
       {
-        source: "/w/:wId/assistant/:cId",
-        destination: "/w/:wId/agent/:cId",
-        permanent: false,
-      },
-      {
         source: "/contact",
         destination: "/home/contact",
         permanent: true,

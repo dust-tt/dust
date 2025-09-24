@@ -10,7 +10,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
 
     return {
       redirect: {
-        destination: `/w/${context.query.wId}/agent/new`,
+        destination: `/w/${context.query.wId}/assistant/new`,
         permanent: false,
       },
     };
