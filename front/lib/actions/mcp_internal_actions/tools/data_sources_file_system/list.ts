@@ -49,6 +49,14 @@ const ListToolInputSchema = {
     ),
   dataSources:
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+  sortBy: z
+    .enum(["title", "timestamp"])
+    .optional()
+    .describe(
+      "Field to sort the results by. 'title' sorts alphabetically A-Z, 'timestamp' sorts by " +
+        "most recent first. If not specified, results are returned in the default order, which is " +
+        "folders first, then both documents and tables and alphabetically by title."
+    ),
   ...DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
 };
 

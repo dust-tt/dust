@@ -388,7 +388,6 @@ const createServer = (
         query,
         dataSources,
         limit,
-        sortBy,
         nextPageCursor,
         rootNodeId,
         mimeTypes,
@@ -439,14 +438,6 @@ const createServer = (
           options: {
             cursor: nextPageCursor,
             limit,
-            sort: sortBy
-              ? [
-                  {
-                    field: sortBy,
-                    direction: getSearchNodesSortDirection(sortBy),
-                  },
-                ]
-              : undefined,
           },
         });
 
