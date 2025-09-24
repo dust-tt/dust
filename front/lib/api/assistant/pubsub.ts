@@ -105,8 +105,10 @@ export async function* getConversationEvents({
 
 export async function cancelMessageGenerationEvent(
   auth: Authenticator,
-  messageIds: string[],
-  opts?: { conversationId?: string }
+  {
+    messageIds,
+    conversationId,
+  }: { messageIds: string[]; conversationId: string }
 ): Promise<void> {
   const client = await getTemporalClientForAgentNamespace();
   const workspaceId = auth.getNonNullableWorkspace().sId;
@@ -114,26 +116,6 @@ export async function cancelMessageGenerationEvent(
   await concurrentExecutor(
     messageIds,
     async (messageId) => {
-      // Best-effort fetch of conversationId if not provided.
-      let conversationId = opts?.conversationId;
-      if (!conversationId) {
-        const m = await Message.findOne({
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-            sId: messageId,
-          },
-          include: [
-            {
-              model: ConversationModel,
-              as: "conversation",
-              required: true,
-              attributes: ["sId"],
-            },
-          ],
-        });
-        conversationId = m?.conversation?.sId;
-      }
-
       // We use the message id provided by the caller as the agentMessageId.
       const agentMessageId = messageId;
 
