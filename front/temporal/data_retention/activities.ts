@@ -83,7 +83,14 @@ export async function purgeConversationsBatchActivity({
 
     await concurrentExecutor(
       conversations,
-      async (c) => destroyConversation(auth, { conversationId: c.sId }),
+      async (c) => {
+        const result = await destroyConversation(auth, {
+          conversationId: c.sId,
+        });
+        if (result.isErr() && result.error.type !== "conversation_not_found") {
+          throw result.error;
+        }
+      },
       {
         concurrency: 4,
       }
@@ -154,7 +161,14 @@ export async function purgeAgentConversationsBatchActivity({
 
   await concurrentExecutor(
     conversationIds,
-    async (cId) => destroyConversation(auth, { conversationId: cId }),
+    async (conversationId) => {
+      const result = await destroyConversation(auth, {
+        conversationId,
+      });
+      if (result.isErr() && result.error.type !== "conversation_not_found") {
+        throw result.error;
+      }
+    },
     {
       concurrency: 4,
     }
