@@ -371,8 +371,22 @@ export function AgentMessage({
       />
     );
 
-    // Retry only when generation is finished (i.e., not "created").
-    if (agentMessageToRender.status !== "created") {
+    // Second slot: Stop while generating, else Retry (same position).
+    if (agentMessageToRender.status === "created") {
+      buttons.push(
+        <Button
+          key="stop-msg-button"
+          tooltip="Stop agent"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={async () => {
+            await cancelMessage([message.sId]);
+          }}
+          icon={StopIcon}
+          className="text-muted-foreground"
+        />
+      );
+    } else {
       buttons.push(
         <Button
           key="retry-msg-button"
@@ -407,22 +421,7 @@ export function AgentMessage({
     );
   }
 
-  // Add a per-agent stop control while generating.
-  if (agentMessageToRender.status === "created") {
-    buttons.push(
-      <Button
-        key="stop-msg-button"
-        tooltip="Stop agent"
-        variant="ghost-secondary"
-        size="xs"
-        onClick={async () => {
-          await cancelMessage([message.sId]);
-        }}
-        icon={StopIcon}
-        className="text-muted-foreground"
-      />
-    );
-  }
+  // Stop/Retry toggle handled above to keep a single position.
 
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
