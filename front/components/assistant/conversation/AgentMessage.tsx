@@ -367,23 +367,46 @@ export function AgentMessage({
         onClick={handleCopyToClipboard}
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
         className="text-muted-foreground"
-      />,
-      <Button
-        key="retry-msg-button"
-        tooltip="Retry"
-        variant="ghost-secondary"
-        size="xs"
-        onClick={() => {
-          void retryHandler({
-            conversationId,
-            messageId: agentMessageToRender.sId,
-          });
-        }}
-        icon={ArrowPathIcon}
-        className="text-muted-foreground"
-        disabled={isRetryHandlerProcessing || shouldStream}
-      />,
-      // One cannot leave feedback on global agents.
+      />
+    );
+
+    // Second slot: Stop while generating, else Retry (same position).
+    if (agentMessageToRender.status === "created") {
+      buttons.push(
+        <Button
+          key="stop-msg-button"
+          tooltip="Stop agent"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={async () => {
+            await cancelMessage([message.sId]);
+          }}
+          icon={StopIcon}
+          className="text-muted-foreground"
+        />
+      );
+    } else {
+      buttons.push(
+        <Button
+          key="retry-msg-button"
+          tooltip="Retry"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={() => {
+            void retryHandler({
+              conversationId,
+              messageId: agentMessageToRender.sId,
+            });
+          }}
+          icon={ArrowPathIcon}
+          className="text-muted-foreground"
+          disabled={isRetryHandlerProcessing || shouldStream}
+        />
+      );
+    }
+
+    // Feedback (not on global agents nor drafts).
+    buttons.push(
       ...(isGlobalAgent || agentMessageToRender.configuration.status === "draft"
         ? []
         : [
@@ -394,23 +417,6 @@ export function AgentMessage({
               getPopoverInfo={PopoverContent}
             />,
           ])
-    );
-  }
-
-  // Add a per-agent stop control while generating.
-  if (agentMessageToRender.status === "created") {
-    buttons.push(
-      <Button
-        key="stop-msg-button"
-        tooltip="Stop agent"
-        variant="ghost-secondary"
-        size="xs"
-        onClick={async () => {
-          await cancelMessage([message.sId]);
-        }}
-        icon={StopIcon}
-        className="text-muted-foreground"
-      />
     );
   }
 
