@@ -6,6 +6,7 @@ export type DustErrorCode =
   | "connection_not_found"
   | "file_not_found"
   | "unauthorized"
+  | "agent_loop_already_running"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"

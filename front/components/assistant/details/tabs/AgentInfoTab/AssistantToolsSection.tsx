@@ -78,33 +78,9 @@ export function AssistantToolsSection({
 
   const filteredModels = removeNulls(models);
   return (
-    <div className="flex flex-row gap-2">
-      {nonHiddenActions.length > 0 && (
-        <div className="flex flex-[1_0_0] flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
-            Tools
-          </div>
-          <div className="flex flex-col gap-2">
-            {isLoading ? (
-              <div className="flex flex-row items-center gap-2">
-                <Spinner size="xs" />
-              </div>
-            ) : (
-              sortedActions.map((action) => (
-                <div
-                  className="flex flex-row items-center gap-2"
-                  key={action.title}
-                >
-                  {action.avatar}
-                  <div>{action.title}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+    <div className="flex flex-col gap-5">
       {filteredModels.length > 0 && (
-        <div className="flex flex-[1_0_0] flex-col gap-5">
+        <div className="flex flex-col gap-5">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Models
           </div>
@@ -121,6 +97,31 @@ export function AssistantToolsSection({
                 <div>{model.displayName}</div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {nonHiddenActions.length > 0 && (
+        <div className="flex flex-col gap-5">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Tools
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {isLoading ? (
+              <div className="flex flex-row items-center gap-2">
+                <Spinner size="xs" />
+              </div>
+            ) : (
+              sortedActions.map((action) => (
+                <div
+                  className="flex flex-row items-center gap-2"
+                  key={action.title}
+                >
+                  {action.avatar}
+                  <div>{action.title}</div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
