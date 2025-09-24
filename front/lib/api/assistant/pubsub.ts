@@ -4,10 +4,6 @@ import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { createCallbackReader } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
