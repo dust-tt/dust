@@ -35,11 +35,7 @@ import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssista
 import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  AgentConfigurationScope,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import type { AgentConfigurationScope, UserType, WorkspaceType } from "@app/types";
 import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
 
 export const SCOPE_INFO: Record<
@@ -293,6 +289,11 @@ export function AssistantDetails({
                     </div>
                   )}
                 </Tabs>
+              ) : agentConfiguration ? (
+                <AgentInfoTab
+                  agentConfiguration={agentConfiguration}
+                  owner={owner}
+                />
               ) : (
                 <div />
               )}
