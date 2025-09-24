@@ -44,7 +44,7 @@ export function PanelAgentStep({
               content={reasoningContent}
               isStreaming={isStreaming}
               forcedTextSize="text-sm"
-              textColor="text-muted-foreground"
+              textColor="text-muted-foreground dark:text-muted-foreground-night"
               isLastMessage={false}
             />
           </ContentMessage>
@@ -61,7 +61,7 @@ export function PanelAgentStep({
                   content={entry.content}
                   isStreaming={false}
                   forcedTextSize="text-sm"
-                  textColor="text-muted-foreground"
+                  textColor="text-muted-foreground dark:text-muted-foreground-night"
                   isLastMessage={false}
                 />
               </ContentMessage>
