@@ -36,12 +36,16 @@ import type {
 } from "@app/types";
 import { isAdmin, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
+import type { UserType } from "@app/types/user";
+import { formatUserFullName } from "@app/types/user";
 
 type RowData = {
   sId: string;
   name: string;
   description: string;
   pictureUrl: string;
+  editors: UserType[];
+  lastAuthors: string[];
   usage: AgentUsageType | undefined;
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
@@ -60,11 +64,13 @@ const getTableColumns = ({
   tags,
   isBatchEdit,
   mutateAgentConfigurations,
+  currentUser,
 }: {
   owner: WorkspaceType;
   tags: TagType[];
   isBatchEdit: boolean;
   mutateAgentConfigurations: () => Promise<any>;
+  currentUser: UserType;
 }) => {
   return [
     ...(isBatchEdit
@@ -126,6 +132,99 @@ const getTableColumns = ({
       ),
       meta: {
         className: "w-32",
+      },
+    },
+    {
+      header: "Editors",
+      accessorKey: "editors",
+      cell: (info: CellContext<RowData, UserType[]>) => {
+        const editors = info.row.original.editors;
+        const lastAuthors = info.row.original.lastAuthors;
+
+        const buildAvatarGroup = (
+          items: {
+            key: string;
+            displayName: string;
+            tooltipName: string;
+            visual?: string | null;
+          }[],
+          overflowKey: string
+        ) => {
+          if (items.length === 0) {
+            return null;
+          }
+
+          const MAX_VISIBLE = 4;
+          const visibleItems = items.slice(0, MAX_VISIBLE);
+          const overflowCount = items.length - visibleItems.length;
+
+          return (
+            <div className="flex -space-x-2">
+              {visibleItems.map(({ key, displayName, tooltipName, visual }) => (
+                <Tooltip
+                  key={key}
+                  tooltipTriggerAsChild
+                  label={tooltipName}
+                  trigger={
+                    <Avatar
+                      size="xs"
+                      visual={visual ?? undefined}
+                      name={displayName}
+                      isRounded
+                      className="border border-background dark:border-background-night"
+                    />
+                  }
+                />
+              ))}
+              {overflowCount > 0 && (
+                <Tooltip
+                  key={overflowKey}
+                  tooltipTriggerAsChild
+                  label={items
+                    .slice(MAX_VISIBLE)
+                    .map((item) => item.tooltipName)
+                    .join(", ")}
+                  trigger={
+                    <Avatar
+                      size="xs"
+                      name={`+${overflowCount}`}
+                      isRounded
+                      className="border border-background dark:border-background-night"
+                    />
+                  }
+                />
+              )}
+            </div>
+          );
+        };
+
+        const editorItems = editors.map((editor) => ({
+          key: `editor-${editor.sId}`,
+          displayName:
+            (editor.fullName || formatUserFullName(editor)) ?? "Unknown",
+          tooltipName:
+            (editor.fullName || formatUserFullName(editor)) ?? "Unknown",
+          visual: editor.image,
+        }));
+
+        const lastAuthorItems = lastAuthors.map((authorName, index) => ({
+          key: `author-${info.row.original.sId}-${index}`,
+          displayName: authorName === "Me" ? currentUser.fullName : authorName,
+          tooltipName: authorName === "Me" ? currentUser.fullName : authorName,
+          visual: authorName === "Me" ? currentUser.image : undefined,
+        }));
+
+        const allItems = [...editorItems, ...lastAuthorItems];
+        const combinedGroup = buildAvatarGroup(
+          allItems,
+          `combined-overflow-${info.row.original.sId}`
+        );
+
+        if (!combinedGroup) {
+          return <DataTable.BasicCellContent label="-" />;
+        }
+
+        return <DataTable.CellContent>{combinedGroup}</DataTable.CellContent>;
       },
     },
     {
@@ -236,6 +335,7 @@ const getTableColumns = ({
 
 type AssistantsTableProps = {
   owner: WorkspaceType;
+  user: UserType;
   agents: LightAgentConfigurationType[];
   setShowDetails: (agent: LightAgentConfigurationType) => void;
   handleToggleAgentStatus: (
@@ -251,6 +351,7 @@ type AssistantsTableProps = {
 
 export function AssistantsTable({
   owner,
+  user,
   agents,
   setShowDetails,
   handleToggleAgentStatus,
@@ -281,6 +382,7 @@ export function AssistantsTable({
           (agentConfiguration.canEdit || isAdmin(owner)) &&
           agentConfiguration.status !== "archived" &&
           agentConfiguration.scope !== "global";
+
         return {
           sId: agentConfiguration.sId,
           name: agentConfiguration.name,
@@ -294,7 +396,10 @@ export function AssistantsTable({
           pictureUrl: agentConfiguration.pictureUrl,
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
-          editors: agentConfiguration.editors,
+          editors: agentConfiguration.editors ?? [],
+          lastAuthors: agentConfiguration.lastAuthors
+            ? [...agentConfiguration.lastAuthors]
+            : [],
           scope: agentConfiguration.scope,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
@@ -440,6 +545,7 @@ export function AssistantsTable({
               tags: sortedTags,
               isBatchEdit,
               mutateAgentConfigurations,
+              currentUser: user,
             })}
             pagination={pagination}
             setPagination={setPagination}
