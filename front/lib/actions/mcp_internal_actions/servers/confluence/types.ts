@@ -100,12 +100,15 @@ export const ConfluencePageSchema = z.object({
 
 // List spaces request schema
 export const ConfluenceListSpacesRequestSchema = z.object({
-  ids: z.array(z.string()).optional().describe("List of space IDs to filter by"),
-  keys: z.array(z.string()).optional().describe("List of space keys to filter by"),
-  type: z
-    .enum(["global", "personal"])
+  ids: z
+    .array(z.string())
     .optional()
-    .describe("Space type filter"),
+    .describe("List of space IDs to filter by"),
+  keys: z
+    .array(z.string())
+    .optional()
+    .describe("List of space keys to filter by"),
+  type: z.enum(["global", "personal"]).optional().describe("Space type filter"),
   status: z
     .enum(["current", "archived"])
     .optional()
@@ -129,7 +132,10 @@ export const ConfluenceListSpacesRequestSchema = z.object({
 // List pages request schema
 export const ConfluenceListPagesRequestSchema = z.object({
   spaceId: z.string().optional().describe("Space ID to filter pages by"),
-  parentId: z.string().optional().describe("Parent page ID to filter child pages"),
+  parentId: z
+    .string()
+    .optional()
+    .describe("Parent page ID to filter child pages"),
   title: z.string().optional().describe("Page title to search for"),
   status: z
     .enum(["current", "trashed", "draft", "archived"])
@@ -151,7 +157,9 @@ export const ConfluenceListPagesRequestSchema = z.object({
 
 // Create page request schema
 export const ConfluenceCreatePageRequestSchema = z.object({
-  spaceId: z.string().describe("The ID of the space where the page will be created"),
+  spaceId: z
+    .string()
+    .describe("The ID of the space where the page will be created"),
   status: z
     .enum(["current", "draft"])
     .optional()
@@ -216,37 +224,53 @@ export const ConfluenceListPagesResultSchema = z.object({
 });
 
 // Current user response schema - matching Atlassian standard /me endpoint
-export const ConfluenceCurrentUserSchema = z.object({
-  account_id: z.string(),
-  account_type: z.string().optional().default("atlassian"),
-  email: z.string().optional(),
-  name: z.string(),
-  picture: z.string().optional(),
-  nickname: z.string().optional(),
-  zoneinfo: z.string().optional(),
-  locale: z.string().optional(),
-  extended: z.record(z.any()).optional(),
-}).transform((data) => ({
-  accountId: data.account_id,
-  accountType: data.account_type,
-  email: data.email,
-  displayName: data.name,
-  publicName: data.name,
-  profilePicture: data.picture ? {
-    path: data.picture,
-    width: 48,
-    height: 48,
-    isDefault: false,
-  } : undefined,
-}));
+export const ConfluenceCurrentUserSchema = z
+  .object({
+    account_id: z.string(),
+    account_type: z.string().optional().default("atlassian"),
+    email: z.string().optional(),
+    name: z.string(),
+    picture: z.string().optional(),
+    nickname: z.string().optional(),
+    zoneinfo: z.string().optional(),
+    locale: z.string().optional(),
+    extended: z.record(z.any()).optional(),
+  })
+  .transform((data) => ({
+    accountId: data.account_id,
+    accountType: data.account_type,
+    email: data.email,
+    displayName: data.name,
+    publicName: data.name,
+    profilePicture: data.picture
+      ? {
+          path: data.picture,
+          width: 48,
+          height: 48,
+          isDefault: false,
+        }
+      : undefined,
+  }));
 
 export type ConfluenceUser = z.infer<typeof ConfluenceUserSchema>;
 export type ConfluenceSpace = z.infer<typeof ConfluenceSpaceSchema>;
 export type ConfluencePage = z.infer<typeof ConfluencePageSchema>;
-export type ConfluenceListSpacesRequest = z.infer<typeof ConfluenceListSpacesRequestSchema>;
-export type ConfluenceListSpacesResult = z.infer<typeof ConfluenceListSpacesResultSchema>;
-export type ConfluenceListPagesRequest = z.infer<typeof ConfluenceListPagesRequestSchema>;
-export type ConfluenceCreatePageRequest = z.infer<typeof ConfluenceCreatePageRequestSchema>;
-export type ConfluenceUpdatePageRequest = z.infer<typeof ConfluenceUpdatePageRequestSchema>;
-export type ConfluenceListPagesResult = z.infer<typeof ConfluenceListPagesResultSchema>;
+export type ConfluenceListSpacesRequest = z.infer<
+  typeof ConfluenceListSpacesRequestSchema
+>;
+export type ConfluenceListSpacesResult = z.infer<
+  typeof ConfluenceListSpacesResultSchema
+>;
+export type ConfluenceListPagesRequest = z.infer<
+  typeof ConfluenceListPagesRequestSchema
+>;
+export type ConfluenceCreatePageRequest = z.infer<
+  typeof ConfluenceCreatePageRequestSchema
+>;
+export type ConfluenceUpdatePageRequest = z.infer<
+  typeof ConfluenceUpdatePageRequestSchema
+>;
+export type ConfluenceListPagesResult = z.infer<
+  typeof ConfluenceListPagesResultSchema
+>;
 export type ConfluenceCurrentUser = z.infer<typeof ConfluenceCurrentUserSchema>;

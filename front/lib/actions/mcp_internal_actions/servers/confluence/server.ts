@@ -104,10 +104,7 @@ const createServer = (
         .array(z.string())
         .optional()
         .describe("Filter spaces by labels"),
-      favourite: z
-        .boolean()
-        .optional()
-        .describe("Filter by favorite spaces"),
+      favourite: z.boolean().optional().describe("Filter by favorite spaces"),
       sort: z
         .enum(["id", "key", "name", "created-date", "favourite"])
         .optional()
