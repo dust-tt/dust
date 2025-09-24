@@ -52,6 +52,7 @@ export { default as CompanyIcon } from "./Company";
 export { default as ContactsRobotIcon } from "./ContactsRobot";
 export { default as ContactsUserIcon } from "./ContactsUser";
 export { default as CubeIcon } from "./Cube";
+export { default as DIcon } from "./D";
 export { default as DashIcon } from "./Dash";
 export { default as DocumentIcon } from "./Document";
 export { default as DocumentPileIcon } from "./DocumentPile";
