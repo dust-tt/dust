@@ -212,7 +212,7 @@ export function MCPServerViewsSheet({
     []
   );
 
-  console.log("mcpServerViewsWithoutKnowledge", mcpServerViewsWithoutKnowledge);
+-  console.log("mcpServerViewsWithoutKnowledge", mcpServerViewsWithoutKnowledge);
 
   const topMCPServerViews = useMemo(() => {
     return mcpServerViewsWithoutKnowledge.filter((view) =>
