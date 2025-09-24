@@ -1,6 +1,7 @@
 import {
   Avatar,
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,10 +35,12 @@ export function ConversationMenu({
   activeConversationId,
   conversation,
   owner,
+  className,
 }: {
   activeConversationId: string | null;
   conversation: ConversationWithoutContentType | null;
   owner: WorkspaceType;
+  className?: string;
 }) {
   const { user } = useUser();
   const router = useRouter();
@@ -152,7 +155,7 @@ export function ConversationMenu({
         open={isMenuOpen}
         onOpenChange={setIsMenuOpen}
       >
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild className={cn(className)}>
           <Button
             size="sm"
             variant="ghost"

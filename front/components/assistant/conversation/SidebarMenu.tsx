@@ -2,6 +2,7 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
+  cn,
   DocumentIcon,
   DotIcon,
   DropdownMenu,
@@ -38,6 +39,7 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
+import { ConversationMenu } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -543,7 +545,19 @@ const RenderConversation = ({
                 : undefined
           }
           label={conversationLabel}
-          className={conversation.unread ? "font-medium" : undefined}
+          className={cn(
+            "group relative w-full max-w-full [&:has([data-state=open])_span]:!pr-8 [&:hover_span]:!pr-8 [&[data-selected=true]_span]:!pr-8 [&_span]:!pr-0",
+            conversation.unread ? "font-medium" : ""
+          )}
+          moreMenu={
+            <ConversationMenu
+              activeConversationId={conversation.sId}
+              conversation={conversation}
+              owner={owner}
+              className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 hover:border-transparent hover:bg-transparent active:bg-transparent group-hover:opacity-100 group-data-[selected=true]:opacity-100"
+              isConversationDisplayed={router.query.cId === conversation.sId}
+            />
+          }
           onClick={async () => {
             // Side bar is the floating sidebar that appears when the screen is small.
             if (sidebarOpen) {
