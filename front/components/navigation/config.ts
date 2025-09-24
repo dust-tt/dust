@@ -1,12 +1,12 @@
 import {
   BarChartIcon,
-  BookOpenIcon,
   BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  GlobeAltIcon,
   LockIcon,
   PlanetIcon,
   ShapesIcon,
@@ -129,7 +129,7 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "data_sources",
     label: "Spaces",
-    icon: BookOpenIcon,
+    icon: PlanetIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces/"),
@@ -196,7 +196,7 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace Settings",
-          icon: PlanetIcon,
+          icon: GlobeAltIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,

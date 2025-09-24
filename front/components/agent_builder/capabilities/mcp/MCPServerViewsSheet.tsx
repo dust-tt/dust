@@ -136,7 +136,7 @@ interface MCPServerViewsSheetProps {
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
-  actions: AgentBuilderAction[];
+  selectedActions: AgentBuilderAction[];
   getAgentInstructions: () => string;
 }
 
@@ -146,7 +146,7 @@ export function MCPServerViewsSheet({
   mode,
   onModeChange,
   onActionUpdate,
-  actions,
+  selectedActions,
   getAgentInstructions,
 }: MCPServerViewsSheetProps) {
   const confirm = React.useContext(ConfirmContext);
@@ -179,37 +179,28 @@ export function MCPServerViewsSheet({
 
   const hasReasoningModel = reasoningModels.length > 0;
 
-  // Utility function to check if a server view should be filtered out based on allowMultipleInstances
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
-      // For servers that don't allow multiple instances, check if any action is using this server type
-      if (!view.server.allowMultipleInstances) {
-        const serverAlreadyUsed = actions.some((action) => {
-          // Check if this is an MCP action with the same server ID
-          return (
-            action.type === "MCP" &&
-            action.configuration &&
-            action.configuration.mcpServerViewId === view.sId
+      // Build the set of server.sId already selected by actions (via their selected view).
+      const selectedServerIds = new Set<string>();
+      for (const action of actions) {
+        if (
+          action.type === "MCP" &&
+          action.configuration &&
+          action.configuration.mcpServerViewId
+        ) {
+          const selectedView = allMcpServerViews.find(
+            (mcpServerView) =>
+              mcpServerView.sId === action.configuration.mcpServerViewId
           );
-        });
-
-        if (serverAlreadyUsed) {
-          return true;
+          if (selectedView) {
+            selectedServerIds.add(selectedView.server.sId);
+          }
         }
       }
-
-      // Legacy check for backward compatibility - tools can still be filtered by name/configurability
-      const selectedAction = actions.find(
-        (action) => action.name === view.server.name
-      );
-
-      if (selectedAction) {
-        return !selectedAction.configurable; // Should filter out if not configurable
-      }
-
-      return false;
+      return selectedServerIds.has(view.server.sId);
     },
-    []
+    [allMcpServerViews]
   );
 
   const topMCPServerViews = useMemo(() => {
@@ -226,7 +217,7 @@ export function MCPServerViewsSheet({
 
   const selectableTopMCPServerViews = useMemo(() => {
     const filteredList = topMCPServerViews.filter(
-      (view) => !shouldFilterServerView(view, actions)
+      (view) => !shouldFilterServerView(view, selectedActions)
     );
 
     if (hasReasoningModel) {
@@ -236,14 +227,19 @@ export function MCPServerViewsSheet({
     return filteredList.filter(
       (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
     );
-  }, [topMCPServerViews, actions, hasReasoningModel, shouldFilterServerView]);
+  }, [
+    topMCPServerViews,
+    selectedActions,
+    hasReasoningModel,
+    shouldFilterServerView,
+  ]);
 
   const selectableNonTopMCPServerViews = useMemo(
     () =>
       nonTopMCPServerViews.filter(
-        (view) => !shouldFilterServerView(view, actions)
+        (view) => !shouldFilterServerView(view, selectedActions)
       ),
-    [nonTopMCPServerViews, actions, shouldFilterServerView]
+    [nonTopMCPServerViews, selectedActions, shouldFilterServerView]
   );
 
   const filteredViews = useMemo(() => {
@@ -562,7 +558,7 @@ export function MCPServerViewsSheet({
   const pages: MultiPageSheetPage[] = [
     {
       id: TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION,
-      title: actions.length === 0 ? "Add tools" : "Add more",
+      title: selectedActions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
       content: isMCPServerViewsLoading ? (
@@ -741,7 +737,7 @@ export function MCPServerViewsSheet({
       const newActionName = isNewActionOrNameChanged
         ? generateUniqueActionName({
             baseName: nameToStorageFormat(formData.name),
-            existingActions: actions,
+            existingActions: selectedActions,
             selectedToolsInSheet,
           })
         : mode?.type === "edit"

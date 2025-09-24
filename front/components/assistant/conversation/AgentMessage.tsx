@@ -355,7 +355,7 @@ export function AgentMessage({
           <Button
             key="copy-msg-button"
             tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-            variant="outline"
+            variant="ghost-secondary"
             size="xs"
             onClick={handleCopyToClipboard}
             icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
@@ -364,7 +364,7 @@ export function AgentMessage({
           <Button
             key="retry-msg-button"
             tooltip="Retry"
-            variant="outline"
+            variant="ghost-secondary"
             size="xs"
             onClick={() => {
               void retryHandler({

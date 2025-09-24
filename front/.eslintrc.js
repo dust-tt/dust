@@ -13,7 +13,13 @@ module.exports = {
     "@typescript-eslint/consistent-type-imports": "error",
     "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
     "@typescript-eslint/no-explicit-any": 0,
-    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+      },
+    ],
     "no-case-declarations": 0,
     "@next/next/no-img-element": 0,
     "@typescript-eslint/no-floating-promises": "error",

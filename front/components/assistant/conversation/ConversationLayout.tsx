@@ -21,12 +21,10 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
-import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -91,8 +89,7 @@ const ConversationLayoutContent = ({
   isAdmin,
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
-  const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
@@ -107,14 +104,6 @@ const ConversationLayoutContent = ({
     () => hasFeature("co_edition"),
     [hasFeature]
   );
-
-  const assistantSId = useMemo(() => {
-    const sid = router.query.assistantDetails ?? [];
-    if (sid && typeof sid === "string") {
-      return sid;
-    }
-    return null;
-  }, [router.query.assistantDetails]);
 
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
@@ -145,12 +134,6 @@ const ConversationLayoutContent = ({
           }
           navChildren={<AssistantSidebarMenu owner={owner} />}
         >
-          <AssistantDetails
-            owner={owner}
-            user={user}
-            assistantId={assistantSId}
-            onClose={() => onOpenChangeAssistantModal(false)}
-          />
           <CoEditionProvider
             owner={owner}
             hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}

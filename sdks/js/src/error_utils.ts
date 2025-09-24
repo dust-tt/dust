@@ -1,6 +1,7 @@
 export function errorToString(error: unknown): string {
   if (error instanceof Error) {
-    return error.message;
+    const cause = "cause" in error ? errorToString(error.cause) : null;
+    return `${error.message}${cause ? `\n- Cause: ${cause}` : ""}`;
   } else if (typeof error === "string") {
     return error;
   }

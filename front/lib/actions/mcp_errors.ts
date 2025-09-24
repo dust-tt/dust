@@ -1,3 +1,5 @@
+import type { APIError } from "@app/types";
+
 export class MCPServerNotFoundError extends Error {
   constructor(message: string) {
     super(message);
@@ -11,9 +13,13 @@ export class MCPError extends Error {
 
   constructor(
     message: string,
-    { tracked = true, code }: { tracked?: boolean; code?: number } = {}
+    {
+      tracked = true,
+      code,
+      cause,
+    }: { tracked?: boolean; code?: number; cause?: Error | APIError } = {}
   ) {
-    super(message);
+    super(message, { cause });
     this.tracked = tracked;
     this.code = code;
   }
