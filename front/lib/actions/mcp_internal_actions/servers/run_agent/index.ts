@@ -49,6 +49,7 @@ import type { CitationType, Result } from "@app/types";
 import {
   Err,
   getHeaderFromUserEmail,
+  isAgentErrorCategory,
   isGlobalAgentId,
   normalizeError,
   Ok,
@@ -619,7 +620,17 @@ ${query}`
               }
             } else if (event.type === "agent_error") {
               const errorMessage = `Agent error: ${event.error.message}`;
-              return new Err(new MCPError(errorMessage));
+              return new Err(
+                new MCPError(errorMessage, {
+                  tracked:
+                    isAgentErrorCategory(event.error.metadata?.category) &&
+                    [
+                      "retryable_model_error",
+                      "context_window_exceeded",
+                      "provider_internal_error",
+                    ].includes(event.error.metadata.category),
+                })
+              );
             } else if (event.type === "user_message_error") {
               const errorMessage = `User message error: ${event.error.message}`;
               return new Err(new MCPError(errorMessage));
