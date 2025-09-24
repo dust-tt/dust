@@ -9,6 +9,7 @@ import {
   useMemo,
   useRef,
 } from "react";
+import type { ReactNode } from "react";
 
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -59,6 +60,18 @@ interface DataSourceListProps {
    */
   showSelectAllHeader?: boolean;
   headerTitle?: string;
+  /**
+   * Optional selection state override per item. Useful when the list displays
+   * items from different navigation contexts (e.g., global search results),
+   * where the default context-based isRowSelected(id) would be incorrect.
+   */
+  isItemSelected?: (item: DataSourceListItem) => boolean | "partial";
+  /**
+   * Optional right column header and cell renderer to support a two-column list
+   * layout (e.g., Name | Location) while keeping a compact list UI.
+   */
+  rightHeaderTitle?: string;
+  renderRight?: (item: DataSourceListItem) => ReactNode;
 }
 
 export function DataSourceList({
@@ -71,6 +84,9 @@ export function DataSourceList({
   onSelectionChange,
   showSelectAllHeader = false,
   headerTitle = "Name",
+  isItemSelected,
+  rightHeaderTitle,
+  renderRight,
 }: DataSourceListProps) {
   const { isRowSelected, selectNode, removeNode, navigationHistory } =
     useDataSourceBuilderContext();
@@ -143,10 +159,14 @@ export function DataSourceList({
     }
 
     const selectedCount = selectableItems.filter(
-      (item) => isRowSelected(item.id) === true
+      (item) =>
+        (isItemSelected ? isItemSelected(item) : isRowSelected(item.id)) ===
+        true
     ).length;
     const partialCount = selectableItems.filter(
-      (item) => isRowSelected(item.id) === "partial"
+      (item) =>
+        (isItemSelected ? isItemSelected(item) : isRowSelected(item.id)) ===
+        "partial"
     ).length;
 
     if (selectedCount === selectableItems.length) {
@@ -156,7 +176,13 @@ export function DataSourceList({
       return "partial";
     }
     return false;
-  }, [showSelectAllHeader, items, shouldHideCheckbox, isRowSelected]);
+  }, [
+    showSelectAllHeader,
+    items,
+    shouldHideCheckbox,
+    isRowSelected,
+    isItemSelected,
+  ]);
 
   const handleSelectAll = useCallback(async () => {
     const selectableItems = items.filter((item) => {
@@ -280,17 +306,26 @@ export function DataSourceList({
       className={cn("flex max-h-full flex-col overflow-auto pr-1", className)}
     >
       {showSelectAllHeader && (
-        <div className="flex items-center gap-3 p-3 font-medium text-foreground dark:text-white">
-          <Checkbox
-            checked={selectAllState}
-            onCheckedChange={handleSelectAll}
-          />
-          {headerTitle && <div>{headerTitle}</div>}
+        <div className="flex items-center justify-between p-3 font-medium text-foreground dark:text-white">
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={selectAllState}
+              onCheckedChange={handleSelectAll}
+            />
+            {headerTitle && <div>{headerTitle}</div>}
+          </div>
+          {rightHeaderTitle && (
+            <div className="ml-3 w-1/3 truncate text-muted-foreground">
+              {rightHeaderTitle}
+            </div>
+          )}
         </div>
       )}
       <Separator />
       {items.map((item) => {
-        const selectionState = isRowSelected(item.id);
+        const selectionState = isItemSelected
+          ? isItemSelected(item)
+          : isRowSelected(item.id);
         const hideCheckbox = shouldHideCheckbox(item);
 
         const shouldShowCheckbox = showCheckboxOnlyForPartialSelection
@@ -300,26 +335,34 @@ export function DataSourceList({
         return (
           <Fragment key={item.id}>
             <div
-              className="flex cursor-pointer items-center gap-3 rounded-md p-3 hover:bg-muted/60"
+              className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
               onClick={() => item.onClick?.()}
             >
-              {shouldShowCheckbox ? (
-                <Checkbox
-                  checked={selectionState}
-                  disabled={hideCheckbox}
-                  onClick={(e) => e.stopPropagation()}
-                  onCheckedChange={(state) =>
-                    handleSelectionChange(item, state)
-                  }
-                />
-              ) : (
-                <div className="w-5" />
-              )}
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                {shouldShowCheckbox ? (
+                  <Checkbox
+                    checked={selectionState}
+                    disabled={hideCheckbox}
+                    onClick={(e) => e.stopPropagation()}
+                    onCheckedChange={(state) =>
+                      handleSelectionChange(item, state)
+                    }
+                  />
+                ) : (
+                  <div className="w-5" />
+                )}
 
-              {item.icon && <Icon size="sm" visual={item.icon} />}
-              <div className="flex-1 truncate text-sm text-foreground dark:text-white">
-                {item.title}
+                {item.icon && <Icon size="sm" visual={item.icon} />}
+                <div className="truncate text-sm text-foreground dark:text-white">
+                  {item.title}
+                </div>
               </div>
+
+              {renderRight && (
+                <div className="ml-3 w-1/3 truncate text-sm text-muted-foreground">
+                  {renderRight(item)}
+                </div>
+              )}
             </div>
             <Separator />
           </Fragment>
