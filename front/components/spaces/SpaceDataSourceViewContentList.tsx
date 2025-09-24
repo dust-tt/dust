@@ -48,6 +48,7 @@ import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
@@ -348,6 +349,8 @@ export const SpaceDataSourceViewContentList = ({
     sorting: apiSorting,
   });
 
+  const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
+
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
     useStaticDataSourceViewHasContent({
       owner,
@@ -527,6 +530,11 @@ export const SpaceDataSourceViewContentList = ({
   const onSaveAction = useCallback(
     async (action?: ContentActionKey) => {
       await mutateContentNodes();
+
+      // Since the content nodes have changed, we start a periodic refresh to ensure
+      // that any ongoing processing (e.g., file uploads) is reflected in the UI.
+      startPeriodicRefresh();
+
       if (
         action === "DocumentUploadOrEdit" ||
         action === "MultipleDocumentsUpload"
@@ -536,7 +544,7 @@ export const SpaceDataSourceViewContentList = ({
         handleViewTypeChange("table");
       }
     },
-    [handleViewTypeChange, mutateContentNodes]
+    [handleViewTypeChange, mutateContentNodes, startPeriodicRefresh]
   );
 
   const emptySpaceContent =

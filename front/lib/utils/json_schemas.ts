@@ -133,6 +133,30 @@ export function setValueAtPath(
 }
 
 /**
+ * Gets a value at a specific path in a nested object structure.
+ * Returns undefined if the path doesn't exist or any intermediate object is missing.
+ */
+export function getValueAtPath(
+  obj: Record<string, unknown>,
+  path: string[]
+): unknown {
+  if (path.length === 0) {
+    return obj;
+  }
+
+  let current: unknown = obj;
+  for (const key of path) {
+    if (current && typeof current === "object" && current !== null) {
+      current = (current as Record<string, unknown>)[key];
+    } else {
+      return undefined;
+    }
+  }
+
+  return current;
+}
+
+/**
  * Validates a generic JSON schema as per the JSON schema specification.
  * Less strict than the JsonSchemaSchema zod schema.
  */

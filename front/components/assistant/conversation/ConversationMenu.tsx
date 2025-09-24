@@ -1,19 +1,18 @@
 import {
   Avatar,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
   LinkIcon,
-  MoreIcon,
   PencilSquareIcon,
   PlusCircleIcon,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
 
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
@@ -33,13 +32,15 @@ import { asDisplayName } from "@app/types/shared/utils/string_utils";
 export function ConversationMenu({
   activeConversationId,
   conversation,
-  baseUrl,
   owner,
+  trigger,
+  isConversationDisplayed,
 }: {
   activeConversationId: string | null;
   conversation: ConversationWithoutContentType | null;
-  baseUrl: string;
   owner: WorkspaceType;
+  trigger: ReactElement;
+  isConversationDisplayed: boolean;
 }) {
   const { user } = useUser();
   const router = useRouter();
@@ -69,16 +70,22 @@ export function ConversationMenu({
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`;
+  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+  const shareLink =
+    baseUrl !== undefined
+      ? `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`
+      : undefined;
 
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(async () => {
     const res = await doDelete(conversation);
-    res && void router.push(`/w/${owner.sId}/assistant/new`);
-  }, [conversation, doDelete, owner.sId, router]);
+    isConversationDisplayed &&
+      res &&
+      void router.push(`/w/${owner.sId}/assistant/new`);
+  }, [conversation, doDelete, owner.sId, router, isConversationDisplayed]);
 
   const copyConversationLink = useCallback(async () => {
-    await navigator.clipboard.writeText(shareLink || "");
+    await navigator.clipboard.writeText(shareLink ?? "");
     sendNotification({ type: "success", title: "Link copied !" });
   }, [shareLink, sendNotification]);
 
@@ -118,7 +125,7 @@ export function ConversationMenu({
   };
 
   return (
-    <>
+    <div onClick={(e) => e.stopPropagation()}>
       <DeleteConversationsDialog
         isOpen={showDeleteDialog}
         type="selection"
@@ -150,18 +157,7 @@ export function ConversationMenu({
         open={isMenuOpen}
         onOpenChange={setIsMenuOpen}
       >
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={MoreIcon}
-            disabled={
-              activeConversationId === null ||
-              conversation === null ||
-              user === null
-            }
-          />
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuLabel>Conversation</DropdownMenuLabel>
           <DropdownMenuItem
@@ -169,13 +165,20 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
+
           <ConversationActionMenuItem />
-          <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
-          <DropdownMenuItem
-            label="Copy the link"
-            onClick={copyConversationLink}
-            icon={LinkIcon}
-          />
+
+          {shareLink && (
+            <>
+              <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
+              <DropdownMenuItem
+                label="Copy the link"
+                onClick={copyConversationLink}
+                icon={LinkIcon}
+              />
+            </>
+          )}
+
           {conversationParticipants === undefined ? null : (
             <>
               {conversationParticipants?.users.length > 0 && (
@@ -194,7 +197,7 @@ export function ConversationMenu({
                         />
                       }
                       disabled
-                      className="!text-foreground"
+                      className="!text-foreground dark:!text-foreground-night"
                     />
                   ))}
                 </>
@@ -214,7 +217,7 @@ export function ConversationMenu({
                         />
                       }
                       disabled
-                      className="!text-foreground"
+                      className="!text-foreground dark:!text-foreground-night"
                     />
                   ))}
                 </>
@@ -223,6 +226,6 @@ export function ConversationMenu({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-    </>
+    </div>
   );
 }

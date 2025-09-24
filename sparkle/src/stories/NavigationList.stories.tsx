@@ -72,7 +72,7 @@ export const Demo = () => {
   return (
     <div className="s-flex s-h-[400px] s-w-full s-flex-row s-gap-12">
       <div className="s-h-[400px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3">
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} />
@@ -112,7 +112,7 @@ export const Demo = () => {
         </NavigationList>
       </div>
       <div className="s-h-[400px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3">
+        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} isSticky />

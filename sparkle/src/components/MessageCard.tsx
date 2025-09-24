@@ -44,7 +44,7 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
         ref={ref}
         className={cn(
           "s-flex s-flex-col s-overflow-hidden",
-          "s-bg-white dark:s-bg-black",
+          "s-bg-background dark:s-bg-background-night",
           "s-rounded-2xl s-shadow-md",
           "s-border s-border-border/0 dark:s-border-border-night/0",
           className
