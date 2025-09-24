@@ -59,7 +59,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
                 rel="noopener noreferrer"
               >
                 <div className="group flex flex-row items-center justify-center space-x-1 rounded-lg bg-muted-background p-1 text-xs font-medium text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
-                  <span className="grayscale-[80%] transition-all duration-150 ease-in-out group-hover:grayscale-0">
+                  <span className="grayscale-[100%] transition-all duration-150 ease-in-out group-hover:grayscale-0">
                     {document.icon}
                   </span>
                   <span>{r.counter}</span>
