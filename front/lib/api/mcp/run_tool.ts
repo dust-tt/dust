@@ -1,5 +1,6 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
+import { Context } from "@temporalio/activity";
 
 import type {
   MCPApproveExecutionEvent,
@@ -32,7 +33,6 @@ import type {
   ConversationType,
 } from "@app/types";
 import { removeNulls } from "@app/types";
-import { Context } from "@temporalio/activity";
 import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 
 /**
