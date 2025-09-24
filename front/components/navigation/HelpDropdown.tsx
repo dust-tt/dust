@@ -48,7 +48,7 @@ export function HelpDropdown({
     } else {
       // Otherwise we just push the route and prefill the input bar with the @help mention.
       void router.push(
-        `/w/${owner.sId}/agent/new?assistant=${GLOBAL_AGENTS_SID.HELPER}`
+        `/w/${owner.sId}/agent/new?agent=${GLOBAL_AGENTS_SID.HELPER}`
       );
     }
   };
