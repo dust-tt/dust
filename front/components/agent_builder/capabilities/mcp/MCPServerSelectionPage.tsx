@@ -108,8 +108,8 @@ function MCPServerCard({
 }
 
 interface MCPServerSelectionPageProps {
-  defaultMcpServerViews: MCPServerViewTypeWithLabel[];
-  nonDefaultMcpServerViews: MCPServerViewTypeWithLabel[];
+  topMCPServerViews: MCPServerViewTypeWithLabel[];
+  nonTopMCPServerViews: MCPServerViewTypeWithLabel[];
   onItemClick: (mcpServerView: MCPServerViewType) => void;
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
@@ -118,8 +118,8 @@ interface MCPServerSelectionPageProps {
 }
 
 export function MCPServerSelectionPage({
-  defaultMcpServerViews,
-  nonDefaultMcpServerViews,
+  topMCPServerViews,
+  nonTopMCPServerViews,
   onItemClick,
   dataVisualization,
   onDataVisualizationClick,
@@ -142,11 +142,11 @@ export function MCPServerSelectionPage({
   );
 
   const hasDataVisualization = dataVisualization && onDataVisualizationClick;
-  const hasDefaultViews = defaultMcpServerViews.length > 0;
-  const hasNonDefaultViews = nonDefaultMcpServerViews.length > 0;
+  const hasTopViews = topMCPServerViews.length > 0;
+  const hasNonTopViews = nonTopMCPServerViews.length > 0;
   const hasAnyResults =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    hasDataVisualization || hasDefaultViews || hasNonDefaultViews;
+    hasDataVisualization || hasTopViews || hasNonTopViews;
 
   if (!hasAnyResults) {
     return (
@@ -168,7 +168,7 @@ export function MCPServerSelectionPage({
       <div className="flex flex-col gap-4 py-2">
         {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
         {((dataVisualization && onDataVisualizationClick) ||
-          defaultMcpServerViews) && (
+          topMCPServerViews) && (
           <span className="text-lg font-semibold">Top tools</span>
         )}
         <div className="grid grid-cols-2 gap-3">
@@ -180,7 +180,7 @@ export function MCPServerSelectionPage({
               onClick={onDataVisualizationClick}
             />
           )}
-          {defaultMcpServerViews.map((view) => (
+          {topMCPServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
               view={view}
@@ -194,11 +194,11 @@ export function MCPServerSelectionPage({
             />
           ))}
         </div>
-        {nonDefaultMcpServerViews.length ? (
+        {nonTopMCPServerViews.length ? (
           <span className="text-lg font-semibold">Other tools</span>
         ) : null}
         <div className="grid grid-cols-2 gap-3">
-          {nonDefaultMcpServerViews.map((view) => (
+          {nonTopMCPServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
               view={view}

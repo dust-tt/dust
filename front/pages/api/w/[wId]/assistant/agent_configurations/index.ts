@@ -13,6 +13,7 @@ import {
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -79,8 +80,15 @@ async function handler(
         });
       }
 
-      const { view, limit, withUsage, withAuthors, withFeedbacks, sort } =
-        queryValidation.right;
+      const {
+        view,
+        limit,
+        withUsage,
+        withAuthors,
+        withFeedbacks,
+        withEditors,
+        sort,
+      } = queryValidation.right;
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
       viewParam = viewParam === "assistant-search" ? "list" : viewParam;
@@ -141,6 +149,15 @@ async function handler(
           }
         );
       }
+
+      if (withEditors === "true") {
+        const editors = await getAgentsEditors(auth, agentConfigurations);
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          editors: editors[agentConfiguration.sId],
+        }));
+      }
+
       if (withFeedbacks === "true") {
         const feedbacks =
           await AgentMessageFeedbackResource.getFeedbackCountForAssistants(

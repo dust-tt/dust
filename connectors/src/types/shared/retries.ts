@@ -60,12 +60,12 @@ export function withRetries<Args extends unknown[], Return>(
 
           if (errorType === "workspace_quota_error") {
             // This error will pause the connector.
-            throw new WorkspaceQuotaExceededError(e);
+            throw new WorkspaceQuotaExceededError();
           }
 
           if (errorType === "data_source_quota_error") {
             // This error is per file and will NOT pause the connector (important!).
-            throw new DataSourceQuotaExceededError(e);
+            throw new DataSourceQuotaExceededError();
           }
         }
         // If a predicate is provided and returns false, do not retry.

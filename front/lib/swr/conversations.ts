@@ -266,6 +266,39 @@ export const useDeleteConversation = (owner: LightWorkspaceType) => {
   return doDelete;
 };
 
+// Cancel message generation for one or multiple messages within a conversation.
+// Returns an async function that accepts a list of message IDs to cancel.
+export function useCancelMessage({
+  owner,
+  conversationId,
+}: {
+  owner: LightWorkspaceType;
+  conversationId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+
+  return useCallback(
+    async (messageIds: string[]) => {
+      if (!conversationId || messageIds.length === 0) {
+        return;
+      }
+      try {
+        await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "cancel", messageIds }),
+          }
+        );
+      } catch (error) {
+        sendNotification({ type: "error", title: "Failed to cancel message" });
+      }
+    },
+    [owner.sId, conversationId, sendNotification]
+  );
+}
+
 export function useAddDeleteConversationTool({
   conversationId,
   workspaceId,
