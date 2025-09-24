@@ -416,7 +416,7 @@ export function AgentMessage({
     );
   }
 
-  // Add feedback buttons in the end of the array if the agent is not global agents nor drafts (= inside agent builder)
+  // Add feedback buttons in the end of the array if the agent is not global nor in draft (= inside agent builder)
   if (
     agentMessageToRender.status !== "created" &&
     agentMessageToRender.status !== "failed" &&
