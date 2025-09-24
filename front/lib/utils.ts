@@ -215,7 +215,14 @@ export const tagsSorter = (a: TagType, b: TagType) => {
 export const getAgentSearchString = (
   assistant: LightAgentConfigurationType
 ) => {
-  return assistant.name.toLowerCase();
+  return (
+    assistant.name.toLowerCase() +
+    " " +
+    assistant.editors
+      ?.map((editor) => editor.fullName)
+      .join(" ")
+      .toLowerCase()
+  );
 };
 
 /**
