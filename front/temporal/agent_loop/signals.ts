@@ -5,4 +5,3 @@ import { defineSignal } from "@temporalio/workflow";
 export const cancelAgentLoopSignal = defineSignal<[void]>(
   "cancel_agent_loop_signal"
 );
-
