@@ -53,6 +53,7 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
+import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
@@ -152,6 +153,7 @@ export function AgentMessage({
     message,
     messageStreamState,
   });
+  const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = Object.entries(
     agentMessageToRender.citations ?? {}
@@ -404,17 +406,7 @@ export function AgentMessage({
         variant="ghost-secondary"
         size="xs"
         onClick={async () => {
-          await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "cancel",
-                messageIds: [message.sId],
-              }),
-            }
-          );
+          await cancelMessage([message.sId]);
         }}
         icon={XMarkIcon}
         className="text-muted-foreground"

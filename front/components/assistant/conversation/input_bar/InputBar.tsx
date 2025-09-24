@@ -15,6 +15,7 @@ import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationTool,
+  useCancelMessage,
   useConversation,
   useConversationTools,
 } from "@app/lib/swr/conversations";
@@ -78,6 +79,7 @@ export function AssistantInputBar({
     workspaceId: owner.sId,
     options: { disabled: true }, // We just want to get the mutation function
   });
+  const cancelMessage = useCancelMessage({ owner, conversationId });
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations: baseAgentConfigurations } =
@@ -276,20 +278,10 @@ export function AssistantInputBar({
       return;
     }
     setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "cancel",
-          messageIds: generationContext.generatingMessages
-            .filter((m) => m.conversationId === conversationId)
-            .map((m) => m.messageId),
-        }),
-      }
+    await cancelMessage(
+      generationContext.generatingMessages
+        .filter((m) => m.conversationId === conversationId)
+        .map((m) => m.messageId)
     );
     mutateConversation();
   };
@@ -309,6 +301,16 @@ export function AssistantInputBar({
     setDisableSendButton(disable);
   }, [disable]);
 
+  const getStopButtonLabel = () => {
+    if (isStopping) {
+      return "Stopping...";
+    }
+    const generatingCount = generationContext.generatingMessages.filter(
+      (m) => m.conversationId === conversationId
+    ).length;
+    return generatingCount > 1 ? "Stop all agents" : "Stop agent";
+  };
+
   return (
     <div className="flex w-full flex-col">
       {generationContext.generatingMessages.some(
@@ -317,21 +319,7 @@ export function AssistantInputBar({
         <div className="flex justify-center px-4 pb-4">
           <Button
             variant="outline"
-            label={
-              isStopping
-                ? "Stopping..."
-const getStopButtonLabel = () => {
-  if (isStopping) return "Stopping...";
-  const generatingCount = generationContext.generatingMessages.filter(
-    (m) => m.conversationId === conversationId
-  ).length;
-  return generatingCount > 1 ? "Stop all agents" : "Stop agent";
-};
-                      (m) => m.conversationId === conversationId
-                    ).length > 1
-                  ? "Stop all agents"
-                  : "Stop agent"
-            }
+            label={getStopButtonLabel()}
             icon={StopIcon}
             onClick={handleStopGeneration}
             disabled={isStopping}
