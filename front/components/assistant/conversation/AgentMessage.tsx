@@ -9,8 +9,8 @@ import {
   InteractiveImageGrid,
   Markdown,
   Separator,
+  StopIcon,
   useCopyToClipboard,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
 import React, { useCallback } from "react";
@@ -408,7 +408,7 @@ export function AgentMessage({
         onClick={async () => {
           await cancelMessage([message.sId]);
         }}
-        icon={XMarkIcon}
+        icon={StopIcon}
         className="text-muted-foreground"
       />
     );
