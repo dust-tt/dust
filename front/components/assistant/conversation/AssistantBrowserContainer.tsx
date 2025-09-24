@@ -4,10 +4,15 @@ import { useCallback } from "react";
 import { AssistantBrowser } from "@app/components/assistant/AssistantBrowser";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 
 interface AssistantBrowserContainerProps {
   onAgentConfigurationClick: (agentId: string) => void;
+  user: UserType;
   owner: WorkspaceType;
   setAssistantToMention: (agent: LightAgentConfigurationType) => void;
 }
@@ -15,6 +20,7 @@ interface AssistantBrowserContainerProps {
 export function AssistantBrowserContainer({
   onAgentConfigurationClick,
   owner,
+  user,
   setAssistantToMention,
 }: AssistantBrowserContainerProps) {
   // We use this specific hook because this component is involved in the new conversation page.
@@ -67,6 +73,7 @@ export function AssistantBrowserContainer({
         agentConfigurations={agentConfigurations}
         isLoading={isLoading}
         handleAssistantClick={handleAssistantClick}
+        user={user}
       />
       <div className="h-8 w-8 shrink-0" />
     </div>
