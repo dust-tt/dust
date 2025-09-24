@@ -1,5 +1,6 @@
 import _ from "lodash";
 
+import { distributedLock, distributedUnlock } from "@connectors/lib/lock";
 import { redisClient } from "@connectors/lib/redis";
 import logger from "@connectors/logger/logger";
 
@@ -16,7 +17,7 @@ export async function throttleWithRedis<T>(
 ): Promise<T | undefined> {
   const client = await redisClient({ origin: "throttle" });
   const redisKey = `throttle:${key}`;
-  const lockKey = `lock:${redisKey}`;
+  let lockValue: string | undefined;
 
   const getTimestamps = async () => {
     const timestamps = await client.lRange(redisKey, 0, -1);
@@ -33,23 +34,23 @@ export async function throttleWithRedis<T>(
     const acquiredLockTimeout = 3000;
     const start = Date.now();
 
-    let acquiredLock = false;
     while (Date.now() - start < acquiredLockTimeout) {
-      const lock = await client.set(lockKey, "1", { NX: true, PX: 3000 });
-      if (lock === "OK") {
-        acquiredLock = true;
+      lockValue = await distributedLock(client, redisKey);
+      if (lockValue) {
         break;
       }
       // Sleep for 100ms before retrying
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    if (!acquiredLock) {
+    if (!lockValue) {
       throw new Error("Failed to acquire lock for throttling");
     }
   };
 
   const releaseLock = async () => {
-    await client.del(lockKey);
+    if (lockValue) {
+      await distributedUnlock(client, redisKey, lockValue);
+    }
   };
 
   const throttleRes = await throttle({

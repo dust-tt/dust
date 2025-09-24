@@ -9,7 +9,8 @@ let client: RedisClientType;
 type RedisUsageTagsType =
   | "notion_gc"
   | "google_drive_incremental_sync"
-  | "throttle";
+  | "throttle"
+  | "lock";
 
 export async function redisClient({
   origin,

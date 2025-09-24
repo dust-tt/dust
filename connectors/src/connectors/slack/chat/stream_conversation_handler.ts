@@ -15,6 +15,7 @@ import {
 } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
+import _ from "lodash";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
@@ -129,6 +130,11 @@ async function streamAgentAnswerToSlack(
 
   let answer = "";
   const actions: AgentActionPublicType[] = [];
+  const debouncedPostSlackMessageUpdate = _.debounce(
+    postSlackMessageUpdate,
+    500,
+    { maxWait: 1500 }
+  );
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
@@ -257,7 +263,7 @@ async function streamAgentAnswerToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
-        await postSlackMessageUpdate({
+        await debouncedPostSlackMessageUpdate({
           messageUpdate: {
             text: slackContent,
             assistantName,
@@ -292,6 +298,7 @@ async function streamAgentAnswerToSlack(
         if (shouldSplitMessage) {
           const splitMessages = splitContentForSlack(slackContent);
 
+          debouncedPostSlackMessageUpdate.cancel();
           await postSlackMessageUpdate({
             messageUpdate: {
               text: splitMessages[0],
