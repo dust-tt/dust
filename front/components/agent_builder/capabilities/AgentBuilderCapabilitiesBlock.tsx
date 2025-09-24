@@ -354,7 +354,7 @@ export function AgentBuilderCapabilitiesBlock({
         mode={dialogMode}
         onModeChange={setDialogMode}
         onActionUpdate={handleMcpActionUpdate}
-        actions={fields}
+        selectedActions={fields}
         getAgentInstructions={getAgentInstructions}
       />
     </AgentBuilderSectionContainer>

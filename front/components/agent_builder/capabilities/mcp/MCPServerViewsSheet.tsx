@@ -124,7 +124,7 @@ interface MCPServerViewsSheetProps {
   mode: SheetMode | null;
   onModeChange: (mode: SheetMode | null) => void;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
-  actions: AgentBuilderAction[];
+  selectedActions: AgentBuilderAction[];
   getAgentInstructions: () => string;
 }
 
@@ -134,7 +134,7 @@ export function MCPServerViewsSheet({
   mode,
   onModeChange,
   onActionUpdate,
-  actions,
+  selectedActions,
   getAgentInstructions,
 }: MCPServerViewsSheetProps) {
   const { owner } = useAgentBuilderContext();
@@ -169,20 +169,31 @@ export function MCPServerViewsSheet({
 
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
-      const selectedAction = actions.find(
-        (action) =>
+      // Build the set of server.sId already selected by actions (via their selected view).
+      const selectedServerIds = new Set<string>();
+      for (const action of actions) {
+        if (
           action.type === "MCP" &&
           action.configuration &&
-          action.configuration.mcpServerViewId === view.sId
-      );
-      return !!selectedAction;
+          action.configuration.mcpServerViewId
+        ) {
+          const selectedView = allMcpServerViews.find(
+            (mcpServerView) =>
+              mcpServerView.sId === action.configuration.mcpServerViewId
+          );
+          if (selectedView) {
+            selectedServerIds.add(selectedView.server.sId);
+          }
+        }
+      }
+      return selectedServerIds.has(view.server.sId);
     },
-    []
+    [allMcpServerViews]
   );
 
   const selectableDefaultMCPServerViews = useMemo(() => {
     const filteredList = defaultMCPServerViews.filter(
-      (view) => !shouldFilterServerView(view, actions)
+      (view) => !shouldFilterServerView(view, selectedActions)
     );
 
     if (hasReasoningModel) {
@@ -194,7 +205,7 @@ export function MCPServerViewsSheet({
     );
   }, [
     defaultMCPServerViews,
-    actions,
+    selectedActions,
     hasReasoningModel,
     shouldFilterServerView,
   ]);
@@ -202,9 +213,9 @@ export function MCPServerViewsSheet({
   const selectableNonDefaultMCPServerViews = useMemo(
     () =>
       nonDefaultMCPServerViews.filter(
-        (view) => !shouldFilterServerView(view, actions)
+        (view) => !shouldFilterServerView(view, selectedActions)
       ),
-    [nonDefaultMCPServerViews, actions, shouldFilterServerView]
+    [nonDefaultMCPServerViews, selectedActions, shouldFilterServerView]
   );
 
   const filteredViews = useMemo(() => {
@@ -527,7 +538,7 @@ export function MCPServerViewsSheet({
   const pages: MultiPageSheetPage[] = [
     {
       id: TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION,
-      title: actions.length === 0 ? "Add tools" : "Add more",
+      title: selectedActions.length === 0 ? "Add tools" : "Add more",
       description: "",
       icon: undefined,
       content: isMCPServerViewsLoading ? (
@@ -706,7 +717,7 @@ export function MCPServerViewsSheet({
       const newActionName = isNewActionOrNameChanged
         ? generateUniqueActionName({
             baseName: nameToStorageFormat(formData.name),
-            existingActions: actions,
+            existingActions: selectedActions,
             selectedToolsInSheet,
           })
         : mode?.type === "edit"
