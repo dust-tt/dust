@@ -1,6 +1,6 @@
 import { BookOpenIcon, Icon, Input, Spinner } from "@dust-tt/sparkle";
+import { format } from "date-fns";
 import { UsersIcon } from "lucide-react";
-import moment from "moment";
 import Link from "next/link";
 import type { ChangeEvent, ReactElement } from "react";
 import React, { useState } from "react";
@@ -48,7 +48,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
                 <PokeTableRow>
                   <PokeTableCell className="space-x-2" colSpan={3}>
                     <label>
-                      Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
+                      Created: {format(new Date(ws.createdAt), "dd-MM-yyyy")}
                     </label>
                   </PokeTableCell>
                 </PokeTableRow>

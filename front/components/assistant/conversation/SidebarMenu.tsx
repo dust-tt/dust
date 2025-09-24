@@ -25,7 +25,15 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import moment from "moment";
+import {
+  isAfter,
+  isSameDay,
+  startOfDay,
+  subDays,
+  subMonths,
+  subWeeks,
+  subYears,
+} from "date-fns";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, {
@@ -65,6 +73,10 @@ type GroupLabel =
   | "Last Month"
   | "Last 12 Months"
   | "Older";
+
+function isSameOrAfter(date1: Date, date2: Date) {
+  return isSameDay(date1, date2) || isAfter(date1, date2);
+}
 
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
@@ -192,11 +204,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const groupConversationsByDate = (
     conversations: ConversationWithoutContentType[]
   ) => {
-    const today = moment().startOf("day");
-    const yesterday = moment().subtract(1, "days").startOf("day");
-    const lastWeek = moment().subtract(1, "weeks").startOf("day");
-    const lastMonth = moment().subtract(1, "months").startOf("day");
-    const lastYear = moment().subtract(1, "years").startOf("day");
+    const now = new Date();
+    const today = startOfDay(now);
+    const yesterday = startOfDay(subDays(now, 1));
+    const lastWeek = startOfDay(subWeeks(now, 1));
+    const lastMonth = startOfDay(subMonths(now, 1));
+    const lastYear = startOfDay(subYears(now, 1));
 
     const groups: Record<GroupLabel, ConversationWithoutContentType[]> = {
       Today: [],
@@ -218,16 +231,16 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         return;
       }
 
-      const updatedAt = moment(conversation.updated ?? conversation.created);
-      if (updatedAt.isSameOrAfter(today)) {
+      const updatedAt = new Date(conversation.updated ?? conversation.created);
+      if (isSameOrAfter(updatedAt, today)) {
         groups["Today"].push(conversation);
-      } else if (updatedAt.isSameOrAfter(yesterday)) {
+      } else if (isSameOrAfter(updatedAt, yesterday)) {
         groups["Yesterday"].push(conversation);
-      } else if (updatedAt.isSameOrAfter(lastWeek)) {
+      } else if (isSameOrAfter(updatedAt, lastWeek)) {
         groups["Last Week"].push(conversation);
-      } else if (updatedAt.isSameOrAfter(lastMonth)) {
+      } else if (isSameOrAfter(updatedAt, lastMonth)) {
         groups["Last Month"].push(conversation);
-      } else if (updatedAt.isSameOrAfter(lastYear)) {
+      } else if (isSameOrAfter(updatedAt, lastYear)) {
         groups["Last 12 Months"].push(conversation);
       } else {
         groups["Older"].push(conversation);
@@ -507,7 +520,7 @@ const RenderConversation = ({
   const conversationLabel =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversation.title ||
-    (moment(conversation.created).isSame(moment(), "day")
+    (isSameDay(new Date(conversation.created), new Date())
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 

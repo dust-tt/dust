@@ -1,4 +1,4 @@
-import moment from "moment-timezone";
+import { differenceInSeconds } from "date-fns";
 import type { RedisClientType } from "redis";
 
 import { calculateTokenUsageCost } from "@app/lib/api/assistant/token_pricing";
@@ -7,6 +7,7 @@ import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getNextBillingPeriodEnd } from "@app/lib/utils/billing_periods";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -106,18 +107,13 @@ async function initializeCredits(
   }
 
   // Calculate expiry time (end of current billing period).
-  const now = moment();
+  const now = new Date();
   const { billingDay } = limits;
 
   // Set the billing day for the current month.
-  let periodEnd = moment().date(billingDay);
+  const periodEnd = getNextBillingPeriodEnd(now, billingDay);
 
-  // If we've passed the billing day this month, use next month's billing day.
-  if (now.date() >= billingDay) {
-    periodEnd = moment().add(1, "month").date(billingDay);
-  }
-
-  const secondsUntilEnd = periodEnd.diff(now, "seconds");
+  const secondsUntilEnd = differenceInSeconds(now, periodEnd);
 
   // Set initial credits with expiry.
   await redis.set(key, monthlyLimit.toString());
