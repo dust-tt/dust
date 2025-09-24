@@ -87,7 +87,18 @@ export async function purgeConversationsBatchActivity({
         const result = await destroyConversation(auth, {
           conversationId: c.sId,
         });
-        if (result.isErr() && result.error.type !== "conversation_not_found") {
+        if (result.isErr()) {
+          if (result.error.type === "conversation_not_found") {
+            logger.warn(
+              {
+                workspaceId,
+                conversationId: c.sId,
+                error: result.error,
+              },
+              "Attempting to delete a non-existing conversation."
+            );
+            return;
+          }
           throw result.error;
         }
       },
@@ -165,7 +176,18 @@ export async function purgeAgentConversationsBatchActivity({
       const result = await destroyConversation(auth, {
         conversationId,
       });
-      if (result.isErr() && result.error.type !== "conversation_not_found") {
+      if (result.isErr()) {
+        if (result.error.type === "conversation_not_found") {
+          logger.warn(
+            {
+              workspaceId,
+              conversationId,
+              error: result.error,
+            },
+            "Attempting to delete a non-existing conversation."
+          );
+          return;
+        }
         throw result.error;
       }
     },
