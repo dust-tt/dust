@@ -134,7 +134,7 @@ export function WorkspaceInfoTable({
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Verified Domains</PokeTableCell>
-              <PokeTableCell>
+              <PokeTableCell className="max-w-sm break-words">
                 {workspaceVerifiedDomains.map((d) => d.domain).join(", ")}
               </PokeTableCell>
             </PokeTableRow>
@@ -142,7 +142,7 @@ export function WorkspaceInfoTable({
               <PokeTableCell className="max-w-48">
                 Extension blacklisted domains/URLs
               </PokeTableCell>
-              <PokeTableCell>
+              <PokeTableCell className="max-w-sm break-words">
                 {extensionConfig?.blacklistedDomains.length
                   ? extensionConfig.blacklistedDomains.join(", ")
                   : "None"}
