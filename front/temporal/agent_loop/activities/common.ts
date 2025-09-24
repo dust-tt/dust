@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -12,11 +14,11 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types";
+import type {
+  RunAgentAsynchronousArgs} from "@app/types/assistant/agent_run";
 import {
-  getRunAgentData,
-  RunAgentAsynchronousArgs,
+  getRunAgentData
 } from "@app/types/assistant/agent_run";
-import _ from "lodash";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(

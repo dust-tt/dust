@@ -1,3 +1,4 @@
+import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
@@ -51,7 +52,6 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
-import { heartbeat } from "@temporalio/activity";
 
 const MAX_AUTO_RETRY = 3;
 

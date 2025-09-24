@@ -3,8 +3,8 @@ import type { ChildWorkflowHandle } from "@temporalio/workflow";
 import {
   CancellationScope,
   proxyActivities,
-  startChild,
   setHandler,
+  startChild,
   workflowInfo,
 } from "@temporalio/workflow";
 

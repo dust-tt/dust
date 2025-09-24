@@ -8,8 +8,11 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
+import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { createCallbackReader } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
 import type { GenerationTokensEvent } from "@app/types";
 import type {
   AgentActionSuccessEvent,
@@ -17,9 +20,6 @@ import type {
   AgentGenerationCancelledEvent,
 } from "@app/types";
 import type { AgentMessageNewEvent, UserMessageNewEvent } from "@app/types";
-import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
-import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
-import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 
 export async function* getConversationEvents({
   conversationId,
