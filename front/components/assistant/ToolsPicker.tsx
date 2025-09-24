@@ -2,9 +2,8 @@ import {
   BoltIcon,
   Button,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuLabel,
+  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -48,7 +47,7 @@ function ToolsPickerLoading({ count = 5 }: { count?: number }) {
 
 interface ToolsPickerProps {
   owner: WorkspaceType;
-  selectedMCPServerViewIds: string[];
+  selectedMCPServerViews: MCPServerViewType[];
   onSelect: (serverView: MCPServerViewType) => void;
   onDeselect: (serverView: MCPServerViewType) => void;
   isLoading?: boolean;
@@ -57,7 +56,7 @@ interface ToolsPickerProps {
 
 export function ToolsPicker({
   owner,
-  selectedMCPServerViewIds,
+  selectedMCPServerViews,
   onSelect,
   onDeselect,
   isLoading = false,
@@ -86,11 +85,12 @@ export function ToolsPicker({
     { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
   );
 
-  const {
-    filteredServerViews,
-    filteredServerViewsUnselected,
-    filteredServerViewsSelected,
-  } = useMemo(() => {
+  const selectedMCPServerViewIds = useMemo(
+    () => selectedMCPServerViews.map((v) => v.sId),
+    [selectedMCPServerViews]
+  );
+
+  const { filteredServerViews, filteredServerViewsUnselected } = useMemo(() => {
     const filteredServerViews = [
       ...autoServerViews,
       ...manualServerViews,
@@ -111,9 +111,6 @@ export function ToolsPicker({
       filteredServerViews,
       filteredServerViewsUnselected: filteredServerViews.filter(
         (v) => !selectedMCPServerViewIds.includes(v.sId)
-      ),
-      filteredServerViewsSelected: filteredServerViews.filter((v) =>
-        selectedMCPServerViewIds.includes(v.sId)
       ),
     };
   }, [
@@ -143,7 +140,7 @@ export function ToolsPicker({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="h-96 w-96"
+        className="max-h-96 w-96"
         align="start"
         dropdownHeaders={
           <>
@@ -174,51 +171,16 @@ export function ToolsPicker({
       >
         {filteredServerViews.length > 0 ? (
           <>
-            <DropdownMenuLabel label="Selected" />
-            {filteredServerViewsSelected.length > 0 ? (
-              filteredServerViewsSelected
-                .sort(mcpServerViewSortingFn)
-                .map((v) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={`tools-picker-${v.sId}`}
-                      icon={() => getAvatar(v.server, "xs")}
-                      label={getMcpServerViewDisplayName(v)}
-                      description={getMcpServerViewDescription(v)}
-                      truncateText
-                      checked={true}
-                      onClick={(e) => {
-                        onDeselect(v);
-                        e.stopPropagation();
-                        e.preventDefault();
-                      }}
-                    />
-                  );
-                })
-            ) : (
-              <DropdownMenuCheckboxItem
-                id="tools-picker-no-selected"
-                icon={() => <Icon visual={BoltIcon} size="xs" />}
-                className="italic"
-                label="No tools selected"
-                description="Select tools to use in this conversation"
-                disabled
-              />
-            )}
-            {filteredServerViewsUnselected.length > 0 && (
-              <DropdownMenuLabel label="All" />
-            )}
             {filteredServerViewsUnselected
               .sort(mcpServerViewSortingFn)
               .map((v) => {
                 return (
-                  <DropdownMenuCheckboxItem
+                  <DropdownMenuItem
                     key={`tools-picker-${v.sId}`}
                     icon={() => getAvatar(v.server, "xs")}
                     label={getMcpServerViewDisplayName(v)}
                     description={getMcpServerViewDescription(v)}
                     truncateText
-                    checked={false}
                     onClick={(e) => {
                       onSelect(v);
                       e.stopPropagation();
@@ -227,6 +189,16 @@ export function ToolsPicker({
                   />
                 );
               })}
+            {filteredServerViewsUnselected.length === 0 && (
+              <DropdownMenuItem
+                id="tools-picker-no-selected"
+                icon={() => <Icon visual={BoltIcon} size="xs" />}
+                className="italic"
+                label="No more tools to select"
+                description="All available tools are already selected"
+                disabled
+              />
+            )}
           </>
         ) : isAutoServerViewsLoading || isManualServerViewsLoading ? (
           <ToolsPickerLoading />
