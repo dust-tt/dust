@@ -290,7 +290,32 @@ const InputBarContainer = ({
           )}
         />
         <div className="flex w-full flex-col px-1 px-2 py-1.5 sm:pb-2 sm:pr-3">
-          <div className="flex items-center justify-between pb-1">
+          <div className="mb-1 flex flex-wrap items-center">
+            {selectedMCPServerViews.map((msv) => (
+              <>
+                <Chip
+                  key={msv.sId}
+                  size="xs"
+                  label={getMcpServerViewDisplayName(msv)}
+                  icon={getIcon(msv.server.icon)}
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
+                />
+                <Chip
+                  key={`mobile-${msv.sId}`}
+                  size="xs"
+                  icon={getIcon(msv.server.icon)}
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
+                />
+              </>
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
             <div className="flex items-center">
               {actions.includes("attachment") && (
                 <>
@@ -377,20 +402,6 @@ const InputBarContainer = ({
                 }}
               />
             </div>
-          </div>
-          <div className="flex flex-wrap items-center">
-            {selectedMCPServerViews.map((msv) => (
-              <Chip
-                key={msv.sId}
-                size="xs"
-                label={getMcpServerViewDisplayName(msv)}
-                icon={getIcon(msv.server.icon)}
-                className="m-0.5 bg-background text-foreground dark:bg-background-night dark:text-foreground-night"
-                onRemove={() => {
-                  onMCPServerViewDeselect(msv);
-                }}
-              />
-            ))}
           </div>
         </div>
       </div>
