@@ -5,7 +5,6 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { createCallbackReader } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { GenerationTokensEvent } from "@app/types";
@@ -105,32 +104,10 @@ export async function cancelMessageGenerationEvent(
 
   try {
     const tasks = messageIds.map((messageId) => {
-      // Submit event to redis stream so we stop the generation
-      const redisTask = redis.set(
-        `assistant:generation:cancelled:${messageId}`,
-        1,
-        {
-          EX: 3600, // 1 hour
-        }
-      );
-
-      // Already set the status to cancel
-      const dbTask = Message.findOne({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          sId: messageId,
-        },
-      }).then(async (message) => {
-        if (message && message.agentMessageId) {
-          await AgentMessage.update(
-            { status: "cancelled" },
-            { where: { id: message.agentMessageId } }
-          );
-        }
+      // Submit event to redis so the generation loop stops gracefully.
+      return redis.set(`assistant:generation:cancelled:${messageId}`, 1, {
+        EX: 3600, // 1 hour
       });
-
-      // Return both tasks as a single promise
-      return Promise.all([redisTask, dbTask]);
     });
 
     await Promise.all(tasks);

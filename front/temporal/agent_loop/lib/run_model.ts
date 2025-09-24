@@ -508,6 +508,35 @@ export async function runModelActivity(
 
     if (shouldYieldCancel) {
       await flushParserTokens();
+
+      // Persist partial content so the UI keeps what has been generated so far.
+      const partialContent = contentParser.getContent() ?? "";
+      const partialChainOfThought =
+        (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
+
+      if (partialChainOfThought.length > 0) {
+        if (!agentMessage.chainOfThought) {
+          agentMessage.chainOfThought = "";
+        }
+        agentMessage.chainOfThought += partialChainOfThought;
+      }
+      if (partialContent.length) {
+        agentMessage.content = (agentMessage.content ?? "") + partialContent;
+
+        // Persist partial text content so reload retains it
+        await AgentStepContentResource.createNewVersion({
+          workspaceId: conversation.owner.id,
+          agentMessageId: agentMessage.agentMessageId,
+          step,
+          index: 0,
+          type: "text_content",
+          value: {
+            type: "text_content",
+            value: partialContent,
+          },
+        });
+      }
+
       await updateResourceAndPublishEvent(auth, {
         event: {
           type: "agent_generation_cancelled",
@@ -519,7 +548,9 @@ export async function runModelActivity(
         conversation,
         step,
       });
-      localLogger.error("Agent generation cancelled");
+      localLogger.info(
+        "Agent generation cancelled after persisting partial output (status: cancelled)"
+      );
 
       return null;
     }
