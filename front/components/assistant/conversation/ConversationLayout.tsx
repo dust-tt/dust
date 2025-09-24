@@ -150,6 +150,13 @@ const ConversationLayoutContent = ({
             onClose={() => onOpenChangeAssistantModal(false)}
           />
 
+          <AssistantDetails
+            owner={owner}
+            user={user}
+            assistantId={assistantSId}
+            onClose={() => onOpenChangeAssistantModal(false)}
+          />
+
           <CoEditionProvider
             owner={owner}
             hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}

@@ -18,6 +18,7 @@ import {
   MoreIcon,
   NavigationList,
   NavigationListItem,
+  NavigationListItemAction,
   NavigationListLabel,
   RobotIcon,
   SearchInput,
@@ -38,6 +39,7 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
+import { ConversationMenu } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -543,7 +545,15 @@ const RenderConversation = ({
                 : undefined
           }
           label={conversationLabel}
-          className={conversation.unread ? "font-medium" : undefined}
+          moreMenu={
+            <ConversationMenu
+              activeConversationId={conversation.sId}
+              conversation={conversation}
+              owner={owner}
+              trigger={<NavigationListItemAction />}
+              isConversationDisplayed={router.query.cId === conversation.sId}
+            />
+          }
           onClick={async () => {
             // Side bar is the floating sidebar that appears when the screen is small.
             if (sidebarOpen) {

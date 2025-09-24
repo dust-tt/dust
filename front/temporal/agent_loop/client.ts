@@ -5,6 +5,7 @@ import { DustError } from "@app/lib/error";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import assert from "assert";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
@@ -27,10 +28,12 @@ export async function launchAgentLoopWorkflow({
 > {
   const client = await getTemporalClientForAgentNamespace();
 
-  const workflowId = makeAgentLoopWorkflowId(
-    authType,
-    runAsynchronousAgentArgs
-  );
+  assert(authType.workspaceId, "Workspace ID is required");
+  const workflowId = makeAgentLoopWorkflowId({
+    workspaceId: authType.workspaceId,
+    conversationId: runAsynchronousAgentArgs.conversationId,
+    agentMessageId: runAsynchronousAgentArgs.agentMessageId,
+  });
 
   try {
     await client.workflow.start(agentLoopWorkflow, {

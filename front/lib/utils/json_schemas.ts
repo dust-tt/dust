@@ -133,6 +133,30 @@ export function setValueAtPath(
 }
 
 /**
+ * Gets a value at a specific path in a nested object structure.
+ * Returns undefined if the path doesn't exist or any intermediate object is missing.
+ */
+export function getValueAtPath(
+  obj: Record<string, unknown>,
+  path: string[]
+): unknown {
+  if (path.length === 0) {
+    return obj;
+  }
+
+  let current: unknown = obj;
+  for (const key of path) {
+    if (current && typeof current === "object" && current !== null) {
+      current = (current as Record<string, unknown>)[key];
+    } else {
+      return undefined;
+    }
+  }
+
+  return current;
+}
+
+/**
  * Validates a generic JSON schema as per the JSON schema specification.
  * Less strict than the JsonSchemaSchema zod schema.
  */
@@ -155,5 +179,57 @@ export function validateJsonSchema(value: object | string | null | undefined): {
       isValid: false,
       error: e instanceof Error ? e.message : "Invalid JSON schema",
     };
+  }
+}
+
+export function iterateOverSchemaPropertiesRecursive(
+  inputSchema: JSONSchema,
+  callback: (fullPath: string[], propSchema: JSONSchema) => boolean,
+  path: string[] = []
+): void {
+  if (!isJSONSchemaObject(inputSchema)) {
+    return;
+  }
+
+  // Check properties in object schemas
+  if (inputSchema.properties) {
+    for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
+      const currentPath = [...path, key];
+
+      if (isJSONSchemaObject(propSchema)) {
+        // Call the callback with the full path and property schema
+        const shouldContinue = callback(currentPath, propSchema);
+        if (shouldContinue) {
+          // Recursively check this property's schema
+          iterateOverSchemaPropertiesRecursive(
+            propSchema,
+            callback,
+            currentPath
+          );
+        }
+      }
+    }
+  }
+
+  // Check items in array schemas
+  if (inputSchema.type === "array" && inputSchema.items) {
+    if (isJSONSchemaObject(inputSchema.items)) {
+      // Single schema for all items
+      iterateOverSchemaPropertiesRecursive(inputSchema.items, callback, [
+        ...path,
+        "items",
+      ]);
+    } else if (Array.isArray(inputSchema.items)) {
+      // Array of schemas for tuple validation
+      for (let i = 0; i < inputSchema.items.length; i++) {
+        const item = inputSchema.items[i];
+        if (isJSONSchemaObject(item)) {
+          iterateOverSchemaPropertiesRecursive(item, callback, [
+            ...path,
+            `items[${i}]`,
+          ]);
+        }
+      }
+    }
   }
 }

@@ -153,8 +153,8 @@ export function AssistantInputBar({
 
   // Tools selection
 
-  const [selectedMCPServerViewIds, setSelectedMCPServerViewIds] = useState<
-    string[]
+  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
+    MCPServerViewType[]
   >([]);
 
   const { conversationTools } = useConversationTools({
@@ -164,7 +164,7 @@ export function AssistantInputBar({
 
   // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
   useEffect(() => {
-    setSelectedMCPServerViewIds(conversationTools.map((tool) => tool.sId));
+    setSelectedMCPServerViews(conversationTools);
   }, [conversationTools]);
 
   const { addTool, deleteTool } = useAddDeleteConversationTool({
@@ -174,14 +174,14 @@ export function AssistantInputBar({
 
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
     // Optimistic update
-    setSelectedMCPServerViewIds((prev) => [...prev, serverView.sId]);
+    setSelectedMCPServerViews((prev) => [...prev, serverView]);
     void addTool(serverView.sId);
   };
 
   const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
     // Optimistic update
-    setSelectedMCPServerViewIds((prev) =>
-      prev.filter((sv) => sv !== serverView.sId)
+    setSelectedMCPServerViews((prev) =>
+      prev.filter((sv) => sv.sId !== serverView.sId)
     );
     void deleteTool(serverView.sId);
   };
@@ -224,7 +224,7 @@ export function AssistantInputBar({
         },
         // Only send the selectedMCPServerViewIds if we are creating a new conversation.
         // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-        selectedMCPServerViewIds
+        selectedMCPServerViews.map((sv) => sv.sId)
       );
 
       setLoading(false);
@@ -375,7 +375,7 @@ export function AssistantInputBar({
             disableTextInput={disable}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
-            selectedMCPServerViewIds={selectedMCPServerViewIds}
+            selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             attachedNodes={attachedNodes}

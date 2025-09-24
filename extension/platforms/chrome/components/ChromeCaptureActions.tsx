@@ -26,6 +26,13 @@ export function ChromeCaptureActions({
     });
   };
 
+  const handleCapturePageContent = () => {
+    void fileUploaderService.uploadContentTab({
+      includeContent: true,
+      includeCapture: false,
+    });
+  };
+
   return (
     <>
       <div className="block sm:hidden">
@@ -53,12 +60,7 @@ export function ChromeCaptureActions({
           }
           variant="outline"
           size="sm"
-          onClick={() =>
-            fileUploaderService.uploadContentTab({
-              includeContent: false,
-              includeCapture: true,
-            })
-          }
+          onClick={handleCapturePageContent}
           disabled={isLoading || isBlacklisted}
         />
       </div>

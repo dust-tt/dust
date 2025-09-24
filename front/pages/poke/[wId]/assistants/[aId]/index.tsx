@@ -21,6 +21,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { decodeSqids } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   UserType,
@@ -164,7 +165,7 @@ const AssistantDetailsPage = ({
                       </div>
                       <JsonViewer
                         theme={isDark ? "dark" : "light"}
-                        value={a.model}
+                        value={decodeSqids(a.model)}
                         rootName={false}
                         defaultInspectDepth={0}
                       />
@@ -182,7 +183,7 @@ const AssistantDetailsPage = ({
                           </div>
                           <JsonViewer
                             theme={isDark ? "dark" : "light"}
-                            value={action}
+                            value={decodeSqids(action)}
                             rootName={false}
                             defaultInspectDepth={0}
                           />
