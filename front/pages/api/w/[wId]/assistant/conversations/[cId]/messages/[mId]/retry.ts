@@ -8,7 +8,6 @@ import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_b
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { AgentMessageType, WithAPIErrorResponse } from "@app/types";
 import { isAgentMessageType, isString } from "@app/types";
