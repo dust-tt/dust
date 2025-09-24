@@ -142,11 +142,9 @@ const getTableColumns = ({
         const buildAvatarGroup = (
           items: {
             key: string;
-            displayName: string;
             tooltipName: string;
             visual?: string | null;
-          }[],
-          overflowKey: string
+          }[]
         ) => {
           if (items.length === 0) {
             return null;
@@ -158,37 +156,31 @@ const getTableColumns = ({
 
           return (
             <div className="flex -space-x-2">
-              {visibleItems.map(({ key, displayName, tooltipName, visual }) => (
+              {visibleItems.map(({ key, tooltipName, visual }) => (
                 <Tooltip
                   key={key}
-                  tooltipTriggerAsChild={true}
+                  tooltipTriggerAsChild
                   label={tooltipName}
                   trigger={
                     <Avatar
                       size="xs"
                       visual={visual ?? undefined}
-                      name={displayName}
+                      name={tooltipName}
                       isRounded
-                      className="border border-background dark:border-background-night"
                     />
                   }
                 />
               ))}
               {overflowCount > 0 && (
                 <Tooltip
-                  key={overflowKey}
-                  tooltipTriggerAsChild={true}
+                  key={`overflow-${info.row.original.sId}`}
+                  tooltipTriggerAsChild
                   label={items
                     .slice(MAX_VISIBLE)
                     .map((item) => item.tooltipName)
                     .join(", ")}
                   trigger={
-                    <Avatar
-                      size="xs"
-                      name={`+${overflowCount}`}
-                      isRounded
-                      className="border border-background dark:border-background-night"
-                    />
+                    <Avatar size="xs" name={`+${overflowCount}`} isRounded />
                   }
                 />
               )}
@@ -198,23 +190,17 @@ const getTableColumns = ({
 
         const editorItems = editors.map((editor) => ({
           key: `editor-${editor.sId}`,
-          displayName:
-            (editor.fullName || formatUserFullName(editor)) ?? "Unknown",
-          tooltipName:
-            (editor.fullName || formatUserFullName(editor)) ?? "Unknown",
+          tooltipName: (editor.fullName || formatUserFullName(editor)) ?? "-",
           visual: editor.image,
         }));
 
-        const combinedGroup = buildAvatarGroup(
-          editorItems,
-          `combined-overflow-${info.row.original.sId}`
-        );
+        const editorsGroup = buildAvatarGroup(editorItems);
 
-        if (!combinedGroup) {
+        if (!editorsGroup) {
           return <DataTable.BasicCellContent label="-" />;
         }
 
-        return <DataTable.CellContent>{combinedGroup}</DataTable.CellContent>;
+        return <DataTable.CellContent>{editorsGroup}</DataTable.CellContent>;
       },
     },
     {
