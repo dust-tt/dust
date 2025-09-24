@@ -564,7 +564,7 @@ const DataSourcePage = ({
       </h3>
       {dataSource.connectorProvider && (
         <p>
-          The data displayed here is fetched from <b>connectors</b>, please{" "}
+          The data displayed here is fetched from <b>connectors</b>, please
           refer to the method {capitalize(dataSource.connectorProvider)}
           ConnectorManager.retrievePermissions
         </p>
