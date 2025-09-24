@@ -21,9 +21,9 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
@@ -37,6 +37,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -54,14 +55,13 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, owner, subscription, user, isAdmin } = pageProps;
+  const { owner, subscription, user, isAdmin } = pageProps;
 
   return (
     <ConversationsNavigationProvider
       initialConversationId={pageProps.conversationId}
     >
       <ConversationLayoutContent
-        baseUrl={baseUrl}
         owner={owner}
         subscription={subscription}
         user={user}
@@ -74,7 +74,6 @@ export default function ConversationLayout({
 }
 
 interface ConversationLayoutContentProps {
-  baseUrl: string;
   children: React.ReactNode;
   owner: LightWorkspaceType;
   subscription: SubscriptionType;
@@ -83,7 +82,6 @@ interface ConversationLayoutContentProps {
 }
 
 const ConversationLayoutContent = ({
-  baseUrl,
   children,
   owner,
   subscription,
@@ -91,7 +89,8 @@ const ConversationLayoutContent = ({
   isAdmin,
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
-
+  const { onOpenChange: onOpenChangeAssistantModal } =
+    useURLSheet("agentDetails");
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
@@ -107,12 +106,9 @@ const ConversationLayoutContent = ({
     [hasFeature]
   );
 
-  // Logic for the agent details sheet
-  const { onOpenChange: onOpenChangeAssistantModal } = useURLSheet("agentDetails");
-
   const assistantSId = useMemo(() => {
     const sid = router.query.agentDetails ?? [];
-    if (sid && typeof sid === "string") {
+    if (isString(sid)) {
       return sid;
     }
     return null;
@@ -147,6 +143,13 @@ const ConversationLayoutContent = ({
           }
           navChildren={<AssistantSidebarMenu owner={owner} />}
         >
+          <AssistantDetails
+            owner={owner}
+            user={user}
+            assistantId={assistantSId}
+            onClose={() => onOpenChangeAssistantModal(false)}
+          />
+
           <CoEditionProvider
             owner={owner}
             hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
@@ -154,7 +157,6 @@ const ConversationLayoutContent = ({
             <ConversationSidePanelProvider>
               <ConversationInnerLayout
                 activeConversationId={activeConversationId}
-                baseUrl={baseUrl}
                 conversation={conversation}
                 conversationError={conversationError}
                 owner={owner}
@@ -174,12 +176,6 @@ const ConversationLayoutContent = ({
               onTourGuideEnd={onTourGuideEnd}
             />
           )}
-          <AssistantDetails
-            owner={owner}
-            user={user}
-            assistantId={assistantSId}
-            onClose={() => onOpenChangeAssistantModal(false)}
-          />
         </AppContentLayout>
       </InputBarProvider>
     </BlockedActionsProvider>
@@ -190,7 +186,6 @@ interface ConversationInnerLayoutProps {
   children: React.ReactNode;
   conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
-  baseUrl: string;
   conversationError: ConversationError | null;
   activeConversationId: string | null;
 }
@@ -211,7 +206,6 @@ function ConversationInnerLayout({
   children,
   conversation,
   owner,
-  baseUrl,
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
@@ -226,9 +220,7 @@ function ConversationInnerLayout({
         >
           <ResizablePanel defaultSize={100}>
             <div className="flex h-full flex-col">
-              {activeConversationId && (
-                <ConversationTitle owner={owner} baseUrl={baseUrl} />
-              )}
+              {activeConversationId && <ConversationTitle owner={owner} />}
               {conversationError ? (
                 <ConversationErrorDisplay error={conversationError} />
               ) : (
