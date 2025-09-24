@@ -64,10 +64,6 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
     if (isPublicPage && hasAcceptedCookies) {
       // Only initialize if not already initialized
       if (!posthog.__loaded && NEXT_PUBLIC_POSTHOG_KEY) {
-        console.log("[PostHog] Initializing with key:", {
-          keyPrefix: NEXT_PUBLIC_POSTHOG_KEY.substring(0, 10),
-          apiHost: "/ingest",
-        });
         posthog.init(NEXT_PUBLIC_POSTHOG_KEY, {
           api_host: "/ingest",
           person_profiles: "identified_only",
