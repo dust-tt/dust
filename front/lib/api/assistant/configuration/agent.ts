@@ -1029,15 +1029,18 @@ export async function unsafeHardDeleteAgentConfiguration(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
   await GroupAgentModel.destroy({
     where: {
       agentConfigurationId: agentConfiguration.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId,
     },
   });
   await AgentConfiguration.destroy({
     where: {
       id: agentConfiguration.id,
+      workspaceId,
     },
   });
 }
