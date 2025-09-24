@@ -406,7 +406,7 @@ export function AgentMessage({
       );
     }
 
-    // Feedback (not on global agents nor drafts)
+    // Feedback (not on global agents nor drafts).
     buttons.push(
       ...(isGlobalAgent || agentMessageToRender.configuration.status === "draft"
         ? []
