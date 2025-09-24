@@ -74,7 +74,7 @@ export function ConversationMenu({
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(async () => {
     const res = await doDelete(conversation);
-    res && void router.push(`/w/${owner.sId}/agent/new`);
+    res && void router.push(`/w/${owner.sId}/assistant/new`);
   }, [conversation, doDelete, owner.sId, router]);
 
   const copyConversationLink = useCallback(async () => {

@@ -25,7 +25,7 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
         switch (event.key) {
           case "/":
             event.preventDefault();
-            void router.push(`/w/${owner.sId}/agent/new`, undefined, {
+            void router.push(`/w/${owner.sId}/assistant/new`, undefined, {
               shallow: true,
             });
             break;
