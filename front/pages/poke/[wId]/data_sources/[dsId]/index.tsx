@@ -565,7 +565,10 @@ const DataSourcePage = ({
       {dataSource.connectorProvider && (
         <p>
           The data displayed here is fetched from <b>connectors</b>, please
-          refer to the method {capitalize(dataSource.connectorProvider)}
+          refer to the method{" "}
+          {capitalize(dataSource.connectorProvider)
+            .replace(/_\w/g, (char) => char.toUpperCase())
+            .replace("_", "")}
           ConnectorManager.retrievePermissions
         </p>
       )}
