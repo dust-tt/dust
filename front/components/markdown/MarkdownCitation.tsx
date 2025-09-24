@@ -19,7 +19,13 @@ export function getCitationIcon(
     case "webcrawler":
       // For webcrawler (website citations), use favicon if available, otherwise fall back to GlobeAltIcon
       return function FaviconIconComponent() {
-        return <FaviconIcon faviconUrl={faviconUrl} websiteUrl={websiteUrl} />;
+        return (
+          <FaviconIcon
+            className="h-3 w-3"
+            faviconUrl={faviconUrl}
+            websiteUrl={websiteUrl}
+          />
+        );
       };
 
     default:

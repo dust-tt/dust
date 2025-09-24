@@ -1,3 +1,4 @@
+import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
@@ -30,7 +31,6 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { getRedisClient } from "@app/lib/api/redis";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -41,9 +41,9 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { flushParserTokens, updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
+import type { AgentActionsEvent, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
@@ -52,7 +52,6 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
 
-const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
 
 // This method is used by the multi-actions execution loop to pick the next
@@ -161,18 +160,6 @@ export async function runModelActivity(
       conversation,
       step,
     });
-  }
-
-  // Helper function to flush all pending tokens from the content parser
-  async function flushParserTokens(): Promise<void> {
-    for await (const tokenEvent of contentParser.flushTokens()) {
-      await updateResourceAndPublishEvent(auth, {
-        event: tokenEvent,
-        agentMessageRow,
-        conversation,
-        step,
-      });
-    }
   }
 
   if (!model) {
@@ -450,9 +437,6 @@ export async function runModelActivity(
     >;
   } | null = null;
 
-  let shouldYieldCancel = false;
-  let lastCheckCancellation = Date.now();
-  const redis = await getRedisClient({ origin: "assistant_generation" });
   let isGeneration = true;
 
   const contentParser = new AgentMessageContentParser(
@@ -460,55 +444,6 @@ export async function runModelActivity(
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
-
-  function savePartialContent({
-    agentMessage,
-    contentParser,
-    nativeChainOfThought,
-  }: {
-    agentMessage: AgentMessageType;
-    contentParser: AgentMessageContentParser;
-    nativeChainOfThought: string;
-  }) {
-    // Persist partial content so the UI keeps what has been generated so far.
-    const partialContent = contentParser.getContent() ?? "";
-    const partialChainOfThought =
-      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
-
-    if (partialChainOfThought.length > 0) {
-      if (!agentMessage.chainOfThought) {
-        agentMessage.chainOfThought = "";
-      }
-      agentMessage.chainOfThought += partialChainOfThought;
-    }
-
-    if (partialContent.length > 0) {
-      agentMessage.content = (agentMessage.content ?? "") + partialContent;
-    }
-
-    return partialContent;
-  }
-
-  async function checkCancellation() {
-    try {
-      const cancelled = await redis.get(
-        `assistant:generation:cancelled:${agentMessage.sId}`
-      );
-      if (cancelled === "1") {
-        shouldYieldCancel = true;
-        await redis.set(
-          `assistant:generation:cancelled:${agentMessage.sId}`,
-          0,
-          {
-            EX: 3600, // 1 hour
-          }
-        );
-      }
-    } catch (error) {
-      localLogger.error({ error }, "Error checking cancellation");
-      return false;
-    }
-  }
 
   let nativeChainOfThought = "";
 
@@ -521,46 +456,12 @@ export async function runModelActivity(
     }
 
     if (event.type === "error") {
-      await flushParserTokens();
+      await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
       return handlePossiblyRetryableError(event.content.message);
     }
 
-    const currentTimestamp = Date.now();
-    if (
-      currentTimestamp - lastCheckCancellation >=
-      CANCELLATION_CHECK_INTERVAL
-    ) {
-      void checkCancellation(); // Trigger the async function without awaiting
-      lastCheckCancellation = currentTimestamp;
-    }
-
-    if (shouldYieldCancel) {
-      await flushParserTokens();
-
-      const partialContent = savePartialContent({
-        agentMessage,
-        contentParser,
-        nativeChainOfThought,
-      });
-
-      await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "agent_generation_cancelled",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          partialContent,
-        },
-        agentMessageRow,
-        conversation,
-        step,
-      });
-      localLogger.info(
-        "Agent generation cancelled after persisting partial output (status: cancelled)"
-      );
-
-      return null;
-    }
+    // Heartbeat allows the activity to be cancelled, e.g. on a "Stop agent" request.
+    heartbeat();
 
     if (event.type === "tokens" && isGeneration) {
       for await (const tokenEvent of contentParser.emitTokens(
@@ -614,13 +515,13 @@ export async function runModelActivity(
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
       if (e.error) {
-        await flushParserTokens();
+        await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
         return handlePossiblyRetryableError(e.error);
       }
 
       if (event.content.block_name === "MODEL" && e.value) {
         // Flush early as we know the generation is terminated here.
-        await flushParserTokens();
+        await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
 
         const block = e.value;
         if (!isDustAppChatBlockType(block)) {
@@ -711,7 +612,7 @@ export async function runModelActivity(
     }
   }
 
-  await flushParserTokens();
+  await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
 
   if (!output) {
     return handlePossiblyRetryableError("Agent execution didn't complete.");
@@ -898,7 +799,7 @@ export async function runModelActivity(
     });
   }
 
-  await flushParserTokens();
+  await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
 
   const chainOfThought =
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";

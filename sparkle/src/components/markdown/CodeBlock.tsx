@@ -10,8 +10,9 @@ const SyntaxHighlighter = React.lazy(
 
 export const codeBlockVariants = cva(
   [
-    "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
+    "s-mx-0.5 s-my-0.5 s-cursor-text s-rounded-md s-border s-px-1 s-py-0.5",
     "s-border-border dark:s-border-border-night",
+    "s-text-[0.90em]",
   ],
   {
     variants: {

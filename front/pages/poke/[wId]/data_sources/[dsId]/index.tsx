@@ -31,7 +31,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
-import { timeAgoFrom } from "@app/lib/utils";
+import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import type {
@@ -872,7 +872,7 @@ function NotionUrlCheckOrFind({
                     <>
                       <JsonViewer
                         theme={isDark ? "dark" : "light"}
-                        value={urlDetails.page}
+                        value={decodeSqids(urlDetails.page)}
                         rootName={false}
                       />
                       {command === "find-url" && (
@@ -908,7 +908,7 @@ function NotionUrlCheckOrFind({
                     <>
                       <JsonViewer
                         theme={isDark ? "dark" : "light"}
-                        value={urlDetails.db}
+                        value={decodeSqids(urlDetails.db)}
                         rootName={false}
                       />
                       {command === "find-url" && (
@@ -1106,7 +1106,7 @@ function ZendeskTicketCheck({
                 <div className="mb-1 font-bold">Details</div>
                 <JsonViewer
                   theme={isDark ? "dark" : "light"}
-                  value={ticketDetails.ticket}
+                  value={decodeSqids(ticketDetails.ticket)}
                   rootName={false}
                 />
               </div>

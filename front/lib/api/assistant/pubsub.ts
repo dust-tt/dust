@@ -1,12 +1,15 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
-import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { createCallbackReader } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
 import type { GenerationTokensEvent } from "@app/types";
 import type {
   AgentActionSuccessEvent,
@@ -98,22 +101,38 @@ export async function* getConversationEvents({
 
 export async function cancelMessageGenerationEvent(
   auth: Authenticator,
-  messageIds: string[]
+  {
+    messageIds,
+    conversationId,
+  }: { messageIds: string[]; conversationId: string }
 ): Promise<void> {
-  const redis = await getRedisClient({ origin: "cancel_message_generation" });
+  const client = await getTemporalClientForAgentNamespace();
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  try {
-    const tasks = messageIds.map((messageId) => {
-      // Submit event to redis so the generation loop stops gracefully.
-      return redis.set(`assistant:generation:cancelled:${messageId}`, 1, {
-        EX: 3600, // 1 hour
+  await concurrentExecutor(
+    messageIds,
+    async (messageId) => {
+      // We use the message id provided by the caller as the agentMessageId.
+      const agentMessageId = messageId;
+
+      const workflowId = makeAgentLoopWorkflowId({
+        workspaceId,
+        conversationId,
+        agentMessageId,
       });
-    });
-
-    await Promise.all(tasks);
-  } catch (e) {
-    logger.error({ error: e }, "Error cancelling message generation");
-  }
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        await handle.signal(cancelAgentLoopSignal);
+      } catch (signalError) {
+        // Swallow errors from signaling (workflow might not exist anymore)
+        logger.warn(
+          { error: signalError, messageId },
+          "Failed to signal agent loop workflow for cancellation"
+        );
+      }
+    },
+    { concurrency: 8 }
+  );
 }
 
 export async function* getMessagesEvents(
