@@ -164,6 +164,7 @@ export function ConversationMenu({
             size="sm"
             variant="ghost"
             icon={MoreIcon}
+            aria-label="Conversation menu"
             disabled={
               activeConversationId === null ||
               conversation === null ||
