@@ -459,7 +459,8 @@ async function processErrorResult(
             ...errorPost,
             channel: slackChannel,
             ts: mainMessageTs,
-          })
+          }),
+        { source: "processErrorResult" }
       );
     } else {
       reportSlackUsage({

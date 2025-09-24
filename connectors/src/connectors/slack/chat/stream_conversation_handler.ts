@@ -85,6 +85,7 @@ export async function streamConversationToSlack(
     },
     ...conversationData,
     canBeIgnored: false,
+    extraLogs: { source: "streamConversationToSlack" },
   });
 
   return streamAgentAnswerToSlack(dustAPI, conversationData);
@@ -149,6 +150,10 @@ async function streamAgentAnswerToSlack(
           },
           ...conversationData,
           canBeIgnored: false,
+          extraLogs: {
+            source: "streamAgentAnswerToSlack",
+            eventType: event.type,
+          },
         });
 
         break;
@@ -219,6 +224,10 @@ async function streamAgentAnswerToSlack(
             },
             ...conversationData,
             canBeIgnored: false,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: event.type,
+            },
           });
           return new Ok(undefined);
         }
@@ -272,6 +281,10 @@ async function streamAgentAnswerToSlack(
           },
           ...conversationData,
           canBeIgnored: true,
+          extraLogs: {
+            source: "streamAgentAnswerToSlack",
+            eventType: event.type,
+          },
         });
         break;
       }
@@ -310,6 +323,11 @@ async function streamAgentAnswerToSlack(
             },
             ...conversationData,
             canBeIgnored: false,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: event.type,
+              shouldSplitMessage: "true",
+            },
           });
 
           // Post additional messages as thread replies
@@ -332,6 +350,11 @@ async function streamAgentAnswerToSlack(
             },
             ...conversationData,
             canBeIgnored: false,
+            extraLogs: {
+              source: "streamAgentAnswerToSlack",
+              eventType: event.type,
+              shouldSplitMessage: "false",
+            },
           });
         }
         // Post ephemeral message with feedback buttons and agent selection
@@ -394,6 +417,10 @@ async function streamAgentAnswerToSlack(
           },
           ...conversationData,
           canBeIgnored: false,
+          extraLogs: {
+            source: "streamAgentAnswerToSlack",
+            eventType: event.type,
+          },
         });
 
         return new Ok(undefined);
@@ -420,6 +447,7 @@ async function postSlackMessageUpdate({
   conversation,
   mainMessage,
   canBeIgnored,
+  extraLogs,
 }: {
   messageUpdate: SlackMessageUpdate;
   slack: {
@@ -433,6 +461,7 @@ async function postSlackMessageUpdate({
   conversation: ConversationPublicType;
   mainMessage: ChatPostMessageResponse;
   canBeIgnored: boolean;
+  extraLogs: Record<string, string>;
 }): Promise<void> {
   const { slackChannelId, slackClient } = slack;
   const conversationUrl = makeConversationUrl(
@@ -453,7 +482,8 @@ async function postSlackMessageUpdate({
         ),
         channel: slackChannelId,
         ts: mainMessage.ts as string,
-      })
+      }),
+    extraLogs
   );
 
   if (!canBeIgnored && response?.error) {
