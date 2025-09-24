@@ -233,19 +233,15 @@ export async function finalizeCancellationActivity(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  // Helper function to flush all pending tokens from the content parser
-  async function flushParserTokens(): Promise<void> {
-    for await (const tokenEvent of contentParser.flushTokens()) {
-      await updateResourceAndPublishEvent(auth, {
-        event: tokenEvent,
-        agentMessageRow,
-        conversation,
-        step,
-      });
-    }
+  // Flush pending tokens from the content parser, if any.
+  for await (const tokenEvent of contentParser.flushTokens()) {
+    await updateResourceAndPublishEvent(auth, {
+      event: tokenEvent,
+      agentMessageRow,
+      conversation,
+      step,
+    });
   }
-
-  await flushParserTokens();
   await updateResourceAndPublishEvent(auth, {
     event: {
       type: "agent_generation_cancelled",
@@ -257,7 +253,7 @@ export async function finalizeCancellationActivity(
     conversation,
     step,
   });
-  logger.error(
+  logger.info(
     {
       agentMessageId: agentMessage.sId,
       conversationId: conversation.sId,

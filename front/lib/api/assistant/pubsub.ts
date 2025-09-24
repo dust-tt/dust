@@ -4,12 +4,10 @@ import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
+import { ConversationModel, Message } from "@app/lib/models/assistant/conversation";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { createCallbackReader } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
@@ -104,56 +102,58 @@ export async function* getConversationEvents({
 
 export async function cancelMessageGenerationEvent(
   auth: Authenticator,
-  messageIds: string[]
+  messageIds: string[],
+  opts?: { conversationId?: string }
 ): Promise<void> {
-  try {
-    const tasks = messageIds.map(async (messageId) =>
-      Message.findOne({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          sId: messageId,
-        },
-        include: [
-          {
-            model: ConversationModel,
-            as: "conversation",
-            required: true,
-            attributes: ["sId"],
+  const client = await getTemporalClientForAgentNamespace();
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  await concurrentExecutor(
+    messageIds,
+    async (messageId) => {
+      // Best-effort fetch of conversationId if not provided.
+      let conversationId = opts?.conversationId;
+      if (!conversationId) {
+        const m = await Message.findOne({
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            sId: messageId,
           },
-        ],
-      }).then(async (message) => {
-        if (message && message.agentMessageId) {
-          // Signal the associated Temporal workflow to cancel activities and finish.
-          try {
-            const client = await getTemporalClientForAgentNamespace();
-            const workspaceSId = auth.getNonNullableWorkspace().sId;
-            const conversationSId = message.conversation?.sId;
-            const agentMessageSId = message.sId;
+          include: [
+            {
+              model: ConversationModel,
+              as: "conversation",
+              required: true,
+              attributes: ["sId"],
+            },
+          ],
+        });
+        conversationId = m?.conversation?.sId;
+      }
 
-            if (workspaceSId && conversationSId && agentMessageSId) {
-              const workflowId = makeAgentLoopWorkflowId(
-                workspaceSId,
-                conversationSId,
-                agentMessageSId
-              );
-              const handle = client.workflow.getHandle(workflowId);
-              await handle.signal(cancelAgentLoopSignal);
-            }
-          } catch (signalError) {
-            // Swallow errors from signaling (workflow might not exist anymore)
-            logger.warn(
-              { error: signalError, messageId },
-              "Failed to signal agent loop workflow for cancellation"
-            );
-          }
+      // We use the message id provided by the caller as the agentMessageId.
+      const agentMessageId = messageId;
+
+      if (workspaceId && conversationId && agentMessageId) {
+        const workflowId = makeAgentLoopWorkflowId({
+          workspaceId,
+          conversationId,
+          agentMessageId,
+        });
+        try {
+          const handle = client.workflow.getHandle(workflowId);
+          await handle.signal(cancelAgentLoopSignal);
+        } catch (signalError) {
+          // Swallow errors from signaling (workflow might not exist anymore)
+          logger.warn(
+            { error: signalError, messageId },
+            "Failed to signal agent loop workflow for cancellation"
+          );
         }
-      })
-    );
-
-    await Promise.all(tasks);
-  } catch (e) {
-    logger.error({ error: e }, "Error cancelling message generation");
-  }
+      }
+    },
+    { concurrency: 8 }
+  );
 }
 
 export async function* getMessagesEvents(
