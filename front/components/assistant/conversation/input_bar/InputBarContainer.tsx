@@ -38,6 +38,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
@@ -130,8 +131,22 @@ const InputBarContainer = ({
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,
     fileUploaderService,
-    onTranscribeDelta: (delta) => {
-      editorService.insertText(delta);
+    onTranscribeComplete: (transcript) => {
+      for (const message of transcript) {
+        switch (message.type) {
+          case "text":
+            editorService.insertText(message.text);
+            break;
+          case "mention":
+            editorService.insertMention({
+              id: message.id,
+              label: message.name,
+            });
+            break;
+          default:
+            assertNever(message);
+        }
+      }
     },
   });
 
