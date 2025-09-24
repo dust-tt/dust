@@ -5,13 +5,7 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/lib/swr/conversations";
 import type { WorkspaceType } from "@app/types";
 
-export function ConversationTitle({
-  owner,
-  baseUrl,
-}: {
-  owner: WorkspaceType;
-  baseUrl: string;
-}) {
+export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const { activeConversationId } = useConversationsNavigation();
 
   const { conversation } = useConversation({
@@ -40,7 +34,6 @@ export function ConversationTitle({
           <ConversationMenu
             activeConversationId={activeConversationId}
             conversation={conversation}
-            baseUrl={baseUrl}
             owner={owner}
           />
         </div>

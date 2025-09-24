@@ -33,12 +33,10 @@ import { asDisplayName } from "@app/types/shared/utils/string_utils";
 export function ConversationMenu({
   activeConversationId,
   conversation,
-  baseUrl,
   owner,
 }: {
   activeConversationId: string | null;
   conversation: ConversationWithoutContentType | null;
-  baseUrl: string;
   owner: WorkspaceType;
 }) {
   const { user } = useUser();
@@ -69,7 +67,11 @@ export function ConversationMenu({
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
 
-  const shareLink = `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`;
+  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+  const shareLink =
+    baseUrl !== undefined
+      ? `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`
+      : undefined;
 
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(async () => {
@@ -78,7 +80,7 @@ export function ConversationMenu({
   }, [conversation, doDelete, owner.sId, router]);
 
   const copyConversationLink = useCallback(async () => {
-    await navigator.clipboard.writeText(shareLink || "");
+    await navigator.clipboard.writeText(shareLink ?? "");
     sendNotification({ type: "success", title: "Link copied !" });
   }, [shareLink, sendNotification]);
 
@@ -169,13 +171,20 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
+
           <ConversationActionMenuItem />
+
+          {shareLink && (
+            <>
           <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
           <DropdownMenuItem
             label="Copy the link"
             onClick={copyConversationLink}
             icon={LinkIcon}
           />
+            </>
+          )}
+
           {conversationParticipants === undefined ? null : (
             <>
               {conversationParticipants?.users.length > 0 && (
