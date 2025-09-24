@@ -37,7 +37,6 @@ import type {
 import { isAdmin, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
-import { formatUserFullName } from "@app/types/user";
 
 type RowData = {
   sId: string;
@@ -135,7 +134,7 @@ const getTableColumns = ({
       header: "Editors",
       accessorKey: "editors",
       cell: (info: CellContext<RowData, UserType[]>) => {
-        const editors = info.row.original.editors;
+        const { editors } = info.row.original;
 
         if (!editors) {
           return <DataTable.BasicCellContent label="-" />;
