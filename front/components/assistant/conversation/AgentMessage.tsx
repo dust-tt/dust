@@ -358,6 +358,7 @@ export function AgentMessage({
     message.status !== "failed" &&
     messageStreamState.agentState !== "thinking"
   ) {
+    // Copy button
     buttons.push(
       <Button
         key="copy-msg-button"
@@ -367,23 +368,32 @@ export function AgentMessage({
         onClick={handleCopyToClipboard}
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
         className="text-muted-foreground"
-      />,
-      <Button
-        key="retry-msg-button"
-        tooltip="Retry"
-        variant="ghost-secondary"
-        size="xs"
-        onClick={() => {
-          void retryHandler({
-            conversationId,
-            messageId: agentMessageToRender.sId,
-          });
-        }}
-        icon={ArrowPathIcon}
-        className="text-muted-foreground"
-        disabled={isRetryHandlerProcessing || shouldStream}
-      />,
-      // One cannot leave feedback on global agents.
+      />
+    );
+
+    // Retry only when generation is finished (i.e., not "created").
+    if (agentMessageToRender.status !== "created") {
+      buttons.push(
+        <Button
+          key="retry-msg-button"
+          tooltip="Retry"
+          variant="ghost-secondary"
+          size="xs"
+          onClick={() => {
+            void retryHandler({
+              conversationId,
+              messageId: agentMessageToRender.sId,
+            });
+          }}
+          icon={ArrowPathIcon}
+          className="text-muted-foreground"
+          disabled={isRetryHandlerProcessing || shouldStream}
+        />
+      );
+    }
+
+    // Feedback (not on global agents nor drafts)
+    buttons.push(
       ...(isGlobalAgent || agentMessageToRender.configuration.status === "draft"
         ? []
         : [
