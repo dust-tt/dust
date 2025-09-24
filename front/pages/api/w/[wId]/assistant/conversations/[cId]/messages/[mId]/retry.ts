@@ -94,6 +94,9 @@ async function handler(
           logger.error(
             {
               error,
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              conversationId,
+              messageId,
             },
             "Error retrying blocked actions"
           );
