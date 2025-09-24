@@ -16,6 +16,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 
@@ -141,6 +142,13 @@ export async function destroyConversation(
       { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
     );
   if (conversationRes.isErr()) {
+    if (conversationRes.error.type === "conversation_not_found") {
+      logger.warn(
+        { conversationId, error: conversationRes.error },
+        "Attempting to delete non-existing conversation."
+      );
+      return;
+    }
     throw conversationRes.error;
   }
   const conversation = conversationRes.value;
