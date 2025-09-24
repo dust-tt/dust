@@ -4,6 +4,8 @@ import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import { cn } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
+import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
@@ -15,8 +17,6 @@ import {
   pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
-import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
-import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import type { DataSourceContentNode } from "@app/lib/api/search";
 import {
   getLocationForDataSourceViewContentNode,
@@ -272,13 +272,18 @@ export function DataSourceSearchResults({
           // Override selection state to use full path based on node
           isItemSelected={(item) => {
             const node = itemNodeMap.get(item.id);
-            if (!node) return false;
+            if (!node) {
+              return false;
+            }
+
             return isSearchRowSelected(item.id, node);
           }}
           // Override selection change to add/remove using full path
           onSelectionChange={async (item, selectionState, state) => {
             const node = itemNodeMap.get(item.id);
-            if (!node) return;
+            if (!node) {
+              return;
+            }
             if (selectionState === "partial" || state) {
               selectSearchNode(item.entry, node);
             } else {
@@ -286,15 +291,21 @@ export function DataSourceSearchResults({
             }
           }}
           headerTitle="Name"
-          rightHeaderTitle="Location"
           showSelectAllHeader={false}
-          renderRight={(item) => {
-            const node = itemNodeMap.get(item.id);
-            if (!node) return "";
-            return node.dataSourceView.category === "folder"
-              ? node.dataSourceView.dataSource.name
-              : getLocationForDataSourceViewContentNode(node);
-          }}
+          additionalColumns={[
+            {
+              title: "Location",
+              render: (item) => {
+                const node = itemNodeMap.get(item.id);
+                if (!node) {
+                  return "";
+                }
+                return node.dataSourceView.category === "folder"
+                  ? node.dataSourceView.dataSource.name
+                  : getLocationForDataSourceViewContentNode(node);
+              },
+            },
+          ]}
         />
       )}
     </>

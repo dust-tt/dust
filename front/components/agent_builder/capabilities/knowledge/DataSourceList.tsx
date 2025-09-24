@@ -1,6 +1,5 @@
-import { Checkbox, Icon, Spinner } from "@dust-tt/sparkle";
-import { Separator } from "@dust-tt/sparkle";
-import { cn } from "@dust-tt/sparkle";
+import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import {
   Fragment,
   useCallback,
@@ -9,7 +8,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-import type { ReactNode } from "react";
 
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -67,11 +65,13 @@ interface DataSourceListProps {
    */
   isItemSelected?: (item: DataSourceListItem) => boolean | "partial";
   /**
-   * Optional right column header and cell renderer to support a two-column list
-   * layout (e.g., Name | Location) while keeping a compact list UI.
+   * Additional right-side columns after the main title column.
+   * Use to display extra metadata (e.g., Location).
    */
-  rightHeaderTitle?: string;
-  renderRight?: (item: DataSourceListItem) => ReactNode;
+  additionalColumns?: Array<{
+    title: string;
+    render: (item: DataSourceListItem) => ReactNode;
+  }>;
 }
 
 export function DataSourceList({
@@ -85,8 +85,7 @@ export function DataSourceList({
   showSelectAllHeader = false,
   headerTitle = "Name",
   isItemSelected,
-  rightHeaderTitle,
-  renderRight,
+  additionalColumns = [],
 }: DataSourceListProps) {
   const { isRowSelected, selectNode, removeNode, navigationHistory } =
     useDataSourceBuilderContext();
@@ -314,9 +313,13 @@ export function DataSourceList({
             />
             {headerTitle && <div>{headerTitle}</div>}
           </div>
-          {rightHeaderTitle && (
-            <div className="ml-3 w-1/3 truncate text-muted-foreground">
-              {rightHeaderTitle}
+          {additionalColumns.length > 0 && (
+            <div className="ml-3 flex w-1/3 items-center gap-3 text-muted-foreground">
+              {additionalColumns.map((col, idx) => (
+                <div key={idx} className="min-w-0 flex-1 truncate text-left">
+                  {col.title}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -358,9 +361,16 @@ export function DataSourceList({
                 </div>
               </div>
 
-              {renderRight && (
-                <div className="ml-3 w-1/3 truncate text-sm text-muted-foreground">
-                  {renderRight(item)}
+              {additionalColumns.length > 0 && (
+                <div className="ml-3 flex w-1/3 items-start gap-3 text-sm text-muted-foreground">
+                  {additionalColumns.map((col, idx) => (
+                    <div
+                      key={idx}
+                      className="min-w-0 flex-1 truncate text-left"
+                    >
+                      {col.render(item)}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
