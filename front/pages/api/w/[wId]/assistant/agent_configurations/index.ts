@@ -338,6 +338,7 @@ export async function createOrUpgradeAgentConfiguration({
           error: res.error,
           agentConfigurationId: agentConfigurationRes.value.sId,
           workspaceId: auth.getNonNullableWorkspace().sId,
+          mcpServerViewId: action.mcpServerViewId,
         },
         "Failed to create agent action configuration."
       );
