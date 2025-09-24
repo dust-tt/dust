@@ -3,14 +3,18 @@
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
+import type { SortingState } from "@tanstack/table-core";
 import { useRouter } from "next/router";
-import React from "react";
+import React, { useMemo, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
-import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
+import {
+  makeColumnsForSearchResults,
+  SORTING_KEYS,
+} from "@app/components/spaces/search/columns";
 import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
@@ -20,6 +24,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import type { SortingParams } from "@app/lib/api/pagination";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {
   getViewTypeForURLNodeCandidateAccountingForNotion,
@@ -230,6 +235,7 @@ function BackendSearch({
   const [isChanging, setIsChanging] = React.useState(false);
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
   const [searchHitCount, setSearchHitCount] = React.useState(0);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const {
     cursorPagination,
@@ -258,6 +264,17 @@ function BackendSearch({
         : undefined,
   };
 
+  const searchSort: SortingParams = useMemo(
+    () =>
+      sorting
+        .filter((sort) => SORTING_KEYS[sort.id])
+        .map((sort) => ({
+          field: SORTING_KEYS[sort.id],
+          direction: sort.desc ? "desc" : "asc",
+        })),
+    [sorting]
+  );
+
   // Use the spaces search hook for backend search with URL/node support
   const {
     isSearchLoading,
@@ -274,6 +291,7 @@ function BackendSearch({
             viewType,
             nodeOrUrlCandidate.node
           ),
+          searchSort,
         }
       : {
           ...commonSearchParams,
@@ -281,6 +299,7 @@ function BackendSearch({
           searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
           includeDataSources: true,
           viewType,
+          searchSort,
         }
   );
 
@@ -408,6 +427,8 @@ function BackendSearch({
               onOpenDocument={handleOpenDocument}
               setEffectiveContentNode={setEffectiveContentNode}
               onClearSearch={handleClearSearch}
+              sorting={sorting}
+              setSorting={setSorting}
             />
           </div>
         ) : (
@@ -492,6 +513,8 @@ interface SearchResultsTableProps {
   owner: LightWorkspaceType;
   searchResultNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
+  sorting: SortingState;
+  setSorting: (sorting: SortingState) => void;
   onLoadMore: () => void;
   isLoading: boolean;
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
@@ -507,6 +530,8 @@ function SearchResultsTable({
   owner,
   searchResultNodes,
   totalNodesCount,
+  sorting,
+  setSorting,
   onLoadMore,
   isLoading,
   onOpenDocument,
@@ -648,6 +673,8 @@ function SearchResultsTable({
   return (
     <ScrollableDataTable
       data={rows}
+      sorting={sorting}
+      setSorting={setSorting}
       columns={makeColumnsForSearchResults()}
       className={cn(
         "pb-4",

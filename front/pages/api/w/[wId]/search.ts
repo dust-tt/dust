@@ -24,6 +24,7 @@ export type PostWorkspaceSearchResponseBody = {
   nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
   nextPageCursor: string | null;
+  resultsCount: number | null;
 };
 
 async function handler(
