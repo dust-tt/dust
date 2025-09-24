@@ -122,7 +122,7 @@ export function ToolsPicker({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="h-fit max-h-96 w-96"
+        className="max-h-96 w-96"
         align="start"
         dropdownHeaders={
           <>
