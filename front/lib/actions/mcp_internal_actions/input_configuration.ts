@@ -981,7 +981,7 @@ export function getMCPServerToolsConfigurations(
     mayRequireDustAppConfiguration ||
     mayRequireJsonSchemaConfiguration ||
     mayRequireTimeFrameConfiguration
-      ? "optional"
+      ? "required"
       : realConfigurable;
 
   return {
