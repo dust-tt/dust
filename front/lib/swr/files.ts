@@ -4,6 +4,7 @@ import type { PublicFileResponseBodyType } from "@dust-tt/client";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   fetcher,
@@ -89,6 +90,7 @@ export function useUpsertFileAsDatasourceEntry(
     });
 
   const sendNotification = useSendNotification();
+  const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 
   const doCreate = async (body: UpsertFileToDataSourceRequestBody) => {
     const upsertUrl = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.sId}/files`;
@@ -109,6 +111,7 @@ export function useUpsertFileAsDatasourceEntry(
       return null;
     } else {
       void mutateContentNodes();
+      startPeriodicRefresh();
 
       sendNotification({
         type: "success",
