@@ -115,22 +115,20 @@ export async function cancelMessageGenerationEvent(
       // We use the message id provided by the caller as the agentMessageId.
       const agentMessageId = messageId;
 
-      if (workspaceId && conversationId && agentMessageId) {
-        const workflowId = makeAgentLoopWorkflowId({
-          workspaceId,
-          conversationId,
-          agentMessageId,
-        });
-        try {
-          const handle = client.workflow.getHandle(workflowId);
-          await handle.signal(cancelAgentLoopSignal);
-        } catch (signalError) {
-          // Swallow errors from signaling (workflow might not exist anymore)
-          logger.warn(
-            { error: signalError, messageId },
-            "Failed to signal agent loop workflow for cancellation"
-          );
-        }
+      const workflowId = makeAgentLoopWorkflowId({
+        workspaceId,
+        conversationId,
+        agentMessageId,
+      });
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        await handle.signal(cancelAgentLoopSignal);
+      } catch (signalError) {
+        // Swallow errors from signaling (workflow might not exist anymore)
+        logger.warn(
+          { error: signalError, messageId },
+          "Failed to signal agent loop workflow for cancellation"
+        );
       }
     },
     { concurrency: 8 }

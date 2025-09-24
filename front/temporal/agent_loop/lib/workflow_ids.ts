@@ -6,7 +6,7 @@ export function makeAgentLoopWorkflowId({
   conversationId,
   agentMessageId,
 }: {
-  workspaceId: string; // must be non-null workspace sId
+  workspaceId: string;
   conversationId: string;
   agentMessageId: string;
 }) {
