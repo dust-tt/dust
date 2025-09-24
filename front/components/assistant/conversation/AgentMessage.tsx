@@ -393,19 +393,6 @@ export function AgentMessage({
         className="text-muted-foreground"
       />
     );
-    // Feedback (not on global agents nor drafts).
-    buttons.push(
-      ...(isGlobalAgent || agentMessageToRender.configuration.status === "draft"
-        ? []
-        : [
-            <Separator key="separator" orientation="vertical" />,
-            <FeedbackSelector
-              key="feedback-selector"
-              {...messageFeedback}
-              getPopoverInfo={PopoverContent}
-            />,
-          ])
-    );
   }
 
   // Show retry button as long as it's not streaming
@@ -425,6 +412,22 @@ export function AgentMessage({
         icon={ArrowPathIcon}
         className="text-muted-foreground"
         disabled={isRetryHandlerProcessing || shouldStream}
+      />
+    );
+  }
+
+  // Add feedback buttons in the end of the array if the agent is not global agents nor drafts (= inside agent builder)
+  if (
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed" &&
+    (isGlobalAgent || agentMessageToRender.configuration.status === "draft")
+  ) {
+    buttons.push(
+      <Separator key="separator" orientation="vertical" />,
+      <FeedbackSelector
+        key="feedback-selector"
+        {...messageFeedback}
+        getPopoverInfo={PopoverContent}
       />
     );
   }
