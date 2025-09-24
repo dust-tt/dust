@@ -257,8 +257,10 @@ export function ConversationContainer({
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
+        // Navigate directly to the canonical route to avoid relying on
+        // next.config.js redirects (which can be bypassed with shallow routing).
         await router.push(
-          `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
+          `/w/${owner.sId}/agent/${conversationRes.value.sId}`,
           undefined,
           { shallow: true }
         );
