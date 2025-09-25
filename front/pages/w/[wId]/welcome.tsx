@@ -102,9 +102,7 @@ export default function Welcome({
     const queryParams = `welcome=true${
       conversationId ? `&cId=${conversationId}` : ""
     }`;
-    await router.push(
-      getAgentRoute(owner.sId, "new", queryParams)
-    );
+    await router.push(getAgentRoute(owner.sId, "new", queryParams));
   });
 
   return (
