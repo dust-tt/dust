@@ -140,7 +140,7 @@ async function streamAgentAnswerToSlack(
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
-        await postSlackMessageUpdate({
+        await debouncedPostSlackMessageUpdate({
           messageUpdate: {
             isThinking: true,
             assistantName,
@@ -149,7 +149,7 @@ async function streamAgentAnswerToSlack(
             thinkingAction: TOOL_RUNNING_LABEL,
           },
           ...conversationData,
-          canBeIgnored: false,
+          canBeIgnored: true,
           extraLogs: {
             source: "streamAgentAnswerToSlack",
             eventType: event.type,
