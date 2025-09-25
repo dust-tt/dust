@@ -5,7 +5,13 @@ import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
 import type { SortingState } from "@tanstack/table-core";
 import { useRouter } from "next/router";
-import React, { useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -249,6 +255,14 @@ function BackendSearch({
     resetPagination();
   }, [debouncedSearch, resetPagination]);
 
+  const handleSortingChange = useCallback(
+    (sorting: SortingState) => {
+      resetPagination();
+      setSorting(sorting);
+    },
+    [resetPagination, setSorting]
+  );
+
   const commonSearchParams = {
     owner,
     spaceIds: [space.sId],
@@ -428,7 +442,7 @@ function BackendSearch({
               setEffectiveContentNode={setEffectiveContentNode}
               onClearSearch={handleClearSearch}
               sorting={sorting}
-              setSorting={setSorting}
+              setSorting={handleSortingChange}
             />
           </div>
         ) : (
@@ -670,8 +684,19 @@ function SearchResultsTable({
     spaces,
   ]);
 
+  const scrollableDataTableRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollableDataTableRef.current) {
+      scrollableDataTableRef.current.scrollTo({
+        top: 0,
+      });
+    }
+  }, [sorting]);
+
   return (
     <ScrollableDataTable
+      containerRef={scrollableDataTableRef}
       data={rows}
       sorting={sorting}
       setSorting={setSorting}
