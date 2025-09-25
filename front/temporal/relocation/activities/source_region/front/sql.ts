@@ -196,7 +196,7 @@ export async function readFrontTableChunk({
     destRegion === "europe-west1"
   ) {
     const templateIdMapping: Record<number, number> = {
-      68: 274877906957,
+      68: 74,
     };
 
     for (const row of rows as [{ id: ModelId; templateId: number | null }]) {
