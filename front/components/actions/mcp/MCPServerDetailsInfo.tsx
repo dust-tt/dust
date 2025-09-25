@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
 import { MCPServerViewForm } from "@app/components/actions/mcp/MCPServerViewForm";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
+import type { ToolChange } from "@app/components/actions/mcp/ToolsList";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -12,11 +13,15 @@ import type { LightWorkspaceType } from "@app/types";
 type MCPServerDetailsInfoProps = {
   mcpServerView: MCPServerViewType | null;
   owner: LightWorkspaceType;
+  pendingToolChanges?: ToolChange[];
+  onPendingToolChangesUpdate?: (changes: ToolChange[]) => void;
 };
 
 export function MCPServerDetailsInfo({
   mcpServerView,
   owner,
+  pendingToolChanges,
+  onPendingToolChangesUpdate,
 }: MCPServerDetailsInfoProps) {
   const editedAt = useMemo(() => {
     const d = new Date(0);
@@ -50,7 +55,12 @@ export function MCPServerDetailsInfo({
       <Separator className="mb-4 mt-4" />
       <div className="heading-lg">Available Tools</div>
 
-      <ToolsList owner={owner} mcpServerView={mcpServerView} />
+      <ToolsList
+        owner={owner}
+        mcpServerView={mcpServerView}
+        pendingToolChanges={pendingToolChanges}
+        onPendingToolChangesUpdate={onPendingToolChangesUpdate}
+      />
     </div>
   );
 }
