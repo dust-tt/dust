@@ -62,9 +62,6 @@ import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import { normalizeError } from "@connectors/types/api";
 
-// Only allow documents up to 5mb to be processed.
-const MAX_DOCUMENT_TXT_LEN = 5000000;
-
 export async function githubGetReposResultPageActivity(
   connectorId: ModelId,
   pageNumber: number, // 1-indexed
@@ -286,11 +283,6 @@ export async function githubUpsertIssueActivity(
     updatedAtTimestamp,
     content: renderedIssue,
   } = renderedIssueResult;
-
-  if (sectionLength(renderedIssue) > MAX_DOCUMENT_TXT_LEN) {
-    logger.info("Issue is too large to upsert.");
-    return;
-  }
 
   const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
@@ -520,11 +512,6 @@ export async function githubUpsertDiscussionActivity(
 
   const { discussion, content: renderedDiscussion } =
     renderedDiscussionRes.value;
-
-  if (sectionLength(renderedDiscussion) > MAX_DOCUMENT_TXT_LEN) {
-    logger.info("Discussion is too large to upsert.");
-    return;
-  }
 
   const documentId = getDiscussionInternalId(
     repoId.toString(),
