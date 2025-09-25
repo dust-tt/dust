@@ -73,7 +73,7 @@ export function ConversationMenu({
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   const shareLink =
     baseUrl !== undefined
-      ? `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`
+      ? `${baseUrl}/w/${owner.sId}/agent/${activeConversationId}`
       : undefined;
 
   const doDelete = useDeleteConversation(owner);
@@ -81,7 +81,7 @@ export function ConversationMenu({
     const res = await doDelete(conversation);
     isConversationDisplayed &&
       res &&
-      void router.push(`/w/${owner.sId}/assistant/new`);
+      void router.push(`/w/${owner.sId}/agent/new`);
   }, [conversation, doDelete, owner.sId, router, isConversationDisplayed]);
 
   const copyConversationLink = useCallback(async () => {

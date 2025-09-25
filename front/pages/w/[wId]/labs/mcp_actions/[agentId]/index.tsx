@@ -147,7 +147,7 @@ export default function AgentMCPActions({
     messageId: string
   ) => {
     if (conversationId && messageId) {
-      window.open(`/w/${owner.sId}/assistant/${conversationId}`, "_blank");
+      window.open(`/w/${owner.sId}/agent/${conversationId}`, "_blank");
     }
   };
 
