@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
@@ -52,7 +53,7 @@ type RowData = {
   menuItems?: MenuItem[];
   agentTags: TagType[];
   agentTagsAsString: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
   isSelected: boolean;
   canArchive: boolean;
 };
@@ -68,6 +69,19 @@ const getTableColumns = ({
   isBatchEdit: boolean;
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
+  /**
+   * Columns order:
+   * - Select (if batch edit)
+   * - Name (always)
+   * - Access (hidden on mobile)
+   * - Editors (hidden on mobile)
+   * - Tags (always)
+   * - Usage (hidden on mobile)
+   * - Feedback (hidden on mobile)
+   * - Last Edited (hidden on mobile)
+   * - Actions (always)
+   */
+
   return [
     ...(isBatchEdit
       ? [
@@ -110,6 +124,9 @@ const getTableColumns = ({
           </div>
         </DataTable.CellContent>
       ),
+      meta: {
+        className: "w-40",
+      },
     },
     {
       header: "Access",
@@ -127,7 +144,7 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-32",
+        className: "hidden @sm:w-32 @sm:table-cell",
       },
     },
     {
@@ -155,7 +172,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "w-32",
+        className: "hidden @sm:w-32 @sm:table-cell",
       },
     },
     {
@@ -205,7 +222,10 @@ const getTableColumns = ({
           label={info.row.original.usage?.messageCount ?? 0}
         />
       ),
-      meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
+      meta: {
+        className: "hidden @sm:w-16 @sm:table-cell",
+        tooltip: "Messages in the last 30 days",
+      },
     },
     {
       header: "Feedback",
@@ -227,7 +247,10 @@ const getTableColumns = ({
           );
         }
       },
-      meta: { className: "w-20", tooltip: "Active users in the last 30 days" },
+      meta: {
+        className: "hidden @sm:w-20 @sm:table-cell",
+        tooltip: "Active users in the last 30 days",
+      },
     },
     {
       header: "Last Edited",
@@ -242,7 +265,7 @@ const getTableColumns = ({
           }
         />
       ),
-      meta: { className: "w-32" },
+      meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
     {
       header: "",
