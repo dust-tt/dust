@@ -2,6 +2,7 @@
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import { Context } from "@temporalio/activity";
 
+import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 import type {
   MCPApproveExecutionEvent,
   MCPErrorEvent,
@@ -33,7 +34,6 @@ import type {
   ConversationType,
 } from "@app/types";
 import { removeNulls } from "@app/types";
-import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.
@@ -136,7 +136,7 @@ export async function* runToolWithStreaming(
         getRetryPolicyFromToolConfiguration(toolConfiguration);
       if (retryPolicy === "retry_on_interrupt") {
         const info = Context.current().info;
-        const isLastAttempt = info.attempt >== RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
+        const isLastAttempt = info.attempt >= RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
         if (!isLastAttempt) {
           errorMessage += ` Error: ${toolError.message}`;
           throw new Error(errorMessage, { cause: toolError });
