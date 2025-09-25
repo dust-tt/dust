@@ -125,6 +125,7 @@ export async function confluenceGetSpaceBlobActivity({
   spaceId: string;
 }): Promise<SpaceBlob | null> {
   const localLogger = logger.child({
+    connectorId,
     spaceId,
   });
 
@@ -143,8 +144,7 @@ export async function confluenceGetSpaceBlobActivity({
     };
   } catch (err) {
     if (isNotFoundError(err) || isConfluenceNotFoundError(err)) {
-      localLogger.info("Deleting stale Confluence space.");
-
+      localLogger.info({ error: err }, "Deleting stale Confluence space.");
       return null;
     }
 
