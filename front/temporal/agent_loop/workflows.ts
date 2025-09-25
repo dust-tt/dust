@@ -8,7 +8,10 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { DEFAULT_MCP_REQUEST_TIMEOUT_MS } from "@app/lib/actions/constants";
+import {
+  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+  RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+} from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
@@ -50,7 +53,7 @@ const activities: AgentLoopActivities = {
   runRetryableToolActivity: proxyActivities<typeof runToolActivities>({
     startToCloseTimeout: toolActivityStartToCloseTimeout,
     retry: {
-      maximumAttempts: 15,
+      maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
     },
   }).runToolActivity,
   publishDeferredEventsActivity: proxyActivities<
