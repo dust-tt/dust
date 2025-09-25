@@ -99,7 +99,8 @@ export const MentionDropdown = ({
                     onSelect(suggestion);
                   }}
                   onMouseDown={(e) => {
-                    // This prevents the browser from taking focus away from the editor when onClick is triggered
+                    // This prevents the browser from taking focus away from the editor when onClick is
+                    // triggered.
                     e.preventDefault();
                   }}
                   onMouseEnter={(e) => {
