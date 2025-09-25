@@ -87,17 +87,24 @@ const createConversationForAgentConfiguration = async ({
   lastRunAt: Date | null;
   contentFragment?: ContentFragmentInputWithFileIdType;
 }) => {
-  const newConversation = await createConversation(auth, {
-    title: `@${agentConfiguration.name} triggered (${trigger.kind}) - ${new Date().toLocaleDateString(
-      "en-US",
-      {
+  let conversationTitle = `@${agentConfiguration.name} triggered (${trigger.kind})`;
+  switch (trigger.kind) {
+    case "schedule":
+      conversationTitle += ` - ${new Intl.DateTimeFormat(undefined, {
+        timeZone: trigger.configuration.timezone,
         month: "short",
         day: "numeric",
         hour: "numeric",
         minute: "2-digit",
-        hour12: true,
-      }
-    )}`,
+      }).format(new Date())}`;
+    case "webhook":
+      break;
+    default:
+      assertNever(trigger);
+  }
+
+  const newConversation = await createConversation(auth, {
+    title: conversationTitle,
     visibility: "unlisted",
     triggerId: trigger.id,
   });
