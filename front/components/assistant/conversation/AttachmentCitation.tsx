@@ -117,6 +117,7 @@ export function AttachmentCitation({
   onRemove,
   onClick,
 }: AttachmentCitationProps) {
+  // citation cannot have href and onClick at the same time
   const citationInteractionProps = onClick
     ? {
         onClick: (e: React.MouseEvent<HTMLDivElement>) => {
