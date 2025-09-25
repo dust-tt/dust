@@ -235,6 +235,7 @@ impl Table {
     }
     pub fn set_schema(&mut self, schema: TableSchema) {
         self.schema = Some(schema);
+        self.schema_stale_at = None;
     }
     pub fn set_remote_database_secret_id(&mut self, remote_database_secret_id: String) {
         self.remote_database_secret_id = Some(remote_database_secret_id);
