@@ -1,0 +1,59 @@
+{
+  "type": "SharedSlice",
+  "id": "card_grid",
+  "name": "CardGrid",
+  "variations": [
+    {
+      "id": "three_column",
+      "name": "3 Columns",
+      "description": "A three-column grid of cards, useful for blog or news summaries.",
+      "version": "initial",
+      "imageUrl": "",
+      "docURL": "...",
+      "primary": {
+        "items": {
+          "type": "Group",
+          "config": {
+            "label": "Cards",
+            "fields": {
+              "image": {
+                "type": "Image",
+                "config": {
+                  "label": "Card Image"
+                }
+              },
+              "category": {
+                "type": "Text",
+                "config": {
+                  "label": "Category"
+                }
+              },
+              "title": {
+                "type": "StructuredText",
+                "config": {
+                  "single": "heading3",
+                  "label": "Title"
+                }
+              },
+              "date": {
+                "type": "Date",
+                "config": {
+                  "label": "Date"
+                }
+              },
+              "link": {
+                "type": "Link",
+                "config": {
+                  "label": "Link to Details",
+                  "allowText": false,
+                  "repeat": false,
+                  "select": null
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+[
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "default",
+		"primary": {
+			"title": {
+				"__TYPE__": "StructuredTextContent",
+				"value": [
+					{
+						"type": "heading1",
+						"content": {
+							"text": "Collector Slices kit",
+							"spans": []
+						},
+						"direction": "ltr"
+					}
+				]
+			},
+			"paragraph": {
+				"__TYPE__": "StructuredTextContent",
+				"value": [
+					{
+						"type": "paragraph",
+						"content": {
+							"text": "It’s very easy to create stylish and beautiful prototypes for your future projects, both graphical and dynamic.",
+							"spans": []
+						},
+						"direction": "ltr"
+					}
+				]
+			},
+			"buttonLink": {
+				"key": "123e4567-e89b-12d3-a456-426614174000",
+				"__TYPE__": "LinkContent",
+				"value": {
+					"__TYPE__": "ExternalLink",
+					"url": "https://twitter.com/prismicio",
+					"text": "Learn more"
+				}
+			},
+			"image": {
+				"origin": {
+					"id": "9aOswReDKPo",
+					"url": "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?crop=entropy&cs=srgb&fm=jpg&ixid=M3wzMzc0NjN8MHwxfHNlYXJjaHwxOXx8ZnJ1aXR8ZW58MHx8fHwxNjkzMjUxNTMxfDA&ixlib=rb-4.0.3&q=85",
+					"width": 8040,
+					"height": 6024
+				},
+				"url": "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?crop=entropy&cs=srgb&fm=jpg&ixid=M3wzMzc0NjN8MHwxfHNlYXJjaHwxOXx8ZnJ1aXR8ZW58MHx8fHwxNjkzMjUxNTMxfDA&ixlib=rb-4.0.3&q=85",
+				"width": 8040,
+				"height": 6024,
+				"edit": {
+					"background": "transparent",
+					"zoom": 1,
+					"crop": {
+						"x": 0,
+						"y": 0
+					}
+				},
+				"credits": null,
+				"alt": "Example Image",
+				"__TYPE__": "ImageContent",
+				"thumbnails": {}
+			}
+		},
+		"items": []
+	},
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "alignLeft",
+		"primary": {
+			"image": {
+				"origin": {
+					"id": "euqiHwS38Rw",
+					"url": "https://images.unsplash.com/photo-1595475207225-428b62bda831?crop=entropy&cs=srgb&fm=jpg&ixid=M3wzMzc0NjN8MHwxfHNlYXJjaHwyMHx8ZnJ1aXR8ZW58MHx8fHwxNjkzMjUxNTMxfDA&ixlib=rb-4.0.3&q=85",
+					"width": 2500,
+					"height": 2500
+				},
+				"url": "https://images.unsplash.com/photo-1595475207225-428b62bda831?crop=entropy&cs=srgb&fm=jpg&ixid=M3wzMzc0NjN8MHwxfHNlYXJjaHwyMHx8ZnJ1aXR8ZW58MHx8fHwxNjkzMjUxNTMxfDA&ixlib=rb-4.0.3&q=85",
+				"width": 2500,
+				"height": 2500,
+				"edit": {
+					"background": "transparent",
+					"zoom": 1,
+					"crop": {
+						"x": 0,
+						"y": 0
+					}
+				},
+				"credits": null,
+				"alt": "Example Image",
+				"__TYPE__": "ImageContent",
+				"thumbnails": {}
+			},
+			"title": {
+				"__TYPE__": "StructuredTextContent",
+				"value": [
+					{
+						"type": "heading1",
+						"content": {
+							"text": "Collector Slices kit",
+							"spans": []
+						},
+						"direction": "ltr"
+					}
+				]
+			},
+			"paragraph": {
+				"__TYPE__": "StructuredTextContent",
+				"value": [
+					{
+						"type": "paragraph",
+						"content": {
+							"text": "It’s very easy to create stylish and beautiful prototypes for your future projects, both graphical and dynamic.",
+							"spans": []
+						},
+						"direction": "ltr"
+					}
+				]
+			},
+			"buttonLink": {
+				"key": "123e4567-e89b-12d3-a456-426614174001",
+				"__TYPE__": "LinkContent",
+				"value": {
+					"__TYPE__": "ExternalLink",
+					"url": "https://prismic.io",
+					"text": "Learn more"
+				}
+			}
+		},
+		"items": []
+	}
+]

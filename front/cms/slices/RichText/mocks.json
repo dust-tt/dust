@@ -1,0 +1,20 @@
+[
+	{
+		"__TYPE__": "SharedSliceContent",
+		"variation": "default",
+		"primary": {
+			"blog_post": {
+				"__TYPE__": "StructuredTextContent",
+				"value": [
+					{
+						"type": "paragraph",
+						"content": {
+							"text": "Consectetur laboris duis laboris commodo pariatur ex non duis nulla exercitation aliqua."
+						}
+					}
+				]
+			}
+		},
+		"items": []
+	}
+]

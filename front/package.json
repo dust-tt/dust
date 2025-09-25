@@ -22,7 +22,8 @@
     "prepare": "cd .. && husky .husky",
     "debug:profiler": "tsx ./scripts/debug/run_profiler.ts",
     "sitemap": "next-sitemap",
-    "sparkle:dev": "./admin/sparkle_dev.sh"
+    "sparkle:dev": "./admin/sparkle_dev.sh",
+    "slicemachine": "start-slicemachine"
   },
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
@@ -37,6 +38,9 @@
     "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#628ebe48388549faae7e35504611af9ac2c6f5e4",
     "@notionhq/client": "^2.3.0",
     "@octokit/core": "^6.1.5",
+    "@prismicio/client": "^7.20.1",
+    "@prismicio/next": "^2.0.1",
+    "@prismicio/react": "^3.2.1",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-navigation-menu": "^1.1.4",
@@ -160,6 +164,7 @@
     "@faker-js/faker": "^9.3.0",
     "@google-cloud/storage": "^7.11.2",
     "@redocly/openapi-cli": "^1.0.0-beta.95",
+    "@slicemachine/adapter-next": "^0.3.84",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
@@ -208,6 +213,7 @@
     "openapi-cli": "^0.0.2",
     "prettier": "^3.0",
     "prettier-plugin-tailwindcss": "^0.6.5",
+    "slice-machine-ui": "^2.18.2",
     "swagger-cli": "^4.0.4",
     "tsx": "^4.10.2",
     "typescript": "5.4.5",

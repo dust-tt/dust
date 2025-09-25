@@ -1,0 +1,62 @@
+{
+  "type": "SharedSlice",
+  "id": "featured_article_hero",
+  "name": "FeaturedArticleHero",
+  "variations": [
+    {
+      "id": "with_large_image",
+      "name": "With Large Image",
+      "description": "Displays the hero with an article heading, author details, metadata, and a large main image or feature graphic.",
+      "version": "initial",
+      "imageUrl": "",
+      "docURL": "...",
+      "primary": {
+        "title": {
+          "type": "StructuredText",
+          "config": {
+            "single": "heading1",
+            "label": "Title"
+          }
+        },
+        "author_details": {
+          "type": "Group",
+          "config": {
+            "label": "Author Details",
+            "fields": {
+              "avatar": {
+                "type": "Image",
+                "config": {
+                  "label": "Avatar"
+                }
+              },
+              "name": {
+                "type": "Text",
+                "config": {
+                  "label": "Name"
+                }
+              },
+              "publication_date": {
+                "type": "Date",
+                "config": {
+                  "label": "Publication Date"
+                }
+              },
+              "reading_time": {
+                "type": "Text",
+                "config": {
+                  "label": "Reading Time"
+                }
+              }
+            }
+          }
+        },
+        "featured_image": {
+          "type": "Image",
+          "config": {
+            "label": "Featured Image"
+          }
+        }
+      }
+    }
+  ]
+}

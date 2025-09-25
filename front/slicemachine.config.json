@@ -1,0 +1,6 @@
+{
+  "repositoryName": "dust-blog",
+  "adapter": "@slicemachine/adapter-next",
+  "libraries": ["./cms/slices"],
+  "localSliceSimulatorURL": "http://localhost:3000/slice-simulator"
+}

@@ -1,0 +1,53 @@
+{
+  "type": "SharedSlice",
+  "id": "featured_card_list",
+  "name": "FeaturedCardList",
+  "variations": [
+    {
+      "id": "default",
+      "name": "Default",
+      "description": "Standard horizontal featured card grid with image, title, and meta (date/author).",
+      "version": "initial",
+      "imageUrl": "",
+      "docURL": "...",
+      "primary": {
+        "items": {
+          "type": "Group",
+          "config": {
+            "label": "Cards",
+            "fields": {
+              "media": {
+                "type": "Image",
+                "config": {
+                  "label": "Card image"
+                }
+              },
+              "title": {
+                "type": "StructuredText",
+                "config": {
+                  "single": "heading3",
+                  "label": "Title"
+                }
+              },
+              "meta": {
+                "type": "Text",
+                "config": {
+                  "label": "Meta (date or author)"
+                }
+              },
+              "link": {
+                "type": "Link",
+                "config": {
+                  "label": "Card link",
+                  "allowText": false,
+                  "repeat": false,
+                  "select": null
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
