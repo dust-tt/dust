@@ -52,9 +52,13 @@ export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
 export const SEARCH_SERVER_NAME = "search";
-export const TABLE_QUERY_SERVER_NAME = "query_tables";
-export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
+
+export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
+
+// IDs of internal MCP servers that are no longer present.
+// We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -103,7 +107,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   "web_search_&_browse_with_summary",
   SEARCH_SERVER_NAME,
-  TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
 
@@ -184,29 +187,6 @@ export const INTERNAL_MCP_SERVERS = {
       description: "Agent can generate and convert files.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
-  // TODO(seb): remove soonish
-  [TABLE_QUERY_SERVER_NAME]: {
-    id: 4,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isRestricted: () => {
-      return true;
-    },
-    isPreview: false,
-    tools_stakes: undefined,
-    tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: undefined,
-    serverInfo: {
-      name: TABLE_QUERY_SERVER_NAME,
-      version: "1.0.0",
-      description:
-        "TablesQuery structured data like a spreadsheet or database for data analyses.",
-      icon: "ActionTableIcon",
-      authorization: null,
       documentationUrl: null,
       instructions: null,
     },

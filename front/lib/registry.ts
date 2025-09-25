@@ -127,20 +127,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "assistant-v2-query-tables": {
-    app: {
-      appId: "b4f205e453",
-      appHash:
-        "b4b51a1910a4f52e1c89c6b8cbb1d56e3ce155ce6c043f9ffd39fd7489399b52",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
-        function_call: "execute_query",
-      },
-    },
-  },
   "assistant-v2-websearch": {
     app: {
       appId: "098b515f8e",

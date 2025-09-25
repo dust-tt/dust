@@ -40,7 +40,6 @@ import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
-import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
@@ -99,8 +98,6 @@ export async function getInternalMCPServer(
       return generateFileServer(auth);
     case "content_creation":
       return contentCreationServer(auth, agentLoopContext);
-    case "query_tables":
-      return tablesQueryServer(auth, agentLoopContext);
     case "query_tables_v2":
       return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
