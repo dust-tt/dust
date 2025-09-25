@@ -137,11 +137,13 @@ function PreviewContent({
         </div>
       </div>
 
-      <ConversationSidePanelContent
-        conversation={conversation}
-        owner={owner}
-        currentPanel={currentPanel}
-      />
+      {conversation && (
+        <ConversationSidePanelContent
+          conversation={conversation}
+          owner={owner}
+          currentPanel={currentPanel}
+        />
+      )}
     </>
   );
 }
