@@ -43,7 +43,7 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import {
   getSlackBotInfo,
   getSlackClient,
-  getSlackUserInfo,
+  getSlackUserInfoMemoized,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
@@ -522,7 +522,7 @@ async function answerMessage(
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
     try {
-      slackUserInfo = await getSlackUserInfo(
+      slackUserInfo = await getSlackUserInfoMemoized(
         connector.id,
         slackClient,
         slackUserId
@@ -648,6 +648,9 @@ async function answerMessage(
 
   if (slackUserInfo.is_bot) {
     const botName = slackUserInfo.real_name;
+    if (!botName) {
+      throw new Error("Failed to get bot name. Should never happen.");
+    }
     requestedGroups = await slackConfig.getBotGroupIds(botName);
   }
 
