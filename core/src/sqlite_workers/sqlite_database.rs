@@ -17,7 +17,7 @@ use tempfile::NamedTempFile;
 use thiserror::Error;
 use tokio::{task, time::timeout};
 use tokio_stream::StreamExt;
-use tracing::info;
+use tracing::{error, info};
 
 pub struct SqliteDatabase {
     conn: Option<Arc<Mutex<Connection>>>,
@@ -247,6 +247,10 @@ async fn create_in_memory_sqlite_db_with_csv(
                 .schema_cached()
                 .unwrap()
                 .get_create_table_sql_string(&table_name);
+
+            if table.table.is_schema_stale() {
+                error!("Schema is stale for table {} but it should never happen as get_database_schema() should have been called first and recomputed the schema.", table.table.unique_id());
+            }
 
             async move {
                 let mut stream = Object::download_streamed(
