@@ -41,7 +41,7 @@ type SearchError = {
 
 const SearchSort = t.array(
   t.type({
-    field: t.string,
+    field: t.union([t.literal("title"), t.literal("timestamp")]),
     direction: t.union([t.literal("asc"), t.literal("desc")]),
   })
 );
