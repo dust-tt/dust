@@ -140,14 +140,13 @@ export const ConfigurableToolInputSchemas = {
     appId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
   }),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME]: z
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z
     .object({
       duration: z.number(),
       unit: z.enum(["hour", "day", "week", "month", "year"]),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME),
-    })
-    .describe("An optional time frame to use for the tool.")
-    .nullable(),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
+    }).nullable()
+    .describe("An optional time frame to use for the tool."),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.intersection(
     JsonSchemaSchema,
     z.object({
@@ -165,6 +164,19 @@ export const ConfigurableToolInputSchemas = {
   | typeof INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM
   | typeof INTERNAL_MIME_TYPES.TOOL_INPUT.LIST
 >;
+
+export const EMPTY_JSON_SCHEMA : z.infer<typeof ConfigurableToolInputSchemas[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]> = {
+  type: "object",
+  properties: {},
+  required: [],
+  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
+};
+
+export const EMPTY_DUST_APP : z.infer<typeof ConfigurableToolInputSchemas[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP]> = {
+  appId: "",
+  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+};
+
 
 // Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
 type FlexibleConfigurableToolInput = {

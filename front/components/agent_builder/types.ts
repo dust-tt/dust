@@ -133,7 +133,7 @@ export const capabilityFormSchema = z
       return true;
     }
 
-    if (toolsConfigurations.mayRequireTimeFrameConfiguration) {
+    if (toolsConfigurations.timeFrameConfigurable !== "no") {
       if (
         configuration.timeFrame !== null &&
         (configuration.timeFrame.duration === null ||
@@ -149,7 +149,7 @@ export const capabilityFormSchema = z
     }
 
     if (
-      toolsConfigurations.mayRequireJsonSchemaConfiguration &&
+      toolsConfigurations.jsonSchemaConfigurable !== "no" &&
       configuration._jsonSchemaString !== null
     ) {
       const parsedSchema = validateConfiguredJsonSchema(

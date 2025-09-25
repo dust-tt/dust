@@ -1,3 +1,4 @@
+
 import { ioTsEnum } from "./iots_utils";
 
 export const TIME_FRAME_UNITS = [
@@ -73,7 +74,6 @@ export function parseTimeFrame(raw: string): TimeFrame | null {
     unit,
   };
 }
-
 // Turns a TimeFrame into a number of milliseconds from now.
 export function timeFrameFromNow(timeFrame: TimeFrame): number {
   const now = Date.now();

@@ -7,6 +7,8 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputJSONSchemas,
+  EMPTY_DUST_APP,
+  EMPTY_JSON_SCHEMA,
   validateConfiguredJsonSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -165,20 +167,19 @@ function generateConfiguredInput({
       return { modelId, providerId, temperature, reasoningEffort, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
       const { timeFrame } = actionConfiguration;
       if (!timeFrame) {
         return null;
       }
-
-      const { duration, unit } = timeFrame;
+      const {duration, unit} = timeFrame;
       return { duration, unit, mimeType };
     }
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA: {
       const { jsonSchema } = actionConfiguration;
       if (!jsonSchema) {
-        return null;
+        return EMPTY_JSON_SCHEMA;
       }
       const validationResult = validateConfiguredJsonSchema(jsonSchema);
       if (validationResult.isErr()) {
@@ -475,18 +476,13 @@ The "mayRequire" properties are true in one of two cases:
   2. There is a property with a default value that may still be changed by the user.
 */
 export interface MCPServerToolsConfigurations {
-  dataSourceConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
-  dataWarehouseConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
-  tableConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
+  dataSourceConfigurable: "no" | "optional" | "required";
+  dataWarehouseConfigurable: "no" | "optional" | "required";
+  tableConfigurable: "no" | "optional" | "required";
+  timeFrameConfigurable: "no" | "optional" | "required";
+  jsonSchemaConfigurable: "no" | "optional" | "required";
+  dustAppConfigurable: "no" | "optional" | "required";
+  secretConfigurable: "no" | "optional" | "required";
   childAgentConfiguration?: {
     description?: string;
     default?: { uri: string };
@@ -500,8 +496,6 @@ export interface MCPServerToolsConfigurations {
       reasoningEffort: string;
     };
   };
-  mayRequireTimeFrameConfiguration: boolean;
-  mayRequireJsonSchemaConfiguration: boolean;
   stringConfigurations: {
     key: string;
     description?: string;
@@ -534,8 +528,6 @@ export interface MCPServerToolsConfigurations {
       default?: string;
     }
   >;
-  mayRequireDustAppConfiguration: boolean;
-  mayRequireSecretConfiguration: boolean;
   configurable: "no" | "optional" | "required";
 }
 
@@ -544,19 +536,21 @@ export function getMCPServerToolsConfigurations(
 ): MCPServerToolsConfigurations {
   if (!mcpServerView) {
     return {
-      mayRequireTimeFrameConfiguration: false,
-      mayRequireJsonSchemaConfiguration: false,
+      dataSourceConfigurable: "no",
+      dataWarehouseConfigurable: "no",
+      tableConfigurable: "no",
+      timeFrameConfigurable: "no",
+      jsonSchemaConfigurable: "no",
+      dustAppConfigurable: "no",
+      secretConfigurable: "no",
       stringConfigurations: [],
       numberConfigurations: [],
       booleanConfigurations: [],
       enumConfigurations: {},
       listConfigurations: {},
-      mayRequireDustAppConfiguration: false,
-      mayRequireSecretConfiguration: false,
       configurable: "optional",
     };
   }
-  const { server } = mcpServerView;
 
   function extractSchemaDefault<T>(
     schema: JSONSchema,
@@ -571,41 +565,6 @@ export function getMCPServerToolsConfigurations(
       typeGuard(schema.default.value)
     ) {
       return schema.default.value;
-    }
-
-    return undefined;
-  }
-
-  function extractSchemaDefaultArray<T>(
-    schema: JSONSchema,
-    typeGuard: (value: unknown) => value is T
-  ): T[] | undefined {
-    // findPathsToConfiguration returns an empty object if the schema default is an empty Array
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      Object.keys(schema.default).length === 0
-    ) {
-      return [];
-    }
-
-    // Try object-level default first: { default: T[] }
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      schema.default !== null
-    ) {
-      const defaults: T[] = [];
-      Object.entries(schema.default).map(([index, value]) => {
-        if (
-          typeof index === "string" &&
-          Number.isInteger(Number(index)) &&
-          typeGuard(value)
-        ) {
-          defaults.push(value);
-        }
-      });
-      return defaults;
     }
 
     return undefined;
@@ -641,53 +600,30 @@ export function getMCPServerToolsConfigurations(
       : "no";
   }
 
-  const dataSourceConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const getConfigurableStateForData = (mimeType: InternalToolInputMimeType): "no" | "optional" | "required" => {
+    const configuration = Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType,
+      })
+    ).at(0);
+    if (!configuration) {
+      return "no";
+    }
+    if (configuration.default) {
+      if (Array.isArray(configuration.default) && configuration.default.length === 0) {
+        return "optional";
+      } else {
+        throw new Error(`${mimeType} configuration is not valid`);
+      }
+    }
+    return "required";
+  }
 
-  const dataWarehouseConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const dataSourceConfigurable = getConfigurableStateForData(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE);
+  const dataWarehouseConfigurable = getConfigurableStateForData(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE);
+  const tableConfigurable = getConfigurableStateForData(INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE);
 
-  const tableConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
 
   const childAgentConfiguration = Object.values(
     findPathsToConfiguration({
@@ -733,24 +669,64 @@ export function getMCPServerToolsConfigurations(
     }))
     .at(0);
 
-  // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
-  const disabledToolNames =
-    mcpServerView.toolsMetadata
-      ?.filter((tool) => tool.enabled === false)
-      .map((tool) => tool.toolName) ?? [];
+  const enabledToolNames = mcpServerView.toolsMetadata
+    ?.filter((tool) => tool.enabled).map((tool) => tool.toolName) ?? [];
+  const enabledTools = mcpServerView.server.tools.filter((tool) => enabledToolNames.includes(tool.name));
 
-  const enabledTools =
-    disabledToolNames.length > 0
-      ? server.tools.filter((tool) => !disabledToolNames.includes(tool.name))
-      : server.tools;
+  // Note: Time frames can ONLY be at the root of the schema.
+  const timeFrameConfigurable = (() => {
+    const tool = enabledTools.find((tool) => tool.inputSchema?.properties?.timeFrame);
+    if (!tool) {
+      return "no";
+    } else if (tool.inputSchema?.properties?.default !== undefined) {
+      if (tool.inputSchema?.properties?.default === null) {
+        return "optional";
+      } else {
+        throw new Error("Time frame default can only be null");
+      }
+    }
+    return "required";
+  })();
 
-  const mayRequireTimeFrameConfiguration = enabledTools.some(
-    (tool) => tool.inputSchema?.properties?.timeFrame
-  );
+  // Note: JSON Schemas can ONLY be at the root of the schema.
+  const jsonSchemaConfigurable = (() => {
+    const tool = enabledTools.find((tool) => tool.inputSchema?.properties?.jsonSchema);
+    if (!tool) {
+      return "no";
+    } else if (tool.inputSchema?.properties?.default) {
+      if (tool.inputSchema?.properties?.default === EMPTY_JSON_SCHEMA) {
+        return "optional";
+      } else {
+        throw new Error("JSON Schema default can only be EMPTY_JSON_SCHEMA");
+      }
+    } else {
+      return "required";
+    }
+  })();
 
-  const mayRequireJsonSchemaConfiguration = enabledTools.some(
-    (tool) => tool.inputSchema?.properties?.jsonSchema
-  );
+  const dustAppConfigurable = (() => {
+    const configuration = Object.values(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+      })
+    ).at(0);
+    if (!configuration) {
+      return "no";
+    }
+    if (configuration.default) {
+      if (configuration.default === EMPTY_DUST_APP) {
+        return "optional";
+      } else {
+        throw new Error("Dust App default can only be EMPTY_DUST_APP");
+      }
+    }
+    return "required";
+  })();
+
+  const secretConfigurable : "no" | "optional" | "required" = (() => {
+    return mcpServerView.server.requiresSecret === true ? "required" : "no";
+  })();
 
   const stringConfigurations = Object.entries(
     findPathsToConfiguration({
@@ -918,21 +894,14 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const mayRequireDustAppConfiguration =
-    Object.keys(
-      findPathsToConfiguration({
-        mcpServerView,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
-      })
-    ).length > 0;
-
-  const mayRequireSecretConfiguration =
-    mcpServerView.server.requiresSecret === true;
-
   const configurableStates = [
-    getConfigurableStateForOptional(dataSourceConfiguration),
-    getConfigurableStateForOptional(dataWarehouseConfiguration),
-    getConfigurableStateForOptional(tableConfiguration),
+    dataSourceConfigurable,
+    dataWarehouseConfigurable,
+    tableConfigurable,
+    timeFrameConfigurable,
+    jsonSchemaConfigurable,
+    dustAppConfigurable,
+    secretConfigurable,
     getConfigurableStateForOptional(childAgentConfiguration),
     getConfigurableStateForOptional(reasoningConfiguration),
     getConfigurableStateForArray(stringConfigurations),
@@ -942,35 +911,27 @@ export function getMCPServerToolsConfigurations(
     getConfigurableStateForRecord(listConfigurations),
   ];
 
-  const realConfigurable = configurableStates.every((c) => c === "no")
+  const configurable = configurableStates.every((c) => c === "no")
     ? "no"
     : configurableStates.every((c) => c === "optional" || c === "no")
       ? "optional"
       : "required";
 
-  const configurable =
-    mayRequireSecretConfiguration ||
-    mayRequireDustAppConfiguration ||
-    mayRequireJsonSchemaConfiguration ||
-    mayRequireTimeFrameConfiguration
-      ? "required"
-      : realConfigurable;
-
   return {
-    dataSourceConfiguration,
-    dataWarehouseConfiguration,
-    tableConfiguration,
     childAgentConfiguration,
     reasoningConfiguration,
-    mayRequireTimeFrameConfiguration,
-    mayRequireJsonSchemaConfiguration,
     stringConfigurations,
     numberConfigurations,
     booleanConfigurations,
     enumConfigurations,
     listConfigurations,
-    mayRequireDustAppConfiguration,
-    mayRequireSecretConfiguration,
+    dataSourceConfigurable,
+    dataWarehouseConfigurable,
+    tableConfigurable,
+    timeFrameConfigurable,
+    jsonSchemaConfigurable,
+    dustAppConfigurable,
+    secretConfigurable,
     configurable,
   };
 }

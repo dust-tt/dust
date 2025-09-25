@@ -327,6 +327,7 @@ const createServer = (
       let results = rawResults.results;
 
       // Notion search does not support time frame filtering, so we need to filter the results after the search.
+      
       if (timeFrame) {
         const timestampInMs = timeFrameFromNow(timeFrame);
         const date = new Date(timestampInMs);

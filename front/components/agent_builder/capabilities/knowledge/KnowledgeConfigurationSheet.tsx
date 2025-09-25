@@ -389,11 +389,11 @@ function KnowledgeConfigurationSheetContent({
             triggerValidationOnChange={true}
           />
 
-          {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+          {toolsConfigurations.timeFrameConfigurable !== "no" && (
             <TimeFrameSection actionType="extract" />
           )}
 
-          {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+          {toolsConfigurations.jsonSchemaConfigurable !== "no" && (
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 
