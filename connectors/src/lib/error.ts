@@ -114,7 +114,7 @@ export class WorkspaceQuotaExceededError extends Error {
 export class DataSourceQuotaExceededError extends Error {
   constructor() {
     super(
-      "A file size exceeded the allowed size. Potential action: temporarily increase the plan limit for file size to " +
+      "A file size exceeded the allowed size. Action: temporarily increase the plan limit for file size to " +
         "let the activity succeed."
     );
     this.name = "DataSourceQuotaExceededError";
