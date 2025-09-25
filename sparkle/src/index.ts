@@ -5,3 +5,4 @@ export * from "./hooks";
 export * from "./icons";
 export * from "./lib";
 export * from "./logo";
+export * from "./components/streaming";

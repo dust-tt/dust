@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -191,16 +192,11 @@ export function Markdown({
           {children}
         </h6>
       ),
-      strong: ({ children }) => (
-        <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
-          {children}
-        </strong>
-      ),
+      strong: StrongBlock,
       input: Input,
       blockquote: BlockquoteBlock,
-      hr: () => (
-        <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
-      ),
+      hr: HrBlock,
+      img: ImgBlock,
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
@@ -217,7 +213,7 @@ export function Markdown({
     [additionalMarkdownPlugins]
   );
 
-  const rehypePlugins = [[rehypeKatex, { output: "mathml" }]] as PluggableList;
+  const rehypePlugins = [[rehypeKatex, { output: "mathml" }], rehypeRaw] as PluggableList;
 
   try {
     return (
@@ -252,7 +248,7 @@ export function Markdown({
   }
 }
 
-function LinkBlock({
+export function LinkBlock({
   href,
   children,
 }: {
@@ -276,12 +272,39 @@ function LinkBlock({
   );
 }
 
-type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
+export function StrongBlock({ children }: { children: React.ReactNode }) {
+  return (
+    <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+      {children}
+    </strong>
+  );
+}
+
+export function HrBlock() {
+  return (
+    <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
+  );
+}
+
+export function ImgBlock(props: React.ImgHTMLAttributes<HTMLImageElement>) {
+  return (
+    <img
+      {...props}
+      className="s-h-auto s-max-w-full"
+      style={{
+        maxWidth: "100%",
+        height: "auto",
+      }}
+    />
+  );
+}
+
+export type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
   ReactMarkdownProps & {
     ref?: React.Ref<HTMLInputElement>;
   };
 
-function Input({
+export function Input({
   type,
   checked,
   className,
