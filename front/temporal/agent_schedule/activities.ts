@@ -97,6 +97,7 @@ const createConversationForAgentConfiguration = async ({
         hour: "numeric",
         minute: "2-digit",
       }).format(new Date())}`;
+      break;
     case "webhook":
       break;
     default:
