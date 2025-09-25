@@ -10,7 +10,7 @@ import { useRouter } from "next/router";
 import { visit } from "unist-util-visit";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
-import { setQueryParam, getAgentRoute } from "@app/lib/utils/router";
+import { getAgentRoute,setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 // Not exported, the one exported is getMentionPlugin since we need to pass the owner.

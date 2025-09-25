@@ -26,11 +26,11 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
-import { getAgentRoute } from "@app/lib/utils/router";
 import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
   ContentFragmentsType,

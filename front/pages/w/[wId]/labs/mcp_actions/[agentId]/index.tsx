@@ -22,8 +22,8 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { getAgentRoute } from "@app/lib/utils/router";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,

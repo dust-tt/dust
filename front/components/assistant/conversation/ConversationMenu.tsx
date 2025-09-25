@@ -15,8 +15,6 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
 
-import { getAgentRoute } from "@app/lib/utils/router";
-
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
@@ -28,6 +26,7 @@ import {
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 

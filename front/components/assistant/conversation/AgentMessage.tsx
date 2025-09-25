@@ -18,11 +18,11 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import {
   AgentMessageContentCreationGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
-import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
