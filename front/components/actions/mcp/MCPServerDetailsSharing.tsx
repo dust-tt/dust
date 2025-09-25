@@ -94,7 +94,9 @@ export function MCPServerDetailsSharing({
   }, [views, spaces, globalView, globalSpace]);
 
   // Determine if currently restricted based on local state.
-  const isRestricted = globalSpace ? !localSpaceStates.get(globalSpace.sId) : true;
+  const isRestricted = globalSpace
+    ? !localSpaceStates.get(globalSpace.sId)
+    : true;
 
   const availableSpaces = (spaces ?? []).filter((s) => s.kind === "regular");
 
