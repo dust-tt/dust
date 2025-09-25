@@ -189,7 +189,10 @@ async function searchCallback(
   if (coreSearchArgs.length === 0) {
     return new Err(
       new MCPError(
-        "Search action must have at least one data source configured."
+        "Search action must have at least one data source configured.",
+        {
+          tracked: false,
+        }
       )
     );
   }
