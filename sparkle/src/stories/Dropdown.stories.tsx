@@ -42,7 +42,6 @@ import {
   ActionFolderIcon,
   ActionMagicIcon,
   ActionUserGroupIcon,
-  AlertTriangleIcon,
   ArrowDownCircleIcon,
   ArrowUpOnSquareIcon,
   AttachmentIcon,
