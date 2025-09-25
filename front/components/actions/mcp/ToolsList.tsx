@@ -87,7 +87,8 @@ export function ToolsList({
     > = {};
     for (const tool of mcpServerView.server.tools ?? []) {
       initialSettings[tool.name] = {
-        permission: toolsMetadata[tool.name]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        permission:
+          toolsMetadata[tool.name]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
         enabled: toolsMetadata[tool.name]?.enabled ?? true,
       };
     }
@@ -128,7 +129,8 @@ export function ToolsList({
     // Update pending changes if callback is provided.
     if (onPendingToolChangesUpdate) {
       const originalSetting = {
-        permission: toolsMetadata[name]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
+        permission:
+          toolsMetadata[name]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
         enabled: toolsMetadata[name]?.enabled ?? true,
       };
 
@@ -164,12 +166,20 @@ export function ToolsList({
   };
 
   const getToolPermission = (toolName: string) => {
-    return localToolSettings[toolName]?.permission ?? toolsMetadata[toolName]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL;
+    return (
+      localToolSettings[toolName]?.permission ??
+      toolsMetadata[toolName]?.permission ??
+      FALLBACK_MCP_TOOL_STAKE_LEVEL
+    );
   };
 
   const getToolEnabled = (toolName: string) => {
     // Use local state if available, otherwise fall back to metadata.
-    return localToolSettings[toolName]?.enabled ?? toolsMetadata[toolName]?.enabled ?? true;
+    return (
+      localToolSettings[toolName]?.enabled ??
+      toolsMetadata[toolName]?.enabled ??
+      true
+    );
   };
 
   const toolPermissionLabel: Record<string, string> = {
