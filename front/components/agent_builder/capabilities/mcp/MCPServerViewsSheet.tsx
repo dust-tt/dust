@@ -4,7 +4,12 @@ import {
   MultiPageSheetContent,
   SearchInput,
   Spinner,
+  Button,
+  Card,
+  Avatar,
+  CommandLineIcon,
 } from "@dust-tt/sparkle";
+import { PencilIcon } from "@heroicons/react/20/solid";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import React, {
@@ -78,6 +83,7 @@ import {
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 const TOP_MCP_SERVER_VIEWS = [
@@ -176,8 +182,17 @@ export function MCPServerViewsSheet({
     useState<MCPServerViewType | null>(null);
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
+  const [forceSelectionTarget, setForceSelectionTarget] = useState<
+    "agent" | "dust_app" | null
+  >(null);
 
   const hasReasoningModel = reasoningModels.length > 0;
+
+  // Fetch agents list once (used to display selected agent card on Additional page)
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+  });
 
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
@@ -549,8 +564,11 @@ export function MCPServerViewsSheet({
     const hasLists =
       toolsConfigurations.listConfigurations &&
       Object.keys(toolsConfigurations.listConfigurations).length > 0;
-    return hasStrings || hasNumbers || hasBooleans || hasEnums || hasLists;
-  }, [toolsConfigurations]);
+    const hasName = configurationTool?.configurable ?? false;
+    return (
+      hasName || hasStrings || hasNumbers || hasBooleans || hasEnums || hasLists
+    );
+  }, [toolsConfigurations, configurationTool?.configurable]);
 
   // Stable form reset handler - no form dependency to prevent re-renders
   const resetFormValues = useMemo(
@@ -566,6 +584,7 @@ export function MCPServerViewsSheet({
     setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
     setConfigurationTool(null);
     setConfigurationMCPServerView(null);
+    setForceSelectionTarget(null);
   }, []);
 
   const resetSheet = useCallback(() => {
@@ -639,20 +658,21 @@ export function MCPServerViewsSheet({
                   mcpServerView={mcpServerView}
                 />
 
-                {configurationTool.configurable && (
-                  <NameSection
-                    title="Name"
-                    placeholder="My tool name…"
-                    triggerValidationOnChange
-                  />
-                )}
-
                 {toolsConfigurations.reasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
                 {toolsConfigurations.childAgentConfiguration && (
-                  <ChildAgentSection />
+                  <ChildAgentSection
+                    onSelected={() => {
+                      setForceSelectionTarget(null);
+                      setCurrentPageId(
+                        TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION
+                      );
+                    }}
+                    forceSelection={forceSelectionTarget === "agent"}
+                    showInlineEdit={false}
+                  />
                 )}
 
                 {toolsConfigurations.mayRequireTimeFrameConfiguration && (
@@ -660,7 +680,16 @@ export function MCPServerViewsSheet({
                 )}
 
                 {toolsConfigurations.mayRequireDustAppConfiguration && (
-                  <DustAppSection />
+                  <DustAppSection
+                    onSelected={() => {
+                      setForceSelectionTarget(null);
+                      setCurrentPageId(
+                        TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION
+                      );
+                    }}
+                    forceSelection={forceSelectionTarget === "dust_app"}
+                    showInlineEdit={false}
+                  />
                 )}
 
                 {toolsConfigurations.mayRequireSecretConfiguration && (
@@ -689,6 +718,107 @@ export function MCPServerViewsSheet({
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
+                {(toolsConfigurations.mayRequireDustAppConfiguration ||
+                  toolsConfigurations.childAgentConfiguration) && (
+                  <div className="flex w-full flex-col gap-3">
+                    {/* Dust App selection summary card */}
+                    {toolsConfigurations.mayRequireDustAppConfiguration &&
+                      form.getValues("configuration.dustAppConfiguration") && (
+                        <Card size="sm" className="w-full">
+                          <div className="flex w-full">
+                            <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
+                              <div className="flex items-center gap-2">
+                                <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
+                                <div className="text-md font-medium">
+                                  {form.getValues(
+                                    "configuration.dustAppConfiguration.name"
+                                  )}
+                                </div>
+                              </div>
+                              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                {form.getValues(
+                                  "configuration.dustAppConfiguration.description"
+                                ) || "No description available"}
+                              </div>
+                            </div>
+                            <div className="ml-4 self-start">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                icon={PencilIcon}
+                                label="Edit selection"
+                                onClick={() => {
+                                  setForceSelectionTarget("dust_app");
+                                  setCurrentPageId(
+                                    TOOLS_SHEET_PAGE_IDS.CONFIGURATION
+                                  );
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </Card>
+                      )}
+
+                    {/* Agent selection summary card */}
+                    {toolsConfigurations.childAgentConfiguration &&
+                      (() => {
+                        const agentId = form.getValues(
+                          "configuration.childAgentId"
+                        );
+                        const selectedAgent = agentConfigurations.find(
+                          (a) => a.sId === agentId
+                        );
+                        if (!agentId || !selectedAgent) {
+                          return null;
+                        }
+                        return (
+                          <Card size="sm" className="w-full">
+                            <div className="flex w-full">
+                              <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
+                                <div className="flex items-center gap-2">
+                                  <Avatar
+                                    size="sm"
+                                    name={selectedAgent.name}
+                                    visual={selectedAgent.pictureUrl}
+                                  />
+                                  <div className="text-md font-medium">
+                                    {selectedAgent.name}
+                                  </div>
+                                </div>
+                                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                  {selectedAgent.description ||
+                                    "No description available"}
+                                </div>
+                              </div>
+                              <div className="ml-4 self-start">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  icon={PencilIcon}
+                                  label="Edit agent"
+                                  onClick={() => {
+                                    setForceSelectionTarget("agent");
+                                    setCurrentPageId(
+                                      TOOLS_SHEET_PAGE_IDS.CONFIGURATION
+                                    );
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })()}
+                  </div>
+                )}
+
+                {configurationTool?.configurable && (
+                  <NameSection
+                    title="Name"
+                    placeholder="My tool name…"
+                    triggerValidationOnChange
+                  />
+                )}
+
                 <AdditionalConfigurationSection
                   stringConfigurations={
                     toolsConfigurations.stringConfigurations

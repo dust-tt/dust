@@ -57,7 +57,15 @@ function AppSelectionTable({ tableData, columns }: AppSelectionTableProps) {
   );
 }
 
-export function DustAppSection() {
+export function DustAppSection({
+  onSelected,
+  forceSelection = false,
+  showInlineEdit = true,
+}: {
+  onSelected?: () => void;
+  forceSelection?: boolean;
+  showInlineEdit?: boolean;
+}) {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -115,6 +123,7 @@ export function DustAppSection() {
       type: "dust_app_run_configuration",
     };
     field.onChange(config);
+    onSelected?.();
   };
 
   const handleEditClick = () => {
@@ -201,7 +210,7 @@ export function DustAppSection() {
           <div className="flex h-full w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : field.value ? (
+        ) : field.value && !forceSelection ? (
           <Card size="sm" className="w-full">
             <div className="flex w-full">
               <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
@@ -213,15 +222,17 @@ export function DustAppSection() {
                   {field.value.description || "No description available"}
                 </div>
               </div>
-              <div className="ml-4 self-start">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={PencilIcon}
-                  label="Edit selection"
-                  onClick={handleEditClick}
-                />
-              </div>
+              {showInlineEdit && (
+                <div className="ml-4 self-start">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={PencilIcon}
+                    label="Edit selection"
+                    onClick={handleEditClick}
+                  />
+                </div>
+              )}
             </div>
           </Card>
         ) : spaces.length > 0 && selectedSpace && availableApps.length > 0 ? (

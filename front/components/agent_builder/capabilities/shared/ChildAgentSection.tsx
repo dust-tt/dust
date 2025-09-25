@@ -74,7 +74,15 @@ function AgentMessage({ title, children }: AgentMessageProps) {
   );
 }
 
-export function ChildAgentSection() {
+export function ChildAgentSection({
+  onSelected,
+  forceSelection = false,
+  showInlineEdit = true,
+}: {
+  onSelected?: () => void;
+  forceSelection?: boolean;
+  showInlineEdit?: boolean;
+}) {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -96,6 +104,7 @@ export function ChildAgentSection() {
 
   const handleRowClick = (agent: LightAgentConfigurationType) => {
     field.onChange(agent.sId);
+    onSelected?.();
   };
 
   const handleEditClick = () => {
@@ -138,9 +147,10 @@ export function ChildAgentSection() {
   );
 
   const shouldShowTable =
-    !isAgentConfigurationsError &&
-    agentConfigurations.length > 0 &&
-    !field.value;
+    forceSelection ||
+    (!isAgentConfigurationsError &&
+      agentConfigurations.length > 0 &&
+      !field.value);
 
   let messageProps: { title: string; children: string };
   if (isAgentConfigurationsError) {
@@ -197,15 +207,17 @@ export function ChildAgentSection() {
                 {selectedAgent.description || "No description available"}
               </div>
             </div>
-            <div className="ml-4 self-start">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={PencilIcon}
-                label="Edit agent"
-                onClick={handleEditClick}
-              />
-            </div>
+            {showInlineEdit && (
+              <div className="ml-4 self-start">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={PencilIcon}
+                  label="Edit agent"
+                  onClick={handleEditClick}
+                />
+              </div>
+            )}
           </div>
         </Card>
       )}
