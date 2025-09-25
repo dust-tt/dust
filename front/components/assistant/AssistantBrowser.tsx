@@ -5,6 +5,7 @@ import {
   Button,
   CardGrid,
   Chip,
+  ContactsRobotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -58,9 +59,9 @@ function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
 }
 
 const AGENTS_TABS = [
-  { label: "Favorites", icon: StarIcon, id: "favorites" },
-  { label: "All agents", icon: RobotIcon, id: "all" },
-  { label: "Editable by me", icon: PencilSquareIcon, id: "editable_by_me" },
+  { label: "Favorites", id: "favorites" },
+  { label: "All agents", id: "all" },
+  { label: "Editable by me", id: "editable_by_me" },
 ] as const;
 
 type TabId = (typeof AGENTS_TABS)[number]["id"];
@@ -392,11 +393,10 @@ export function AssistantBrowser({
             )}
 
             <Button
-              tooltip="Manage agents"
               href={getAgentBuilderRoute(owner.sId, "manage")}
               variant="primary"
-              icon={RobotIcon}
-              label="Manage"
+              icon={ContactsRobotIcon}
+              label="Manage Agents"
               data-gtm-label="assistantManagementButton"
               data-gtm-location="homepage"
               size="sm"
