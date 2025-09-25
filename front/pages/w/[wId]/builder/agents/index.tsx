@@ -1,11 +1,9 @@
 import {
   Button,
   Chip,
-  DustIcon,
   ListSelectIcon,
   MagnifyingGlassIcon,
   Page,
-  PencilSquareIcon,
   PlusIcon,
   RobotIcon,
   SearchInput,
@@ -13,7 +11,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useMemo, useRef, useState } from "react";
