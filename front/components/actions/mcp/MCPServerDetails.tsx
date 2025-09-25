@@ -86,75 +86,70 @@ export function MCPServerDetails({
       : undefined,
   });
 
-  const onSave = async (selectedTab: TabType): Promise<boolean> => {
+  // Save function for sharing tab.
+  const saveSharingTab = async (): Promise<boolean> => {
+    if (!mcpServerView || pendingSharingChanges.length === 0) {
+      return false;
+    }
+
+    try {
+      const mcpServerWithViews = mcpServers.find(
+        (s) => s.sId === mcpServerView.server.sId
+      );
+
+      for (const change of pendingSharingChanges) {
+        const space = spaces.find((s) => s.sId === change.spaceId);
+        if (!space) {
+          continue;
+        }
+
+        if (change.action === "add") {
+          await addToSpace(mcpServerView.server, space);
+        } else {
+          const view = mcpServerWithViews?.views.find(
+            (v) => v.spaceId === space.sId
+          );
+          if (view) {
+            await removeFromSpace(view, space);
+          }
+        }
+      }
+
+      await mutateMCPServerViews();
+      await mutateMCPServers();
+
+      sendNotification({
+        type: "success",
+        title: getSuccessTitle(mcpServerView),
+        description: "Sharing settings have been updated.",
+      });
+      setPendingSharingChanges([]);
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update sharing settings",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while updating sharing settings.",
+      });
+      return false;
+    }
+  };
+
+  // Save function for info tab.
+  const saveInfoTab = async (): Promise<boolean> => {
     if (!mcpServerView) {
       return false;
     }
 
-    const mutateCaches = async () => {
-      await mutateMCPServerViews();
-      await mutateMCPServers();
-    };
-
-    // If we're on the sharing tab and only have sharing changes, skip form validation.
-    if (selectedTab === "sharing" && !form.formState.isDirty && pendingToolChanges.length === 0) {
-      let success = true;
-
-      // Apply pending sharing changes only.
-      try {
-        const mcpServerWithViews = mcpServers.find(
-          (s) => s.sId === mcpServerView.server.sId
-        );
-
-        for (const change of pendingSharingChanges) {
-          const space = spaces.find((s) => s.sId === change.spaceId);
-          if (!space) {
-            continue;
-          }
-
-          if (change.action === "add") {
-            await addToSpace(mcpServerView.server, space);
-          } else {
-            const view = mcpServerWithViews?.views.find(
-              (v) => v.spaceId === space.sId
-            );
-            if (view) {
-              await removeFromSpace(view, space);
-            }
-          }
-        }
-
-        await mutateCaches();
-
-        sendNotification({
-          type: "success",
-          title: getSuccessTitle(mcpServerView),
-          description: "Sharing settings have been updated.",
-        });
-        setPendingSharingChanges([]);
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update sharing settings",
-          description:
-            error instanceof Error
-              ? error.message
-              : "An error occurred while updating sharing settings.",
-        });
-        success = false;
-      }
-
-      return success;
-    }
-
-    // Otherwise, validate and save everything.
     let success = false;
     await form.handleSubmit(
       async (values) => {
-        // Apply pending tool changes first.
-        if (pendingToolChanges.length > 0) {
-          try {
-            // Make API calls directly to update tool settings without notifications.
+        try {
+          // Apply tool changes if any.
+          if (pendingToolChanges.length > 0) {
             for (const change of pendingToolChanges) {
               const response = await fetch(
                 `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}/tools/${change.toolName}`,
@@ -176,100 +171,65 @@ export function MCPServerDetails({
                 );
               }
             }
-          } catch (error) {
+          }
+
+          // Submit the form data.
+          const result = await submitMCPServerDetailsForm({
+            owner,
+            mcpServerView,
+            initialValues: defaults,
+            values,
+            mutate: async () => {
+              await mutateMCPServerViews();
+              await mutateMCPServers();
+            },
+          });
+
+          if (result.isOk()) {
+            sendNotification({
+              type: "success",
+              title: getSuccessTitle(mcpServerView),
+              description: "Your changes have been saved.",
+            });
+            // Normalize values before resetting so the form is clean.
+            const normalizedValues: InfoFormValues = {
+              ...values,
+              // Ensure headers are sanitized so defaults match saved state.
+              customHeaders: sanitizeHeadersArray(values.customHeaders ?? []),
+            };
+            form.reset(normalizedValues);
+            // Clear tool changes.
+            setPendingToolChanges([]);
+            success = true;
+          } else {
             sendNotification({
               type: "error",
-              title: "Failed to update tool settings",
-              description:
-                error instanceof Error
-                  ? error.message
-                  : "An error occurred while updating tool settings.",
+              title: "Save failed",
+              description: result.error.message,
             });
+            datadogLogger.error(
+              {
+                errorMessage: result.error.message,
+                serverViewId: mcpServerView.sId,
+              },
+              "[MCP Details] - Submit error"
+            );
             success = false;
-            return;
-          }
-        }
-
-        // Apply pending sharing changes.
-        try {
-          const mcpServerWithViews = mcpServers.find(
-            (s) => s.sId === mcpServerView.server.sId
-          );
-
-          for (const change of pendingSharingChanges) {
-            const space = spaces.find((s) => s.sId === change.spaceId);
-            if (!space) {
-              continue;
-            }
-
-            if (change.action === "add") {
-              await addToSpace(mcpServerView.server, space);
-            } else {
-              const view = mcpServerWithViews?.views.find(
-                (v) => v.spaceId === space.sId
-              );
-              if (view) {
-                await removeFromSpace(view, space);
-              }
-            }
           }
         } catch (error) {
           sendNotification({
             type: "error",
-            title: "Failed to update sharing settings",
+            title: "Failed to save changes",
             description:
               error instanceof Error
                 ? error.message
-                : "An error occurred while updating sharing settings.",
+                : "An error occurred while saving changes.",
           });
-          success = false;
-          return;
-        }
-
-        const result = await submitMCPServerDetailsForm({
-          owner,
-          mcpServerView,
-          initialValues: defaults,
-          values,
-          mutate: mutateCaches,
-        });
-
-        if (result.isOk()) {
-          // Only show success notification once after all changes are saved.
-          sendNotification({
-            type: "success",
-            title: getSuccessTitle(mcpServerView),
-            description: "Your changes have been saved.",
-          });
-          // Normalize values before resetting so the form is clean.
-          const normalizedValues: InfoFormValues = {
-            ...values,
-            // Ensure headers are sanitized so defaults match saved state.
-            customHeaders: sanitizeHeadersArray(values.customHeaders ?? []),
-          };
-          form.reset(normalizedValues);
-          // Clear pending changes after successful save.
-          setPendingSharingChanges([]);
-          setPendingToolChanges([]);
-          success = true;
-        } else {
-          sendNotification({
-            type: "error",
-            title: "Save failed",
-            description: result.error.message,
-          });
-          datadogLogger.error(
-            {
-              errorMessage: result.error.message,
-              serverViewId: mcpServerView.sId,
-            },
-            "[MCP Details] - Submit error"
-          );
           success = false;
         }
       },
       async (errors) => {
-        // Bubble up validation errors with clear context and focus
+        // Bubble up validation errors with clear context and focus.
         const keys = Object.keys(errors);
         const firstErrorKey = keys[0] as keyof typeof errors | undefined;
         if (firstErrorKey) {
@@ -294,6 +254,16 @@ export function MCPServerDetails({
       }
     )();
     return success;
+  };
+
+  const onSave = async (selectedTab: TabType): Promise<boolean> => {
+    // Since we prevent tab switching with unsaved changes,
+    // we only need to handle the current tab's changes.
+    if (selectedTab === "sharing") {
+      return saveSharingTab();
+    } else {
+      return saveInfoTab();
+    }
   };
 
   const onCancel = () => {
