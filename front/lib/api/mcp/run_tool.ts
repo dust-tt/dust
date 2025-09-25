@@ -136,7 +136,7 @@ export async function* runToolWithStreaming(
         getRetryPolicyFromToolConfiguration(toolConfiguration);
       if (retryPolicy === "retry_on_interrupt") {
         const info = Context.current().info;
-        const isLastAttempt = info.attempt === RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
+        const isLastAttempt = info.attempt >== RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
         if (!isLastAttempt) {
           errorMessage += `Error: ${toolError.message}`;
           throw new Error(errorMessage, { cause: toolError });
