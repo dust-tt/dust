@@ -195,6 +195,7 @@ export async function upsertCodeFile({
       if (error instanceof DataSourceQuotaExceededError) {
         logger.warn(
           {
+            connectorId,
             error,
             documentId,
             extension: extname(fileName),

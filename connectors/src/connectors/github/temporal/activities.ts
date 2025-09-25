@@ -47,6 +47,7 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import {
   GithubCodeRepository,
   GithubDiscussion,
@@ -57,8 +58,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import { normalizeError } from "@connectors/types/api";
 
@@ -309,23 +309,40 @@ export async function githubUpsertIssueActivity(
     getRepositoryInternalId(repoId),
   ];
   // TODO: last commentor, last comment date, issue labels (as tags)
-  await upsertDataSourceDocument({
-    dataSourceConfig,
-    documentId,
-    documentContent: renderedIssue,
-    documentUrl: issue.url,
-    timestampMs: updatedAtTimestamp,
-    tags: tags,
-    parents,
-    parentId: parents[1],
-    loggerArgs: logger.bindings(),
-    upsertContext: {
-      sync_type: isBatchSync ? "batch" : "incremental",
-    },
-    title: issue.title,
-    mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUE,
-    async: true,
-  });
+  try {
+    await upsertDataSourceDocument({
+      dataSourceConfig,
+      documentId,
+      documentContent: renderedIssue,
+      documentUrl: issue.url,
+      timestampMs: updatedAtTimestamp,
+      tags: tags,
+      parents,
+      parentId: parents[1],
+      loggerArgs: logger.bindings(),
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+      title: issue.title,
+      mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUE,
+      async: true,
+    });
+    // TODO(2025-09-25 aubin): refactor this into a Result instead of catching.
+  } catch (error) {
+    if (error instanceof DataSourceQuotaExceededError) {
+      logger.warn(
+        {
+          connectorId,
+          error,
+          documentId,
+        },
+        "Skipping GitHub issue exceeding plan limit."
+      );
+      return;
+    }
+
+    throw error;
+  }
 
   logger.info("Upserting GitHub issue in DB.");
   await GithubIssue.upsert({
