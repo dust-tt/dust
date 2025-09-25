@@ -196,7 +196,8 @@ function AgentDescriptionInput() {
   const sendNotification = useSendNotification();
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const hasSuggestedRef = useRef(false);
+  const blurListenerRef = useRef<() => void>();
+  const userSetDescriptionRef = useRef(false);
 
   const { field, fieldState } = useController<
     AgentBuilderFormData,
@@ -206,6 +207,7 @@ function AgentDescriptionInput() {
   const handleGenerateDescription = useCallback(async () => {
     if (
       isGenerating ||
+      userSetDescriptionRef.current ||
       !instructions ||
       instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
@@ -236,7 +238,7 @@ function AgentDescriptionInput() {
       result.value.suggestions &&
       result.value.suggestions.length > 0
     ) {
-      // Apply the first suggestion directly
+      // Apply the first suggestion directly (do not mark as user-set)
       field.onChange(result.value.suggestions[0]);
     } else {
       sendNotification({
@@ -249,30 +251,37 @@ function AgentDescriptionInput() {
     setIsGenerating(false);
   }, [isGenerating, instructions, owner, name, field, sendNotification]);
 
+  // Trigger suggestion on each blur from instructions unless user typed a description
   useEffect(() => {
-    if (
-      !field.value &&
-      !hasSuggestedRef.current &&
-      instructions &&
-      instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-    ) {
-      hasSuggestedRef.current = true;
-      void handleGenerateDescription();
-    }
-
-    // Reset the flag if instructions become too short again
-    if (
-      instructions &&
-      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-    ) {
-      hasSuggestedRef.current = false;
-    }
-  }, [field.value, instructions, handleGenerateDescription]);
+    const onInstructionsBlur = () => {
+      if (!userSetDescriptionRef.current) {
+        void handleGenerateDescription();
+      }
+    };
+    // Save reference for cleanup
+    blurListenerRef.current = onInstructionsBlur;
+    window.addEventListener("agent:instructions:blur", onInstructionsBlur);
+    return () => {
+      if (blurListenerRef.current) {
+        window.removeEventListener(
+          "agent:instructions:blur",
+          blurListenerRef.current
+        );
+      }
+    };
+  }, [field.value, handleGenerateDescription]);
 
   return (
     <SettingSectionContainer title="Description">
       <div className="relative">
-        <Input placeholder="Enter agent description" {...field} />
+        <Input
+          placeholder="Enter agent description"
+          {...field}
+          onChange={(e) => {
+            userSetDescriptionRef.current = true;
+            field.onChange(e);
+          }}
+        />
         <Button
           icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
           variant="outline"
@@ -304,7 +313,8 @@ function AgentDescriptionInput() {
 function AgentPictureInput() {
   const { owner } = useAgentBuilderContext();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-  const hasSuggestedRef = useRef(false);
+  const blurListenerRef = useRef<() => void>();
+  const userSetAvatarRef = useRef(false);
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
@@ -346,25 +356,27 @@ function AgentPictureInput() {
     field.onChange(avatarUrl);
   }, [owner, instructions, field]);
 
+  // Regenerate avatar on each instructions blur unless user picked an avatar
   useEffect(() => {
-    if (
-      !field.value &&
-      !hasSuggestedRef.current &&
-      instructions &&
-      instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-    ) {
-      hasSuggestedRef.current = true;
-      void updateEmojiFromSuggestions();
-    }
-
-    // Reset the flag if instructions become too short again
-    if (
-      instructions &&
-      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-    ) {
-      hasSuggestedRef.current = false;
-    }
-  }, [field.value, instructions, updateEmojiFromSuggestions]);
+    const onInstructionsBlur = () => {
+      if (
+        !userSetAvatarRef.current &&
+        (instructions?.length ?? 0) >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+      ) {
+        void updateEmojiFromSuggestions();
+      }
+    };
+    blurListenerRef.current = onInstructionsBlur;
+    window.addEventListener("agent:instructions:blur", onInstructionsBlur);
+    return () => {
+      if (blurListenerRef.current) {
+        window.removeEventListener(
+          "agent:instructions:blur",
+          blurListenerRef.current
+        );
+      }
+    };
+  }, [instructions, updateEmojiFromSuggestions]);
 
   return (
     <>
@@ -372,7 +384,10 @@ function AgentPictureInput() {
         owner={owner}
         isOpen={isAvatarModalOpen}
         setOpen={setIsAvatarModalOpen}
-        onPick={field.onChange}
+        onPick={(url) => {
+          userSetAvatarRef.current = true;
+          field.onChange(url);
+        }}
         droidAvatarUrls={DROID_AVATAR_URLS}
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
         avatarUrl={field.value ?? null}
