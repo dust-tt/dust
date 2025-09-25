@@ -62,6 +62,8 @@ export function MCPServerDetailsSheet({
   onPendingToolChangesUpdate,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [isSaving, setIsSaving] = useState(false);
 
   const confirm = useContext(ConfirmContext);
   const { deleteServer, isDeleting } = useDeleteMCPServer(owner);
@@ -69,14 +71,16 @@ export function MCPServerDetailsSheet({
   const form = useFormContext<InfoFormValues>();
 
   useEffect(() => {
-    if (mcpServerView) {
+    if (isOpen && !prevIsOpen) {
       setSelectedTab("info");
     }
-  }, [mcpServerView]);
+    setPrevIsOpen(isOpen);
+  }, [isOpen, prevIsOpen]);
 
   const changeTab = async (next: TabType) => {
     const hasUnsavedChanges =
-      (selectedTab === "info" && (form.formState.isDirty || pendingToolChanges.length > 0)) ||
+      (selectedTab === "info" &&
+        (form.formState.isDirty || pendingToolChanges.length > 0)) ||
       (selectedTab === "sharing" && pendingSharingChanges.length > 0);
 
     if (hasUnsavedChanges && next !== selectedTab) {
@@ -125,7 +129,9 @@ export function MCPServerDetailsSheet({
     }
 
     const hasUnsavedChanges =
-      form.formState.isDirty || pendingSharingChanges.length > 0 || pendingToolChanges.length > 0;
+      form.formState.isDirty ||
+      pendingSharingChanges.length > 0 ||
+      pendingToolChanges.length > 0;
 
     if (hasUnsavedChanges) {
       const confirmed = await confirm({
@@ -238,18 +244,22 @@ export function MCPServerDetailsSheet({
             <Button
               label="Cancel"
               variant="outline"
-              disabled={form.formState.isSubmitting}
+              disabled={isSaving || form.formState.isSubmitting}
               onClick={() => handleOpenChange(false)}
             />
             <div className="flex-grow" />
             <Button
-              label={form.formState.isSubmitting ? "Saving..." : "Save"}
+              label={
+                isSaving || form.formState.isSubmitting ? "Saving..." : "Save"
+              }
               variant="primary"
-              disabled={form.formState.isSubmitting}
+              disabled={isSaving || form.formState.isSubmitting}
               onClick={async () => {
-                const ok = await onSave(selectedTab);
-                if (ok) {
-                  onClose();
+                setIsSaving(true);
+                try {
+                  await onSave(selectedTab);
+                } finally {
+                  setIsSaving(false);
                 }
               }}
             />

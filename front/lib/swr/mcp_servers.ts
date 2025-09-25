@@ -758,11 +758,9 @@ export function useDeleteMCPServerConnection({
 export function useUpdateMCPServerToolsSettings({
   owner,
   mcpServerView,
-  skipNotification,
 }: {
   owner: LightWorkspaceType;
   mcpServerView: MCPServerViewType;
-  skipNotification?: boolean;
 }) {
   const space = useSpaceInfo({
     workspaceId: owner.sId,
@@ -806,13 +804,11 @@ export function useUpdateMCPServerToolsSettings({
       );
     }
 
-    if (!skipNotification) {
-      sendNotification({
-        type: "success",
-        title: "Settings updated",
-        description: `The settings for ${toolName} have been updated.`,
-      });
-    }
+    sendNotification({
+      type: "success",
+      title: "Settings updated",
+      description: `The settings for ${toolName} have been updated.`,
+    });
 
     void mutateMCPServerViews();
     return response.json();
