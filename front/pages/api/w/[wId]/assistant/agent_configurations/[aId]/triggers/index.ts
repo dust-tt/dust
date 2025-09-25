@@ -137,13 +137,11 @@ async function handler(
         });
       }
 
-      const { triggers: requestTriggers } = req.body;
+      const { triggers } = req.body;
       const workspace = auth.getNonNullableWorkspace();
 
-      if (requestTriggers.length > 0) {
-        const triggerNames = requestTriggers.map(
-          (t: { name: string }) => t.name
-        );
+      if (triggers.length > 0) {
+        const triggerNames = triggers.map((t: { name: string }) => t.name);
         const uniqueTriggerNames = new Set(triggerNames);
         if (uniqueTriggerNames.size !== triggerNames.length) {
           return apiError(req, res, {
@@ -160,7 +158,7 @@ async function handler(
       const resultTriggers: TriggerType[] = [];
       const errors: Error[] = [];
 
-      for (const triggerData of requestTriggers) {
+      for (const triggerData of triggers) {
         const triggerValidation = TriggerSchema.decode(triggerData);
 
         if (isLeft(triggerValidation)) {
@@ -177,6 +175,13 @@ async function handler(
         }
 
         const validatedTrigger = triggerValidation.right;
+
+        if (
+          validatedTrigger.editor &&
+          validatedTrigger.editor !== auth.getNonNullableUser().id
+        ) {
+          continue;
+        }
 
         if (triggerData.sId && currentTriggersMap.has(triggerData.sId)) {
           const existingTrigger = currentTriggersMap.get(triggerData.sId)!;
