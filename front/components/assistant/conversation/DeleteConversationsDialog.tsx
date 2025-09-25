@@ -61,6 +61,7 @@ export const DeleteConversationsDialog = ({
               rightButtonProps={{
                 label: "Delete",
                 variant: "warning",
+                autoFocus: true,
                 onClick: async () => {
                   await onDelete();
                   onClose();
