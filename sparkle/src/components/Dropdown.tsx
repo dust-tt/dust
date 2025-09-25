@@ -35,7 +35,7 @@ export const menuStyleClasses = {
         variant: {
           default: cn(
             "s-p-2",
-            "hover:s-bg-blue hover:s-bg-muted-night",
+            "hover:s-bg-muted-background hover:s-bg-muted-night",
             "focus:s-text-foreground dark:focus:s-text-foreground-night",
             "focus:s-bg-muted-background focus:s-bg-muted-night"
           ),
