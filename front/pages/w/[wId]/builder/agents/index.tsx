@@ -1,7 +1,7 @@
 import {
   Button,
   Chip,
-  DustIcon,
+  DIcon,
   ListSelectIcon,
   MagnifyingGlassIcon,
   Page,
@@ -65,7 +65,7 @@ export const AGENT_MANAGER_TABS = [
   {
     id: "global",
     label: "Default",
-    icon: DustIcon,
+    icon: DIcon,
     description: "Default agents provided by Dust.",
   },
   {

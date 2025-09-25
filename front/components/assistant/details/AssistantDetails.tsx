@@ -6,7 +6,7 @@ import {
   Button,
   Chip,
   ContentMessage,
-  DustIcon,
+  DIcon,
   InformationCircleIcon,
   LockIcon,
   Sheet,
@@ -56,7 +56,7 @@ export const SCOPE_INFO: Record<
     shortLabel: "Default",
     label: "Default Agent",
     color: "primary",
-    icon: DustIcon,
+    icon: DIcon,
     text: "Default agents provided by Dust.",
   },
   hidden: {
