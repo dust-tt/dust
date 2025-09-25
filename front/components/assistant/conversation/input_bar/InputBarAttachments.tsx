@@ -146,7 +146,7 @@ export function InputBarAttachments({
 
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerTitle, setViewerTitle] = useState("");
-  const [viewerText, setViewerText] = useState("");
+  const [sanitizedViewerText, setSanitizedViewerText] = useState("");
 
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
@@ -169,7 +169,7 @@ export function InputBarAttachments({
       disallowedTagsMode: "escape",
     });
     setViewerTitle(attachment.title);
-    setViewerText(sanitizedText);
+    setSanitizedViewerText(sanitizedText);
     setViewerOpen(true);
   };
 
@@ -216,9 +216,10 @@ export function InputBarAttachments({
             <DialogTitle>{viewerTitle}</DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
-              {viewerText}
-            </pre>
+            <pre
+              className="m-0 max-h-[60vh] whitespace-pre-wrap break-words"
+              dangerouslySetInnerHTML={{ __html: sanitizedViewerText }}
+            />
           </DialogContainer>
           <DialogFooter
             rightButtonProps={{

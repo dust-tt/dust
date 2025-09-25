@@ -44,7 +44,6 @@ import { assertNever, normalizeError } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
 import { getPastedFileName } from "./pasted_utils";
-import { normalize } from "path";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
