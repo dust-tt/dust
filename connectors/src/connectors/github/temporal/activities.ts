@@ -541,23 +541,40 @@ export async function githubUpsertDiscussionActivity(
     getDiscussionsInternalId(repoId),
     getRepositoryInternalId(repoId),
   ];
-  await upsertDataSourceDocument({
-    dataSourceConfig,
-    documentId,
-    documentContent: renderedDiscussion,
-    documentUrl: discussion.url,
-    timestampMs: new Date(discussion.createdAt).getTime(),
-    tags,
-    parents,
-    parentId: parents[1],
-    loggerArgs: logger.bindings(),
-    upsertContext: {
-      sync_type: isBatchSync ? "batch" : "incremental",
-    },
-    title: discussion.title,
-    mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSION,
-    async: true,
-  });
+  try {
+    await upsertDataSourceDocument({
+      dataSourceConfig,
+      documentId,
+      documentContent: renderedDiscussion,
+      documentUrl: discussion.url,
+      timestampMs: new Date(discussion.createdAt).getTime(),
+      tags,
+      parents,
+      parentId: parents[1],
+      loggerArgs: logger.bindings(),
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+      title: discussion.title,
+      mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSION,
+      async: true,
+    });
+    // TODO(2025-09-25 aubin): refactor this into a Result instead of catching.
+  } catch (error) {
+    if (error instanceof DataSourceQuotaExceededError) {
+      logger.warn(
+        {
+          connectorId,
+          error,
+          documentId,
+        },
+        "Skipping GitHub discussion exceeding plan document size limit."
+      );
+      return;
+    }
+
+    throw error;
+  }
 
   logger.info("Upserting GitHub discussion in DB.");
   await GithubDiscussion.upsert({
