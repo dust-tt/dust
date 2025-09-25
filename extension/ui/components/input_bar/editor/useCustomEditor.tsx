@@ -8,9 +8,9 @@ import { URLStorageExtension } from "@app/ui/components/input_bar/editor/extensi
 import { createMarkdownSerializer } from "@app/ui/components/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/ui/components/input_bar/editor/suggestion";
 import type { SuggestionProps } from "@app/ui/components/input_bar/editor/useMentionDropdown";
-import { MentionPluginKey } from "@tiptap/extension-mention";
 import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
+import { PluginKey } from "@tiptap/pm/state";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -238,6 +238,8 @@ const useEditorService = (editor: Editor | null) => {
 
 export type EditorService = ReturnType<typeof useEditorService>;
 
+export const mentionPluginKey = new PluginKey("mention-suggestion");
+
 export interface CustomEditorProps {
   onEnterKeyDown: (
     isEmpty: boolean,
@@ -298,6 +300,7 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
+    immediatelyRender: false,
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
@@ -320,7 +323,7 @@ const useCustomEditor = ({
           !event.metaKey &&
           !event.altKey
         ) {
-          const mentionPluginState = MentionPluginKey.getState(view.state);
+          const mentionPluginState = mentionPluginKey.getState(view.state);
           // Let the mention extension handle the event if its dropdown is currently opened.
           if (mentionPluginState?.active) {
             return false;
