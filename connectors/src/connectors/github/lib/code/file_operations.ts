@@ -193,19 +193,16 @@ export async function upsertCodeFile({
       });
     } catch (error) {
       if (error instanceof DataSourceQuotaExceededError) {
-        const skipReason = "file_too_large";
-
         logger.warn(
           {
             error,
             documentId,
-            skipReason,
             extension: extname(fileName),
           },
           "Skipping GitHub code file exceeding plan limit."
         );
 
-        githubCodeFile.skipReason = skipReason;
+        // Not setting a skipReason in purpose in case the file becomes smaller.
         githubCodeFile.lastSeenAt = codeSyncStartedAt;
         await githubCodeFile.save();
 
