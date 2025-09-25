@@ -1,19 +1,16 @@
 import {
   Button,
   Chip,
-  DustIcon,
+  ContactsRobotIcon,
   ListSelectIcon,
   MagnifyingGlassIcon,
   Page,
-  PencilSquareIcon,
   PlusIcon,
-  RobotIcon,
   SearchInput,
   Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
-  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -53,25 +50,21 @@ export const AGENT_MANAGER_TABS = [
   {
     id: "all_custom",
     label: "All",
-    icon: RobotIcon,
     description: "All custom agents.",
   },
   {
     id: "editable_by_me",
     label: "Editable by me",
-    icon: PencilSquareIcon,
     description: "Edited or created by you.",
   },
   {
     id: "global",
     label: "Default",
-    icon: DustIcon,
     description: "Default agents provided by Dust.",
   },
   {
     id: "archived",
     label: "Archived",
-    icon: TrashIcon,
     description: "Archived agents.",
   },
   {
@@ -316,7 +309,7 @@ export default function WorkspaceAssistants({
           onClose={() => setShowDetails(null)}
         />
         <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
-          <Page.Header title="Manage Agents" icon={RobotIcon} />
+          <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
           <Page.Vertical gap="md" align="stretch">
             <div className="flex flex-row gap-2">
               <SearchInput
@@ -396,9 +389,6 @@ export default function WorkspaceAssistants({
                         tooltip={
                           AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                             ?.description
-                        }
-                        icon={
-                          AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
                         }
                         isCounter={tab.id !== "archived"}
                         counterValue={`${agentsByTab[tab.id].length}`}

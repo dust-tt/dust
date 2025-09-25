@@ -98,7 +98,6 @@ const logger = mainLogger.child({ provider: "notion" });
 
 // Connector ID hashes for which deletion should be skipped during garbage collection.
 const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
-  "vket28uPYFZqPX/Vo2+BlXmOKEizaBldml0g4AfFmgw=",
   "pDddXWMzWYw4oN/acYfLiOwxB3tlp51IH6MuMYD3YXQ=",
 ]);
 

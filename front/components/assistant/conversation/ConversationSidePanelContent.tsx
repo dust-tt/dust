@@ -11,7 +11,7 @@ import {
 } from "@app/types/conversation_side_panel";
 
 interface ConversationSidePanelContentProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
   currentPanel: ConversationSidePanelType;
 }

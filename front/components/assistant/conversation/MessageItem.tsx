@@ -137,7 +137,9 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div
             key={`message-id-${sId}`}
             ref={ref}
-            className={index !== 0 ? "mt-6 w-full md:mt-10" : "w-full"}
+            className={
+              index !== 0 && !isLastMessage ? "my-6 w-full md:my-8" : "w-full"
+            }
           >
             <AgentMessage
               conversationId={conversationId}

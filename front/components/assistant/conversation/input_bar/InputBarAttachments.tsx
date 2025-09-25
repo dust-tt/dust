@@ -124,7 +124,7 @@ export function InputBarAttachments({
   }
 
   return (
-    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
+    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
       {allAttachments.map((attachment) => {
         const attachmentCitation = attachmentToAttachmentCitation(attachment);
         return (

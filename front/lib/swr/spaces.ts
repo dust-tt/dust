@@ -2,7 +2,10 @@ import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import type {
+  CursorPaginationParams,
+  SortingParams,
+} from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
@@ -662,6 +665,7 @@ type BaseSearchParams = {
   spaceIds?: string[];
   viewType: ContentNodesViewType;
   pagination?: CursorPaginationParams;
+  searchSort?: SortingParams;
   allowAdminSearch?: boolean;
   dataSourceViewIdsBySpaceId?: Record<string, string[]>;
   parentId?: string;
@@ -692,6 +696,7 @@ export function useSpacesSearch({
   spaceIds,
   viewType,
   pagination,
+  searchSort,
   searchSourceUrls = false,
   allowAdminSearch = false,
   dataSourceViewIdsBySpaceId,
@@ -704,6 +709,7 @@ export function useSpacesSearch({
   searchResultNodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
   nextPageCursor: string | null;
+  resultsCount: number | null;
 } {
   const params = new URLSearchParams();
   if (pagination?.cursor) {
@@ -717,6 +723,7 @@ export function useSpacesSearch({
     includeDataSources,
     limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
     nodeIds,
+    searchSort,
     query: search,
     searchSourceUrls,
     spaceIds,
@@ -759,6 +766,7 @@ export function useSpacesSearch({
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
     nextPageCursor: data?.nextPageCursor || null,
+    resultsCount: data?.resultsCount || null,
   };
 }
 

@@ -16,7 +16,7 @@ import type {
 } from "@app/types";
 
 interface AgentActionsPanelProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 
@@ -251,7 +251,7 @@ export function AgentActionsPanel({
     isMessageLoading,
     mutateMessage,
   } = useConversationMessage({
-    conversationId: conversation?.sId ?? null,
+    conversationId: conversation.sId,
     workspaceId: owner.sId,
     messageId: messageId ?? null,
   });

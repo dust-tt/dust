@@ -199,6 +199,9 @@ impl Table {
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
+    pub fn is_schema_stale(&self) -> bool {
+        self.schema_stale_at.is_some()
+    }
     pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
     }

@@ -187,7 +187,8 @@ export function MCPServerViewsSheet({
         if (
           action.type === "MCP" &&
           action.configuration &&
-          action.configuration.mcpServerViewId
+          action.configuration.mcpServerViewId &&
+          !action.configurable
         ) {
           const selectedView = allMcpServerViews.find(
             (mcpServerView) =>
@@ -258,6 +259,7 @@ export function MCPServerViewsSheet({
       nonTopViews: filterViews(selectableNonTopMCPServerViews),
     };
   }, [searchTerm, selectableTopMCPServerViews, selectableNonTopMCPServerViews]);
+
   const showDataVisualization = useMemo(() => {
     if (!searchTerm.trim()) {
       return true;

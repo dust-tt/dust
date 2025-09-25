@@ -1,8 +1,8 @@
 import assert from "assert";
 import { hash as blake3 } from "blake3";
+import { extname } from "path";
 
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
-import { MAX_FILE_SIZE_BYTES } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
   getRepoUrl,
   inferParentsFromGcsPath,
@@ -10,18 +10,14 @@ import {
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   renderPrefixSection,
-  sectionLength,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
+import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import { GithubCodeFile } from "@connectors/lib/models/github";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-
-// Use for max text length the file size bytes we allow to be
-// downloaded.
-const MAX_DOCUMENT_TXT_LEN = MAX_FILE_SIZE_BYTES;
 
 export async function formatCodeContentForUpsert(
   dataSourceConfig: DataSourceConfig,
@@ -123,10 +119,10 @@ export async function upsertCodeFile({
     },
   });
 
-  // If the parents have updated then the documentId gets updated as well so we should never
-  // have an udpate to parentInternalId. We check that this is always the case. If the file
+  // If the parents have updated the documentId gets updated as well, so we should never
+  // have an update to parentInternalId. We check that this is always the case. If the file
   // is moved (the parents change) then it will trigger the creation of a new file with a
-  // new docuemntId and the existing GithubCodeFile (with old documentId) will be cleaned up
+  // new documentId and the existing GithubCodeFile (with old documentId) will be cleaned up
   // at the end of the activity.
   assert(
     parentInternalId === githubCodeFile.parentInternalId,
@@ -143,6 +139,22 @@ export async function upsertCodeFile({
 
   const updatedDirectoryIds = new Set<string>();
 
+  if (githubCodeFile.skipReason) {
+    logger.info(
+      {
+        repoId,
+        skipReason: githubCodeFile.skipReason,
+        documentId,
+      },
+      "Skipping GitHub code file because of skip reason."
+    );
+
+    githubCodeFile.lastSeenAt = codeSyncStartedAt;
+    await githubCodeFile.save();
+
+    return { updatedDirectoryIds };
+  }
+
   if (needsUpdate) {
     // Record the parent directories to update their updatedAt.
     for (const parentInternalId of parents) {
@@ -155,39 +167,50 @@ export async function upsertCodeFile({
       content
     );
 
-    if (sectionLength(renderedCode) > MAX_DOCUMENT_TXT_LEN) {
-      logger.info("Code file is too large to upsert.");
-
-      // Still update lastSeenAt even if we skip the file.
-      githubCodeFile.lastSeenAt = codeSyncStartedAt;
-      await githubCodeFile.save();
-
-      return { updatedDirectoryIds: new Set() };
-    }
-
     const tags = [
       `title:${fileName}`,
       `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
     ];
 
     // Time to upload the file to the data source.
-    await upsertDataSourceDocument({
-      async: true,
-      dataSourceConfig,
-      documentContent: renderedCode,
-      documentId,
-      documentUrl: sourceUrl,
-      loggerArgs: logger.bindings(),
-      mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
-      parentId: parentInternalId,
-      parents,
-      tags,
-      timestampMs: codeSyncStartedAt.getTime(),
-      title: fileName,
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-    });
+    try {
+      await upsertDataSourceDocument({
+        async: true,
+        dataSourceConfig,
+        documentContent: renderedCode,
+        documentId,
+        documentUrl: sourceUrl,
+        loggerArgs: logger.bindings(),
+        mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
+        parentId: parentInternalId,
+        parents,
+        tags,
+        timestampMs: codeSyncStartedAt.getTime(),
+        title: fileName,
+        upsertContext: {
+          sync_type: isBatchSync ? "batch" : "incremental",
+        },
+      });
+    } catch (error) {
+      if (error instanceof DataSourceQuotaExceededError) {
+        logger.warn(
+          {
+            error,
+            documentId,
+            extension: extname(fileName),
+          },
+          "Skipping GitHub code file exceeding plan limit."
+        );
+
+        // Not setting a skipReason in purpose in case the file becomes smaller.
+        githubCodeFile.lastSeenAt = codeSyncStartedAt;
+        await githubCodeFile.save();
+
+        return { updatedDirectoryIds };
+      }
+
+      throw error;
+    }
 
     // Finally update the file.
     githubCodeFile.fileName = fileName;
