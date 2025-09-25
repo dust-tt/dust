@@ -142,19 +142,20 @@ const getTableColumns = ({
 
         return (
           <DataTable.CellContent>
-            <div className="flex -space-x-2">
-              <Avatar.Stack
-                avatars={editors.map((editor) => ({
-                  name: editor.fullName,
-                  visual: editor.image,
-                }))}
-                nbVisibleItems={4}
-                size="xs"
-                isRounded
-              />
-            </div>
+            <Avatar.Stack
+              avatars={editors.map((editor) => ({
+                name: editor.fullName,
+                visual: editor.image,
+              }))}
+              nbVisibleItems={4}
+              size="xs"
+              isRounded
+            />
           </DataTable.CellContent>
         );
+      },
+      meta: {
+        className: "w-32",
       },
     },
     {
