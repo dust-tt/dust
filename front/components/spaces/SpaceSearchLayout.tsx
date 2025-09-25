@@ -263,6 +263,7 @@ function BackendSearch({
 
   const handleSortingChange = useCallback(
     (sorting: SortingState) => {
+      // Reset pagination early to avoid 2 queries being sent.
       resetPagination();
       setSorting(sorting);
     },
