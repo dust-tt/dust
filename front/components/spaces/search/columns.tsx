@@ -11,13 +11,17 @@ type RowData = DataSourceViewContentNode & {
   menuItems?: MenuItem[];
 };
 
+export const SORTING_KEYS: Record<string, string> = {
+  title: "title",
+  lastUpdatedAt: "timestamp",
+};
+
 export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
   return [
     {
       header: "Name",
       accessorKey: "title",
       id: "title",
-      enableSorting: false,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
           <Tooltip
@@ -54,7 +58,6 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       header: "Last updated",
       id: "lastUpdatedAt",
       accessorKey: "lastUpdatedAt",
-      enableSorting: false,
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
           className="justify-end"

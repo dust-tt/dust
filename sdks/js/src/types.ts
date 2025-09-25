@@ -3083,6 +3083,7 @@ export type SearchWarningCode = z.infer<typeof SearchWarningCodeSchema>;
 export const PostWorkspaceSearchResponseBodySchema = z.object({
   nodes: DataSourceContentNodeSchema.array(),
   warningCode: SearchWarningCodeSchema.optional().nullable(),
+  resultsCount: z.number().optional().nullable(),
 });
 
 export type PostWorkspaceSearchResponseBodyType = z.infer<
