@@ -54,7 +54,8 @@ export async function* runToolWithStreaming(
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationType;
-  }
+  },
+  options?: { signal?: AbortSignal }
 ): AsyncGenerator<
   | MCPApproveExecutionEvent
   | MCPErrorEvent
@@ -68,6 +69,8 @@ export async function* runToolWithStreaming(
   const owner = auth.getNonNullableWorkspace();
 
   const { toolConfiguration, status, augmentedInputs: inputs } = action;
+
+  const signal = options?.signal;
 
   const localLogger = logger.child({
     actionConfigurationId: toolConfiguration.sId,
@@ -104,6 +107,7 @@ export async function* runToolWithStreaming(
           conversation,
           agentMessage,
         }),
+      signal,
     }
   );
 
