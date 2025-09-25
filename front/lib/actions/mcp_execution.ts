@@ -114,13 +114,13 @@ export async function processToolResults(
     action,
     conversation,
     localLogger,
-    toolCallResult,
+    toolCallResultContent,
     toolConfiguration,
   }: {
     action: AgentMCPActionResource;
     conversation: ConversationType;
     localLogger: Logger;
-    toolCallResult: CallToolResult["content"];
+    toolCallResultContent: CallToolResult["content"];
     toolConfiguration: LightMCPToolConfigurationType;
   }
 ): Promise<{
@@ -136,7 +136,7 @@ export async function processToolResults(
     content: CallToolResult["content"][number];
     file: FileResource | null;
   }[] = await concurrentExecutor(
-    toolCallResult,
+    toolCallResultContent,
     async (block) => {
       switch (block.type) {
         case "text": {
