@@ -123,10 +123,10 @@ export async function upsertCodeFile({
     },
   });
 
-  // If the parents have updated then the documentId gets updated as well so we should never
-  // have an udpate to parentInternalId. We check that this is always the case. If the file
+  // If the parents have updated the documentId gets updated as well, so we should never
+  // have an update to parentInternalId. We check that this is always the case. If the file
   // is moved (the parents change) then it will trigger the creation of a new file with a
-  // new docuemntId and the existing GithubCodeFile (with old documentId) will be cleaned up
+  // new documentId and the existing GithubCodeFile (with old documentId) will be cleaned up
   // at the end of the activity.
   assert(
     parentInternalId === githubCodeFile.parentInternalId,
@@ -142,6 +142,22 @@ export async function upsertCodeFile({
     forceResync;
 
   const updatedDirectoryIds = new Set<string>();
+
+  if (githubCodeFile.skipReason) {
+    logger.info(
+      {
+        repoId,
+        skipReason: githubCodeFile.skipReason,
+        documentId,
+      },
+      "Skipping GitHub code file because of skip reason."
+    );
+
+    githubCodeFile.lastSeenAt = codeSyncStartedAt;
+    await githubCodeFile.save();
+
+    return { updatedDirectoryIds: new Set() };
+  }
 
   if (needsUpdate) {
     // Record the parent directories to update their updatedAt.
