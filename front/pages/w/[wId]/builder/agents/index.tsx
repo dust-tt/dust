@@ -393,9 +393,6 @@ export default function WorkspaceAssistants({
                           AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                             ?.description
                         }
-                        icon={
-                          AGENT_MANAGER_TABS.find((t) => t.id === tab.id)?.icon
-                        }
                         isCounter={tab.id !== "archived"}
                         counterValue={`${agentsByTab[tab.id].length}`}
                       />

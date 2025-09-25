@@ -423,7 +423,6 @@ export function AssistantBrowser({
                   key={tab.id}
                   value={tab.id}
                   label={tab.label}
-                  icon={tab.icon}
                 />
               ))}
               <div className="ml-auto"></div>
