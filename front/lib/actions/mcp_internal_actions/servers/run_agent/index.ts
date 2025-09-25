@@ -620,6 +620,9 @@ ${query}`
               }
             } else if (event.type === "agent_error") {
               const errorMessage = `Agent error: ${event.error.message}`;
+              // Certain types of agent errors should not be tracked as run_agent tool execution
+              // errors (they will be exposed to the model and will be tracked as errors from the
+              // agentic loop in the sub agent conversation).
               const tracked =
                 !isAgentErrorCategory(event.error.metadata?.category) ||
                 ![
