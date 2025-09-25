@@ -203,8 +203,7 @@ function ContentNodeTreeChildren({
       {!isResourcesLoading &&
         filteredNodes &&
         filteredNodes.length === 0 &&
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        (emptyComponent || <Tree.Empty label="No documents" />)}
+        (emptyComponent ?? <Tree.Empty label="No documents" />)}
 
       {filteredNodes.map((n, i) => {
         const checkedState = getCheckedState(n);
