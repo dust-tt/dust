@@ -307,7 +307,7 @@ export function AssistantBrowser({
       : enabledTabs[0]?.id;
   }, [selectedTab, agentsByTab]);
 
-  // Initialize selectedTags from persisted selection (or default to Most popular)
+  // Initialize selectedTags from persisted selection (or default to Most popular).
   useEffect(() => {
     if (noTagsDefined || selectedTags.length > 0) {
       return;

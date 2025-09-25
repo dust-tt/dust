@@ -16,7 +16,12 @@ export const usePersistedAgentBrowserSelection = (workspaceId: string) => {
   const store: AssistantBrowserSelectionStore = useMemo(() => {
     if (metadata?.value) {
       const r = safeParseJSON(metadata.value);
-      if (r.isOk() && r.value && typeof r.value === "object") {
+      if (
+        r.isOk() &&
+        r.value &&
+        typeof r.value === "object" &&
+        !Array.isArray(r.value)
+      ) {
         return r.value as AssistantBrowserSelectionStore;
       }
     }
@@ -24,7 +29,7 @@ export const usePersistedAgentBrowserSelection = (workspaceId: string) => {
   }, [metadata]);
 
   const selectedTagIds = useMemo(() => {
-    return (store[workspaceId] ?? []) as string[];
+    return store[workspaceId] ?? ([] as string[]);
   }, [store, workspaceId]);
 
   const setSelectedTagIds = useCallback(
