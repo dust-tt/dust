@@ -88,7 +88,7 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
             return [
               ...text.matchAll(
                 // Note: matching the @ that are found either at the start of a line or after a whitespace character.
-                // and that also are followed by a newline, a whitespace character or the end of the string.
+                // and that also is followed by a newline, a whitespace character or the end of the string.
                 new RegExp(
                   `((^@|\\s@)${escapeRegExp(suggestion.label)})(\\s|$)`,
                   "g"
@@ -140,7 +140,6 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
   // the @-suggestion dropdown).
   addKeyboardShortcuts() {
     return {
-      ...(this.parent?.() ?? {}),
       Backspace: () =>
         this.editor.commands.command(({ tr, state, dispatch }) => {
           const { selection } = state;
