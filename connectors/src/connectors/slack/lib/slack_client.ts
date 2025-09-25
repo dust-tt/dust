@@ -1,20 +1,24 @@
 import { WebClient } from "@slack/web-api";
 
 import {
+  isSlackWebAPIPlatformError,
   isWebAPIHTTPError,
   isWebAPIPlatformError,
   isWebAPIRateLimitedError,
 } from "@connectors/connectors/slack/lib/errors";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import {
   ExternalOAuthTokenError,
   ProviderRateLimitError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
@@ -135,16 +139,26 @@ export type SlackUserInfo = {
   email: string | null;
   is_bot: boolean;
   display_name?: string;
-  real_name: string;
+  real_name?: string;
   is_restricted: boolean;
   is_stranger: boolean;
   is_ultra_restricted: boolean;
   teamId: string | null;
   tz: string | null;
   image_512: string | null;
+  name: string | null;
 };
 
-export async function getSlackUserInfo(
+export const getSlackUserInfoMemoized = cacheWithRedis(
+  _getSlackUserInfo,
+  (connectorId, slackClient, userId) =>
+    `slack-userid2name-${connectorId}-${userId}`,
+  {
+    ttlMs: 60 * 60 * 1000,
+  }
+);
+
+async function _getSlackUserInfo(
   connectorId: ModelId,
   slackClient: WebClient,
   userId: string
@@ -153,34 +167,50 @@ export async function getSlackUserInfo(
     connectorId,
     method: "users.info",
   });
-  const res = await slackClient.users.info({ user: userId });
+  try {
+    const res = await throttleWithRedis(
+      RATE_LIMITS["users.info"],
+      `${connectorId}-users-info`,
+      false,
+      () => slackClient.users.info({ user: userId }),
+      { source: "getSlackUserInfo" }
+    );
 
-  if (!res.ok) {
-    throw res.error;
+    if (!res) {
+      throw new Error("Failed to get Slack user info");
+    }
+
+    if (!res.ok) {
+      throw res.error;
+    }
+
+    return {
+      // Slack has two concepts for bots:
+      // - Bots, that you can get through slackClient.bots.info() and
+      // - User bots, which are the users related to a bot.
+      // For example, slack workflows are bots, and the Zapier Slack bot is a user bot.
+      // Not clear why Slack has these two concepts.
+      // From our perspective, a Slack user bot is a bot.
+      is_bot: res.user?.is_bot || false,
+      email: res.user?.profile?.email || null,
+      display_name: res.user?.profile?.display_name,
+      real_name: res.user?.profile?.real_name,
+      is_restricted: res.user?.is_restricted || false,
+      is_stranger: res.user?.is_stranger || false,
+      is_ultra_restricted: res.user?.is_ultra_restricted || false,
+      teamId: res.user?.team_id || null,
+      tz: res.user?.tz || null,
+      image_512: res.user?.profile?.image_512 || null,
+      name: res.user?.name || null,
+    };
+  } catch (err) {
+    if (isSlackWebAPIPlatformError(err)) {
+      if (err.data.error === "user_not_found") {
+        logger.info({ connectorId, userId }, "Slack user not found.");
+      }
+    }
+    throw err;
   }
-
-  if (!res.user?.profile?.real_name) {
-    throw new Error(`Slack user with id ${userId} has no real name`);
-  }
-
-  return {
-    // Slack has two concepts for bots:
-    // - Bots, that you can get through slackClient.bots.info() and
-    // - User bots, which are the users related to a bot.
-    // For example, slack workflows are bots, and the Zapier Slack bot is a user bot.
-    // Not clear why Slack has these two concepts.
-    // From our perspective, a Slack user bot is a bot.
-    is_bot: res.user?.is_bot || false,
-    email: res.user?.profile?.email || null,
-    display_name: res.user?.profile?.display_name,
-    real_name: res.user.profile.real_name,
-    is_restricted: res.user?.is_restricted || false,
-    is_stranger: res.user?.is_stranger || false,
-    is_ultra_restricted: res.user?.is_ultra_restricted || false,
-    teamId: res.user?.team_id || null,
-    tz: res.user?.tz || null,
-    image_512: res.user?.profile?.image_512 || null,
-  };
 }
 
 export async function getSlackBotInfo(
@@ -211,6 +241,7 @@ export async function getSlackBotInfo(
     is_ultra_restricted: false,
     is_bot: true,
     teamId: null,
+    name: slackBot.bot?.name || null,
   };
 }
 

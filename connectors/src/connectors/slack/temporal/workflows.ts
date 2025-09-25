@@ -26,7 +26,6 @@ export type JoinChannelUseCaseType = (typeof JOIN_CHANNEL_USE_CASES)[number];
 function getSlackActivities() {
   const {
     getChannel,
-    fetchUsers,
     saveSuccessSyncActivity,
     syncChannelMetadata,
     reportInitialSyncProgressActivity,
@@ -68,7 +67,6 @@ function getSlackActivities() {
     autoReadChannelActivity,
     deleteChannel,
     deleteChannelsFromConnectorDb,
-    fetchUsers,
     getChannel,
     getChannelsToGarbageCollect,
     migrateChannelsFromLegacyBotToNewBotActivity,
@@ -112,8 +110,6 @@ export async function workspaceFullSync(
     // Add signal to queue
     signalQueue.push(input);
   });
-
-  await getSlackActivities().fetchUsers(connectorId);
 
   while (signalQueue.length > 0) {
     const signal = signalQueue.shift();
