@@ -340,6 +340,7 @@ function ContentNodeTreeChildren({
               size="sm"
               className="m-1"
               variant="ghost"
+              disabled={filteredNodes.length === 0}
               onClick={() => {
                 const isSelected = !selectAllClicked;
                 setSelectAllClicked(isSelected);
