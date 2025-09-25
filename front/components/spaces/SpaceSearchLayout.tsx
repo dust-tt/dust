@@ -242,6 +242,7 @@ function BackendSearch({
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
   const [searchHitCount, setSearchHitCount] = React.useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const scrollableDataTableRef = useRef<HTMLDivElement>(null);
 
   const {
     cursorPagination,
@@ -253,7 +254,12 @@ function BackendSearch({
   // Reset pagination when debounced search changes
   React.useEffect(() => {
     resetPagination();
-  }, [debouncedSearch, resetPagination]);
+    if (scrollableDataTableRef.current) {
+      scrollableDataTableRef.current.scrollTo({
+        top: 0,
+      });
+    }
+  }, [debouncedSearch, resetPagination, sorting]);
 
   const handleSortingChange = useCallback(
     (sorting: SortingState) => {
@@ -443,6 +449,7 @@ function BackendSearch({
               onClearSearch={handleClearSearch}
               sorting={sorting}
               setSorting={handleSortingChange}
+              scrollableDataTableRef={scrollableDataTableRef}
             />
           </div>
         ) : (
@@ -534,6 +541,7 @@ interface SearchResultsTableProps {
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
   onClearSearch: () => void;
+  scrollableDataTableRef: React.Ref<HTMLDivElement>;
 }
 
 function SearchResultsTable({
@@ -551,6 +559,7 @@ function SearchResultsTable({
   onOpenDocument,
   setEffectiveContentNode,
   onClearSearch,
+  scrollableDataTableRef,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -683,16 +692,6 @@ function SearchResultsTable({
     setEffectiveContentNode,
     spaces,
   ]);
-
-  const scrollableDataTableRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollableDataTableRef.current) {
-      scrollableDataTableRef.current.scrollTo({
-        top: 0,
-      });
-    }
-  }, [sorting]);
 
   return (
     <ScrollableDataTable
