@@ -200,7 +200,7 @@ export async function upsertCodeFile({
             documentId,
             extension: extname(fileName),
           },
-          "Skipping GitHub code file exceeding plan limit."
+          "Skipping GitHub code file exceeding plan document size limit."
         );
 
         // Not setting a skipReason in purpose in case the file becomes smaller.

@@ -327,7 +327,7 @@ export async function githubUpsertIssueActivity(
           error,
           documentId,
         },
-        "Skipping GitHub issue exceeding plan limit."
+        "Skipping GitHub issue exceeding plan document size limit."
       );
       return;
     }
