@@ -11,6 +11,79 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+interface GoogleCalendarEventDateTime {
+  date?: string;
+  dateTime?: string;
+  timeZone?: string;
+}
+
+interface EnrichedGoogleCalendarEventDateTime
+  extends GoogleCalendarEventDateTime {
+  dayOfWeek?: string;
+}
+
+interface GoogleCalendarEvent {
+  kind?: string;
+  etag?: string;
+  id?: string;
+  status?: string;
+  htmlLink?: string;
+  created?: string;
+  updated?: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  colorId?: string;
+  start?: GoogleCalendarEventDateTime;
+  end?: GoogleCalendarEventDateTime;
+  endTimeUnspecified?: boolean;
+  recurrence?: string[];
+  recurringEventId?: string;
+  originalStartTime?: GoogleCalendarEventDateTime;
+  transparency?: string;
+  visibility?: string;
+  iCalUID?: string;
+  sequence?: number;
+  attendees?: Array<{
+    id?: string;
+    email?: string;
+    displayName?: string;
+    organizer?: boolean;
+    self?: boolean;
+    resource?: boolean;
+    optional?: boolean;
+    responseStatus?: string;
+    comment?: string;
+    additionalGuests?: number;
+  }>;
+  attendeesOmitted?: boolean;
+  hangoutLink?: string;
+  anyoneCanAddSelf?: boolean;
+  guestsCanInviteOthers?: boolean;
+  guestsCanModify?: boolean;
+  guestsCanSeeOtherGuests?: boolean;
+  privateCopy?: boolean;
+  locked?: boolean;
+  reminders?: {
+    useDefault?: boolean;
+    overrides?: Array<{
+      method?: string;
+      minutes?: number;
+    }>;
+  };
+  source?: {
+    url?: string;
+    title?: string;
+  };
+  eventType?: string;
+}
+
+interface EnrichedGoogleCalendarEvent
+  extends Omit<GoogleCalendarEvent, "start" | "end"> {
+  start?: EnrichedGoogleCalendarEventDateTime;
+  end?: EnrichedGoogleCalendarEventDateTime;
+}
+
 const createServer = (): McpServer => {
   const server = makeInternalMCPServer("google_calendar");
 
@@ -107,9 +180,37 @@ const createServer = (): McpServer => {
           maxResults: maxResults ? Math.min(maxResults, 2500) : undefined,
           pageToken,
         });
+
+        // Return only essential event fields for context efficiency
+        const enrichedData = {
+          ...res.data,
+          items: res.data.items
+            ? res.data.items.map((event) => {
+                const enriched = enrichEventWithDayOfWeek(
+                  event as GoogleCalendarEvent
+                );
+                return {
+                  id: enriched.id,
+                  summary: enriched.summary,
+                  description: enriched.description,
+                  location: enriched.location,
+                  start: enriched.start,
+                  end: enriched.end,
+                  attendees: enriched.attendees?.map((a) => ({
+                    email: a.email,
+                    displayName: a.displayName,
+                    responseStatus: a.responseStatus,
+                  })),
+                  htmlLink: enriched.htmlLink,
+                  status: enriched.status,
+                };
+              })
+            : undefined,
+        };
+
         return makeMCPToolJSONSuccess({
           message: "Events listed successfully",
-          result: res.data,
+          result: enrichedData,
         });
       } catch (err) {
         return makeMCPToolTextError(
@@ -141,9 +242,14 @@ const createServer = (): McpServer => {
           calendarId,
           eventId,
         });
+
+        const enrichedEvent = enrichEventWithDayOfWeek(
+          res.data as GoogleCalendarEvent
+        );
+
         return makeMCPToolJSONSuccess({
           message: "Event fetched successfully",
-          result: res.data,
+          result: enrichedEvent,
         });
       } catch (err) {
         return makeMCPToolTextError(
@@ -223,9 +329,14 @@ const createServer = (): McpServer => {
           calendarId,
           requestBody: event,
         });
+
+        const enrichedEvent = enrichEventWithDayOfWeek(
+          res.data as GoogleCalendarEvent
+        );
+
         return makeMCPToolJSONSuccess({
           message: "Event created successfully",
-          result: res.data,
+          result: enrichedEvent,
         });
       } catch (err) {
         return makeMCPToolTextError(
@@ -317,9 +428,14 @@ const createServer = (): McpServer => {
           eventId,
           requestBody: event,
         });
+
+        const enrichedEvent = enrichEventWithDayOfWeek(
+          res.data as GoogleCalendarEvent
+        );
+
         return makeMCPToolJSONSuccess({
           message: "Event updated successfully",
-          result: res.data,
+          result: enrichedEvent,
         });
       } catch (err) {
         return makeMCPToolTextError(
@@ -423,5 +539,47 @@ const createServer = (): McpServer => {
 
   return server;
 };
+
+function enrichEventWithDayOfWeek(
+  event: GoogleCalendarEvent
+): EnrichedGoogleCalendarEvent {
+  if (!event) {
+    return event;
+  }
+
+  const enrichedEvent: EnrichedGoogleCalendarEvent = { ...event };
+
+  if (event.start?.dateTime) {
+    const startDate = new Date(event.start.dateTime);
+    enrichedEvent.start = {
+      ...event.start,
+      dayOfWeek: startDate.toLocaleDateString("en-US", { weekday: "long" }),
+    };
+  } else if (event.start?.date) {
+    // Handle all-day events
+    const startDate = new Date(event.start.date);
+    enrichedEvent.start = {
+      ...event.start,
+      dayOfWeek: startDate.toLocaleDateString("en-US", { weekday: "long" }),
+    };
+  }
+
+  if (event.end?.dateTime) {
+    const endDate = new Date(event.end.dateTime);
+    enrichedEvent.end = {
+      ...event.end,
+      dayOfWeek: endDate.toLocaleDateString("en-US", { weekday: "long" }),
+    };
+  } else if (event.end?.date) {
+    // Handle all-day events
+    const endDate = new Date(event.end.date);
+    enrichedEvent.end = {
+      ...event.end,
+      dayOfWeek: endDate.toLocaleDateString("en-US", { weekday: "long" }),
+    };
+  }
+
+  return enrichedEvent;
+}
 
 export default createServer;
