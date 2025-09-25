@@ -1,13 +1,13 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
+  Avatar,
+  Button,
+  Card,
+  CommandLineIcon,
   MultiPageSheet,
   MultiPageSheetContent,
   SearchInput,
   Spinner,
-  Button,
-  Card,
-  Avatar,
-  CommandLineIcon,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -82,8 +82,8 @@ import {
 } from "@app/lib/actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useModels } from "@app/lib/swr/models";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useModels } from "@app/lib/swr/models";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 const TOP_MCP_SERVER_VIEWS = [
@@ -182,9 +182,6 @@ export function MCPServerViewsSheet({
     useState<MCPServerViewType | null>(null);
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
-  const [forceSelectionTarget, setForceSelectionTarget] = useState<
-    "agent" | "dust_app" | null
-  >(null);
 
   const hasReasoningModel = reasoningModels.length > 0;
 
@@ -305,6 +302,14 @@ export function MCPServerViewsSheet({
         );
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
+          // If editing a Run Agent or Run Dust App tool, jump to Additional Configuration page
+          const cfgs = getMCPServerToolsConfigurations(mcpServerView);
+          if (
+            cfgs.childAgentConfiguration ??
+            cfgs.mayRequireDustAppConfiguration
+          ) {
+            setCurrentPageId(TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION);
+          }
         }
       }
     } else if (mode?.type === "configure") {
@@ -584,7 +589,6 @@ export function MCPServerViewsSheet({
     setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);
     setConfigurationTool(null);
     setConfigurationMCPServerView(null);
-    setForceSelectionTarget(null);
   }, []);
 
   const resetSheet = useCallback(() => {
@@ -664,14 +668,11 @@ export function MCPServerViewsSheet({
 
                 {toolsConfigurations.childAgentConfiguration && (
                   <ChildAgentSection
-                    onSelected={() => {
-                      setForceSelectionTarget(null);
+                    onSelected={() =>
                       setCurrentPageId(
                         TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION
-                      );
-                    }}
-                    forceSelection={forceSelectionTarget === "agent"}
-                    showInlineEdit={false}
+                      )
+                    }
                   />
                 )}
 
@@ -681,14 +682,11 @@ export function MCPServerViewsSheet({
 
                 {toolsConfigurations.mayRequireDustAppConfiguration && (
                   <DustAppSection
-                    onSelected={() => {
-                      setForceSelectionTarget(null);
+                    onSelected={() =>
                       setCurrentPageId(
                         TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION
-                      );
-                    }}
-                    forceSelection={forceSelectionTarget === "dust_app"}
-                    showInlineEdit={false}
+                      )
+                    }
                   />
                 )}
 
@@ -747,12 +745,11 @@ export function MCPServerViewsSheet({
                                 size="sm"
                                 icon={PencilIcon}
                                 label="Edit selection"
-                                onClick={() => {
-                                  setForceSelectionTarget("dust_app");
+                                onClick={() =>
                                   setCurrentPageId(
                                     TOOLS_SHEET_PAGE_IDS.CONFIGURATION
-                                  );
-                                }}
+                                  )
+                                }
                               />
                             </div>
                           </div>
@@ -796,12 +793,11 @@ export function MCPServerViewsSheet({
                                   size="sm"
                                   icon={PencilIcon}
                                   label="Edit agent"
-                                  onClick={() => {
-                                    setForceSelectionTarget("agent");
+                                  onClick={() =>
                                     setCurrentPageId(
                                       TOOLS_SHEET_PAGE_IDS.CONFIGURATION
-                                    );
-                                  }}
+                                    )
+                                  }
                                 />
                               </div>
                             </div>

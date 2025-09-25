@@ -1,6 +1,5 @@
 import {
   Button,
-  Card,
   CommandLineIcon,
   DataTable,
   DropdownMenu,
@@ -10,7 +9,6 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { PencilIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import React, { useEffect, useMemo, useState } from "react";
@@ -57,15 +55,7 @@ function AppSelectionTable({ tableData, columns }: AppSelectionTableProps) {
   );
 }
 
-export function DustAppSection({
-  onSelected,
-  forceSelection = false,
-  showInlineEdit = true,
-}: {
-  onSelected?: () => void;
-  forceSelection?: boolean;
-  showInlineEdit?: boolean;
-}) {
+export function DustAppSection({ onSelected }: { onSelected?: () => void }) {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -124,10 +114,6 @@ export function DustAppSection({
     };
     field.onChange(config);
     onSelected?.();
-  };
-
-  const handleEditClick = () => {
-    field.onChange(null);
   };
 
   const handleSpaceChange = (space: SpaceType) => {
@@ -210,31 +196,6 @@ export function DustAppSection({
           <div className="flex h-full w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : field.value && !forceSelection ? (
-          <Card size="sm" className="w-full">
-            <div className="flex w-full">
-              <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
-                <div className="flex items-center gap-2">
-                  <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
-                  <div className="text-md font-medium">{field.value.name}</div>
-                </div>
-                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {field.value.description || "No description available"}
-                </div>
-              </div>
-              {showInlineEdit && (
-                <div className="ml-4 self-start">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={PencilIcon}
-                    label="Edit selection"
-                    onClick={handleEditClick}
-                  />
-                </div>
-              )}
-            </div>
-          </Card>
         ) : spaces.length > 0 && selectedSpace && availableApps.length > 0 ? (
           <AppSelectionTable tableData={tableData} columns={columns} />
         ) : (

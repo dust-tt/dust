@@ -1,14 +1,10 @@
 import {
-  Button,
   ContentMessage,
   DataTable,
   InformationCircleIcon,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { Avatar } from "@dust-tt/sparkle";
-import { Card } from "@dust-tt/sparkle";
-import { PencilIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
@@ -74,15 +70,7 @@ function AgentMessage({ title, children }: AgentMessageProps) {
   );
 }
 
-export function ChildAgentSection({
-  onSelected,
-  forceSelection = false,
-  showInlineEdit = true,
-}: {
-  onSelected?: () => void;
-  forceSelection?: boolean;
-  showInlineEdit?: boolean;
-}) {
+export function ChildAgentSection({ onSelected }: { onSelected?: () => void }) {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -105,10 +93,6 @@ export function ChildAgentSection({
   const handleRowClick = (agent: LightAgentConfigurationType) => {
     field.onChange(agent.sId);
     onSelected?.();
-  };
-
-  const handleEditClick = () => {
-    field.onChange(null);
   };
 
   const tableData: AgentTableData[] = agentConfigurations.map((agent) => ({
@@ -146,12 +130,6 @@ export function ChildAgentSection({
     (agent) => agent.sId === field.value
   );
 
-  const shouldShowTable =
-    forceSelection ||
-    (!isAgentConfigurationsError &&
-      agentConfigurations.length > 0 &&
-      !field.value);
-
   let messageProps: { title: string; children: string };
   if (isAgentConfigurationsError) {
     messageProps = {
@@ -182,7 +160,7 @@ export function ChildAgentSection({
         </div>
       )}
 
-      {!isAgentConfigurationsLoading && shouldShowTable && (
+      {!isAgentConfigurationsLoading && (
         <AgentSelectionTable
           tableData={tableData}
           columns={columns}
@@ -191,38 +169,7 @@ export function ChildAgentSection({
         />
       )}
 
-      {!isAgentConfigurationsLoading && !shouldShowTable && selectedAgent && (
-        <Card size="sm" className="w-full">
-          <div className="flex w-full">
-            <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
-              <div className="flex items-center gap-2">
-                <Avatar
-                  size="sm"
-                  name={selectedAgent.name}
-                  visual={selectedAgent.pictureUrl}
-                />
-                <div className="text-md font-medium">{selectedAgent.name}</div>
-              </div>
-              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {selectedAgent.description || "No description available"}
-              </div>
-            </div>
-            {showInlineEdit && (
-              <div className="ml-4 self-start">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={PencilIcon}
-                  label="Edit agent"
-                  onClick={handleEditClick}
-                />
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {!isAgentConfigurationsLoading && !shouldShowTable && !selectedAgent && (
+      {!isAgentConfigurationsLoading && !selectedAgent && (
         <AgentMessage {...messageProps} />
       )}
     </ConfigurationSectionContainer>
