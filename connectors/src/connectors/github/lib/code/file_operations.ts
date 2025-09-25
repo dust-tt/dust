@@ -156,7 +156,7 @@ export async function upsertCodeFile({
     githubCodeFile.lastSeenAt = codeSyncStartedAt;
     await githubCodeFile.save();
 
-    return { updatedDirectoryIds: new Set() };
+    return { updatedDirectoryIds };
   }
 
   if (needsUpdate) {
