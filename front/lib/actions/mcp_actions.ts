@@ -35,6 +35,7 @@ import type {
   ServerSideMCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -258,11 +259,13 @@ export async function* tryCallMCPTool(
   {
     progressToken,
     makeToolNotificationEvent,
+    signal,
   }: {
     progressToken: ModelId;
     makeToolNotificationEvent: (
       notification: MCPProgressNotificationType
     ) => Promise<ToolNotificationEvent>;
+    signal?: AbortSignal;
   }
 ): AsyncGenerator<
   ToolNotificationEvent,
@@ -322,6 +325,23 @@ export async function* tryCallMCPTool(
       MCP_NOTIFICATION_EVENT_NAME
     );
 
+    const abortSignal = signal;
+    const ABORTED = Symbol("mcp-tool-aborted");
+    let abortPromise: Promise<typeof ABORTED> | null = null;
+    if (abortSignal) {
+      if (abortSignal.aborted) {
+        abortPromise = Promise.resolve(ABORTED);
+      } else {
+        abortPromise = new Promise((resolve) => {
+          abortSignal.addEventListener(
+            "abort",
+            () => resolve(ABORTED),
+            { once: true }
+          );
+        });
+      }
+    }
+
     // Subscribe to notifications before calling the tool.
     // Longer term we should use the `onprogress` callback of the `callTool` method. Right now,
     // `progressToken` is not accessible in the `ToolCallback` interface. PR has been merged, but
@@ -349,16 +369,32 @@ export async function* tryCallMCPTool(
       CallToolResultSchema,
       {
         timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+        signal: abortSignal,
       }
     );
 
     // Read from notificationStream and yield events until the tool is done.
     let toolDone = false;
+    let wasAborted = abortSignal?.aborted ?? false;
     while (!toolDone) {
-      const notificationOrDone = await Promise.race([
+      const raceInputs: Array<
+        Promise<IteratorResult<MCPProgressNotificationType>> |
+        Promise<typeof MCP_TOOL_DONE_EVENT_NAME> |
+        Promise<typeof ABORTED>
+      > = [
         notificationStream.next(), // Next notification.
         toolPromise.then(() => MCP_TOOL_DONE_EVENT_NAME), // Or tool fully completes.
-      ]);
+      ];
+      if (abortPromise) {
+        raceInputs.push(abortPromise);
+      }
+
+      const notificationOrDone = await Promise.race(raceInputs);
+
+      if (notificationOrDone === ABORTED) {
+        wasAborted = true;
+        break;
+      }
 
       // If the tool completed, break from the loop and stop reading notifications.
       if (notificationOrDone === MCP_TOOL_DONE_EVENT_NAME) {
@@ -375,65 +411,84 @@ export async function* tryCallMCPTool(
     }
 
     // Tool is done now, wait for the actual result.
-    const toolCallResult = await toolPromise;
+    try {
+      const toolCallResult = await toolPromise;
 
-    // We do not check toolCallResult.isError here and raise an error if true as this would break
-    // the conversation.
-    // Instead, we let the model decide what to do based on the content exposed.
-
-    // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: CallToolResult["content"] = (toolCallResult.content ??
-      []) as CallToolResult["content"];
-
-    if (content.length >= MAX_OUTPUT_ITEMS) {
-      return new Err(
-        new Error(
-          `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
-        )
-      );
-    }
-
-    let serverType;
-    if (isClientSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = "client";
-    } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
-      serverType = "internal";
-    } else {
-      serverType = "remote";
-    }
-
-    if (serverType === "remote") {
-      const isValid = isValidContentSize(content);
-
-      if (!isValid) {
-        const contentMetadata = generateContentMetadata(content);
-        logger.info(
-          { contentMetadata, isValid },
-          "information on MCP tool result"
+      if (wasAborted) {
+        return new Err(
+          new MCPError("Tool execution cancelled", {
+            tracked: false,
+          })
         );
-
-        return new Err(new Error("MCP tool result content size too large."));
       }
+
+      // We do not check toolCallResult.isError here and raise an error if true as this would break
+      // the conversation.
+      // Instead, we let the model decide what to do based on the content exposed.
+
+      // Type inference is not working here because of them using passthrough in the zod schema.
+      const content: CallToolResult["content"] = (toolCallResult.content ??
+        []) as CallToolResult["content"];
+
+      if (content.length >= MAX_OUTPUT_ITEMS) {
+        return new Err(
+          new Error(
+            `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`
+          )
+        );
+      }
+
+      let serverType;
+      if (isClientSideMCPToolConfiguration(toolConfiguration)) {
+        serverType = "client";
+      } else if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+        serverType = "internal";
+      } else {
+        serverType = "remote";
+      }
+
+      if (serverType === "remote") {
+        const isValid = isValidContentSize(content);
+
+        if (!isValid) {
+          const contentMetadata = generateContentMetadata(content);
+          logger.info(
+            { contentMetadata, isValid },
+            "information on MCP tool result"
+          );
+
+          return new Err(new Error("MCP tool result content size too large."));
+        }
+      }
+
+      return new Ok(content);
+    } catch (error) {
+      if (abortSignal?.aborted) {
+        return new Err(
+          new MCPError("Tool execution cancelled", {
+            tracked: false,
+            cause: error instanceof Error ? error : undefined,
+          })
+        );
+      }
+
+      logger.error(
+        {
+          conversationId,
+          error,
+          messageId,
+          toolName: toolConfiguration.originalName,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Exception calling MCP tool in tryCallMCPTool()"
+      );
+
+      return new Err(normalizeError(error));
+    } finally {
+      await mcpClient?.close();
     }
-
-    return new Ok(content);
-  } catch (error) {
-    logger.error(
-      {
-        conversationId,
-        error,
-        messageId,
-        toolName: toolConfiguration.originalName,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
-      "Exception calling MCP tool in tryCallMCPTool()"
-    );
-
-    return new Err(normalizeError(error));
-  } finally {
-    await mcpClient?.close();
-  }
 }
+
 
 async function getMCPClientConnectionParams(
   auth: Authenticator,
