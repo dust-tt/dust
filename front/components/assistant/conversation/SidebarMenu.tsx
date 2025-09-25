@@ -506,6 +506,8 @@ const RenderConversation = ({
   owner: WorkspaceType;
 }) => {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuTriggerPosition, setMenuTriggerPosition] = useState<{ x: number; y: number } | undefined>();
   const conversationLabel =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversation.title ||
@@ -516,6 +518,23 @@ const RenderConversation = ({
   const UnreadIcon = () => (
     <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
   );
+
+  const handleRightClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenuTriggerPosition({ x: e.clientX, y: e.clientY });
+    setIsMenuOpen(true);
+  }, []);
+
+  const handleMenuOpenChange = useCallback((open: boolean) => {
+    setIsMenuOpen(open);
+    if (!open && menuTriggerPosition) {
+      // Delay clearing position to allow closing animation to complete
+      setTimeout(() => {
+        setMenuTriggerPosition(undefined);
+      }, 150); // Match typical dropdown close animation duration
+    }
+  }, [menuTriggerPosition]);
 
   return (
     <>
@@ -535,41 +554,47 @@ const RenderConversation = ({
           </Label>
         </div>
       ) : (
-        <NavigationListItem
-          selected={router.query.cId === conversation.sId}
-          icon={
-            conversation.actionRequired
-              ? ExclamationCircleIcon
-              : conversation.unread
-                ? UnreadIcon
-                : undefined
-          }
-          label={conversationLabel}
-          moreMenu={
-            <ConversationMenu
-              activeConversationId={conversation.sId}
-              conversation={conversation}
-              owner={owner}
-              trigger={<NavigationListItemAction />}
-              isConversationDisplayed={router.query.cId === conversation.sId}
-            />
-          }
-          onClick={async () => {
-            // Side bar is the floating sidebar that appears when the screen is small.
-            if (sidebarOpen) {
-              setSidebarOpen(false);
-              // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
-              await new Promise((resolve) => setTimeout(resolve, 600));
+        <>
+          <NavigationListItem
+            selected={router.query.cId === conversation.sId}
+            icon={
+              conversation.actionRequired
+                ? ExclamationCircleIcon
+                : conversation.unread
+                  ? UnreadIcon
+                  : undefined
             }
-            await router.push(
-              `/w/${owner.sId}/assistant/${conversation.sId}`,
-              undefined,
-              {
-                shallow: true,
+            label={conversationLabel}
+            moreMenu={
+              <ConversationMenu
+                activeConversationId={conversation.sId}
+                conversation={conversation}
+                owner={owner}
+                trigger={<NavigationListItemAction />}
+                isConversationDisplayed={router.query.cId === conversation.sId}
+                isOpen={isMenuOpen}
+                onOpenChange={handleMenuOpenChange}
+                triggerPosition={menuTriggerPosition}
+              />
+            }
+            onContextMenu={handleRightClick}
+            onClick={async () => {
+              // Side bar is the floating sidebar that appears when the screen is small.
+              if (sidebarOpen) {
+                setSidebarOpen(false);
+                // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
+                await new Promise((resolve) => setTimeout(resolve, 600));
               }
-            );
-          }}
-        />
+              await router.push(
+                `/w/${owner.sId}/assistant/${conversation.sId}`,
+                undefined,
+                {
+                  shallow: true,
+                }
+              );
+            }}
+          />
+        </>
       )}
     </>
   );

@@ -35,19 +35,30 @@ export function ConversationMenu({
   owner,
   trigger,
   isConversationDisplayed,
+  isOpen,
+  onOpenChange,
+  triggerPosition,
 }: {
   activeConversationId: string | null;
   conversation: ConversationWithoutContentType | null;
   owner: WorkspaceType;
   trigger: ReactElement;
   isConversationDisplayed: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  triggerPosition?: { x: number; y: number };
 }) {
   const { user } = useUser();
   const router = useRouter();
   const sendNotification = useSendNotification();
-  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [internalIsMenuOpen, setInternalIsMenuOpen] = useState<boolean>(false);
+  
+  // Use external state if provided, otherwise use internal state
+  const menuIsOpen = isOpen ?? internalIsMenuOpen;
+  const setMenuOpen = onOpenChange ?? setInternalIsMenuOpen;
+  
   const shouldWaitBeforeFetching =
-    activeConversationId === null || user?.sId === undefined || !isMenuOpen;
+    activeConversationId === null || user?.sId === undefined || !menuIsOpen;
   const conversationParticipationOption = useConversationParticipationOption({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -154,10 +165,25 @@ export function ConversationMenu({
       />
       <DropdownMenu
         modal={false}
-        open={isMenuOpen}
-        onOpenChange={setIsMenuOpen}
+        open={menuIsOpen}
+        onOpenChange={setMenuOpen}
       >
-        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+        {triggerPosition ? (
+          <DropdownMenuTrigger asChild>
+            <div
+              style={{
+                position: 'fixed',
+                left: triggerPosition.x,
+                top: triggerPosition.y,
+                width: 0,
+                height: 0,
+                pointerEvents: 'none',
+              }}
+            />
+          </DropdownMenuTrigger>
+        ) : (
+          <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+        )}
         <DropdownMenuContent>
           <DropdownMenuLabel>Conversation</DropdownMenuLabel>
           <DropdownMenuItem
