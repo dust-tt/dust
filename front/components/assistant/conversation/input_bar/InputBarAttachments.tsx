@@ -13,7 +13,6 @@ import {
   Icon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-import sanitizeHtml from "sanitize-html";
 
 import type {
   Attachment,
@@ -145,7 +144,7 @@ export function InputBarAttachments({
 
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerTitle, setViewerTitle] = useState("");
-  const [sanitizedViewerText, setSanitizedViewerText] = useState("");
+  const [viewerText, setViewerText] = useState("");
 
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
@@ -162,13 +161,8 @@ export function InputBarAttachments({
       return;
     }
     const text = await blob.file.text();
-    const sanitizedText = sanitizeHtml(text, {
-      allowedTags: [],
-      allowedAttributes: {},
-      disallowedTagsMode: "escape",
-    });
     setViewerTitle(attachment.title);
-    setSanitizedViewerText(sanitizedText);
+    setViewerText(text);
     setViewerOpen(true);
   };
 
@@ -213,10 +207,9 @@ export function InputBarAttachments({
             <DialogTitle>{viewerTitle}</DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            <pre
-              className="m-0 max-h-[60vh] whitespace-pre-wrap break-words"
-              dangerouslySetInnerHTML={{ __html: sanitizedViewerText }}
-            />
+            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
+              {viewerText}
+            </pre>
           </DialogContainer>
           <DialogFooter
             rightButtonProps={{
