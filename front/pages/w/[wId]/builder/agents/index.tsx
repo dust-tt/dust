@@ -6,7 +6,6 @@ import {
   MagnifyingGlassIcon,
   Page,
   PlusIcon,
-  RobotIcon,
   SearchInput,
   Spinner,
   Tabs,
