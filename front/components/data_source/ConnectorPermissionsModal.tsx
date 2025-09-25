@@ -883,7 +883,8 @@ export function ConnectorPermissionsModal({
                       </div>
                       <ContentNodeTree
                         isTitleFilterEnabled={
-                          connectorConfiguration.isTitleFilterEnabled
+                          connectorConfiguration.isTitleFilterEnabled &&
+                          canUpdatePermissions
                         }
                         isRoundedBackground={true}
                         useResourcesHook={useResourcesHook}

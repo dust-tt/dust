@@ -334,30 +334,28 @@ function ContentNodeTreeChildren({
               />
             </div>
 
-            {filter.trim().length > 0 && (
-              <Button
-                icon={ListCheckIcon}
-                label={selectAllClicked ? "Unselect All" : "Select All"}
-                size="sm"
-                className="m-1"
-                variant="ghost"
-                onClick={() => {
-                  const isSelected = !selectAllClicked;
-                  setSelectAllClicked(isSelected);
-                  setSelectedNodes((prev) => {
-                    const newState = { ...prev };
-                    filteredNodes.forEach((n) => {
-                      newState[n.internalId] = {
-                        isSelected,
-                        node: n,
-                        parents: isSelected ? parentIds : [],
-                      };
-                    });
-                    return newState;
+            <Button
+              icon={ListCheckIcon}
+              label={selectAllClicked ? "Unselect All" : "Select All"}
+              size="sm"
+              className="m-1"
+              variant="ghost"
+              onClick={() => {
+                const isSelected = !selectAllClicked;
+                setSelectAllClicked(isSelected);
+                setSelectedNodes((prev) => {
+                  const newState = { ...prev };
+                  filteredNodes.forEach((n) => {
+                    newState[n.internalId] = {
+                      isSelected,
+                      node: n,
+                      parents: isSelected ? parentIds : [],
+                    };
                   });
-                }}
-              />
-            )}
+                  return newState;
+                });
+              }}
+            />
           </div>
         </>
       )}
