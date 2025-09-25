@@ -36,6 +36,7 @@ import type {
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getAvailabilityOfInternalMCPServerById,
@@ -92,6 +93,7 @@ const MAX_OUTPUT_ITEMS = 128;
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
+const MCP_TOOL_ABORTED_EVENT_NAME = "TOOL_ABORTED" as const;
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
   properties: {},
@@ -261,11 +263,13 @@ export async function* tryCallMCPTool(
   {
     progressToken,
     makeToolNotificationEvent,
+    signal,
   }: {
     progressToken: ModelId;
     makeToolNotificationEvent: (
       notification: MCPProgressNotificationType
     ) => Promise<ToolNotificationEvent>;
+    signal?: AbortSignal;
   }
 ): AsyncGenerator<ToolNotificationEvent, CallToolResult> {
   const { toolConfiguration } = agentLoopRunContext;
@@ -346,6 +350,22 @@ export async function* tryCallMCPTool(
       MCP_NOTIFICATION_EVENT_NAME
     );
 
+    const abortSignal = signal;
+    let abortPromise: Promise<typeof MCP_TOOL_ABORTED_EVENT_NAME> | null = null;
+    if (abortSignal) {
+      if (abortSignal.aborted) {
+        abortPromise = Promise.resolve(MCP_TOOL_ABORTED_EVENT_NAME);
+      } else {
+        abortPromise = new Promise((resolve) => {
+          abortSignal.addEventListener(
+            "abort",
+            () => resolve(MCP_TOOL_ABORTED_EVENT_NAME),
+            { once: true }
+          );
+        });
+      }
+    }
+
     // Subscribe to notifications before calling the tool.
     // Longer term we should use the `onprogress` callback of the `callTool` method. Right now,
     // `progressToken` is not accessible in the `ToolCallback` interface. PR has been merged, but
@@ -373,22 +393,40 @@ export async function* tryCallMCPTool(
       CallToolResultSchema,
       {
         timeout: toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+        signal: abortSignal,
       }
     );
 
     // Read from notificationStream and yield events until the tool is done.
     let toolDone = false;
+    let wasAborted = abortSignal?.aborted ?? false;
     while (!toolDone) {
-      const notificationOrDone = await Promise.race([
+      const raceInputs: Array<
+        Promise<
+          | typeof MCP_TOOL_ABORTED_EVENT_NAME
+          | typeof MCP_TOOL_DONE_EVENT_NAME
+          | IteratorResult<MCPProgressNotificationType>
+        >
+      > = [
         notificationStream.next(), // Next notification.
         toolPromise.then(() => MCP_TOOL_DONE_EVENT_NAME), // Or tool fully completes.
-      ]);
+      ];
+      if (abortPromise) {
+        raceInputs.push(abortPromise);
+      }
 
-      // If the tool completed, break from the loop and stop reading notifications.
+      const notificationOrDone = await Promise.race(raceInputs);
+
+      if (notificationOrDone === MCP_TOOL_ABORTED_EVENT_NAME) {
+        wasAborted = true;
+        break;
+      }
+
       if (notificationOrDone === MCP_TOOL_DONE_EVENT_NAME) {
         toolDone = true;
       } else {
-        const iteratorResult = notificationOrDone;
+        const iteratorResult =
+          notificationOrDone as IteratorResult<MCPProgressNotificationType>;
         if (iteratorResult.done) {
           // The notifications ended prematurely.
           break;
@@ -398,8 +436,37 @@ export async function* tryCallMCPTool(
       }
     }
 
-    // Tool is done now, wait for the actual result.
-    const toolCallResult = await toolPromise;
+    let toolCallResult: Awaited<typeof toolPromise>;
+    try {
+      toolCallResult = await toolPromise;
+    } catch (toolError) {
+      if (abortSignal?.aborted) {
+        return new Err(
+          new MCPError("Tool execution cancelled", {
+            tracked: false,
+            cause: toolError instanceof Error ? toolError : undefined,
+          })
+        );
+      }
+
+      throw toolError;
+    }
+
+    if (wasAborted) {
+      return new Err(
+        new MCPError("Tool execution cancelled", { tracked: false })
+      );
+    }
+
+    // Before returning the content to the caller, we make sure the notifications are fully flushed.
+    // Once the tool completes, the notifications should already be flushed, so this is a no-op in
+    // practice. However, it's safer to drain the queue to avoid any potential race condition.
+    let notificationResult = await notificationStream.next();
+    while (!notificationResult.done) {
+      const notification = notificationResult.value;
+      yield makeToolNotificationEvent(notification);
+      notificationResult = await notificationStream.next();
+    }
 
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: CallToolResult["content"] = (toolCallResult.content ??
