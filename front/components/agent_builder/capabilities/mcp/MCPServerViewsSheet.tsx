@@ -533,6 +533,25 @@ export function MCPServerViewsSheet({
     [mcpServerView]
   );
 
+  const hasAdditionalConfiguration = useMemo(() => {
+    if (!toolsConfigurations) {
+      return false;
+    }
+    const hasStrings =
+      (toolsConfigurations.stringConfigurations?.length ?? 0) > 0;
+    const hasNumbers =
+      (toolsConfigurations.numberConfigurations?.length ?? 0) > 0;
+    const hasBooleans =
+      (toolsConfigurations.booleanConfigurations?.length ?? 0) > 0;
+    const hasEnums =
+      toolsConfigurations.enumConfigurations &&
+      Object.keys(toolsConfigurations.enumConfigurations).length > 0;
+    const hasLists =
+      toolsConfigurations.listConfigurations &&
+      Object.keys(toolsConfigurations.listConfigurations).length > 0;
+    return hasStrings || hasNumbers || hasBooleans || hasEnums || hasLists;
+  }, [toolsConfigurations]);
+
   // Stable form reset handler - no form dependency to prevent re-renders
   const resetFormValues = useMemo(
     () => createFormResetHandler(configurationTool, mcpServerView, isOpen),
@@ -653,7 +672,23 @@ export function MCPServerViewsSheet({
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
-
+              </div>
+            </div>
+          </FormProvider>
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ),
+    },
+    {
+      id: TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION,
+      title: "Additional Configuration",
+      content:
+        toolsConfigurations && form ? (
+          <FormProvider form={form} className="h-full">
+            <div className="h-full">
+              <div className="h-full space-y-6 pt-3">
                 <AdditionalConfigurationSection
                   stringConfigurations={
                     toolsConfigurations.stringConfigurations
@@ -792,6 +827,11 @@ export function MCPServerViewsSheet({
     },
     onConfigurationSave: handleConfigurationSave,
     resetToSelection,
+    hasAdditionalConfiguration,
+    goToAdditionalConfiguration: () =>
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION),
+    goToConfiguration: () =>
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION),
   });
 
   return (

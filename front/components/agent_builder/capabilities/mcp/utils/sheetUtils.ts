@@ -59,6 +59,10 @@ export interface FooterButtonOptions {
   onAddSelectedTools: () => void;
   onConfigurationSave: (data: MCPFormData) => void;
   resetToSelection: () => void;
+  // Navigation helpers for multi-page configuration flows
+  hasAdditionalConfiguration?: boolean;
+  goToAdditionalConfiguration?: () => void;
+  goToConfiguration?: () => void;
 }
 
 export function getFooterButtons({
@@ -71,12 +75,17 @@ export function getFooterButtons({
   onAddSelectedTools,
   onConfigurationSave,
   resetToSelection,
+  hasAdditionalConfiguration,
+  goToAdditionalConfiguration,
+  goToConfiguration,
 }: FooterButtonOptions) {
   const isToolSelectionPage =
     currentPageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION;
   const isConfigurationPage =
     currentPageId === TOOLS_SHEET_PAGE_IDS.CONFIGURATION;
   const isInfoPage = currentPageId === TOOLS_SHEET_PAGE_IDS.INFO;
+  const isAdditionalConfigurationPage =
+    currentPageId === TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION;
 
   if (isToolSelectionPage) {
     return {
@@ -98,6 +107,8 @@ export function getFooterButtons({
   }
 
   if (isConfigurationPage) {
+    const showNext = !!hasAdditionalConfiguration;
+
     if (mode?.type === "edit") {
       return {
         leftButton: {
@@ -105,11 +116,18 @@ export function getFooterButtons({
           variant: "outline",
           onClick: onCancel,
         },
-        rightButton: {
-          label: "Save Changes",
-          variant: "primary",
-          onClick: form.handleSubmit(onConfigurationSave),
-        },
+        rightButton: showNext
+          ? {
+              label: "Next",
+              variant: "primary",
+              onClick: () =>
+                goToAdditionalConfiguration && goToAdditionalConfiguration(),
+            }
+          : {
+              label: "Save Changes",
+              variant: "primary",
+              onClick: form.handleSubmit(onConfigurationSave),
+            },
       };
     }
 
@@ -120,11 +138,18 @@ export function getFooterButtons({
           variant: "outline",
           onClick: () => onModeChange({ type: "add" }),
         },
-        rightButton: {
-          label: "Save Configuration",
-          variant: "primary",
-          onClick: form.handleSubmit(onConfigurationSave),
-        },
+        rightButton: showNext
+          ? {
+              label: "Next",
+              variant: "primary",
+              onClick: () =>
+                goToAdditionalConfiguration && goToAdditionalConfiguration(),
+            }
+          : {
+              label: "Save Configuration",
+              variant: "primary",
+              onClick: form.handleSubmit(onConfigurationSave),
+            },
       };
     }
 
@@ -134,8 +159,33 @@ export function getFooterButtons({
         variant: "outline",
         onClick: resetToSelection,
       },
+      rightButton: showNext
+        ? {
+            label: "Next",
+            variant: "primary",
+            onClick: () =>
+              goToAdditionalConfiguration && goToAdditionalConfiguration(),
+          }
+        : {
+            label: "Save Configuration",
+            variant: "primary",
+            onClick: form.handleSubmit(onConfigurationSave),
+          },
+    };
+  }
+
+  if (isAdditionalConfigurationPage) {
+    const saveLabel =
+      mode?.type === "edit" ? "Save Changes" : "Save Configuration";
+
+    return {
+      leftButton: {
+        label: "Back",
+        variant: "outline",
+        onClick: () => goToConfiguration && goToConfiguration(),
+      },
       rightButton: {
-        label: "Save Configuration",
+        label: saveLabel,
         variant: "primary",
         onClick: form.handleSubmit(onConfigurationSave),
       },
