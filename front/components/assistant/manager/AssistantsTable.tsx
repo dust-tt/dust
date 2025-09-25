@@ -125,7 +125,7 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-40",
+        className: "w-40 @lg:w-full",
       },
     },
     {
@@ -200,7 +200,7 @@ const getTableColumns = ({
       ),
       isFilterable: true,
       meta: {
-        className: "w-32 xl:w-64",
+        className: "w-32 xl:w-60",
         tooltip: "Tags",
       },
     },
