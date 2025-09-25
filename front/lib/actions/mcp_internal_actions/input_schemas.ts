@@ -6,6 +6,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import { ANY_TIME_FRAME  as ANY_TIME_FRAME_WITHOUT_MIME_TYPE } from "@app/types/shared/utils/time_frame";
 
 /**
  * URI pattern for configuring the data source to use within an action.
@@ -145,7 +146,7 @@ export const ConfigurableToolInputSchemas = {
       duration: z.number(),
       unit: z.enum(["hour", "day", "week", "month", "year"]),
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
-    }).nullable()
+    })
     .describe("An optional time frame to use for the tool."),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.intersection(
     JsonSchemaSchema,
@@ -172,11 +173,10 @@ export const EMPTY_JSON_SCHEMA : z.infer<typeof ConfigurableToolInputSchemas[typ
   mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
 };
 
-export const EMPTY_DUST_APP : z.infer<typeof ConfigurableToolInputSchemas[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP]> = {
-  appId: "",
-  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP,
+export const ANY_TIME_FRAME : z.infer<typeof ConfigurableToolInputSchemas[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]> = {
+  ...ANY_TIME_FRAME_WITHOUT_MIME_TYPE,
+  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
 };
-
 
 // Type for the tool inputs that have a flexible schema, which are schemas that can vary between tools.
 type FlexibleConfigurableToolInput = {

@@ -632,7 +632,7 @@ export function MCPServerViewsSheet({
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.childAgentConfiguration && (
+                {toolsConfigurations.childAgentConfigurable !== "no" && (
                   <ChildAgentSection />
                 )}
 

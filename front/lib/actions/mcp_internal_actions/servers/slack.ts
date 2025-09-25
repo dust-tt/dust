@@ -182,8 +182,8 @@ function buildSlackSearchQuery(
   }
 ): string {
   let query = initial;
-  if (timeFrame) {
-    const timestampInMs = timeFrameFromNow(timeFrame);
+  const timestampInMs = timeFrame ? timeFrameFromNow(timeFrame) : null;
+  if (timestampInMs) {
     const date = new Date(timestampInMs);
     query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
   }
@@ -612,8 +612,8 @@ const createServer = async (
       try {
         let query = `-threads:replies in:${channel.charAt(0) === "#" ? channel : `#${channel}`}`;
 
-        if (timeFrame) {
-          const timestampInMs = timeFrameFromNow(timeFrame);
+        const timestampInMs = timeFrame ? timeFrameFromNow(timeFrame) : null;
+        if (timestampInMs) {
           const date = new Date(timestampInMs);
           query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
         }

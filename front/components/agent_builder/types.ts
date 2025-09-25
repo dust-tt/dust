@@ -180,10 +180,9 @@ export function getDefaultMCPAction(
     configuration,
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      toolsConfigurations.tableConfiguration ??
-      false
+      toolsConfigurations.dataSourceConfigurable !== "no" ||
+      toolsConfigurations.dataWarehouseConfigurable !== "no" ||
+      toolsConfigurations.tableConfigurable !== "no"
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)

@@ -6,8 +6,8 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
+  ANY_TIME_FRAME,
   ConfigurableToolInputJSONSchemas,
-  EMPTY_DUST_APP,
   EMPTY_JSON_SCHEMA,
   validateConfiguredJsonSchema,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -170,7 +170,7 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
       const { timeFrame } = actionConfiguration;
       if (!timeFrame) {
-        return null;
+        return ANY_TIME_FRAME;
       }
       const {duration, unit} = timeFrame;
       return { duration, unit, mimeType };
@@ -427,7 +427,6 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
  * Augments the inputs with configuration data from actionConfiguration.
  * For each missing property that has a mimeType matching a value in INTERNAL_MIME_TYPES.TOOL_INPUT,
  * it adds the corresponding data from actionConfiguration.
- * This function uses Ajv validation errors to identify missing properties.
  */
 export function augmentInputsWithConfiguration({
   owner,
@@ -449,6 +448,10 @@ export function augmentInputsWithConfiguration({
       if (isSchemaConfigurable(propSchema, mimeType)) {
         const valueAtPath = getValueAtPath(inputs, fullPath);
         if (valueAtPath) {
+          if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME) {
+            console.log("valueAtPath", valueAtPath);
+            console.log("fullPath", fullPath);
+          }
           return false;
         }
 
@@ -458,6 +461,11 @@ export function augmentInputsWithConfiguration({
           mimeType,
           keyPath: fullPath.join("."),
         });
+
+        if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME) {
+          console.log("TIME_FRAME", value);
+          console.log("fullPath", fullPath);
+        }
 
         // We found a matching mimeType, augment the inputs
         setValueAtPath(inputs, fullPath, value);
@@ -470,23 +478,16 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-/*
-The "mayRequire" properties are true in one of two cases:
-  1. There is a property with a missing value that must be inputted to validate the schema.
-  2. There is a property with a default value that may still be changed by the user.
-*/
+
 export interface MCPServerToolsConfigurations {
   dataSourceConfigurable: "no" | "optional" | "required";
   dataWarehouseConfigurable: "no" | "optional" | "required";
   tableConfigurable: "no" | "optional" | "required";
   timeFrameConfigurable: "no" | "optional" | "required";
   jsonSchemaConfigurable: "no" | "optional" | "required";
-  dustAppConfigurable: "no" | "optional" | "required";
-  secretConfigurable: "no" | "optional" | "required";
-  childAgentConfiguration?: {
-    description?: string;
-    default?: { uri: string };
-  };
+  dustAppConfigurable: "no" | "required";
+  secretConfigurable: "no" | "required";
+  childAgentConfigurable: "no" | "required";
   reasoningConfiguration?: {
     description?: string;
     default?: {
@@ -543,6 +544,7 @@ export function getMCPServerToolsConfigurations(
       jsonSchemaConfigurable: "no",
       dustAppConfigurable: "no",
       secretConfigurable: "no",
+      childAgentConfigurable: "no",
       stringConfigurations: [],
       numberConfigurations: [],
       booleanConfigurations: [],
@@ -625,21 +627,21 @@ export function getMCPServerToolsConfigurations(
   const tableConfigurable = getConfigurableStateForData(INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE);
 
 
-  const childAgentConfiguration = Object.values(
+  const childAgentConfigurable = (() => {
+    const configuration = Object.values(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
     })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefault(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  ).at(0);
+    if (!configuration) {
+      return "no";
+    }
+    if (configuration.default) {
+      throw new Error("Child agent cannot have a default");
+    }
+    return "required";
+  })();
 
   const reasoningConfiguration = Object.values(
     findPathsToConfiguration({
@@ -715,16 +717,12 @@ export function getMCPServerToolsConfigurations(
       return "no";
     }
     if (configuration.default) {
-      if (configuration.default === EMPTY_DUST_APP) {
-        return "optional";
-      } else {
-        throw new Error("Dust App default can only be EMPTY_DUST_APP");
-      }
+      throw new Error("Dust App cannot have a default");
     }
     return "required";
   })();
 
-  const secretConfigurable : "no" | "optional" | "required" = (() => {
+  const secretConfigurable : "no" | "required" = (() => {
     return mcpServerView.server.requiresSecret === true ? "required" : "no";
   })();
 
@@ -902,7 +900,7 @@ export function getMCPServerToolsConfigurations(
     jsonSchemaConfigurable,
     dustAppConfigurable,
     secretConfigurable,
-    getConfigurableStateForOptional(childAgentConfiguration),
+    childAgentConfigurable,
     getConfigurableStateForOptional(reasoningConfiguration),
     getConfigurableStateForArray(stringConfigurations),
     getConfigurableStateForArray(numberConfigurations),
@@ -918,7 +916,6 @@ export function getMCPServerToolsConfigurations(
       : "required";
 
   return {
-    childAgentConfiguration,
     reasoningConfiguration,
     stringConfigurations,
     numberConfigurations,
@@ -932,6 +929,7 @@ export function getMCPServerToolsConfigurations(
     jsonSchemaConfigurable,
     dustAppConfigurable,
     secretConfigurable,
+    childAgentConfigurable,
     configurable,
   };
 }

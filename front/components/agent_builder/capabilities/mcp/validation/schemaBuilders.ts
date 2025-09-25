@@ -55,7 +55,7 @@ export function createDynamicConfigurationFields(
   toolsConfigurations: MCPServerToolsConfigurations
 ) {
   return {
-    childAgentId: toolsConfigurations.childAgentConfiguration
+    childAgentId: toolsConfigurations.childAgentConfigurable === "required"
       ? childAgentIdSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.childAgent.required,
         })
@@ -65,12 +65,12 @@ export function createDynamicConfigurationFields(
           message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
-    dustAppConfiguration: toolsConfigurations.mayRequireDustAppConfiguration
+    dustAppConfiguration: toolsConfigurations.dustAppConfigurable === "required"
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
-    secretName: toolsConfigurations.mayRequireSecretConfiguration
+    secretName: toolsConfigurations.secretConfigurable === "required"
       ? secretNameSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.secret.required,
         })

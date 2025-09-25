@@ -88,7 +88,7 @@ function createServer(
     tagsIn,
     tagsNot,
   }: {
-    timeFrame: TimeFrame | null;
+    timeFrame: TimeFrame;
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];
@@ -294,7 +294,7 @@ function createServer(
 }
 
 function makeQueryResource(
-  timeFrame: TimeFrame | null
+  timeFrame: TimeFrame
 ): IncludeQueryResourceType {
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_QUERY,
@@ -306,7 +306,7 @@ function makeQueryResource(
 function makeWarningResource(
   documents: CoreAPIDocument[],
   topK: number,
-  timeFrame: TimeFrame | null
+  timeFrame: TimeFrame
 ): WarningResourceType | null {
   const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
 
