@@ -20,6 +20,7 @@ import { useMentionDropdown } from "@app/components/assistant/conversation/input
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { getPastedFileName } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -42,8 +43,6 @@ import type {
 } from "@app/types";
 import { assertNever, normalizeError } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
-
-import { getPastedFileName } from "./pasted_utils";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",

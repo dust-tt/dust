@@ -24,6 +24,11 @@ import {
   AttachmentCitation,
   attachmentToAttachmentCitation,
 } from "@app/components/assistant/conversation/AttachmentCitation";
+import {
+  getDisplayDateFromPastedFileId,
+  getDisplayNameFromPastedFileId,
+  isPastedFile,
+} from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
@@ -34,12 +39,6 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { GLOBAL_SPACE_NAME } from "@app/types";
-
-import {
-  getDisplayDateFromPastedFileId,
-  getDisplayNameFromPastedFileId,
-  isPastedFile,
-} from "./pasted_utils";
 
 interface FileAttachmentsProps {
   service: FileUploaderService;
