@@ -398,7 +398,6 @@ export function AssistantBrowser({
                   onClick={() => {
                     setSelectedTab("all");
                     setAssistantSearch("");
-                    setSelectedTag(tag.sId);
                     setTimeout(() => {
                       const element = document.getElementById(
                         `anchor-${tag.sId}`
