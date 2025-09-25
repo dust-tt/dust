@@ -188,6 +188,24 @@ export async function readFrontTableChunk({
     }
   );
 
+  // Apply template ID mapping for agent_configurations
+  // because some templates have a different ID between regions.
+  if (
+    tableName === "agent_configurations" &&
+    sourceRegion === "us-central1" &&
+    destRegion === "europe-west1"
+  ) {
+    const templateIdMapping: Record<number, number> = {
+      68: 274877906957,
+    };
+
+    for (const row of rows as [{ id: ModelId; templateId: number | null }]) {
+      if (row.templateId != null && templateIdMapping[row.templateId]) {
+        row.templateId = templateIdMapping[row.templateId];
+      }
+    }
+  }
+
   const blob: RelocationBlob = {
     statements: {
       [tableName]: generateParameterizedInsertStatements(tableName, rows, {
