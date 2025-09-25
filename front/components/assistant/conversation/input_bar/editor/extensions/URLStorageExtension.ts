@@ -7,6 +7,13 @@ export type URLState = {
   to: number;
 };
 
+declare module "@tiptap/core" {
+  interface Storage {
+    URLStorage: {
+      pendingUrls: Map<string, URLState>;
+    };
+  }
+}
 export const URLStorageExtension = Extension.create({
   name: "URLStorage",
 
