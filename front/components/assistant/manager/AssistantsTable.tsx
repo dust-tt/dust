@@ -125,7 +125,7 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-40",
+        className: "w-40 @lg:w-full",
       },
     },
     {
