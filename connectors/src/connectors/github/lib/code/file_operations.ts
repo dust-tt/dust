@@ -1,8 +1,8 @@
 import assert from "assert";
 import { hash as blake3 } from "blake3";
+import { extname } from "path";
 
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
-import { MAX_FILE_SIZE_BYTES } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
   getRepoUrl,
   inferParentsFromGcsPath,
@@ -10,18 +10,14 @@ import {
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   renderPrefixSection,
-  sectionLength,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
+import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import { GithubCodeFile } from "@connectors/lib/models/github";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-
-// Use for max text length the file size bytes we allow to be
-// downloaded.
-const MAX_DOCUMENT_TXT_LEN = MAX_FILE_SIZE_BYTES;
 
 export async function formatCodeContentForUpsert(
   dataSourceConfig: DataSourceConfig,
@@ -171,39 +167,53 @@ export async function upsertCodeFile({
       content
     );
 
-    if (sectionLength(renderedCode) > MAX_DOCUMENT_TXT_LEN) {
-      logger.info("Code file is too large to upsert.");
-
-      // Still update lastSeenAt even if we skip the file.
-      githubCodeFile.lastSeenAt = codeSyncStartedAt;
-      await githubCodeFile.save();
-
-      return { updatedDirectoryIds: new Set() };
-    }
-
     const tags = [
       `title:${fileName}`,
       `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
     ];
 
     // Time to upload the file to the data source.
-    await upsertDataSourceDocument({
-      async: true,
-      dataSourceConfig,
-      documentContent: renderedCode,
-      documentId,
-      documentUrl: sourceUrl,
-      loggerArgs: logger.bindings(),
-      mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
-      parentId: parentInternalId,
-      parents,
-      tags,
-      timestampMs: codeSyncStartedAt.getTime(),
-      title: fileName,
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-    });
+    try {
+      await upsertDataSourceDocument({
+        async: true,
+        dataSourceConfig,
+        documentContent: renderedCode,
+        documentId,
+        documentUrl: sourceUrl,
+        loggerArgs: logger.bindings(),
+        mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
+        parentId: parentInternalId,
+        parents,
+        tags,
+        timestampMs: codeSyncStartedAt.getTime(),
+        title: fileName,
+        upsertContext: {
+          sync_type: isBatchSync ? "batch" : "incremental",
+        },
+      });
+    } catch (error) {
+      if (error instanceof DataSourceQuotaExceededError) {
+        const skipReason = "file_too_large";
+
+        logger.warn(
+          {
+            error,
+            documentId,
+            skipReason,
+            extension: extname(fileName),
+          },
+          "Skipping GitHub code file exceeding plan limit."
+        );
+
+        githubCodeFile.skipReason = skipReason;
+        githubCodeFile.lastSeenAt = codeSyncStartedAt;
+        await githubCodeFile.save();
+
+        return { updatedDirectoryIds };
+      }
+
+      throw error;
+    }
 
     // Finally update the file.
     githubCodeFile.fileName = fileName;
