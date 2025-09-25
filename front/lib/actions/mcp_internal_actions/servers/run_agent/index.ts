@@ -38,6 +38,7 @@ import {
   getCitationsFromActions,
   getRefs,
 } from "@app/lib/api/assistant/citations";
+import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -257,13 +258,26 @@ export default async function createServer(
           fileOrContentFragmentIds,
           conversationId,
         },
-        { sendNotification, _meta }
+        { sendNotification, _meta, signal }
       ) => {
         assert(
           agentLoopContext?.runContext,
           "agentLoopContext is required to run the run_agent tool"
         );
 
+        const abortSignal = signal ?? null;
+        let cleanupAbortListener: (() => void) | undefined;
+        let childCancellationPromise: Promise<void> | null = null;
+        const finalizeAndReturn = async <T>(
+          result: Result<T, MCPError>
+        ): Promise<Result<T, MCPError>> => {
+          if (cleanupAbortListener) {
+            cleanupAbortListener();
+            cleanupAbortListener = undefined;
+          }
+          await (childCancellationPromise ?? Promise.resolve());
+          return result;
+        };
         const isHandoff = executionMode.value === "handoff";
 
         const {
@@ -272,16 +286,18 @@ export default async function createServer(
         } = agentLoopContext.runContext;
 
         if (conversationId === mainConversation.sId) {
-          return new Err(
-            new MCPError(
-              "Conversation id cannot be the same as the main conversation."
+          return finalizeAndReturn(
+            new Err(
+              new MCPError(
+                "Conversation id cannot be the same as the main conversation."
+              )
             )
           );
         }
 
         const childAgentIdRes = parseAgentConfigurationUri(uri);
         if (childAgentIdRes.isErr()) {
-          return new Err(new MCPError(childAgentIdRes.error.message));
+          return finalizeAndReturn(new Err(new MCPError(childAgentIdRes.error.message)));
         }
         const childAgentId = childAgentIdRes.value;
 
@@ -360,20 +376,62 @@ ${query}`
         );
 
         if (convRes.isErr()) {
-          return new Err(convRes.error);
+          return finalizeAndReturn(new Err(convRes.error));
         }
 
         if (isHandoff) {
-          return new Ok(
-            makeMCPToolExit({
-              message: `Query delegated to agent @${childAgentBlob.name}`,
-              isError: false,
-            }).content
+          return finalizeAndReturn(
+            new Ok(
+              makeMCPToolExit({
+                message: `Query delegated to agent @${childAgentBlob.name}`,
+                isError: false,
+              }).content
+            )
           );
         }
 
         const { conversation, isNewConversation, userMessageId } =
           convRes.value;
+
+        const requestChildCancellation = () => {
+          if (!userMessageId) {
+            return;
+          }
+
+          if (!childCancellationPromise) {
+            childCancellationPromise = cancelMessageGenerationEvent(auth, {
+              messageIds: [userMessageId],
+              conversationId: conversation.sId,
+            }).catch((cancelError) => {
+              logger.warn(
+                {
+                  error: normalizeError(cancelError),
+                  childConversationId: conversation.sId,
+                  userMessageId,
+                },
+                "Failed to cancel child agent conversation"
+              );
+            });
+          }
+        };
+
+        if (abortSignal) {
+          const onAbort = () => {
+            requestChildCancellation();
+          };
+
+          if (abortSignal.aborted) {
+            onAbort();
+            return finalizeAndReturn(
+              new Err(new MCPError("Agent run cancelled", { tracked: false }))
+            );
+          }
+
+          abortSignal.addEventListener("abort", onAbort, { once: true });
+          cleanupAbortListener = () => {
+            abortSignal.removeEventListener("abort", onAbort);
+          };
+        }
 
         if (isNewConversation) {
           logger.info(
@@ -507,20 +565,23 @@ ${query}`
         if (agentMessage && agentMessage.status === "succeeded") {
           const { finalText, cot, refsFromAgent, files } =
             getFinishedContent(agentMessage);
-          return new Ok(
-            buildSuccessContent({
-              conversationId: conversation.sId,
-              finalContent: finalText,
-              chainOfThought: cot,
-              refsFromAgent,
-              files,
-            })
+          return finalizeAndReturn(
+            new Ok(
+              buildSuccessContent({
+                conversationId: conversation.sId,
+                finalContent: finalText,
+                chainOfThought: cot,
+                refsFromAgent,
+                files,
+              })
+            )
           );
         }
 
         const streamRes = await api.streamAgentAnswerEvents({
           conversation: conversation,
           userMessageId,
+          signal: abortSignal ?? undefined,
           options: {
             maxReconnectAttempts: 10,
             reconnectDelay: 10000,
@@ -530,7 +591,7 @@ ${query}`
 
         if (streamRes.isErr()) {
           const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
-          return new Err(new MCPError(errorMessage));
+          return finalizeAndReturn(new Err(new MCPError(errorMessage)));
         }
 
         const collectedBlockingEvents: RunAgentBlockingEvent[] = [];
@@ -543,6 +604,13 @@ ${query}`
         let files: ActionGeneratedFileType[] = [];
         try {
           for await (const event of streamRes.value.eventStream) {
+            if (abortSignal?.aborted) {
+              requestChildCancellation();
+              return await finalizeAndReturn(
+                new Err(new MCPError("Agent run cancelled", { tracked: false }))
+              );
+            }
+
             if (event.type === "generation_tokens") {
               // Separate content based on classification.
               if (event.classification === "chain_of_thought") {
@@ -619,10 +687,15 @@ ${query}`
               }
             } else if (event.type === "agent_error") {
               const errorMessage = `Agent error: ${event.error.message}`;
-              return new Err(new MCPError(errorMessage));
+              return finalizeAndReturn(new Err(new MCPError(errorMessage)));
             } else if (event.type === "user_message_error") {
               const errorMessage = `User message error: ${event.error.message}`;
-              return new Err(new MCPError(errorMessage));
+              return finalizeAndReturn(new Err(new MCPError(errorMessage)));
+            } else if (event.type === "agent_generation_cancelled") {
+              requestChildCancellation();
+              return finalizeAndReturn(
+                new Err(new MCPError("Agent run cancelled", { tracked: false }))
+              );
             } else if (event.type === "agent_message_success") {
               refsFromAgent = getCitationsFromActions(event.message.actions);
               files = event.message.actions.flatMap((action) =>
@@ -643,7 +716,7 @@ ${query}`
                     userMessageId,
                   }
                 );
-                return new Ok(blockedResponse.content);
+                return finalizeAndReturn(new Ok(blockedResponse.content));
               }
             } else if (event.type === "tool_error") {
               // Handle personal authentication required errors.
@@ -676,7 +749,7 @@ ${query}`
                       userMessageId,
                     }
                   );
-                  return new Ok(blockedResponse.content);
+                  return finalizeAndReturn(new Ok(blockedResponse.content));
                 }
               }
             }
@@ -695,34 +768,52 @@ ${query}`
             if (agentMessage && agentMessage.status === "succeeded") {
               const { finalText, cot, refsFromAgent, files } =
                 getFinishedContent(agentMessage);
-              return new Ok(
-                buildSuccessContent({
-                  conversationId: conv2.sId,
-                  finalContent: finalText,
-                  chainOfThought: cot,
-                  refsFromAgent,
-                  files,
-                })
+              return finalizeAndReturn(
+                new Ok(
+                  buildSuccessContent({
+                    conversationId: conv2.sId,
+                    finalContent: finalText,
+                    chainOfThought: cot,
+                    refsFromAgent,
+                    files,
+                  })
+                )
               );
             }
+          }
+
+          if (abortSignal?.aborted) {
+            requestChildCancellation();
+            return finalizeAndReturn(
+              new Err(new MCPError("Agent run cancelled", { tracked: false }))
+            );
           }
 
           const errorMessage = `Error processing agent stream: ${
             normalizeError(streamError).message
           }`;
-          return new Err(new MCPError(errorMessage));
+          return finalizeAndReturn(new Err(new MCPError(errorMessage)));
+        }
+
+        if (abortSignal?.aborted) {
+          requestChildCancellation();
+          return finalizeAndReturn(
+            new Err(new MCPError("Agent run cancelled", { tracked: false }))
+          );
         }
         finalContent = finalContent.trim();
         chainOfThought = chainOfThought.trim();
 
-        return new Ok(
-          buildSuccessContent({
-            conversationId: conversation.sId,
-            finalContent,
-            chainOfThought,
-            refsFromAgent,
-            files,
-          })
+        return finalizeAndReturn(
+          new Ok(
+            buildSuccessContent({
+              conversationId: conversation.sId,
+              finalContent,
+              chainOfThought,
+              refsFromAgent,
+              files,
+            })
+          )
         );
       }
     )
