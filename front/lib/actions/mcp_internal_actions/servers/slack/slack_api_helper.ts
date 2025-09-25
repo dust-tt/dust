@@ -94,7 +94,12 @@ export async function executePostMessage(
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
-  const agentUrl = getAgentRoute(auth.getNonNullableWorkspace().sId, "new", `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`, config.getClientFacingUrl());
+  const agentUrl = getAgentRoute(
+    auth.getNonNullableWorkspace().sId,
+    "new",
+    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
+    config.getClientFacingUrl()
+  );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
   const response = await slackClient.chat.postMessage({
