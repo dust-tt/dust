@@ -5,7 +5,7 @@ import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
 import type { SortingState } from "@tanstack/table-core";
 import { useRouter } from "next/router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -236,6 +236,7 @@ function BackendSearch({
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
   const [searchHitCount, setSearchHitCount] = React.useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const scrollableDataTableRef = useRef<HTMLDivElement>(null);
 
   const {
     cursorPagination,
@@ -247,7 +248,21 @@ function BackendSearch({
   // Reset pagination when debounced search changes
   React.useEffect(() => {
     resetPagination();
-  }, [debouncedSearch, resetPagination]);
+    if (scrollableDataTableRef.current) {
+      scrollableDataTableRef.current.scrollTo({
+        top: 0,
+      });
+    }
+  }, [debouncedSearch, resetPagination, sorting]);
+
+  const handleSortingChange = useCallback(
+    (sorting: SortingState) => {
+      // Reset pagination early to avoid 2 queries being sent.
+      resetPagination();
+      setSorting(sorting);
+    },
+    [resetPagination, setSorting]
+  );
 
   const commonSearchParams = {
     owner,
@@ -428,7 +443,8 @@ function BackendSearch({
               setEffectiveContentNode={setEffectiveContentNode}
               onClearSearch={handleClearSearch}
               sorting={sorting}
-              setSorting={setSorting}
+              setSorting={handleSortingChange}
+              scrollableDataTableRef={scrollableDataTableRef}
             />
           </div>
         ) : (
@@ -520,6 +536,7 @@ interface SearchResultsTableProps {
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
   setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
   onClearSearch: () => void;
+  scrollableDataTableRef: React.Ref<HTMLDivElement>;
 }
 
 function SearchResultsTable({
@@ -537,6 +554,7 @@ function SearchResultsTable({
   onOpenDocument,
   setEffectiveContentNode,
   onClearSearch,
+  scrollableDataTableRef,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -672,6 +690,7 @@ function SearchResultsTable({
 
   return (
     <ScrollableDataTable
+      containerRef={scrollableDataTableRef}
       data={rows}
       sorting={sorting}
       setSorting={setSorting}
