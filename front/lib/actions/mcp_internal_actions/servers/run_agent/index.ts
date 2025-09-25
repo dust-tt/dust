@@ -46,6 +46,7 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
+import { AgentErrorCategory } from "@app/types";
 import {
   Err,
   getHeaderFromUserEmail,
@@ -623,13 +624,11 @@ ${query}`
               // Certain types of agent errors should not be tracked as run_agent tool execution
               // errors (they will be exposed to the model and will be tracked as errors from the
               // agentic loop in the sub agent conversation).
-              const tracked =
-                !isAgentErrorCategory(event.error.metadata?.category) ||
-                ![
-                  "retryable_model_error",
-                  "context_window_exceeded",
-                  "provider_internal_error",
-                ].includes(event.error.metadata.category);
+              const tracked = ![
+                "retryable_model_error",
+                "context_window_exceeded",
+                "provider_internal_error",
+              ].includes(event.error.metadata?.category);
               return new Err(
                 new MCPError(errorMessage, {
                   tracked,
