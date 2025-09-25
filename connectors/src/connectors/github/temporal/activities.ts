@@ -43,7 +43,6 @@ import {
   deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
-  sectionLength,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
