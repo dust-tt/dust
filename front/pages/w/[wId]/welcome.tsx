@@ -18,6 +18,7 @@ import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { usePatchUser } from "@app/lib/swr/user";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
@@ -98,10 +99,11 @@ export default function Welcome({
       });
     }
 
+    const queryParams = `welcome=true${
+      conversationId ? `&cId=${conversationId}` : ""
+    }`;
     await router.push(
-      `/w/${owner.sId}/agent/new?welcome=true${
-        conversationId ? `&cId=${conversationId}` : ""
-      }`
+      getAgentRoute(owner.sId, "new", queryParams)
     );
   });
 

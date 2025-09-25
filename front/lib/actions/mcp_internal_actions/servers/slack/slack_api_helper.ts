@@ -9,6 +9,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
+import { getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 
 export const getSlackClient = async (accessToken?: string) => {
@@ -93,7 +94,7 @@ export async function executePostMessage(
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
-  const agentUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/agent/new?agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`;
+  const agentUrl = `${config.getClientFacingUrl()}${getAgentRoute(auth.getNonNullableWorkspace().sId, "new", `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`)}`;
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
   const response = await slackClient.chat.postMessage({

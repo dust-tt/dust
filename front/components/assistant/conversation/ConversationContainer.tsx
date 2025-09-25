@@ -8,7 +8,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -26,6 +26,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
+import { getAgentRoute } from "@app/lib/utils/router";
 import {
   useConversationMessages,
   useConversations,
@@ -260,7 +261,7 @@ export function ConversationContainer({
         // Navigate directly to the canonical route to avoid relying on
         // next.config.js redirects (which can be bypassed with shallow routing).
         await router.push(
-          `/w/${owner.sId}/agent/${conversationRes.value.sId}`,
+          getAgentRoute(owner.sId, conversationRes.value.sId),
           undefined,
           { shallow: true }
         );
@@ -394,7 +395,7 @@ export function ConversationContainer({
       />
 
       {!activeConversationId && (
-        <AssistantBrowserContainer
+        <AgentBrowserContainer
           onAgentConfigurationClick={setInputBarMention}
           setAssistantToMention={(assistant) => {
             assistantToMention.current = assistant;

@@ -9,6 +9,7 @@ import { Navigation } from "@app/components/navigation/Navigation";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { NavigationLoadingOverlay } from "@app/components/sparkle/NavigationLoadingOverlay";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
@@ -21,7 +22,7 @@ export const appLayoutBack = async (
   // counts the default page as an entry in the history stack, leading to a history length of 2.
   // Directly opening a link without the "new tab" page results in a history length of 1.
   if (window.history.length < 3) {
-    await router.push(`/w/${owner.sId}/agent/new`);
+    await router.push(getAgentRoute(owner.sId));
   } else {
     // Set up beforePopState to intercept the back navigation and clean query params.
     router.beforePopState(({ as }) => {

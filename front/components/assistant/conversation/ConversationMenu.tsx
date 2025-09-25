@@ -15,6 +15,8 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
 
+import { getAgentRoute } from "@app/lib/utils/router";
+
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
@@ -73,7 +75,7 @@ export function ConversationMenu({
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   const shareLink =
     baseUrl !== undefined
-      ? `${baseUrl}/w/${owner.sId}/agent/${activeConversationId}`
+      ? `${baseUrl}${getAgentRoute(owner.sId, activeConversationId)}`
       : undefined;
 
   const doDelete = useDeleteConversation(owner);
@@ -81,7 +83,7 @@ export function ConversationMenu({
     const res = await doDelete(conversation);
     isConversationDisplayed &&
       res &&
-      void router.push(`/w/${owner.sId}/agent/new`);
+      void router.push(getAgentRoute(owner.sId));
   }, [conversation, doDelete, owner.sId, router, isConversationDisplayed]);
 
   const copyConversationLink = useCallback(async () => {
