@@ -138,7 +138,7 @@ export async function* runToolWithStreaming(
         const info = Context.current().info;
         const isLastAttempt = info.attempt >== RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
         if (!isLastAttempt) {
-          errorMessage += `Error: ${toolError.message}`;
+          errorMessage += ` Error: ${toolError.message}`;
           throw new Error(errorMessage, { cause: toolError });
         }
       }
