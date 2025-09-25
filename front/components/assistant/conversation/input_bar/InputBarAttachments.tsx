@@ -154,7 +154,7 @@ export function InputBarAttachments({
     return null;
   }
 
-  const openPastedViewer = async (attachment: FileAttachment) => {
+  const openPastedViewer = async (attachment: Attachment) => {
     if (!files) {
       return;
     }
@@ -201,9 +201,7 @@ export function InputBarAttachments({
               attachmentCitation={attachmentCitation}
               onRemove={attachment.onRemove}
               onClick={
-                canPreviewText
-                  ? () => openPastedViewer(attachment as FileAttachment)
-                  : undefined
+                canPreviewText ? () => openPastedViewer(attachment) : undefined
               }
             />
           );
@@ -211,7 +209,7 @@ export function InputBarAttachments({
       </CitationGrid>
 
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent size="2xl" height="lg">
+        <DialogContent size="xl" height="lg">
           <DialogHeader>
             <DialogTitle>{viewerTitle}</DialogTitle>
           </DialogHeader>

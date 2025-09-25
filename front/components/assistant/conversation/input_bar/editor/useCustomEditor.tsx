@@ -300,7 +300,6 @@ const useCustomEditor = ({
           return false;
         }
         if (isLongTextPaste(text, longTextPasteThreshold)) {
-          event.preventDefault();
           onLongTextPaste(text);
           return true;
         }

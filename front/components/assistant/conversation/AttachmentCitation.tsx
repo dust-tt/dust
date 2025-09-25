@@ -92,19 +92,24 @@ interface AttachmentCitationProps {
   onClick?: () => void;
 }
 
-function iconForContent(contentType: string | undefined): React.ComponentType {
+function getContentTypeIcon(
+  contentType: string | undefined
+): React.ComponentType {
   if (!contentType) {
     return DocumentIcon;
   }
   const isImageType = contentType.startsWith("image/");
+  if (isImageType) {
+    return ImageIcon;
+  }
   const isAudioType = contentType.startsWith("audio/");
-  return isImageType
-    ? ImageIcon
-    : isAudioType
-      ? ActionVolumeUpIcon
-      : isPastedFile(contentType)
-        ? DoubleQuotesIcon
-        : DocumentIcon;
+  if (isAudioType) {
+    return ActionVolumeUpIcon;
+  }
+  if (isPastedFile(contentType)) {
+    return DoubleQuotesIcon;
+  }
+  return DocumentIcon;
 }
 
 export function AttachmentCitation({
@@ -191,7 +196,7 @@ export function contentFragmentToAttachmentCitation(
 ): AttachmentCitation {
   // Handle expired content fragments
   if (contentFragment.expiredReason) {
-    const visual = iconForContent(contentFragment.contentType);
+    const visual = getContentTypeIcon(contentFragment.contentType);
     return {
       type: "file",
       id: contentFragment.sId,
@@ -235,7 +240,7 @@ export function contentFragmentToAttachmentCitation(
       spaceName: contentFragment.contentNodeData.spaceName,
     };
   } else if (isFileContentFragment(contentFragment)) {
-    const visual = iconForContent(contentFragment.contentType);
+    const visual = getContentTypeIcon(contentFragment.contentType);
 
     // Compute custom title/description for pasted files
     const isPasted = isPastedFile(contentFragment.contentType);
@@ -262,7 +267,7 @@ export function attachmentToAttachmentCitation(
   attachment: Attachment
 ): AttachmentCitation {
   if (attachment.type === "file") {
-    const visual = iconForContent(attachment.contentType);
+    const visual = getContentTypeIcon(attachment.contentType);
     return {
       type: "file",
       id: attachment.id,
