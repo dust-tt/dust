@@ -396,7 +396,7 @@ export function AssistantBrowser({
               href={getAgentBuilderRoute(owner.sId, "manage")}
               variant="primary"
               icon={ContactsRobotIcon}
-              label="Manage Agents"
+              label="Manage agents"
               data-gtm-label="assistantManagementButton"
               data-gtm-location="homepage"
               size="sm"
