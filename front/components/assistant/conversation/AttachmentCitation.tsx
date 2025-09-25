@@ -112,6 +112,17 @@ export function AttachmentCitation({
   onRemove,
   onClick,
 }: AttachmentCitationProps) {
+  const citationInteractionProps = onClick
+    ? {
+        onClick: (e: React.MouseEvent<HTMLDivElement>) => {
+          e.preventDefault();
+          onClick();
+        },
+      }
+    : {
+        href: attachmentCitation.sourceUrl ?? "",
+      };
+
   const tooltipContent =
     attachmentCitation.type === "file" ? (
       attachmentCitation.title
@@ -132,13 +143,7 @@ export function AttachmentCitation({
     <Tooltip
       trigger={
         <Citation
-          href={onClick ? undefined : attachmentCitation.sourceUrl ?? undefined}
-          onClick={(e) => {
-            if (onClick) {
-              e.preventDefault();
-              onClick();
-            }
-          }}
+          {...citationInteractionProps}
           isLoading={
             attachmentCitation.type === "file" && attachmentCitation.isUploading
           }
