@@ -619,7 +619,19 @@ ${query}`
               }
             } else if (event.type === "agent_error") {
               const errorMessage = `Agent error: ${event.error.message}`;
-              return new Err(new MCPError(errorMessage));
+              // Certain types of agent errors should not be tracked as run_agent tool execution
+              // errors (they will be exposed to the model and will be tracked as errors from the
+              // agentic loop in the sub agent conversation).
+              const tracked = ![
+                "retryable_model_error",
+                "context_window_exceeded",
+                "provider_internal_error",
+              ].includes(event.error.metadata?.category);
+              return new Err(
+                new MCPError(errorMessage, {
+                  tracked,
+                })
+              );
             } else if (event.type === "user_message_error") {
               const errorMessage = `User message error: ${event.error.message}`;
               return new Err(new MCPError(errorMessage));
