@@ -27,7 +27,7 @@ export interface EditorMention {
   label: string;
 }
 
-const DEFAULT_LONG_TEXT_PASTE_THRESHOLD = { maxChars: 1000, maxLines: 15 };
+const DEFAULT_LONG_TEXT_PASTE_THRESHOLD = { maxChars: 2000, maxLines: 30 };
 
 function getTextAndMentionsFromNode(node?: JSONContent) {
   let textContent = "";
