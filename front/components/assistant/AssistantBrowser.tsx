@@ -309,6 +309,17 @@ export function AssistantBrowser({
     }
   }, [noTagsDefined]);
 
+  const sortTypeLabel = useMemo(() => {
+    switch (sortType) {
+      case "popularity":
+        return "By popularity";
+      case "alphabetical":
+        return "Alphabetical";
+      case "updated":
+        return "Recently updated";
+    }
+  }, [sortType]);
+
   return (
     <>
       {/* Search bar */}
@@ -432,11 +443,7 @@ export function AssistantBrowser({
                   <Button
                     isSelect
                     variant="outline"
-                    label={
-                      sortType === "popularity"
-                        ? "By popularity"
-                        : "Alphabetical"
-                    }
+                    label={sortTypeLabel}
                     size="sm"
                   />
                 </DropdownMenuTrigger>
