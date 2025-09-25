@@ -19,6 +19,7 @@ import {
   areSchemasEqual,
   findSchemaAtPath,
   followInternalRef,
+  getValueAtPath,
   isJSONSchemaObject,
   iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
@@ -117,8 +118,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        })) || []
+        })) ?? []
       );
     }
 
@@ -127,8 +127,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        })) || []
+        })) ?? []
       );
     }
 
@@ -137,8 +136,7 @@ function generateConfiguredInput({
         actionConfiguration.tables?.map((config) => ({
           uri: getTableURI(config),
           mimeType,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        })) || []
+        })) ?? []
       );
     }
 
@@ -448,6 +446,11 @@ export function augmentInputsWithConfiguration({
   iterateOverSchemaPropertiesRecursive(inputSchema, (fullPath, propSchema) => {
     for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
       if (isSchemaConfigurable(propSchema, mimeType)) {
+        const valueAtPath = getValueAtPath(inputs, fullPath);
+        if (valueAtPath) {
+          return false;
+        }
+
         const value = generateConfiguredInput({
           owner,
           actionConfiguration,

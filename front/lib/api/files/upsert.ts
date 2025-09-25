@@ -288,7 +288,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     });
 
     const parentId = workbookFolderId ?? file.sId;
-    const parents = workbookFolderId ? [tableId, workbookFolderId] : [tableId];
+    const parents = [tableId, parentId];
 
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
@@ -320,6 +320,8 @@ const upsertExcelToDatasource: ProcessingFunction = async (
 
     if (res.isOk()) {
       tableIds.push(tableId);
+    } else {
+      logger.error({ ...res.error, worksheetName }, "Error upserting table");
     }
   };
 
