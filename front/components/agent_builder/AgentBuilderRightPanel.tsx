@@ -144,7 +144,7 @@ function ExpandedContent({
         />
       )}
       {selectedTab === "testing" && (
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 px-1">
           <AgentBuilderPreview />
         </div>
       )}
