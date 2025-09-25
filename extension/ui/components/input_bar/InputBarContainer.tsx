@@ -23,11 +23,27 @@ import type {
   ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
-import { SplitButton, useSendNotification } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChevronDownIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FlexSplitButton,
+  Spinner,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useRef } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -44,7 +60,6 @@ export interface InputBarContainerProps {
   onNodeUnselect: (node: DataSourceViewContentNodeType) => void;
   attachedNodes: DataSourceViewContentNodeType[];
   isSubmitting: boolean;
-  attachmentPickerSide?: "top" | "right" | "bottom" | "left";
 }
 
 export const InputBarContainer = ({
@@ -62,7 +77,6 @@ export const InputBarContainer = ({
   onNodeUnselect,
   attachedNodes,
   isSubmitting,
-  attachmentPickerSide = "bottom",
 }: InputBarContainerProps) => {
   const platform = usePlatform();
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
@@ -229,6 +243,11 @@ export const InputBarContainer = ({
     onClick,
     isLoading: isSubmitting,
   };
+  const disabled =
+    isSubmitting ||
+    editorService.isEmpty() ||
+    fileUploaderService.isProcessingFiles ||
+    fileUploaderService.isCapturing;
 
   return (
     <div id="InputBarContainer" className="relative flex flex-col w-full">
@@ -239,9 +258,7 @@ export const InputBarContainer = ({
             contentEditableClasses,
             "scrollbar-hide",
             "overflow-y-auto",
-            "min-h-32",
-            "max-h-96",
-            "flex-1"
+            "max-h-96 min-h-24"
           )}
         />
         <div className="flex items-start pt-1">
@@ -252,7 +269,6 @@ export const InputBarContainer = ({
             onNodeSelect={onNodeSelect}
             onNodeUnselect={onNodeUnselect}
             attachedNodes={attachedNodes}
-            side={attachmentPickerSide}
           />
           <AssistantPicker
             owner={owner}
@@ -266,26 +282,42 @@ export const InputBarContainer = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-end space-x-2 mt-2">
+      <div className="flex items-center justify-end space-x-1 mt-2">
         <AttachFragment
           owner={owner}
           fileUploaderService={fileUploaderService}
           isLoading={isSubmitting}
         />
-        <SplitButton
-          size="sm"
-          actions={[SendAction, SendWithContentAction]}
-          action={isTabIncluded ? SendWithContentAction : SendAction}
+        <FlexSplitButton
+          {...(isTabIncluded ? SendWithContentAction : SendAction)}
           variant="highlight"
-          onActionChange={(action) => {
-            setIncludeTab(action === SendWithContentAction);
-          }}
-          disabled={
-            isSubmitting ||
-            editorService.isEmpty() ||
-            fileUploaderService.isProcessingFiles ||
-            fileUploaderService.isCapturing
+          splitAction={
+            isSubmitting ? (
+              <Spinner size="xs" />
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="mini"
+                    variant="highlight"
+                    icon={ChevronDownIcon}
+                    disabled={disabled}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    label={SendAction.label}
+                    onClick={() => setIncludeTab(false)}
+                  />
+                  <DropdownMenuItem
+                    label={SendWithContentAction.label}
+                    onClick={() => setIncludeTab(true)}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
           }
+          disabled={disabled}
         />
       </div>
 
