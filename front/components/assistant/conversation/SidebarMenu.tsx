@@ -2,6 +2,7 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
+  ContactsRobotIcon,
   DocumentIcon,
   DotIcon,
   DropdownMenu,
@@ -20,7 +21,6 @@ import {
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
-  RobotIcon,
   SearchInput,
   Spinner,
   TrashIcon,
@@ -388,7 +388,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     {isBuilder(owner) && (
                       <DropdownMenuItem
                         href={getAgentBuilderRoute(owner.sId, "manage")}
-                        icon={RobotIcon}
+                        icon={ContactsRobotIcon}
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
                         data-gtm-location="sidebarMenu"
