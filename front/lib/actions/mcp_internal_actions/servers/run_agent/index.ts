@@ -46,11 +46,9 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
-import { AgentErrorCategory } from "@app/types";
 import {
   Err,
   getHeaderFromUserEmail,
-  isAgentErrorCategory,
   isGlobalAgentId,
   normalizeError,
   Ok,
