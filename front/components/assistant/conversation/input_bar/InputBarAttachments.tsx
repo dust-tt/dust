@@ -13,6 +13,7 @@ import {
   Icon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
+import sanitizeHtml from "sanitize-html";
 
 import type {
   Attachment,
@@ -162,8 +163,13 @@ export function InputBarAttachments({
       return;
     }
     const text = await blob.file.text();
+    const sanitizedText = sanitizeHtml(text, {
+      allowedTags: [],
+      allowedAttributes: {},
+      disallowedTagsMode: "escape",
+    });
     setViewerTitle(attachment.title);
-    setViewerText(text);
+    setViewerText(sanitizedText);
     setViewerOpen(true);
   };
 

@@ -40,10 +40,11 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, normalizeError } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
 import { getPastedFileName } from "./pasted_utils";
+import { normalize } from "path";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
@@ -152,7 +153,7 @@ const InputBarContainer = ({
         sendNotification({
           type: "error",
           title: "Failed to attach pasted text",
-          description: e instanceof Error ? e.message : undefined,
+          description: normalizeError(e).message,
         });
       }
     },

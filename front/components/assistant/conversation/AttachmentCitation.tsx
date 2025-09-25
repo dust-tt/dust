@@ -86,11 +86,11 @@ export type AttachmentCitation =
   | FileAttachmentCitation
   | NodeAttachmentCitation;
 
-type AttachmentCitationProps = {
+interface AttachmentCitationProps {
   attachmentCitation: AttachmentCitation;
   onRemove?: () => void;
   onClick?: () => void;
-};
+}
 
 function iconForContent(contentType: string | undefined): React.ComponentType {
   if (!contentType) {
