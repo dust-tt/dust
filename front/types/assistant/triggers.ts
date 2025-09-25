@@ -80,6 +80,7 @@ export const TriggerSchema = t.union([
     kind: t.literal("schedule"),
     customPrompt: t.string,
     configuration: ScheduleConfigSchema,
+    editor: t.union([t.number, t.undefined]),
   }),
   t.type({
     name: t.string,
@@ -87,5 +88,6 @@ export const TriggerSchema = t.union([
     customPrompt: t.string,
     configuration: WebhookConfigSchema,
     webhookSourceViewSId: t.string,
+    editor: t.union([t.number, t.undefined]),
   }),
 ]);

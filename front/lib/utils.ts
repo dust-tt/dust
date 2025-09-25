@@ -78,9 +78,20 @@ export function getWeekBoundaries(date: Date): {
   return { startDate, endDate };
 }
 
+/**
+ * Formats a timestamp to a human-readable date string.
+ * @param timestamp
+ * @param version - "long" (default), "short", or "compact"
+ *
+ * long: September 23, 2025 at 3:37:32 PM
+ * short: September 23, 2025
+ * compactWithDay: Sep 23, 2025
+ * compact: Sep, 2025
+ *
+ */
 export function formatTimestampToFriendlyDate(
   timestamp: number,
-  version: "long" | "short" | "compact" = "long"
+  version: "long" | "short" | "compact" | "compactWithDay" = "long"
 ): string {
   const date = new Date(timestamp);
 
@@ -108,6 +119,12 @@ export function formatTimestampToFriendlyDate(
         hour: "numeric",
         minute: "numeric",
         second: "numeric",
+      });
+    case "compactWithDay":
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
   }
 }

@@ -217,7 +217,8 @@ export async function submitFeedbackToAPI({
                 ts: slackMessageTs,
                 blocks: updatedBlocks,
                 text: currentMessage.text || "",
-              })
+              }),
+            { source: "submitFeedbackToAPI" }
           );
         } else {
           logger.warn(
