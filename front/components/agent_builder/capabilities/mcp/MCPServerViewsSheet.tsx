@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   CommandLineIcon,
+  Icon,
   MultiPageSheet,
   MultiPageSheetContent,
   SearchInput,
@@ -85,6 +86,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
+import { getModelProviderLogo } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
@@ -159,6 +162,7 @@ export function MCPServerViewsSheet({
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
+  const { isDark } = useTheme();
   const {
     mcpServerViews: allMcpServerViews,
     mcpServerViewsWithoutKnowledge,
@@ -305,8 +309,9 @@ export function MCPServerViewsSheet({
           // If editing a Run Agent or Run Dust App tool, jump to Additional Configuration page
           const cfgs = getMCPServerToolsConfigurations(mcpServerView);
           if (
-            cfgs.childAgentConfiguration ??
-            cfgs.mayRequireDustAppConfiguration
+            (cfgs.childAgentConfiguration ??
+              cfgs.mayRequireDustAppConfiguration) ||
+            cfgs.reasoningConfiguration
           ) {
             setCurrentPageId(TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION);
           }
@@ -663,7 +668,13 @@ export function MCPServerViewsSheet({
                 />
 
                 {toolsConfigurations.reasoningConfiguration && (
-                  <ReasoningModelSection />
+                  <ReasoningModelSection
+                    onSelected={() =>
+                      setCurrentPageId(
+                        TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION
+                      )
+                    }
+                  />
                 )}
 
                 {toolsConfigurations.childAgentConfiguration && (
@@ -717,7 +728,8 @@ export function MCPServerViewsSheet({
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
                 {(toolsConfigurations.mayRequireDustAppConfiguration ||
-                  toolsConfigurations.childAgentConfiguration) && (
+                  toolsConfigurations.childAgentConfiguration ||
+                  toolsConfigurations.reasoningConfiguration) && (
                   <div className="flex w-full flex-col gap-3">
                     {/* Dust App selection summary card */}
                     {toolsConfigurations.mayRequireDustAppConfiguration &&
@@ -793,6 +805,64 @@ export function MCPServerViewsSheet({
                                   size="sm"
                                   icon={PencilIcon}
                                   label="Edit agent"
+                                  onClick={() =>
+                                    setCurrentPageId(
+                                      TOOLS_SHEET_PAGE_IDS.CONFIGURATION
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })()}
+
+                    {/* Reasoning model selection summary card */}
+                    {toolsConfigurations.reasoningConfiguration &&
+                      (() => {
+                        const selectedModel = form.getValues(
+                          "configuration.reasoningModel"
+                        );
+                        if (!selectedModel) {
+                          return null;
+                        }
+                        const model = reasoningModels.find(
+                          (m) =>
+                            m.modelId === selectedModel.modelId &&
+                            m.providerId === selectedModel.providerId
+                        );
+                        if (!model) {
+                          return null;
+                        }
+                        const LogoComponent = getModelProviderLogo(
+                          model.providerId,
+                          isDark
+                        );
+                        return (
+                          <Card size="sm" className="w-full">
+                            <div className="flex w-full">
+                              <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
+                                <div className="flex items-center gap-2">
+                                  {LogoComponent ? (
+                                    <div className="flex h-6 w-6 items-center justify-center">
+                                      <Icon visual={LogoComponent} size="md" />
+                                    </div>
+                                  ) : null}
+                                  <div className="text-md font-medium">
+                                    {model.displayName}
+                                  </div>
+                                </div>
+                                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                                  {model.description ||
+                                    "No description available"}
+                                </div>
+                              </div>
+                              <div className="ml-4 self-start">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  icon={PencilIcon}
+                                  label="Edit model"
                                   onClick={() =>
                                     setCurrentPageId(
                                       TOOLS_SHEET_PAGE_IDS.CONFIGURATION

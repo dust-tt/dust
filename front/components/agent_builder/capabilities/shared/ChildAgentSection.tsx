@@ -154,13 +154,11 @@ export function ChildAgentSection({ onSelected }: { onSelected?: () => void }) {
       title="Select Agent"
       error={fieldState.error?.message}
     >
-      {isAgentConfigurationsLoading && (
+      {isAgentConfigurationsLoading ? (
         <div className="flex h-full w-full items-center justify-center">
           <Spinner />
         </div>
-      )}
-
-      {!isAgentConfigurationsLoading && (
+      ) : (
         <AgentSelectionTable
           tableData={tableData}
           columns={columns}

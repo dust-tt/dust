@@ -1,14 +1,11 @@
 import {
-  Button,
-  Card,
   ContentMessage,
   ContextItem,
+  Icon,
   InformationCircleIcon,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { Icon } from "@dust-tt/sparkle";
-import { PencilIcon } from "@heroicons/react/20/solid";
 import { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
@@ -88,7 +85,11 @@ function ModelMessage({ title, children }: ModelMessageProps) {
   );
 }
 
-export function ReasoningModelSection() {
+export function ReasoningModelSection({
+  onSelected,
+}: {
+  onSelected?: () => void;
+}) {
   const { owner } = useAgentBuilderContext();
   const { field, fieldState } = useController<
     MCPFormData,
@@ -110,10 +111,7 @@ export function ReasoningModelSection() {
       temperature: null,
       reasoningEffort: null,
     });
-  };
-
-  const handleEditClick = () => {
-    field.onChange(null);
+    onSelected?.();
   };
 
   const selectedReasoningModelConfig = useMemo(
@@ -154,13 +152,11 @@ export function ReasoningModelSection() {
       title="Reasoning Model"
       error={fieldState.error?.message}
     >
-      {isModelsLoading && (
+      {isModelsLoading ? (
         <div className="flex h-full w-full items-center justify-center">
           <Spinner />
         </div>
-      )}
-
-      {!isModelsLoading && shouldShowList && (
+      ) : (
         <ModelSelectionList
           models={reasoningModels}
           searchQuery={searchQuery}
@@ -168,46 +164,6 @@ export function ReasoningModelSection() {
           onModelSelect={handleRowClick}
           isDark={isDark}
         />
-      )}
-
-      {!isModelsLoading && !shouldShowList && selectedReasoningModelConfig && (
-        <Card size="sm" className="w-full">
-          <div className="flex w-full">
-            <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const LogoComponent = getModelProviderLogo(
-                      selectedReasoningModelConfig.providerId,
-                      isDark
-                    );
-                    return LogoComponent ? (
-                      <div className="flex h-8 w-8 items-center justify-center">
-                        <Icon visual={LogoComponent} size="lg" />
-                      </div>
-                    ) : null;
-                  })()}
-                  <div className="text-md font-medium">
-                    {selectedReasoningModelConfig.displayName}
-                  </div>
-                </div>
-              </div>
-              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {selectedReasoningModelConfig.description ||
-                  "No description available"}
-              </div>
-            </div>
-            <div className="ml-4 self-start">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={PencilIcon}
-                label="Edit selection"
-                onClick={handleEditClick}
-              />
-            </div>
-          </div>
-        </Card>
       )}
 
       {!isModelsLoading && !shouldShowList && !selectedReasoningModelConfig && (
