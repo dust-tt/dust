@@ -8,6 +8,7 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
 import { useState } from "react";
@@ -19,6 +20,7 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   AppType,
   LightWorkspaceType,
@@ -158,6 +160,7 @@ export const SpaceAppsList = ({
   onSelect,
   registryApps,
 }: SpaceAppsListProps) => {
+  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const { q: searchParam } = useQueryParams(["q"]);
@@ -184,6 +187,19 @@ export const SpaceAppsList = ({
       })) || [],
     [apps, onSelect, owner]
   );
+
+  React.useEffect(() => {
+    // Extract openAppsModal query param to open modal on first render and remove it from URL
+    if (!router.isReady || !isBuilder) {
+      return;
+    }
+    const openAppsModal = router.query.openAppsModal;
+    if (openAppsModal === undefined) {
+      return;
+    }
+    setIsCreateAppModalOpened(true);
+    void removeParamFromRouter(router, "openAppsModal");
+  }, [router.isReady, router.query.openAppsModal, isBuilder, router]);
 
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,

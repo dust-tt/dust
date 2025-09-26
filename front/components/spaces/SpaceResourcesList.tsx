@@ -45,6 +45,7 @@ import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   ConnectorProvider,
   DataSourceViewCategoryWithoutApps,
@@ -281,6 +282,7 @@ export const SpaceResourcesList = ({
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
+  const [shouldOpenManagedModal, setShouldOpenManagedModal] = useState(false);
 
   const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
@@ -288,6 +290,38 @@ export const SpaceResourcesList = ({
   const isWebsite = category === "website";
   const isFolder = category === "folder";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
+
+  useEffect(() => {
+    if (!router.isReady || !isWebsite) {
+      return;
+    }
+    const openWebsiteModal = router.query.openWebsiteModal;
+    if (openWebsiteModal === undefined) {
+      return;
+    }
+    setSelectedDataSourceView(null);
+    setShowFolderOrWebsiteModal(true);
+    void removeParamFromRouter(router, "openWebsiteModal");
+  }, [isWebsite, router.isReady, router.query.openWebsiteModal, router]);
+
+  useEffect(() => {
+    if (!router.isReady || !isManagedCategory || isSystemSpace) {
+      return;
+    }
+    const openManagedModal = router.query.openManagedModal;
+    if (openManagedModal === undefined) {
+      return;
+    }
+    setSelectedDataSourceView(null);
+    setShouldOpenManagedModal(true);
+    void removeParamFromRouter(router, "openManagedModal");
+  }, [
+    isManagedCategory,
+    isSystemSpace,
+    router.isReady,
+    router.query.openManagedModal,
+    router,
+  ]);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
@@ -472,6 +506,8 @@ export const SpaceResourcesList = ({
           owner={owner}
           systemSpace={systemSpace}
           space={space}
+          shouldOpenModal={shouldOpenManagedModal}
+          onOpenModalHandled={() => setShouldOpenManagedModal(false)}
         />
       )}
       {isFolder && selectedDataSourceView && (

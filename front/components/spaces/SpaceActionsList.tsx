@@ -1,5 +1,6 @@
 import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/router";
 import * as React from "react";
 
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
@@ -18,6 +19,7 @@ import {
   useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_servers";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { isDevelopment } from "@app/types";
 
@@ -43,6 +45,7 @@ export const SpaceActionsList = ({
   isAdmin,
   space,
 }: SpaceActionsListProps) => {
+  const router = useRouter();
   const { q: searchParam } = useQueryParams(["q"]);
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const searchTerm = searchParam.value || "";
@@ -58,6 +61,20 @@ export const SpaceActionsList = ({
     owner,
     space,
   });
+
+  const [shouldOpenToolsMenu, setShouldOpenToolsMenu] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!router.isReady || !isAdmin) {
+      return;
+    }
+    const openToolsModal = router.query.openToolsModal;
+    if (openToolsModal === undefined) {
+      return;
+    }
+    setShouldOpenToolsMenu(true);
+    void removeParamFromRouter(router, "openToolsModal");
+  }, [router.isReady, router.query.openToolsModal, isAdmin, router]);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
@@ -166,6 +183,8 @@ export const SpaceActionsList = ({
             space={space}
             owner={owner}
             onAddServer={onAddServer}
+            shouldOpenMenu={shouldOpenToolsMenu}
+            onOpenMenuHandled={() => setShouldOpenToolsMenu(false)}
           />
         </>
       ) : (
