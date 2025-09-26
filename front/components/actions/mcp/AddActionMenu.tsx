@@ -63,26 +63,26 @@ export const AddActionMenu = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[500px]"
+        className="w-[500px] px-2"
         mountPortalContainer={portalContainer}
       >
-        <DropdownMenuSearchbar
-          className="flex-grow items-center gap-14"
-          placeholder="Search tools..."
-          name="search"
-          value={searchText}
-          onChange={setSearchText}
-          disabled={isAvailableMCPServersLoading}
-          button={
-            <Button
-              icon={PlusIcon}
-              label="Add MCP Server"
-              // Empty call is required given onClick passes a MouseEvent
-              onClick={() => createRemoteMCPServer()}
-              size="xs"
-            />
-          }
-        />
+        <div className="flex items-center">
+          <DropdownMenuSearchbar
+            className="flex-grow items-center gap-14"
+            placeholder="Search tools..."
+            name="search"
+            value={searchText}
+            onChange={setSearchText}
+            disabled={isAvailableMCPServersLoading}
+          />
+          <Button
+            icon={PlusIcon}
+            label="Add MCP Server"
+            // Empty call is required given onClick passes a MouseEvent
+            onClick={() => createRemoteMCPServer()}
+            size="sm"
+          />
+        </div>
         {isAvailableMCPServersLoading && (
           <div className="flex justify-center py-4">
             <Spinner size="sm" />{" "}
@@ -104,7 +104,6 @@ export const AddActionMenu = ({
               key={mcpServer.sId}
               label={getMcpServerDisplayName(mcpServer)}
               icon={() => getAvatar(mcpServer, "xs")}
-              description={mcpServer.description}
               onClick={async () => {
                 const remoteMcpServer = getDefaultRemoteMCPServerByName(
                   mcpServer.name
