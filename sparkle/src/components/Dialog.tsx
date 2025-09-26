@@ -170,7 +170,11 @@ interface DialogContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   fixedContent?: React.ReactNode;
 }
 
-const DialogContainer = ({ children, fixedContent }: DialogContainerProps) => {
+const DialogContainer = ({
+  children,
+  fixedContent,
+  className,
+}: DialogContainerProps) => {
   const contentStyles = cn(
     "s-copy-base s-px-5 s-py-4 s-text-foreground dark:s-text-foreground-night"
   );
@@ -180,7 +184,8 @@ const DialogContainer = ({ children, fixedContent }: DialogContainerProps) => {
       <div
         className={cn(
           contentStyles,
-          "s-relative s-flex s-flex-col s-gap-2 s-text-left"
+          "s-relative s-flex s-flex-col s-gap-2 s-text-left",
+          className
         )}
       >
         {children}
