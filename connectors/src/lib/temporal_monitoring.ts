@@ -166,8 +166,7 @@ export class ActivityInboundLogInterceptor
 
       if (
         err instanceof ExternalOAuthTokenError ||
-        err instanceof WorkspaceQuotaExceededError ||
-        err instanceof ApplicationFailure
+        err instanceof WorkspaceQuotaExceededError
       ) {
         // We have a connector working on an expired token, we need to cancel the workflow.
         const { workflowId } = this.context.info.workflowExecution;
@@ -192,10 +191,6 @@ export class ActivityInboundLogInterceptor
             this.logger.info(
               `Stopping connector manager because of quota exceeded for the workspace.`
             );
-          } else if (err instanceof ApplicationFailure) {
-            // This will be handled automatically by the Temporal SDK.
-            // We don't need to do anything here.
-            return;
           } else {
             assertNever(err);
           }
