@@ -32,6 +32,7 @@ async function processEventForDatabase(
         errorCode: event.error.code,
         errorMessage: event.error.message,
         errorMetadata: event.error.metadata,
+        completedAt: new Date(),
       });
 
       if (event.type === "agent_error") {
@@ -48,7 +49,7 @@ async function processEventForDatabase(
               message: event.error.message,
               metadata: {
                 ...event.error.metadata,
-                category: event.error.metadata?.category || "",
+                category: event.error.metadata?.category ?? "",
               },
             },
           },
@@ -60,6 +61,7 @@ async function processEventForDatabase(
       // Store cancellation in database.
       await agentMessageRow.update({
         status: "cancelled",
+        completedAt: new Date(),
       });
       break;
 
@@ -68,6 +70,7 @@ async function processEventForDatabase(
       await agentMessageRow.update({
         runIds: event.runIds,
         status: "succeeded",
+        completedAt: new Date(),
       });
 
       break;
