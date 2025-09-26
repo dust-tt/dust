@@ -1,5 +1,3 @@
-import moment from "moment-timezone";
-
 import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
@@ -18,6 +16,7 @@ import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { formatCurrentDateInTimezone } from "@app/lib/utils/timezone_dates";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -58,13 +57,12 @@ export async function constructPromptMultiActions(
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
   }
 ) {
-  const d = moment(new Date()).tz(userMessage.context.timezone);
   const owner = auth.workspace();
 
   // CONTEXT section
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
-  context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
+  context += `current_date: ${formatCurrentDateInTimezone(new Date(), userMessage.context.timezone)}\n`;
   context += `model_id: ${model.modelId}\n`;
   if (conversationId) {
     context += `conversation_id: ${conversationId}\n`;
