@@ -317,7 +317,8 @@ export async function* tryCallMCPTool(
         MCPServerPersonalAuthenticationRequiredError
       ) {
         return {
-          isError: true,
+          // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
+          isError: false,
           content: makePersonalAuthenticationError(
             connectionResult.error.provider,
             connectionResult.error.scope
