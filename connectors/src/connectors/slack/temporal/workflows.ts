@@ -285,7 +285,8 @@ export async function syncOneMessageDebounced(
     await getSlackActivities().syncChannelMetadata(
       connectorId,
       channelId,
-      endTsMs
+      // endTsMs can be in the future so we cap it to now for the channel metadata.
+      Math.min(new Date().getTime(), endTsMs)
     );
 
     await getSlackActivities().syncNonThreaded({
