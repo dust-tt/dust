@@ -35,7 +35,7 @@ async function createRedisClient({
     },
   });
   client.on("error", (err) =>
-    logger.info({ err, origin }, "Redis Client Error")
+    logger.error({ err, origin }, "Redis Client Error")
   );
   client.on("connect", () => {
     statsDClient.increment("redis.connection.count", 1, [`origin:${origin}`]);
