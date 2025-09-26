@@ -246,6 +246,7 @@ interface AvatarStackProps {
   size?: AvatarStackSizeType;
   isRounded?: boolean;
   hasMagnifier?: boolean;
+  tooltipTriggerAsChild?: boolean;
 }
 
 const sizeClassesPx: Record<AvatarStackSizeType, number> = {
@@ -260,6 +261,7 @@ Avatar.Stack = function ({
   size = "sm",
   isRounded = false,
   hasMagnifier = true,
+  tooltipTriggerAsChild = false,
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -299,7 +301,7 @@ Avatar.Stack = function ({
   return (
     <Tooltip
       label={tooltipLabel}
-      tooltipTriggerAsChild
+      tooltipTriggerAsChild={tooltipTriggerAsChild}
       trigger={
         <>
           <div
