@@ -2,6 +2,16 @@ import React from "react";
 import { visit } from "unist-util-visit";
 import type { Root } from "hast";
 import type { DirectiveNode, MarkdownNode, MdastNode } from "./types";
+import { OlBlock, UlBlock } from "@sparkle/components/markdown/List";
+import {
+  TableBlock,
+  TableHeadBlock,
+  TableBodyBlock,
+  TableHeaderBlock,
+  TableDataBlock,
+} from "@sparkle/components/markdown/TableBlock";
+import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
+import { PreBlock } from "@sparkle/components/markdown/PreBlock";
 
 export function isDirectiveNode(node: unknown): node is DirectiveNode {
   return (
@@ -22,6 +32,43 @@ export function getElementProps(
   el: React.ReactElement
 ): { children?: React.ReactNode } & Record<string, unknown> {
   return el.props as { children?: React.ReactNode } & Record<string, unknown>;
+}
+
+export function isListElement(el: unknown): boolean {
+  return (
+    React.isValidElement(el) &&
+    (el.type === "ul" ||
+      el.type === "ol" ||
+      el.type === UlBlock ||
+      el.type === OlBlock)
+  );
+}
+
+export function isTableElement(el: unknown): boolean {
+  return (
+    React.isValidElement(el) &&
+    (el.type === "table" ||
+      el.type === TableBlock ||
+      el.type === "thead" ||
+      el.type === TableHeadBlock ||
+      el.type === "tbody" ||
+      el.type === TableBodyBlock ||
+      el.type === "th" ||
+      el.type === TableHeaderBlock ||
+      el.type === "td" ||
+      el.type === TableDataBlock ||
+      el.type === "tr")
+  );
+}
+
+export function isCodeElement(el: unknown): boolean {
+  return (
+    React.isValidElement(el) &&
+    (el.type === "code" ||
+      el.type === CodeBlockWithExtendedSupport ||
+      el.type === "pre" ||
+      el.type === PreBlock)
+  );
 }
 
 export function showUnsupportedDirective() {
