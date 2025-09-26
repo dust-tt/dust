@@ -40,10 +40,12 @@ const CreatePagePayloadSchema = z.object({
   title: z.string(),
   status: z.string().optional().default("current"),
   parentId: z.string().optional(),
-  body: z.object({
-    value: z.string(),
-    representation: z.string(),
-  }).optional(),
+  body: z
+    .object({
+      value: z.string(),
+      representation: z.string(),
+    })
+    .optional(),
 });
 
 type WithAuthParams = {
