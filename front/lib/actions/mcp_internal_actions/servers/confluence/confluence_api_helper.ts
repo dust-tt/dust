@@ -34,6 +34,8 @@ const AtlassianResourceSchema = z.array(
   })
 );
 
+const ALLOWED_DOMAINS = ["api.atlassian.com"];
+
 // Schema for page creation payload
 const CreatePagePayloadSchema = z.object({
   spaceId: z.string(),
@@ -55,23 +57,13 @@ type WithAuthParams = {
 
 type ConfluenceErrorResult = string;
 
-/**
- * Validate that a base URL is a legitimate Atlassian domain
- */
 function validateAtlassianBaseUrl(baseUrl: string): boolean {
   try {
     const url = new URL(baseUrl);
-
-    // Only allow HTTPS
     if (url.protocol !== "https:") {
       return false;
     }
-
-    // Only allow official Atlassian API domains
-    const allowedDomains = [
-      "api.atlassian.com",
-      // Add other legitimate Atlassian domains if needed
-    ];
+    const allowedDomains = ALLOWED_DOMAINS;
 
     return allowedDomains.includes(url.hostname);
   } catch {
@@ -96,7 +88,6 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   }
 ): Promise<Result<z.infer<T>, ConfluenceErrorResult>> {
   try {
-    // Validate base URL before making the request
     if (!validateAtlassianBaseUrl(options.baseUrl)) {
       const msg = `Invalid or untrusted base URL: ${options.baseUrl}`;
       logger.error(`[Confluence MCP Server] ${msg}`);
@@ -126,8 +117,6 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
     }
 
     const rawData = JSON.parse(responseText);
-
-    // Allow any response - if schema validation fails, return raw data
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
@@ -138,7 +127,6 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
           endpoint,
         }
       );
-      // Return raw data instead of failing
       return new Ok(rawData);
     }
 
@@ -154,9 +142,7 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   }
 }
 
-/**
- * Get Confluence resource information using the access token
- */
+//Get Confluence resource information using the access token
 async function getConfluenceResourceInfo(
   accessToken: string
 ): Promise<{ id: string; name: string; url: string } | null> {
@@ -181,8 +167,6 @@ async function getConfluenceResourceInfo(
     logger.error("No accessible resources found");
     return null;
   }
-
-  // Return the first accessible resource
   const resource = resources[0];
   return {
     id: resource.id,
@@ -191,9 +175,6 @@ async function getConfluenceResourceInfo(
   };
 }
 
-/**
- * Get the base URL for Confluence API calls
- */
 async function getConfluenceBaseUrl(
   accessToken: string
 ): Promise<string | null> {
@@ -201,7 +182,6 @@ async function getConfluenceBaseUrl(
   if (resourceInfo?.id) {
     const baseUrl = `https://api.atlassian.com/ex/confluence/${resourceInfo.id}`;
 
-    // Validate the constructed URL
     if (!validateAtlassianBaseUrl(baseUrl)) {
       logger.error(
         `[Confluence MCP Server] Invalid base URL constructed: ${baseUrl}`
@@ -214,9 +194,6 @@ async function getConfluenceBaseUrl(
   return null;
 }
 
-/**
- * Helper function to handle authentication and make API calls
- */
 export const withAuth = async ({
   authInfo,
   action,
@@ -244,9 +221,6 @@ export const withAuth = async ({
   }
 };
 
-/**
- * Get current user information - internal helper
- */
 async function getCurrentUserInternal(
   _baseUrl: string,
   accessToken: string
@@ -269,9 +243,6 @@ async function getCurrentUserInternal(
   return new Ok(result.value);
 }
 
-/**
- * List spaces with optional filtering - internal helper
- */
 async function listSpacesInternal(
   baseUrl: string,
   accessToken: string,
@@ -327,9 +298,6 @@ async function listSpacesInternal(
   return new Ok(result.value);
 }
 
-/**
- * List pages with optional filtering - internal helper
- */
 async function listPagesInternal(
   baseUrl: string,
   accessToken: string,
@@ -338,12 +306,9 @@ async function listPagesInternal(
   const searchParams = new URLSearchParams();
   let endpoint: string;
 
-  // If spaceId is provided, use the space-specific endpoint for better performance
   if (params.spaceId) {
-    // Use /spaces/{id}/pages endpoint for space-specific listing
     endpoint = `/wiki/api/v2/spaces/${params.spaceId}/pages`;
 
-    // For space-specific endpoint, don't include space-id in query params
     if (params.parentId) {
       searchParams.append("parent-id", params.parentId);
     }
@@ -363,7 +328,6 @@ async function listPagesInternal(
       searchParams.append("limit", params.limit.toString());
     }
   } else {
-    // Use general /pages endpoint for global listing
     endpoint = `/wiki/api/v2/pages`;
 
     if (params.parentId) {
@@ -386,7 +350,6 @@ async function listPagesInternal(
     }
   }
 
-  // Append query parameters if any exist
   if (searchParams.toString()) {
     endpoint += `?${searchParams.toString()}`;
   }
@@ -409,9 +372,6 @@ async function listPagesInternal(
   return new Ok(result.value);
 }
 
-/**
- * Get a single page by ID with optional body expansion - internal helper
- */
 async function getPageInternal(
   baseUrl: string,
   accessToken: string,
@@ -420,7 +380,6 @@ async function getPageInternal(
 ): Promise<Result<ConfluencePage | null, string>> {
   const searchParams = new URLSearchParams();
   if (includeBody) {
-    // Use body-format parameter for Confluence API v2 - API expects single format
     searchParams.append("body-format", "storage");
   }
 
@@ -438,7 +397,6 @@ async function getPageInternal(
   );
 
   if (result.isErr()) {
-    // Handle 404 as null result
     if (result.error.includes("404")) {
       return new Ok(null);
     }
@@ -448,15 +406,11 @@ async function getPageInternal(
   return new Ok(result.value);
 }
 
-/**
- * Update an existing page - internal helper
- */
 async function updatePageInternal(
   baseUrl: string,
   accessToken: string,
   updateData: ConfluenceUpdatePageRequest
 ): Promise<Result<ConfluencePage, string>> {
-  // First, get the current page data to preserve existing values
   const currentPageResult = await getPageInternal(
     baseUrl,
     accessToken,
@@ -476,8 +430,6 @@ async function updatePageInternal(
   const currentPage = currentPageResult.value;
   const endpoint = `/wiki/api/v2/pages/${updateData.id}`;
 
-  // Prepare the update payload - include id in the body as required by the API
-  // Use existing values as defaults to avoid null/undefined issues
   const payload: {
     id: string;
     version: { number: number; message?: string };
@@ -489,12 +441,10 @@ async function updatePageInternal(
   } = {
     id: updateData.id,
     version: updateData.version,
-    // Always include required fields, using existing values if not provided
     status: updateData.status ?? (currentPage.status || "current"),
     title: updateData.title ?? currentPage.title,
   };
 
-  // Optional fields - only include if provided or if they exist in current page
   if (updateData.spaceId ?? currentPage.spaceId) {
     payload.spaceId = updateData.spaceId ?? currentPage.spaceId;
   }
@@ -529,9 +479,6 @@ async function updatePageInternal(
   return new Ok(result.value);
 }
 
-/**
- * Create a new page - internal helper
- */
 async function createPageInternal(
   baseUrl: string,
   accessToken: string,
@@ -539,7 +486,6 @@ async function createPageInternal(
 ): Promise<Result<ConfluencePage, string>> {
   const endpoint = `/wiki/api/v2/pages`;
 
-  // Use the schema to validate and prepare the payload
   const payloadData = {
     spaceId: createData.spaceId,
     title: createData.title,
@@ -574,8 +520,6 @@ async function createPageInternal(
 
   return new Ok(result.value);
 }
-
-// Wrapper functions that return CallToolResult - following Jira MCP pattern
 
 export async function getCurrentUser(): Promise<CallToolResult> {
   return makeMCPToolTextError(

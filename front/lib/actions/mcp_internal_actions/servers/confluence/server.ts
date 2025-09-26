@@ -11,13 +11,8 @@ import {
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
 
-const createServer = (
-  _auth?: Authenticator,
-  _agentLoopContext?: AgentLoopContextType
-): McpServer => {
+const createServer = (): McpServer => {
   const server = makeInternalMCPServer("confluence");
 
   server.tool(
