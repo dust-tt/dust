@@ -142,7 +142,6 @@ export function AgentBuilderInstructionsEditor({
         }
       },
       onBlur: () => {
-        console.log("onBlur");
         window.dispatchEvent(new CustomEvent("agent:instructions:blur"));
         return false;
       },

@@ -104,7 +104,6 @@ function AgentNameInput() {
     });
 
     if (result.isErr()) {
-      console.error("Failed to generate name suggestions:", result.error);
       sendNotification({
         type: "error",
         title: "Failed to generate name suggestions",
@@ -223,7 +222,6 @@ function AgentDescriptionInput() {
     });
 
     if (result.isErr()) {
-      console.error("Failed to generate description:", result.error);
       sendNotification({
         type: "error",
         title: "Failed to generate description",
