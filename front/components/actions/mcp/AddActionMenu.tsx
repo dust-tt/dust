@@ -63,11 +63,11 @@ export const AddActionMenu = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[500px]"
+        className="w-96"
+        align="end"
         mountPortalContainer={portalContainer}
       >
         <DropdownMenuSearchbar
-          className="flex-grow items-center gap-14"
           placeholder="Search tools..."
           name="search"
           value={searchText}
@@ -79,7 +79,7 @@ export const AddActionMenu = ({
               label="Add MCP Server"
               // Empty call is required given onClick passes a MouseEvent
               onClick={() => createRemoteMCPServer()}
-              size="xs"
+              size="sm"
             />
           }
         />
@@ -104,7 +104,6 @@ export const AddActionMenu = ({
               key={mcpServer.sId}
               label={getMcpServerDisplayName(mcpServer)}
               icon={() => getAvatar(mcpServer, "xs")}
-              description={mcpServer.description}
               onClick={async () => {
                 const remoteMcpServer = getDefaultRemoteMCPServerByName(
                   mcpServer.name
