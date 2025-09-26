@@ -58,6 +58,7 @@ import type {
 } from "@app/types";
 import {
   ANONYMOUS_USER_IMAGE_URL,
+  isString,
   isWebsiteOrFolderCategory,
 } from "@app/types";
 

@@ -21,7 +21,7 @@ import {
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { isDevelopment } from "@app/types";
+import { isDevelopment, isString } from "@app/types";
 
 import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";

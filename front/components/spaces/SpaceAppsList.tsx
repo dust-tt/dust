@@ -23,6 +23,7 @@ import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   AppType,
+  isString,
   LightWorkspaceType,
   SpaceType,
   WorkspaceType,
