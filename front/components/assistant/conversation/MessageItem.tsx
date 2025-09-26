@@ -16,6 +16,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { cn } from "@dust-tt/sparkle";
 
 interface MessageItemProps {
   index: number;
@@ -120,7 +121,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div
             key={`message-id-${sId}`}
             ref={ref}
-            className="min-w-60 max-w-full"
+            className="mb-6 min-w-60 max-w-full md:mb-8"
           >
             <UserMessage
               citations={citations}
@@ -137,9 +138,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div
             key={`message-id-${sId}`}
             ref={ref}
-            className={
-              index !== 0 && !isLastMessage ? "my-6 w-full md:my-8" : "w-full"
-            }
+            className={cn("w-full", !isLastMessage ? "mb-6 md:mb-8" : "")}
           >
             <AgentMessage
               conversationId={conversationId}
