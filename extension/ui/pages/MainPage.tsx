@@ -83,7 +83,7 @@ export const MainPage = ({
                   <Button
                     icon={ExternalLinkIcon}
                     variant="ghost"
-                    href={`${user.dustDomain}/w/${workspace.sId}/agent/${conversationId}`}
+                    href={`${user.dustDomain}/w/${workspace.sId}/assistant/${conversationId}`}
                     target="_blank"
                     size="sm"
                     tooltip="Open in Dust"

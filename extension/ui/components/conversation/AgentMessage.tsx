@@ -417,7 +417,7 @@ export function AgentMessage({
             label="See visualization on Dust website"
             onClick={() => {
               window.open(
-                `${user.dustDomain}/w/${owner.sId}/agent/${conversationId}`
+                `${user.dustDomain}/w/${owner.sId}/assistant/${conversationId}`
               );
             }}
           />
