@@ -39,7 +39,7 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
-import { ConversationMenu } from "@app/components/assistant/conversation/ConversationMenu";
+import { ConversationMenu, useConversationRightClick } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -510,6 +510,13 @@ const RenderConversation = ({
   const [menuTriggerPosition, setMenuTriggerPosition] = useState<
     { x: number; y: number } | undefined
   >();
+
+  const { handleRightClick, handleMenuOpenChange } = useConversationRightClick(
+    isMenuOpen,
+    setMenuTriggerPosition,
+    setIsMenuOpen
+  );
+
   const conversationLabel =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversation.title ||
@@ -521,25 +528,14 @@ const RenderConversation = ({
     <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
   );
 
-  const handleRightClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenuTriggerPosition({ x: e.clientX, y: e.clientY });
-    setIsMenuOpen(true);
-  }, []);
-
-  const handleMenuOpenChange = useCallback(
-    (open: boolean) => {
-      setIsMenuOpen(open);
-      if (!open && menuTriggerPosition) {
-        // Delay clearing position to allow closing animation to complete
-        setTimeout(() => {
-          setMenuTriggerPosition(undefined);
-        }, 150); // Match typical dropdown close animation duration
-      }
-    },
-    [menuTriggerPosition]
-  );
+  // Clear position when menu closes (keep the animation delay logic here)
+  useEffect(() => {
+    if (!isMenuOpen && menuTriggerPosition) {
+      setTimeout(() => {
+        setMenuTriggerPosition(undefined);
+      }, 150);
+    }
+  }, [isMenuOpen, menuTriggerPosition]);
 
   return (
     <>

@@ -13,7 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
@@ -28,6 +28,73 @@ import {
 import { useUser } from "@app/lib/swr/user";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
+
+/**
+ * Hook for handling right-click context menu with timing protection
+ *
+ * This hook solves the "double right-click" problem where right-clicking while
+ * a menu is open would cause it to close and immediately reopen at the cursor position.
+ *
+ * The core issue: DropdownMenu doesn't add a backdrop to catch events, so right-clicks
+ * while the menu is open still trigger our handlers. Due to React's async state updates,
+ * when the menu closes, our right-click handler sees isMenuOpen as false and reopens the menu.
+ */
+export function useConversationRightClick(
+  isMenuOpen: boolean,
+  setMenuTriggerPosition: (
+    position: { x: number; y: number } | undefined
+  ) => void,
+  setIsMenuOpen: (open: boolean) => void
+) {
+  // Tracks if the menu was just closed to prevent immediate reopening
+  // This flag creates a brief "cooldown" period after menu closure
+  const [wasMenuJustClosed, setWasMenuJustClosed] = useState(false);
+
+  const handleMenuOpenChange = useCallback(
+    (open: boolean) => {
+      setIsMenuOpen(open);
+      if (!open) {
+        // When menu closes, set the "just closed" flag for 100ms
+        // This prevents right-click handlers from immediately reopening the menu
+        setWasMenuJustClosed(true);
+        setTimeout(() => {
+          setWasMenuJustClosed(false);
+        }, 100);
+      }
+    },
+    [setIsMenuOpen]
+  );
+
+  const handleRightClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Ignore right-clicks if menu is currently open OR was just closed
+      // This prevents the close -> immediate reopen behavior
+      if (isMenuOpen || wasMenuJustClosed) {
+        return;
+      }
+
+      // Open menu at cursor position
+      setMenuTriggerPosition({ x: e.clientX, y: e.clientY });
+      setIsMenuOpen(true);
+    },
+    [isMenuOpen, wasMenuJustClosed, setMenuTriggerPosition, setIsMenuOpen]
+  );
+
+  // Clear the trigger position when menu closes to allow animations to complete
+  // The 150ms delay ensures smooth closing animation before position reset
+  useEffect(() => {
+    if (!isMenuOpen && setMenuTriggerPosition) {
+      setTimeout(() => {
+        setMenuTriggerPosition(undefined);
+      }, 150);
+    }
+  }, [isMenuOpen, setMenuTriggerPosition]);
+
+  return { handleRightClick, handleMenuOpenChange };
+}
 
 export function ConversationMenu({
   activeConversationId,

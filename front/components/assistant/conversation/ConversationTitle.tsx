@@ -1,8 +1,8 @@
 import { Button, MoreIcon } from "@dust-tt/sparkle";
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
-import { ConversationMenu } from "@app/components/assistant/conversation/ConversationMenu";
+import { ConversationMenu, useConversationRightClick } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -22,25 +22,12 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     { x: number; y: number } | undefined
   >();
 
-  const handleRightClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenuTriggerPosition({ x: e.clientX, y: e.clientY });
-    setIsMenuOpen(true);
-  }, []);
-
-  const handleMenuOpenChange = useCallback(
-    (open: boolean) => {
-      setIsMenuOpen(open);
-      if (!open && menuTriggerPosition) {
-        // Delay clearing position to allow closing animation to complete
-        setTimeout(() => {
-          setMenuTriggerPosition(undefined);
-        }, 150); // Match typical dropdown close animation duration
-      }
-    },
-    [menuTriggerPosition]
+  const { handleRightClick, handleMenuOpenChange } = useConversationRightClick(
+    isMenuOpen,
+    setMenuTriggerPosition,
+    setIsMenuOpen
   );
+
 
   if (!activeConversationId) {
     return null;
