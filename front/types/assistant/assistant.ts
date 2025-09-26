@@ -1670,6 +1670,9 @@ export enum GLOBAL_AGENTS_SID {
   GPT35_TURBO = "gpt-3.5-turbo",
   GPT4 = "gpt-4",
   GPT5 = "gpt-5",
+  GPT5_THINKING = "gpt-5-thinking",
+  GPT5_NANO = "gpt-5-nano",
+  GPT5_MINI = "gpt-5-mini",
   O1 = "o1",
   O1_MINI = "o1-mini",
   O1_HIGH_REASONING = "o1_high",
@@ -1700,6 +1703,9 @@ export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
     case GLOBAL_AGENTS_SID.GPT4:
     case GLOBAL_AGENTS_SID.GPT5:
+    case GLOBAL_AGENTS_SID.GPT5_THINKING:
+    case GLOBAL_AGENTS_SID.GPT5_NANO:
+    case GLOBAL_AGENTS_SID.GPT5_MINI:
     case GLOBAL_AGENTS_SID.O1:
     case GLOBAL_AGENTS_SID.O1_MINI:
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
