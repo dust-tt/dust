@@ -234,7 +234,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     permissionsDisabledPlaceholder: "N/A",
     description: "N/A",
     limitations: "N/A",
-    mismatchError: "N/A",
+    mismatchError: `You cannot select another Slack Team.\nPlease contact us at support@dust.tt if you initially selected the wrong Team.`,
     guideLink: "https://docs.dust.tt/docs/slack-connection",
     selectLabel: "N/A",
     getLogoComponent: () => {
