@@ -148,53 +148,10 @@ export function AssistantDetailsButtonBar({
             <Button icon={MoreIcon} size="sm" variant="ghost" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem
-              label="Copy agent ID"
-              onClick={async (e) => {
-                e.stopPropagation();
-                await navigator.clipboard.writeText(agentConfiguration.sId);
-              }}
-              icon={BracesIcon}
+            <AssistantDetailsDropdownMenu 
+              agentConfiguration={agentConfiguration}
+              owner={owner}
             />
-            <DropdownMenuItem
-              label={isExporting ? "Exporting..." : "Export to YAML"}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleExportToYAML();
-              }}
-              icon={isExporting ? <Spinner size="xs" /> : DocumentIcon}
-              disabled={isExporting}
-            />
-            {agentConfiguration.scope !== "global" && (
-              <>
-                <DropdownMenuItem
-                  label="Duplicate (New)"
-                  data-gtm-label="assistantDuplicationButton"
-                  data-gtm-location="assistantDetails"
-                  icon={ClipboardIcon}
-                  onClick={async (e) => {
-                    await router.push(
-                      getAgentBuilderRoute(
-                        owner.sId,
-                        "new",
-                        `duplicate=${agentConfiguration.sId}`
-                      )
-                    );
-                    e.stopPropagation();
-                  }}
-                />
-                {allowDeletion && (
-                  <DropdownMenuItem
-                    label="Archive"
-                    icon={TrashIcon}
-                    onClick={() => {
-                      setShowDeletionModal(true);
-                    }}
-                    variant="warning"
-                  />
-                )}
-              </>
-            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </>
@@ -270,13 +227,15 @@ interface AssistantDetailsDropdownMenuProps {
   owner: WorkspaceType;
   onClose?: () => void;
   showEditOption?: boolean;
+  onDeleteClick?: () => void;
 }
 
 export function AssistantDetailsDropdownMenu({ 
   agentConfiguration, 
   owner, 
   onClose,
-  showEditOption = false
+  showEditOption = false,
+  onDeleteClick
 }: AssistantDetailsDropdownMenuProps) {
   const { user } = useUser();
   const sendNotification = useSendNotification();
@@ -346,15 +305,17 @@ export function AssistantDetailsDropdownMenu({
 
   return (
     <>
-      <DeleteAssistantDialog
-        owner={owner}
-        isOpen={showDeletionModal}
-        agentConfiguration={agentConfiguration}
-        onClose={() => {
-          setShowDeletionModal(false);
-          onClose?.();
-        }}
-      />
+      {!onDeleteClick && (
+        <DeleteAssistantDialog
+          owner={owner}
+          isOpen={showDeletionModal}
+          agentConfiguration={agentConfiguration}
+          onClose={() => {
+            setShowDeletionModal(false);
+            onClose?.();
+          }}
+        />
+      )}
       {showEditOption && agentConfiguration.scope !== "global" && canEditAssistant && (
         <DropdownMenuItem
           label="Edit agent"
@@ -410,7 +371,11 @@ export function AssistantDetailsDropdownMenu({
               icon={TrashIcon}
               onClick={(e) => {
                 e.stopPropagation();
-                setShowDeletionModal(true);
+                if (onDeleteClick) {
+                  onDeleteClick();
+                } else {
+                  setShowDeletionModal(true);
+                }
               }}
               variant="warning"
             />

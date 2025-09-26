@@ -32,6 +32,7 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
+import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -83,14 +84,13 @@ type AgentGridProps = {
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   handleMoreClick: (agentId: string) => void;
   owner: WorkspaceType;
-  user: UserType;
 };
+
 export const AgentGrid = ({
   agentConfigurations,
   handleAssistantClick,
   handleMoreClick,
   owner,
-  user,
 }: AgentGridProps) => {
   // Context menu state
   const [contextMenuAgent, setContextMenuAgent] =
@@ -99,6 +99,8 @@ export const AgentGrid = ({
     x: number;
     y: number;
   } | null>(null);
+  const [showDeletionModal, setShowDeletionModal] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<LightAgentConfigurationType | null>(null);
 
   // Handle "infinite" scroll
   // We only start with 9 items shown (no need more on mobile) and load more until we fill the parent container.
@@ -154,7 +156,6 @@ export const AgentGrid = ({
               onClick={() => handleAssistantClick(agent)}
               onContextMenu={(e) => {
                 e.preventDefault();
-                console.log("onContextMenu", e);
                 setContextMenuAgent(agent);
                 setContextMenuPosition({ x: e.clientX, y: e.clientY });
               }}
@@ -199,10 +200,27 @@ export const AgentGrid = ({
                   setContextMenuPosition(null);
                 }}
                 showEditOption={true}
+                onDeleteClick={() => {
+                  setAgentToDelete(contextMenuAgent);
+                  setShowDeletionModal(true);
+                  setContextMenuAgent(null);
+                  setContextMenuPosition(null);
+                }}
               />
             </DropdownMenuContent>
           </DropdownMenuPortal>
         </DropdownMenu>
+      )}
+      {agentToDelete && (
+        <DeleteAssistantDialog
+          owner={owner}
+          isOpen={showDeletionModal}
+          agentConfiguration={agentToDelete}
+          onClose={() => {
+            setShowDeletionModal(false);
+            setAgentToDelete(null);
+          }}
+        />
       )}
     </>
   );
@@ -651,7 +669,6 @@ export function AssistantBrowser({
                     handleAssistantClick={handleAssistantClick}
                     handleMoreClick={setDisplayedAssistantId}
                     owner={owner}
-                    user={user}
                   />
                 </React.Fragment>
               ))}
@@ -664,7 +681,6 @@ export function AssistantBrowser({
             handleAssistantClick={handleAssistantClick}
             handleMoreClick={setDisplayedAssistantId}
             owner={owner}
-            user={user}
           />
         )
       )}
