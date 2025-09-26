@@ -1,4 +1,4 @@
-import { redisCacheClient } from "./redis_client";
+import { redisClient } from "./redis_client";
 
 // JSON-serializable primitive types.
 type JsonPrimitive = string | number | boolean | null;
@@ -49,7 +49,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   }
 
   return async (...args: Args): Promise<JsonSerializable<T>> => {
-    const redis = await redisCacheClient({ origin: "cache_with_redis" });
+    const redis = await redisClient({ origin: "cache_with_redis" });
 
     const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
 

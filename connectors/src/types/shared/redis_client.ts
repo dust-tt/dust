@@ -16,7 +16,9 @@ type RedisUsageTagsType =
   | "lock"
   | "rate_limiter";
 
-type RedisCacheUsageTagsType = "cache_with_redis";
+const REDIS_CACHE_USAGE_TAG = "cache_with_redis";
+
+type RedisCacheUsageTagsType = typeof REDIS_CACHE_USAGE_TAG;
 
 async function createRedisClient({
   origin,
@@ -49,38 +51,29 @@ async function createRedisClient({
   return client;
 }
 
-export async function redisClient({ origin }: { origin: RedisUsageTagsType }) {
-  if (client) {
-    return client;
-  }
-
-  const { REDIS_URI } = process.env;
-  if (!REDIS_URI) {
-    throw new Error("REDIS_URI is not defined");
-  }
-
-  client = await createRedisClient({ origin, redisUri: REDIS_URI });
-
-  return client;
-}
-
-export async function redisCacheClient({
+export async function redisClient({
   origin,
 }: {
-  origin: RedisCacheUsageTagsType;
+  origin: RedisUsageTagsType | RedisCacheUsageTagsType;
 }) {
-  if (cacheClient) {
-    return cacheClient;
+  const isCache = origin === REDIS_CACHE_USAGE_TAG;
+  const targetClient = isCache ? cacheClient : client;
+
+  if (targetClient) {
+    return targetClient;
   }
 
-  const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
-  if (!REDIS_CACHE_URI) {
-    throw new Error("REDIS_CACHE_URI is not set");
+  const { REDIS_URI, REDIS_CACHE_URI } = process.env;
+  const redisUri = isCache ? REDIS_CACHE_URI : REDIS_URI;
+  if (!redisUri) {
+    throw new Error(
+      `${isCache ? "REDIS_CACHE_URI" : "REDIS_URI"} is not defined`
+    );
   }
 
-  cacheClient = await createRedisClient({ origin, redisUri: REDIS_CACHE_URI });
+  client = await createRedisClient({ origin, redisUri });
 
-  return cacheClient;
+  return client;
 }
 
 export async function closeRedisClients() {
