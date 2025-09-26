@@ -138,6 +138,15 @@ async function createConversationForAgentConfiguration({
   });
 
   if (messageRes.isErr()) {
+    logger.error(
+      {
+        agentConfigurationId: trigger.agentConfigurationId,
+        conversationId: newConversation.sId,
+        error: messageRes.error,
+        triggerId: trigger.sId,
+      },
+      "scheduledAgentCallActivity: Error sending message."
+    );
     return messageRes;
   }
 
