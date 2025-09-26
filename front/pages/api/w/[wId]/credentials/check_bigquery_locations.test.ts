@@ -110,11 +110,7 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
       locations: {
         us: ["dataset1.table1", "dataset1.table2"],
         eu: ["dataset2.table3"],
-        "eu-central1": [
-          "dataset2.table3",
-          "dataset3.table4",
-          "dataset4.table5",
-        ],
+        "eu-central1": ["dataset3.table4", "dataset4.table5"],
       },
     });
   });
