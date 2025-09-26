@@ -86,5 +86,7 @@ export async function redisCacheClient({
 
 export async function closeRedisClients() {
   await client?.quit();
+  client = null;
   await cacheClient?.quit();
+  cacheClient = null;
 }
