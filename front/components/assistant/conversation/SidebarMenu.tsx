@@ -37,7 +37,7 @@ import {
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import React, {
+import {
   useCallback,
   useContext,
   useEffect,
@@ -48,7 +48,10 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
-import { ConversationMenu } from "@app/components/assistant/conversation/ConversationMenu";
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -582,6 +585,13 @@ const RenderConversation = ({
   owner: WorkspaceType;
 }) => {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const {
+    isMenuOpen,
+    menuTriggerPosition,
+    handleRightClick,
+    handleMenuOpenChange,
+  } = useConversationMenu();
+
   const conversationLabel =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversation.title ||
@@ -628,8 +638,12 @@ const RenderConversation = ({
               owner={owner}
               trigger={<NavigationListItemAction />}
               isConversationDisplayed={router.query.cId === conversation.sId}
+              isOpen={isMenuOpen}
+              onOpenChange={handleMenuOpenChange}
+              triggerPosition={menuTriggerPosition}
             />
           }
+          onContextMenu={handleRightClick}
           onClick={async () => {
             // Side bar is the floating sidebar that appears when the screen is small.
             if (sidebarOpen) {

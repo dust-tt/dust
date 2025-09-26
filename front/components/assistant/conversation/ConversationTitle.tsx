@@ -1,7 +1,10 @@
 import { Button, MoreIcon } from "@dust-tt/sparkle";
 
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
-import { ConversationMenu } from "@app/components/assistant/conversation/ConversationMenu";
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -16,13 +19,23 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
   });
 
+  const {
+    isMenuOpen,
+    menuTriggerPosition,
+    handleRightClick,
+    handleMenuOpenChange,
+  } = useConversationMenu();
+
   if (!activeConversationId) {
     return null;
   }
 
   return (
     <AppLayoutTitle>
-      <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
+      <div
+        className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4"
+        onContextMenu={handleRightClick}
+      >
         <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
           <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-sm font-normal">
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
@@ -52,6 +65,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               />
             }
             isConversationDisplayed={true}
+            isOpen={isMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            triggerPosition={menuTriggerPosition}
           />
         </div>
       </div>
