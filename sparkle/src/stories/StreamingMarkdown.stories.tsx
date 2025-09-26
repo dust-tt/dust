@@ -1,14 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import type { Root } from "mdast";
 import React from "react";
+import type { Components } from "react-markdown";
 import { visit } from "unist-util-visit";
 
-import { Markdown,StreamingMarkdown } from "../index_with_tw_base";
+import { Markdown, StreamingMarkdown } from "../index_with_tw_base";
 
 // Mock types and components for citations and mentions (only for Storybook demos)
 type MarkdownCitation = {
   href?: string;
   title: string;
-  [key: string]: any;
 };
 
 type CitationsContextType = {
@@ -24,7 +25,12 @@ const CitationsContext = React.createContext<CitationsContextType>({
 });
 
 // Mock CiteBlock component for Storybook
-function CiteBlock(props: any) {
+interface CiteBlockProps {
+  references?: string;
+  children?: React.ReactNode;
+}
+
+function CiteBlock(props: CiteBlockProps) {
   const { references, updateActiveReferences } =
     React.useContext(CitationsContext);
   const refs = props.references
@@ -42,7 +48,9 @@ function CiteBlock(props: any) {
     }
   }, [refs, references, updateActiveReferences]);
 
-  if (!refs || refs.length === 0) {return null;}
+  if (!refs || refs.length === 0) {
+    return null;
+  }
 
   return (
     <sup>
@@ -87,8 +95,8 @@ function getCiteDirective() {
     let refCounter = 1;
     const refSeen: { [ref: string]: number } = {};
 
-    return (tree: any) => {
-      visit(tree, ["textDirective"], (node) => {
+    return (tree: Root) => {
+      visit(tree, ["textDirective"], (node: any) => {
         if (node.name === "cite" && node.children[0]?.value) {
           const references = node.children[0]?.value
             .split(",")
@@ -107,9 +115,9 @@ function getCiteDirective() {
 }
 
 function getMentionDirective() {
-  return () => (tree: any) => {
-    visit(tree, ["textDirective"], (node) => {
-      if (node.name === "mention" && node.children[0]) {
+  return () => (tree: Root) => {
+    visit(tree, ["textDirective"], (node: any) => {
+      if (node.name === "mention" && node.children?.[0]) {
         node.data = node.data || {};
         node.data.hName = "mention";
         node.data.hProperties = {
@@ -153,7 +161,6 @@ const meta: Meta<typeof StreamingMarkdown> = {
 export default meta;
 
 export const AnimationCurveComparison: Story = {
-  name: "Animation Curve Comparison",
   parameters: {
     docs: {
       description: {
@@ -248,7 +255,6 @@ export const AnimationCurveComparison: Story = {
 };
 
 export const MathStreamingTest: Story = {
-  name: "Math Streaming Test",
   parameters: {
     docs: {
       description: {
@@ -338,7 +344,6 @@ The streaming should work continuously throughout.`;
 };
 
 export const StaticVsStreaming: Story = {
-  name: "Static vs Streaming Comparison",
   parameters: {
     docs: {
       description: {
@@ -383,7 +388,7 @@ Ping :mention[assistant]{sId:bot-1} for help.
                 {
                   sup: CiteBlock,
                   mention: MentionBlock,
-                } as any
+                } as Components
               }
               additionalMarkdownPlugins={[
                 getCiteDirective(),
@@ -408,7 +413,7 @@ Ping :mention[assistant]{sId:bot-1} for help.
                 {
                   sup: CiteBlock,
                   mention: MentionBlock,
-                } as any
+                } as Components
               }
               additionalMarkdownPlugins={[
                 getCiteDirective(),
@@ -909,7 +914,6 @@ const mockReferences = {
 };
 
 export const EnhancedFeaturesDemo: Story = {
-  name: "Enhanced Features Demo",
   parameters: {
     docs: {
       description: {
@@ -965,18 +969,17 @@ export const EnhancedFeaturesDemo: Story = {
       []
     );
 
-    const additionalComponents = React.useMemo(
-      () =>
-        ({
-          sup: CiteBlock,
-          mention: (props: any) => (
-            <MentionBlock
-              agentName={props.agentName}
-              agentSId={props.agentSId}
-              onClick={handleMentionClick}
-            />
-          ),
-        }) as any,
+    const additionalComponents: Components = React.useMemo(
+      () => ({
+        sup: CiteBlock,
+        mention: (props: { agentName: string; agentSId: string }) => (
+          <MentionBlock
+            agentName={props.agentName}
+            agentSId={props.agentSId}
+            onClick={handleMentionClick}
+          />
+        ),
+      }),
       [handleMentionClick]
     );
 
@@ -1046,7 +1049,6 @@ export const EnhancedFeaturesDemo: Story = {
 };
 
 export const ComprehensiveDemo: Story = {
-  name: "Comprehensive Streaming Demo",
   parameters: {
     docs: {
       description: {
@@ -1138,7 +1140,6 @@ export const ComprehensiveDemo: Story = {
 };
 
 export const StreamingVsProductionComparison: Story = {
-  name: "StreamingMarkdown vs Production Markdown Comparison",
   parameters: {
     docs: {
       description: {
@@ -1195,18 +1196,17 @@ export const StreamingVsProductionComparison: Story = {
       []
     );
 
-    const additionalComponents = React.useMemo(
-      () =>
-        ({
-          sup: CiteBlock,
-          mention: (props: any) => (
-            <MentionBlock
-              agentName={props.agentName}
-              agentSId={props.agentSId}
-              onClick={handleMentionClick}
-            />
-          ),
-        }) as any,
+    const additionalComponents: Components = React.useMemo(
+      () => ({
+        sup: CiteBlock,
+        mention: (props: { agentName: string; agentSId: string }) => (
+          <MentionBlock
+            agentName={props.agentName}
+            agentSId={props.agentSId}
+            onClick={handleMentionClick}
+          />
+        ),
+      }),
       [handleMentionClick]
     );
 
