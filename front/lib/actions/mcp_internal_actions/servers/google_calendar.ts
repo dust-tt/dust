@@ -552,9 +552,23 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
 
     // Find the latest user message to get the timezone
     for (let i = content.length - 1; i >= 0; i--) {
-      const message = content[i]?.find((msg) => msg.type === "user_message");
-      if (message?.context?.timezone) {
-        return message.context.timezone;
+      const contentBlock = content[i];
+      if (Array.isArray(contentBlock)) {
+        const userMessage = contentBlock.find(
+          (msg) =>
+            msg.type === "user_message" &&
+            "context" in msg &&
+            msg.context &&
+            "timezone" in msg.context
+        );
+        if (
+          userMessage &&
+          "context" in userMessage &&
+          userMessage.context &&
+          "timezone" in userMessage.context
+        ) {
+          return userMessage.context.timezone;
+        }
       }
     }
 
