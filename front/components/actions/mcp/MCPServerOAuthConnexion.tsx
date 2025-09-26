@@ -116,107 +116,108 @@ export function MCPServerOAuthConnexion({
       id="mcp-server-oauth-connexion-container"
       ref={setContainerRef}
     >
-      {authorization && (
-        <>
-          {authorization.supported_use_cases.length > 1 && containerRef && (
-            <div className="w-full">
-              <div className="heading-base">Authentication type</div>
-              <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      isSelect
-                      variant="outline"
-                      label={
-                        useCase
-                          ? OAUTH_USE_CASE_TO_LABEL[useCase]
-                          : "Select credentials type"
-                      }
-                      size="sm"
-                    />
-                  </DropdownMenuTrigger>
-
-                  <DropdownMenuContent mountPortalContainer={containerRef}>
-                    {authorization.supported_use_cases.map(
-                      (selectableUseCase) => (
-                        <DropdownMenuCheckboxItem
-                          key={selectableUseCase}
-                          checked={selectableUseCase === useCase}
-                          onCheckedChange={() => setUseCase(selectableUseCase)}
-                        >
-                          {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
-                        </DropdownMenuCheckboxItem>
-                      )
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          )}
-          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
-            {useCase === "platform_actions" && (
-              <>
-                The credentials you provide will be shared by all users of these
-                tools.
-              </>
-            )}
-            {useCase === "personal_actions" && (
-              <>
-                Users will connect their own accounts the first time they
-                interact with these tools.
-              </>
-            )}
-          </div>
-          {inputs &&
-            Object.entries(inputs).map(([key, inputData]) => {
-              if (inputData.value) {
-                // If the credential is already set, we don't need to ask the user for it.
-                return null;
-              }
-              if (!isSupportedOAuthCredential(key)) {
-                // Can't happen but to make typescript happy.
-                return null;
-              }
-              const value = authCredentials?.[key] ?? "";
-              return (
-                <div key={key} className="w-full">
-                  <div className="heading-base">{inputData.label}</div>
-                  <Input
-                    id={key}
-                    value={value}
-                    onChange={(e) =>
-                      setAuthCredentials({
-                        ...authCredentials,
-                        [key]: e.target.value,
-                      })
+      <>
+        {authorization.supported_use_cases.length > 1 && containerRef && (
+          <div className="w-full space-y-2">
+            <div className="heading-base">Authentication type</div>
+            <div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    isSelect
+                    variant="outline"
+                    label={
+                      useCase
+                        ? OAUTH_USE_CASE_TO_LABEL[useCase]
+                        : "Select credentials type"
                     }
-                    message={inputData.helpMessage}
-                    messageStatus={
-                      value.length > 0 &&
-                      inputData.validator &&
-                      !inputData.validator(value)
-                        ? "error"
-                        : undefined
-                    }
+                    size="sm"
                   />
-                </div>
-              );
-            })}
-          {documentationUrl && (
-            <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
-              Questions ? Read{" "}
-              <Hoverable
-                href={documentationUrl}
-                target="_blank"
-                variant="primary"
-              >
-                our guide
-              </Hoverable>{" "}
-              on {OAUTH_PROVIDER_NAMES[authorization.provider]}
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent mountPortalContainer={containerRef}>
+                  {authorization.supported_use_cases.map(
+                    (selectableUseCase) => (
+                      <DropdownMenuCheckboxItem
+                        key={selectableUseCase}
+                        checked={selectableUseCase === useCase}
+                        onCheckedChange={() => setUseCase(selectableUseCase)}
+                      >
+                        {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
+                      </DropdownMenuCheckboxItem>
+                    )
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+          </div>
+        )}
+        <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+          {useCase === "platform_actions" && (
+            <span className="text-sm">
+              The credentials you provide will be shared by all users of these
+              tools.
+            </span>
           )}
-        </>
-      )}
+          {useCase === "personal_actions" && (
+            <span className="text-sm">
+              Users will connect their own accounts the first time they interact
+              with these tools.
+            </span>
+          )}
+        </div>
+
+        {inputs &&
+          Object.entries(inputs).map(([key, inputData]) => {
+            if (inputData.value) {
+              // If the credential is already set, we don't need to ask the user for it.
+              return null;
+            }
+
+            if (!isSupportedOAuthCredential(key)) {
+              // Can't happen but to make typescript happy.
+              return null;
+            }
+
+            const value = authCredentials?.[key] ?? "";
+            return (
+              <div key={key} className="w-full space-y-1">
+                <div className="heading-base">{inputData.label}</div>
+                <Input
+                  id={key}
+                  value={value}
+                  onChange={(e) =>
+                    setAuthCredentials({
+                      ...authCredentials,
+                      [key]: e.target.value,
+                    })
+                  }
+                  message={inputData.helpMessage}
+                  messageStatus={
+                    value.length > 0 &&
+                    inputData.validator &&
+                    !inputData.validator(value)
+                      ? "error"
+                      : undefined
+                  }
+                />
+              </div>
+            );
+          })}
+        {documentationUrl && (
+          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
+            Questions ? Read{" "}
+            <Hoverable
+              href={documentationUrl}
+              target="_blank"
+              variant="primary"
+            >
+              our guide
+            </Hoverable>{" "}
+            on {OAUTH_PROVIDER_NAMES[authorization.provider]}
+          </div>
+        )}
+      </>
     </div>
   );
 }
