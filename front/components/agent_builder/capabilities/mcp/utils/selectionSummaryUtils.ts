@@ -3,6 +3,7 @@ import type {
   DustAppRunConfigurationType,
   LightAgentConfigurationType,
   ModelConfigurationType,
+  ModelProviderIdType,
 } from "@app/types";
 
 export type BaseSelectionSummary = {
@@ -25,7 +26,9 @@ export type ChildAgentSelectionSummary = BaseSelectionSummary & {
 
 export type ReasoningModelSelectionSummary = BaseSelectionSummary & {
   id: "reasoning-model";
-  visual: { type: "provider-logo"; providerId: string } | { type: "icon" };
+  visual:
+    | { type: "provider-logo"; providerId: ModelProviderIdType }
+    | { type: "icon" };
   editLabel: "Edit model";
 };
 
@@ -87,7 +90,7 @@ export function createReasoningModelSummary({
   models,
   onEdit,
 }: {
-  reasoningModel: { modelId: string; providerId: string } | null;
+  reasoningModel: { modelId: string; providerId: ModelProviderIdType } | null;
   models: ModelConfigurationType[];
   onEdit: () => void;
 }): ReasoningModelSelectionSummary | null {
