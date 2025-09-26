@@ -27,7 +27,7 @@ export interface EditorMention {
   label: string;
 }
 
-const DEFAULT_LONG_TEXT_PASTE_THRESHOLD = { maxChars: 2000, maxLines: 30 };
+const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 2000;
 
 function getTextAndMentionsFromNode(node?: JSONContent) {
   let textContent = "";
@@ -69,16 +69,9 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   return { text: textContent, mentions: mentions };
 }
 
-function isLongTextPaste(
-  text: string,
-  threshold?: { maxChars?: number; maxLines?: number }
-) {
-  const maxChars =
-    threshold?.maxChars ?? DEFAULT_LONG_TEXT_PASTE_THRESHOLD.maxChars;
-  const maxLines =
-    threshold?.maxLines ?? DEFAULT_LONG_TEXT_PASTE_THRESHOLD.maxLines;
-  const lineCount = (text.match(/\n/g)?.length ?? 0) + 1;
-  return text.length > maxChars || lineCount > maxLines;
+function isLongTextPaste(text: string, maxCharThreshold?: number) {
+  const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
+  return text.length > maxChars;
 }
 
 const useEditorService = (editor: Editor | null) => {
@@ -228,8 +221,7 @@ export interface CustomEditorProps {
   owner: WorkspaceType;
   // If provided, large pasted text will be routed to this callback
   onLongTextPaste?: (text: string) => void;
-  // Optional override for what counts as a long paste
-  longTextPasteThreshold?: { maxChars?: number; maxLines?: number };
+  longTextPasteCharsThreshold?: number;
 }
 
 const useCustomEditor = ({
@@ -240,7 +232,7 @@ const useCustomEditor = ({
   suggestionHandler,
   owner,
   onLongTextPaste,
-  longTextPasteThreshold,
+  longTextPasteCharsThreshold,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -299,7 +291,7 @@ const useCustomEditor = ({
         if (!text || !onLongTextPaste) {
           return false;
         }
-        if (isLongTextPaste(text, longTextPasteThreshold)) {
+        if (isLongTextPaste(text, longTextPasteCharsThreshold)) {
           onLongTextPaste(text);
           return true;
         }
