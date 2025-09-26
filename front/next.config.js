@@ -192,14 +192,17 @@ const config = {
     if (!dev && !isServer && process.env.ANALYZE === "true") {
       config.plugins.push(
         new StatsWriterPlugin({
-          filename: '../webpack-stats.json',
+          filename: '../.next/analyze/webpack-stats.json',
           stats: {
             assets: true,
             chunks: true,
             modules: true
           }
         }),
-        new StatoscopeWebpackPlugin()
+        new StatoscopeWebpackPlugin({
+          filename: '../.next/analyze/statoscope-report.html',
+          open: false
+        })
       );
     }
 
