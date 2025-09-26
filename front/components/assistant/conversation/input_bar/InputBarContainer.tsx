@@ -20,6 +20,7 @@ import { useMentionDropdown } from "@app/components/assistant/conversation/input
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { getPastedFileName } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -40,7 +41,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, normalizeError } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
@@ -98,6 +99,7 @@ const InputBarContainer = ({
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
+  const [pastedCount, setPastedCount] = useState(0);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -128,6 +130,31 @@ const InputBarContainer = ({
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
     owner,
+    onLongTextPaste: async (text: string) => {
+      try {
+        const newCount = pastedCount + 1;
+        setPastedCount(newCount);
+        const filename = getPastedFileName(newCount);
+        const file = new File([text], filename, {
+          type: "text/vnd.dust.attachment.pasted",
+        });
+
+        const uploaded = await fileUploaderService.handleFilesUpload([file]);
+        if (!(uploaded && uploaded.length > 0)) {
+          sendNotification({
+            type: "error",
+            title: "Failed to attach pasted text",
+            description: "Upload was rejected or failed.",
+          });
+        }
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to attach pasted text",
+          description: normalizeError(e).message,
+        });
+      }
+    },
   });
 
   const voiceTranscriberService = useVoiceTranscriberService({

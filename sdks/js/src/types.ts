@@ -167,6 +167,7 @@ export const supportedOtherFileFormats = {
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
+  "text/vnd.dust.attachment.pasted": [".txt"],
   "text/html": [".html", ".htm", ".xhtml", ".xhtml+xml"],
   "text/xml": [".xml"],
   "text/calendar": [".ics"],

@@ -464,6 +464,11 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
+    case "text/vnd.dust.attachment.pasted":
+      if (useCase === "conversation") {
+        return storeRawText;
+      }
+      break;
     case "application/vnd.dust.section.json":
       if (useCase === "tool_output") {
         return storeRawText;

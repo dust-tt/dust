@@ -27,6 +27,8 @@ export interface EditorMention {
   label: string;
 }
 
+const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 2000;
+
 function getTextAndMentionsFromNode(node?: JSONContent) {
   let textContent = "";
   let mentions: EditorMention[] = [];
@@ -65,6 +67,11 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   }
 
   return { text: textContent, mentions: mentions };
+}
+
+function isLongTextPaste(text: string, maxCharThreshold?: number) {
+  const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
+  return text.length > maxChars;
 }
 
 const useEditorService = (editor: Editor | null) => {
@@ -212,6 +219,9 @@ export interface CustomEditorProps {
     };
   };
   owner: WorkspaceType;
+  // If provided, large pasted text will be routed to this callback
+  onLongTextPaste?: (text: string) => void;
+  longTextPasteCharsThreshold?: number;
 }
 
 const useCustomEditor = ({
@@ -221,6 +231,8 @@ const useCustomEditor = ({
   onUrlDetected,
   suggestionHandler,
   owner,
+  onLongTextPaste,
+  longTextPasteCharsThreshold,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -273,6 +285,17 @@ const useCustomEditor = ({
     editorProps: {
       attributes: {
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
+      },
+      handlePaste: (view, event) => {
+        const text = event.clipboardData?.getData("text/plain") ?? "";
+        if (!text || !onLongTextPaste) {
+          return false;
+        }
+        if (isLongTextPaste(text, longTextPasteCharsThreshold)) {
+          onLongTextPaste(text);
+          return true;
+        }
+        return false;
       },
       handleKeyDown: (view, event) => {
         const submitMessageKey = localStorage.getItem("submitMessageKey");
