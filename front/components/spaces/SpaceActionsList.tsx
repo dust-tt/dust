@@ -1,6 +1,7 @@
 import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
 
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
@@ -34,6 +35,11 @@ type RowData = {
   onClick?: () => void;
 };
 
+const hasOpenToolsModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { openToolsModal: string } =>
+  isString(query.openToolsModal);
+
 interface SpaceActionsListProps {
   isAdmin: boolean;
   owner: LightWorkspaceType;
@@ -63,16 +69,12 @@ export const SpaceActionsList = ({
   });
 
   const [shouldOpenToolsMenu, setShouldOpenToolsMenu] = React.useState(false);
-
   React.useEffect(() => {
     if (!router.isReady || !isAdmin) {
       return;
     }
-    const { openToolsModal } = router.query;
-    if (!isString(openToolsModal)) {
-      return;
-    }
-    if (openToolsModal === undefined) {
+    const { query } = router;
+    if (!hasOpenToolsModalQuery(query)) {
       return;
     }
     setShouldOpenToolsMenu(true);

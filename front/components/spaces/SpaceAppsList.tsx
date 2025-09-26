@@ -9,6 +9,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import type { ComponentType } from "react";
 import * as React from "react";
 import { useState } from "react";
@@ -21,12 +22,9 @@ import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import type {
-  AppType,
-  isString,
-  LightWorkspaceType,
-  SpaceType,
-  WorkspaceType,
+import type {AppType, LightWorkspaceType, SpaceType, WorkspaceType} from "@app/types";
+import {
+  isString
 } from "@app/types";
 
 type RowData = {
@@ -146,6 +144,11 @@ const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
   return "";
 };
 
+const hasOpenAppsModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { openAppsModal: string } =>
+  isString(query.openAppsModal);
+
 interface SpaceAppsListProps {
   isBuilder: boolean;
   onSelect: (sId: string) => void;
@@ -194,11 +197,8 @@ export const SpaceAppsList = ({
     if (!router.isReady || !isBuilder) {
       return;
     }
-    const { openAppsModal } = router.query;
-    if (!isString(openAppsModal)) {
-      return;
-    }
-    if (openAppsModal === undefined) {
+    const { query } = router;
+    if (!hasOpenAppsModalQuery(query)) {
       return;
     }
     setIsCreateAppModalOpened(true);

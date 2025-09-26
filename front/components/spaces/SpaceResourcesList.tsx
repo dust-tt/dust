@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import React, {
   useCallback,
   useContext,
@@ -78,6 +79,16 @@ type StringColumnDef = ColumnDef<RowData, string>;
 type NumberColumnDef = ColumnDef<RowData, number>;
 
 type TableColumnDef = StringColumnDef | NumberColumnDef;
+
+const hasOpenWebsiteModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { openWebsiteModal: string } =>
+  isString(query.openWebsiteModal);
+
+const hasOpenManagedModalQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { openManagedModal: string } =>
+  isString(query.openManagedModal);
 
 function getTableColumns(
   setAssistantSId: (a: string | null) => void,
@@ -296,11 +307,8 @@ export const SpaceResourcesList = ({
     if (!router.isReady || !isWebsite) {
       return;
     }
-    const { openWebsiteModal } = router.query;
-    if (!isString(openWebsiteModal)) {
-      return;
-    }
-    if (openWebsiteModal === undefined) {
+    const { query } = router;
+    if (!hasOpenWebsiteModalQuery(query)) {
       return;
     }
     setSelectedDataSourceView(null);
@@ -312,11 +320,8 @@ export const SpaceResourcesList = ({
     if (!router.isReady || !isManagedCategory || isSystemSpace) {
       return;
     }
-    const { openManagedModal } = router.query;
-    if (!isString(openManagedModal)) {
-      return;
-    }
-    if (openManagedModal === undefined) {
+    const { query } = router;
+    if (!hasOpenManagedModalQuery(query)) {
       return;
     }
     setSelectedDataSourceView(null);
