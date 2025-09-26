@@ -507,7 +507,9 @@ const RenderConversation = ({
 }) => {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [menuTriggerPosition, setMenuTriggerPosition] = useState<{ x: number; y: number } | undefined>();
+  const [menuTriggerPosition, setMenuTriggerPosition] = useState<
+    { x: number; y: number } | undefined
+  >();
   const conversationLabel =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     conversation.title ||
@@ -526,15 +528,18 @@ const RenderConversation = ({
     setIsMenuOpen(true);
   }, []);
 
-  const handleMenuOpenChange = useCallback((open: boolean) => {
-    setIsMenuOpen(open);
-    if (!open && menuTriggerPosition) {
-      // Delay clearing position to allow closing animation to complete
-      setTimeout(() => {
-        setMenuTriggerPosition(undefined);
-      }, 150); // Match typical dropdown close animation duration
-    }
-  }, [menuTriggerPosition]);
+  const handleMenuOpenChange = useCallback(
+    (open: boolean) => {
+      setIsMenuOpen(open);
+      if (!open && menuTriggerPosition) {
+        // Delay clearing position to allow closing animation to complete
+        setTimeout(() => {
+          setMenuTriggerPosition(undefined);
+        }, 150); // Match typical dropdown close animation duration
+      }
+    },
+    [menuTriggerPosition]
+  );
 
   return (
     <>

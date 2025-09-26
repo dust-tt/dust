@@ -44,21 +44,16 @@ export function ConversationMenu({
   owner: WorkspaceType;
   trigger: ReactElement;
   isConversationDisplayed: boolean;
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   triggerPosition?: { x: number; y: number };
 }) {
   const { user } = useUser();
   const router = useRouter();
   const sendNotification = useSendNotification();
-  const [internalIsMenuOpen, setInternalIsMenuOpen] = useState<boolean>(false);
-
-  // Use external state if provided, otherwise use internal state
-  const isMenuOpen = isOpen ?? internalIsMenuOpen;
-  const setMenuOpen = onOpenChange ?? setInternalIsMenuOpen;
 
   const shouldWaitBeforeFetching =
-    activeConversationId === null || user?.sId === undefined || !isMenuOpen;
+    activeConversationId === null || user?.sId === undefined || !isOpen;
   const conversationParticipationOption = useConversationParticipationOption({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -163,7 +158,7 @@ export function ConversationMenu({
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         currentTitle={conversation?.title || ""}
       />
-      <DropdownMenu modal={false} open={isMenuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
         {triggerPosition ? (
           <>
             {trigger}
