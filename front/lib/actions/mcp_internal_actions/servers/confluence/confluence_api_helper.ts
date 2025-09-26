@@ -34,6 +34,18 @@ const AtlassianResourceSchema = z.array(
   })
 );
 
+// Schema for page creation payload
+const CreatePagePayloadSchema = z.object({
+  spaceId: z.string(),
+  title: z.string(),
+  status: z.string().optional().default("current"),
+  parentId: z.string().optional(),
+  body: z.object({
+    value: z.string(),
+    representation: z.string(),
+  }).optional(),
+});
+
 type WithAuthParams = {
   authInfo?: AuthInfo;
   action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
@@ -60,7 +72,7 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   try {
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      method: options.method || "GET",
+      method: options.method ?? "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
@@ -424,7 +436,15 @@ async function updatePageInternal(
 
   // Prepare the update payload - include id in the body as required by the API
   // Use existing values as defaults to avoid null/undefined issues
-  const payload: any = {
+  const payload: {
+    id: string;
+    version: { number: number; message?: string };
+    status?: string;
+    title?: string;
+    spaceId?: string;
+    parentId?: string;
+    body?: { representation: string; value: string };
+  } = {
     id: updateData.id,
     version: updateData.version,
     // Always include required fields, using existing values if not provided
@@ -446,6 +466,8 @@ async function updatePageInternal(
         value: updateData.body.value,
         representation: updateData.body.representation,
       },
+      representation: updateData.body.representation,
+      value: updateData.body.value,
     };
   }
 
@@ -479,26 +501,21 @@ async function createPageInternal(
 ): Promise<Result<ConfluencePage, string>> {
   const endpoint = `/wiki/api/v2/pages`;
 
-  // Prepare the create payload
-  const payload: any = {
+  // Use the schema to validate and prepare the payload
+  const payloadData = {
     spaceId: createData.spaceId,
     title: createData.title,
-    status: createData.status || "current",
+    status: createData.status,
+    parentId: createData.parentId,
+    body: createData.body,
   };
 
-  // Optional fields
-  if (createData.parentId) {
-    payload.parentId = createData.parentId;
+  const parseResult = CreatePagePayloadSchema.safeParse(payloadData);
+  if (!parseResult.success) {
+    return new Err(`Invalid payload data: ${parseResult.error.message}`);
   }
 
-  if (createData.body) {
-    payload.body = {
-      [createData.body.representation]: {
-        value: createData.body.value,
-        representation: createData.body.representation,
-      },
-    };
-  }
+  const payload = parseResult.data;
 
   const result = await confluenceApiCall(
     {
