@@ -295,7 +295,10 @@ export const SpaceResourcesList = ({
     if (!router.isReady || !isWebsite) {
       return;
     }
-    const openWebsiteModal = router.query.openWebsiteModal;
+    const { openWebsiteModal } = router.query;
+    if (!isString(openWebsiteModal)) {
+      return;
+    }
     if (openWebsiteModal === undefined) {
       return;
     }
@@ -308,7 +311,10 @@ export const SpaceResourcesList = ({
     if (!router.isReady || !isManagedCategory || isSystemSpace) {
       return;
     }
-    const openManagedModal = router.query.openManagedModal;
+    const { openManagedModal } = router.query;
+    if (!isString(openManagedModal)) {
+      return;
+    }
     if (openManagedModal === undefined) {
       return;
     }

@@ -68,7 +68,10 @@ export const SpaceActionsList = ({
     if (!router.isReady || !isAdmin) {
       return;
     }
-    const openToolsModal = router.query.openToolsModal;
+    const { openToolsModal } = router.query;
+    if (!isString(openToolsModal)) {
+      return;
+    }
     if (openToolsModal === undefined) {
       return;
     }

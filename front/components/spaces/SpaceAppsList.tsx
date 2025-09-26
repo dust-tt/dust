@@ -193,7 +193,10 @@ export const SpaceAppsList = ({
     if (!router.isReady || !isBuilder) {
       return;
     }
-    const openAppsModal = router.query.openAppsModal;
+    const { openAppsModal } = router.query;
+    if (!isString(openAppsModal)) {
+      return;
+    }
     if (openAppsModal === undefined) {
       return;
     }
