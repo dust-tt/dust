@@ -257,12 +257,13 @@ export function MCPServerDetails({
   };
 
   const onSave = async (selectedTab: TabType): Promise<boolean> => {
-    // Since we prevent tab switching with unsaved changes,
-    // we only need to handle the current tab's changes.
-    if (selectedTab === "sharing") {
-      return saveSharingTab();
-    } else {
-      return saveInfoTab();
+    switch (selectedTab) {
+      case "sharing":
+        return saveSharingTab();
+      case "info":
+        return saveInfoTab();
+      default:
+        return false;
     }
   };
 
