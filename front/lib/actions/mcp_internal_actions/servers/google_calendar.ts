@@ -20,6 +20,7 @@ interface GoogleCalendarEventDateTime {
 interface EnrichedGoogleCalendarEventDateTime
   extends GoogleCalendarEventDateTime {
   dayOfWeek?: string;
+  isAllDay?: boolean;
 }
 
 interface GoogleCalendarEvent {
@@ -186,9 +187,9 @@ const createServer = (): McpServer => {
           ...res.data,
           items: res.data.items
             ? res.data.items.map((event) => {
-                const enriched = enrichEventWithDayOfWeek(
-                  event as GoogleCalendarEvent
-                );
+                const enriched = isGoogleCalendarEvent(event)
+                  ? enrichEventWithDayOfWeek(event)
+                  : event;
                 return {
                   id: enriched.id,
                   summary: enriched.summary,
@@ -243,9 +244,9 @@ const createServer = (): McpServer => {
           eventId,
         });
 
-        const enrichedEvent = enrichEventWithDayOfWeek(
-          res.data as GoogleCalendarEvent
-        );
+        const enrichedEvent = isGoogleCalendarEvent(res.data)
+          ? enrichEventWithDayOfWeek(res.data)
+          : res.data;
 
         return makeMCPToolJSONSuccess({
           message: "Event fetched successfully",
@@ -330,9 +331,9 @@ const createServer = (): McpServer => {
           requestBody: event,
         });
 
-        const enrichedEvent = enrichEventWithDayOfWeek(
-          res.data as GoogleCalendarEvent
-        );
+        const enrichedEvent = isGoogleCalendarEvent(res.data)
+          ? enrichEventWithDayOfWeek(res.data)
+          : res.data;
 
         return makeMCPToolJSONSuccess({
           message: "Event created successfully",
@@ -429,9 +430,9 @@ const createServer = (): McpServer => {
           requestBody: event,
         });
 
-        const enrichedEvent = enrichEventWithDayOfWeek(
-          res.data as GoogleCalendarEvent
-        );
+        const enrichedEvent = isGoogleCalendarEvent(res.data)
+          ? enrichEventWithDayOfWeek(res.data)
+          : res.data;
 
         return makeMCPToolJSONSuccess({
           message: "Event updated successfully",
@@ -540,13 +541,14 @@ const createServer = (): McpServer => {
   return server;
 };
 
+// Type guard to safely convert googleapis event to our interface
+function isGoogleCalendarEvent(event: any): event is GoogleCalendarEvent {
+  return event && typeof event === "object";
+}
+
 function enrichEventWithDayOfWeek(
   event: GoogleCalendarEvent
 ): EnrichedGoogleCalendarEvent {
-  if (!event) {
-    return event;
-  }
-
   const enrichedEvent: EnrichedGoogleCalendarEvent = { ...event };
 
   if (event.start?.dateTime) {
@@ -554,6 +556,7 @@ function enrichEventWithDayOfWeek(
     enrichedEvent.start = {
       ...event.start,
       dayOfWeek: startDate.toLocaleDateString("en-US", { weekday: "long" }),
+      isAllDay: false,
     };
   } else if (event.start?.date) {
     // Handle all-day events
@@ -561,6 +564,7 @@ function enrichEventWithDayOfWeek(
     enrichedEvent.start = {
       ...event.start,
       dayOfWeek: startDate.toLocaleDateString("en-US", { weekday: "long" }),
+      isAllDay: true,
     };
   }
 
@@ -569,6 +573,7 @@ function enrichEventWithDayOfWeek(
     enrichedEvent.end = {
       ...event.end,
       dayOfWeek: endDate.toLocaleDateString("en-US", { weekday: "long" }),
+      isAllDay: false,
     };
   } else if (event.end?.date) {
     // Handle all-day events
@@ -576,6 +581,7 @@ function enrichEventWithDayOfWeek(
     enrichedEvent.end = {
       ...event.end,
       dayOfWeek: endDate.toLocaleDateString("en-US", { weekday: "long" }),
+      isAllDay: true,
     };
   }
 
