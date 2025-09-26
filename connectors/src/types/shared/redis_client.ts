@@ -34,14 +34,13 @@ async function createRedisClient({
       idleTimeoutMillis: 30000, // Connections idle for more than 30 seconds will be eligible for eviction.
     },
   });
-  client.on("error", (err) => logger.info({ err }, "Redis Client Error"));
-  client.on("ready", () => logger.info({}, "Redis Client Ready"));
+  client.on("error", (err) =>
+    logger.info({ err, origin }, "Redis Client Error")
+  );
   client.on("connect", () => {
-    logger.info({ origin }, "Redis Client Connected");
     statsDClient.increment("redis.connection.count", 1, [`origin:${origin}`]);
   });
   client.on("end", () => {
-    logger.info({ origin }, "Redis Client End");
     statsDClient.decrement("redis.connection.count", 1, [`origin:${origin}`]);
   });
 
