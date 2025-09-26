@@ -80,15 +80,15 @@ type NumberColumnDef = ColumnDef<RowData, number>;
 
 type TableColumnDef = StringColumnDef | NumberColumnDef;
 
-const hasOpenWebsiteModalQuery = (
+const hasWebsiteModalQuery = (
   query: ParsedUrlQuery
-): query is ParsedUrlQuery & { openWebsiteModal: string } =>
-  isString(query.openWebsiteModal);
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "website";
 
-const hasOpenManagedModalQuery = (
+const hasManagedModalQuery = (
   query: ParsedUrlQuery
-): query is ParsedUrlQuery & { openManagedModal: string } =>
-  isString(query.openManagedModal);
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "managed";
 
 function getTableColumns(
   setAssistantSId: (a: string | null) => void,
@@ -308,30 +308,30 @@ export const SpaceResourcesList = ({
       return;
     }
     const { query } = router;
-    if (!hasOpenWebsiteModalQuery(query)) {
+    if (!hasWebsiteModalQuery(query)) {
       return;
     }
     setSelectedDataSourceView(null);
     setShowFolderOrWebsiteModal(true);
-    void removeParamFromRouter(router, "openWebsiteModal");
-  }, [isWebsite, router.isReady, router.query.openWebsiteModal, router]);
+    void removeParamFromRouter(router, "modal");
+  }, [isWebsite, router.isReady, router.query.modal, router]);
 
   useEffect(() => {
     if (!router.isReady || !isManagedCategory || isSystemSpace) {
       return;
     }
     const { query } = router;
-    if (!hasOpenManagedModalQuery(query)) {
+    if (!hasManagedModalQuery(query)) {
       return;
     }
     setSelectedDataSourceView(null);
     setShouldOpenManagedModal(true);
-    void removeParamFromRouter(router, "openManagedModal");
+    void removeParamFromRouter(router, "modal");
   }, [
     isManagedCategory,
     isSystemSpace,
     router.isReady,
-    router.query.openManagedModal,
+    router.query.modal,
     router,
   ]);
 

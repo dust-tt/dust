@@ -22,10 +22,13 @@ import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import type {AppType, LightWorkspaceType, SpaceType, WorkspaceType} from "@app/types";
-import {
-  isString
+import type {
+  AppType,
+  LightWorkspaceType,
+  SpaceType,
+  WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 
 type RowData = {
   app: AppType;
@@ -144,10 +147,10 @@ const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
   return "";
 };
 
-const hasOpenAppsModalQuery = (
+const hasAppsModalQuery = (
   query: ParsedUrlQuery
-): query is ParsedUrlQuery & { openAppsModal: string } =>
-  isString(query.openAppsModal);
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "apps";
 
 interface SpaceAppsListProps {
   isBuilder: boolean;
@@ -193,17 +196,17 @@ export const SpaceAppsList = ({
   );
 
   React.useEffect(() => {
-    // Extract openAppsModal query param to open modal on first render and remove it from URL
+    // Extract modal=apps query param to open modal on first render and remove it from URL
     if (!router.isReady || !isBuilder) {
       return;
     }
     const { query } = router;
-    if (!hasOpenAppsModalQuery(query)) {
+    if (!hasAppsModalQuery(query)) {
       return;
     }
     setIsCreateAppModalOpened(true);
-    void removeParamFromRouter(router, "openAppsModal");
-  }, [router.isReady, router.query.openAppsModal, isBuilder, router]);
+    void removeParamFromRouter(router, "modal");
+  }, [router.isReady, router.query.modal, isBuilder, router]);
 
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,

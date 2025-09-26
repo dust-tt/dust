@@ -35,10 +35,10 @@ type RowData = {
   onClick?: () => void;
 };
 
-const hasOpenToolsModalQuery = (
+const hasToolsModalQuery = (
   query: ParsedUrlQuery
-): query is ParsedUrlQuery & { openToolsModal: string } =>
-  isString(query.openToolsModal);
+): query is ParsedUrlQuery & { modal: string } =>
+  isString(query.modal) && query.modal === "tools";
 
 interface SpaceActionsListProps {
   isAdmin: boolean;
@@ -74,12 +74,12 @@ export const SpaceActionsList = ({
       return;
     }
     const { query } = router;
-    if (!hasOpenToolsModalQuery(query)) {
+    if (!hasToolsModalQuery(query)) {
       return;
     }
     setShouldOpenToolsMenu(true);
-    void removeParamFromRouter(router, "openToolsModal");
-  }, [router.isReady, router.query.openToolsModal, isAdmin, router]);
+    void removeParamFromRouter(router, "modal");
+  }, [router.isReady, router.query.modal, isAdmin, router]);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
