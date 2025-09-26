@@ -131,7 +131,7 @@ export function AssistantDetailsButtonBar({
     }
   };
 
-  function AssistantDetailsDropdownMenu() {
+  function InternalAssistantDetailsDropdownMenu() {
     return (
       <>
         <DeleteAssistantDialog
@@ -259,8 +259,164 @@ export function AssistantDetailsButtonBar({
         )}
 
       {agentConfiguration.scope !== "global" && (
-        <AssistantDetailsDropdownMenu />
+        <InternalAssistantDetailsDropdownMenu />
       )}
     </div>
+  );
+}
+
+interface AssistantDetailsDropdownMenuProps {
+  agentConfiguration: LightAgentConfigurationType;
+  owner: WorkspaceType;
+  onClose?: () => void;
+  showEditOption?: boolean;
+}
+
+export function AssistantDetailsDropdownMenu({ 
+  agentConfiguration, 
+  owner, 
+  onClose,
+  showEditOption = false
+}: AssistantDetailsDropdownMenuProps) {
+  const { user } = useUser();
+  const sendNotification = useSendNotification();
+  const router = useRouter();
+
+  const [showDeletionModal, setShowDeletionModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  if (!agentConfiguration || agentConfiguration.status === "archived" || !user) {
+    return <></>;
+  }
+
+  const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
+  const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
+
+  const handleExportToYAML = async () => {
+    setIsExporting(true);
+    const response = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/export/yaml`
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      sendNotification({
+        title: "Export failed",
+        description:
+          errorData.error?.message || "An error occurred while exporting",
+        type: "error",
+      });
+      setIsExporting(false);
+      return;
+    }
+
+    const { yamlContent, filename } = await response.json();
+    try {
+      const blob = new Blob([yamlContent], { type: "application/yaml" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      sendNotification({
+        title: "Export successful",
+        description: `Agent "${agentConfiguration.name}" exported to YAML`,
+        type: "success",
+      });
+    } catch (error) {
+      sendNotification({
+        title: "Export failed",
+        description:
+          normalizeError(error).message || "An error occurred while exporting",
+        type: "error",
+      });
+
+      logger.error(
+        { workspaceId: owner.sId, agentId: agentConfiguration.sId },
+        "Failed to export agent configuration to YAML"
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <>
+      <DeleteAssistantDialog
+        owner={owner}
+        isOpen={showDeletionModal}
+        agentConfiguration={agentConfiguration}
+        onClose={() => {
+          setShowDeletionModal(false);
+          onClose?.();
+        }}
+      />
+      {showEditOption && agentConfiguration.scope !== "global" && canEditAssistant && (
+        <DropdownMenuItem
+          label="Edit agent"
+          onClick={(e) => {
+            e.stopPropagation();
+            void router.push(getAgentBuilderRoute(owner.sId, agentConfiguration.sId));
+            onClose?.();
+          }}
+          icon={PencilSquareIcon}
+        />
+      )}
+      <DropdownMenuItem
+        label="Copy agent ID"
+        onClick={async (e) => {
+          e.stopPropagation();
+          await navigator.clipboard.writeText(agentConfiguration.sId);
+          onClose?.();
+        }}
+        icon={BracesIcon}
+      />
+      <DropdownMenuItem
+        label={isExporting ? "Exporting..." : "Export to YAML"}
+        onClick={(e) => {
+          e.stopPropagation();
+          void handleExportToYAML();
+          onClose?.();
+        }}
+        icon={isExporting ? <Spinner size="xs" /> : DocumentIcon}
+        disabled={isExporting}
+      />
+      {agentConfiguration.scope !== "global" && (
+        <>
+          <DropdownMenuItem
+            label="Duplicate (New)"
+            data-gtm-label="assistantDuplicationButton"
+            data-gtm-location="assistantBrowser"
+            icon={ClipboardIcon}
+            onClick={async (e) => {
+              await router.push(
+                getAgentBuilderRoute(
+                  owner.sId,
+                  "new",
+                  `duplicate=${agentConfiguration.sId}`
+                )
+              );
+              e.stopPropagation();
+              onClose?.();
+            }}
+          />
+          {allowDeletion && (
+            <DropdownMenuItem
+              label="Archive"
+              icon={TrashIcon}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeletionModal(true);
+              }}
+              variant="warning"
+            />
+          )}
+        </>
+      )}
+    </>
   );
 }

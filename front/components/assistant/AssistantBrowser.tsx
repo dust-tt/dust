@@ -10,6 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
   MoreIcon,
   ScrollArea,
@@ -32,6 +33,7 @@ import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -80,12 +82,24 @@ type AgentGridProps = {
   agentConfigurations: LightAgentConfigurationType[];
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   handleMoreClick: (agentId: string) => void;
+  owner: WorkspaceType;
+  user: UserType;
 };
 export const AgentGrid = ({
   agentConfigurations,
   handleAssistantClick,
   handleMoreClick,
+  owner,
+  user,
 }: AgentGridProps) => {
+  // Context menu state
+  const [contextMenuAgent, setContextMenuAgent] =
+    useState<LightAgentConfigurationType | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
   // Handle "infinite" scroll
   // We only start with 9 items shown (no need more on mobile) and load more until we fill the parent container.
   // We use an intersection observer to detect when the bottom of the list is visible and load more items.
@@ -124,31 +138,73 @@ export const AgentGrid = ({
     (itemsPage + 1) * ITEMS_PER_PAGE
   );
   return (
-    <CardGrid>
-      {slicedAgentConfigurations.map((agent, index) => {
-        const isLastItem = index === slicedAgentConfigurations.length - 1;
-        return (
-          <AssistantCard
-            // Force a re-render of the last item to trigger the intersection observer
-            key={isLastItem ? `${agent.sId}-${itemsPage}` : agent.sId}
-            ref={isLastItem ? ref : undefined}
-            title={agent.name}
-            pictureUrl={agent.pictureUrl}
-            subtitle={agent.lastAuthors?.join(", ") ?? ""}
-            description={agent.description}
-            onClick={() => handleAssistantClick(agent)}
-            action={
-              <AssistantCardMore
-                onClick={(e: Event) => {
-                  e.stopPropagation();
-                  handleMoreClick(agent.sId);
-                }}
-              />
+    <>
+      <CardGrid>
+        {slicedAgentConfigurations.map((agent, index) => {
+          const isLastItem = index === slicedAgentConfigurations.length - 1;
+          return (
+            <AssistantCard
+              // Force a re-render of the last item to trigger the intersection observer
+              key={isLastItem ? `${agent.sId}-${itemsPage}` : agent.sId}
+              ref={isLastItem ? ref : undefined}
+              title={agent.name}
+              pictureUrl={agent.pictureUrl}
+              subtitle={agent.lastAuthors?.join(", ") ?? ""}
+              description={agent.description}
+              onClick={() => handleAssistantClick(agent)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                console.log("onContextMenu", e);
+                setContextMenuAgent(agent);
+                setContextMenuPosition({ x: e.clientX, y: e.clientY });
+              }}
+              action={
+                <AssistantCardMore
+                  onClick={(e: Event) => {
+                    e.stopPropagation();
+                    handleMoreClick(agent.sId);
+                  }}
+                />
+              }
+            />
+          );
+        })}
+      </CardGrid>
+      {contextMenuAgent && contextMenuPosition && (
+        <DropdownMenu
+          open={!!contextMenuAgent}
+          onOpenChange={(open) => {
+            if (!open) {
+              setContextMenuAgent(null);
+              setContextMenuPosition(null);
             }
-          />
-        );
-      })}
-    </CardGrid>
+          }}
+          modal
+        >
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              align="start"
+              className="s-whitespace-nowrap"
+              style={{
+                position: "fixed",
+                left: contextMenuPosition.x,
+                top: contextMenuPosition.y,
+              }}
+            >
+              <AssistantDetailsDropdownMenu
+                agentConfiguration={contextMenuAgent}
+                owner={owner}
+                onClose={() => {
+                  setContextMenuAgent(null);
+                  setContextMenuPosition(null);
+                }}
+                showEditOption={true}
+              />
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
+      )}
+    </>
   );
 };
 
@@ -594,6 +650,8 @@ export function AssistantBrowser({
                     })}
                     handleAssistantClick={handleAssistantClick}
                     handleMoreClick={setDisplayedAssistantId}
+                    owner={owner}
+                    user={user}
                   />
                 </React.Fragment>
               ))}
@@ -605,6 +663,8 @@ export function AssistantBrowser({
             agentConfigurations={agentsByTab[viewTab]}
             handleAssistantClick={handleAssistantClick}
             handleMoreClick={setDisplayedAssistantId}
+            owner={owner}
+            user={user}
           />
         )
       )}
