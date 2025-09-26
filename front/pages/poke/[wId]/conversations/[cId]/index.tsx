@@ -237,35 +237,32 @@ interface ContentFragmentViewProps {
 
 const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   return (
-    <div className="w-full">
-      <ConversationMessage type="system">
-        <div className="font-bold">[content_fragment] {message.title}</div>
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          date : {new Date(message.created).toLocaleString()}
-          version :{message.version} {" • "}
-          textBytes :
-          {isFileContentFragment(message) ? message.textBytes : "N/A"}
-        </div>
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          textBytes={isFileContentFragment(message) ? message.textBytes : "N/A"}
-        </div>
-        {message.sourceUrl && (
-          <a
-            href={message.sourceUrl ?? ""}
-            target="_blank"
-            className="text-highlight-500"
-          >
-            [sourceUrl]
-          </a>
-        )}{" "}
+    <div className="w-full text-sm">
+      <div className="font-bold">[content_fragment] {message.title}</div>
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        date : {new Date(message.created).toLocaleString()}
+        version :{message.version} {" • "}
+        textBytes :{isFileContentFragment(message) ? message.textBytes : "N/A"}
+      </div>
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        textBytes={isFileContentFragment(message) ? message.textBytes : "N/A"}
+      </div>
+      {message.sourceUrl && (
         <a
-          href={isFileContentFragment(message) ? message.textUrl : ""}
+          href={message.sourceUrl ?? ""}
           target="_blank"
           className="text-highlight-500"
         >
-          [textUrl]
+          [sourceUrl]
         </a>
-      </ConversationMessage>
+      )}{" "}
+      <a
+        href={isFileContentFragment(message) ? message.textUrl : ""}
+        target="_blank"
+        className="text-highlight-500"
+      >
+        [textUrl]
+      </a>
     </div>
   );
 };

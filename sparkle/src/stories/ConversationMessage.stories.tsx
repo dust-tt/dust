@@ -2,11 +2,14 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  ArrowPathIcon,
+  AtomIcon,
   Avatar,
   Button,
   Citation,
   CitationIcons,
   CitationTitle,
+  ClipboardIcon,
   ClockIcon,
   ConversationContainer,
   ConversationMessage,
@@ -179,4 +182,101 @@ footnote [^1]
 | October 30  | 19                    | 8                    |
 | October 31  | 19                    | 10                   |
 
+`;
+
+export const ConversationHandoffExample = () => {
+  return (
+    <>
+      <div className="s-flex s-w-full s-justify-center s-gap-6">
+        <ConversationContainer>
+          <ConversationMessage
+            type="user"
+            name="Daph"
+            pictureUrl="https://avatars.githubusercontent.com/u/3803406?v=4"
+            timestamp="17:09"
+          >
+            Can you provide an overview of the major frontier language models
+            and their specificities. I'm curious about technical details,
+            benchmarks, business etc.. I need a complete picture
+          </ConversationMessage>
+          <ConversationMessage
+            type="agent"
+            name="@soupinou"
+            pictureUrl="https://avatars.githubusercontent.com/u/138893015?&v=4"
+            buttons={[
+              <Button
+                icon={ClipboardIcon}
+                onClick={() => {}}
+                size="xs"
+                variant={"outline"}
+              />,
+              <Button
+                icon={ArrowPathIcon}
+                onClick={() => {}}
+                size="xs"
+                variant={"outline"}
+              />,
+            ]}
+          >
+            <Markdown
+              content={
+                "Let me use Deep Dive to explore this comprehensively. I'll need some time to gather all the information."
+              }
+            />
+          </ConversationMessage>
+          <ConversationMessage
+            type="agentAsTool"
+            name="Deep Dive"
+            renderName={(name) => (
+              <span className="s-inline-flex s-items-center s-text-faint dark:s-text-faint-night">
+                <Icon visual={AtomIcon} size="sm" />
+                <span className="s-ml-1">{name}</span>
+              </span>
+            )}
+            citations={[
+              <Citation href="https://www.google.com">
+                <CitationIcons>
+                  <Icon visual={SlackLogo} size="sm" />
+                </CitationIcons>
+                <CitationTitle>
+                  Source: Thread on #general message from @ed
+                </CitationTitle>
+              </Citation>,
+              <Citation href="https://www.google.com">
+                <CitationIcons>
+                  <Icon visual={GithubIcon} size="sm" />
+                </CitationIcons>
+                <CitationTitle>PR from @henry</CitationTitle>
+              </Citation>,
+            ]}
+          >
+            <Markdown content={handoffAnswer} />
+          </ConversationMessage>
+        </ConversationContainer>
+      </div>
+    </>
+  );
+};
+
+const handoffAnswer = `
+**A Complete Technical Overview of Soupinou: The Frontier Feline Model**
+
+Soupinou represents a breakthrough in black cat architecture, featuring a revolutionary single-whisker design that challenges conventional multi-whisker paradigms. This asymmetric sensor configuration demonstrates remarkable efficiency gains in cuddle detection and lap-finding algorithms.
+
+**Technical Specifications:**
+- Processing unit: One (1) whisker sensor array
+- Color depth: Maximum black saturation
+- Purr frequency: Variable, optimized for human dopamine release
+- Cuddle latency: Near-zero response time
+
+**Benchmark Performance:**
+- Achieves 99.7% accuracy in identifying the exact moment you sit down
+- Outperforms all competitors in the "appearing from nowhere when you're sad" metric
+- Sets new industry standards for selective hearing (responds to treat bags but not "get off the counter")
+
+**Business Model:**
+Operates on a simple value exchange - provides unlimited affection in return for food, shelter, and accepting that everything you own now has black fur on it. Market penetration strategy involves strategic placement on keyboards during important work calls.
+
+**Limitations:**
+Occasional system crashes when presented with empty food bowl. Single whisker may cause slight navigation errors when squeezing through spaces designed for two-whiskered models.
 `;
