@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
   MoreIcon,
   PencilSquareIcon,
@@ -32,9 +33,6 @@ import { isAdmin, isBuilder, normalizeError } from "@app/types";
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
-  canDelete?: boolean;
-  isMoreInfoVisible?: boolean;
-  showAddRemoveToFavorite?: boolean;
   isAgentConfigurationValidating: boolean;
 }
 
@@ -44,10 +42,6 @@ export function AssistantDetailsButtonBar({
   owner,
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
-  const sendNotification = useSendNotification();
-
-  const [showDeletionModal, setShowDeletionModal] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("agentDetails");
 
@@ -59,8 +53,6 @@ export function AssistantDetailsButtonBar({
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
 
-  const router = useRouter();
-
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
@@ -71,91 +63,7 @@ export function AssistantDetailsButtonBar({
     agentConfiguration.status === "archived" ||
     !user
   ) {
-    return <></>;
-  }
-
-  const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
-
-  const handleExportToYAML = async () => {
-    setIsExporting(true);
-    const response = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/export/yaml`
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      sendNotification({
-        title: "Export failed",
-        description:
-          errorData.error?.message || "An error occurred while exporting",
-        type: "error",
-      });
-      setIsExporting(false);
-      return;
-    }
-
-    const { yamlContent, filename } = await response.json();
-    try {
-      /**
-       * Try to create a Blob from the YAML content and download it.
-       */
-      const blob = new Blob([yamlContent], { type: "application/yaml" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      sendNotification({
-        title: "Export successful",
-        description: `Agent "${agentConfiguration.name}" exported to YAML`,
-        type: "success",
-      });
-    } catch (error) {
-      sendNotification({
-        title: "Export failed",
-        description:
-          normalizeError(error).message || "An error occurred while exporting",
-        type: "error",
-      });
-
-      logger.error(
-        { workspaceId: owner.sId, agentId: agentConfiguration.sId },
-        "Failed to export agent configuration to YAML"
-      );
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  function InternalAssistantDetailsDropdownMenu() {
-    return (
-      <>
-        <DeleteAssistantDialog
-          owner={owner}
-          isOpen={showDeletionModal}
-          agentConfiguration={agentConfiguration}
-          onClose={() => {
-            setShowDeletionModal(false);
-            onOpenChangeAssistantModal(false);
-          }}
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="ghost" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <AssistantDetailsDropdownMenu 
-              agentConfiguration={agentConfiguration}
-              owner={owner}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </>
-    );
+    return false;
   }
 
   const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
@@ -216,45 +124,48 @@ export function AssistantDetailsButtonBar({
         )}
 
       {agentConfiguration.scope !== "global" && (
-        <InternalAssistantDetailsDropdownMenu />
+        <AssistantDetailsDropdownMenu
+          agentConfiguration={agentConfiguration}
+          owner={owner}
+          onClose={() => onOpenChangeAssistantModal(false)}
+        />
       )}
     </div>
   );
 }
 
 interface AssistantDetailsDropdownMenuProps {
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfiguration?: LightAgentConfigurationType;
   owner: WorkspaceType;
   onClose?: () => void;
   showEditOption?: boolean;
-  onDeleteClick?: () => void;
+  contextMenuPosition?: { x: number; y: number };
 }
 
-export function AssistantDetailsDropdownMenu({ 
-  agentConfiguration, 
-  owner, 
+export function AssistantDetailsDropdownMenu({
+  agentConfiguration,
+  owner,
   onClose,
   showEditOption = false,
-  onDeleteClick
+  contextMenuPosition,
 }: AssistantDetailsDropdownMenuProps) {
-  const { user } = useUser();
   const sendNotification = useSendNotification();
   const router = useRouter();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  if (!agentConfiguration || agentConfiguration.status === "archived" || !user) {
-    return <></>;
+  if (!agentConfiguration || agentConfiguration.status === "archived") {
+    return false;
   }
 
-  const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
-  const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
+  const allowDeletion = agentConfiguration?.canEdit || isAdmin(owner);
+  const canEditAssistant = agentConfiguration?.canEdit || isAdmin(owner);
 
   const handleExportToYAML = async () => {
     setIsExporting(true);
     const response = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/export/yaml`
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration?.sId}/export/yaml`
     );
 
     if (!response.ok) {
@@ -303,30 +214,23 @@ export function AssistantDetailsDropdownMenu({
     }
   };
 
-  return (
+  const menuItems = agentConfiguration && (
     <>
-      {!onDeleteClick && (
-        <DeleteAssistantDialog
-          owner={owner}
-          isOpen={showDeletionModal}
-          agentConfiguration={agentConfiguration}
-          onClose={() => {
-            setShowDeletionModal(false);
-            onClose?.();
-          }}
-        />
-      )}
-      {showEditOption && agentConfiguration.scope !== "global" && canEditAssistant && (
-        <DropdownMenuItem
-          label="Edit agent"
-          onClick={(e) => {
-            e.stopPropagation();
-            void router.push(getAgentBuilderRoute(owner.sId, agentConfiguration.sId));
-            onClose?.();
-          }}
-          icon={PencilSquareIcon}
-        />
-      )}
+      {showEditOption &&
+        agentConfiguration.scope !== "global" &&
+        canEditAssistant && (
+          <DropdownMenuItem
+            label="Edit agent"
+            onClick={(e) => {
+              e.stopPropagation();
+              void router.push(
+                getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
+              );
+              onClose?.();
+            }}
+            icon={PencilSquareIcon}
+          />
+        )}
       <DropdownMenuItem
         label="Copy agent ID"
         onClick={async (e) => {
@@ -371,16 +275,57 @@ export function AssistantDetailsDropdownMenu({
               icon={TrashIcon}
               onClick={(e) => {
                 e.stopPropagation();
-                if (onDeleteClick) {
-                  onDeleteClick();
-                } else {
-                  setShowDeletionModal(true);
-                }
+                setShowDeletionModal(true);
               }}
               variant="warning"
             />
           )}
         </>
+      )}
+    </>
+  );
+
+  // Context menu version
+  return (
+    <>
+      <DeleteAssistantDialog
+        owner={owner}
+        isOpen={showDeletionModal}
+        agentConfiguration={agentConfiguration}
+        onClose={() => {
+          setShowDeletionModal(false);
+          onClose?.();
+        }}
+      />
+      {contextMenuPosition && agentConfiguration ? (
+        <DropdownMenu
+          open={true}
+          onOpenChange={(open) => !open && onClose?.()}
+          modal={false}
+        >
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              align="start"
+              side="top"
+              className="whitespace-nowrap"
+              style={{
+                position: "fixed",
+                left: contextMenuPosition.x,
+                top: contextMenuPosition.y,
+              }}
+              onPointerDownOutside={() => onClose?.()}
+            >
+              {menuItems}
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button icon={MoreIcon} size="sm" variant="ghost" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>{menuItems}</DropdownMenuContent>
+        </DropdownMenu>
       )}
     </>
   );

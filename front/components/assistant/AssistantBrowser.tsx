@@ -10,7 +10,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuPortal,
   DropdownMenuTrigger,
   MoreIcon,
   ScrollArea,
@@ -32,7 +31,6 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
-import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -99,8 +97,6 @@ export const AgentGrid = ({
     x: number;
     y: number;
   } | null>(null);
-  const [showDeletionModal, setShowDeletionModal] = useState(false);
-  const [agentToDelete, setAgentToDelete] = useState<LightAgentConfigurationType | null>(null);
 
   // Handle "infinite" scroll
   // We only start with 9 items shown (no need more on mobile) and load more until we fill the parent container.
@@ -135,6 +131,7 @@ export const AgentGrid = ({
       nextPage();
     }
   }, [inView, nextPage, entry, agentConfigurations.length, itemsPage]);
+
   const slicedAgentConfigurations = agentConfigurations.slice(
     0,
     (itemsPage + 1) * ITEMS_PER_PAGE
@@ -171,57 +168,15 @@ export const AgentGrid = ({
           );
         })}
       </CardGrid>
-      {contextMenuAgent && contextMenuPosition && (
-        <DropdownMenu
-          open={!!contextMenuAgent}
-          onOpenChange={(open) => {
-            if (!open) {
-              setContextMenuAgent(null);
-              setContextMenuPosition(null);
-            }
-          }}
-          modal
-        >
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              align="start"
-              className="s-whitespace-nowrap"
-              style={{
-                position: "fixed",
-                left: contextMenuPosition.x,
-                top: contextMenuPosition.y,
-              }}
-            >
-              <AssistantDetailsDropdownMenu
-                agentConfiguration={contextMenuAgent}
-                owner={owner}
-                onClose={() => {
-                  setContextMenuAgent(null);
-                  setContextMenuPosition(null);
-                }}
-                showEditOption={true}
-                onDeleteClick={() => {
-                  setAgentToDelete(contextMenuAgent);
-                  setShowDeletionModal(true);
-                  setContextMenuAgent(null);
-                  setContextMenuPosition(null);
-                }}
-              />
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenu>
-      )}
-      {agentToDelete && (
-        <DeleteAssistantDialog
-          owner={owner}
-          isOpen={showDeletionModal}
-          agentConfiguration={agentToDelete}
-          onClose={() => {
-            setShowDeletionModal(false);
-            setAgentToDelete(null);
-          }}
-        />
-      )}
+      <AssistantDetailsDropdownMenu
+        agentConfiguration={contextMenuAgent ?? undefined}
+        owner={owner}
+        onClose={() => {
+          setContextMenuPosition(null);
+        }}
+        showEditOption={true}
+        contextMenuPosition={contextMenuPosition ?? undefined}
+      />
     </>
   );
 };
