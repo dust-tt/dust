@@ -144,6 +144,7 @@ async function createConversationForAgentConfiguration({
         conversationId: newConversation.sId,
         error: messageRes.error,
         triggerId: trigger.sId,
+        workspaceId: auth.workspace()?.sId,
       },
       "scheduledAgentCallActivity: Error sending message."
     );
