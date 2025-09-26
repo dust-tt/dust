@@ -1,3 +1,5 @@
+import React from "react";
+
 import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
 import { BlockStreamer } from "@sparkle/components/streaming/BlockStreamer";
 import type { ComponentProps } from "@sparkle/components/streaming/types";
@@ -6,7 +8,6 @@ import {
   isReactElementWithProps,
   keyOf,
 } from "@sparkle/components/streaming/utils";
-import React from "react";
 
 interface StreamingParagraphProps extends ComponentProps {
   isStreaming: boolean;
@@ -33,7 +34,7 @@ export function StreamingParagraph({
 
   // Process children to handle mixed content (text, bold, italic, etc.).
   const processChildren = (children: React.ReactNode): React.ReactNode => {
-    if (!children) return null;
+    if (!children) {return null;}
 
     // If it's just a string, stream it.
     if (typeof children === "string") {

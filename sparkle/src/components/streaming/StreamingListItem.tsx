@@ -5,17 +5,14 @@ import { BlockStreamer } from "@sparkle/components/streaming/BlockStreamer";
 import type { ComponentProps } from "@sparkle/components/streaming/types";
 import {
   getElementProps,
-  isReactElementWithProps,
-  keyOf,
-  isListElement,
-  isTableElement,
   isCodeElement,
+  isListElement,
+  isReactElementWithProps,
+  isTableElement,
+  keyOf,
 } from "@sparkle/components/streaming/utils";
 
 interface StreamingListItemProps extends ComponentProps {
-  ordered?: boolean;
-  index?: number;
-  checked?: boolean | null;
   isStreaming: boolean;
   animationName: string;
   animationDuration: string;
@@ -27,9 +24,6 @@ interface StreamingListItemProps extends ComponentProps {
 
 export function StreamingListItem({
   node,
-  ordered,
-  index,
-  checked,
   isStreaming,
   animationName,
   animationDuration,
@@ -43,7 +37,9 @@ export function StreamingListItem({
 
   // Process list item children to handle text streaming and nested lists.
   const processChildren = (children: React.ReactNode): React.ReactNode => {
-    if (!children) return null;
+    if (!children) {
+      return null;
+    }
 
     // If it's just a string, animate it.
     if (typeof children === "string") {

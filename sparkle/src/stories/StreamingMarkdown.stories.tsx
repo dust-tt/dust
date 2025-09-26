@@ -1,7 +1,8 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import React from 'react';
-import { visit } from 'unist-util-visit';
-import { StreamingMarkdown, Markdown } from '../index_with_tw_base';
+import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
+import { visit } from "unist-util-visit";
+
+import { Markdown,StreamingMarkdown } from "../index_with_tw_base";
 
 // Mock types and components for citations and mentions (only for Storybook demos)
 type MarkdownCitation = {
@@ -24,10 +25,12 @@ const CitationsContext = React.createContext<CitationsContextType>({
 
 // Mock CiteBlock component for Storybook
 function CiteBlock(props: any) {
-  const { references, updateActiveReferences } = React.useContext(CitationsContext);
+  const { references, updateActiveReferences } =
+    React.useContext(CitationsContext);
   const refs = props.references
-    ? (JSON.parse(props.references) as { counter: number; ref: string }[])
-        .filter((r) => r.ref in references)
+    ? (
+        JSON.parse(props.references) as { counter: number; ref: string }[]
+      ).filter((r) => r.ref in references)
     : undefined;
 
   React.useEffect(() => {
@@ -39,19 +42,19 @@ function CiteBlock(props: any) {
     }
   }, [refs, references, updateActiveReferences]);
 
-  if (!refs || refs.length === 0) return null;
+  if (!refs || refs.length === 0) {return null;}
 
   return (
     <sup>
       {refs.map((r, idx) => (
         <span key={r.ref}>
           <span
-            className="s-inline-flex s-items-center s-justify-center s-h-4 s-w-4 s-rounded-full s-text-xs s-font-medium s-cursor-pointer s-bg-primary-600 dark:s-bg-primary-600-night s-text-primary-200 dark:s-text-primary-200-night"
+            className="s-inline-flex s-h-4 s-w-4 s-cursor-pointer s-items-center s-justify-center s-rounded-full s-bg-primary-600 s-text-xs s-font-medium s-text-primary-200 dark:s-bg-primary-600-night dark:s-text-primary-200-night"
             title={references[r.ref]?.title}
           >
             {r.counter}
           </span>
-          {idx < refs.length - 1 && ','}
+          {idx < refs.length - 1 && ","}
         </span>
       ))}
     </sup>
@@ -59,7 +62,15 @@ function CiteBlock(props: any) {
 }
 
 // Mock MentionBlock component for Storybook
-function MentionBlock({ agentName, agentSId, onClick }: { agentName: string; agentSId: string; onClick?: (agentSId: string) => void }) {
+function MentionBlock({
+  agentName,
+  agentSId,
+  onClick,
+}: {
+  agentName: string;
+  agentSId: string;
+  onClick?: (agentSId: string) => void;
+}) {
   return (
     <span
       className="s-inline-block s-cursor-pointer s-font-medium s-text-highlight dark:s-text-highlight-night"
@@ -111,41 +122,43 @@ function getMentionDirective() {
 }
 
 const meta: Meta<typeof StreamingMarkdown> = {
-  title: 'Components/StreamingMarkdown',
+  title: "Components/StreamingMarkdown",
   component: StreamingMarkdown,
   parameters: {
-    layout: 'padded',
+    layout: "padded",
     docs: {
       description: {
-        component: 'Streaming-aware Markdown that animates only newly appended text.',
+        component:
+          "Streaming-aware Markdown that animates only newly appended text.",
       },
     },
   },
   argTypes: {
-    animationName: { control: 'text' },
-    animationDuration: { control: 'text' },
-    animationTimingFunction: { control: 'text' },
+    animationName: { control: "text" },
+    animationDuration: { control: "text" },
+    animationTimingFunction: { control: "text" },
     animationCurve: {
-      control: 'select',
-      options: ['linear', 'accelerate', 'accelerate-fast', 'custom'],
-      description: 'Animation curve type for opacity transition',
+      control: "select",
+      options: ["linear", "accelerate", "accelerate-fast", "custom"],
+      description: "Animation curve type for opacity transition",
     },
   },
   args: {
-    animationDuration: '600ms',
-    animationTimingFunction: 'ease-out',
-    animationCurve: 'linear',
+    animationDuration: "600ms",
+    animationTimingFunction: "ease-out",
+    animationCurve: "linear",
   },
 };
 
 export default meta;
 
 export const AnimationCurveComparison: Story = {
-  name: 'Animation Curve Comparison',
+  name: "Animation Curve Comparison",
   parameters: {
     docs: {
       description: {
-        story: 'Compare different animation curves for the fade-in effect. Accelerate curves start slower and speed up, reducing the time spent at low opacity.',
+        story:
+          "Compare different animation curves for the fade-in effect. Accelerate curves start slower and speed up, reducing the time spent at low opacity.",
       },
     },
   },
@@ -155,24 +168,28 @@ export const AnimationCurveComparison: Story = {
     const [restart, setRestart] = React.useState(0);
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         <button
-          onClick={() => setRestart(r => r + 1)}
+          onClick={() => setRestart((r) => r + 1)}
           style={{
-            width: 'fit-content',
-            padding: '8px 16px',
+            width: "fit-content",
+            padding: "8px 16px",
             borderRadius: 6,
-            border: '1px solid #ddd',
-            background: '#f7f7f7',
-            cursor: 'pointer'
+            border: "1px solid #ddd",
+            background: "#f7f7f7",
+            cursor: "pointer",
           }}
         >
           🔄 Restart Animations
         </button>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          <div style={{ border: '1px solid #ddd', padding: 16, borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0, color: '#666' }}>Linear (Default)</h3>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
+        >
+          <div
+            style={{ border: "1px solid #ddd", padding: 16, borderRadius: 8 }}
+          >
+            <h3 style={{ marginTop: 0, color: "#666" }}>Linear (Default)</h3>
             <StreamingMarkdown
               key={`linear-${restart}`}
               {...args}
@@ -182,8 +199,12 @@ export const AnimationCurveComparison: Story = {
             />
           </div>
 
-          <div style={{ border: '1px solid #ddd', padding: 16, borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0, color: '#666' }}>Accelerate (Slow start)</h3>
+          <div
+            style={{ border: "1px solid #ddd", padding: 16, borderRadius: 8 }}
+          >
+            <h3 style={{ marginTop: 0, color: "#666" }}>
+              Accelerate (Slow start)
+            </h3>
             <StreamingMarkdown
               key={`accelerate-${restart}`}
               {...args}
@@ -193,8 +214,10 @@ export const AnimationCurveComparison: Story = {
             />
           </div>
 
-          <div style={{ border: '1px solid #ddd', padding: 16, borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0, color: '#666' }}>Accelerate Fast</h3>
+          <div
+            style={{ border: "1px solid #ddd", padding: 16, borderRadius: 8 }}
+          >
+            <h3 style={{ marginTop: 0, color: "#666" }}>Accelerate Fast</h3>
             <StreamingMarkdown
               key={`accelerate-fast-${restart}`}
               {...args}
@@ -204,8 +227,12 @@ export const AnimationCurveComparison: Story = {
             />
           </div>
 
-          <div style={{ border: '1px solid #ddd', padding: 16, borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0, color: '#666' }}>Short Duration (600ms)</h3>
+          <div
+            style={{ border: "1px solid #ddd", padding: 16, borderRadius: 8 }}
+          >
+            <h3 style={{ marginTop: 0, color: "#666" }}>
+              Short Duration (600ms)
+            </h3>
             <StreamingMarkdown
               key={`short-${restart}`}
               {...args}
@@ -221,11 +248,12 @@ export const AnimationCurveComparison: Story = {
 };
 
 export const MathStreamingTest: Story = {
-  name: 'Math Streaming Test',
+  name: "Math Streaming Test",
   parameters: {
     docs: {
       description: {
-        story: 'Test that block math does not block streaming of subsequent content.',
+        story:
+          "Test that block math does not block streaming of subsequent content.",
       },
     },
   },
@@ -260,11 +288,11 @@ Here's some inline math too: $a^2 + b^2 = c^2$ which should also stream properly
 
 The streaming should work continuously throughout.`;
 
-    const [content, setContent] = React.useState<string>('');
+    const [content, setContent] = React.useState<string>("");
     const [isStreaming, setIsStreaming] = React.useState(false);
 
     const startStreaming = () => {
-      setContent('');
+      setContent("");
       setIsStreaming(true);
       let i = 0;
       const chunkSize = 5; // Small chunks to see the effect clearly
@@ -286,22 +314,22 @@ The streaming should work continuously throughout.`;
           <button
             onClick={startStreaming}
             style={{
-              padding: '8px 16px',
+              padding: "8px 16px",
               borderRadius: 4,
-              border: '1px solid #ccc',
-              cursor: 'pointer',
+              border: "1px solid #ccc",
+              cursor: "pointer",
             }}
           >
             Start Streaming
           </button>
           <span style={{ marginLeft: 10 }}>
-            {isStreaming ? '🔴 Streaming...' : '⭐ Ready'}
+            {isStreaming ? "🔴 Streaming..." : "⭐ Ready"}
           </span>
         </div>
-        <div style={{ border: '1px solid #ddd', padding: 20, borderRadius: 8 }}>
+        <div style={{ border: "1px solid #ddd", padding: 20, borderRadius: 8 }}>
           <StreamingMarkdown {...args} content={content} />
         </div>
-        <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
+        <div style={{ marginTop: 10, fontSize: 12, color: "#666" }}>
           Content length: {content.length} / {testContent.length}
         </div>
       </div>
@@ -310,11 +338,11 @@ The streaming should work continuously throughout.`;
 };
 
 export const StaticVsStreaming: Story = {
-  name: 'Static vs Streaming Comparison',
+  name: "Static vs Streaming Comparison",
   parameters: {
     docs: {
       description: {
-        story: 'Compare static and streaming rendering side by side.',
+        story: "Compare static and streaming rendering side by side.",
       },
     },
   },
@@ -338,21 +366,25 @@ Ping :mention[assistant]{sId:bot-1} for help.
 `;
 
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <div>
           <h3>Static (isStreaming=false)</h3>
-          <CitationsContext.Provider value={{
-            references: mockReferences,
-            updateActiveReferences: () => {},
-          }}>
+          <CitationsContext.Provider
+            value={{
+              references: mockReferences,
+              updateActiveReferences: () => {},
+            }}
+          >
             <StreamingMarkdown
               {...args}
               content={sampleContent}
               isStreaming={false}
-              additionalMarkdownComponents={{
-                sup: CiteBlock,
-                mention: MentionBlock,
-              } as any}
+              additionalMarkdownComponents={
+                {
+                  sup: CiteBlock,
+                  mention: MentionBlock,
+                } as any
+              }
               additionalMarkdownPlugins={[
                 getCiteDirective(),
                 getMentionDirective(),
@@ -362,18 +394,22 @@ Ping :mention[assistant]{sId:bot-1} for help.
         </div>
         <div>
           <h3>Streaming (isStreaming=true)</h3>
-          <CitationsContext.Provider value={{
-            references: mockReferences,
-            updateActiveReferences: () => {},
-          }}>
+          <CitationsContext.Provider
+            value={{
+              references: mockReferences,
+              updateActiveReferences: () => {},
+            }}
+          >
             <StreamingMarkdown
               {...args}
               content={sampleContent}
               isStreaming={true}
-              additionalMarkdownComponents={{
-                sup: CiteBlock,
-                mention: MentionBlock,
-              } as any}
+              additionalMarkdownComponents={
+                {
+                  sup: CiteBlock,
+                  mention: MentionBlock,
+                } as any
+              }
               additionalMarkdownPlugins={[
                 getCiteDirective(),
                 getMentionDirective(),
@@ -851,7 +887,6 @@ The streaming animation ensures a smooth, progressive reveal of content while ma
 
 *Thank you for exploring our streaming markdown renderer!* 🎉`;
 
-
 const mockReferences = {
   r1: {
     title: "Streaming Markdown Performance Study",
@@ -874,22 +909,28 @@ const mockReferences = {
 };
 
 export const EnhancedFeaturesDemo: Story = {
-  name: 'Enhanced Features Demo',
+  name: "Enhanced Features Demo",
   parameters: {
     docs: {
       description: {
-        story: 'Demonstrates new features: math rendering, citations, mentions, task lists, and custom directives.',
+        story:
+          "Demonstrates new features: math rendering, citations, mentions, task lists, and custom directives.",
       },
     },
   },
   render: (args) => {
-    const [content, setContent] = React.useState<string>('');
+    const [content, setContent] = React.useState<string>("");
     const [restart, setRestart] = React.useState<number>(0);
-    const { streamingSpeedMs = 30, chunkMin = 10, chunkMax = 50, seed = 42 } = args as any;
+    const {
+      streamingSpeedMs = 30,
+      chunkMin = 10,
+      chunkMax = 50,
+      seed = 42,
+    } = args as any;
 
     React.useEffect(() => {
       const full = ADVANCED_MD.trim();
-      setContent('');
+      setContent("");
       let i = 0;
       const rand = makeRng(Number(seed) || 42);
       const min = Math.max(1, Number(chunkMin) || 1);
@@ -910,7 +951,7 @@ export const EnhancedFeaturesDemo: Story = {
     }, [streamingSpeedMs, chunkMin, chunkMax, seed, restart]);
 
     const handleMentionClick = React.useCallback((agentSId: string) => {
-      console.log('Mention clicked:', agentSId);
+      console.log("Mention clicked:", agentSId);
       alert(`Clicked mention: ${agentSId}`);
     }, []);
 
@@ -918,46 +959,44 @@ export const EnhancedFeaturesDemo: Story = {
       () => ({
         references: mockReferences,
         updateActiveReferences: (doc, index) => {
-          console.log('Citation active:', doc.title, index);
+          console.log("Citation active:", doc.title, index);
         },
       }),
       []
     );
 
     const additionalComponents = React.useMemo(
-      () => ({
-        sup: CiteBlock,
-        mention: (props: any) => (
-          <MentionBlock
-            agentName={props.agentName}
-            agentSId={props.agentSId}
-            onClick={handleMentionClick}
-          />
-        ),
-      } as any),
+      () =>
+        ({
+          sup: CiteBlock,
+          mention: (props: any) => (
+            <MentionBlock
+              agentName={props.agentName}
+              agentSId={props.agentSId}
+              onClick={handleMentionClick}
+            />
+          ),
+        }) as any,
       [handleMentionClick]
     );
 
     const additionalPlugins = React.useMemo(
-      () => [
-        getCiteDirective(),
-        getMentionDirective(),
-      ],
+      () => [getCiteDirective(), getMentionDirective()],
       []
     );
 
     return (
-      <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: "grid", gap: 12 }}>
         <div>
           <button
             type="button"
             onClick={() => setRestart((r) => r + 1)}
             style={{
-              padding: '6px 10px',
+              padding: "6px 10px",
               borderRadius: 6,
-              border: '1px solid var(--sb-border, #ddd)',
-              background: 'var(--sb-bg, #f7f7f7)',
-              cursor: 'pointer',
+              border: "1px solid var(--sb-border, #ddd)",
+              background: "var(--sb-bg, #f7f7f7)",
+              cursor: "pointer",
             }}
           >
             Restart Streaming
@@ -984,45 +1023,51 @@ export const EnhancedFeaturesDemo: Story = {
   } as any,
   argTypes: {
     streamingSpeedMs: {
-      control: { type: 'range', min: 10, max: 500, step: 10 },
-      description: 'Speed of streaming (ms between chunks)'
+      control: { type: "range", min: 10, max: 500, step: 10 },
+      description: "Speed of streaming (ms between chunks)",
     },
     chunkMin: {
-      control: { type: 'range', min: 1, max: 50, step: 1 },
-      description: 'Minimum chunk size'
+      control: { type: "range", min: 1, max: 50, step: 1 },
+      description: "Minimum chunk size",
     },
     chunkMax: {
-      control: { type: 'range', min: 10, max: 200, step: 5 },
-      description: 'Maximum chunk size'
+      control: { type: "range", min: 10, max: 200, step: 5 },
+      description: "Maximum chunk size",
     },
     seed: {
-      control: { type: 'number' },
-      description: 'Random seed'
+      control: { type: "number" },
+      description: "Random seed",
     },
     isStreaming: {
-      control: 'boolean',
-      description: 'Enable streaming animations'
+      control: "boolean",
+      description: "Enable streaming animations",
     },
   } as any,
 };
 
 export const ComprehensiveDemo: Story = {
-  name: 'Comprehensive Streaming Demo',
+  name: "Comprehensive Streaming Demo",
   parameters: {
     docs: {
       description: {
-        story: 'Complete demonstration of all supported markdown features with streaming animation. Includes text formatting, lists (nested, ordered, unordered), code blocks with syntax highlighting, tables, blockquotes, images, links, special characters, emojis, and more.',
+        story:
+          "Complete demonstration of all supported markdown features with streaming animation. Includes text formatting, lists (nested, ordered, unordered), code blocks with syntax highlighting, tables, blockquotes, images, links, special characters, emojis, and more.",
       },
     },
   },
   render: (args) => {
-    const [content, setContent] = React.useState<string>('');
+    const [content, setContent] = React.useState<string>("");
     const [restart, setRestart] = React.useState<number>(0);
-    const { streamingSpeedMs = 50, chunkMin = 15, chunkMax = 80, seed = 42 } = args as any;
+    const {
+      streamingSpeedMs = 50,
+      chunkMin = 15,
+      chunkMax = 80,
+      seed = 42,
+    } = args as any;
 
     React.useEffect(() => {
       const full = LONG_MD.trim();
-      setContent('');
+      setContent("");
       let i = 0;
       const rand = makeRng(Number(seed) || 42);
       const min = Math.max(1, Number(chunkMin) || 1);
@@ -1044,7 +1089,7 @@ export const ComprehensiveDemo: Story = {
     }, [streamingSpeedMs, chunkMin, chunkMax, seed, restart]);
 
     return (
-      <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: "grid", gap: 12 }}>
         <div>
           <button
             type="button"
@@ -1052,11 +1097,11 @@ export const ComprehensiveDemo: Story = {
               setRestart((r) => r + 1);
             }}
             style={{
-              padding: '6px 10px',
+              padding: "6px 10px",
               borderRadius: 6,
-              border: '1px solid var(--sb-border, #ddd)',
-              background: 'var(--sb-bg, #f7f7f7)',
-              cursor: 'pointer',
+              border: "1px solid var(--sb-border, #ddd)",
+              background: "var(--sb-bg, #f7f7f7)",
+              cursor: "pointer",
             }}
           >
             Restart Streaming
@@ -1074,41 +1119,47 @@ export const ComprehensiveDemo: Story = {
   } as any,
   argTypes: {
     streamingSpeedMs: {
-      control: { type: 'range', min: 10, max: 500, step: 10 },
-      description: 'Speed of streaming (ms between chunks)'
+      control: { type: "range", min: 10, max: 500, step: 10 },
+      description: "Speed of streaming (ms between chunks)",
     },
     chunkMin: {
-      control: { type: 'range', min: 1, max: 50, step: 1 },
-      description: 'Minimum chunk size'
+      control: { type: "range", min: 1, max: 50, step: 1 },
+      description: "Minimum chunk size",
     },
     chunkMax: {
-      control: { type: 'range', min: 10, max: 200, step: 5 },
-      description: 'Maximum chunk size'
+      control: { type: "range", min: 10, max: 200, step: 5 },
+      description: "Maximum chunk size",
     },
     seed: {
-      control: { type: 'number' },
-      description: 'Random seed'
+      control: { type: "number" },
+      description: "Random seed",
     },
   } as any,
 };
 
 export const StreamingVsProductionComparison: Story = {
-  name: 'StreamingMarkdown vs Production Markdown Comparison',
+  name: "StreamingMarkdown vs Production Markdown Comparison",
   parameters: {
     docs: {
       description: {
-        story: 'Side-by-side comparison of the new StreamingMarkdown component with the current production Markdown component, showing the same comprehensive content with streaming animation.',
+        story:
+          "Side-by-side comparison of the new StreamingMarkdown component with the current production Markdown component, showing the same comprehensive content with streaming animation.",
       },
     },
   },
   render: (args) => {
-    const [content, setContent] = React.useState<string>('');
+    const [content, setContent] = React.useState<string>("");
     const [restart, setRestart] = React.useState<number>(0);
-    const { streamingSpeedMs = 30, chunkMin = 10, chunkMax = 50, seed = 42 } = args as any;
+    const {
+      streamingSpeedMs = 30,
+      chunkMin = 10,
+      chunkMax = 50,
+      seed = 42,
+    } = args as any;
 
     React.useEffect(() => {
       const full = LONG_MD.trim();
-      setContent('');
+      setContent("");
       let i = 0;
       const rand = makeRng(Number(seed) || 42);
       const min = Math.max(1, Number(chunkMin) || 1);
@@ -1130,7 +1181,7 @@ export const StreamingVsProductionComparison: Story = {
     }, [streamingSpeedMs, chunkMin, chunkMax, seed, restart]);
 
     const handleMentionClick = React.useCallback((agentSId: string) => {
-      console.log('Mention clicked:', agentSId);
+      console.log("Mention clicked:", agentSId);
       alert(`Clicked mention: ${agentSId}`);
     }, []);
 
@@ -1138,31 +1189,29 @@ export const StreamingVsProductionComparison: Story = {
       () => ({
         references: mockReferences,
         updateActiveReferences: (doc, index) => {
-          console.log('Citation active:', doc.title, index);
+          console.log("Citation active:", doc.title, index);
         },
       }),
       []
     );
 
     const additionalComponents = React.useMemo(
-      () => ({
-        sup: CiteBlock,
-        mention: (props: any) => (
-          <MentionBlock
-            agentName={props.agentName}
-            agentSId={props.agentSId}
-            onClick={handleMentionClick}
-          />
-        ),
-      } as any),
+      () =>
+        ({
+          sup: CiteBlock,
+          mention: (props: any) => (
+            <MentionBlock
+              agentName={props.agentName}
+              agentSId={props.agentSId}
+              onClick={handleMentionClick}
+            />
+          ),
+        }) as any,
       [handleMentionClick]
     );
 
     const additionalPlugins = React.useMemo(
-      () => [
-        getCiteDirective(),
-        getMentionDirective(),
-      ],
+      () => [getCiteDirective(), getMentionDirective()],
       []
     );
 
@@ -1170,95 +1219,125 @@ export const StreamingVsProductionComparison: Story = {
     const isStillStreaming = content.length < LONG_MD.trim().length;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             type="button"
             onClick={() => setRestart((r) => r + 1)}
             style={{
-              padding: '8px 16px',
+              padding: "8px 16px",
               borderRadius: 6,
-              border: '1px solid var(--sb-border, #ddd)',
-              background: 'var(--sb-bg, #f7f7f7)',
-              cursor: 'pointer',
+              border: "1px solid var(--sb-border, #ddd)",
+              background: "var(--sb-bg, #f7f7f7)",
+              cursor: "pointer",
               fontWeight: 500,
             }}
           >
             🔄 Restart Streaming
           </button>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 10px',
-            borderRadius: 20,
-            background: isStillStreaming ? '#fef3c7' : '#d1fae5',
-            color: isStillStreaming ? '#92400e' : '#065f46',
-            fontSize: 14,
-            fontWeight: 500
-          }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 10px",
+              borderRadius: 20,
+              background: isStillStreaming ? "#fef3c7" : "#d1fae5",
+              color: isStillStreaming ? "#92400e" : "#065f46",
+              fontSize: 14,
+              fontWeight: 500,
+            }}
+          >
             {isStillStreaming ? (
               <>
-                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1.5s infinite' }}></span>
-                Streaming... {Math.round(content.length / LONG_MD.trim().length * 100)}%
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "#f59e0b",
+                    animation: "pulse 1.5s infinite",
+                  }}
+                ></span>
+                Streaming...{" "}
+                {Math.round((content.length / LONG_MD.trim().length) * 100)}%
               </>
             ) : (
               <>
-                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10b981' }}></span>
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "#10b981",
+                  }}
+                ></span>
                 Complete
               </>
             )}
           </span>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 20,
-          minHeight: 600
-        }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 20,
+            minHeight: 600,
+          }}
+        >
           {/* New StreamingMarkdown */}
-          <div style={{
-            border: '2px solid #3b82f6',
-            borderRadius: 8,
-            padding: 16,
-            background: 'var(--sb-bg-secondary, #fafafa)',
-            position: 'relative',
-            overflow: 'auto'
-          }}>
-            <div style={{
-              position: 'sticky',
-              top: -16,
-              background: 'var(--sb-bg-secondary, #fafafa)',
-              padding: '8px 0 12px',
-              marginTop: -8,
-              marginBottom: 16,
-              borderBottom: '1px solid #e5e7eb',
-              zIndex: 10
-            }}>
-              <h3 style={{
-                margin: 0,
-                color: '#3b82f6',
-                fontSize: 16,
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}>
+          <div
+            style={{
+              border: "2px solid #3b82f6",
+              borderRadius: 8,
+              padding: 16,
+              background: "var(--sb-bg-secondary, #fafafa)",
+              position: "relative",
+              overflow: "auto",
+            }}
+          >
+            <div
+              style={{
+                position: "sticky",
+                top: -16,
+                background: "var(--sb-bg-secondary, #fafafa)",
+                padding: "8px 0 12px",
+                marginTop: -8,
+                marginBottom: 16,
+                borderBottom: "1px solid #e5e7eb",
+                zIndex: 10,
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  color: "#3b82f6",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
                 ✨ NEW: StreamingMarkdown
                 {isStillStreaming && (
-                  <span style={{
-                    fontSize: 12,
-                    background: '#3b82f6',
-                    color: 'white',
-                    padding: '2px 8px',
-                    borderRadius: 12
-                  }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      background: "#3b82f6",
+                      color: "white",
+                      padding: "2px 8px",
+                      borderRadius: 12,
+                    }}
+                  >
                     with animation
                   </span>
                 )}
               </h3>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>
                 Token-based streaming with character animation
               </p>
             </div>
@@ -1275,47 +1354,55 @@ export const StreamingVsProductionComparison: Story = {
           </div>
 
           {/* Current Production Markdown */}
-          <div style={{
-            border: '2px solid #6b7280',
-            borderRadius: 8,
-            padding: 16,
-            background: 'var(--sb-bg-secondary, #fafafa)',
-            position: 'relative',
-            overflow: 'auto'
-          }}>
-            <div style={{
-              position: 'sticky',
-              top: -16,
-              background: 'var(--sb-bg-secondary, #fafafa)',
-              padding: '8px 0 12px',
-              marginTop: -8,
-              marginBottom: 16,
-              borderBottom: '1px solid #e5e7eb',
-              zIndex: 10
-            }}>
-              <h3 style={{
-                margin: 0,
-                color: '#6b7280',
-                fontSize: 16,
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}>
+          <div
+            style={{
+              border: "2px solid #6b7280",
+              borderRadius: 8,
+              padding: 16,
+              background: "var(--sb-bg-secondary, #fafafa)",
+              position: "relative",
+              overflow: "auto",
+            }}
+          >
+            <div
+              style={{
+                position: "sticky",
+                top: -16,
+                background: "var(--sb-bg-secondary, #fafafa)",
+                padding: "8px 0 12px",
+                marginTop: -8,
+                marginBottom: 16,
+                borderBottom: "1px solid #e5e7eb",
+                zIndex: 10,
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  color: "#6b7280",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
                 📋 CURRENT: Production Markdown
                 {isStillStreaming && (
-                  <span style={{
-                    fontSize: 12,
-                    background: '#6b7280',
-                    color: 'white',
-                    padding: '2px 8px',
-                    borderRadius: 12
-                  }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      background: "#6b7280",
+                      color: "white",
+                      padding: "2px 8px",
+                      borderRadius: 12,
+                    }}
+                  >
                     isStreaming={isStillStreaming}
                   </span>
                 )}
               </h3>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>
                 Currently used in production for agent messages
               </p>
             </div>
@@ -1348,20 +1435,20 @@ export const StreamingVsProductionComparison: Story = {
   } as any,
   argTypes: {
     streamingSpeedMs: {
-      control: { type: 'range', min: 10, max: 500, step: 10 },
-      description: 'Speed of streaming (ms between chunks)'
+      control: { type: "range", min: 10, max: 500, step: 10 },
+      description: "Speed of streaming (ms between chunks)",
     },
     chunkMin: {
-      control: { type: 'range', min: 1, max: 50, step: 1 },
-      description: 'Minimum chunk size'
+      control: { type: "range", min: 1, max: 50, step: 1 },
+      description: "Minimum chunk size",
     },
     chunkMax: {
-      control: { type: 'range', min: 10, max: 200, step: 5 },
-      description: 'Maximum chunk size'
+      control: { type: "range", min: 10, max: 200, step: 5 },
+      description: "Maximum chunk size",
     },
     seed: {
-      control: { type: 'number' },
-      description: 'Random seed for chunk sizes'
+      control: { type: "number" },
+      description: "Random seed for chunk sizes",
     },
   } as any,
 };

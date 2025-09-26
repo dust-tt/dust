@@ -1,17 +1,19 @@
+import type { Root } from "hast";
 import React from "react";
 import { visit } from "unist-util-visit";
-import type { Root } from "hast";
-import type { DirectiveNode, MarkdownNode, MdastNode } from "./types";
+
+import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
 import { OlBlock, UlBlock } from "@sparkle/components/markdown/List";
+import { PreBlock } from "@sparkle/components/markdown/PreBlock";
 import {
   TableBlock,
-  TableHeadBlock,
   TableBodyBlock,
-  TableHeaderBlock,
   TableDataBlock,
+  TableHeadBlock,
+  TableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
-import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import { PreBlock } from "@sparkle/components/markdown/PreBlock";
+
+import type { DirectiveNode, MarkdownNode, MdastNode } from "./types";
 
 export function isDirectiveNode(node: unknown): node is DirectiveNode {
   return (
@@ -94,8 +96,8 @@ export function keyOf(
 }
 
 export function flatten(child: React.ReactNode): string {
-  if (typeof child === "string") return child;
-  if (Array.isArray(child)) return child.map((c) => flatten(c)).join("");
+  if (typeof child === "string") {return child;}
+  if (Array.isArray(child)) {return child.map((c) => flatten(c)).join("");}
   if (isReactElementWithProps(child)) {
     const props = getElementProps(child);
     return flatten(props.children);
@@ -104,7 +106,7 @@ export function flatten(child: React.ReactNode): string {
 }
 
 export function mdToText(n: MdastNode | undefined): string {
-  if (!n) return "";
+  if (!n) {return "";}
   switch (n.type) {
     case "text":
       return n.value || "";

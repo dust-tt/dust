@@ -3,18 +3,19 @@ import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkDirective from "remark-directive";
-import remarkMath from "remark-math";
-import rehypeRaw from "rehype-raw";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
+import remarkDirective from "remark-directive";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+
+import { Chip } from "@sparkle/components";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
-import { Chip } from "@sparkle/components";
 
-import type { StreamingMarkdownProps, ProcessChildrenContext } from "./types";
-import { showUnsupportedDirective } from "./utils";
 import { createMarkdownComponents } from "./markdownComponents";
+import type { ProcessChildrenContext,StreamingMarkdownProps } from "./types";
+import { showUnsupportedDirective } from "./utils";
 
 export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
   content,
@@ -30,7 +31,7 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
   additionalMarkdownPlugins,
 }) => {
   const effectiveAnimationName = useMemo(() => {
-    if (animationName) return animationName;
+    if (animationName) {return animationName;}
 
     switch (animationCurve) {
       case "accelerate":

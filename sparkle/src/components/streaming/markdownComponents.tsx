@@ -1,37 +1,32 @@
-import React, { useMemo } from "react";
+import React from "react";
 import type { Components } from "react-markdown";
-import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
-import { OlBlock, UlBlock } from "@sparkle/components/markdown/List";
-import {
-  TableBlock,
-  TableHeadBlock,
-  TableBodyBlock,
-  TableHeaderBlock,
-  TableDataBlock,
-} from "@sparkle/components/markdown/TableBlock";
+
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import { PreBlock } from "@sparkle/components/markdown/PreBlock";
+import { OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import {
+  HrBlock,
+  ImgBlock,
   Input,
   LinkBlock,
   StrongBlock,
-  HrBlock,
-  ImgBlock,
 } from "@sparkle/components/markdown/Markdown";
+import { PreBlock } from "@sparkle/components/markdown/PreBlock";
+import {
+  TableBlock,
+  TableBodyBlock,
+  TableDataBlock,
+  TableHeadBlock,
+  TableHeaderBlock,
+} from "@sparkle/components/markdown/TableBlock";
+import { StreamingParagraph } from "@sparkle/components/streaming/StreamingParagraph";
 import { cn } from "@sparkle/lib/utils";
 
+import { BlockStreamer } from "./BlockStreamer";
+import { StreamingListItem } from "./StreamingListItem";
 import type { ComponentProps, ProcessChildrenContext } from "./types";
 import { MARKDOWN_TEXT_SIZES } from "./types";
-import { BlockStreamer } from "./BlockStreamer";
-import {
-  keyOf,
-  flatten,
-  isReactElementWithProps,
-  getElementProps,
-} from "./utils";
-import { StreamingListItem } from "./StreamingListItem";
-import { StreamingParagraph } from "@sparkle/components/streaming/StreamingParagraph";
+import { flatten, keyOf } from "./utils";
 
 interface CreateMarkdownComponentsParams {
   textColor: string;
@@ -56,7 +51,7 @@ export function createMarkdownComponents({
 
   return {
     // Let parent blocks handle animation to keep identity stable
-    text: ({ node, ...props }: ComponentProps) => props.children,
+    text: ({ ...props }: ComponentProps) => props.children,
 
     h1: ({ node, ...props }: ComponentProps) => {
       const text = flatten(props.children);
@@ -180,7 +175,7 @@ export function createMarkdownComponents({
       );
     },
 
-    p: ({ node, ...props }: ComponentProps) => (
+    p: ({ ...props }: ComponentProps) => (
       <StreamingParagraph
         {...props}
         isStreaming={isStreaming}
@@ -192,17 +187,17 @@ export function createMarkdownComponents({
         sizes={sizes}
       />
     ),
-    blockquote: ({ node, ...props }: ComponentProps) => (
+    blockquote: ({ ...props }: ComponentProps) => (
       <BlockquoteBlock>{props.children}</BlockquoteBlock>
     ),
 
-    ul: ({ node, ...props }: ComponentProps) => (
+    ul: ({ ...props }: ComponentProps) => (
       <UlBlock textColor={textColor} textSize={forcedTextSize || sizes.p}>
         {props.children}
       </UlBlock>
     ),
 
-    ol: ({ node, start, ...props }: ComponentProps & { start?: number }) => (
+    ol: ({ start, ...props }: ComponentProps & { start?: number }) => (
       <OlBlock
         start={start}
         textColor={textColor}
@@ -231,17 +226,15 @@ export function createMarkdownComponents({
       />
     ),
 
-    a: ({ node, ...props }: ComponentProps & { href?: string }) => (
+    a: ({ ...props }: ComponentProps & { href?: string }) => (
       <LinkBlock href={props.href}>{props.children}</LinkBlock>
     ),
 
-    strong: ({ node, ...props }: ComponentProps) => (
+    strong: ({ ...props }: ComponentProps) => (
       <StrongBlock>{props.children}</StrongBlock>
     ),
 
-    em: ({ node, ...props }: ComponentProps) => (
-      <em {...props}>{props.children}</em>
-    ),
+    em: ({ ...props }: ComponentProps) => <em {...props}>{props.children}</em>,
 
     pre: ({ children }: { children?: React.ReactNode }) => (
       <PreBlock>{children}</PreBlock>
@@ -257,7 +250,7 @@ export function createMarkdownComponents({
     thead: TableHeadBlock,
     tbody: TableBodyBlock,
     th: TableHeaderBlock,
-    td: ({ node, ...props }: ComponentProps) => {
+    td: ({ ...props }: ComponentProps) => {
       const text = flatten(props.children);
       return (
         <TableDataBlock>
