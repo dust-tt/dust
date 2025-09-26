@@ -7,7 +7,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuTrigger,
   MoreIcon,
   PencilSquareIcon,
@@ -315,9 +314,7 @@ export function AssistantDetailsDropdownMenu({
               }}
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {menuItems}
-          </DropdownMenuContent>
+          <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>
       ) : (
         <DropdownMenu>
