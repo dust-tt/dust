@@ -66,10 +66,9 @@ export default function MessageGroup({
       ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
     >
-      {filteredMessages.map((message, index) => (
+      {filteredMessages.map((message) => (
         <MessageItem
           key={`message-${message.sId}`}
-          index={index}
           conversationId={conversationId}
           messageFeedback={feedbacks.find(
             (feedback) => feedback.messageId === message.sId

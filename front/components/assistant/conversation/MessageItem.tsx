@@ -1,3 +1,4 @@
+import { cn } from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -16,10 +17,8 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { cn } from "@dust-tt/sparkle";
 
 interface MessageItemProps {
-  index: number;
   conversationId: string;
   messageFeedback: AgentMessageFeedbackType | undefined;
   isInModal: boolean;
@@ -32,7 +31,6 @@ interface MessageItemProps {
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
-      index,
       conversationId,
       messageFeedback,
       isLastMessage,
