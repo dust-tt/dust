@@ -40,10 +40,8 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   resolver: KeyResolver<Args>,
   {
     ttlMs,
-    redisUri,
   }: {
     ttlMs: number;
-    redisUri?: string;
   }
 ): (...args: Args) => Promise<JsonSerializable<T>> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
@@ -51,13 +49,6 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   }
 
   return async (...args: Args): Promise<JsonSerializable<T>> => {
-    if (!redisUri) {
-      const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
-      if (!REDIS_CACHE_URI) {
-        throw new Error("REDIS_CACHE_URI is not set");
-      }
-      redisUri = REDIS_CACHE_URI;
-    }
     const redis = await redisCacheClient({ origin: "cache_with_redis" });
 
     const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
