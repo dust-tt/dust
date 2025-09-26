@@ -129,6 +129,8 @@ export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
 >(({ children, citations, className, ...props }, ref) => {
+  const [full, setFull] = React.useState(false);
+
   return (
     <div
       ref={ref}
@@ -147,7 +149,19 @@ export const ConversationMessageContent = React.forwardRef<
         {children}
       </div>
       {citations && citations.length > 0 && (
-        <CitationGrid>{citations}</CitationGrid>
+        <Button
+          variant="ghost-secondary"
+          size="sm"
+          className="s-ml-4"
+          onClick={() => setFull(!full)}
+          label={
+            full ? "Hide citations" : `Show citations (${citations.length})`
+          }
+        />
+      )}
+      {full && <CitationGrid variant="list">{citations}</CitationGrid>}
+      {!full && citations && citations.length > 0 && (
+        <CitationGrid variant="list">{citations.slice(0, 2)}</CitationGrid>
       )}
     </div>
   );

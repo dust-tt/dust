@@ -4,7 +4,6 @@ import {
   CitationClose,
   CitationDescription,
   CitationIcons,
-  CitationImage,
   CitationTitle,
   DocumentIcon,
   DoubleIcon,
@@ -131,13 +130,31 @@ export function AttachmentCitation({
 
   const tooltipContent =
     attachmentCitation.type === "file" ? (
-      attachmentCitation.title
+      <div className="flex max-w-[80vw] flex-col gap-2">
+        {attachmentCitation.preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={attachmentCitation.preview}
+            alt={attachmentCitation.title}
+            className="mx-auto max-h-80 max-w-full rounded-md object-contain"
+          />
+        ) : (
+          <>
+            <div className="font-semibold">{attachmentCitation.title}</div>
+            {attachmentCitation.description && (
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {attachmentCitation.description}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     ) : (
       <div className="flex flex-col gap-1">
         <div className="font-bold">{attachmentCitation.title}</div>
         <div className="flex gap-1 pt-1 text-sm">
           <Icon visual={attachmentCitation.spaceIcon} />
-          <p>{attachmentCitation.spaceName}</p>
+          <p>{attachmentCitation.path}</p>
         </div>
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           {attachmentCitation.path}
@@ -146,49 +163,28 @@ export function AttachmentCitation({
     );
 
   return (
-    <Tooltip
-      trigger={
-        <Citation
-          {...citationInteractionProps}
-          isLoading={
-            attachmentCitation.type === "file" && attachmentCitation.isUploading
-          }
-          action={
-            onRemove && (
-              <CitationClose
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemove();
-                }}
-              />
-            )
-          }
-        >
-          {attachmentCitation.type === "file" && attachmentCitation.preview && (
-            <CitationImage imgSrc={attachmentCitation.preview} />
-          )}
-          <CitationIcons>{attachmentCitation.visual}</CitationIcons>
-          <CitationTitle className="truncate text-ellipsis">
-            {attachmentCitation.title}
-          </CitationTitle>
-          {attachmentCitation.type === "file" &&
-            attachmentCitation.description && (
-              <CitationDescription className="truncate text-ellipsis">
-                {attachmentCitation.description}
-              </CitationDescription>
-            )}
-          {attachmentCitation.type === "node" && (
-            <CitationDescription className="truncate text-ellipsis">
-              <span>
-                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                {attachmentCitation.path || attachmentCitation.spaceName}
-              </span>
-            </CitationDescription>
-          )}
-        </Citation>
+    <Citation
+      {...citationInteractionProps}
+      isLoading={
+        attachmentCitation.type === "file" && attachmentCitation.isUploading
       }
-      label={tooltipContent}
-    />
+      tooltip={tooltipContent}
+      action={
+        onRemove && (
+          <CitationClose
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+          />
+        )
+      }
+    >
+      <CitationIcons>{attachmentCitation.visual}</CitationIcons>
+      <CitationTitle className="truncate text-ellipsis">
+        {attachmentCitation.title}
+      </CitationTitle>
+    </Citation>
   );
 }
 

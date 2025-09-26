@@ -30,6 +30,25 @@ function CitationContent({
         {document.icon}
       </CitationIcons>
       <CitationTitle>{document.title}</CitationTitle>
+      <CitationDescription>
+        {document.href &&
+          (() => {
+            const url = new URL(document.href);
+            // Remove www. for display
+            let host = url.host.replace(/^www\./, "");
+            let path = url.pathname;
+            // Only keep up to the first subpage (e.g., /subreddit)
+            let firstPath = path.split("/").filter(Boolean)[0];
+            let secondPath = path.split("/").filter(Boolean)[1];
+            let display = host;
+            if (firstPath) {
+              display += "/" + firstPath + (secondPath ? "/" + secondPath : "");
+            }
+            return display;
+          })()}
+        {document.description && document.href && " · "}
+        {document.description}
+      </CitationDescription>
     </>
   );
 }
@@ -38,8 +57,30 @@ export function DefaultAgentMessageGeneratedFiles({
   document,
   index,
 }: DefaultAgentMessageGeneratedFilesProps) {
+  // Only render iframe tooltip for same-origin URLs to avoid X-Frame-Options/CSP blocks.
+  let tooltipContent: React.ReactNode | undefined = undefined;
+  try {
+    const href = document.href;
+    if (typeof window !== "undefined" && href) {
+      const embedUrl = `/api/embed?url=${encodeURIComponent(href)}&scale=0.5`;
+      tooltipContent = (
+        <iframe
+          src={embedUrl}
+          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+          style={{
+            width: "100%",
+            height: "100%",
+            border: 0,
+            borderRadius: 8,
+          }}
+        />
+      );
+    }
+  } catch (_) {
+    // noop – fall back to no iframe tooltip
+  }
   return (
-    <Citation href={document.href} tooltip={document.title}>
+    <Citation href={document.href} tooltip={tooltipContent} variant="primary">
       <CitationContent document={document} index={index} />
     </Citation>
   );

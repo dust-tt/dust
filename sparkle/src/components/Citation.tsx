@@ -131,7 +131,7 @@ const citationGridVariants = cva("s-grid s-gap-2", {
   variants: {
     variant: {
       grid: "s-grid-cols-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6",
-      list: "s-grid-cols-1",
+      list: "s-flex s-flex-col s-gap-2",
     },
   },
   defaultVariants: {

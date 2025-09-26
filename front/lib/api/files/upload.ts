@@ -1,6 +1,5 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isDustMimeType } from "@dust-tt/client";
-import ConvertAPI from "convertapi";
 import fs from "fs";
 import type { IncomingMessage } from "http";
 import { Readable } from "stream";
@@ -77,88 +76,16 @@ const uploadToPublicBucket: ProcessingFunction = async (
 
 // Images processing.
 
-const createReadableFromUrl = async (url: string): Promise<Readable> => {
-  const response = await fetch(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`Failed to fetch from URL: ${response.statusText}`);
-  }
-  return Readable.fromWeb(response.body as any); // Type assertion needed due to Node.js types mismatch
-};
-
 const resizeAndUploadToFileStorage: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  /* Skipping sharp() to check if it's the cause of high CPU / memory usage.
-  const readStream = file.getReadStream({
-    auth,
-    version: "original",
-  });
-
-  // Explicitly disable Sharp's cache to prevent memory accumulation.
-  sharp.cache(false);
-
-  // Set global concurrency limit to prevent too many parallel operations.
-  sharp.concurrency(2);
-
-  // Anthropic https://docs.anthropic.com/en/docs/build-with-claude/vision#evaluate-image-size
-  // OpenAI https://platform.openai.com/docs/guides/vision#calculating-costs
-
-  // Anthropic recommends <= 1568px on any side.
-  // OpenAI recommends <= 2048px on the longest side, 768px on the shortest side.
-
-  // Resize the image, preserving the aspect ratio based on the longest side compatible with both
-  // models. In the case of GPT, it might incur a resize on their side as well, but doing the math here
-  // would mean downloading the file first instead of streaming it.
-
-  const resizedImageStream = sharp().resize(1568, 1568, {
-    fit: sharp.fit.inside, // Ensure the longest side is 1568px.
-    withoutEnlargement: true, // Avoid upscaling if the image is smaller than 1568px.
-  });
-  */
-
-  if (!process.env.CONVERTAPI_API_KEY) {
-    throw new Error("CONVERTAPI_API_KEY is not set");
-  }
-
-  const originalFormat = extensionsForContentType(file.contentType)[0].replace(
-    ".",
-    ""
-  );
-  const originalUrl = await file.getSignedUrlForDownload(auth, "original");
-  const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
-
-  let result;
-  try {
-    result = await convertapi.convert(
-      originalFormat,
-      {
-        File: originalUrl,
-        ScaleProportions: true,
-        ImageResolution: "72",
-        ScaleImage: "true",
-        ScaleIfLarger: "true",
-        ImageHeight: "1538",
-        ImageWidth: "1538",
-      },
-      originalFormat,
-      30
-    );
-  } catch (e) {
-    return new Err(
-      new Error(`Failed resizing image: ${normalizeError(e).message}`)
-    );
-  }
-
-  const writeStream = file.getWriteStream({
-    auth,
-    version: "processed",
-  });
+  // No processing: simply store the raw original image as the processed version.
+  const readStream = file.getReadStream({ auth, version: "original" });
+  const writeStream = file.getWriteStream({ auth, version: "processed" });
 
   try {
-    const stream = await createReadableFromUrl(result.file.url);
-
-    await pipeline(stream, writeStream);
+    await pipeline(readStream, writeStream);
     return new Ok(undefined);
   } catch (err) {
     logger.error(
@@ -167,13 +94,13 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
         workspaceId: auth.workspace()?.sId,
         error: err,
       },
-      "Failed to resize image."
+      "Failed to store raw image."
     );
 
     const errorMessage =
       err instanceof Error ? err.message : "Unexpected error";
 
-    return new Err(new Error(`Failed resizing image. ${errorMessage}`));
+    return new Err(new Error(`Failed to store raw image. ${errorMessage}`));
   }
 };
 
