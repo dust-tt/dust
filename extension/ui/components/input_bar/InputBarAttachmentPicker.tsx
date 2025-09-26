@@ -20,7 +20,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -40,7 +39,6 @@ interface InputBarAttachmentsPickerProps {
   onNodeUnselect: (node: DataSourceViewContentNodeType) => void;
   isLoading?: boolean;
   attachedNodes: DataSourceViewContentNodeType[];
-  side?: "top" | "right" | "bottom" | "left";
 }
 
 export const InputBarAttachmentsPicker = ({
@@ -49,7 +47,6 @@ export const InputBarAttachmentsPicker = ({
   onNodeUnselect,
   attachedNodes,
   isLoading = false,
-  side = "bottom",
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -112,12 +109,6 @@ export const InputBarAttachmentsPicker = ({
 
   const showLoader = isSearchLoading || isDebouncing;
 
-  const searchbarRef = (element: HTMLInputElement) => {
-    if (element) {
-      element.focus();
-    }
-  };
-
   return (
     <DropdownMenu
       open={isOpen}
@@ -137,49 +128,55 @@ export const InputBarAttachmentsPicker = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="min-w-64 max-w-96"
-        side={side}
+        className="h-80 w-80 xs:h-96 xs:w-96"
+        collisionPadding={15}
         align="end"
         onInteractOutside={() => setIsOpen(false)}
         onEscapeKeyDown={() => setIsOpen(false)}
+        dropdownHeaders={
+          <>
+            <Input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={async (e) => {
+                setIsOpen(false);
+                await fileUploaderService.handleFileChange(e);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
+              }}
+              multiple={true}
+            />
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search-files"
+              placeholder="Search knowledge"
+              value={search}
+              onChange={setSearch}
+              disabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const firstMenuItem =
+                    itemsContainerRef.current?.querySelector(
+                      '[role="menuitemcheckbox"]'
+                    );
+                  (firstMenuItem as HTMLElement)?.focus();
+                }
+              }}
+              button={
+                <Button
+                  icon={CloudArrowUpIcon}
+                  label="Upload File"
+                  onClick={() => fileInputRef.current?.click()}
+                />
+              }
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
       >
-        <Input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          onChange={async (e) => {
-            setIsOpen(false);
-            await fileUploaderService.handleFileChange(e);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = "";
-            }
-          }}
-          multiple={true}
-        />
-        <DropdownMenuItem
-          key="upload-item"
-          label="Upload file"
-          icon={CloudArrowUpIcon}
-          onClick={() => fileInputRef.current?.click()}
-        />
-        <DropdownMenuSeparator />
-        <DropdownMenuSearchbar
-          ref={searchbarRef}
-          name="search-files"
-          placeholder="Search knowledge"
-          value={search}
-          onChange={setSearch}
-          disabled={isLoading}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              const firstMenuItem = itemsContainerRef.current?.querySelector(
-                '[role="menuitemcheckbox"]'
-              );
-              (firstMenuItem as HTMLElement)?.focus();
-            }
-          }}
-        />
         {searchQuery && (
           <>
             <DropdownMenuSeparator />

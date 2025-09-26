@@ -2,6 +2,7 @@ import { uuid4 } from "@temporalio/workflow";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
+import type { RedisClientType } from "redis";
 
 import { updateParentsField } from "@connectors/connectors/google_drive/lib";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
@@ -27,13 +28,13 @@ import {
   GoogleDriveFiles,
   GoogleDriveSyncToken,
 } from "@connectors/lib/models/google_drive";
-import { redisClient } from "@connectors/lib/redis";
 import { heartbeat } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { WithRetriesError } from "@connectors/types";
+import { redisClient } from "@connectors/types/shared/redis_client";
 
 export async function incrementalSync(
   connectorId: ModelId,
@@ -368,7 +369,7 @@ async function alreadySeenAndIgnored({
   fileId: string;
   connectorId: ModelId;
   startSyncTs: number;
-  redisCli: Awaited<ReturnType<typeof redisClient>>;
+  redisCli: RedisClientType;
 }) {
   const key = `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
   const val = await redisCli.get(key);
@@ -384,7 +385,7 @@ async function markAsSeenAndIgnored({
   fileId: string;
   connectorId: ModelId;
   startSyncTs: number;
-  redisCli: Awaited<ReturnType<typeof redisClient>>;
+  redisCli: RedisClientType;
 }) {
   const key = `google_drive_seen_and_ignored_${connectorId}_${startSyncTs}_${fileId}`;
   await redisCli.set(key, "1", {

@@ -17,9 +17,12 @@ import logger from "@app/logger/logger";
 import { makeScheduleId } from "@app/temporal/agent_schedule/client";
 import type {
   AgentConfigurationType,
+  APIErrorWithStatusCode,
   ContentFragmentInputWithFileIdType,
+  ConversationType,
+  Result,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
 /**
@@ -74,7 +77,7 @@ async function shouldCreateIndividualConversations(
   return false;
 }
 
-const createConversationForAgentConfiguration = async ({
+async function createConversationForAgentConfiguration({
   auth,
   agentConfiguration,
   trigger,
@@ -86,18 +89,26 @@ const createConversationForAgentConfiguration = async ({
   trigger: TriggerType;
   lastRunAt: Date | null;
   contentFragment?: ContentFragmentInputWithFileIdType;
-}) => {
-  const newConversation = await createConversation(auth, {
-    title: `@${agentConfiguration.name} triggered (${trigger.kind}) - ${new Date().toLocaleDateString(
-      "en-US",
-      {
+}): Promise<Result<ConversationType, APIErrorWithStatusCode>> {
+  let conversationTitle = `@${agentConfiguration.name} triggered (${trigger.kind})`;
+  switch (trigger.kind) {
+    case "schedule":
+      conversationTitle += ` - ${new Intl.DateTimeFormat(undefined, {
+        timeZone: trigger.configuration.timezone,
         month: "short",
         day: "numeric",
         hour: "numeric",
         minute: "2-digit",
-        hour12: true,
-      }
-    )}`,
+      }).format(new Date())}`;
+      break;
+    case "webhook":
+      break;
+    default:
+      assertNever(trigger);
+  }
+
+  const newConversation = await createConversation(auth, {
+    title: conversationTitle,
     visibility: "unlisted",
     triggerId: trigger.id,
   });
@@ -132,15 +143,16 @@ const createConversationForAgentConfiguration = async ({
         agentConfigurationId: trigger.agentConfigurationId,
         conversationId: newConversation.sId,
         error: messageRes.error,
-        trigger,
+        triggerId: trigger.sId,
+        workspaceId: auth.workspace()?.sId,
       },
       "scheduledAgentCallActivity: Error sending message."
     );
-    return;
+    return messageRes;
   }
 
-  return newConversation;
-};
+  return new Ok(newConversation);
+}
 
 class TriggerNonRetryableError extends Error {}
 
@@ -266,21 +278,26 @@ export async function runTriggeredAgentsActivity({
     }
   } else {
     // Create a single conversation for the editor
-    const conversation = await createConversationForAgentConfiguration({
+    const conversationResult = await createConversationForAgentConfiguration({
       auth,
       agentConfiguration,
       trigger,
       lastRunAt,
       contentFragment,
     });
-    if (!conversation) {
-      throw new Error("Error creating conversation.");
+    if (conversationResult.isErr()) {
+      throw new Error(
+        `Error creating conversation: ${conversationResult.error.api_error.message}`,
+        {
+          cause: conversationResult.error,
+        }
+      );
     }
 
     // Upsert all the subscribers as participants
     for (const tempAuth of subscribersAuths) {
       await ConversationResource.upsertParticipation(tempAuth, {
-        conversation,
+        conversation: conversationResult.value,
         action: "subscribed",
       });
     }

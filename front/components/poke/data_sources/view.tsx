@@ -22,7 +22,11 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
-import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import {
+  decodeSqids,
+  formatTimestampToFriendlyDate,
+  timeAgoFrom,
+} from "@app/lib/utils";
 import type {
   ConnectorType,
   CoreAPIDataSource,
@@ -275,21 +279,21 @@ function RawObjectsModal({
             <span className="text-sm font-bold">dataSource</span>
             <JsonViewer
               theme={isDark ? "dark" : "light"}
-              value={dataSource}
+              value={decodeSqids(dataSource)}
               rootName={false}
               defaultInspectDepth={1}
             />
             <span className="text-sm font-bold">coreDataSource</span>
             <JsonViewer
               theme={isDark ? "dark" : "light"}
-              value={coreDataSource}
+              value={decodeSqids(coreDataSource)}
               rootName={false}
               defaultInspectDepth={1}
             />
             <span className="text-sm font-bold">connector</span>
             <JsonViewer
               theme={isDark ? "dark" : "light"}
-              value={connector}
+              value={decodeSqids(connector)}
               rootName={false}
               defaultInspectDepth={1}
             />

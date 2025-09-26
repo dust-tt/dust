@@ -55,51 +55,48 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const router = useRouter();
   const [cookies] = useCookies(["dust-cookies-accepted"]);
 
-  // Check if user has accepted cookies
   const cookieValue = cookies["dust-cookies-accepted"];
   const hasAcceptedCookies =
     cookieValue === "true" || cookieValue === "auto" || cookieValue === true;
 
-  // Initialize PostHog only for public pages (not under /w/) and if cookies are accepted
-  useEffect(() => {
-    const isPublicPage = !router.pathname.startsWith("/w/");
+  const excludedPaths = [
+    "/w/",
+    "/poke",
+    "/poke/",
+    "/sso-enforced",
+    "/maintenance",
+    "/oauth/",
+    "/share/",
+  ];
+  const isTrackablePage = !excludedPaths.some((path) =>
+    router.pathname.startsWith(path)
+  );
 
-    if (isPublicPage && hasAcceptedCookies) {
-      // Only initialize if not already initialized
-      if (!posthog.__loaded && POSTHOG_KEY) {
-        posthog.init(POSTHOG_KEY, {
-          api_host: "/ingest",
-          person_profiles: "identified_only",
-          defaults: "2025-05-24",
-          loaded: (posthog) => {
-            if (NODE_ENV === "development") {
-              posthog.debug();
-            }
-          },
-        });
-      } else if (posthog.__loaded) {
-        // Re-enable capturing if previously opted out
-        posthog.opt_in_capturing();
-      } else {
-        // Only log to Datadog when key is not available
-        datadogLogs.logger.warn(
-          "[PostHog] Not initializing - no key available",
-          {
-            isPublicPage,
-            hasAcceptedCookies,
-            posthogLoaded: posthog.__loaded,
-            pathname: router.pathname,
-            env: NODE_ENV,
-          }
-        );
-      }
-    } else {
-      // Opt out of capturing if on webapp pages or cookies not accepted
+  useEffect(() => {
+    const shouldTrack = isTrackablePage && hasAcceptedCookies;
+
+    if (!shouldTrack) {
       if (posthog.__loaded) {
         posthog.opt_out_capturing();
       }
+      return;
     }
-  }, [router.pathname, hasAcceptedCookies]);
+
+    if (!posthog.__loaded && POSTHOG_KEY) {
+      posthog.init(POSTHOG_KEY, {
+        api_host: "/ingest",
+        person_profiles: "identified_only",
+        defaults: "2025-05-24",
+        loaded: (posthog) => {
+          if (NODE_ENV === "development") {
+            posthog.debug();
+          }
+        },
+      });
+    } else if (posthog.__loaded) {
+      posthog.opt_in_capturing();
+    }
+  }, [router.pathname, hasAcceptedCookies, isTrackablePage]);
 
   // Use the layout defined at the page level, if available.
   const getLayout = Component.getLayout ?? ((page) => page);
@@ -110,8 +107,8 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
     </RootLayout>
   );
 
-  // Only wrap with PostHogProvider for public pages when cookies are accepted
-  if (!router.pathname.startsWith("/w/") && hasAcceptedCookies) {
+  // Only wrap with PostHogProvider for trackable pages when cookies are accepted
+  if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{content}</PostHogProvider>;
   }
 

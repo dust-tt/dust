@@ -104,8 +104,8 @@ function KnowledgeFooterItem({
 }
 
 export function KnowledgeFooter() {
-  const [isOpen, setOpen] = useState(true);
   const { field } = useSourcesFormController();
+  const [isOpen, setOpen] = useState(field.value.in.length > 0);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setOpen}>
@@ -118,9 +118,13 @@ export function KnowledgeFooter() {
       <CollapsibleContent>
         <div className="rounded-xl bg-muted dark:bg-muted-night">
           <ContextItem.List className="max-h-40 overflow-y-auto">
-            {field.value.in.map((item) => (
-              <KnowledgeFooterItem key={item.path} item={item} />
-            ))}
+            {field.value.in.length > 0 ? (
+              field.value.in.map((item) => (
+                <KnowledgeFooterItem key={item.path} item={item} />
+              ))
+            ) : (
+              <ContextItem title="No selection" visual={null} />
+            )}
           </ContextItem.List>
         </div>
       </CollapsibleContent>

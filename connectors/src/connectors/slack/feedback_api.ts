@@ -3,9 +3,11 @@ import type { Block, KnownBlock } from "@slack/web-api";
 import { makeFeedbackSubmittedBlock } from "@connectors/connectors/slack/chat/blocks";
 import {
   getSlackClient,
-  getSlackUserInfo,
+  getSlackUserInfoMemoized,
 } from "@connectors/connectors/slack/lib/slack_client";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -95,7 +97,7 @@ export async function submitFeedbackToAPI({
     let userEmail: string | undefined = undefined;
     try {
       const slackClient = await getSlackClient(connector.id);
-      const slackUserInfo = await getSlackUserInfo(
+      const slackUserInfo = await getSlackUserInfoMemoized(
         connector.id,
         slackClient,
         slackUserId
@@ -205,12 +207,19 @@ export async function submitFeedbackToAPI({
             }
           }
 
-          await slackClient.chat.update({
-            channel: slackChannelId,
-            ts: slackMessageTs,
-            blocks: updatedBlocks,
-            text: currentMessage.text || "",
-          });
+          await throttleWithRedis(
+            RATE_LIMITS["chat.update"],
+            `${connector.id}-chat-update`,
+            false,
+            async () =>
+              slackClient.chat.update({
+                channel: slackChannelId,
+                ts: slackMessageTs,
+                blocks: updatedBlocks,
+                text: currentMessage.text || "",
+              }),
+            { source: "submitFeedbackToAPI" }
+          );
         } else {
           logger.warn(
             {

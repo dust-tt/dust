@@ -2,7 +2,7 @@ import { cn } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-interface AssistantHandleProps {
+interface AgentHandleProps {
   assistant: {
     sId: string;
     name: string;
@@ -11,16 +11,16 @@ interface AssistantHandleProps {
   isDisabled?: boolean;
 }
 
-export function AssistantHandle({
+export function AgentHandle({
   assistant,
   canMention = true,
   isDisabled = false,
-}: AssistantHandleProps) {
+}: AgentHandleProps) {
   const router = useRouter();
 
   const href = {
     pathname: router.pathname,
-    query: { ...router.query, assistantDetails: assistant.sId },
+    query: { ...router.query, agentDetails: assistant.sId },
   };
 
   if (!canMention) {

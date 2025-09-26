@@ -181,25 +181,15 @@ export async function getJITServers(
     // Get the query_tables MCP server view
 
     // Try to get the new query_tables_v2 server.
-    // Will only be available for users with the "exploded_tables_query" feature flag.
-    let queryTablesView =
+    const queryTablesView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
         "query_tables_v2"
       );
 
-    // Fallback to the old query_tables server.
-    if (!queryTablesView) {
-      queryTablesView =
-        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "query_tables"
-        );
-    }
-
     assert(
       queryTablesView,
-      "MCP server view not found for query_tables. Ensure auto tools are created."
+      "MCP server view not found for query_tables_v2. Ensure auto tools are created."
     );
 
     const tables: TableDataSourceConfiguration[] = [];

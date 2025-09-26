@@ -63,7 +63,7 @@ async function getAnalytics(
 ): Promise<GetWorkspaceAnalyticsResponse> {
   const replicaDb = getFrontReplicaDbConnection();
 
-  // eslint-disable-next-line dust/no-raw-sql -- Leggit
+  // eslint-disable-next-line dust/no-raw-sql -- Legit, we need to run a complex query here.
   const results = await replicaDb.query<{
     member_count: number;
     weekly_active: number;
@@ -84,26 +84,27 @@ async function getAnalytics(
     user_activity AS (
       SELECT
         "userId",
-        "createdAt"
+        DATE(TIMEZONE('UTC', "createdAt")) as day -- WARNING we use full capital functions and constants as the index we want to use is declared in capital letters, and indices are case-sensitive  
       FROM user_messages
       WHERE "workspaceId" = :workspace_id
-        AND "createdAt" >= CURRENT_DATE - INTERVAL '60 days'
+        -- WARNING we use full capital functions and constants as the index we want to use is declared in capital letters, and indices are case-sensitive
+        AND DATE(TIMEZONE('UTC', "createdAt")) >= CURRENT_DATE - INTERVAL '60 days'
     ),
     daily_activity AS (
       SELECT
-        DATE("createdAt") AS day,
+        day,
         COUNT(DISTINCT "userId") AS daily_users
       FROM user_activity
       GROUP BY day
     ),
     activity_metrics AS (
       SELECT
-        COUNT(DISTINCT CASE WHEN "createdAt" >= CURRENT_DATE - INTERVAL '7 days' THEN "userId" END) AS weekly_active,
-        COUNT(DISTINCT CASE WHEN "createdAt" >= CURRENT_DATE - INTERVAL '30 days' THEN "userId" END) AS monthly_active,
-        COUNT(DISTINCT CASE WHEN "createdAt" < CURRENT_DATE - INTERVAL '7 days' 
-                            AND "createdAt" >= CURRENT_DATE - INTERVAL '14 days' THEN "userId" END) AS prev_weekly_active,
-        COUNT(DISTINCT CASE WHEN "createdAt" < CURRENT_DATE - INTERVAL '30 days' 
-                            AND "createdAt" >= CURRENT_DATE - INTERVAL '60 days' THEN "userId" END) AS prev_monthly_active
+        COUNT(DISTINCT CASE WHEN day >= CURRENT_DATE - INTERVAL '7 days' THEN "userId" END) AS weekly_active,
+        COUNT(DISTINCT CASE WHEN day >= CURRENT_DATE - INTERVAL '30 days' THEN "userId" END) AS monthly_active,
+        COUNT(DISTINCT CASE WHEN day < CURRENT_DATE - INTERVAL '7 days' 
+                            AND day >= CURRENT_DATE - INTERVAL '14 days' THEN "userId" END) AS prev_weekly_active,
+        COUNT(DISTINCT CASE WHEN day < CURRENT_DATE - INTERVAL '30 days' 
+                            AND day >= CURRENT_DATE - INTERVAL '60 days' THEN "userId" END) AS prev_monthly_active
       FROM user_activity
     ),
     daily_averages AS (

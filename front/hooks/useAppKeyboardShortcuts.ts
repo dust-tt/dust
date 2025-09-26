@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import { useEffect } from "react";
 
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
@@ -25,7 +26,7 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
         switch (event.key) {
           case "/":
             event.preventDefault();
-            void router.push(`/w/${owner.sId}/assistant/new`, undefined, {
+            void router.push(getAgentRoute(owner.sId), undefined, {
               shallow: true,
             });
             break;

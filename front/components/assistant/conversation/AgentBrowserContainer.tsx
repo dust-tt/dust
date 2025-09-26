@@ -10,19 +10,19 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
-interface AssistantBrowserContainerProps {
+interface AgentBrowserContainerProps {
   onAgentConfigurationClick: (agentId: string) => void;
   user: UserType;
   owner: WorkspaceType;
   setAssistantToMention: (agent: LightAgentConfigurationType) => void;
 }
 
-export function AssistantBrowserContainer({
+export function AgentBrowserContainer({
   onAgentConfigurationClick,
   owner,
   user,
   setAssistantToMention,
-}: AssistantBrowserContainerProps) {
+}: AgentBrowserContainerProps) {
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,

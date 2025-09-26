@@ -50,7 +50,6 @@ export function AssistantInputBar({
   isTabIncluded,
   setIncludeTab,
   isSubmitting,
-  attachmentPickerSide,
 }: {
   owner: ExtensionWorkspaceType;
   onSubmit: (
@@ -65,7 +64,6 @@ export function AssistantInputBar({
   isTabIncluded: boolean;
   setIncludeTab: (includeTab: boolean) => void;
   isSubmitting?: boolean;
-  attachmentPickerSide?: "top" | "right" | "bottom" | "left";
 }) {
   const platform = usePlatform();
   const dustAPI = useDustAPI();
@@ -99,6 +97,7 @@ export function AssistantInputBar({
   );
   const {
     isCapturing,
+    isProcessingFiles,
     uploadContentTab,
     handleFilesUpload,
     getFileBlobs,
@@ -256,6 +255,10 @@ export function AssistantInputBar({
     resetEditorText,
     setLoading
   ) => {
+    if (isCapturing || isProcessingFiles) {
+      return;
+    }
+
     if (isEmpty) {
       return;
     }
@@ -310,7 +313,7 @@ export function AssistantInputBar({
   return (
     <div className="flex w-full flex-col">
       {isCapturing && (
-        <div className="fixed absolute inset-0 z-50 overflow-hidden">
+        <div className="absolute inset-0 z-50 overflow-hidden">
           <div
             className={classNames(
               "fixed flex inset-0 backdrop-blur-sm transition-opacity",
@@ -380,7 +383,6 @@ export function AssistantInputBar({
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
                 attachedNodes={attachedNodes}
-                attachmentPickerSide={attachmentPickerSide}
               />
             </div>
           </div>

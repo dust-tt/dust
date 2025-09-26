@@ -522,7 +522,7 @@ export function useConversationMessage({
   messageId,
   options,
 }: {
-  conversationId: string | null;
+  conversationId: string;
   workspaceId: string;
   messageId: string | null;
   options?: {

@@ -1,5 +1,5 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, literal } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -262,7 +262,17 @@ UserMessage.init(
     indexes: [
       { fields: ["userContextOrigin"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
-      { fields: ["workspaceId", "createdAt"], concurrently: true },
+      {
+        // WARNING we use full capital functions and constants as the query where we want this index to be used is in capital letters, and indices are case-sensitive
+        // The query https://github.com/dust-tt/dust/blob/6cb11eecb8c8bb549efc5afb25197606d76672b9/front/pages/api/w/%5BwId%5D/workspace-analytics.ts#L67-L126
+        fields: [
+          "workspaceId",
+          literal("DATE(TIMEZONE('UTC', \"createdAt\"))"),
+          "userId",
+        ],
+        concurrently: true,
+        name: "user_messages_workspace_id_date_created_at_user_id_idx",
+      },
     ],
   }
 );

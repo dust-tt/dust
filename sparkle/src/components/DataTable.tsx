@@ -338,6 +338,7 @@ export interface ScrollableDataTableProps<TData extends TBaseData>
   maxHeight?: string | boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
+  containerRef?: React.Ref<HTMLDivElement>;
 }
 
 // cellHeight in pixels
@@ -361,13 +362,28 @@ export function ScrollableDataTable<TData extends TBaseData>({
   enableRowSelection,
   enableMultiRowSelection = true,
   getRowId,
+  containerRef,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
-  const tableContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
+  const tableContainerRef = useRef<HTMLDivElement | null>(null);
 
   const isSorting = !!setSorting;
+
+  // Handle container ref
+  const setRef = (element: HTMLDivElement | null) => {
+    tableContainerRef.current = element;
+    if (containerRef) {
+      if (typeof containerRef === "function") {
+        containerRef(element);
+      } else if ("current" in containerRef) {
+        (
+          containerRef as React.MutableRefObject<HTMLDivElement | null>
+        ).current = element;
+      }
+    }
+  };
 
   // Monitor table width changes
   useEffect(() => {
@@ -520,7 +536,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
             ? maxHeight
             : "s-max-h-100"
       )}
-      ref={tableContainerRef}
+      ref={setRef}
     >
       <div className="s-relative">
         <DataTable.Root className="s-w-full s-table-fixed">

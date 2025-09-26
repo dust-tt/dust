@@ -13,9 +13,20 @@ export const MODEL_PRICING: Record<
     output: number;
   }
 > = {
+  // https://platform.openai.com/docs/models/gpt-5
   "gpt-5": {
     input: 1.25,
     output: 10.0,
+  },
+  // https://platform.openai.com/docs/models/gpt-5-mini
+  "gpt-5-mini": {
+    input: 0.25,
+    output: 2.0,
+  },
+  // https://platform.openai.com/docs/models/gpt-5-nano
+  "gpt-5-nano": {
+    input: 0.05,
+    output: 0.4,
   },
   "gpt-4-32k": {
     input: 60.0,

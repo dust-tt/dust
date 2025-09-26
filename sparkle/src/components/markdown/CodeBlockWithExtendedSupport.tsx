@@ -451,6 +451,8 @@ export function CodeBlockWithExtendedSupport({
     <ContentBlockWrapper
       content={validChildrenContent}
       getContentToDownload={getContentToDownload}
+      buttonDisplay="inside"
+      displayActions="hover"
     >
       <CodeBlock className={className} inline={inline}>
         {children}

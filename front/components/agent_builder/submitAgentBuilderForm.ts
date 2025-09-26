@@ -438,10 +438,6 @@ export async function submitAgentBuilderForm({
       );
     }
 
-    const personalTriggers = formData.triggers.filter(
-      (trigger) => trigger.editor === currentUserId || trigger.editor === null
-    );
-
     const triggerSyncRes = await fetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/triggers`,
       {
@@ -450,7 +446,7 @@ export async function submitAgentBuilderForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          triggers: personalTriggers,
+          triggers: formData.triggers,
         }),
       }
     );
@@ -463,7 +459,7 @@ export async function submitAgentBuilderForm({
             workspaceId: owner.sId,
             agentConfigurationId: agentConfiguration.sId,
             errorMessage: error?.api_error?.message || error?.error?.message,
-            triggersCount: personalTriggers.length,
+            triggersCount: formData.triggers.length,
           },
           "[Agent builder] - Failed to sync triggers for agent"
         );
@@ -479,7 +475,7 @@ export async function submitAgentBuilderForm({
           {
             workspaceId: owner.sId,
             agentConfigurationId: agentConfiguration.sId,
-            triggersCount: personalTriggers.length,
+            triggersCount: formData.triggers.length,
           },
           "[Agent builder] - Failed to sync triggers for agent with unparseable error response"
         );

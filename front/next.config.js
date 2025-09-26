@@ -65,7 +65,12 @@ module.exports = {
       {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/assistant/:cId",
-        permanent: false,
+        permanent: true,
+      },
+      {
+        source: "/w/:wId/assistant/:cId",
+        destination: "/w/:wId/agent/:cId",
+        permanent: true,
       },
       {
         source: "/contact",

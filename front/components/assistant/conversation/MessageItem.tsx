@@ -1,3 +1,4 @@
+import { cn } from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -18,7 +19,6 @@ import type {
 } from "@app/types";
 
 interface MessageItemProps {
-  index: number;
   conversationId: string;
   messageFeedback: AgentMessageFeedbackType | undefined;
   isInModal: boolean;
@@ -31,7 +31,6 @@ interface MessageItemProps {
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
-      index,
       conversationId,
       messageFeedback,
       isLastMessage,
@@ -120,7 +119,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div
             key={`message-id-${sId}`}
             ref={ref}
-            className="min-w-60 max-w-full"
+            className="mb-6 min-w-60 max-w-full md:mb-8"
           >
             <UserMessage
               citations={citations}
@@ -137,7 +136,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div
             key={`message-id-${sId}`}
             ref={ref}
-            className={index !== 0 ? "mt-6 w-full md:mt-10" : "w-full"}
+            className={cn("w-full", !isLastMessage ? "mb-6 md:mb-8" : "")}
           >
             <AgentMessage
               conversationId={conversationId}

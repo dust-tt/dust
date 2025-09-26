@@ -31,6 +31,7 @@ export type SearchResult = {
   nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
   nextPageCursor: string | null;
+  resultsCount: number | null;
 };
 
 type SearchError = {
@@ -38,6 +39,12 @@ type SearchError = {
   error: APIError;
 };
 
+const SearchSort = t.array(
+  t.type({
+    field: t.union([t.literal("title"), t.literal("timestamp")]),
+    direction: t.union([t.literal("asc"), t.literal("desc")]),
+  })
+);
 const BaseSearchBody = t.refinement(
   t.intersection([
     t.type({
@@ -73,6 +80,7 @@ const BaseSearchBody = t.refinement(
        */
       allowAdminSearch: t.boolean,
       parentId: t.string,
+      searchSort: SearchSort,
     }),
   ]),
   ({ spaceIds, dataSourceViewIdsBySpaceId }) => {
@@ -127,6 +135,7 @@ export async function handleSearch(
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
     parentId,
+    searchSort,
   } = searchParams;
 
   const spaces = allowAdminSearch
@@ -227,6 +236,7 @@ export async function handleSearch(
       cursor: paginationRes.value?.cursor ?? undefined,
       limit: paginationRes.value?.limit,
       search_source_urls: searchSourceUrls,
+      sort: searchSort,
     },
   });
 
@@ -265,6 +275,7 @@ export async function handleSearch(
 
   return new Ok({
     nodes,
+    resultsCount: searchRes.value.hit_count,
     warningCode: searchRes.value.warning_code,
     nextPageCursor: searchRes.value.next_page_cursor,
   });

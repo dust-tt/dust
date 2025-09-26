@@ -56,29 +56,35 @@ export function AssistantPicker({
             icon={RobotIcon}
             className="text-muted-foreground dark:text-muted-foreground-night"
             variant="ghost"
-            isSelect
             size={size}
             tooltip="Pick an agent"
             disabled={isLoading ?? false}
           />
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-[300px]" align="end" side="bottom">
-        <DropdownMenuSearchbar
-          ref={searchbarRef}
-          placeholder="Search"
-          name="input"
-          value={searchText}
-          onChange={setSearchText}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && searchedAssistants.length > 0) {
-              onItemClick(searchedAssistants[0]);
-              setSearchText("");
-              close();
-            }
-          }}
-        />
-        <DropdownMenuSeparator className="mt-2" />
+      <DropdownMenuContent
+        className="h-96 w-64 xs:w-96"
+        align="end"
+        dropdownHeaders={
+          <>
+            <DropdownMenuSearchbar
+              ref={searchbarRef}
+              placeholder="Search Agents"
+              name="input"
+              value={searchText}
+              onChange={setSearchText}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && searchedAssistants.length > 0) {
+                  onItemClick(searchedAssistants[0]);
+                  setSearchText("");
+                  close();
+                }
+              }}
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
         <ScrollArea className="flex flex-col mt-1 max-h-[300px] overflow-y-auto">
           {searchedAssistants.map((c) => (
             <DropdownMenuItem

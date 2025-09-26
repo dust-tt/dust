@@ -1,5 +1,6 @@
 import isEqual from "lodash/isEqual";
 
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types";
 import { isDevelopment } from "@app/types";
 import type { TagType } from "@app/types/tag";
@@ -77,9 +78,20 @@ export function getWeekBoundaries(date: Date): {
   return { startDate, endDate };
 }
 
+/**
+ * Formats a timestamp to a human-readable date string.
+ * @param timestamp
+ * @param version - "long" (default), "short", or "compact"
+ *
+ * long: September 23, 2025 at 3:37:32 PM
+ * short: September 23, 2025
+ * compactWithDay: Sep 23, 2025
+ * compact: Sep, 2025
+ *
+ */
 export function formatTimestampToFriendlyDate(
   timestamp: number,
-  version: "long" | "short" | "compact" = "long"
+  version: "long" | "short" | "compact" | "compactWithDay" = "long"
 ): string {
   const date = new Date(timestamp);
 
@@ -107,6 +119,12 @@ export function formatTimestampToFriendlyDate(
         hour: "numeric",
         minute: "numeric",
         second: "numeric",
+      });
+    case "compactWithDay":
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
   }
 }
@@ -407,4 +425,35 @@ export function createCallbackReader<T>(): CallbackReader<T> {
       return promise;
     },
   };
+}
+
+/**
+ * Recursively processes an object to decode sqids in all string properties.
+ * For properties that look like prefixed sqids (e.g., "msv_z2c3wZmBk0"),
+ * it appends the decoded resource ID in parentheses (e.g., "msv_z2c3wZmBk0 (40)").
+ * If the string doesn't decode as a valid sqid, it leaves it unchanged.
+ */
+export function decodeSqids(obj: unknown): unknown {
+  if (typeof obj === "string") {
+    // Check if this looks like a prefixed sqid (3-letter prefix followed by underscore)
+    const sqidMatch = obj.match(/^[a-z]{3}_[a-zA-Z0-9]+$/);
+    if (sqidMatch) {
+      const resourceId = getResourceIdFromSId(obj);
+      if (resourceId !== null) {
+        return `${obj} (${resourceId})`;
+      }
+    }
+    return obj;
+  } else if (Array.isArray(obj)) {
+    return obj.map((item) => decodeSqids(item));
+  } else if (typeof obj === "object" && obj !== null) {
+    const decodedObj: Record<string, unknown> = {};
+    for (const key of Object.keys(obj)) {
+      decodedObj[key] = decodeSqids(
+        (obj as Record<string, unknown>)[key] as unknown
+      );
+    }
+    return decodedObj;
+  }
+  return obj;
 }

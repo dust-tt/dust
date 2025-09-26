@@ -103,7 +103,7 @@ UserModel.init(
       { fields: ["auth0Sub"], unique: true, concurrently: true },
       { fields: ["workOSUserId"], unique: true, concurrently: true },
       {
-        fields: ["lastLoginAt"],
+        fields: ["id"],
         concurrently: true,
         where: { lastLoginAt: { [Op.ne]: null } },
       },

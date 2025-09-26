@@ -29,9 +29,9 @@ const variantClasses: Record<CardVariantType, string> = {
     "dark:s-border-border-night"
   ),
   tertiary: cn(
-    "s-bg-white",
+    "s-bg-background",
     "s-border-border/0",
-    "dark:s-bg-black",
+    "dark:s-bg-background-night",
     "dark:s-border-border-night/0"
   ),
 };
