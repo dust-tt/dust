@@ -55,6 +55,30 @@ type WithAuthParams = {
 
 type ConfluenceErrorResult = string;
 
+/**
+ * Validate that a base URL is a legitimate Atlassian domain
+ */
+function validateAtlassianBaseUrl(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl);
+
+    // Only allow HTTPS
+    if (url.protocol !== "https:") {
+      return false;
+    }
+
+    // Only allow official Atlassian API domains
+    const allowedDomains = [
+      "api.atlassian.com",
+      // Add other legitimate Atlassian domains if needed
+    ];
+
+    return allowedDomains.includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 // Generic wrapper for Confluence API calls with validation
 async function confluenceApiCall<T extends z.ZodTypeAny>(
   {
@@ -67,13 +91,19 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   schema: T,
   options: {
     method?: "GET" | "POST" | "PUT" | "DELETE";
-    body?: any;
+    body?: Record<string, unknown>;
     baseUrl: string;
   }
 ): Promise<Result<z.infer<T>, ConfluenceErrorResult>> {
   try {
+    // Validate base URL before making the request
+    if (!validateAtlassianBaseUrl(options.baseUrl)) {
+      const msg = `Invalid or untrusted base URL: ${options.baseUrl}`;
+      logger.error(`[Confluence MCP Server] ${msg}`);
+      return new Err(msg);
+    }
+
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       method: options.method ?? "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -169,7 +199,17 @@ async function getConfluenceBaseUrl(
 ): Promise<string | null> {
   const resourceInfo = await getConfluenceResourceInfo(accessToken);
   if (resourceInfo?.id) {
-    return `https://api.atlassian.com/ex/confluence/${resourceInfo.id}`;
+    const baseUrl = `https://api.atlassian.com/ex/confluence/${resourceInfo.id}`;
+
+    // Validate the constructed URL
+    if (!validateAtlassianBaseUrl(baseUrl)) {
+      logger.error(
+        `[Confluence MCP Server] Invalid base URL constructed: ${baseUrl}`
+      );
+      return null;
+    }
+
+    return baseUrl;
   }
   return null;
 }
@@ -464,12 +504,8 @@ async function updatePageInternal(
 
   if (updateData.body) {
     payload.body = {
-      [updateData.body.representation]: {
-        value: updateData.body.value,
-        representation: updateData.body.representation,
-      },
-      representation: updateData.body.representation,
       value: updateData.body.value,
+      representation: updateData.body.representation,
     };
   }
 
