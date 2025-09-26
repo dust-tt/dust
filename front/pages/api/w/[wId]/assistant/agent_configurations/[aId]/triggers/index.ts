@@ -46,6 +46,267 @@ function isWebhookTriggerData(trigger: {
   );
 }
 
+type DecodedTrigger = {
+  name: string;
+  kind: "schedule" | "webhook";
+  configuration: any;
+  customPrompt: string;
+  editor?: number;
+  webhookSourceViewSId?: string;
+};
+
+function validateAndDecodeTriggers(
+  triggers: any[],
+  req: NextApiRequest,
+  res: NextApiResponse
+): { sId?: string; data: DecodedTrigger }[] | null {
+  const decodedTriggers: Array<{ sId?: string; data: DecodedTrigger }> = [];
+
+  for (const triggerData of triggers) {
+    const validation = TriggerSchema.decode(triggerData);
+    if (isLeft(validation)) {
+      const validationError = reporter.formatValidationErrors(validation.left);
+      apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid trigger data: ${validationError}`,
+        },
+      });
+      return null;
+    }
+    decodedTriggers.push({
+      sId: triggerData.sId,
+      data: validation.right,
+    });
+  }
+
+  return decodedTriggers;
+}
+
+function validateNamesAndConflicts(
+  allTriggers: TriggerResource[],
+  incoming: Array<{ sId?: string; name: string }>,
+  req: NextApiRequest,
+  res: NextApiResponse
+): boolean {
+  // Normalize once
+  const normalized = incoming.map((t, idx) => ({
+    index: idx + 1,
+    sId: t.sId,
+    name: typeof t.name === "string" ? t.name.trim() : "",
+  }));
+
+  // Empty-name check
+  const emptyIndexes = normalized.filter((n) => !n.name).map((n) => n.index);
+  if (emptyIndexes.length > 0) {
+    apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          emptyIndexes.length === 1
+            ? `Trigger name #${emptyIndexes[0]} cannot be empty.`
+            : `Trigger names #${emptyIndexes.join(", ")} cannot be empty.`,
+      },
+    });
+    return false;
+  }
+
+  // Duplicate detection among incoming
+  const seen = new Set<string>();
+  const dupes = new Set<string>();
+  for (const n of normalized) {
+    if (seen.has(n.name)) {
+      dupes.add(n.name);
+    } else {
+      seen.add(n.name);
+    }
+  }
+  if (dupes.size > 0) {
+    const duplicates = [...dupes];
+    apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          duplicates.length === 1
+            ? `Duplicate trigger name: \"${duplicates[0]}\".`
+            : `Duplicate trigger names: ${duplicates
+                .map((d) => `\"${d}\"`)
+                .join(", ")}.`,
+      },
+    });
+    return false;
+  }
+
+  // Conflicts against existing triggers
+  const existingById = new Map<string, TriggerResource>();
+  const existingNames = new Set<string>();
+  for (const t of allTriggers) {
+    existingById.set(t.sId(), t);
+    existingNames.add(t.name);
+  }
+
+  for (const n of normalized) {
+    if (!n.name) {
+      continue;
+    }
+
+    if (n.sId && existingById.has(n.sId)) {
+      const existing = existingById.get(n.sId)!;
+      if (existing.name === n.name) {
+        continue; // unchanged
+      }
+      if (existingNames.has(n.name)) {
+        apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Trigger name \"${n.name}\" already exists.`,
+          },
+        });
+        return false;
+      }
+      continue;
+    }
+
+    if (existingNames.has(n.name)) {
+      apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Trigger name \"${n.name}\" already exists.`,
+        },
+      });
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function categorizeTriggerOperations(
+  decodedTriggers: Array<{ sId?: string; data: DecodedTrigger }>,
+  existingTriggersMap: Map<string, TriggerResource>,
+  existingTriggersForEditor: TriggerResource[],
+  currentUserId: number
+): {
+  toCreate: DecodedTrigger[];
+  toUpdate: Array<{ existing: TriggerResource; data: DecodedTrigger }>;
+  toDelete: TriggerResource[];
+} {
+  const operations: {
+    toCreate: DecodedTrigger[];
+    toUpdate: Array<{ existing: TriggerResource; data: DecodedTrigger }>;
+    toDelete: TriggerResource[];
+  } = { toCreate: [], toUpdate: [], toDelete: [] };
+
+  for (const { sId, data } of decodedTriggers) {
+    // Skip triggers owned by other users
+    if (data.editor && data.editor !== currentUserId) {
+      continue;
+    }
+
+    if (sId && existingTriggersMap.has(sId)) {
+      operations.toUpdate.push({
+        existing: existingTriggersMap.get(sId)!,
+        data,
+      });
+    } else {
+      operations.toCreate.push(data);
+    }
+  }
+
+  // Find triggers to delete: existing triggers not being updated
+  const updatedTriggerIds = new Set(
+    operations.toUpdate.map((update) => update.existing.sId())
+  );
+  operations.toDelete = existingTriggersForEditor.filter(
+    (trigger) => !updatedTriggerIds.has(trigger.sId())
+  );
+
+  return operations;
+}
+
+// validateNoConflictsWithExisting is merged into validateNamesAndConflicts
+
+async function updateTriggers(
+  auth: Authenticator,
+  toUpdate: Array<{ existing: TriggerResource; data: DecodedTrigger }>
+): Promise<{ triggers: TriggerType[]; errors: Error[] }> {
+  const resultTriggers: TriggerType[] = [];
+  const errors: Error[] = [];
+
+  for (const { existing, data } of toUpdate) {
+    const webhookSourceViewId = isWebhookTriggerData(data)
+      ? getResourceIdFromSId(data.webhookSourceViewSId)
+      : null;
+
+    const updatedTrigger = await TriggerResource.update(auth, existing.sId(), {
+      ...data,
+      webhookSourceViewId,
+    });
+
+    if (updatedTrigger.isErr()) {
+      errors.push(new Error("Failed to update trigger"));
+      continue;
+    }
+    resultTriggers.push(updatedTrigger.value.toJSON());
+  }
+
+  return { triggers: resultTriggers, errors };
+}
+
+async function createTriggers(
+  auth: Authenticator,
+  toCreate: DecodedTrigger[],
+  workspaceId: number,
+  agentConfigurationId: string
+): Promise<{ triggers: TriggerType[]; errors: Error[] }> {
+  const resultTriggers: TriggerType[] = [];
+  const errors: Error[] = [];
+
+  for (const data of toCreate) {
+    const webhookSourceViewId = isWebhookTriggerData(data)
+      ? getResourceIdFromSId(data.webhookSourceViewSId)
+      : null;
+
+    const newTrigger = await TriggerResource.makeNew(auth, {
+      workspaceId,
+      agentConfigurationId,
+      name: data.name,
+      kind: data.kind,
+      configuration: data.configuration,
+      customPrompt: data.customPrompt,
+      editor: auth.getNonNullableUser().id,
+      webhookSourceViewId,
+    });
+
+    if (newTrigger.isErr()) {
+      errors.push(newTrigger.error);
+      continue;
+    }
+    resultTriggers.push(newTrigger.value.toJSON());
+  }
+
+  return { triggers: resultTriggers, errors };
+}
+
+async function deleteTriggers(
+  auth: Authenticator,
+  toDelete: TriggerResource[]
+): Promise<{ errors: Error[] }> {
+  const errors: Error[] = [];
+  for (const trigger of toDelete) {
+    const r = await trigger.delete(auth);
+    if (r.isErr()) {
+      errors.push(r.error);
+    }
+  }
+  return { errors };
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetTriggersResponseBody>>,
@@ -83,7 +344,10 @@ async function handler(
     agentConfigurationId
   );
 
-  const userTriggers = allTriggers.filter(
+  /**
+   * Existing triggers owned by the current user (editor).
+   */
+  const existingTriggerForEditor = allTriggers.filter(
     (trigger) => trigger.editor === auth.getNonNullableUser().id
   );
 
@@ -139,121 +403,66 @@ async function handler(
 
       const { triggers } = req.body;
       const workspace = auth.getNonNullableWorkspace();
+      const currentUserId = auth.getNonNullableUser().id;
 
-      if (triggers.length > 0) {
-        const triggerNames = triggers.map((t: { name: string }) => t.name);
-        const uniqueTriggerNames = new Set(triggerNames);
-        if (uniqueTriggerNames.size !== triggerNames.length) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Trigger names must be unique for a given agent.",
-            },
-          });
-        }
+      // Validate and decode the trigger payload
+      const decodedTriggers = validateAndDecodeTriggers(triggers, req, res);
+      if (!decodedTriggers) {
+        return;
       }
 
-      const currentTriggersMap = new Map(userTriggers.map((t) => [t.sId(), t]));
-      const resultTriggers: TriggerType[] = [];
-      const errors: Error[] = [];
+      // Categorize triggers into create, update operations
+      const existingTriggersMap = new Map(
+        existingTriggerForEditor.map((trigger) => [trigger.sId(), trigger])
+      );
 
-      for (const triggerData of triggers) {
-        const triggerValidation = TriggerSchema.decode(triggerData);
+      const { toCreate, toUpdate, toDelete } = categorizeTriggerOperations(
+        decodedTriggers,
+        existingTriggersMap,
+        existingTriggerForEditor,
+        currentUserId
+      );
 
-        if (isLeft(triggerValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            triggerValidation.left
-          );
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Invalid trigger data: ${pathError}`,
-            },
-          });
-        }
-
-        const validatedTrigger = triggerValidation.right;
-
-        if (
-          validatedTrigger.editor &&
-          validatedTrigger.editor !== auth.getNonNullableUser().id
-        ) {
-          continue;
-        }
-
-        if (triggerData.sId && currentTriggersMap.has(triggerData.sId)) {
-          const existingTrigger = currentTriggersMap.get(triggerData.sId)!;
-
-          const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-            ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
-            : null;
-
-          const updatedTrigger = await TriggerResource.update(
-            auth,
-            existingTrigger.sId(),
-            {
-              ...validatedTrigger,
-              webhookSourceViewId,
-            }
-          );
-          if (updatedTrigger.isErr()) {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to update trigger.",
-              },
-            });
-          }
-
-          resultTriggers.push(updatedTrigger.value.toJSON());
-          currentTriggersMap.delete(triggerData.sId);
-        } else {
-          const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-            ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
-            : null;
-
-          const newTrigger = await TriggerResource.makeNew(auth, {
-            workspaceId: workspace.id,
-            agentConfigurationId,
-            name: validatedTrigger.name,
-            kind: validatedTrigger.kind,
-            configuration: validatedTrigger.configuration,
-            customPrompt: validatedTrigger.customPrompt,
-            editor: auth.getNonNullableUser().id,
-            webhookSourceViewId,
-          });
-
-          if (newTrigger.isErr()) {
-            errors.push(newTrigger.error);
-            continue;
-          }
-
-          resultTriggers.push(newTrigger.value.toJSON());
-        }
+      // Validate incoming names (non-empty, unique among themselves) and conflicts with existing
+      const incomingMinimal = decodedTriggers.map(({ sId, data }) => ({
+        sId,
+        name: data.name,
+      }));
+      if (!validateNamesAndConflicts(allTriggers, incomingMinimal, req, res)) {
+        return;
       }
 
-      for (const [, trigger] of currentTriggersMap) {
-        await trigger.delete(auth);
-      }
+      // Execute the operations
+      const updateResult = await updateTriggers(auth, toUpdate);
+      const createResult = await createTriggers(
+        auth,
+        toCreate,
+        workspace.id,
+        agentConfigurationId
+      );
+      const deleteResult = await deleteTriggers(auth, toDelete);
 
-      if (errors.length > 0) {
+      // Handle any errors that occurred during processing
+      const allErrors = [
+        ...updateResult.errors,
+        ...createResult.errors,
+        ...deleteResult.errors,
+      ];
+      if (allErrors.length > 0) {
         logger.error(
           {
-            errors: errors.map((e) => e.message),
+            errors: allErrors.map((e) => e.message),
             workspaceId: workspace.id,
             agentConfigurationId: agentConfiguration.id,
           },
-          `Failed to process ${errors.length} triggers.`
+          `Failed to process ${allErrors.length} triggers.`
         );
 
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to process ${errors.length} triggers`,
+            message: `Failed to process ${allErrors.length} triggers`,
           },
         });
       }
