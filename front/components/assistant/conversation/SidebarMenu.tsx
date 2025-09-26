@@ -1,4 +1,6 @@
 import {
+  Avatar,
+  BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   Checkbox,
@@ -9,9 +11,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSearchbar,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   ExclamationCircleIcon,
-  FolderOpenIcon,
   Icon,
   Label,
   ListCheckIcon,
@@ -21,6 +27,8 @@ import {
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
+  PencilSquareIcon,
+  PlusIcon,
   SearchInput,
   Spinner,
   TrashIcon,
@@ -33,6 +41,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -46,6 +55,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useConversations,
   useDeleteConversation,
@@ -71,6 +81,26 @@ type GroupLabel =
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
   const { conversationsNavigationRef } = useConversationsNavigation();
+
+  const agentsSearchInputRef = useRef<HTMLInputElement>(null);
+  const [searchText, setSearchText] = useState("");
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+  });
+  const editableAgents = useMemo(
+    () => agentConfigurations.filter((agent) => agent.canEdit),
+    [agentConfigurations]
+  );
+  const filteredAgents = useMemo(
+    () =>
+      editableAgents
+        .filter((agent) =>
+          agent.name.toLowerCase().includes(searchText.toLowerCase().trim())
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [editableAgents, searchText]
+  );
 
   const { setSidebarOpen } = useContext(SidebarContext);
   const { conversations, isConversationsError } = useConversations({
@@ -348,40 +378,86 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   <DropdownMenuContent>
                     {!isRestrictedFromAgentCreation && (
                       <>
-                        <DropdownMenuLabel>Agent</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          href={getAgentBuilderRoute(owner.sId, "new")}
-                          icon={DocumentIcon}
-                          label="New agent from scratch"
-                          data-gtm-label="assistantCreationButton"
-                          data-gtm-location="sidebarMenu"
-                        />
-                        <DropdownMenuItem
-                          href={getAgentBuilderRoute(owner.sId, "create")}
-                          icon={MagicIcon}
-                          label="New agent from template"
-                          data-gtm-label="assistantCreationButton"
-                          data-gtm-location="sidebarMenu"
-                        />
-                        {hasFeature("agent_to_yaml") && (
-                          <DropdownMenuItem
-                            icon={
-                              isUploadingYAML ? (
-                                <Spinner size="xs" />
-                              ) : (
-                                FolderOpenIcon
-                              )
-                            }
-                            label={
-                              isUploadingYAML
-                                ? "Uploading..."
-                                : "New agent from YAML"
-                            }
-                            disabled={isUploadingYAML}
-                            onClick={triggerYAMLUpload}
-                            data-gtm-label="yamlUploadButton"
-                            data-gtm-location="sidebarMenu"
+                        <DropdownMenuLabel>Agents</DropdownMenuLabel>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger
+                            icon={PlusIcon}
+                            label="New agent"
                           />
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                              <DropdownMenuItem
+                                href={getAgentBuilderRoute(owner.sId, "new")}
+                                icon={DocumentIcon}
+                                label="From scratch"
+                                data-gtm-label="assistantCreationButton"
+                                data-gtm-location="sidebarMenu"
+                              />
+                              <DropdownMenuItem
+                                href={getAgentBuilderRoute(owner.sId, "create")}
+                                icon={MagicIcon}
+                                label="From template"
+                                data-gtm-label="assistantCreationButton"
+                                data-gtm-location="sidebarMenu"
+                              />
+                              {hasFeature("agent_to_yaml") && (
+                                <DropdownMenuItem
+                                  icon={
+                                    isUploadingYAML ? (
+                                      <Spinner size="xs" />
+                                    ) : (
+                                      BracesIcon
+                                    )
+                                  }
+                                  label={
+                                    isUploadingYAML
+                                      ? "Uploading..."
+                                      : "From YAML"
+                                  }
+                                  disabled={isUploadingYAML}
+                                  onClick={triggerYAMLUpload}
+                                  data-gtm-label="yamlUploadButton"
+                                  data-gtm-location="sidebarMenu"
+                                />
+                              )}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                        {editableAgents.length > 0 && (
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger
+                              icon={PencilSquareIcon}
+                              label="Edit agent"
+                            />
+                            <DropdownMenuPortal>
+                              <DropdownMenuSubContent>
+                                <DropdownMenuSearchbar
+                                  ref={agentsSearchInputRef}
+                                  name="search"
+                                  value={searchText}
+                                  onChange={setSearchText}
+                                  placeholder="Search"
+                                />
+                                {filteredAgents.map((agent) => (
+                                  <DropdownMenuItem
+                                    key={agent.sId}
+                                    href={getAgentBuilderRoute(
+                                      owner.sId,
+                                      agent.sId
+                                    )}
+                                    truncateText
+                                    label={agent.name}
+                                    icon={() => (
+                                      <Avatar
+                                        size="sm"
+                                        visual={agent.pictureUrl}
+                                      />
+                                    )}
+                                  />
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                          </DropdownMenuSub>
                         )}
                       </>
                     )}
