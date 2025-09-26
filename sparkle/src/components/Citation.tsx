@@ -1,34 +1,19 @@
 import { cva } from "class-variance-authority";
 import React, { ReactNode } from "react";
 
-import {
-  Button,
-  Card,
-  CardProps,
-  Spinner,
-  Tooltip,
-} from "@sparkle/components/";
+import { Button, CardProps, Spinner, Tooltip } from "@sparkle/components/";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 type CitationProps = CardProps & {
   children: React.ReactNode;
   isLoading?: boolean;
-  tooltip?: string;
+  tooltip?: React.ReactNode;
 };
 
 const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
-  (
-    {
-      children,
-      variant = "secondary",
-      isLoading,
-      className,
-      tooltip,
-      ...props
-    },
-    ref
-  ) => {
+  ({ children, isLoading, className, tooltip, ...props }, ref) => {
     const hasDescription = React.useMemo(() => {
       const childrenArray = React.Children.toArray(children);
       return childrenArray.some(
@@ -47,30 +32,73 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
       </>
     );
-    const cardButton = (
-      <Card
+    // Render as an inline chip (link when href provided, otherwise div)
+    // We intentionally do NOT render the description inline; it's expected in tooltip.
+
+    // Extract link-related props if present (from CardProps union)
+    const action = (props as unknown as { action?: React.ReactNode }).action;
+    const { href, target, rel, replace, shallow, onClick, ...rest } =
+      props as unknown as LinkWrapperProps &
+        React.ButtonHTMLAttributes<HTMLDivElement>;
+
+    // Filter out CitationDescription & CitationImage from inline content
+    const inlineChildren = React.Children.toArray(
+      contentWithDescription
+    ).filter(
+      (child) =>
+        !(
+          React.isValidElement(child) &&
+          (child.type === CitationDescription || child.type === CitationImage)
+        )
+    );
+
+    const chipContent = (
+      <div
         ref={ref}
-        variant={variant}
-        size="sm"
         className={cn(
-          "s-min-w-24 s-relative s-flex s-flex-none s-flex-col s-overflow-hidden",
-          // Use min() to maintain aspect ratio in grid mode (8% of width) while capping
-          // padding at 3 (0.75rem) for list mode to prevent excessive top padding on wide items.
-          "s-pt-[min(8%,theme(spacing.3))]",
+          // base chip styles
+          "s-box-border s-inline-flex s-items-center s-gap-1.5 s-rounded-xl s-px-2 s-py-1",
+          "s-border s-border-border s-bg-background s-text-foreground",
+          "dark:s-border-border-night dark:s-bg-background-night dark:s-text-foreground-night",
+          "s-max-w-64 s-w-full s-truncate s-text-sm s-font-semibold",
           className
         )}
-        {...props}
+        // Keep button-like behavior if onClick
+        onClick={onClick as any}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        {...(rest as any)}
       >
-        {contentWithDescription}
-        {isLoading && <CitationLoading />}
-      </Card>
+        {/* icons + title only */}
+        {inlineChildren}
+        {action && <div className="s-ml-1 s-flex s-items-center">{action}</div>}
+        {isLoading && (
+          <span className="s-ml-1 s-inline-flex">
+            <Spinner variant="dark" size="xs" />
+          </span>
+        )}
+      </div>
+    );
+
+    const chip = href ? (
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+      >
+        {chipContent}
+      </LinkWrapper>
+    ) : (
+      chipContent
     );
 
     if (tooltip) {
-      return <Tooltip trigger={cardButton} label={tooltip} />;
+      return <Tooltip trigger={chip} label={tooltip} />;
     }
 
-    return cardButton;
+    return chip;
   }
 );
 
@@ -86,8 +114,6 @@ const CitationIndex = React.forwardRef<
       className={cn(
         "s-z-10",
         "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-text-xs s-font-semibold",
-        "s-text-primary-200 dark:s-text-primary-200-night",
-        "s-bg-primary-600 dark:s-bg-primary-600-night",
         className
       )}
       {...props}
@@ -122,7 +148,7 @@ const CitationGrid = React.forwardRef<HTMLDivElement, CitationGridProps>(
     return (
       <div
         ref={ref}
-        className={cn("s-min-w-60 s-@container", className)}
+        className={cn("s-min-w-60 s-space-x-1 s-@container", className)}
         {...props}
       >
         <div className={citationGridVariants({ variant })}>{children}</div>
@@ -206,7 +232,13 @@ const CitationIcons = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-items-center s-gap-2 s-pb-1", className)}
+      className={cn(
+        "s-flex s-flex-row s-items-center s-justify-center",
+        "s-gap-1 s-rounded-lg s-p-1 s-text-xs s-font-medium",
+        "s-bg-muted-background dark:s-bg-muted-background-night",
+        "s-text-muted-foreground dark:s-text-muted-foreground-night",
+        className
+      )}
       {...props}
     >
       {children}

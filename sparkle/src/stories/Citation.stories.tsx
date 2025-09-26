@@ -8,7 +8,6 @@ import {
   CitationDescription,
   CitationGrid,
   CitationIcons,
-  CitationImage,
   CitationIndex,
   CitationTitle,
   DocumentIcon,
@@ -17,6 +16,7 @@ import {
   GlobeAltIcon,
   Icon,
   ImageIcon,
+  Tooltip,
   NotionLogo,
   Popover,
   SlackLogo,
@@ -36,7 +36,6 @@ export const CitationsExample = () => (
     <CitationGrid>
       <Citation
         onClick={() => alert("Card clicked")}
-        className="s-w-48"
         tooltip="@ed at 16:32 This is the latest ve"
       >
         <CitationIcons>
@@ -51,7 +50,6 @@ export const CitationsExample = () => (
     <CitationGrid>
       <Citation
         onClick={() => alert("Card clicked")}
-        className="s-w-48"
         tooltip="@ed at 16:32 This is the latest ve"
       >
         <CitationIcons>
@@ -62,28 +60,35 @@ export const CitationsExample = () => (
           @ed at 16:32 This is the latest ve
         </CitationDescription>
       </Citation>
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation onClick={() => alert("Card clicked")}>
         <CitationIcons>
           <Icon visual={TableIcon} size="sm" />
         </CitationIcons>
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation onClick={() => alert("Card clicked")}>
         <CitationIcons>
           <FaviconIcon websiteUrl="https://www.linkedin.com" size="sm" />
         </CitationIcons>
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
-      
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+
+      <Citation onClick={() => alert("Card clicked")}>
         <CitationIcons>
           <FaviconIcon websiteUrl="https://github.com" size="sm" />
         </CitationIcons>
         <CitationTitle>GitHub Repository</CitationTitle>
       </Citation>
 
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
-        <CitationImage imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" />
+      <Citation
+        onClick={() => alert("Card clicked")}
+        tooltip={
+          <img
+            src="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+            alt="screenshot.png"
+          />
+        }
+      >
         <CitationIcons>
           <Icon visual={ImageIcon} size="sm" />
         </CitationIcons>
@@ -133,17 +138,30 @@ export const CitationsExample = () => (
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
 
-      <Citation
-        onClick={() => alert("Card clicked")}
-        className="s-w-48"
-        action={<CitationClose onClick={() => alert("Close clicked")} />}
-      >
-        <CitationImage imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg" />
-        <CitationIcons>
-          <Icon visual={ImageIcon} size="sm" />
-        </CitationIcons>
-        <CitationTitle>screenshot.png</CitationTitle>
-      </Citation>
+      <Tooltip
+        trigger={
+          <Citation
+            onClick={() => alert("Card clicked")}
+            className="s-w-48"
+            action={<CitationClose onClick={() => alert("Close clicked")} />}
+          >
+            <CitationIcons>
+              <Icon visual={ImageIcon} size="sm" />
+            </CitationIcons>
+            <CitationTitle>screenshot.png</CitationTitle>
+          </Citation>
+        }
+        label={
+          <div className="s-flex s-w-80 s-max-w-[80vw] s-flex-col s-gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+              alt="screenshot.png"
+              className="s-mx-auto s-max-h-40 s-w-full s-rounded-md s-object-contain"
+            />
+          </div>
+        }
+      />
     </CitationGrid>
     Example of citations in markdown
     <div>
@@ -152,8 +170,8 @@ export const CitationsExample = () => (
         content={
           <>
             <CitationIcons>
-              <CitationIndex>1</CitationIndex>
               <Icon visual={SlackLogo} size="sm" />
+              <CitationIndex>1</CitationIndex>
             </CitationIcons>
             <CitationTitle>Hello</CitationTitle>
             <Button
@@ -169,36 +187,36 @@ export const CitationsExample = () => (
     <CitationGrid>
       <Citation onClick={() => alert("Card clicked")}>
         <CitationIcons>
-          <CitationIndex>1</CitationIndex>
           <Icon visual={SlackLogo} size="sm" />
+          <CitationIndex>1</CitationIndex>
         </CitationIcons>
         <CitationTitle>Hello</CitationTitle>
       </Citation>
       <Citation onClick={() => alert("Close action clicked")}>
         <CitationIcons>
-          <CitationIndex>2</CitationIndex>
           <Icon visual={NotionLogo} size="sm" />
+          <CitationIndex>2</CitationIndex>
         </CitationIcons>
         <CitationTitle>Hello</CitationTitle>
       </Citation>
       <Citation onClick={() => alert("Close action clicked")}>
         <CitationIcons>
-          <CitationIndex>3</CitationIndex>
           <Icon visual={DocumentIcon} size="sm" />
+          <CitationIndex>3</CitationIndex>
         </CitationIcons>
         <CitationTitle>Hello</CitationTitle>
       </Citation>
       <Citation onClick={() => alert("Close action clicked")}>
         <CitationIcons>
-          <CitationIndex>4</CitationIndex>
           <FaviconIcon websiteUrl="https://stackoverflow.com" size="sm" />
+          <CitationIndex>4</CitationIndex>
         </CitationIcons>
         <CitationTitle>Stack Overflow Answer</CitationTitle>
       </Citation>
       <Citation onClick={() => alert("Close action clicked")}>
         <CitationIcons>
-          <CitationIndex>5</CitationIndex>
           <FaviconIcon websiteUrl="https://www.wikipedia.org" size="sm" />
+          <CitationIndex>5</CitationIndex>
         </CitationIcons>
         <CitationTitle>Wikipedia Article</CitationTitle>
       </Citation>
