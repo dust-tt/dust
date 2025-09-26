@@ -200,7 +200,8 @@ const config = {
           }
         }),
         new StatoscopeWebpackPlugin({
-          filename: '../.next/analyze/statoscope-report.html',
+          saveReportTo: '.next/analyze/report-[name]-[hash].html',
+          saveStatsTo: '.next/analyze/stats-[name]-[hash].json',
           open: false
         })
       );
