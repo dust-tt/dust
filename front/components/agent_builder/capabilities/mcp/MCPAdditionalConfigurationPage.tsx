@@ -27,13 +27,13 @@ export type AdditionalConfigs = Pick<
 >;
 
 interface MCPAdditionalConfigurationPageProps {
-  selectionSummaries?: SelectionSummary[];
+  selectionSummary?: SelectionSummary | null;
   showNameSection: boolean;
   additionalConfigs: AdditionalConfigs;
 }
 
 export function MCPAdditionalConfigurationPage({
-  selectionSummaries = [],
+  selectionSummary = null,
   showNameSection,
   additionalConfigs,
 }: MCPAdditionalConfigurationPageProps) {
@@ -48,41 +48,41 @@ export function MCPAdditionalConfigurationPage({
           />
         )}
 
-        {selectionSummaries.length > 0 && (
+        {selectionSummary && (
           <ConfigurationSectionContainer title="Selection" description="">
-            {selectionSummaries.map((s) => (
-              <Card key={s.id} size="sm" className="w-full">
-                <div className="flex w-full">
-                  <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
-                    <div className="flex items-center gap-2">
-                      {s.visual.type === "icon" ? (
-                        <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
-                      ) : (
-                        <Avatar
-                          size="sm"
-                          name={s.visual.name}
-                          visual={s.visual.pictureUrl}
-                        />
-                      )}
-                      <div className="text-md font-medium">{s.title}</div>
-                    </div>
-                    {s.description && (
-                      <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                        {s.description}
-                      </div>
+            <Card key={selectionSummary.id} size="sm" className="w-full">
+              <div className="flex w-full">
+                <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
+                  <div className="flex items-center gap-2">
+                    {selectionSummary.visual.type === "icon" ? (
+                      <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
+                    ) : (
+                      <Avatar
+                        size="sm"
+                        name={selectionSummary.visual.name}
+                        visual={selectionSummary.visual.pictureUrl}
+                      />
                     )}
+                    <div className="text-md font-medium">
+                      {selectionSummary.title}
+                    </div>
                   </div>
-                  <div className="ml-4 self-start">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      label={s.editLabel}
-                      onClick={s.onEdit}
-                    />
-                  </div>
+                  {selectionSummary.description && (
+                    <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      {selectionSummary.description}
+                    </div>
+                  )}
                 </div>
-              </Card>
-            ))}
+                <div className="ml-4 self-start">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label={selectionSummary.editLabel}
+                    onClick={selectionSummary.onEdit}
+                  />
+                </div>
+              </div>
+            </Card>
           </ConfigurationSectionContainer>
         )}
 

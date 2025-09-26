@@ -44,7 +44,7 @@ import {
   getInfoPageIcon,
   getInfoPageTitle,
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
-import { buildSelectionSummaries } from "@app/components/agent_builder/capabilities/mcp/utils/selectionSummaryUtils";
+import { buildSelectionSummary } from "@app/components/agent_builder/capabilities/mcp/utils/selectionSummaryUtils";
 import {
   getFooterButtons,
   getInitialConfigurationTool,
@@ -400,9 +400,7 @@ export function MCPServerViewsSheet({
 
     if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = toolsConfigurations.reasoningConfiguration
-        ? true
-        : false;
+      const isReasoning = !!toolsConfigurations.reasoningConfiguration;
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -594,24 +592,36 @@ export function MCPServerViewsSheet({
     resetToSelection();
   }, [resetToSelection]);
 
-  // Watch relevant form fields to recompute selection summaries reactively
   const watchedDustApp = form?.watch("configuration.dustAppConfiguration");
   const watchedChildAgentId = form?.watch("configuration.childAgentId");
   const watchedReasoningModel = form?.watch("configuration.reasoningModel");
 
-  const selectionSummaries = useMemo<SelectionSummary[]>(() => {
+  const selectionSummary = useMemo<SelectionSummary | null>(() => {
     if (!toolsConfigurations) {
-      return [];
+      return null;
     }
     const edit = () => setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
 
-    return buildSelectionSummaries({
-      mayRequireDustAppConfiguration:
-        toolsConfigurations.mayRequireDustAppConfiguration,
-      childAgentEnabled: !!toolsConfigurations.childAgentConfiguration,
-      reasoningEnabled: !!toolsConfigurations.reasoningConfiguration,
-      form,
-      agents: agentConfigurations,
+    if (toolsConfigurations.mayRequireDustAppConfiguration) {
+      return buildSelectionSummary({
+        kind: "dust-app",
+        dustAppConfiguration: watchedDustApp,
+        onEdit: edit,
+      });
+    }
+
+    if (toolsConfigurations.childAgentConfiguration) {
+      return buildSelectionSummary({
+        kind: "child-agent",
+        childAgentId: watchedChildAgentId,
+        agents: agentConfigurations,
+        onEdit: edit,
+      });
+    }
+
+    return buildSelectionSummary({
+      kind: "reasoning-model",
+      reasoningModel: watchedReasoningModel,
       models: reasoningModels,
       onEdit: edit,
     });
@@ -749,7 +759,7 @@ export function MCPServerViewsSheet({
         toolsConfigurations && form ? (
           <FormProvider form={form} className="h-full">
             <MCPAdditionalConfigurationPage
-              selectionSummaries={selectionSummaries}
+              selectionSummary={selectionSummary}
               showNameSection={configurationTool?.configurable ?? false}
               additionalConfigs={{
                 stringConfigurations: toolsConfigurations.stringConfigurations,
