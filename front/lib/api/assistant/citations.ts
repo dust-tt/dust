@@ -129,6 +129,7 @@ export function getLightAgentMessageFromAgentMessage(
     type: "agent_message",
     sId: agentMessage.sId,
     created: agentMessage.created,
+    completedTs: agentMessage.completedTs,
     version: agentMessage.version,
     parentMessageId: agentMessage.parentMessageId,
     content: agentMessage.content,

@@ -149,6 +149,7 @@ export type BaseAgentMessageType = {
   sId: string;
   version: number;
   created: number;
+  completedTs: number | null;
   parentMessageId: string | null;
   status: AgentMessageStatus;
   content: string | null;
