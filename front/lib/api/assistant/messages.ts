@@ -369,6 +369,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentMessageId: agentMessage.id,
         sId: message.sId,
         created: message.createdAt.getTime(),
+        completedTs: agentMessage.completedAt?.getTime() ?? null,
         type: "agent_message" as const,
         visibility: message.visibility,
         version: message.version,

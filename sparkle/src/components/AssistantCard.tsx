@@ -17,7 +17,7 @@ interface BaseAssistantCardProps {
   subtitle?: string;
   className?: string;
   onClick?: () => void;
-  onContextMenu?: () => void;
+  onContextMenu?: (event: React.MouseEvent) => void;
   variant?: CardVariantType;
 }
 

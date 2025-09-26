@@ -1031,6 +1031,12 @@ export async function unsafeHardDeleteAgentConfiguration(
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
+  await TagAgentModel.destroy({
+    where: {
+      agentConfigurationId: agentConfiguration.id,
+      workspaceId,
+    },
+  });
   await GroupAgentModel.destroy({
     where: {
       agentConfigurationId: agentConfiguration.id,

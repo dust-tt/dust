@@ -31,7 +31,6 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { getRedisClient } from "@app/lib/api/redis";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";

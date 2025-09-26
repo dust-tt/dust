@@ -163,6 +163,8 @@ export const GPT_4_1_MINI_MODEL_ID = "gpt-4.1-mini-2025-04-14" as const;
 export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const GPT_5_MODEL_ID = "gpt-5" as const;
+export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
+export const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
 export const O1_MODEL_ID = "o1" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const O3_MINI_MODEL_ID = "o3-mini" as const;
@@ -244,6 +246,8 @@ export const MODEL_IDS = [
   GPT_4O_20240806_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
   GPT_5_MODEL_ID,
+  GPT_5_MINI_MODEL_ID,
+  GPT_5_NANO_MODEL_ID,
   O1_MODEL_ID,
   O1_MINI_MODEL_ID,
   O3_MODEL_ID,
@@ -526,6 +530,51 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 5 model (400k context).",
+  shortDescription: "OpenAI's latest model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+};
+export const GPT_5_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_MINI_MODEL_ID,
+  displayName: "GPT-5 Mini",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64, // 32_768
+  largeModel: true,
+  description:
+    "OpenAI's faster, and cost-efficient version of GPT-5 for well-defined tasks.",
+  shortDescription: "OpenAI's latest mini model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+};
+export const GPT_5_NANO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_NANO_MODEL_ID,
+  displayName: "GPT-5 Nano",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64, // 32_768
+  largeModel: true,
+  description: "OpenAI's fastest, and most cost-efficient version of GPT-5",
   shortDescription: "OpenAI's latest model.",
   isLegacy: false,
   isLatest: true,
@@ -1521,6 +1570,8 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4_1_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
+  GPT_5_NANO_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O3_MODEL_CONFIG,
@@ -1619,6 +1670,9 @@ export enum GLOBAL_AGENTS_SID {
   GPT35_TURBO = "gpt-3.5-turbo",
   GPT4 = "gpt-4",
   GPT5 = "gpt-5",
+  GPT5_THINKING = "gpt-5-thinking",
+  GPT5_NANO = "gpt-5-nano",
+  GPT5_MINI = "gpt-5-mini",
   O1 = "o1",
   O1_MINI = "o1-mini",
   O1_HIGH_REASONING = "o1_high",
@@ -1649,6 +1703,9 @@ export function getGlobalAgentAuthorName(agentId: string): string {
   switch (agentId) {
     case GLOBAL_AGENTS_SID.GPT4:
     case GLOBAL_AGENTS_SID.GPT5:
+    case GLOBAL_AGENTS_SID.GPT5_THINKING:
+    case GLOBAL_AGENTS_SID.GPT5_NANO:
+    case GLOBAL_AGENTS_SID.GPT5_MINI:
     case GLOBAL_AGENTS_SID.O1:
     case GLOBAL_AGENTS_SID.O1_MINI:
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:

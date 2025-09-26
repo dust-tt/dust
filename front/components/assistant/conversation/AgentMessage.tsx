@@ -479,6 +479,11 @@ export function AgentMessage({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
+  const messageTimestamp = agentMessageToRender.completedTs
+    ? formatTimestring(agentMessageToRender.completedTs)
+    : formatTimestring(agentMessageToRender.created);
+  const shouldDisplayTimestamp = agentMessageToRender.status !== "created";
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -496,7 +501,7 @@ export function AgentMessage({
           isDisabled={isArchived}
         />
       )}
-      timestamp={formatTimestring(agentMessageToRender.created)}
+      timestamp={shouldDisplayTimestamp ? messageTimestamp : undefined}
       type="agent"
       citations={citations}
     >
