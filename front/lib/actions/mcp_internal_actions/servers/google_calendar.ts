@@ -19,7 +19,7 @@ interface GoogleCalendarEventDateTime {
 
 interface EnrichedGoogleCalendarEventDateTime
   extends GoogleCalendarEventDateTime {
-  dayOfWeek?: string;
+  userDayOfWeek?: string;
   isAllDay?: boolean;
 }
 
@@ -182,13 +182,15 @@ const createServer = (): McpServer => {
           pageToken,
         });
 
+        const userTimezone = await getUserTimezone(authInfo);
+
         // Return only essential event fields for context efficiency
         const enrichedData = {
           ...res.data,
           items: res.data.items
             ? res.data.items.map((event) => {
                 const enriched = isGoogleCalendarEvent(event)
-                  ? enrichEventWithDayOfWeek(event)
+                  ? enrichEventWithDayOfWeek(event, userTimezone)
                   : event;
                 return {
                   id: enriched.id,
@@ -244,8 +246,9 @@ const createServer = (): McpServer => {
           eventId,
         });
 
+        const userTimezone = await getUserTimezone(authInfo);
         const enrichedEvent = isGoogleCalendarEvent(res.data)
-          ? enrichEventWithDayOfWeek(res.data)
+          ? enrichEventWithDayOfWeek(res.data, userTimezone)
           : res.data;
 
         return makeMCPToolJSONSuccess({
@@ -331,8 +334,9 @@ const createServer = (): McpServer => {
           requestBody: event,
         });
 
+        const userTimezone = await getUserTimezone(authInfo);
         const enrichedEvent = isGoogleCalendarEvent(res.data)
-          ? enrichEventWithDayOfWeek(res.data)
+          ? enrichEventWithDayOfWeek(res.data, userTimezone)
           : res.data;
 
         return makeMCPToolJSONSuccess({
@@ -430,8 +434,9 @@ const createServer = (): McpServer => {
           requestBody: event,
         });
 
+        const userTimezone = await getUserTimezone(authInfo);
         const enrichedEvent = isGoogleCalendarEvent(res.data)
-          ? enrichEventWithDayOfWeek(res.data)
+          ? enrichEventWithDayOfWeek(res.data, userTimezone)
           : res.data;
 
         return makeMCPToolJSONSuccess({
@@ -538,6 +543,33 @@ const createServer = (): McpServer => {
     }
   );
 
+  async function getUserTimezone(authInfo?: AuthInfo): Promise<string | null> {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return null; // Default fallback
+    }
+
+    try {
+      const calendar = await getCalendarClient(authInfo);
+      if (!calendar) {
+        return null;
+      }
+
+      // Get user's timezone from calendar settings
+      const settings = await calendar.settings.get({
+        setting: "timeZone",
+      });
+
+      if (settings.data.value) {
+        return settings.data.value;
+      }
+    } catch (err) {
+      return null;
+    }
+
+    return null;
+  }
+
   return server;
 };
 
@@ -547,7 +579,8 @@ function isGoogleCalendarEvent(event: any): event is GoogleCalendarEvent {
 }
 
 function enrichEventWithDayOfWeek(
-  event: GoogleCalendarEvent
+  event: GoogleCalendarEvent,
+  userTimezone: string | null
 ): EnrichedGoogleCalendarEvent {
   const enrichedEvent: EnrichedGoogleCalendarEvent = { ...event };
 
@@ -555,7 +588,10 @@ function enrichEventWithDayOfWeek(
     const startDate = new Date(event.start.dateTime);
     enrichedEvent.start = {
       ...event.start,
-      dayOfWeek: startDate.toLocaleDateString("en-US", { weekday: "long" }),
+      userDayOfWeek: startDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        timeZone: userTimezone ?? undefined,
+      }),
       isAllDay: false,
     };
   } else if (event.start?.date) {
@@ -563,7 +599,10 @@ function enrichEventWithDayOfWeek(
     const startDate = new Date(event.start.date);
     enrichedEvent.start = {
       ...event.start,
-      dayOfWeek: startDate.toLocaleDateString("en-US", { weekday: "long" }),
+      userDayOfWeek: startDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        timeZone: userTimezone ?? undefined,
+      }),
       isAllDay: true,
     };
   }
@@ -572,7 +611,10 @@ function enrichEventWithDayOfWeek(
     const endDate = new Date(event.end.dateTime);
     enrichedEvent.end = {
       ...event.end,
-      dayOfWeek: endDate.toLocaleDateString("en-US", { weekday: "long" }),
+      userDayOfWeek: endDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        timeZone: userTimezone ?? undefined,
+      }),
       isAllDay: false,
     };
   } else if (event.end?.date) {
@@ -580,7 +622,10 @@ function enrichEventWithDayOfWeek(
     const endDate = new Date(event.end.date);
     enrichedEvent.end = {
       ...event.end,
-      dayOfWeek: endDate.toLocaleDateString("en-US", { weekday: "long" }),
+      userDayOfWeek: endDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        timeZone: userTimezone ?? undefined,
+      }),
       isAllDay: true,
     };
   }
