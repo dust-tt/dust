@@ -1,4 +1,5 @@
 import { Button, MoreIcon } from "@dust-tt/sparkle";
+import React, { useCallback, useState } from "react";
 
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
 import { ConversationMenu } from "@app/components/assistant/conversation/ConversationMenu";
@@ -16,15 +17,43 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
   });
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuTriggerPosition, setMenuTriggerPosition] = useState<
+    { x: number; y: number } | undefined
+  >();
+
+  const handleRightClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenuTriggerPosition({ x: e.clientX, y: e.clientY });
+    setIsMenuOpen(true);
+  }, []);
+
+  const handleMenuOpenChange = useCallback(
+    (open: boolean) => {
+      setIsMenuOpen(open);
+      if (!open && menuTriggerPosition) {
+        // Delay clearing position to allow closing animation to complete
+        setTimeout(() => {
+          setMenuTriggerPosition(undefined);
+        }, 150); // Match typical dropdown close animation duration
+      }
+    },
+    [menuTriggerPosition]
+  );
+
   if (!activeConversationId) {
     return null;
   }
 
   return (
     <AppLayoutTitle>
-      <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
+      <div
+        className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4"
+        onContextMenu={handleRightClick}
+      >
         <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
-          <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-sm font-normal">
+          <div className="dd-privacy-mask min-w-0 cursor-pointer select-none overflow-hidden truncate text-sm font-normal">
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {conversation?.title || ""}
           </div>
@@ -52,6 +81,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               />
             }
             isConversationDisplayed={true}
+            isOpen={isMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            triggerPosition={menuTriggerPosition}
           />
         </div>
       </div>

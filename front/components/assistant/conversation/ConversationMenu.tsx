@@ -52,11 +52,11 @@ export function ConversationMenu({
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [internalIsMenuOpen, setInternalIsMenuOpen] = useState<boolean>(false);
-  
+
   // Use external state if provided, otherwise use internal state
   const isMenuOpen = isOpen ?? internalIsMenuOpen;
   const setMenuOpen = onOpenChange ?? setInternalIsMenuOpen;
-  
+
   const shouldWaitBeforeFetching =
     activeConversationId === null || user?.sId === undefined || !isMenuOpen;
   const conversationParticipationOption = useConversationParticipationOption({
@@ -163,24 +163,23 @@ export function ConversationMenu({
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         currentTitle={conversation?.title || ""}
       />
-      <DropdownMenu
-        modal={false}
-        open={isMenuOpen}
-        onOpenChange={setMenuOpen}
-      >
+      <DropdownMenu modal={false} open={isMenuOpen} onOpenChange={setMenuOpen}>
         {triggerPosition ? (
-          <DropdownMenuTrigger asChild>
-            <div
-              style={{
-                position: 'fixed',
-                left: triggerPosition.x,
-                top: triggerPosition.y,
-                width: 0,
-                height: 0,
-                pointerEvents: 'none',
-              }}
-            />
-          </DropdownMenuTrigger>
+          <>
+            {trigger}
+            <DropdownMenuTrigger asChild>
+              <div
+                style={{
+                  position: "fixed",
+                  left: triggerPosition.x,
+                  top: triggerPosition.y,
+                  width: 0,
+                  height: 0,
+                  pointerEvents: "none",
+                }}
+              />
+            </DropdownMenuTrigger>
+          </>
         ) : (
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
