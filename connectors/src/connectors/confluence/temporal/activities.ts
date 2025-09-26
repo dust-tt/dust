@@ -592,6 +592,14 @@ export async function confluenceRemoveSpaceActivity(
     dataSourceConfig,
     folderId: makeSpaceInternalId(spaceId),
   });
+
+  // Deleting the space to omit it from subsequent syncs.
+  await ConfluenceSpace.destroy({
+    where: {
+      connectorId,
+      spaceId,
+    },
+  });
 }
 
 export async function fetchConfluenceSpaceIdsForConnectorActivity({
