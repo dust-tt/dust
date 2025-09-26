@@ -538,6 +538,7 @@ export function CreateMCPServerDialog({
           )}
         </DialogContainer>
         <DialogFooter
+          className="pt-4"
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
