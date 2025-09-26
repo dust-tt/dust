@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { Root } from "mdast";
+import type { TextDirective } from "mdast-util-directive";
 import React from "react";
 import type { Components } from "react-markdown";
 import { visit } from "unist-util-visit";
@@ -18,6 +19,14 @@ type CitationsContextType = {
   };
   updateActiveReferences: (doc: MarkdownCitation, index: number) => void;
 };
+
+// Story args type for streaming controls
+interface StreamingStoryArgs {
+  streamingSpeedMs?: number;
+  chunkMin?: number;
+  chunkMax?: number;
+  seed?: number;
+}
 
 const CitationsContext = React.createContext<CitationsContextType>({
   references: {},
@@ -96,18 +105,24 @@ function getCiteDirective() {
     const refSeen: { [ref: string]: number } = {};
 
     return (tree: Root) => {
-      visit(tree, ["textDirective"], (node: any) => {
-        if (node.name === "cite" && node.children[0]?.value) {
-          const references = node.children[0]?.value
-            .split(",")
-            .map((ref: string) => ({
-              counter: refSeen[ref] || (refSeen[ref] = refCounter++),
-              ref,
-            }));
+      // @ts-expect-error - textDirective is added by mdast-util-directive but not in base types
+      visit(tree, ["textDirective"], (node: TextDirective) => {
+        if (
+          node.name === "cite" &&
+          node.children[0] &&
+          "value" in node.children[0]
+        ) {
+          const firstChild = node.children[0] as { value: string };
+          const references = firstChild.value.split(",").map((ref: string) => ({
+            counter: refSeen[ref] || (refSeen[ref] = refCounter++),
+            ref,
+          }));
 
           node.data = node.data || {};
           node.data.hName = "sup";
-          node.data.hProperties = { references: JSON.stringify(references) };
+          node.data.hProperties = {
+            references: JSON.stringify(references),
+          };
         }
       });
     };
@@ -116,13 +131,19 @@ function getCiteDirective() {
 
 function getMentionDirective() {
   return () => (tree: Root) => {
-    visit(tree, ["textDirective"], (node: any) => {
-      if (node.name === "mention" && node.children?.[0]) {
+    // @ts-expect-error - textDirective is added by mdast-util-directive but not in base types
+    visit(tree, ["textDirective"], (node: TextDirective) => {
+      if (
+        node.name === "mention" &&
+        node.children?.[0] &&
+        "value" in node.children[0]
+      ) {
+        const firstChild = node.children[0] as { value: string };
         node.data = node.data || {};
         node.data.hName = "mention";
         node.data.hProperties = {
           agentSId: node.attributes?.sId,
-          agentName: node.children[0].value,
+          agentName: firstChild.value,
         };
       }
     });
@@ -427,6 +448,12 @@ Ping :mention[assistant]{sId:bot-1} for help.
   },
 };
 type Story = StoryObj<typeof StreamingMarkdown>;
+
+// Type for stories that use custom args
+type ExtendedStory = Omit<StoryObj<typeof StreamingMarkdown>, 'args' | 'argTypes'> & {
+  args?: StreamingStoryArgs;
+  argTypes?: Record<string, unknown>;
+};
 
 // Utility: simple seeded RNG for reproducible chunk sizes
 function makeRng(seed: number) {
@@ -913,7 +940,7 @@ const mockReferences = {
   },
 };
 
-export const EnhancedFeaturesDemo: Story = {
+export const EnhancedFeaturesDemo: ExtendedStory = {
   parameters: {
     docs: {
       description: {
@@ -930,7 +957,7 @@ export const EnhancedFeaturesDemo: Story = {
       chunkMin = 10,
       chunkMax = 50,
       seed = 42,
-    } = args as any;
+    } = args as StreamingStoryArgs;
 
     React.useEffect(() => {
       const full = ADVANCED_MD.trim();
@@ -1023,32 +1050,32 @@ export const EnhancedFeaturesDemo: Story = {
     chunkMin: 10,
     chunkMax: 50,
     seed: 42,
-  } as any,
+  },
   argTypes: {
     streamingSpeedMs: {
-      control: { type: "range", min: 10, max: 500, step: 10 },
+      control: { type: "range" as const, min: 10, max: 500, step: 10 },
       description: "Speed of streaming (ms between chunks)",
     },
     chunkMin: {
-      control: { type: "range", min: 1, max: 50, step: 1 },
+      control: { type: "range" as const, min: 1, max: 50, step: 1 },
       description: "Minimum chunk size",
     },
     chunkMax: {
-      control: { type: "range", min: 10, max: 200, step: 5 },
+      control: { type: "range" as const, min: 10, max: 200, step: 5 },
       description: "Maximum chunk size",
     },
     seed: {
-      control: { type: "number" },
+      control: { type: "number" as const },
       description: "Random seed",
     },
     isStreaming: {
       control: "boolean",
       description: "Enable streaming animations",
     },
-  } as any,
+  },
 };
 
-export const ComprehensiveDemo: Story = {
+export const ComprehensiveDemo: ExtendedStory = {
   parameters: {
     docs: {
       description: {
@@ -1065,7 +1092,7 @@ export const ComprehensiveDemo: Story = {
       chunkMin = 15,
       chunkMax = 80,
       seed = 42,
-    } = args as any;
+    } = args as StreamingStoryArgs;
 
     React.useEffect(() => {
       const full = LONG_MD.trim();
@@ -1118,28 +1145,28 @@ export const ComprehensiveDemo: Story = {
     chunkMin: 15,
     chunkMax: 80,
     seed: 42,
-  } as any,
+  },
   argTypes: {
     streamingSpeedMs: {
-      control: { type: "range", min: 10, max: 500, step: 10 },
+      control: { type: "range" as const, min: 10, max: 500, step: 10 },
       description: "Speed of streaming (ms between chunks)",
     },
     chunkMin: {
-      control: { type: "range", min: 1, max: 50, step: 1 },
+      control: { type: "range" as const, min: 1, max: 50, step: 1 },
       description: "Minimum chunk size",
     },
     chunkMax: {
-      control: { type: "range", min: 10, max: 200, step: 5 },
+      control: { type: "range" as const, min: 10, max: 200, step: 5 },
       description: "Maximum chunk size",
     },
     seed: {
-      control: { type: "number" },
+      control: { type: "number" as const },
       description: "Random seed",
     },
-  } as any,
+  },
 };
 
-export const StreamingVsProductionComparison: Story = {
+export const StreamingVsProductionComparison: ExtendedStory = {
   parameters: {
     docs: {
       description: {
@@ -1156,7 +1183,7 @@ export const StreamingVsProductionComparison: Story = {
       chunkMin = 10,
       chunkMax = 50,
       seed = 42,
-    } = args as any;
+    } = args as StreamingStoryArgs;
 
     React.useEffect(() => {
       const full = LONG_MD.trim();
@@ -1432,23 +1459,23 @@ export const StreamingVsProductionComparison: Story = {
     chunkMin: 10,
     chunkMax: 50,
     seed: 42,
-  } as any,
+  },
   argTypes: {
     streamingSpeedMs: {
-      control: { type: "range", min: 10, max: 500, step: 10 },
+      control: { type: "range" as const, min: 10, max: 500, step: 10 },
       description: "Speed of streaming (ms between chunks)",
     },
     chunkMin: {
-      control: { type: "range", min: 1, max: 50, step: 1 },
+      control: { type: "range" as const, min: 1, max: 50, step: 1 },
       description: "Minimum chunk size",
     },
     chunkMax: {
-      control: { type: "range", min: 10, max: 200, step: 5 },
+      control: { type: "range" as const, min: 10, max: 200, step: 5 },
       description: "Maximum chunk size",
     },
     seed: {
-      control: { type: "number" },
+      control: { type: "number" as const },
       description: "Random seed for chunk sizes",
     },
-  } as any,
+  },
 };
