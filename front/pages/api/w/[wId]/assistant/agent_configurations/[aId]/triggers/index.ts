@@ -131,9 +131,9 @@ function validateNamesAndConflicts(
         type: "invalid_request_error",
         message:
           duplicates.length === 1
-            ? `Duplicate trigger name: \"${duplicates[0]}\".`
+            ? `Duplicate trigger name: "${duplicates[0]}".`
             : `Duplicate trigger names: ${duplicates
-                .map((d) => `\"${d}\"`)
+                .map((d) => `"${d}"`)
                 .join(", ")}.`,
       },
     });
@@ -163,7 +163,7 @@ function validateNamesAndConflicts(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Trigger name \"${n.name}\" already exists.`,
+            message: `Trigger name "${n.name}" already exists.`,
           },
         });
         return false;
@@ -176,7 +176,7 @@ function validateNamesAndConflicts(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `Trigger name \"${n.name}\" already exists.`,
+          message: `Trigger name "${n.name}" already exists.`,
         },
       });
       return false;
