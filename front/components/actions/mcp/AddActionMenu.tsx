@@ -63,7 +63,8 @@ export const AddActionMenu = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="mx-8 w-[500px] p-2"
+        className="w-96"
+        align="end"
         mountPortalContainer={portalContainer}
       >
         <DropdownMenuSearchbar
