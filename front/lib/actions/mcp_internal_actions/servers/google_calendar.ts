@@ -9,6 +9,7 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 interface GoogleCalendarEventDateTime {
@@ -85,7 +86,7 @@ interface EnrichedGoogleCalendarEvent
   end?: EnrichedGoogleCalendarEventDateTime;
 }
 
-const createServer = (): McpServer => {
+const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   const server = makeInternalMCPServer("google_calendar");
 
   async function getCalendarClient(authInfo?: AuthInfo) {
@@ -182,7 +183,7 @@ const createServer = (): McpServer => {
           pageToken,
         });
 
-        const userTimezone = await getUserTimezone(authInfo);
+        const userTimezone = getUserTimezone();
 
         // Return only essential event fields for context efficiency
         const enrichedData = {
@@ -246,7 +247,7 @@ const createServer = (): McpServer => {
           eventId,
         });
 
-        const userTimezone = await getUserTimezone(authInfo);
+        const userTimezone = getUserTimezone();
         const enrichedEvent = isGoogleCalendarEvent(res.data)
           ? enrichEventWithDayOfWeek(res.data, userTimezone)
           : res.data;
@@ -334,7 +335,7 @@ const createServer = (): McpServer => {
           requestBody: event,
         });
 
-        const userTimezone = await getUserTimezone(authInfo);
+        const userTimezone = getUserTimezone();
         const enrichedEvent = isGoogleCalendarEvent(res.data)
           ? enrichEventWithDayOfWeek(res.data, userTimezone)
           : res.data;
@@ -434,7 +435,7 @@ const createServer = (): McpServer => {
           requestBody: event,
         });
 
-        const userTimezone = await getUserTimezone(authInfo);
+        const userTimezone = getUserTimezone();
         const enrichedEvent = isGoogleCalendarEvent(res.data)
           ? enrichEventWithDayOfWeek(res.data, userTimezone)
           : res.data;
@@ -543,28 +544,18 @@ const createServer = (): McpServer => {
     }
   );
 
-  async function getUserTimezone(authInfo?: AuthInfo): Promise<string | null> {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return null; // Default fallback
+  function getUserTimezone(): string | null {
+    const content = agentLoopContext?.runContext?.conversation?.content;
+    if (!content) {
+      return null;
     }
 
-    try {
-      const calendar = await getCalendarClient(authInfo);
-      if (!calendar) {
-        return null;
+    // Find the latest user message to get the timezone
+    for (let i = content.length - 1; i >= 0; i--) {
+      const message = content[i]?.find((msg) => msg.type === "user_message");
+      if (message?.context?.timezone) {
+        return message.context.timezone;
       }
-
-      // Get user's timezone from calendar settings
-      const settings = await calendar.settings.get({
-        setting: "timeZone",
-      });
-
-      if (settings.data.value) {
-        return settings.data.value;
-      }
-    } catch (err) {
-      return null;
     }
 
     return null;
