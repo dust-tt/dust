@@ -1,4 +1,4 @@
-import { redisClient } from "../shared/redis_client";
+import { redisCacheClient } from "./redis";
 
 // JSON-serializable primitive types.
 type JsonPrimitive = string | number | boolean | null;
@@ -6,7 +6,7 @@ type JsonPrimitive = string | number | boolean | null;
 // Recursive type to check if a type is JSON-serializable.
 type RecursiveJsonSerializable<T> = T extends JsonPrimitive
   ? T
-  : T extends Array<infer U>
+  : T extends (infer U)[]
     ? RecursiveJsonSerializable<U>[]
     : T extends object
       ? { [K in keyof T]: RecursiveJsonSerializable<T[K]> }
@@ -50,7 +50,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     throw new Error("ttlMs should be less than 24 hours");
   }
 
-  return async function (...args: Args): Promise<JsonSerializable<T>> {
+  return async (...args: Args): Promise<JsonSerializable<T>> => {
     if (!redisUri) {
       const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
       if (!REDIS_CACHE_URI) {
@@ -58,43 +58,32 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       }
       redisUri = REDIS_CACHE_URI;
     }
-    let redisCli: Awaited<ReturnType<typeof redisClient>> | undefined =
-      undefined;
+    const redis = await redisCacheClient({ origin: "cache_with_redis" });
 
     const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
 
+    let cacheVal = await redis.get(key);
+    if (cacheVal) {
+      return JSON.parse(cacheVal) as JsonSerializable<T>;
+    }
+
+    // specific try-finally to ensure unlock is called only after lock
     try {
-      redisCli = await redisClient({
-        origin: "cache_with_redis",
-        redisUri,
-      });
-      let cacheVal = await redisCli.get(key);
+      // if value not found, lock, recheck and set
+      // we avoid locking for the first read to allow parallel calls to redis if the value is set
+      await lock(key);
+      cacheVal = await redis.get(key);
       if (cacheVal) {
         return JSON.parse(cacheVal) as JsonSerializable<T>;
       }
 
-      // specific try-finally to ensure unlock is called only after lock
-      try {
-        // if value not found, lock, recheck and set
-        // we avoid locking for the first read to allow parallel calls to redis if the value is set
-        await lock(key);
-        cacheVal = await redisCli.get(key);
-        if (cacheVal) {
-          return JSON.parse(cacheVal) as JsonSerializable<T>;
-        }
-
-        const result = await fn(...args);
-        await redisCli.set(key, JSON.stringify(result), {
-          PX: ttlMs,
-        });
-        return result;
-      } finally {
-        unlock(key);
-      }
+      const result = await fn(...args);
+      await redis.set(key, JSON.stringify(result), {
+        PX: ttlMs,
+      });
+      return result;
     } finally {
-      if (redisCli) {
-        await redisCli.quit();
-      }
+      unlock(key);
     }
   };
 }

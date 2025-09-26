@@ -1,8 +1,8 @@
 import _ from "lodash";
 
 import { distributedLock, distributedUnlock } from "@connectors/lib/lock";
-import { redisClient } from "@connectors/lib/redis";
 import logger from "@connectors/logger/logger";
+import { redisClient } from "@connectors/types/shared/redis";
 
 export type RateLimit = {
   limit: number;

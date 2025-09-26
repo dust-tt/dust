@@ -11,8 +11,8 @@ import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/wo
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
-import { closeRedisClient } from "@connectors/lib/redis";
 import { isDevelopment, setupGlobalErrorHandler } from "@connectors/types";
+import { closeRedisClient } from "@connectors/types/shared/redis";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
