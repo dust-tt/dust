@@ -16,6 +16,7 @@ import { useController, useWatch } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AccessSection } from "@app/components/agent_builder/settings/AccessSection";
 import { AvatarPicker } from "@app/components/agent_builder/settings/avatar_picker/AgentBuilderAvatarPicker";
 import {
@@ -184,7 +185,7 @@ function AgentNameInput() {
   );
 }
 
-function AgentDescriptionInput() {
+function AgentDescriptionInput({ isCreatingNew }: { isCreatingNew: boolean }) {
   const { owner } = useAgentBuilderContext();
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -252,22 +253,19 @@ function AgentDescriptionInput() {
   // Trigger suggestion on each blur from instructions unless user typed a description
   useEffect(() => {
     const onInstructionsBlur = () => {
-      if (!userSetDescriptionRef.current) {
+      if (isCreatingNew && !userSetDescriptionRef.current) {
         void handleGenerateDescription();
       }
     };
     // Save reference for cleanup
     blurListenerRef.current = onInstructionsBlur;
-    window.addEventListener("agent:instructions:blur", onInstructionsBlur);
+    window.addEventListener(BLUR_EVENT_NAME, onInstructionsBlur);
     return () => {
       if (blurListenerRef.current) {
-        window.removeEventListener(
-          "agent:instructions:blur",
-          blurListenerRef.current
-        );
+        window.removeEventListener(BLUR_EVENT_NAME, blurListenerRef.current);
       }
     };
-  }, [field.value, handleGenerateDescription]);
+  }, [field.value, handleGenerateDescription, isCreatingNew]);
 
   return (
     <SettingSectionContainer title="Description">
@@ -308,7 +306,7 @@ function AgentDescriptionInput() {
   );
 }
 
-function AgentPictureInput() {
+function AgentPictureInput({ isCreatingNew }: { isCreatingNew: boolean }) {
   const { owner } = useAgentBuilderContext();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const blurListenerRef = useRef<() => void>();
@@ -358,6 +356,7 @@ function AgentPictureInput() {
   useEffect(() => {
     const onInstructionsBlur = () => {
       if (
+        isCreatingNew &&
         !userSetAvatarRef.current &&
         (instructions?.length ?? 0) >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
       ) {
@@ -374,7 +373,7 @@ function AgentPictureInput() {
         );
       }
     };
-  }, [instructions, updateEmojiFromSuggestions]);
+  }, [instructions, updateEmojiFromSuggestions, isCreatingNew]);
 
   return (
     <>
@@ -405,7 +404,12 @@ function AgentPictureInput() {
   );
 }
 
-export function AgentBuilderSettingsBlock() {
+export function AgentBuilderSettingsBlock({
+  agentConfigurationId,
+}: {
+  agentConfigurationId: string | null;
+}) {
+  const isCreatingNew = !agentConfigurationId;
   return (
     <AgentBuilderSectionContainer title="Settings">
       <div className="space-y-5">
@@ -413,9 +417,9 @@ export function AgentBuilderSettingsBlock() {
           <div className="flex-grow">
             <AgentNameInput />
           </div>
-          <AgentPictureInput />
+          <AgentPictureInput isCreatingNew={isCreatingNew} />
         </div>
-        <AgentDescriptionInput />
+        <AgentDescriptionInput isCreatingNew={isCreatingNew} />
         <AccessSection />
         <TagsSection />
       </div>
