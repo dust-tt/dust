@@ -5,10 +5,10 @@ import {
   DataTable,
   EmptyCTA,
   IconButton,
+  LoadingBlock,
   Page,
   PlusIcon,
   Separator,
-  Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -89,31 +89,27 @@ function DomainVerification({
         and allow team members to automatically join your workspace when they
         sign up with their work email address.
       </Page.P>
-      {isDomainsLoading && (
-        <div className="flex justify-center">
-          <Spinner size="lg" />
-        </div>
+      {isDomainsLoading ? (
+        <LoadingBlock className="h-32 w-full rounded-xl" />
+      ) : domains.length === 0 ? (
+        <EmptyCTA
+          action={
+            <Button
+              label="Add Domain"
+              variant="primary"
+              icon={PlusIcon}
+              href={addDomainLink}
+            />
+          }
+        />
+      ) : (
+        <DomainVerificationTable
+          addDomainLink={addDomainLink}
+          domains={domains}
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
+          owner={owner}
+        />
       )}
-      {!isDomainsLoading &&
-        (domains.length === 0 ? (
-          <EmptyCTA
-            action={
-              <Button
-                label="Add Domain"
-                variant="primary"
-                icon={PlusIcon}
-                href={addDomainLink}
-              />
-            }
-          />
-        ) : (
-          <DomainVerificationTable
-            addDomainLink={addDomainLink}
-            domains={domains}
-            workspaceVerifiedDomains={workspaceVerifiedDomains}
-            owner={owner}
-          />
-        ))}
     </WorkspaceSection>
   );
 }
