@@ -57,8 +57,8 @@ export async function redisClient({
   origin: RedisUsageTagsType | RedisCacheUsageTagsType;
 }) {
   const isCache = origin === REDIS_CACHE_USAGE_TAG;
-  const targetClient = isCache ? cacheClient : client;
 
+  const targetClient = isCache ? cacheClient : client;
   if (targetClient) {
     return targetClient;
   }
