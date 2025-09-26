@@ -37,7 +37,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         onContextMenu={handleRightClick}
       >
         <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
-          <div className="dd-privacy-mask min-w-0 cursor-pointer select-none overflow-hidden truncate text-sm font-normal">
+          <div className="dd-privacy-mask min-w-0 overflow-hidden truncate text-sm font-normal">
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {conversation?.title || ""}
           </div>
