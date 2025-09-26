@@ -54,11 +54,11 @@ export function ConversationMenu({
   const [internalIsMenuOpen, setInternalIsMenuOpen] = useState<boolean>(false);
   
   // Use external state if provided, otherwise use internal state
-  const menuIsOpen = isOpen ?? internalIsMenuOpen;
+  const isMenuOpen = isOpen ?? internalIsMenuOpen;
   const setMenuOpen = onOpenChange ?? setInternalIsMenuOpen;
   
   const shouldWaitBeforeFetching =
-    activeConversationId === null || user?.sId === undefined || !menuIsOpen;
+    activeConversationId === null || user?.sId === undefined || !isMenuOpen;
   const conversationParticipationOption = useConversationParticipationOption({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -165,7 +165,7 @@ export function ConversationMenu({
       />
       <DropdownMenu
         modal={false}
-        open={menuIsOpen}
+        open={isMenuOpen}
         onOpenChange={setMenuOpen}
       >
         {triggerPosition ? (
