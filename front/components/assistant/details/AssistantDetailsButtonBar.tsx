@@ -258,6 +258,8 @@ export function AssistantDetailsDropdownMenu({
             data-gtm-location="assistantBrowser"
             icon={ClipboardIcon}
             onClick={async (e) => {
+              e.stopPropagation();
+              onClose?.();
               await router.push(
                 getAgentBuilderRoute(
                   owner.sId,
@@ -265,8 +267,6 @@ export function AssistantDetailsDropdownMenu({
                   `duplicate=${agentConfiguration.sId}`
                 )
               );
-              e.stopPropagation();
-              onClose?.();
             }}
           />
           {allowDeletion && (
@@ -303,21 +303,21 @@ export function AssistantDetailsDropdownMenu({
           onOpenChange={(open) => !open && onClose?.()}
           modal={false}
         >
-          <DropdownMenuPortal>
-            <DropdownMenuContent
-              align="start"
-              side="top"
-              className="whitespace-nowrap"
+          <DropdownMenuTrigger asChild>
+            <div
               style={{
                 position: "fixed",
                 left: contextMenuPosition.x,
                 top: contextMenuPosition.y,
+                width: 0,
+                height: 0,
+                pointerEvents: "none",
               }}
-              onPointerDownOutside={() => onClose?.()}
-            >
-              {menuItems}
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {menuItems}
+          </DropdownMenuContent>
         </DropdownMenu>
       ) : (
         <DropdownMenu>
