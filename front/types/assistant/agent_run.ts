@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { enhanceGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents_enhancer";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
@@ -159,8 +160,18 @@ export async function getRunAgentData(
     return new Err(new Error("Agent configuration not found"));
   }
 
-  return new Ok({
+  const enhanceResult = await enhanceGlobalAgent(
+    auth,
     agentConfiguration,
+    agentMessage,
+    userMessage
+  );
+  if (enhanceResult.isErr()) {
+    return enhanceResult;
+  }
+
+  return new Ok({
+    agentConfiguration: enhanceResult.value,
     agentMessage,
     agentMessageRow: agentMessageRow.agentMessage,
     auth,

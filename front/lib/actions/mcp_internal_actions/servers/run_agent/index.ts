@@ -303,8 +303,6 @@ export default async function createServer(
           logger
         );
 
-        const instructions =
-          agentLoopContext.runContext.agentConfiguration.instructions;
         if (_meta?.progressToken && sendNotification) {
           // Store the query resource immediately so it's available in the UI while the action is running.
           const storeResourceNotification: MCPProgressNotificationType = {
@@ -344,13 +342,7 @@ export default async function createServer(
             childAgentId,
             mainAgent,
             mainConversation,
-            query: isHandoff
-              ? `
-You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
-${instructions ?? ""}
-</main_agent_instructions>
-${query}`
-              : query,
+            query,
             toolsetsToAdd: toolsetsToAdd ?? null,
             fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
             conversationId: isHandoff
