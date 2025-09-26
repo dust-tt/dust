@@ -25,7 +25,7 @@ export type ChildAgentSelectionSummary = BaseSelectionSummary & {
 
 export type ReasoningModelSelectionSummary = BaseSelectionSummary & {
   id: "reasoning-model";
-  visual: { type: "icon" };
+  visual: { type: "provider-logo"; providerId: string } | { type: "icon" };
   editLabel: "Edit model";
 };
 
@@ -102,7 +102,9 @@ export function createReasoningModelSummary({
 
   return {
     id: "reasoning-model",
-    visual: { type: "icon" },
+    visual: model.providerId
+      ? { type: "provider-logo", providerId: model.providerId }
+      : { type: "icon" },
     title: model.displayName,
     description: model.description || "No description available",
     editLabel: "Edit model",
