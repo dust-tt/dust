@@ -59,7 +59,15 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const hasAcceptedCookies =
     cookieValue === "true" || cookieValue === "auto" || cookieValue === true;
 
-  const excludedPaths = ["/w/", "/poke/", "/sso-enforced", "/maintenance"];
+  const excludedPaths = [
+    "/w/",
+    "/poke",
+    "/poke/",
+    "/sso-enforced",
+    "/maintenance",
+    "/oauth/",
+    "/share/",
+  ];
   const isTrackablePage = !excludedPaths.some((path) =>
     router.pathname.startsWith(path)
   );

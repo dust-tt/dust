@@ -167,6 +167,7 @@ export const supportedOtherFileFormats = {
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
+  "text/vnd.dust.attachment.pasted": [".txt"],
   "text/html": [".html", ".htm", ".xhtml", ".xhtml+xml"],
   "text/xml": [".xml"],
   "text/calendar": [".ics"],
@@ -649,7 +650,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"

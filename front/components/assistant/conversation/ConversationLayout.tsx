@@ -90,7 +90,7 @@ const ConversationLayoutContent = ({
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+    useURLSheet("agentDetails");
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
@@ -107,12 +107,12 @@ const ConversationLayoutContent = ({
   );
 
   const assistantSId = useMemo(() => {
-    const sid = router.query.assistantDetails ?? [];
+    const sid = router.query.agentDetails ?? [];
     if (isString(sid)) {
       return sid;
     }
     return null;
-  }, [router.query.assistantDetails]);
+  }, [router.query.agentDetails]);
 
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =

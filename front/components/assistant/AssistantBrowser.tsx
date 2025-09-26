@@ -35,6 +35,7 @@ import { AssistantDetails } from "@app/components/assistant/details/AssistantDet
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,
@@ -187,6 +188,12 @@ export function AssistantBrowser({
     workspaceId: owner.sId,
   });
 
+  const {
+    selectedTagIds: persistedSelectedTagIds,
+    setSelectedTagIds,
+    isLoading: isPersistedSelectionLoading,
+  } = usePersistedAgentBrowserSelection(owner.sId);
+
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
@@ -300,12 +307,49 @@ export function AssistantBrowser({
       : enabledTabs[0]?.id;
   }, [selectedTab, agentsByTab]);
 
-  // Auto-pick the most popular tag if tags exists but no tags are selected.
+  // Initialize selectedTags from persisted selection (or default to Most popular).
   useEffect(() => {
-    if (!noTagsDefined) {
+    if (noTagsDefined || selectedTags.length > 0) {
+      return;
+    }
+
+    const validTagIds = new Set(uniqueTags.map((t) => t.sId));
+    const persistedValid = persistedSelectedTagIds.filter((id) =>
+      validTagIds.has(id)
+    );
+
+    if (persistedValid.length > 0) {
+      setSelectedTags(persistedValid);
+    } else {
       setSelectedTags([MOST_POPULAR_TAG.sId]);
     }
-  }, [noTagsDefined]);
+  }, [
+    noTagsDefined,
+    persistedSelectedTagIds,
+    uniqueTags,
+    selectedTags.length,
+    setSelectedTags,
+  ]);
+
+  // Persist selectedTags when they change (and tags exist).
+  useEffect(() => {
+    if (noTagsDefined || isPersistedSelectionLoading) {
+      return;
+    }
+
+    const areEqual =
+      persistedSelectedTagIds.length === selectedTags.length &&
+      persistedSelectedTagIds.every((v, i) => v === selectedTags[i]);
+    if (!areEqual) {
+      void setSelectedTagIds(selectedTags);
+    }
+  }, [
+    selectedTags,
+    noTagsDefined,
+    isPersistedSelectionLoading,
+    persistedSelectedTagIds,
+    setSelectedTagIds,
+  ]);
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {
@@ -317,6 +361,22 @@ export function AssistantBrowser({
         return "Recently updated";
     }
   }, [sortType]);
+
+  const isAllSelected = useMemo(() => {
+    return selectedTags.length > 0 && selectedTags.length === uniqueTags.length;
+  }, [selectedTags, uniqueTags.length]);
+
+  const toggleSelectAll = useCallback(() => {
+    if (noTagsDefined) {
+      return;
+    }
+    if (isAllSelected) {
+      const first = selectedTags[0] ?? uniqueTags[0]?.sId;
+      setSelectedTags(first ? [first] : []);
+    } else {
+      setSelectedTags(uniqueTags.map((t) => t.sId));
+    }
+  }, [isAllSelected, noTagsDefined, selectedTags, uniqueTags]);
 
   return (
     <>
@@ -376,7 +436,7 @@ export function AssistantBrowser({
                       icon={MoreIcon}
                       onClick={(e: Event) => {
                         e.stopPropagation();
-                        setQueryParam(router, "assistantDetails", agent.sId);
+                        setQueryParam(router, "agentDetails", agent.sId);
                       }}
                     />
                   }
@@ -467,10 +527,10 @@ export function AssistantBrowser({
 
       {viewTab === "all" ? (
         <>
-          <div className="mb-2 flex flex-wrap gap-2">
-            {noTagsDefined
-              ? null
-              : uniqueTags.map((tag) => (
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {noTagsDefined ? null : (
+              <>
+                {uniqueTags.map((tag) => (
                   <Button
                     size="xs"
                     variant={
@@ -489,6 +549,15 @@ export function AssistantBrowser({
                     }}
                   />
                 ))}
+                <Button
+                  className="ml-auto"
+                  size="xs"
+                  variant="ghost"
+                  label={isAllSelected ? "Unselect all" : "Select all"}
+                  onClick={toggleSelectAll}
+                />
+              </>
+            )}
           </div>
 
           <div className="flex flex-col gap-4">

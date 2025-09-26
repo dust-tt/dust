@@ -205,6 +205,12 @@ export const FILE_FORMATS = {
     exts: [".md", ".markdown"],
     isSafeToDisplay: true,
   },
+  // Internal content type for pasted text attachments in conversations.
+  "text/vnd.dust.attachment.pasted": {
+    cat: "data",
+    exts: [".txt"],
+    isSafeToDisplay: true,
+  },
   "text/vnd.dust.attachment.slack.thread": {
     cat: "data",
     exts: [".txt"],

@@ -24,7 +24,7 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import { getAgentBuilderRoute, getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder, normalizeError } from "@app/types";
@@ -49,7 +49,7 @@ export function AssistantDetailsButtonBar({
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+    useURLSheet("agentDetails");
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -236,7 +236,11 @@ export function AssistantDetailsButtonBar({
         icon={ChatBubbleBottomCenterTextIcon}
         size="sm"
         variant="outline"
-        href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
+        href={getAgentRoute(
+          owner.sId,
+          "new",
+          `agent=${agentConfiguration.sId}`
+        )}
       />
 
       {agentConfiguration.scope !== "global" &&

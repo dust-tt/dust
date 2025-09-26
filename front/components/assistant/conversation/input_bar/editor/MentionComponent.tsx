@@ -11,7 +11,7 @@ import { useRouter } from "next/router";
 import React from "react";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
-import { setQueryParam } from "@app/lib/utils/router";
+import { getAgentRoute, setQueryParam } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 interface MentionComponentProps {
@@ -27,7 +27,7 @@ interface MentionComponentProps {
 export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+    useURLSheet("agentDetails");
 
   const { id: agentSId, label: agentName } = node.attrs;
 
@@ -35,12 +35,12 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
     if (!owner) {
       return;
     }
-    await router.push(`/w/${owner.sId}/assistant/new?assistant=${agentSId}`);
+    await router.push(getAgentRoute(owner.sId, "new", `agent=${agentSId}`));
   };
 
   const handleSeeDetails = () => {
     onOpenChangeAssistantModal(true);
-    setQueryParam(router, "assistantDetails", agentSId);
+    setQueryParam(router, "agentDetails", agentSId);
   };
 
   return (
