@@ -11,8 +11,28 @@ import type {
 } from "@app/components/agent_builder/types";
 import { TOOLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { MCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { pluralize } from "@app/types";
+
+export function hasAnyAdditionalConfigs(
+  toolsConfigurations: MCPServerToolsConfigurations
+): boolean {
+  const hasStrings =
+    (toolsConfigurations.stringConfigurations?.length ?? 0) > 0;
+  const hasNumbers =
+    (toolsConfigurations.numberConfigurations?.length ?? 0) > 0;
+  const hasBooleans =
+    (toolsConfigurations.booleanConfigurations?.length ?? 0) > 0;
+  const hasEnums =
+    toolsConfigurations.enumConfigurations &&
+    Object.keys(toolsConfigurations.enumConfigurations).length > 0;
+  const hasLists =
+    toolsConfigurations.listConfigurations &&
+    Object.keys(toolsConfigurations.listConfigurations).length > 0;
+
+  return hasStrings || hasNumbers || hasBooleans || hasEnums || hasLists;
+}
 
 export function isValidPage<T extends Record<string, string>>(
   pageId: string,

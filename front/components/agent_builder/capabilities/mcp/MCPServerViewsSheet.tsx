@@ -50,6 +50,7 @@ import {
   getInitialConfigurationTool,
   getInitialPageId,
   handleConfigurationSave as handleConfigurationSaveUtil,
+  hasAnyAdditionalConfigs,
   shouldGenerateUniqueName,
 } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
@@ -552,22 +553,8 @@ export function MCPServerViewsSheet({
     if (!toolsConfigurations) {
       return false;
     }
-    const hasStrings =
-      (toolsConfigurations.stringConfigurations?.length ?? 0) > 0;
-    const hasNumbers =
-      (toolsConfigurations.numberConfigurations?.length ?? 0) > 0;
-    const hasBooleans =
-      (toolsConfigurations.booleanConfigurations?.length ?? 0) > 0;
-    const hasEnums =
-      toolsConfigurations.enumConfigurations &&
-      Object.keys(toolsConfigurations.enumConfigurations).length > 0;
-    const hasLists =
-      toolsConfigurations.listConfigurations &&
-      Object.keys(toolsConfigurations.listConfigurations).length > 0;
     const hasName = configurationTool?.configurable ?? false;
-    return (
-      hasName || hasStrings || hasNumbers || hasBooleans || hasEnums || hasLists
-    );
+    return hasAnyAdditionalConfigs(toolsConfigurations) || hasName;
   }, [toolsConfigurations, configurationTool?.configurable]);
 
   // Stable form reset handler - no form dependency to prevent re-renders
