@@ -34,7 +34,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { WithRetriesError } from "@connectors/types";
-import { redisClient } from "@connectors/types/shared/redis";
+import { redisClient } from "@connectors/types/shared/redis_client";
 
 export async function incrementalSync(
   connectorId: ModelId,

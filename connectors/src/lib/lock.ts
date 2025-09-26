@@ -1,6 +1,6 @@
 import type { RedisClientType } from "redis";
 
-import { redisClient } from "@connectors/types/shared/redis";
+import { redisClient } from "@connectors/types/shared/redis_client";
 
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.

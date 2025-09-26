@@ -91,7 +91,7 @@ import {
   isDevelopment,
   slugify,
 } from "@connectors/types";
-import { redisClient } from "@connectors/types/shared/redis";
+import { redisClient } from "@connectors/types/shared/redis_client";
 import { sha256 } from "@connectors/types/shared/utils/hashing";
 
 const logger = mainLogger.child({ provider: "notion" });
