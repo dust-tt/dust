@@ -436,7 +436,7 @@ export function AssistantBrowser({
                       icon={MoreIcon}
                       onClick={(e: Event) => {
                         e.stopPropagation();
-                        setQueryParam(router, "assistantDetails", agent.sId);
+                        setQueryParam(router, "agentDetails", agent.sId);
                       }}
                     />
                   }

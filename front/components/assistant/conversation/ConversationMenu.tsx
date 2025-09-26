@@ -26,6 +26,7 @@ import {
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
@@ -73,7 +74,7 @@ export function ConversationMenu({
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   const shareLink =
     baseUrl !== undefined
-      ? `${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`
+      ? getAgentRoute(owner.sId, activeConversationId, undefined, baseUrl)
       : undefined;
 
   const doDelete = useDeleteConversation(owner);
@@ -81,7 +82,7 @@ export function ConversationMenu({
     const res = await doDelete(conversation);
     isConversationDisplayed &&
       res &&
-      void router.push(`/w/${owner.sId}/assistant/new`);
+      void router.push(getAgentRoute(owner.sId));
   }, [conversation, doDelete, owner.sId, router, isConversationDisplayed]);
 
   const copyConversationLink = useCallback(async () => {

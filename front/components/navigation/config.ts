@@ -13,6 +13,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 
+import { getAgentRoute } from "@app/lib/utils/router";
 import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
@@ -115,15 +116,11 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "conversations",
     label: "Chat",
-    href: `/w/${owner.sId}/assistant/new`,
+    href: getAgentRoute(owner.sId),
     icon: ChatBubbleLeftRightIcon,
     sizing: "hug",
     isCurrent: (currentRoute) =>
-      [
-        "/w/[wId]/assistant/new",
-        "/w/[wId]/assistant/[cId]",
-        "/w/[wId]/assistants",
-      ].includes(currentRoute),
+      ["/w/[wId]/agent/new", "/w/[wId]/agent/[cId]"].includes(currentRoute),
   });
 
   nav.push({

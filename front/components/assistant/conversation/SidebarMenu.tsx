@@ -52,7 +52,7 @@ import {
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import { getAgentBuilderRoute, getAgentRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
@@ -286,7 +286,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     setSidebarOpen(false);
     const { cId } = router.query;
     const isNewConversation =
-      router.pathname === "/w/[wId]/assistant/[cId]" &&
+      router.pathname === "/w/[wId]/agent/[cId]" &&
       typeof cId === "string" &&
       cId === "new";
     if (isNewConversation) {
@@ -335,7 +335,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
                 <Button
                   label="New"
-                  href={`/w/${owner.sId}/assistant/new`}
+                  href={getAgentRoute(owner.sId)}
                   icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
@@ -562,7 +562,7 @@ const RenderConversation = ({
               await new Promise((resolve) => setTimeout(resolve, 600));
             }
             await router.push(
-              `/w/${owner.sId}/assistant/${conversation.sId}`,
+              getAgentRoute(owner.sId, conversation.sId),
               undefined,
               {
                 shallow: true,
