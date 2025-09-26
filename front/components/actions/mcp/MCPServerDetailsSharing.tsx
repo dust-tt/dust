@@ -6,23 +6,18 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { MCPServerType } from "@app/lib/api/mcp";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 type RowData = {
   name: string;
   space: SpaceType;
-  serverView: MCPServerViewType | undefined;
+  isEnabled: boolean;
   onClick: () => void;
-};
-
-export type SharingChange = {
-  spaceId: string;
-  action: "add" | "remove";
 };
 
 const ActionCell = ({
@@ -41,117 +36,42 @@ const ActionCell = ({
 
 interface MCPServerDetailsSharingProps {
   mcpServer?: MCPServerType;
-  owner: LightWorkspaceType;
-  pendingChanges: SharingChange[];
-  onPendingChangesUpdate: (changes: SharingChange[]) => void;
+  owner: WorkspaceType;
+  spaces: SpaceType[];
 }
 
 export function MCPServerDetailsSharing({
   mcpServer,
   owner,
-  pendingChanges,
-  onPendingChangesUpdate,
+  spaces,
 }: MCPServerDetailsSharingProps) {
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: false,
-  });
-  const { mcpServers } = useMCPServers({
-    owner,
-  });
-  const mcpServerWithViews = mcpServers.find((s) => s.sId === mcpServer?.sId);
-  const [localSpaceStates, setLocalSpaceStates] = useState<
-    Map<string, boolean>
-  >(new Map());
+  const form = useFormContext<MCPServerFormValues>();
+  const sharingSettings = form.watch("sharingSettings");
 
-  const views = useMemo(
-    () =>
-      mcpServerWithViews?.views.map((v: MCPServerViewType) => ({
-        ...v,
-        space: spaces.find((space) => space.sId === v.spaceId),
-      })) ?? [],
-    [mcpServerWithViews?.views, spaces]
-  );
-
-  const globalView = views.find((view) => view.space?.kind === "global");
   const globalSpace = spaces.find((space) => space.kind === "global");
+  const availableSpaces = spaces.filter((s) => s.kind === "regular");
 
-  // Initialize local state when views change.
-  useEffect(() => {
-    const newStates = new Map<string, boolean>();
-    // Set global state.
-    if (globalSpace) {
-      newStates.set(globalSpace.sId, !!globalView);
-    }
-    // Set regular space states.
-    spaces
-      .filter((s) => s.kind === "regular")
-      .forEach((space) => {
-        const hasView = views.some((view) => view.spaceId === space.sId);
-        newStates.set(space.sId, hasView);
-      });
-    setLocalSpaceStates(newStates);
-  }, [views, spaces, globalView, globalSpace]);
-
-  // Determine if currently restricted based on local state.
+  // Determine if currently restricted based on form state.
   const isRestricted = globalSpace
-    ? !localSpaceStates.get(globalSpace.sId)
+    ? !sharingSettings[globalSpace.sId]
     : true;
 
-  const availableSpaces = (spaces ?? []).filter((s) => s.kind === "regular");
-
   const handleToggle = (space: SpaceType) => {
-    const currentState = localSpaceStates.get(space.sId) ?? false;
-    const newState = !currentState;
-
-    // Update local state.
-    setLocalSpaceStates((prev) => {
-      const updated = new Map(prev);
-      updated.set(space.sId, newState);
-      return updated;
+    const currentState = sharingSettings[space.sId] ?? false;
+    form.setValue(`sharingSettings.${space.sId}`, !currentState, {
+      shouldDirty: true,
     });
-
-    // Update pending changes.
-    const existingChangeIndex = pendingChanges.findIndex(
-      (c) => c.spaceId === space.sId
-    );
-
-    const newChanges = [...pendingChanges];
-
-    if (existingChangeIndex >= 0) {
-      // Remove existing change if toggling back to original state.
-      const originalHasView = views.some((view) => view.spaceId === space.sId);
-      if (newState === originalHasView) {
-        newChanges.splice(existingChangeIndex, 1);
-      } else {
-        // Update existing change.
-        newChanges[existingChangeIndex] = {
-          spaceId: space.sId,
-          action: newState ? "add" : "remove",
-        };
-      }
-    } else {
-      // Add new change if different from original.
-      const originalHasView = views.some((view) => view.spaceId === space.sId);
-      if (newState !== originalHasView) {
-        newChanges.push({
-          spaceId: space.sId,
-          action: newState ? "add" : "remove",
-        });
-      }
-    }
-
-    onPendingChangesUpdate(newChanges);
   };
 
   const rows: RowData[] = availableSpaces
     .map((space) => ({
       name: space.name,
       space: space,
-      serverView: views.find((view) => view.spaceId === space.sId),
+      isEnabled: sharingSettings[space.sId] ?? false,
       onClick: () => handleToggle(space),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
+
   const columns: ColumnDef<RowData, any>[] = [
     {
       id: "name",
@@ -161,13 +81,13 @@ export function MCPServerDetailsSharing({
     {
       id: "action",
       header: "",
-      accessorKey: "viewId",
+      accessorKey: "isEnabled",
       meta: {
         className: "w-14",
       },
-      cell: (info: CellContext<RowData, string>) => (
+      cell: (info: CellContext<RowData, boolean>) => (
         <ActionCell
-          isEnabled={localSpaceStates.get(info.row.original.space.sId) ?? false}
+          isEnabled={info.row.original.isEnabled}
           onToggle={info.row.original.onClick}
         />
       ),

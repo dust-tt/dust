@@ -17,11 +17,9 @@ import {
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
-import type { SharingChange } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
-import type { ToolChange } from "@app/components/actions/mcp/ToolsList";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   getMcpServerDisplayName,
@@ -31,7 +29,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
-import type { WorkspaceType } from "@app/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 const DETAILS_TABS = ["info", "sharing"] as const;
 export type TabType = (typeof DETAILS_TABS)[number];
@@ -41,12 +39,9 @@ interface MCPServerDetailsSheetProps {
   onClose: () => void;
   mcpServerView: MCPServerViewType | null;
   isOpen: boolean;
-  onSave: (selectedTab: TabType) => Promise<boolean>;
+  onSave: () => Promise<boolean>;
   onCancel: () => void;
-  pendingSharingChanges: SharingChange[];
-  onPendingSharingChangesUpdate: (changes: SharingChange[]) => void;
-  pendingToolChanges: ToolChange[];
-  onPendingToolChangesUpdate: (changes: ToolChange[]) => void;
+  spaces: SpaceType[];
 }
 
 export function MCPServerDetailsSheet({
@@ -56,10 +51,7 @@ export function MCPServerDetailsSheet({
   onClose,
   onSave,
   onCancel,
-  pendingSharingChanges,
-  onPendingSharingChangesUpdate,
-  pendingToolChanges,
-  onPendingToolChangesUpdate,
+  spaces,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -68,9 +60,10 @@ export function MCPServerDetailsSheet({
   const confirm = useContext(ConfirmContext);
   const { deleteServer, isDeleting } = useDeleteMCPServer(owner);
 
-  const form = useFormContext<InfoFormValues>();
+  const form = useFormContext<MCPServerFormValues>();
 
   useEffect(() => {
+    // Only reset to info tab when modal transitions from closed to open.
     if (isOpen && !prevIsOpen) {
       setSelectedTab("info");
     }
@@ -78,12 +71,8 @@ export function MCPServerDetailsSheet({
   }, [isOpen, prevIsOpen]);
 
   const changeTab = async (next: TabType) => {
-    const hasUnsavedChanges =
-      (selectedTab === "info" &&
-        (form.formState.isDirty || pendingToolChanges.length > 0)) ||
-      (selectedTab === "sharing" && pendingSharingChanges.length > 0);
-
-    if (hasUnsavedChanges && next !== selectedTab) {
+    // Since everything is now in one form, we check if the form is dirty.
+    if (form.formState.isDirty && next !== selectedTab) {
       const confirmed = await confirm({
         title: "Unsaved changes",
         message:
@@ -94,12 +83,8 @@ export function MCPServerDetailsSheet({
       if (!confirmed) {
         return;
       }
-      // Reset changes when switching tabs after confirmation.
-      if (selectedTab === "info") {
-        onPendingToolChangesUpdate([]);
-      } else if (selectedTab === "sharing") {
-        onPendingSharingChangesUpdate([]);
-      }
+      // Reset form when switching tabs after confirmation.
+      onCancel();
     }
     setSelectedTab(next);
   };
@@ -128,10 +113,7 @@ export function MCPServerDetailsSheet({
       return;
     }
 
-    const hasUnsavedChanges =
-      form.formState.isDirty ||
-      pendingSharingChanges.length > 0 ||
-      pendingToolChanges.length > 0;
+    const hasUnsavedChanges = form.formState.isDirty;
 
     if (hasUnsavedChanges) {
       const confirmed = await confirm({
@@ -222,8 +204,6 @@ export function MCPServerDetailsSheet({
                     <MCPServerDetailsInfo
                       mcpServerView={mcpServerView}
                       owner={owner}
-                      pendingToolChanges={pendingToolChanges}
-                      onPendingToolChangesUpdate={onPendingToolChangesUpdate}
                     />
                   </div>
                 )}
@@ -232,8 +212,7 @@ export function MCPServerDetailsSheet({
                 <MCPServerDetailsSharing
                   mcpServer={mcpServerView?.server}
                   owner={owner}
-                  pendingChanges={pendingSharingChanges}
-                  onPendingChangesUpdate={onPendingSharingChangesUpdate}
+                  spaces={spaces}
                 />
               </TabsContent>
             </div>
@@ -257,7 +236,7 @@ export function MCPServerDetailsSheet({
               onClick={async () => {
                 setIsSaving(true);
                 try {
-                  await onSave(selectedTab);
+                  await onSave();
                 } finally {
                   setIsSaving(false);
                 }

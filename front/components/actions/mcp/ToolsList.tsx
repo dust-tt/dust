@@ -9,12 +9,11 @@ import {
   DropdownMenuTrigger,
   InformationCircleIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useFormContext } from "react-hook-form";
 
-import type {
-  CustomRemoteMCPToolStakeLevelType,
-  MCPToolStakeLevelType,
-} from "@app/lib/actions/constants";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { CustomRemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
@@ -28,18 +27,10 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isAdmin } from "@app/types";
 
-export type ToolChange = {
-  toolName: string;
-  permission: MCPToolStakeLevelType;
-  enabled: boolean;
-};
-
 interface ToolsListProps {
   owner: LightWorkspaceType;
   mcpServerView: MCPServerViewType;
   disableUpdates?: boolean;
-  pendingToolChanges?: ToolChange[];
-  onPendingToolChangesUpdate?: (changes: ToolChange[]) => void;
 }
 
 // We disable buttons for agent builder view because it would feel like
@@ -48,9 +39,10 @@ export function ToolsList({
   owner,
   mcpServerView,
   disableUpdates,
-  pendingToolChanges = [],
-  onPendingToolChangesUpdate,
 }: ToolsListProps) {
+  const form = useFormContext<MCPServerFormValues>();
+  const toolSettings = form.watch("toolSettings");
+
   const mayUpdate = useMemo(
     () => (disableUpdates ? false : isAdmin(owner)),
     [owner, disableUpdates]
@@ -63,44 +55,6 @@ export function ToolsList({
     () => mcpServerView.server.tools,
     [mcpServerView.server.tools]
   );
-  const toolsMetadata = useMemo(() => {
-    const map: Record<
-      string,
-      { permission: MCPToolStakeLevelType; enabled: boolean }
-    > = {};
-    for (const tool of mcpServerView.toolsMetadata ?? []) {
-      map[tool.toolName] = tool;
-    }
-    return map;
-  }, [mcpServerView.toolsMetadata]);
-
-  // Local state to track current tool settings.
-  const [localToolSettings, setLocalToolSettings] = useState<
-    Record<string, { permission: MCPToolStakeLevelType; enabled: boolean }>
-  >({});
-
-  // Initialize local state when toolsMetadata changes.
-  useEffect(() => {
-    const initialSettings: Record<
-      string,
-      { permission: MCPToolStakeLevelType; enabled: boolean }
-    > = {};
-    for (const tool of mcpServerView.server.tools ?? []) {
-      initialSettings[tool.name] = {
-        permission:
-          toolsMetadata[tool.name]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
-        enabled: toolsMetadata[tool.name]?.enabled ?? true,
-      };
-    }
-    // Apply any pending changes on top of the initial settings.
-    for (const change of pendingToolChanges) {
-      initialSettings[change.toolName] = {
-        permission: change.permission,
-        enabled: change.enabled,
-      };
-    }
-    setLocalToolSettings(initialSettings);
-  }, [mcpServerView.server.tools, toolsMetadata, pendingToolChanges]);
 
   const getAvailableStakeLevelsForTool = (toolName: string) => {
     if (isRemoteMCPServerType(mcpServerView.server)) {
@@ -120,66 +74,20 @@ export function ToolsList({
     permission: CustomRemoteMCPToolStakeLevelType | "never_ask",
     enabled: boolean
   ) => {
-    // Update local state.
-    setLocalToolSettings((prev) => ({
-      ...prev,
-      [name]: { permission, enabled },
-    }));
-
-    // Update pending changes if callback is provided.
-    if (onPendingToolChangesUpdate) {
-      const originalSetting = {
-        permission:
-          toolsMetadata[name]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL,
-        enabled: toolsMetadata[name]?.enabled ?? true,
-      };
-
-      const existingChangeIndex = pendingToolChanges.findIndex(
-        (c) => c.toolName === name
-      );
-
-      const newChanges = [...pendingToolChanges];
-
-      // Check if this is different from original.
-      if (
-        permission !== originalSetting.permission ||
-        enabled !== originalSetting.enabled
-      ) {
-        // Add or update the change.
-        const change: ToolChange = {
-          toolName: name,
-          permission,
-          enabled,
-        };
-        if (existingChangeIndex >= 0) {
-          newChanges[existingChangeIndex] = change;
-        } else {
-          newChanges.push(change);
-        }
-      } else if (existingChangeIndex >= 0) {
-        // Remove the change if it's back to original.
-        newChanges.splice(existingChangeIndex, 1);
-      }
-
-      onPendingToolChangesUpdate(newChanges);
-    }
+    form.setValue(`toolSettings.${name}`, { permission, enabled }, {
+      shouldDirty: true,
+    });
   };
 
   const getToolPermission = (toolName: string) => {
     return (
-      localToolSettings[toolName]?.permission ??
-      toolsMetadata[toolName]?.permission ??
+      toolSettings[toolName]?.permission ??
       FALLBACK_MCP_TOOL_STAKE_LEVEL
     );
   };
 
   const getToolEnabled = (toolName: string) => {
-    // Use local state if available, otherwise fall back to metadata.
-    return (
-      localToolSettings[toolName]?.enabled ??
-      toolsMetadata[toolName]?.enabled ??
-      true
-    );
+    return toolSettings[toolName]?.enabled ?? true;
   };
 
   const toolPermissionLabel: Record<string, string> = {
