@@ -71,9 +71,15 @@ export async function redisClient({
     );
   }
 
-  client = await createRedisClient({ origin, redisUri });
+  const createdClient = await createRedisClient({ origin, redisUri });
 
-  return client;
+  if (isCache) {
+    cacheClient = createdClient;
+  } else {
+    client = createdClient;
+  }
+
+  return createdClient;
 }
 
 export async function closeRedisClients() {
