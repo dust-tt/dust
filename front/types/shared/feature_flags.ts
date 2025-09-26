@@ -59,10 +59,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
-  exploded_tables_query: {
-    description: "Enhanced table querying with exploded views",
-    stage: "on_demand",
-  },
   interactive_content_server: {
     description:
       "Content Creation MCP server - gives access to the new visualization layout",
