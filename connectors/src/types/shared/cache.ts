@@ -1,4 +1,4 @@
-import { redisCacheClient } from "./redis";
+import { redisCacheClient } from "./redis_client";
 
 // JSON-serializable primitive types.
 type JsonPrimitive = string | number | boolean | null;

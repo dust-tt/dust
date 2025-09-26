@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { normalizeError } from "@connectors/types";
 
-import { redisClient } from "./redis";
+import { redisClient } from "./redis_client";
 import { getStatsDClient } from "./statsd";
 
 export class RateLimitError extends Error {}
