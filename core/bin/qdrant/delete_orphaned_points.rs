@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
     if args.len() < 2 {
         return Err(anyhow!("Usage: {} <csv_file>", args[0]));
     }
-    let col_offset = if args.len() >= 3 && args[3] == "--skip-date-column" {
+    let col_offset = if args.len() >= 3 && args[2] == "--skip-date-column" {
         1
     } else {
         0
