@@ -10,6 +10,7 @@ import {
   Markdown,
   Separator,
   StopIcon,
+  StreamingMarkdown,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -639,12 +640,12 @@ export function AgentMessage({
                   updateActiveReferences,
                 }}
               >
-                <Markdown
+                <StreamingMarkdown
                   content={sanitizeVisualizationContent(agentMessage.content)}
-                  isStreaming={
-                    streaming && lastTokenClassification === "tokens"
-                  }
+                  isStreaming={streaming}
                   isLastMessage={isLastMessage}
+                  animationDuration="600ms"
+                  animationCurve="linear"
                   additionalMarkdownComponents={additionalMarkdownComponents}
                   additionalMarkdownPlugins={additionalMarkdownPlugins}
                 />
