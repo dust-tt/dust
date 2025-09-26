@@ -253,10 +253,13 @@ export function AgentMessage({
       (m) => m.messageId === message.sId
     );
     if (agentMessageToRender.status === "created" && !isInArray) {
-      generationContext.setGeneratingMessages((s) => [
-        ...s,
-        { messageId: message.sId, conversationId },
-      ]);
+      generationContext.setGeneratingMessages((s) =>
+        // Re-check if the message is already in the array since there may be
+        // a race condition on the update (double call of useEffect).
+        s.some((m) => m.messageId === message.sId)
+          ? s
+          : [...s, { messageId: message.sId, conversationId }]
+      );
     } else if (agentMessageToRender.status !== "created" && isInArray) {
       generationContext.setGeneratingMessages((s) =>
         s.filter((m) => m.messageId !== message.sId)
