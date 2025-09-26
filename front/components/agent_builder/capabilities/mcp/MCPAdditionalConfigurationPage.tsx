@@ -2,6 +2,7 @@ import { Avatar, Button, Card, CommandLineIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import type { MCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 
@@ -36,13 +37,19 @@ export function MCPAdditionalConfigurationPage({
   showNameSection,
   additionalConfigs,
 }: MCPAdditionalConfigurationPageProps) {
-  console.log(">>>>> additionalConfigs", additionalConfigs);
-  console.log(">>>>> selectionSummaries", selectionSummaries);
   return (
     <div className="h-full">
       <div className="h-full space-y-6 pt-3">
+        {showNameSection && (
+          <NameSection
+            title="Name"
+            placeholder="My tool name…"
+            triggerValidationOnChange
+          />
+        )}
+
         {selectionSummaries.length > 0 && (
-          <div className="flex w-full flex-col gap-3">
+          <ConfigurationSectionContainer title="Selection" description="">
             {selectionSummaries.map((s) => (
               <Card key={s.id} size="sm" className="w-full">
                 <div className="flex w-full">
@@ -76,15 +83,7 @@ export function MCPAdditionalConfigurationPage({
                 </div>
               </Card>
             ))}
-          </div>
-        )}
-
-        {showNameSection && (
-          <NameSection
-            title="Name"
-            placeholder="My tool name…"
-            triggerValidationOnChange
-          />
+          </ConfigurationSectionContainer>
         )}
 
         <AdditionalConfigurationSection

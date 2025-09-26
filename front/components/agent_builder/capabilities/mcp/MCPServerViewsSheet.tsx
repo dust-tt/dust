@@ -1,16 +1,10 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  Avatar,
-  Button,
-  Card,
-  CommandLineIcon,
-  Icon,
   MultiPageSheet,
   MultiPageSheetContent,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { PencilIcon } from "@heroicons/react/20/solid";
 import { zodResolver } from "@hookform/resolvers/zod";
 import uniqueId from "lodash/uniqueId";
 import React, {
@@ -30,6 +24,8 @@ import type {
   MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
+import type { SelectionSummary } from "@app/components/agent_builder/capabilities/mcp/MCPAdditionalConfigurationPage";
+import { MCPAdditionalConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPAdditionalConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
@@ -48,6 +44,7 @@ import {
   getInfoPageIcon,
   getInfoPageTitle,
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
+import { buildSelectionSummaries } from "@app/components/agent_builder/capabilities/mcp/utils/selectionSummaryUtils";
 import {
   getFooterButtons,
   getInitialConfigurationTool,
@@ -55,11 +52,9 @@ import {
   handleConfigurationSave as handleConfigurationSaveUtil,
   shouldGenerateUniqueName,
 } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
-import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
-import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -86,8 +81,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
-import { getModelProviderLogo } from "@app/components/providers/types";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
@@ -162,7 +155,6 @@ export function MCPServerViewsSheet({
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
-  const { isDark } = useTheme();
   const {
     mcpServerViews: allMcpServerViews,
     mcpServerViewsWithoutKnowledge,
@@ -602,6 +594,38 @@ export function MCPServerViewsSheet({
     resetToSelection();
   }, [resetToSelection]);
 
+  // Watch relevant form fields to recompute selection summaries reactively
+  const watchedDustApp = form?.watch("configuration.dustAppConfiguration");
+  const watchedChildAgentId = form?.watch("configuration.childAgentId");
+  const watchedReasoningModel = form?.watch("configuration.reasoningModel");
+
+  const selectionSummaries = useMemo<SelectionSummary[]>(() => {
+    if (!toolsConfigurations) {
+      return [];
+    }
+    const edit = () => setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+
+    return buildSelectionSummaries({
+      mayRequireDustAppConfiguration:
+        toolsConfigurations.mayRequireDustAppConfiguration,
+      childAgentEnabled: !!toolsConfigurations.childAgentConfiguration,
+      reasoningEnabled: !!toolsConfigurations.reasoningConfiguration,
+      form,
+      agents: agentConfigurations,
+      models: reasoningModels,
+      onEdit: edit,
+    });
+  }, [
+    toolsConfigurations,
+    form,
+    agentConfigurations,
+    reasoningModels,
+    setCurrentPageId,
+    watchedDustApp,
+    watchedChildAgentId,
+    watchedReasoningModel,
+  ]);
+
   const pages: MultiPageSheetPage[] = [
     {
       id: TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION,
@@ -650,8 +674,7 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      title: mcpServerView?.name || "Configure Tool",
+      title: mcpServerView?.name ?? "Configure Tool",
       description: "",
       icon: undefined,
       content:
@@ -725,181 +748,18 @@ export function MCPServerViewsSheet({
       content:
         toolsConfigurations && form ? (
           <FormProvider form={form} className="h-full">
-            <div className="h-full">
-              <div className="h-full space-y-6 pt-3">
-                {(toolsConfigurations.mayRequireDustAppConfiguration ||
-                  toolsConfigurations.childAgentConfiguration ||
-                  toolsConfigurations.reasoningConfiguration) && (
-                  <div className="flex w-full flex-col gap-3">
-                    {/* Dust App selection summary card */}
-                    {toolsConfigurations.mayRequireDustAppConfiguration &&
-                      form.getValues("configuration.dustAppConfiguration") && (
-                        <Card size="sm" className="w-full">
-                          <div className="flex w-full">
-                            <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
-                              <div className="flex items-center gap-2">
-                                <CommandLineIcon className="h-6 w-6 text-muted-foreground" />
-                                <div className="text-md font-medium">
-                                  {form.getValues(
-                                    "configuration.dustAppConfiguration.name"
-                                  )}
-                                </div>
-                              </div>
-                              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                                {form.getValues(
-                                  "configuration.dustAppConfiguration.description"
-                                ) || "No description available"}
-                              </div>
-                            </div>
-                            <div className="ml-4 self-start">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                icon={PencilIcon}
-                                label="Edit selection"
-                                onClick={() =>
-                                  setCurrentPageId(
-                                    TOOLS_SHEET_PAGE_IDS.CONFIGURATION
-                                  )
-                                }
-                              />
-                            </div>
-                          </div>
-                        </Card>
-                      )}
-
-                    {/* Agent selection summary card */}
-                    {toolsConfigurations.childAgentConfiguration &&
-                      (() => {
-                        const agentId = form.getValues(
-                          "configuration.childAgentId"
-                        );
-                        const selectedAgent = agentConfigurations.find(
-                          (a) => a.sId === agentId
-                        );
-                        if (!agentId || !selectedAgent) {
-                          return null;
-                        }
-                        return (
-                          <Card size="sm" className="w-full">
-                            <div className="flex w-full">
-                              <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
-                                <div className="flex items-center gap-2">
-                                  <Avatar
-                                    size="sm"
-                                    name={selectedAgent.name}
-                                    visual={selectedAgent.pictureUrl}
-                                  />
-                                  <div className="text-md font-medium">
-                                    {selectedAgent.name}
-                                  </div>
-                                </div>
-                                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                                  {selectedAgent.description ||
-                                    "No description available"}
-                                </div>
-                              </div>
-                              <div className="ml-4 self-start">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  icon={PencilIcon}
-                                  label="Edit agent"
-                                  onClick={() =>
-                                    setCurrentPageId(
-                                      TOOLS_SHEET_PAGE_IDS.CONFIGURATION
-                                    )
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </Card>
-                        );
-                      })()}
-
-                    {/* Reasoning model selection summary card */}
-                    {toolsConfigurations.reasoningConfiguration &&
-                      (() => {
-                        const selectedModel = form.getValues(
-                          "configuration.reasoningModel"
-                        );
-                        if (!selectedModel) {
-                          return null;
-                        }
-                        const model = reasoningModels.find(
-                          (m) =>
-                            m.modelId === selectedModel.modelId &&
-                            m.providerId === selectedModel.providerId
-                        );
-                        if (!model) {
-                          return null;
-                        }
-                        const LogoComponent = getModelProviderLogo(
-                          model.providerId,
-                          isDark
-                        );
-                        return (
-                          <Card size="sm" className="w-full">
-                            <div className="flex w-full">
-                              <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
-                                <div className="flex items-center gap-2">
-                                  {LogoComponent ? (
-                                    <div className="flex h-6 w-6 items-center justify-center">
-                                      <Icon visual={LogoComponent} size="md" />
-                                    </div>
-                                  ) : null}
-                                  <div className="text-md font-medium">
-                                    {model.displayName}
-                                  </div>
-                                </div>
-                                <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
-                                  {model.description ||
-                                    "No description available"}
-                                </div>
-                              </div>
-                              <div className="ml-4 self-start">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  icon={PencilIcon}
-                                  label="Edit model"
-                                  onClick={() =>
-                                    setCurrentPageId(
-                                      TOOLS_SHEET_PAGE_IDS.CONFIGURATION
-                                    )
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </Card>
-                        );
-                      })()}
-                  </div>
-                )}
-
-                {configurationTool?.configurable && (
-                  <NameSection
-                    title="Name"
-                    placeholder="My tool name…"
-                    triggerValidationOnChange
-                  />
-                )}
-
-                <AdditionalConfigurationSection
-                  stringConfigurations={
-                    toolsConfigurations.stringConfigurations
-                  }
-                  numberConfigurations={
-                    toolsConfigurations.numberConfigurations
-                  }
-                  booleanConfigurations={
-                    toolsConfigurations.booleanConfigurations
-                  }
-                  enumConfigurations={toolsConfigurations.enumConfigurations}
-                  listConfigurations={toolsConfigurations.listConfigurations}
-                />
-              </div>
-            </div>
+            <MCPAdditionalConfigurationPage
+              selectionSummaries={selectionSummaries}
+              showNameSection={configurationTool?.configurable ?? false}
+              additionalConfigs={{
+                stringConfigurations: toolsConfigurations.stringConfigurations,
+                numberConfigurations: toolsConfigurations.numberConfigurations,
+                booleanConfigurations:
+                  toolsConfigurations.booleanConfigurations,
+                enumConfigurations: toolsConfigurations.enumConfigurations,
+                listConfigurations: toolsConfigurations.listConfigurations,
+              }}
+            />
           </FormProvider>
         ) : (
           <div className="flex h-40 w-full items-center justify-center">
