@@ -1,8 +1,10 @@
 import { Button, MoreIcon } from "@dust-tt/sparkle";
-import React, { useState } from "react";
 
 import { ConversationFilesPopover } from "@app/components/assistant/conversation/ConversationFilesPopover";
-import { ConversationMenu, useConversationRightClick } from "@app/components/assistant/conversation/ConversationMenu";
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -17,17 +19,12 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
   });
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [menuTriggerPosition, setMenuTriggerPosition] = useState<
-    { x: number; y: number } | undefined
-  >();
-
-  const { handleRightClick, handleMenuOpenChange } = useConversationRightClick(
+  const {
     isMenuOpen,
-    setMenuTriggerPosition,
-    setIsMenuOpen
-  );
-
+    menuTriggerPosition,
+    handleRightClick,
+    handleMenuOpenChange,
+  } = useConversationMenu();
 
   if (!activeConversationId) {
     return null;

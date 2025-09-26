@@ -29,17 +29,14 @@ import {
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
-import { ConversationMenu, useConversationRightClick } from "@app/components/assistant/conversation/ConversationMenu";
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -506,16 +503,12 @@ const RenderConversation = ({
   owner: WorkspaceType;
 }) => {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [menuTriggerPosition, setMenuTriggerPosition] = useState<
-    { x: number; y: number } | undefined
-  >();
-
-  const { handleRightClick, handleMenuOpenChange } = useConversationRightClick(
+  const {
     isMenuOpen,
-    setMenuTriggerPosition,
-    setIsMenuOpen
-  );
+    menuTriggerPosition,
+    handleRightClick,
+    handleMenuOpenChange,
+  } = useConversationMenu();
 
   const conversationLabel =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -527,15 +520,6 @@ const RenderConversation = ({
   const UnreadIcon = () => (
     <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
   );
-
-  // Clear position when menu closes (keep the animation delay logic here)
-  useEffect(() => {
-    if (!isMenuOpen && menuTriggerPosition) {
-      setTimeout(() => {
-        setMenuTriggerPosition(undefined);
-      }, 150);
-    }
-  }, [isMenuOpen, menuTriggerPosition]);
 
   return (
     <>
@@ -555,47 +539,45 @@ const RenderConversation = ({
           </Label>
         </div>
       ) : (
-        <>
-          <NavigationListItem
-            selected={router.query.cId === conversation.sId}
-            icon={
-              conversation.actionRequired
-                ? ExclamationCircleIcon
-                : conversation.unread
-                  ? UnreadIcon
-                  : undefined
+        <NavigationListItem
+          selected={router.query.cId === conversation.sId}
+          icon={
+            conversation.actionRequired
+              ? ExclamationCircleIcon
+              : conversation.unread
+                ? UnreadIcon
+                : undefined
+          }
+          label={conversationLabel}
+          moreMenu={
+            <ConversationMenu
+              activeConversationId={conversation.sId}
+              conversation={conversation}
+              owner={owner}
+              trigger={<NavigationListItemAction />}
+              isConversationDisplayed={router.query.cId === conversation.sId}
+              isOpen={isMenuOpen}
+              onOpenChange={handleMenuOpenChange}
+              triggerPosition={menuTriggerPosition}
+            />
+          }
+          onContextMenu={handleRightClick}
+          onClick={async () => {
+            // Side bar is the floating sidebar that appears when the screen is small.
+            if (sidebarOpen) {
+              setSidebarOpen(false);
+              // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
+              await new Promise((resolve) => setTimeout(resolve, 600));
             }
-            label={conversationLabel}
-            moreMenu={
-              <ConversationMenu
-                activeConversationId={conversation.sId}
-                conversation={conversation}
-                owner={owner}
-                trigger={<NavigationListItemAction />}
-                isConversationDisplayed={router.query.cId === conversation.sId}
-                isOpen={isMenuOpen}
-                onOpenChange={handleMenuOpenChange}
-                triggerPosition={menuTriggerPosition}
-              />
-            }
-            onContextMenu={handleRightClick}
-            onClick={async () => {
-              // Side bar is the floating sidebar that appears when the screen is small.
-              if (sidebarOpen) {
-                setSidebarOpen(false);
-                // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
-                await new Promise((resolve) => setTimeout(resolve, 600));
+            await router.push(
+              `/w/${owner.sId}/assistant/${conversation.sId}`,
+              undefined,
+              {
+                shallow: true,
               }
-              await router.push(
-                `/w/${owner.sId}/assistant/${conversation.sId}`,
-                undefined,
-                {
-                  shallow: true,
-                }
-              );
-            }}
-          />
-        </>
+            );
+          }}
+        />
       )}
     </>
   );

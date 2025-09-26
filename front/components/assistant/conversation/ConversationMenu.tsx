@@ -39,31 +39,27 @@ import { asDisplayName } from "@app/types/shared/utils/string_utils";
  * while the menu is open still trigger our handlers. Due to React's async state updates,
  * when the menu closes, our right-click handler sees isMenuOpen as false and reopens the menu.
  */
-export function useConversationRightClick(
-  isMenuOpen: boolean,
-  setMenuTriggerPosition: (
-    position: { x: number; y: number } | undefined
-  ) => void,
-  setIsMenuOpen: (open: boolean) => void
-) {
+export function useConversationMenu() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuTriggerPosition, setMenuTriggerPosition] = useState<
+    { x: number; y: number } | undefined
+  >();
+
   // Tracks if the menu was just closed to prevent immediate reopening
   // This flag creates a brief "cooldown" period after menu closure
   const [wasMenuJustClosed, setWasMenuJustClosed] = useState(false);
 
-  const handleMenuOpenChange = useCallback(
-    (open: boolean) => {
-      setIsMenuOpen(open);
-      if (!open) {
-        // When menu closes, set the "just closed" flag for 100ms
-        // This prevents right-click handlers from immediately reopening the menu
-        setWasMenuJustClosed(true);
-        setTimeout(() => {
-          setWasMenuJustClosed(false);
-        }, 100);
-      }
-    },
-    [setIsMenuOpen]
-  );
+  const handleMenuOpenChange = useCallback((open: boolean) => {
+    setIsMenuOpen(open);
+    if (!open) {
+      // When menu closes, set the "just closed" flag for 100ms
+      // This prevents right-click handlers from immediately reopening the menu
+      setWasMenuJustClosed(true);
+      setTimeout(() => {
+        setWasMenuJustClosed(false);
+      }, 100);
+    }
+  }, []);
 
   const handleRightClick = useCallback(
     (e: React.MouseEvent) => {
@@ -80,20 +76,25 @@ export function useConversationRightClick(
       setMenuTriggerPosition({ x: e.clientX, y: e.clientY });
       setIsMenuOpen(true);
     },
-    [isMenuOpen, wasMenuJustClosed, setMenuTriggerPosition, setIsMenuOpen]
+    [isMenuOpen, wasMenuJustClosed]
   );
 
   // Clear the trigger position when menu closes to allow animations to complete
   // The 150ms delay ensures smooth closing animation before position reset
   useEffect(() => {
-    if (!isMenuOpen && setMenuTriggerPosition) {
+    if (!isMenuOpen) {
       setTimeout(() => {
         setMenuTriggerPosition(undefined);
       }, 150);
     }
-  }, [isMenuOpen, setMenuTriggerPosition]);
+  }, [isMenuOpen]);
 
-  return { handleRightClick, handleMenuOpenChange };
+  return {
+    isMenuOpen,
+    menuTriggerPosition,
+    handleRightClick,
+    handleMenuOpenChange,
+  };
 }
 
 export function ConversationMenu({
