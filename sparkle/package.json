@@ -128,6 +128,7 @@
     "react-resizable-panels": "^2.1.7",
     "react-syntax-highlighter": "^15.6.1",
     "rehype-katex": "^7.0.1",
+    "rehype-raw": "^7.0.0",
     "remark-directive": "^2.0.1",
     "remark-gfm": "^3.0.1",
     "remark-math": "^5.1.1",
