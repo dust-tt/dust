@@ -299,7 +299,7 @@ Avatar.Stack = function ({
   return (
     <Tooltip
       label={tooltipLabel}
-      triggerAsChild
+      tooltipTriggerAsChild
       trigger={
         <>
           <div
