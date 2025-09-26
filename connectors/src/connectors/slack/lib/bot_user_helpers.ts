@@ -1,7 +1,10 @@
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 
-import { isSlackWebAPIPlatformErrorBotNotFound } from "@connectors/connectors/slack/lib/errors";
+import {
+  isSlackWebAPIPlatformError,
+  isSlackWebAPIPlatformErrorBotNotFound,
+} from "@connectors/connectors/slack/lib/errors";
 import {
   getSlackBotInfo,
   getSlackUserInfoMemoized,
@@ -46,19 +49,31 @@ export async function getUserName(
   connectorId: ModelId,
   slackClient: WebClient
 ): Promise<string | null> {
-  const info = await getSlackUserInfoMemoized(
-    connectorId,
-    slackClient,
-    slackUserId
-  );
+  try {
+    const info = await getSlackUserInfoMemoized(
+      connectorId,
+      slackClient,
+      slackUserId
+    );
 
-  const userName = info.display_name || info.real_name || info.name;
+    const userName = info.display_name || info.real_name || info.name;
 
-  if (userName) {
-    return userName;
+    if (userName) {
+      return userName;
+    }
+    return null;
+  } catch (err) {
+    if (isSlackWebAPIPlatformError(err)) {
+      if (err.data.error === "user_not_found") {
+        logger.info(
+          { provider: "slack", connectorId, slackUserId },
+          "Slack user not found."
+        );
+        return null;
+      }
+    }
+    throw err;
   }
-
-  return null;
 }
 
 export function shouldIndexSlackMessage(
