@@ -143,7 +143,7 @@ export async function getInternalMCPServer(
     case "gmail":
       return gmailServer();
     case "google_calendar":
-      return calendarServer();
+      return calendarServer(agentLoopContext);
     case "google_drive":
       return driveServer();
     case "google_sheets":
