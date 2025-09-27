@@ -9,8 +9,14 @@ import {
 import { normalizeError } from "@connectors/types/api";
 
 export class WithRetriesError extends Error {
+  readonly additionalContext: Record<string, unknown>[];
+
   constructor(
-    errors: { attempt: number; error: unknown }[],
+    errors: {
+      attempt: number;
+      error: unknown;
+      additionalContext: Record<string, unknown>;
+    }[],
     readonly retries: number,
     readonly delayBetweenRetriesMs: number
   ) {
@@ -22,6 +28,7 @@ export class WithRetriesError extends Error {
 
     super(message);
     this.name = "WithRetriesError";
+    this.additionalContext = errors.map((e) => e.additionalContext);
     this.retries = retries;
     this.delayBetweenRetriesMs = delayBetweenRetriesMs;
   }
@@ -44,13 +51,25 @@ export function withRetries<Args extends unknown[], Return>(
   }
 
   return async (...args) => {
-    const errors: Array<{ attempt: number; error: unknown }> = [];
+    const errors: {
+      attempt: number;
+      error: unknown;
+      additionalContext: Record<string, unknown>;
+    }[] = [];
 
     for (let i = 0; i < retries; i++) {
       const attempt = i + 1;
       try {
         return await fn(...args);
       } catch (e) {
+        let additionalContext = {};
+        if (e instanceof AxiosError) {
+          additionalContext = {
+            url: e.config?.url,
+            code: e.code,
+            status: e.status,
+          };
+        }
         if (
           e instanceof AxiosError &&
           e.code === "ERR_BAD_REQUEST" &&
@@ -85,7 +104,7 @@ export function withRetries<Args extends unknown[], Return>(
 
         await setTimeoutAsync(sleepTime);
 
-        errors.push({ attempt: attempt, error: e });
+        errors.push({ attempt: attempt, error: e, additionalContext });
       }
     }
 
