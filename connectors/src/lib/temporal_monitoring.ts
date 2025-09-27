@@ -30,8 +30,8 @@ const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 19;
 
 function redactErrorForLogs(err: unknown) {
   if (err instanceof WithRetriesError) {
-    // Omitting the whole errors array, the meaningful information
-    // should be passed in additionalContext.
+    // Omitting the whole errors array, data meant to be logged  should be
+    // passed in additionalContext.
     return {
       name: err.name,
       message: err.message,
