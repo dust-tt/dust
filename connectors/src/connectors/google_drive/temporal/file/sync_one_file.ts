@@ -62,7 +62,6 @@ export async function syncOneFile(
         connectorId,
         documentId,
         fileId: file.id,
-        title: file.name,
         mimeType: file.mimeType,
       });
 
