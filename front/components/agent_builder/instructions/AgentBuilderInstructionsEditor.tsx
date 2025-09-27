@@ -1,7 +1,7 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor } from "@tiptap/core";
-import { CharacterCount } from "@tiptap/extension-character-count";
-import Placeholder from "@tiptap/extension-placeholder";
+import { CharacterCount } from "@tiptap/extensions";
+import { Placeholder } from "@tiptap/extensions";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -92,7 +92,7 @@ export function AgentBuilderInstructionsEditor({
         bold: false,
         italic: false,
         strike: false,
-        history: {
+        undoRedo: {
           depth: 100,
         },
         codeBlock: {
@@ -141,6 +141,7 @@ export function AgentBuilderInstructionsEditor({
           debouncedUpdate(editor);
         }
       },
+      immediatelyRender: false,
     },
     [extensions]
   );
@@ -156,7 +157,7 @@ export function AgentBuilderInstructionsEditor({
   }, [debouncedUpdate]);
 
   const currentCharacterCount =
-    editor?.storage.characterCount.characters() || 0;
+    editor?.storage.characterCount.characters() ?? 0;
   const displayError =
     currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT;
 
@@ -186,10 +187,9 @@ export function AgentBuilderInstructionsEditor({
     if (currentContent !== field.value) {
       // Use setTimeout to ensure this runs after any diff mode changes
       setTimeout(() => {
-        editor.commands.setContent(
-          tipTapContentFromPlainText(field.value),
-          false
-        );
+        editor.commands.setContent(tipTapContentFromPlainText(field.value), {
+          emitUpdate: false,
+        });
       }, 0);
     }
   }, [editor, field.value]);

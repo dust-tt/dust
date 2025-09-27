@@ -1,6 +1,6 @@
 import { ArrowUpIcon, Button, cn, Input, Separator } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import React from "react";
 
 interface CoEditionBubbleMenuProps {
@@ -21,8 +21,8 @@ export function CoEditionBubbleMenu({
   return (
     <BubbleMenu
       editor={editor}
-      tippyOptions={{
-        duration: 200,
+      options={{
+        // duration: 200,
         onHide: () => {
           setIsAskingAgent(false);
         },
