@@ -77,7 +77,6 @@ interface TooltipProps extends TooltipContentProps {
   trigger: React.ReactNode;
   tooltipTriggerAsChild?: boolean;
   label: React.ReactNode;
-  triggerAsChild?: boolean;
 }
 
 const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(

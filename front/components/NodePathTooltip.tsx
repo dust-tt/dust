@@ -46,7 +46,6 @@ export function NodePathTooltip({
     >
       <Tooltip
         tooltipTriggerAsChild
-        triggerAsChild
         label={
           isLoading ? (
             <div className="flex gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
