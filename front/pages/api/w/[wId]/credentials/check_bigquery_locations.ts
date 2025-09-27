@@ -94,26 +94,17 @@ async function handler(
     // Get all datasets
     const [datasets] = await bigquery.getDatasets();
 
-    const allDatasetsLocations = removeNulls(
-      datasets.map((dataset) => dataset.location?.toLocaleLowerCase())
-    );
-
-    // Initialize locations map
     const locations: Record<string, Set<string>> = {};
 
-    // Process each dataset and its tables
     for (const dataset of datasets) {
+      const dsLocation = dataset.location?.toLowerCase();
+      if (!dsLocation) {
+        continue;
+      }
       const [tables] = await dataset.getTables();
       for (const table of tables) {
-        for (const location of allDatasetsLocations) {
-          if (
-            dataset.location &&
-            location.toLowerCase().startsWith(dataset.location.toLowerCase())
-          ) {
-            locations[location] ??= new Set();
-            locations[location].add(`${dataset.id}.${table.id}`);
-          }
-        }
+        locations[dsLocation] ??= new Set();
+        locations[dsLocation].add(`${dataset.id}.${table.id}`);
       }
     }
 
