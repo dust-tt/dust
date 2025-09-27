@@ -6,6 +6,7 @@ import type { MouseEvent } from "react";
 import { SWRConfig } from "swr";
 import type { UrlObject } from "url";
 
+import { CommandPaletteArea } from "@app/components/command_palette/CommandPalette";
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { NavigationLoadingProvider } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
@@ -89,9 +90,11 @@ export default function RootLayout({
       >
         <SidebarProvider>
           <NavigationLoadingProvider>
-            <ConfirmPopupArea>
-              <Notification.Area>{children}</Notification.Area>
-            </ConfirmPopupArea>
+            <CommandPaletteArea>
+              <ConfirmPopupArea>
+                <Notification.Area>{children}</Notification.Area>
+              </ConfirmPopupArea>
+            </CommandPaletteArea>
           </NavigationLoadingProvider>
         </SidebarProvider>
       </SWRConfig>
