@@ -17,6 +17,7 @@ import {
   useWatch,
 } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import {
@@ -62,6 +63,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { TemplateActionPreset } from "@app/types";
 
 import { KnowledgeFooter } from "./KnowledgeFooter";
@@ -252,10 +254,12 @@ function KnowledgeConfigurationSheetContent({
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
+  const { owner } = useAgentBuilderContext();
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const { setValue, getValues, setFocus } =
     useFormContext<CapabilityFormData>();
   const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -406,7 +410,8 @@ function KnowledgeConfigurationSheetContent({
 
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
-            mcpServerView.server.name === SEARCH_SERVER_NAME && (
+            mcpServerView.server.name === SEARCH_SERVER_NAME &&
+            hasFeature("advanced_search") && (
               <Collapsible
                 open={isAdvancedSettingsOpen}
                 onOpenChange={setAdvancedSettingsOpen}
@@ -423,7 +428,6 @@ function KnowledgeConfigurationSheetContent({
                     targetMCPServerName={SEARCH_SERVER_NAME}
                     selectedMCPServerView={mcpServerView ?? undefined}
                     configurationKey={ADVANCED_SEARCH_SWITCH}
-                    featureFlag="advanced_search"
                   />
                 </CollapsibleContent>
               </Collapsible>
