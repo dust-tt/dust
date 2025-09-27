@@ -9,6 +9,7 @@ import {
 import { normalizeError } from "@connectors/types/api";
 
 export class WithRetriesError extends Error {
+  // Additional context to each error that will appear in the logs, unlike the whole error.
   readonly additionalContext: Record<string, unknown>[];
 
   constructor(
