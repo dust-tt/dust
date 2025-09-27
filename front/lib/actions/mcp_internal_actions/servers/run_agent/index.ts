@@ -707,10 +707,15 @@ ${query}`
             }
           }
 
-          const errorMessage = `Error processing agent stream: ${
-            normalizeError(streamError).message
-          }`;
-          return new Err(new MCPError(errorMessage));
+          const normalizedError = normalizeError(streamError);
+          const isNotConnected = normalizedError.message === "Not connected";
+          const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
+          return new Err(
+            new MCPError(errorMessage, {
+              tracked: !isNotConnected,
+              cause: normalizedError,
+            })
+          );
         }
         finalContent = finalContent.trim();
         chainOfThought = chainOfThought.trim();
