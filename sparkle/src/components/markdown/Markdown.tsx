@@ -27,6 +27,8 @@ import {
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
+import { useAnimatedText } from "./useAnimatedText";
+
 const sizes = {
   p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
   h1: "s-heading-2xl",
@@ -49,24 +51,33 @@ function showUnsupportedDirective() {
   };
 }
 
-export function Markdown({
-  content,
-  isStreaming = false,
-  textColor = "s-text-foreground dark:s-text-foreground-night",
-  forcedTextSize,
-  isLastMessage = false,
-  additionalMarkdownComponents,
-  additionalMarkdownPlugins,
-}: {
+interface MarkdownProps {
   content: string;
   isStreaming?: boolean;
+  shouldAnimateOnStream?: boolean;
   textColor?: string;
   isLastMessage?: boolean;
   forcedTextSize?: string;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
-}) {
+}
+
+export function Markdown({
+  content,
+  isStreaming = false,
+  shouldAnimateOnStream = false,
+  textColor = "s-text-foreground dark:s-text-foreground-night",
+  forcedTextSize,
+  isLastMessage = false,
+  additionalMarkdownComponents,
+  additionalMarkdownPlugins,
+}: MarkdownProps) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
+
+  const animatedText = useAnimatedText(
+    processedContent,
+    isStreaming && !shouldAnimateOnStream
+  );
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
@@ -221,7 +232,7 @@ export function Markdown({
 
   try {
     return (
-      <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
+      <div className={cn("s-w-full")}>
         <MarkdownContentContext.Provider
           value={{
             content: processedContent,
@@ -235,14 +246,14 @@ export function Markdown({
             remarkPlugins={markdownPlugins}
             rehypePlugins={rehypePlugins}
           >
-            {processedContent}
+            {animatedText}
           </ReactMarkdown>
         </MarkdownContentContext.Provider>
       </div>
     );
   } catch (error) {
     return (
-      <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
+      <div className={cn("s-w-full")}>
         <Chip color="warning">
           There was an error parsing this markdown content
         </Chip>

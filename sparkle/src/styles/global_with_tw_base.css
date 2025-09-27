@@ -2,27 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-.s-blinking-cursor > :not(pre):last-child::after {
-  content: "";
-  width: 8px;
-  height: 16px;
-  @apply s-bg-success-400;
-  display: inline-block;
-  @apply s-animate-cursor-blink;
-  margin-left: 5px;
-  position: relative;
-  top: 4px;
-}
-
-@keyframes collapse-down {
-  from {
-    height: 0;
-  }
-  to {
-    height: var(--radix-collapsible-content-height);
-  }
-}
-
 @keyframes collapse-up {
   from {
     height: var(--radix-collapsible-content-height);
