@@ -27,14 +27,18 @@ import {
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
-const sizes = {
-  p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
+export const markdownHeaderClasses = {
   h1: "s-heading-2xl",
   h2: "s-heading-xl",
   h3: "s-heading-lg",
   h4: "s-text-base s-font-semibold",
   h5: "s-text-sm s-font-semibold",
   h6: "s-text-sm s-font-regular s-italic",
+};
+
+const sizes = {
+  p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
+  ...markdownHeaderClasses,
 };
 
 function showUnsupportedDirective() {
