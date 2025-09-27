@@ -25,6 +25,11 @@ export function isTimeFrame(arg: any): arg is TimeFrame {
   );
 }
 
+export const ANY_TIME_FRAME: TimeFrame = {
+  duration: -1,
+  unit: "year",
+};
+
 /**
  * TimeFrame parsing
  */
@@ -73,10 +78,13 @@ export function parseTimeFrame(raw: string): TimeFrame | null {
     unit,
   };
 }
-
 // Turns a TimeFrame into a number of milliseconds from now.
-export function timeFrameFromNow(timeFrame: TimeFrame): number {
+export function timeFrameFromNow(timeFrame: TimeFrame): number | null {
   const now = Date.now();
+
+  if (timeFrame === ANY_TIME_FRAME) {
+    return null;
+  }
 
   switch (timeFrame.unit) {
     case "hour":
