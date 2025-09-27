@@ -81,6 +81,7 @@ type AgentGridProps = {
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   handleMoreClick: (agentId: string) => void;
 };
+
 export const AgentGrid = ({
   agentConfigurations,
   handleAssistantClick,
@@ -119,6 +120,7 @@ export const AgentGrid = ({
       nextPage();
     }
   }, [inView, nextPage, entry, agentConfigurations.length, itemsPage]);
+
   const slicedAgentConfigurations = agentConfigurations.slice(
     0,
     (itemsPage + 1) * ITEMS_PER_PAGE
@@ -398,6 +400,7 @@ export function AssistantBrowser({
                   onClick={() => {
                     setSelectedTab("all");
                     setAssistantSearch("");
+                    setSelectedTags([tag.sId]);
                     setTimeout(() => {
                       const element = document.getElementById(
                         `anchor-${tag.sId}`
