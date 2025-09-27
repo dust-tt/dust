@@ -74,7 +74,7 @@ export function Markdown({
 }: MarkdownProps) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
-  const animatedText = useAnimatedText(
+  const markdownContent = useAnimatedText(
     processedContent,
     isStreaming && !shouldAnimateOnStream
   );
@@ -246,7 +246,7 @@ export function Markdown({
             remarkPlugins={markdownPlugins}
             rehypePlugins={rehypePlugins}
           >
-            {animatedText}
+            {markdownContent}
           </ReactMarkdown>
         </MarkdownContentContext.Provider>
       </div>
