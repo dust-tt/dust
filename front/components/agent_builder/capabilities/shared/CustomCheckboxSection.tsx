@@ -1,9 +1,12 @@
 import { Checkbox } from "@dust-tt/sparkle";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { WhitelistableFeature } from "@app/types";
 
 interface CustomCheckboxSectionProps {
   title: string;
@@ -11,6 +14,7 @@ interface CustomCheckboxSectionProps {
   configurationKey: string;
   selectedMCPServerView?: MCPServerViewType;
   targetMCPServerName: InternalMCPServerNameType;
+  featureFlag?: WhitelistableFeature;
 }
 
 /**
@@ -22,7 +26,11 @@ export function CustomCheckboxSection({
   selectedMCPServerView,
   targetMCPServerName,
   configurationKey,
+  featureFlag,
 }: CustomCheckboxSectionProps) {
+  const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+
   const { field } = useController<MCPFormData>({
     name: `configuration.additionalConfiguration.${configurationKey}`,
     defaultValue: false,
@@ -32,7 +40,7 @@ export function CustomCheckboxSection({
     selectedMCPServerView?.serverType === "internal" &&
     selectedMCPServerView.server.name === targetMCPServerName;
 
-  if (!isTargetServer) {
+  if (!isTargetServer || (featureFlag && !hasFeature(featureFlag))) {
     return null;
   }
 

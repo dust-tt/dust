@@ -423,6 +423,7 @@ function KnowledgeConfigurationSheetContent({
                     targetMCPServerName={SEARCH_SERVER_NAME}
                     selectedMCPServerView={mcpServerView ?? undefined}
                     configurationKey={ADVANCED_SEARCH_SWITCH}
+                    featureFlag="advanced_search"
                   />
                 </CollapsibleContent>
               </Collapsible>
