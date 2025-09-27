@@ -22,4 +22,6 @@ export type CredentialsType = {
   FIREWORKS_API_KEY?: string;
   XAI_API_KEY?: string;
   FIRECRAWL_API_KEY?: string;
+  AZURE_SPEECH_API_KEY?: string;
+  AZURE_SPEECH_REGION?: string;
 };
