@@ -19,7 +19,9 @@ import { useFormContext } from "react-hook-form";
 
 import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
+import type { SharingChange } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
+import type { ToolChange } from "@app/components/actions/mcp/ToolsList";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   getMcpServerDisplayName,
@@ -32,15 +34,19 @@ import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { WorkspaceType } from "@app/types";
 
 const DETAILS_TABS = ["info", "sharing"] as const;
-type TabType = (typeof DETAILS_TABS)[number];
+export type TabType = (typeof DETAILS_TABS)[number];
 
 interface MCPServerDetailsSheetProps {
   owner: WorkspaceType;
   onClose: () => void;
   mcpServerView: MCPServerViewType | null;
   isOpen: boolean;
-  onSave: () => Promise<boolean>;
+  onSave: (selectedTab: TabType) => Promise<boolean>;
   onCancel: () => void;
+  pendingSharingChanges: SharingChange[];
+  onPendingSharingChangesUpdate: (changes: SharingChange[]) => void;
+  pendingToolChanges: ToolChange[];
+  onPendingToolChangesUpdate: (changes: ToolChange[]) => void;
 }
 
 export function MCPServerDetailsSheet({
@@ -50,8 +56,14 @@ export function MCPServerDetailsSheet({
   onClose,
   onSave,
   onCancel,
+  pendingSharingChanges,
+  onPendingSharingChangesUpdate,
+  pendingToolChanges,
+  onPendingToolChangesUpdate,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [isSaving, setIsSaving] = useState(false);
 
   const confirm = useContext(ConfirmContext);
   const { deleteServer, isDeleting } = useDeleteMCPServer(owner);
@@ -59,13 +71,19 @@ export function MCPServerDetailsSheet({
   const form = useFormContext<InfoFormValues>();
 
   useEffect(() => {
-    if (mcpServerView) {
+    if (isOpen && !prevIsOpen) {
       setSelectedTab("info");
     }
-  }, [mcpServerView]);
+    setPrevIsOpen(isOpen);
+  }, [isOpen, prevIsOpen]);
 
   const changeTab = async (next: TabType) => {
-    if (selectedTab === "info" && next !== "info") {
+    const hasUnsavedChanges =
+      (selectedTab === "info" &&
+        (form.formState.isDirty || pendingToolChanges.length > 0)) ||
+      (selectedTab === "sharing" && pendingSharingChanges.length > 0);
+
+    if (hasUnsavedChanges && next !== selectedTab) {
       const confirmed = await confirm({
         title: "Unsaved changes",
         message:
@@ -75,6 +93,12 @@ export function MCPServerDetailsSheet({
       });
       if (!confirmed) {
         return;
+      }
+      // Reset changes when switching tabs after confirmation.
+      if (selectedTab === "info") {
+        onPendingToolChangesUpdate([]);
+      } else if (selectedTab === "sharing") {
+        onPendingSharingChangesUpdate([]);
       }
     }
     setSelectedTab(next);
@@ -103,16 +127,25 @@ export function MCPServerDetailsSheet({
     if (open) {
       return;
     }
-    const confirmed = await confirm({
-      title: "Unsaved changes will be lost",
-      message:
-        "All unsaved changes will be lost. Are you sure you want to close?",
-      validateLabel: "Close without saving",
-      validateVariant: "warning",
-    });
-    if (!confirmed) {
-      return;
+
+    const hasUnsavedChanges =
+      form.formState.isDirty ||
+      pendingSharingChanges.length > 0 ||
+      pendingToolChanges.length > 0;
+
+    if (hasUnsavedChanges) {
+      const confirmed = await confirm({
+        title: "Unsaved changes will be lost",
+        message:
+          "All unsaved changes will be lost. Are you sure you want to close?",
+        validateLabel: "Close without saving",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
     }
+
     onCancel();
     onClose();
   };
@@ -189,6 +222,8 @@ export function MCPServerDetailsSheet({
                     <MCPServerDetailsInfo
                       mcpServerView={mcpServerView}
                       owner={owner}
+                      pendingToolChanges={pendingToolChanges}
+                      onPendingToolChangesUpdate={onPendingToolChangesUpdate}
                     />
                   </div>
                 )}
@@ -197,6 +232,8 @@ export function MCPServerDetailsSheet({
                 <MCPServerDetailsSharing
                   mcpServer={mcpServerView?.server}
                   owner={owner}
+                  pendingChanges={pendingSharingChanges}
+                  onPendingChangesUpdate={onPendingSharingChangesUpdate}
                 />
               </TabsContent>
             </div>
@@ -207,18 +244,22 @@ export function MCPServerDetailsSheet({
             <Button
               label="Cancel"
               variant="outline"
-              disabled={form.formState.isSubmitting}
+              disabled={isSaving || form.formState.isSubmitting}
               onClick={() => handleOpenChange(false)}
             />
             <div className="flex-grow" />
             <Button
-              label={form.formState.isSubmitting ? "Saving..." : "Save"}
+              label={
+                isSaving || form.formState.isSubmitting ? "Saving..." : "Save"
+              }
               variant="primary"
-              disabled={form.formState.isSubmitting}
+              disabled={isSaving || form.formState.isSubmitting}
               onClick={async () => {
-                const ok = await onSave();
-                if (ok) {
-                  onClose();
+                setIsSaving(true);
+                try {
+                  await onSave(selectedTab);
+                } finally {
+                  setIsSaving(false);
                 }
               }}
             />

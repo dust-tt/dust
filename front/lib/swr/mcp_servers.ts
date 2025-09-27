@@ -1049,7 +1049,10 @@ export function useMCPServerViewsNotActivated({
   };
 }
 
-export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
+export function useAddMCPServerToSpace(
+  owner: LightWorkspaceType,
+  options?: { skipNotification?: boolean }
+) {
   const sendNotification = useSendNotification();
   const { mutateMCPServers } = useMCPServers({
     owner,
@@ -1073,18 +1076,20 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
             throw new Error(body.error?.message || "Unknown error");
           }
 
-          if (response.ok) {
-            sendNotification({
-              type: "success",
-              title: `Actions added to space ${space.name}`,
-              description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
-            });
-          } else {
-            sendNotification({
-              type: "error",
-              title: `Failed to add actions to space ${space.name}`,
-              description: `Could not add ${getMcpServerDisplayName(server)} to the ${space.name} space. Please try again.`,
-            });
+          if (!options?.skipNotification) {
+            if (response.ok) {
+              sendNotification({
+                type: "success",
+                title: `Actions added to space ${space.name}`,
+                description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
+              });
+            } else {
+              sendNotification({
+                type: "error",
+                title: `Failed to add actions to space ${space.name}`,
+                description: `Could not add ${getMcpServerDisplayName(server)} to the ${space.name} space. Please try again.`,
+              });
+            }
           }
           return getOptimisticDataForCreate(data, server, space);
         },
@@ -1096,13 +1101,16 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
         }
       );
     },
-    [sendNotification, owner, mutateMCPServers]
+    [sendNotification, owner, mutateMCPServers, options?.skipNotification]
   );
 
   return { addToSpace: createView };
 }
 
-export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
+export function useRemoveMCPServerViewFromSpace(
+  owner: LightWorkspaceType,
+  options?: { skipNotification?: boolean }
+) {
   const sendNotification = useSendNotification();
   const { mutateMCPServers } = useMCPServers({
     owner,
@@ -1119,24 +1127,26 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
             }
           );
 
-          if (response.ok) {
-            sendNotification({
-              type: "success",
-              title:
-                space.kind === "system"
-                  ? "Action removed from workspace"
-                  : "Action removed from space",
-              description: `${getMcpServerDisplayName(serverView.server)} has been removed from the ${space.name} space successfully.`,
-            });
-          } else {
-            const res = await response.json();
-            sendNotification({
-              type: "error",
-              title: "Failed to remove action",
-              description:
-                res.error?.message ||
-                `Could not remove ${getMcpServerDisplayName(serverView.server)} from the ${space.name} space. Please try again.`,
-            });
+          if (!options?.skipNotification) {
+            if (response.ok) {
+              sendNotification({
+                type: "success",
+                title:
+                  space.kind === "system"
+                    ? "Action removed from workspace"
+                    : "Action removed from space",
+                description: `${getMcpServerDisplayName(serverView.server)} has been removed from the ${space.name} space successfully.`,
+              });
+            } else {
+              const res = await response.json();
+              sendNotification({
+                type: "error",
+                title: "Failed to remove action",
+                description:
+                  res.error?.message ||
+                  `Could not remove ${getMcpServerDisplayName(serverView.server)} from the ${space.name} space. Please try again.`,
+              });
+            }
           }
 
           return getOptimisticDataForRemove(data, serverView);
@@ -1149,7 +1159,7 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
         }
       );
     },
-    [sendNotification, owner, mutateMCPServers]
+    [sendNotification, owner, mutateMCPServers, options?.skipNotification]
   );
 
   return { removeFromSpace: deleteView };
