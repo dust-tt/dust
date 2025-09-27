@@ -74,7 +74,7 @@ export function withRetries<Args extends unknown[], Return>(
         if (
           e instanceof AxiosError &&
           e.code === "ERR_BAD_REQUEST" &&
-          e.status === 403
+          (e.status === 403 || e.status === 413)
         ) {
           const errorType = e.response?.data?.error?.type;
 
@@ -83,7 +83,9 @@ export function withRetries<Args extends unknown[], Return>(
             throw new WorkspaceQuotaExceededError();
           }
 
-          if (errorType === "data_source_quota_error") {
+          // The bodyParser limit is higher than any plan limit, so a 413
+          // means that it would have exceeded the plan limit.
+          if (errorType === "data_source_quota_error" || e.status === 413) {
             // This error is per file and will NOT pause the connector (important!).
             throw new DataSourceQuotaExceededError();
           }
