@@ -120,7 +120,13 @@ export function ViewDataSourceTable({
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>
                     <Link
-                      href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
+                      href={
+                        dataSource.connectorProvider === "gong"
+                          ? // Gong is schedule-based, linking the schedule page that has the list
+                            // of all workflow runs.
+                            `https://cloud.temporal.io/namespaces/${temporalWorkspace}/schedules/gong-sync-${dataSource.connectorId}`
+                          : `https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`
+                      }
                       target="_blank"
                       className="text-sm text-highlight-400"
                     >
