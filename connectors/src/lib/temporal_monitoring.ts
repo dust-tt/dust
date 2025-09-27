@@ -14,6 +14,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WithRetriesError } from "@connectors/types";
 
 import {
   DustConnectorWorkflowError,
@@ -26,6 +27,21 @@ import { getConnectorId } from "./temporal";
 
 const TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS = [145];
 const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 19;
+
+function redactErrorForLogs(err: unknown) {
+  if (err instanceof WithRetriesError) {
+    // Omitting the whole errors array, the meaningful information
+    // should be passed in additionalContext.
+    return {
+      name: err.name,
+      message: err.message,
+      retries: err.retries,
+      delayBetweenRetriesMs: err.delayBetweenRetriesMs,
+      additionalContext: err.additionalContext,
+    };
+  }
+  return err;
+}
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {
@@ -240,7 +256,7 @@ export class ActivityInboundLogInterceptor
           // Unknown error type.
           this.logger.error(
             {
-              error,
+              error: redactErrorForLogs(error),
               error_stack: error?.stack,
               durationMs: durationMs,
               attempt: this.context.info.attempt,

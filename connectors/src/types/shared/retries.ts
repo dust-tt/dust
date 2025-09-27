@@ -12,7 +12,7 @@ export class WithRetriesError extends Error {
   readonly additionalContext: Record<string, unknown>[];
 
   constructor(
-    errors: {
+    readonly errors: {
       attempt: number;
       error: unknown;
       additionalContext: Record<string, unknown>;
