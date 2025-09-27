@@ -10,7 +10,7 @@ import { normalizeError } from "@connectors/types/api";
 
 export class WithRetriesError extends Error {
   constructor(
-    readonly errors: Array<{ attempt: number; error: unknown }>,
+    errors: { attempt: number; error: unknown }[],
     readonly retries: number,
     readonly delayBetweenRetriesMs: number
   ) {
