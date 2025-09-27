@@ -1060,7 +1060,7 @@ export async function upsertDataSourceTableFromCsv({
   tags?: string[];
   allowEmptySchema?: boolean;
 }) {
-  const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
+  const localLogger = logger.child({ ...loggerArgs, tableId });
   const statsDTags = [
     `data_source_id:${dataSourceConfig.dataSourceId}`,
     `workspace_id:${dataSourceConfig.workspaceId}`,
