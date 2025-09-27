@@ -76,7 +76,7 @@ export function Markdown({
 
   const markdownContent = useAnimatedText(
     processedContent,
-    isStreaming && !shouldAnimateOnStream
+    isStreaming && shouldAnimateOnStream
   );
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
