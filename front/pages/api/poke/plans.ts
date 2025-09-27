@@ -117,7 +117,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Data source document size limit must be less than ${maxSizeMb}MB.`,
+            message: `Document size limit must be less than ${maxSizeMb}MB.`,
           },
         });
       }
