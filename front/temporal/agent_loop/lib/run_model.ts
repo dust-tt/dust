@@ -41,7 +41,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { flushParserTokens, updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
@@ -160,18 +160,6 @@ export async function runModelActivity(
       conversation,
       step,
     });
-  }
-
-  // Helper function to flush all pending tokens from the content parser
-  async function flushParserTokens(): Promise<void> {
-    for await (const tokenEvent of contentParser.flushTokens()) {
-      await updateResourceAndPublishEvent(auth, {
-        event: tokenEvent,
-        agentMessageRow,
-        conversation,
-        step,
-      });
-    }
   }
 
   if (!model) {
@@ -468,7 +456,7 @@ export async function runModelActivity(
     }
 
     if (event.type === "error") {
-      await flushParserTokens();
+      await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
       return handlePossiblyRetryableError(event.content.message);
     }
 
@@ -527,13 +515,13 @@ export async function runModelActivity(
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
       if (e.error) {
-        await flushParserTokens();
+        await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
         return handlePossiblyRetryableError(e.error);
       }
 
       if (event.content.block_name === "MODEL" && e.value) {
         // Flush early as we know the generation is terminated here.
-        await flushParserTokens();
+        await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
 
         const block = e.value;
         if (!isDustAppChatBlockType(block)) {
@@ -624,7 +612,7 @@ export async function runModelActivity(
     }
   }
 
-  await flushParserTokens();
+  await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
 
   if (!output) {
     return handlePossiblyRetryableError("Agent execution didn't complete.");
@@ -811,7 +799,7 @@ export async function runModelActivity(
     });
   }
 
-  await flushParserTokens();
+  await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
 
   const chainOfThought =
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";

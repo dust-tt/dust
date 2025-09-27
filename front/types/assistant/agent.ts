@@ -331,6 +331,7 @@ export type AgentGenerationCancelledEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+  partialContent: string;
 };
 
 // Event sent once the message is completed and successful.
