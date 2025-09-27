@@ -176,7 +176,7 @@ const FormInput = React.forwardRef<
     <Input
       ref={ref}
       className={cn(
-        "border-2 border-border-dark dark:border-border-dark-night",
+        "border-2 border-border-dark dark:border-border-darker-night",
         "bg-white dark:bg-muted-background-night",
         className
       )}
@@ -197,7 +197,7 @@ const FormTextArea = React.forwardRef<
     <div ref={ref as React.RefObject<HTMLDivElement>}>
       <TextArea
         className={cn(
-          "border-2 border-border-dark dark:border-border-dark-night",
+          "border-2 border-border-dark dark:border-border-darker-night",
           "bg-white dark:bg-muted-background-night",
           className
         )}

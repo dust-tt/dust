@@ -124,22 +124,20 @@ export function RunPluginDialog({
                 </PokeAlert>
               )}
               {result && result.display === "textWithLink" && (
-                <>
-                  <PokeAlert variant="success">
-                    <PokeAlertTitle>Success</PokeAlertTitle>
-                    <PokeAlertDescription>
-                      <p>{result.value} - Make sure to reload.</p>
-                      <Button
-                        onClick={() => {
-                          window.open(result.link, "_blank");
-                        }}
-                        label={result.linkText}
-                        variant="highlight"
-                        className="mt-2"
-                      />
-                    </PokeAlertDescription>
-                  </PokeAlert>
-                </>
+                <PokeAlert variant="success">
+                  <PokeAlertTitle>Success</PokeAlertTitle>
+                  <PokeAlertDescription>
+                    <p>{result.value} - Make sure to reload.</p>
+                    <Button
+                      onClick={() => {
+                        window.open(result.link, "_blank");
+                      }}
+                      label={result.linkText}
+                      variant="highlight"
+                      className="mt-2"
+                    />
+                  </PokeAlertDescription>
+                </PokeAlert>
               )}
               {result && result.display === "json" && (
                 <div className="mb-4 mt-4">
