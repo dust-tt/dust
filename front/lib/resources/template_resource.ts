@@ -5,9 +5,11 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
   CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
   getResourceIdFromSId,
@@ -15,6 +17,7 @@ import {
   makeSId,
 } from "@app/lib/resources//string_ids";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelId, Result, TemplateVisibility } from "@app/types";
@@ -95,18 +98,61 @@ export class TemplateResource extends BaseResource<TemplateModel> {
   }
 
   static async upsertByHandle(
-    blob: CreationAttributes<TemplateModel>
+    blob: CreationAttributes<TemplateModel>,
+    { keepIdMapping = false }: { keepIdMapping?: boolean } = {}
   ): Promise<Result<TemplateResource, Error>> {
     const existing = await TemplateModel.findOne({
       where: { handle: blob.handle },
     });
 
-    if (existing) {
+    if (!existing) {
+      const template = await TemplateResource.makeNew(blob);
+      return new Ok(template);
+    }
+
+    if (!keepIdMapping || existing.id === blob.id) {
       await existing.update(blob);
       return new Ok(new TemplateResource(TemplateModel, existing.get()));
     }
-    const template = await TemplateResource.makeNew(blob);
-    return new Ok(template);
+
+    // We need to keep the id mapping, mostly for workspace relocations.
+
+    // 1. We abort if there is no template with a higher id than the one we want to create.
+    // Since we don't bump the sequence, this prevents creating a template with an id that
+    // could be taken by a future template.
+    const templatesWithHigherId = await TemplateModel.findAll({
+      where: {
+        id: { [Op.gt]: blob.id },
+      },
+    });
+    if (templatesWithHigherId.length === 0) {
+      return new Err(new Error("No templates with higher id found, aborting."));
+    }
+
+    // 2. We abort if the id we want to create is already taken by another template.
+    const templateWithSameId = await TemplateModel.findOne({
+      where: { id: blob.id },
+    });
+    if (templateWithSameId) {
+      return new Err(new Error("Template ID already taken, aborting."));
+    }
+
+    // 3. We create a new template and update the agents to use the new one.
+    return frontSequelize.transaction(async (t) => {
+      const templateCopy = await TemplateResource.makeNew(blob);
+      await AgentConfiguration.update(
+        {
+          templateId: templateCopy.id,
+        },
+        {
+          where: { templateId: existing.id },
+          transaction: t,
+        }
+      );
+      await existing.destroy({ transaction: t });
+
+      return new Ok(templateCopy);
+    });
   }
 
   static modelIdToSId({ id }: { id: ModelId }): string {
@@ -151,6 +197,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toListJSON() {
     return {
+      id: this.id,
       description: this.description,
       handle: this.handle,
       pictureUrl: this.pictureUrl,
