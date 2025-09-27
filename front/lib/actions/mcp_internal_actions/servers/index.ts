@@ -42,6 +42,7 @@ import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
+import { default as todoListServer } from "@app/lib/actions/mcp_internal_actions/servers/todo_list";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import { default as webtoolsEdgeServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools_edge";
@@ -176,6 +177,8 @@ export async function getInternalMCPServer(
       return dataWarehousesServer(auth, agentLoopContext);
     case "toolsets":
       return toolsetsServer(auth, agentLoopContext);
+    case "todo_list":
+      return todoListServer(auth, agentLoopContext);
     case "deep_research":
       return deepResearchServer(auth, agentLoopContext);
     default:
