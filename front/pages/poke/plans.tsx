@@ -119,96 +119,89 @@ const PlansPage = () => {
     plansToRender.push(editingPlan);
   }
 
-  return (
-    <>
-      {isPlansLoading ? (
-        <Spinner />
-      ) : (
-        <div className="flex h-full flex-col items-center justify-center">
-          <div className="h-full py-8 text-2xl font-bold">Plans</div>
-          <div className="h-full w-full overflow-x-auto pb-52 pt-12">
-            <table className="mx-auto h-full table-auto overflow-visible rounded-lg">
-              <thead className="bg-muted dark:bg-muted-night">
-                <tr>
-                  {Object.keys(PLAN_FIELDS).map((fieldName) => {
-                    const field =
-                      PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
-                    return (
-                      <th key={fieldName}>
-                        {"IconComponent" in field ? (
-                          <div className="flex flex-row justify-center">
-                            <field.IconComponent />
-                          </div>
-                        ) : (
-                          field.title
-                        )}
-                      </th>
-                    );
-                  })}
-                  <th className="px-4 py-2">Edit</th>
-                </tr>
-              </thead>
-              <tbody className="h-full bg-background pb-48 text-primary-light dark:bg-background-night dark:text-primary-light-night">
-                {plansToRender?.map((plan) => {
-                  const planId = plan.isNewPlan ? "newPlan" : plan.code;
+  return isPlansLoading ? (
+    <Spinner />
+  ) : (
+    <div className="flex h-full flex-col items-center justify-center">
+      <div className="h-full py-8 text-2xl font-bold">Plans</div>
+      <div className="h-full w-full overflow-x-auto pb-52 pt-12">
+        <table className="mx-auto h-full table-auto overflow-visible rounded-lg">
+          <thead className="bg-muted dark:bg-muted-night">
+            <tr>
+              {Object.keys(PLAN_FIELDS).map((fieldName) => {
+                const field =
+                  PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
+                return (
+                  <th key={fieldName}>
+                    {"IconComponent" in field ? (
+                      <div className="flex flex-row justify-center">
+                        <field.IconComponent />
+                      </div>
+                    ) : (
+                      field.title
+                    )}
+                  </th>
+                );
+              })}
+              <th className="px-4 py-2">Edit</th>
+            </tr>
+          </thead>
+          <tbody className="h-full bg-background pb-48 text-primary-light dark:bg-background-night dark:text-primary-light-night">
+            {plansToRender?.map((plan) => {
+              const planId = plan.isNewPlan ? "newPlan" : plan.code;
 
-                  return (
-                    <tr key={planId}>
-                      {Object.keys(PLAN_FIELDS).map((fieldName) => (
-                        <React.Fragment key={`${planId}:${fieldName}`}>
-                          <Field
-                            plan={plan}
-                            fieldName={fieldName as keyof typeof PLAN_FIELDS}
-                            isEditing={
-                              (!editingPlan?.isNewPlan &&
-                                editingPlan?.code === plan.code) ||
-                              (!!editingPlan?.isNewPlan && !!plan.isNewPlan)
-                            }
-                            setEditingPlan={setEditingPlan}
-                            editingPlan={editingPlan}
-                          />
-                        </React.Fragment>
-                      ))}
-                      <td className="w-12 min-w-16 flex-none border px-4 py-2">
-                        {plan.code === editingPlan?.code || plan.isNewPlan ? (
-                          <div className="flex flex-row justify-center">
-                            <IconButton
-                              icon={CheckIcon}
-                              onClick={handleSavePlan}
-                            />
-                            <IconButton
-                              icon={XMarkIcon}
-                              onClick={resetEditingPlan}
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex flex-row justify-center">
-                            <IconButton
-                              icon={PencilSquareIcon}
-                              onClick={() => setEditingPlan(plan)}
-                            />
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div>
-            <Button
-              icon={PlusIcon}
-              label="Create a new plan"
-              variant="outline"
-              onClick={() => createNewPlan()}
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              disabled={editingPlan?.isNewPlan || !!editingPlan}
-            />
-          </div>
-        </div>
-      )}
-    </>
+              return (
+                <tr key={planId}>
+                  {Object.keys(PLAN_FIELDS).map((fieldName) => (
+                    <React.Fragment key={`${planId}:${fieldName}`}>
+                      <Field
+                        plan={plan}
+                        fieldName={fieldName as keyof typeof PLAN_FIELDS}
+                        isEditing={
+                          (!editingPlan?.isNewPlan &&
+                            editingPlan?.code === plan.code) ||
+                          (!!editingPlan?.isNewPlan && !!plan.isNewPlan)
+                        }
+                        setEditingPlan={setEditingPlan}
+                        editingPlan={editingPlan}
+                      />
+                    </React.Fragment>
+                  ))}
+                  <td className="w-12 min-w-16 flex-none border px-4 py-2">
+                    {plan.code === editingPlan?.code || plan.isNewPlan ? (
+                      <div className="flex flex-row justify-center">
+                        <IconButton icon={CheckIcon} onClick={handleSavePlan} />
+                        <IconButton
+                          icon={XMarkIcon}
+                          onClick={resetEditingPlan}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-row justify-center">
+                        <IconButton
+                          icon={PencilSquareIcon}
+                          onClick={() => setEditingPlan(plan)}
+                        />
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <Button
+          icon={PlusIcon}
+          label="Create a new plan"
+          variant="outline"
+          onClick={() => createNewPlan()}
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          disabled={editingPlan?.isNewPlan || !!editingPlan}
+        />
+      </div>
+    </div>
   );
 };
 
