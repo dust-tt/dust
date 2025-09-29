@@ -20,7 +20,7 @@ interface GoogleCalendarEventDateTime {
 
 interface EnrichedGoogleCalendarEventDateTime
   extends GoogleCalendarEventDateTime {
-  userDayOfWeek?: string;
+  eventDayOfWeek?: string;
   isAllDay?: boolean;
 }
 
@@ -594,20 +594,19 @@ function enrichEventWithDayOfWeek(
     const startDate = new Date(event.start.dateTime);
     enrichedEvent.start = {
       ...event.start,
-      userDayOfWeek: startDate.toLocaleDateString("en-US", {
+      eventDayOfWeek: startDate.toLocaleDateString("en-US", {
         weekday: "long",
         timeZone: userTimezone ?? undefined,
       }),
       isAllDay: false,
     };
   } else if (event.start?.date) {
-    // Handle all-day events
+    // Handle all-day events, intentionally timeZone agnostic
     const startDate = new Date(event.start.date);
     enrichedEvent.start = {
       ...event.start,
-      userDayOfWeek: startDate.toLocaleDateString("en-US", {
+      eventDayOfWeek: startDate.toLocaleDateString("en-US", {
         weekday: "long",
-        timeZone: userTimezone ?? undefined,
       }),
       isAllDay: true,
     };
@@ -617,20 +616,19 @@ function enrichEventWithDayOfWeek(
     const endDate = new Date(event.end.dateTime);
     enrichedEvent.end = {
       ...event.end,
-      userDayOfWeek: endDate.toLocaleDateString("en-US", {
+      eventDayOfWeek: endDate.toLocaleDateString("en-US", {
         weekday: "long",
         timeZone: userTimezone ?? undefined,
       }),
       isAllDay: false,
     };
   } else if (event.end?.date) {
-    // Handle all-day events
+    // Handle all-day events, intentionally timeZone agnostic
     const endDate = new Date(event.end.date);
     enrichedEvent.end = {
       ...event.end,
-      userDayOfWeek: endDate.toLocaleDateString("en-US", {
+      eventDayOfWeek: endDate.toLocaleDateString("en-US", {
         weekday: "long",
-        timeZone: userTimezone ?? undefined,
       }),
       isAllDay: true,
     };
