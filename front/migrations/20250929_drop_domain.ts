@@ -4,6 +4,12 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
+// Should only be used in the following situation:
+// - Domain was verified in the current region.
+// - Domain was also verified in the other region.
+// - The webhook on the `organization_domain.verified` event crashes.
+// This script mimics what we would do for a single region (see upsertWorkspaceDomain).
+
 makeScript(
   {
     domain: {
