@@ -4,14 +4,8 @@ import { BigQuery } from "@google-cloud/bigquery";
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
-import type {BigQueryCredentialsWithLocation} from "@app/types";
-import {
-  ConnectorsAPI,
-  Err,
-  normalizeError,
-  OAuthAPI,
-  Ok
-} from "@app/types";
+import type { BigQueryCredentialsWithLocation } from "@app/types";
+import { ConnectorsAPI, Err, normalizeError, OAuthAPI, Ok } from "@app/types";
 
 export const bigqueryChangeLocationPlugin = createPlugin({
   manifest: {

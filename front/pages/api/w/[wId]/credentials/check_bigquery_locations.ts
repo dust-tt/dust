@@ -110,7 +110,7 @@ async function handler(
       locations: Object.fromEntries(
         Object.entries(locations).map(([location, tables]) => [
           location,
-          Array.from(tables),
+          Array.from(tables).sort(),
         ])
       ),
     });
