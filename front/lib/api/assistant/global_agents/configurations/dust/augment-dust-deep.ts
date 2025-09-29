@@ -151,14 +151,15 @@ export async function augmentDustDeep(
   userMessage: UserMessageType
 ): Promise<Result<AgentConfigurationType, Error>> {
   try {
-    const agentMessageId = userMessage.context.userContextOriginMessageId;
-
-    const agentMessage = await Message.findOne({
-      where: {
-        sId: agentMessageId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
+    const agentMessageId = userMessage.context.originMessageId;
+    const agentMessage = agentMessageId
+      ? await Message.findOne({
+          where: {
+            sId: agentMessageId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+        })
+      : null;
 
     const mainAgentId = agentMessage?.agentMessage?.agentConfigurationId;
 
