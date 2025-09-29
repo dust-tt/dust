@@ -52,6 +52,7 @@ type Data = {
   >;
   id?: number;
   roundedAvatar?: boolean;
+  avatarStack?: { name: string; visual: string }[];
 };
 
 type TransformedData = {
@@ -178,6 +179,130 @@ const data: TransformedData[] = [
     addedBy: "User5",
     lastUpdated: "2023-07-06",
     size: "48kb",
+  },
+];
+
+const avatarStackData: TransformedData[] = [
+  {
+    name: "Team Alpha",
+    description: "Development team",
+    usedBy: 12,
+    addedBy: "Project Manager",
+    lastUpdated: "2024-01-15",
+    size: "256kb",
+    avatarStack: [
+      {
+        name: "Alice Johnson",
+        visual: "https://avatars.githubusercontent.com/u/1?s=200&v=4",
+      },
+      {
+        name: "Bob Smith",
+        visual: "https://avatars.githubusercontent.com/u/2?s=200&v=4",
+      },
+      {
+        name: "Carol Davis",
+        visual: "https://avatars.githubusercontent.com/u/3?s=200&v=4",
+      },
+      {
+        name: "David Wilson",
+        visual: "https://avatars.githubusercontent.com/u/4?s=200&v=4",
+      },
+      {
+        name: "Eve Brown",
+        visual: "https://avatars.githubusercontent.com/u/5?s=200&v=4",
+      },
+    ],
+    onClick: () => alert("Team Alpha clicked"),
+  },
+  {
+    name: "Marketing Team",
+    description: "Marketing and communications",
+    usedBy: 8,
+    addedBy: "Marketing Director",
+    lastUpdated: "2024-01-14",
+    size: "128kb",
+    avatarStack: [
+      {
+        name: "Frank Miller",
+        visual: "https://avatars.githubusercontent.com/u/6?s=200&v=4",
+      },
+      {
+        name: "Grace Lee",
+        visual: "https://avatars.githubusercontent.com/u/7?s=200&v=4",
+      },
+      {
+        name: "Henry Taylor",
+        visual: "https://avatars.githubusercontent.com/u/8?s=200&v=4",
+      },
+    ],
+    onClick: () => alert("Marketing Team clicked"),
+  },
+  {
+    name: "Design Squad",
+    description: "UI/UX design team",
+    usedBy: 6,
+    addedBy: "Design Lead",
+    lastUpdated: "2024-01-13",
+    size: "512kb",
+    avatarStack: [
+      {
+        name: "Ivy Chen",
+        visual: "https://avatars.githubusercontent.com/u/9?s=200&v=4",
+      },
+      {
+        name: "Jack Rodriguez",
+        visual: "https://avatars.githubusercontent.com/u/10?s=200&v=4",
+      },
+      {
+        name: "Kate Anderson",
+        visual: "https://avatars.githubusercontent.com/u/11?s=200&v=4",
+      },
+      {
+        name: "Liam Thompson",
+        visual: "https://avatars.githubusercontent.com/u/12?s=200&v=4",
+      },
+    ],
+    roundedAvatar: true,
+    onClick: () => alert("Design Squad clicked"),
+  },
+  {
+    name: "Large Team",
+    description: "Cross-functional team with many members",
+    usedBy: 25,
+    addedBy: "Team Lead",
+    lastUpdated: "2024-01-12",
+    size: "1.2mb",
+    avatarStack: [
+      {
+        name: "Maya Patel",
+        visual: "https://avatars.githubusercontent.com/u/13?s=200&v=4",
+      },
+      {
+        name: "Noah Garcia",
+        visual: "https://avatars.githubusercontent.com/u/14?s=200&v=4",
+      },
+      {
+        name: "Olivia Martinez",
+        visual: "https://avatars.githubusercontent.com/u/15?s=200&v=4",
+      },
+      {
+        name: "Paul Kim",
+        visual: "https://avatars.githubusercontent.com/u/16?s=200&v=4",
+      },
+      {
+        name: "Quinn White",
+        visual: "https://avatars.githubusercontent.com/u/17?s=200&v=4",
+      },
+      {
+        name: "Rachel Green",
+        visual: "https://avatars.githubusercontent.com/u/18?s=200&v=4",
+      },
+      {
+        name: "Sam Johnson",
+        visual: "https://avatars.githubusercontent.com/u/19?s=200&v=4",
+      },
+    ],
+    onClick: () => alert("Large Team clicked"),
   },
 ];
 
@@ -766,6 +891,116 @@ export const DataTableWithRadioSelectionExample = () => {
             (only one row can be selected at a time)
           </p>
         </div>
+      </div>
+    </div>
+  );
+};
+
+// Column definition for avatar stack story
+const avatarStackColumns: ColumnDef<Data>[] = [
+  {
+    accessorKey: "name",
+    header: "Team Name",
+    sortingFn: "text",
+    id: "name",
+    meta: {
+      className: "s-w-full",
+      tooltip: "Team name with member avatars",
+    },
+    cell: (info) => (
+      <DataTable.CellContent
+        avatarStack={
+          info.row.original.avatarStack
+            ? {
+                items: info.row.original.avatarStack,
+                nbVisibleItems: 3,
+              }
+            : undefined
+        }
+        description={info.row.original.description}
+        roundedAvatar={info.row.original.roundedAvatar}
+      >
+        {info.row.original.name}
+      </DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "usedBy",
+    id: "usedBy",
+    meta: {
+      className: "s-w-[82px] s-hidden @xs/table:s-table-cell",
+    },
+    header: "Members",
+    cell: (info) => (
+      <DataTable.BasicCellContent label={info.row.original.usedBy} />
+    ),
+  },
+  {
+    accessorKey: "addedBy",
+    header: "Created by",
+    id: "addedBy",
+    meta: {
+      className: "s-w-[128px]",
+    },
+    cell: (info) => (
+      <DataTable.BasicCellContent
+        label={info.row.original.addedBy}
+        textToCopy={info.row.original.addedBy}
+        tooltip={info.row.original.addedBy}
+      />
+    ),
+  },
+  {
+    accessorKey: "lastUpdated",
+    id: "lastUpdated",
+    header: "Last updated",
+    meta: {
+      className: "s-w-[128px] s-hidden @sm/table:s-table-cell",
+    },
+    cell: (info) => (
+      <DataTable.BasicCellContent label={info.row.original.lastUpdated} />
+    ),
+    enableSorting: false,
+  },
+  {
+    accessorKey: "size",
+    id: "size",
+    header: "Size",
+    meta: {
+      className: "s-w-[48px] s-hidden @sm/table:s-table-cell",
+    },
+    cell: (info) => (
+      <DataTable.BasicCellContent label={info.row.original.size} />
+    ),
+  },
+];
+
+export const DataTableWithAvatarStackExample = () => {
+  const [filter, setFilter] = React.useState<string>("");
+
+  return (
+    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
+      <h3 className="s-text-lg s-font-medium">DataTable with Avatar Stack</h3>
+      <p className="s-text-sm s-text-muted-foreground">
+        This example demonstrates the DataTable with avatar stacks showing team
+        members. The avatar stack displays up to 4 visible avatars with a count
+        indicator for additional members.
+      </p>
+
+      <div className="s-flex s-flex-col s-gap-4">
+        <Input
+          name="filter"
+          placeholder="Filter teams..."
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+
+        <DataTable
+          data={avatarStackData}
+          filter={filter}
+          filterColumn="name"
+          columns={avatarStackColumns}
+        />
       </div>
     </div>
   );
