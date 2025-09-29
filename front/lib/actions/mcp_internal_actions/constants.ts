@@ -55,6 +55,7 @@ export const SEARCH_SERVER_NAME = "search";
 
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
+export const AGENT_MEMORY_SERVER_NAME = "agent_memory";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
@@ -66,7 +67,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_management",
-  "agent_memory",
+  AGENT_MEMORY_SERVER_NAME,
   "agent_router",
   "confluence",
   "conversation_files",
@@ -165,8 +166,7 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "image_generation",
       version: "1.0.0",
-      description:
-        "Create visual content from text descriptions.",
+      description: "Create visual content from text descriptions.",
       icon: "ActionImageIcon",
       authorization: null,
       documentationUrl: null,
@@ -672,7 +672,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  agent_memory: {
+  [AGENT_MEMORY_SERVER_NAME]: {
     id: 21,
     availability: "auto",
     allowMultipleInstances: false,
@@ -682,7 +682,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "agent_memory",
+      name: AGENT_MEMORY_SERVER_NAME,
       version: "1.0.0",
       description: "User-scoped long-term memory tools for agents.",
       authorization: null,

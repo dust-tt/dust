@@ -18,6 +18,10 @@ import {
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import {
+  AGENT_MEMORY_SERVER_NAME,
+  isInternalMCPServerOfName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -96,6 +100,7 @@ export function ToolsPicker({
       ...manualServerViews,
     ].filter(
       (v) =>
+        !isInternalMCPServerOfName(v.server.sId, AGENT_MEMORY_SERVER_NAME) &&
         // Only tools that do not require any configuration can be enabled directly in a conversation.
         getMCPServerToolsConfigurations(v).configurable !== "required" &&
         (searchText.length === 0 ||

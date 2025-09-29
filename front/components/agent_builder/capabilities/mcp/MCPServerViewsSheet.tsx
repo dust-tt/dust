@@ -75,6 +75,7 @@ import {
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
@@ -83,7 +84,7 @@ import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
   "image_generation",
-  "agent_memory",
+  AGENT_MEMORY_SERVER_NAME,
   "deep_research",
   "content_creation",
   "slack",
