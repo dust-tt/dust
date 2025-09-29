@@ -82,9 +82,7 @@ async function handler(
         const template: FetchAssistantTemplateResponse =
           await templateResponse.json();
 
-        await TemplateResource.upsertByHandle(template, {
-          keepIdMapping: true,
-        });
+        await TemplateResource.upsertByHandle(template);
 
         count++;
       }
