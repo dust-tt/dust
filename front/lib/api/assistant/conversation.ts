@@ -51,7 +51,6 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
-  AgentMessageWithRankType,
   APIErrorWithStatusCode,
   ContentFragmentContextType,
   ContentFragmentInputWithContentNode,
@@ -67,7 +66,6 @@ import type {
   Result,
   UserMessageContext,
   UserMessageType,
-  UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -383,7 +381,10 @@ export async function postUserMessage(
   }
 ): Promise<
   Result<
-    { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
+    {
+      userMessage: UserMessageType;
+      agentMessages: AgentMessageType[];
+    },
     APIErrorWithStatusCode
   >
 > {
@@ -565,7 +566,7 @@ export async function postUserMessage(
       }
 
       const m = await createMessageAndUserMessage(owner);
-      const userMessage: UserMessageWithRankType = {
+      const userMessage: UserMessageType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -655,7 +656,7 @@ export async function postUserMessage(
                   skipToolsValidation: agentMessageRow.skipToolsValidation,
                   contents: [],
                   parsedContents: {},
-                } satisfies AgentMessageWithRankType,
+                } satisfies AgentMessageType,
               };
             })();
           })
@@ -663,7 +664,7 @@ export async function postUserMessage(
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       }[];
 
       await updateConversationRequestedGroupIds(auth, {
@@ -873,8 +874,8 @@ export async function editUserMessage(
     });
   }
 
-  let userMessage: UserMessageWithRankType | null = null;
-  let agentMessages: AgentMessageWithRankType[] = [];
+  let userMessage: UserMessageType | null = null;
+  let agentMessages: AgentMessageType[] = [];
   let agentMessageRows: AgentMessage[] = [];
 
   const results = await Promise.all([
@@ -1014,7 +1015,7 @@ export async function editUserMessage(
 
       const m = await createMessageAndUserMessage(owner, messageRow);
 
-      const userMessage: UserMessageWithRankType = {
+      const userMessage: UserMessageType = {
         id: m.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
@@ -1046,7 +1047,7 @@ export async function editUserMessage(
         })) ?? -1) + 1;
       const results: ({
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       } | null)[] = await Promise.all(
         mentions.filter(isAgentMention).map((mention) => {
           // For each assistant/agent mention, create an "empty" agent message.
@@ -1116,7 +1117,7 @@ export async function editUserMessage(
                 skipToolsValidation: agentMessageRow.skipToolsValidation,
                 contents: [],
                 parsedContents: {},
-              } satisfies AgentMessageWithRankType,
+              } satisfies AgentMessageType,
             };
           })();
         })
@@ -1124,7 +1125,7 @@ export async function editUserMessage(
 
       const nonNullResults = results.filter((r) => r !== null) as {
         row: AgentMessage;
-        m: AgentMessageWithRankType;
+        m: AgentMessageType;
       }[];
 
       await updateConversationRequestedGroupIds(auth, {
@@ -1248,7 +1249,7 @@ export async function retryAgentMessage(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): Promise<Result<AgentMessageWithRankType, APIErrorWithStatusCode>> {
+): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
   if (!canReadMessage(auth, message)) {
     return new Err({
       status_code: 403,
@@ -1260,7 +1261,7 @@ export async function retryAgentMessage(
   }
 
   let agentMessageResult: {
-    agentMessage: AgentMessageWithRankType;
+    agentMessage: AgentMessageType;
     agentMessageRow: AgentMessage;
   } | null = null;
   try {
@@ -1332,7 +1333,7 @@ export async function retryAgentMessage(
         t,
       });
 
-      const agentMessage: AgentMessageWithRankType = {
+      const agentMessage: AgentMessageType = {
         id: m.id,
         agentMessageId: agentMessageRow.id,
         created: m.createdAt.getTime(),

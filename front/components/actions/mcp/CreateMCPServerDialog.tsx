@@ -317,7 +317,7 @@ export function CreateMCPServerDialog({
                 : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
-        <DialogContainer>
+        <DialogContainer className="max-h-[80vh] space-y-4 overflow-y-auto">
           {!internalMCPServer &&
             (!authorization || authorization.provider === "mcp_static") && (
               <>
@@ -365,6 +365,7 @@ export function CreateMCPServerDialog({
                     </div>
                   </div>
                 )}
+
                 {(!defaultServerConfig ||
                   defaultServerConfig?.authMethod === "bearer") && (
                   <div className="space-y-2">
@@ -391,7 +392,7 @@ export function CreateMCPServerDialog({
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuRadioGroup>
+                          <DropdownMenuRadioGroup value={authMethod}>
                             {!defaultServerConfig && (
                               <DropdownMenuRadioItem
                                 value="oauth-dynamic"
@@ -484,6 +485,7 @@ export function CreateMCPServerDialog({
                 )}
               </>
             )}
+
           {authorization && (
             <MCPServerOAuthConnexion
               authorization={authorization}
@@ -497,6 +499,7 @@ export function CreateMCPServerDialog({
               }
             />
           )}
+
           {!defaultServerConfig && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -530,6 +533,7 @@ export function CreateMCPServerDialog({
           )}
         </DialogContainer>
         <DialogFooter
+          className="pt-4"
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",

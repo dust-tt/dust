@@ -1,4 +1,7 @@
-import type { ConnectorProvider, DustMimeType } from "@dust-tt/client";
+/* eslint-disable dust/enforce-client-types-in-public-api */
+import type { DustMimeType } from "@dust-tt/client";
+
+import type { ConnectorProvider } from "@app/types/data_source";
 
 import type {
   LightMessageType,
@@ -41,6 +44,7 @@ export type BaseContentFragmentType = {
   created: number;
   visibility: MessageVisibility;
   version: number;
+  rank: number;
   sourceUrl: string | null;
   title: string;
   contentType: SupportedContentFragmentType;
