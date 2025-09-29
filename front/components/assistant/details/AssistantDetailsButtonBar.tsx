@@ -124,6 +124,7 @@ export function AssistantDetailsButtonBar({
 
       {agentConfiguration.scope !== "global" && (
         <AssistantDetailsDropdownMenu
+          showTrigger
           agentConfiguration={agentConfiguration}
           owner={owner}
           onClose={() => onOpenChangeAssistantModal(false)}
@@ -136,6 +137,7 @@ export function AssistantDetailsButtonBar({
 interface AssistantDetailsDropdownMenuProps {
   agentConfiguration?: LightAgentConfigurationType;
   owner: WorkspaceType;
+  showTrigger?: boolean;
   onClose?: () => void;
   showEditOption?: boolean;
   contextMenuPosition?: { x: number; y: number };
@@ -144,6 +146,7 @@ interface AssistantDetailsDropdownMenuProps {
 export function AssistantDetailsDropdownMenu({
   agentConfiguration,
   owner,
+  showTrigger = false,
   onClose,
   showEditOption = false,
   contextMenuPosition,
@@ -316,14 +319,14 @@ export function AssistantDetailsDropdownMenu({
           </DropdownMenuTrigger>
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>
-      ) : (
+      ) : showTrigger ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button icon={MoreIcon} size="sm" variant="ghost" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>
-      )}
+      ) : null}
     </>
   );
 }
