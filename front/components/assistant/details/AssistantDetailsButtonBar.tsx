@@ -254,7 +254,7 @@ export function AssistantDetailsDropdownMenu({
           <DropdownMenuItem
             label="Duplicate (New)"
             data-gtm-label="assistantDuplicationButton"
-            data-gtm-location="assistantBrowser"
+            data-gtm-location="assistantDetails"
             icon={ClipboardIcon}
             onClick={async (e) => {
               e.stopPropagation();
