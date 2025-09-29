@@ -34,7 +34,6 @@ import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -68,6 +67,12 @@ type TabId = (typeof AGENTS_TABS)[number]["id"];
 const MOST_POPULAR_TAG: TagType = {
   sId: "--most_popular--",
   name: "Most popular",
+  kind: "protected",
+};
+
+const ALL_TAG: TagType = {
+  sId: "--all--",
+  name: "All",
   kind: "protected",
 };
 
@@ -207,8 +212,7 @@ export function AssistantBrowser({
 
   const router = useRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const { isDark } = useTheme();
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [sortType, setSortType] = useState<
     "popularity" | "alphabetical" | "updated"
   >("popularity");
@@ -218,8 +222,8 @@ export function AssistantBrowser({
   });
 
   const {
-    selectedTagIds: persistedSelectedTagIds,
-    setSelectedTagIds,
+    selectedTagId: persistedSelectedTagId,
+    setSelectedTagId,
     isLoading: isPersistedSelectionLoading,
   } = usePersistedAgentBrowserSelection(owner.sId);
 
@@ -275,7 +279,7 @@ export function AssistantBrowser({
         new Map(tags.map((tag) => [tag.sId, tag])).values()
       ).sort(tagsSorter);
 
-      // Always unshift most popular at the beginning
+      uniqueTags.unshift(ALL_TAG);
       uniqueTags.unshift(MOST_POPULAR_TAG);
 
       // Always append others at the end
@@ -309,9 +313,10 @@ export function AssistantBrowser({
           );
         });
 
-      const filteredTags = uniqueTags.filter((t) =>
-        subFilter(search, t.name.toLowerCase())
-      );
+      const filteredTags =
+        selectedTag === ALL_TAG.sId
+          ? uniqueTags
+          : uniqueTags.filter((t) => subFilter(search, t.name.toLowerCase()));
 
       return {
         filteredAgents,
@@ -319,7 +324,7 @@ export function AssistantBrowser({
         uniqueTags,
         noTagsDefined: uniqueTags.length === 2, // Only most popular and others
       };
-    }, [agentConfigurations, assistantSearch]);
+    }, [agentConfigurations, assistantSearch, selectedTag]);
 
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
@@ -336,48 +341,44 @@ export function AssistantBrowser({
       : enabledTabs[0]?.id;
   }, [selectedTab, agentsByTab]);
 
-  // Initialize selectedTags from persisted selection (or default to Most popular).
+  // Initialize `selectedTag` from persisted selection (or default to Most popular).
   useEffect(() => {
-    if (noTagsDefined || selectedTags.length > 0) {
+    if (noTagsDefined || selectedTag) {
       return;
     }
 
     const validTagIds = new Set(uniqueTags.map((t) => t.sId));
-    const persistedValid = persistedSelectedTagIds.filter((id) =>
-      validTagIds.has(id)
-    );
+    const persistedValid =
+      persistedSelectedTagId && validTagIds.has(persistedSelectedTagId);
 
-    if (persistedValid.length > 0) {
-      setSelectedTags(persistedValid);
+    if (persistedValid) {
+      setSelectedTag(persistedSelectedTagId);
     } else {
-      setSelectedTags([MOST_POPULAR_TAG.sId]);
+      setSelectedTag(MOST_POPULAR_TAG.sId);
     }
   }, [
     noTagsDefined,
-    persistedSelectedTagIds,
+    persistedSelectedTagId,
     uniqueTags,
-    selectedTags.length,
-    setSelectedTags,
+    selectedTag,
+    setSelectedTag,
   ]);
 
-  // Persist selectedTags when they change (and tags exist).
+  // Persist selectedTag when they change (and tags exist).
   useEffect(() => {
     if (noTagsDefined || isPersistedSelectionLoading) {
       return;
     }
 
-    const areEqual =
-      persistedSelectedTagIds.length === selectedTags.length &&
-      persistedSelectedTagIds.every((v, i) => v === selectedTags[i]);
-    if (!areEqual) {
-      void setSelectedTagIds(selectedTags);
+    if (persistedSelectedTagId !== selectedTag) {
+      void setSelectedTagId(selectedTag);
     }
   }, [
-    selectedTags,
+    selectedTag,
     noTagsDefined,
     isPersistedSelectionLoading,
-    persistedSelectedTagIds,
-    setSelectedTagIds,
+    persistedSelectedTagId,
+    setSelectedTagId,
   ]);
 
   const sortTypeLabel = useMemo(() => {
@@ -390,22 +391,6 @@ export function AssistantBrowser({
         return "Recently updated";
     }
   }, [sortType]);
-
-  const isAllSelected = useMemo(() => {
-    return selectedTags.length > 0 && selectedTags.length === uniqueTags.length;
-  }, [selectedTags, uniqueTags.length]);
-
-  const toggleSelectAll = useCallback(() => {
-    if (noTagsDefined) {
-      return;
-    }
-    if (isAllSelected) {
-      const first = selectedTags[0] ?? uniqueTags[0]?.sId;
-      setSelectedTags(first ? [first] : []);
-    } else {
-      setSelectedTags(uniqueTags.map((t) => t.sId));
-    }
-  }, [isAllSelected, noTagsDefined, selectedTags, uniqueTags]);
 
   return (
     <>
@@ -427,7 +412,7 @@ export function AssistantBrowser({
                   onClick={() => {
                     setSelectedTab("all");
                     setAssistantSearch("");
-                    setSelectedTags([tag.sId]);
+                    setSelectedTag(tag.sId);
                     setTimeout(() => {
                       const element = document.getElementById(
                         `anchor-${tag.sId}`
@@ -475,7 +460,7 @@ export function AssistantBrowser({
             </>
           ) : isLoading ? (
             <div className="flex justify-center py-8">
-              <Spinner variant={isDark ? "light" : "dark"} size="md" />
+              <Spinner size="md" />
             </div>
           ) : (
             <div className="p-2 text-sm text-gray-500">No results found</div>
@@ -560,32 +545,22 @@ export function AssistantBrowser({
           <div className="mb-2 flex flex-wrap items-center gap-2">
             {noTagsDefined ? null : (
               <>
-                {uniqueTags.map((tag) => (
-                  <Button
-                    size="xs"
-                    variant={
-                      selectedTags.includes(tag.sId) ? "primary" : "outline"
-                    }
-                    key={tag.sId}
-                    label={tag.name}
-                    onClick={() => {
-                      if (selectedTags.includes(tag.sId)) {
-                        setSelectedTags(
-                          selectedTags.filter((t) => t !== tag.sId)
-                        );
-                      } else {
-                        setSelectedTags([...selectedTags, tag.sId]);
-                      }
-                    }}
-                  />
+                {uniqueTags.map((tag, index) => (
+                  <>
+                    <Button
+                      size="xs"
+                      variant={selectedTag === tag.sId ? "primary" : "outline"}
+                      key={tag.sId}
+                      label={tag.name}
+                      onClick={() => {
+                        setSelectedTag(tag.sId);
+                      }}
+                    />
+                    {index == 1 && uniqueTags.length > 2 && (
+                      <span className="heading-base">-</span>
+                    )}
+                  </>
                 ))}
-                <Button
-                  className="ml-auto"
-                  size="xs"
-                  variant="ghost"
-                  label={isAllSelected ? "Unselect all" : "Select all"}
-                  onClick={toggleSelectAll}
-                />
               </>
             )}
           </div>
@@ -595,7 +570,7 @@ export function AssistantBrowser({
               .filter(
                 (t) =>
                   // User picked specific tag(s).
-                  selectedTags.includes(t.sId) ||
+                  selectedTag === t.sId ||
                   // No tags are defined, show most popular & others.
                   noTagsDefined
               )
@@ -618,6 +593,10 @@ export function AssistantBrowser({
                         // Selected tag is most popular, and the agent is in the most popular list.
                         (tag.sId === MOST_POPULAR_TAG.sId &&
                           agentsByTab.most_popular.some(
+                            (a_popular) => a_popular.sId === a.sId
+                          )) ||
+                        (tag.sId === ALL_TAG.sId &&
+                          agentsByTab.all.some(
                             (a_popular) => a_popular.sId === a.sId
                           ))
                       );
