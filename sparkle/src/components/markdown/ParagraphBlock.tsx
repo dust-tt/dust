@@ -1,7 +1,10 @@
 import { cva } from "class-variance-authority";
-import React from "react";
+import React, { memo } from "react";
 
 import { cn } from "@sparkle/lib";
+
+import { MarkdownNode } from "./types";
+import { sameNodePosition, sameTextStyling } from "./utils";
 
 export const paragraphBlockVariants = cva([
   "s-whitespace-pre-wrap s-break-words s-font-normal first:s-pt-0 last:s-pb-0",
@@ -12,16 +15,21 @@ interface ParagraphBlockProps {
   children: React.ReactNode;
   textColor: string;
   textSize: string;
+  node?: MarkdownNode;
 }
 
-export function ParagraphBlock({
-  children,
-  textColor,
-  textSize,
-}: ParagraphBlockProps) {
-  return (
-    <div className={cn(paragraphBlockVariants(), textSize, textColor)}>
-      {children}
-    </div>
-  );
-}
+export const ParagraphBlock = memo(
+  ({ children, textColor, textSize }: ParagraphBlockProps) => {
+    return (
+      <div className={cn(paragraphBlockVariants(), textSize, textColor)}>
+        {children}
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      sameNodePosition(prevProps.node, nextProps.node) &&
+      sameTextStyling(prevProps, nextProps)
+    );
+  }
+);
