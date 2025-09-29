@@ -79,6 +79,152 @@ export function MCPServerDetails({
       : undefined,
   });
 
+  const applyToolChanges = async (
+    toolChanges: Array<{
+      toolName: string;
+      enabled: boolean;
+      permission: string;
+    }>
+  ) => {
+    for (const change of toolChanges) {
+      const response = await fetch(
+        `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}/tools/${change.toolName}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            permission: change.permission,
+            enabled: change.enabled,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(
+          body.error?.message ?? "Failed to update tool settings"
+        );
+      }
+    }
+  };
+
+  const applySharingChanges = async (
+    sharingChanges: Array<{
+      spaceId: string;
+      action: "add" | "remove";
+    }>
+  ) => {
+    for (const change of sharingChanges) {
+      const space = spaces.find((s) => s.sId === change.spaceId);
+      if (!space || space.kind === "system") {
+        continue;
+      }
+
+      if (change.action === "add") {
+        const response = await fetch(
+          `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mcpServerId: mcpServerView?.server.sId,
+            }),
+          }
+        );
+        if (!response.ok) {
+          const body = await response.json();
+          throw new Error(
+            body.error?.message ?? "Failed to add to space"
+          );
+        }
+      } else {
+        const view = mcpServerWithViews?.views.find(
+          (v) => v.spaceId === space.sId
+        );
+        if (view) {
+          const response = await fetch(
+            `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${view.sId}`,
+            {
+              method: "DELETE",
+            }
+          );
+          if (!response.ok) {
+            const body = await response.json();
+            throw new Error(
+              body.error?.message ?? "Failed to remove from space"
+            );
+          }
+        }
+      }
+    }
+  };
+
+  const applyInfoChanges = async (diff: {
+    serverView?: { name: string; description: string };
+    remoteIcon?: string;
+    remoteSharedSecret?: string;
+    remoteCustomHeaders?: any;
+  }) => {
+    const hasServerViewChanges = diff.serverView !== undefined;
+    const hasIconChanges = diff.remoteIcon !== undefined;
+    const hasSecretChanges = diff.remoteSharedSecret !== undefined;
+    const hasHeaderChanges = diff.remoteCustomHeaders !== undefined;
+    const hasRemoteChanges =
+      hasIconChanges || hasSecretChanges || hasHeaderChanges;
+
+    if (!hasServerViewChanges && !hasRemoteChanges) {
+      return;
+    }
+
+    // Patch the server view if needed.
+    if (diff.serverView) {
+      const response = await fetch(
+        `/api/w/${owner.sId}/mcp/views/${mcpServerView?.sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(diff.serverView),
+        }
+      );
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(
+          body.error?.message ?? "Failed to update server view"
+        );
+      }
+    }
+
+    // Patch remote server settings if needed.
+    if (hasRemoteChanges) {
+      const patchBody: any = {};
+      if (diff.remoteIcon) {
+        patchBody.icon = diff.remoteIcon;
+      }
+      if (diff.remoteSharedSecret) {
+        patchBody.sharedSecret = diff.remoteSharedSecret;
+      }
+      if (diff.remoteCustomHeaders !== undefined) {
+        patchBody.customHeaders = diff.remoteCustomHeaders;
+      }
+
+      const response = await fetch(
+        `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patchBody),
+        }
+      );
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(
+          body.error?.message ?? "Failed to update server"
+        );
+      }
+    }
+  };
+
   const onSave = async (): Promise<boolean> => {
     if (!mcpServerView) {
       return false;
@@ -97,132 +243,16 @@ export function MCPServerDetails({
 
           // Apply tool changes if any.
           if (diff.toolChanges && diff.toolChanges.length > 0) {
-            for (const change of diff.toolChanges) {
-              const response = await fetch(
-                `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}/tools/${change.toolName}`,
-                {
-                  method: "PATCH",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    permission: change.permission,
-                    enabled: change.enabled,
-                  }),
-                }
-              );
-              if (!response.ok) {
-                const body = await response.json();
-                throw new Error(
-                  body.error?.message ?? "Failed to update tool settings"
-                );
-              }
-            }
+            await applyToolChanges(diff.toolChanges);
           }
 
           // Apply sharing changes if any.
           if (diff.sharingChanges && diff.sharingChanges.length > 0) {
-            for (const change of diff.sharingChanges) {
-              const space = spaces.find((s) => s.sId === change.spaceId);
-              if (!space || space.kind === "system") {
-                continue;
-              }
-
-              if (change.action === "add") {
-                const response = await fetch(
-                  `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      mcpServerId: mcpServerView.server.sId,
-                    }),
-                  }
-                );
-                if (!response.ok) {
-                  const body = await response.json();
-                  throw new Error(
-                    body.error?.message ?? "Failed to add to space"
-                  );
-                }
-              } else {
-                const view = mcpServerWithViews?.views.find(
-                  (v) => v.spaceId === space.sId
-                );
-                if (view) {
-                  const response = await fetch(
-                    `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${view.sId}`,
-                    {
-                      method: "DELETE",
-                    }
-                  );
-                  if (!response.ok) {
-                    const body = await response.json();
-                    throw new Error(
-                      body.error?.message ?? "Failed to remove from space"
-                    );
-                  }
-                }
-              }
-            }
+            await applySharingChanges(diff.sharingChanges);
           }
 
-          // Submit the info form data if changed.
-          const hasServerViewChanges = diff.serverView !== undefined;
-          const hasIconChanges = diff.remoteIcon !== undefined;
-          const hasSecretChanges = diff.remoteSharedSecret !== undefined;
-          const hasHeaderChanges = diff.remoteCustomHeaders !== undefined;
-          const hasRemoteChanges =
-            hasIconChanges || hasSecretChanges || hasHeaderChanges;
-
-          if (hasServerViewChanges || hasRemoteChanges) {
-            // Need to submit via the existing API.
-            // We need to patch the server view and/or server.
-            if (diff.serverView) {
-              const response = await fetch(
-                `/api/w/${owner.sId}/mcp/views/${mcpServerView.sId}`,
-                {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(diff.serverView),
-                }
-              );
-              if (!response.ok) {
-                const body = await response.json();
-                throw new Error(
-                  body.error?.message ?? "Failed to update server view"
-                );
-              }
-            }
-
-            if (hasRemoteChanges) {
-              const patchBody: any = {};
-              if (diff.remoteIcon) {
-                patchBody.icon = diff.remoteIcon;
-              }
-              if (diff.remoteSharedSecret) {
-                patchBody.sharedSecret = diff.remoteSharedSecret;
-              }
-              if (diff.remoteCustomHeaders !== undefined) {
-                patchBody.customHeaders = diff.remoteCustomHeaders;
-              }
-
-              const response = await fetch(
-                `/api/w/${owner.sId}/mcp/${mcpServerView.server.sId}`,
-                {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(patchBody),
-                }
-              );
-              if (!response.ok) {
-                const body = await response.json();
-                throw new Error(
-                  body.error?.message ?? "Failed to update server"
-                );
-              }
-            }
-          }
+          // Apply info changes if any.
+          await applyInfoChanges(diff);
 
           // Revalidate caches.
           await mutateMCPServerViews();

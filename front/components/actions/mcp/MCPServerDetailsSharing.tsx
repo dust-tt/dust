@@ -29,7 +29,13 @@ const ActionCell = ({
 }) => {
   return (
     <DataTable.CellContent>
-      <SliderToggle selected={isEnabled} onClick={onToggle} />
+      <SliderToggle
+        selected={isEnabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+      />
     </DataTable.CellContent>
   );
 };
@@ -56,6 +62,8 @@ export function MCPServerDetailsSharing({
     const currentState = sharingSettings?.[space.sId] ?? false;
     form.setValue(`sharingSettings.${space.sId}`, !currentState, {
       shouldDirty: true,
+      shouldValidate: true,
+      shouldTouch: true,
     });
   };
 
@@ -99,7 +107,8 @@ export function MCPServerDetailsSharing({
           <Page.SectionHeader title="Available to all Spaces" />
           <SliderToggle
             selected={!isRestricted}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (globalSpace) {
                 handleToggle(globalSpace);
               }

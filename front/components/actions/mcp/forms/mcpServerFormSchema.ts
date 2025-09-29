@@ -15,15 +15,17 @@ export type ToolSettings = {
   permission: MCPToolStakeLevelType;
 };
 
-// Complete form values including all tabs.
-export type MCPServerFormValues = {
-  // Info tab fields
+// Server settings fields (Info tab).
+export type ServerSettings = {
   name: string;
   description: string;
   icon?: string;
   sharedSecret?: string;
   customHeaders?: HeaderRow[] | null;
+};
 
+// Complete form values including all tabs.
+export type MCPServerFormValues = ServerSettings & {
   // Tools tab - map of toolName to settings
   toolSettings: Record<string, ToolSettings>;
 
