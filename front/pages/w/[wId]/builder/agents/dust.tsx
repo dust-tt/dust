@@ -32,7 +32,10 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource, isRemoteDatabase } from "@app/lib/data_sources";
+import {
+  getDisplayNameForDataSource,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -137,74 +140,83 @@ export default function EditDustAgent({
     [spaceDataSourceViews]
   );
 
-  const handleToggleAgentStatus = useCallback(async (
-    agent: LightAgentConfigurationType
-  ) => {
-    if (agent.status === "disabled_missing_datasource") {
-      sendNotification({
-        title: "Dust Agent",
-        description:
-          "The Dust agent requires at least one data source to be enabled.",
-        type: "error",
-      });
-      return;
-    }
-    const res = await fetch(
-      `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status:
-            agent.status === "disabled_by_admin"
-              ? "active"
-              : "disabled_by_admin",
-        }),
+  const handleToggleAgentStatus = useCallback(
+    async (agent: LightAgentConfigurationType) => {
+      if (agent.status === "disabled_missing_datasource") {
+        sendNotification({
+          title: "Dust Agent",
+          description:
+            "The Dust agent requires at least one data source to be enabled.",
+          type: "error",
+        });
+        return;
       }
-    );
+      const res = await fetch(
+        `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status:
+              agent.status === "disabled_by_admin"
+                ? "active"
+                : "disabled_by_admin",
+          }),
+        }
+      );
 
-    if (!res.ok) {
-      const data = await res.json();
-      sendNotification({
-        title: "Error",
-        description: `Failed to toggle agent: ${data.error?.message ?? "unknown error"}`,
-        type: "error",
-      });
-      return;
-    }
+      if (!res.ok) {
+        const data = await res.json();
+        sendNotification({
+          title: "Error",
+          description: `Failed to toggle agent: ${data.error?.message ?? "unknown error"}`,
+          type: "error",
+        });
+        return;
+      }
 
-    await mutateAgentConfigurations();
-  }, [mutateAgentConfigurations, owner.sId, sendNotification]);
-
-  const updateDataSourceSettings = useCallback(async (
-    settings: {
-      assistantDefaultSelected: boolean;
+      await mutateAgentConfigurations();
     },
-    dataSource: DataSourceType
-  ) => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(settings),
+    [mutateAgentConfigurations, owner.sId, sendNotification]
+  );
+
+  const updateDataSourceSettings = useCallback(
+    async (
+      settings: {
+        assistantDefaultSelected: boolean;
+      },
+      dataSource: DataSourceType
+    ) => {
+      const res = await fetch(
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(settings),
+        }
+      );
+      if (!res.ok) {
+        const err = (await res.json()) as { error: APIError };
+        sendNotification({
+          title: "Update failed",
+          description: `Could not update data source: ${err.error.message}`,
+          type: "error",
+        });
       }
-    );
-    if (!res.ok) {
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        title: "Update failed",
-        description: `Could not update data source: ${err.error.message}`,
-        type: "error",
-      });
-    }
-    await mutateDataSourceViews();
-    await mutateAgentConfigurations();
-  }, [mutateAgentConfigurations, mutateDataSourceViews, owner.sId, sendNotification]);
+      await mutateDataSourceViews();
+      await mutateAgentConfigurations();
+    },
+    [
+      mutateAgentConfigurations,
+      mutateDataSourceViews,
+      owner.sId,
+      sendNotification,
+    ]
+  );
 
   const dustAgentConfiguration = agentConfigurations?.find(
     (c) => c.name === "dust"
