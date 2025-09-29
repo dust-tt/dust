@@ -8,11 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorType, WithAPIErrorResponse } from "@app/types";
-import {
-  CheckBigQueryCredentialsSchema,
-  normalizeError,
-  removeNulls,
-} from "@app/types";
+import { CheckBigQueryCredentialsSchema, normalizeError } from "@app/types";
 
 const PostCheckBigQueryRegionsRequestBodySchema = t.type({
   credentials: CheckBigQueryCredentialsSchema,
