@@ -75,6 +75,10 @@ function AgentActionsPanelContent({
       ? fullAgentMessage.parsedContents
       : {};
 
+  const nbSteps = Object.entries(steps || {}).filter(
+    ([, entries]) => Array.isArray(entries) && entries.length > 0
+  ).length;
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Track whether the user is currently scrolled to the bottom of the panel
   const shouldAutoScroll = useRef<boolean>(true);
@@ -228,7 +232,7 @@ function AgentActionsPanelContent({
           {!shouldStream && (
             <AgentActionSummary
               agentMessageToRender={agentMessageToRender}
-              nbSteps={Object.keys(steps || {}).length}
+              nbSteps={nbSteps}
             />
           )}
           <div>&nbsp;</div>

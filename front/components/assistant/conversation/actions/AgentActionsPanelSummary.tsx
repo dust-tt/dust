@@ -37,7 +37,7 @@ export function AgentActionSummary({
       ? "without tools"
       : `using ${nbActions} ${nbActions === 1 ? "tool" : "tools"}`;
 
-  const stepsText = nbSteps === 1 ? "" : ` across ${nbSteps} steps`;
+  const stepsText = nbSteps > 1 ? ` across ${nbSteps} steps` : "";
 
   return (
     <div className="flex flex-col gap-4 duration-500 animate-in fade-in slide-in-from-left-2">
