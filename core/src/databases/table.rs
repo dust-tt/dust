@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{info, warn};
 
-use crate::databases::csv::MAX_TABLE_COLUMNS;
+use crate::databases::csv::{MAX_COLUMN_NAME_LENGTH, MAX_TABLE_COLUMNS};
 use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
     REDIS_URI,
@@ -394,8 +394,12 @@ impl LocalTable {
         let rows = Arc::new(rows);
 
         let now = utils::now();
-        // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
+        // Validate a few things about the rows. We run it in a spawn_blocking since it is CPU
         // bound (even if running fast for resaonably sized tables);
+        // We check:
+        // - that rows don't start with an uppercase character
+        // - that no row has more than MAX_TABLE_COLUMNS columns
+        // - that no header name is longer than MAX_COLUMN_NAME_LENGTH
         {
             let rows = rows.clone();
             tokio::task::spawn_blocking(move || {
@@ -409,16 +413,23 @@ impl LocalTable {
                         ))?;
                     }
 
-                    match row.value().keys().find(|key| match key.chars().next() {
-                        Some(c) => c.is_ascii_uppercase(),
-                        None => false,
-                    }) {
-                        Some(key) => Err(anyhow!(
-                            "Row {} has a key '{}' that contains uppercase characters",
-                            row_index,
-                            key
-                        ))?,
-                        None => (),
+                    for header in row.headers.iter() {
+                        if let Some(first_char) = header.chars().next() {
+                            if first_char.is_ascii_uppercase() {
+                                return Err(anyhow!(
+                                    "Column name '{}' starts with an uppercase character",
+                                    header
+                                ));
+                            }
+                        }
+
+                        if header.len() > MAX_COLUMN_NAME_LENGTH {
+                            return Err(anyhow!(
+                                "Column name '{}' is longer than maximum allowed length ({})",
+                                header,
+                                MAX_COLUMN_NAME_LENGTH
+                            ));
+                        }
                     }
                 }
                 Ok::<_, anyhow::Error>(())

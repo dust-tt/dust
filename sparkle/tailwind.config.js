@@ -2,6 +2,14 @@
 const colors = require("tailwindcss/colors");
 const plugin = require("tailwindcss/plugin");
 
+// Remove unused deprecated colors that just generate noise
+// See here for the hack: https://github.com/tailwindlabs/tailwindcss/discussions/15127
+delete colors.lightBlue;
+delete colors.warmGray;
+delete colors.trueGray;
+delete colors.coolGray;
+delete colors.blueGray;
+
 const safeColorsArray = [
   "gray",
   "green",

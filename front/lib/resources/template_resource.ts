@@ -57,10 +57,16 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     });
   }
 
-  static async makeNew(blob: CreationAttributes<TemplateModel>) {
-    const template = await TemplateModel.create({
-      ...blob,
-    });
+  static async makeNew(
+    blob: CreationAttributes<TemplateModel>,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const template = await TemplateModel.create(
+      {
+        ...blob,
+      },
+      { transaction }
+    );
 
     return new this(TemplateModel, template.get());
   }
@@ -151,6 +157,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toListJSON() {
     return {
+      id: this.id,
       description: this.description,
       handle: this.handle,
       pictureUrl: this.pictureUrl,
@@ -162,6 +169,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toJSON() {
     return {
+      id: this.id,
       backgroundColor: this.backgroundColor,
       description: this.description,
       emoji: this.emoji,

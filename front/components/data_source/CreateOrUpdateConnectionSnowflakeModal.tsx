@@ -420,7 +420,8 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                       setCredentials({
                         ...credentials,
                         auth_type: "keypair",
-                        private_key_passphrase: e.target.value || undefined,
+                        // Preserve empty string to support empty passphrases on encrypted keys
+                        private_key_passphrase: e.target.value,
                       } as SnowflakeCredentials);
                       setError(null);
                     }}

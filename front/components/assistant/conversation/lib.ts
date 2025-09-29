@@ -3,6 +3,7 @@ import type * as t from "io-ts";
 
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type {
   ContentFragmentsType,
   ConversationType,
@@ -12,7 +13,7 @@ import type {
   Result,
   SubmitMessageError,
   SupportedContentNodeContentType,
-  UserMessageWithRankType,
+  UserMessageType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -34,7 +35,7 @@ export function createPlaceholderUserMessage({
   mentions: MentionType[];
   user: UserType;
   lastMessageRank: number;
-}): UserMessageWithRankType {
+}): UserMessageType {
   const createdAt = new Date().getTime();
   const { email, fullName, image, username } = user;
 
@@ -77,7 +78,7 @@ export async function submitMessage({
     clientSideMCPServerIds?: string[];
   };
   executionMode?: string;
-}): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
+}): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> {
   const { input, mentions, contentFragments, clientSideMCPServerIds } =
     messageData;
 

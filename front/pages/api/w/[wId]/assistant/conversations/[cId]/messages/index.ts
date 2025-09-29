@@ -14,6 +14,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
 import type {
+  AgentMessageType,
   FetchConversationMessagesResponse,
   UserMessageType,
   WithAPIErrorResponse,
@@ -21,11 +22,16 @@ import type {
 import { InternalPostMessagesRequestBodySchema } from "@app/types";
 import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
+export type PostMessagesResponseBody = {
+  message: UserMessageType;
+  agentMessages: AgentMessageType[];
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      { message: UserMessageType } | FetchConversationMessagesResponse
+      PostMessagesResponseBody | FetchConversationMessagesResponse
     >
   >,
   auth: Authenticator
@@ -174,7 +180,10 @@ async function handler(
         return apiError(req, res, messageRes.error);
       }
 
-      res.status(200).json({ message: messageRes.value.userMessage });
+      res.status(200).json({
+        message: messageRes.value.userMessage,
+        agentMessages: messageRes.value.agentMessages,
+      });
       return;
 
     default:

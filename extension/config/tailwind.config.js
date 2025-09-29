@@ -2,6 +2,14 @@
 const colors = require("tailwindcss/colors"); // eslint-disable-line @typescript-eslint/no-var-requires
 const plugin = require("tailwindcss/plugin"); // eslint-disable-line @typescript-eslint/no-var-requires
 
+// Remove unused deprecated colors that just generate noise
+// See here for the hack: https://github.com/tailwindlabs/tailwindcss/discussions/15127
+delete colors.lightBlue;
+delete colors.warmGray;
+delete colors.trueGray;
+delete colors.coolGray;
+delete colors.blueGray;
+
 // Custom color definitions
 const customColors = {
   gray: {

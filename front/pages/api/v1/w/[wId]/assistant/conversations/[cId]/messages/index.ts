@@ -216,7 +216,7 @@ async function handler(
 
       res.status(200).json({
         message: messageRes.value.userMessage,
-        agentMessages: messageRes.value.agentMessages ?? undefined,
+        agentMessages: messageRes.value.agentMessages,
       });
       return;
 

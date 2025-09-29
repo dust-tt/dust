@@ -1931,7 +1931,7 @@ export type PublicPostMessagesRequestBody = z.infer<
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
-  agentMessages?: AgentMessagePublicType[];
+  agentMessages: AgentMessagePublicType[];
 };
 
 export const PublicPostEditMessagesRequestBodySchema = z.object({
