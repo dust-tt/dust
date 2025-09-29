@@ -13,9 +13,10 @@ use lazy_static::lazy_static;
 use std::env;
 
 lazy_static! {
-    static ref OAUTH_DISCORD_CLIENT_ID: String = env::var("OAUTH_DISCORD_CLIENT_ID").unwrap();
-    static ref OAUTH_DISCORD_CLIENT_SECRET: String =
-        env::var("OAUTH_DISCORD_CLIENT_SECRET").unwrap();
+    static ref OAUTH_DISCORD_CLIENT_ID: String = env::var("OAUTH_DISCORD_CLIENT_ID")
+        .expect("OAUTH_DISCORD_CLIENT_ID environment variable must be set");
+    static ref OAUTH_DISCORD_CLIENT_SECRET: String = env::var("OAUTH_DISCORD_CLIENT_SECRET")
+        .expect("OAUTH_DISCORD_CLIENT_SECRET environment variable must be set");
 }
 
 #[derive(Debug, PartialEq, Clone)]
