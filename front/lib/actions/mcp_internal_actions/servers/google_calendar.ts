@@ -181,6 +181,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
           timeMax,
           maxResults: maxResults ? Math.min(maxResults, 2500) : undefined,
           pageToken,
+          singleEvents: true,
         });
 
         const userTimezone = getUserTimezone();
