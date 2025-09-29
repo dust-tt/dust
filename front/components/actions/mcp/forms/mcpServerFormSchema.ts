@@ -55,8 +55,19 @@ export function getMCPServerFormDefaults(
   }
 
   // Sharing settings defaults - which spaces have this server.
-  // Only include regular and global spaces, not system spaces.
+  // Initialize ALL spaces (regular and global) with false, then set enabled ones to true.
   const sharingSettings: Record<string, boolean> = {};
+
+  // First, initialize all spaces to false so they're properly registered
+  if (spaces) {
+    for (const space of spaces) {
+      if (space.kind === "regular" || space.kind === "global") {
+        sharingSettings[space.sId] = false;
+      }
+    }
+  }
+
+  // Then set the enabled ones to true
   if (mcpServerWithViews && spaces) {
     for (const serverView of mcpServerWithViews.views) {
       const space = spaces.find((s) => s.sId === serverView.spaceId);

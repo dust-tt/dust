@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
@@ -71,13 +71,18 @@ export function MCPServerDetails({
   }, [mcpServerView, mcpServerWithViews, spaces]);
 
   const form = useForm<MCPServerFormValues>({
-    values: defaults,
+    defaultValues: defaults,
     mode: "onChange",
     shouldUnregister: false, // Keep all fields registered even when not rendered
     resolver: mcpServerView
       ? zodResolver(getMCPServerFormSchema(mcpServerView))
       : undefined,
   });
+
+  // Reset form when mcpServerView changes (e.g., when switching between servers)
+  useEffect(() => {
+    form.reset(defaults);
+  }, [mcpServerView?.sId]); // Only reset when server ID changes
 
   const applyToolChanges = async (
     toolChanges: Array<{

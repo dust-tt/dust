@@ -55,15 +55,16 @@ export function MCPServerDetailsSharing({
   const globalSpace = spaces.find((space) => space.kind === "global");
   const availableSpaces = spaces.filter((s) => s.kind === "regular");
 
-  // Determine if currently restricted based on form state.
   const isRestricted = globalSpace ? !sharingSettings?.[globalSpace.sId] : true;
 
   const handleToggle = (space: SpaceType) => {
     const currentState = sharingSettings?.[space.sId] ?? false;
-    form.setValue(`sharingSettings.${space.sId}`, !currentState, {
+    const newState = !currentState;
+
+    form.setValue(`sharingSettings.${space.sId}`, newState, {
       shouldDirty: true,
-      shouldValidate: true,
       shouldTouch: true,
+      shouldValidate: true,
     });
   };
 
@@ -141,7 +142,7 @@ export function MCPServerDetailsSharing({
           </div>
 
           <ScrollArea className="h-full">
-            <DataTable
+            <DataTable<RowData>
               data={rows}
               columns={columns}
               filter={filter}
