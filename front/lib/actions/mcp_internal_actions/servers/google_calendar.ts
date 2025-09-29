@@ -106,6 +106,7 @@ const createServer = (): McpServer => {
           timeMax,
           maxResults: maxResults ? Math.min(maxResults, 2500) : undefined,
           pageToken,
+          singleEvents: true,
         });
         return makeMCPToolJSONSuccess({
           message: "Events listed successfully",
