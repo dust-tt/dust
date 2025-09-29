@@ -19,7 +19,7 @@ makeScript(
       type: "string",
     },
   },
-  async ({ domain, execute }, logger) => {
+  async ({ domain, workspaceId, execute }, logger) => {
     const existingDomainInRegion = await WorkspaceHasDomainModel.findOne({
       where: { domain },
       include: [
@@ -45,6 +45,18 @@ makeScript(
     );
 
     const { workspace } = existingDomainInRegion;
+
+    if (workspace.sId !== workspaceId) {
+      logger.error(
+        {
+          domain,
+          workspaceId: existingDomainInRegion.workspace.id,
+          expectedWorkspaceId: workspaceId,
+        },
+        "Workspace id does not match"
+      );
+      return;
+    }
 
     if (execute) {
       // Delete the domain from the DB.
