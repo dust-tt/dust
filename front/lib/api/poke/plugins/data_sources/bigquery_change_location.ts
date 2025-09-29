@@ -1,16 +1,16 @@
-import { BigQuery } from "@google-cloud/bigquery";
 import type { Dataset } from "@google-cloud/bigquery";
+import { BigQuery } from "@google-cloud/bigquery";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
+import type {BigQueryCredentialsWithLocation} from "@app/types";
 import {
   ConnectorsAPI,
   Err,
-  Ok,
-  OAuthAPI,
-  type BigQueryCredentialsWithLocation,
   normalizeError,
+  OAuthAPI,
+  Ok
 } from "@app/types";
 
 export const bigqueryChangeLocationPlugin = createPlugin({
