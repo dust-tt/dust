@@ -961,12 +961,14 @@ export interface DataTableMoreButtonProps {
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
   >;
+  disabled?: boolean;
 }
 
 DataTable.MoreButton = function MoreButton({
   className,
   menuItems,
   dropdownMenuProps,
+  disabled,
 }: DataTableMoreButtonProps) {
   if (!menuItems?.length) {
     return null;
@@ -984,11 +986,15 @@ DataTable.MoreButton = function MoreButton({
           icon={MoreIcon}
           size="mini"
           variant="ghost-secondary"
-          className={cn(className)}
+          disabled={disabled}
+          className={cn(
+            disabled && "s-cursor-not-allowed s-opacity-50",
+            className
+          )}
         />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" hidden={disabled}>
         <DropdownMenuGroup>
           {menuItems.map((item, index) => renderMenuItem(item, index))}
         </DropdownMenuGroup>
@@ -1032,6 +1038,7 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   description?: string;
   grow?: boolean;
+  disabled?: boolean;
 }
 
 DataTable.CellContent = function CellContent({
@@ -1044,6 +1051,7 @@ DataTable.CellContent = function CellContent({
   iconClassName,
   description,
   grow = false,
+  disabled,
   ...props
 }: CellContentProps) {
   return (
@@ -1051,8 +1059,10 @@ DataTable.CellContent = function CellContent({
       className={cn(
         "s-flex s-items-center",
         grow ? "s-flex-grow" : "",
+        disabled && "s-cursor-not-allowed s-opacity-50",
         className
       )}
+      aria-disabled={disabled || undefined}
       {...props}
     >
       {avatarUrl && avatarTooltipLabel && (
@@ -1117,6 +1127,7 @@ interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   label: string | number;
   tooltip?: string | number;
   textToCopy?: string | number;
+  disabled?: boolean;
 }
 
 DataTable.BasicCellContent = function BasicCellContent({
@@ -1124,6 +1135,7 @@ DataTable.BasicCellContent = function BasicCellContent({
   tooltip,
   className,
   textToCopy,
+  disabled,
   ...props
 }: BasicCellContentProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
@@ -1150,8 +1162,10 @@ DataTable.BasicCellContent = function BasicCellContent({
                 cellHeight,
                 "s-group s-flex s-items-center s-gap-2 s-text-sm",
                 "s-text-muted-foreground dark:s-text-muted-foreground-night",
+                disabled && "s-cursor-not-allowed s-opacity-50",
                 className
               )}
+              aria-disabled={disabled || undefined}
               {...props}
             >
               <span className="s-truncate">{label}</span>
@@ -1177,8 +1191,10 @@ DataTable.BasicCellContent = function BasicCellContent({
             cellHeight,
             "s-group s-flex s-items-center s-gap-2 s-text-sm",
             "s-text-muted-foreground dark:s-text-muted-foreground-night",
+            disabled && "s-cursor-not-allowed s-opacity-50",
             className
           )}
+          aria-disabled={disabled || undefined}
           {...props}
         >
           <span className="s-truncate">{label}</span>
