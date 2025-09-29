@@ -168,12 +168,13 @@ export function MCPServerDetails({
           }
 
           // Submit the info form data if changed.
-          if (
-            diff.serverView ||
-            diff.remoteIcon ||
-            diff.remoteSharedSecret ||
-            diff.remoteCustomHeaders
-          ) {
+          const hasServerViewChanges = diff.serverView !== undefined;
+          const hasIconChanges = diff.remoteIcon !== undefined;
+          const hasSecretChanges = diff.remoteSharedSecret !== undefined;
+          const hasHeaderChanges = diff.remoteCustomHeaders !== undefined;
+          const hasRemoteChanges = hasIconChanges || hasSecretChanges || hasHeaderChanges;
+
+          if (hasServerViewChanges || hasRemoteChanges) {
             // Need to submit via the existing API.
             // We need to patch the server view and/or server.
             if (diff.serverView) {
@@ -193,11 +194,7 @@ export function MCPServerDetails({
               }
             }
 
-            if (
-              diff.remoteIcon ||
-              diff.remoteSharedSecret ||
-              diff.remoteCustomHeaders
-            ) {
+            if (hasRemoteChanges) {
               const patchBody: any = {};
               if (diff.remoteIcon) {
                 patchBody.icon = diff.remoteIcon;
@@ -206,11 +203,7 @@ export function MCPServerDetails({
                 patchBody.sharedSecret = diff.remoteSharedSecret;
               }
               if (diff.remoteCustomHeaders !== undefined) {
-                patchBody.customHeaders = diff.remoteCustomHeaders
-                  ? Object.fromEntries(
-                      diff.remoteCustomHeaders.map((h) => [h.key, h.value])
-                    )
-                  : null;
+                patchBody.customHeaders = diff.remoteCustomHeaders;
               }
 
               const response = await fetch(

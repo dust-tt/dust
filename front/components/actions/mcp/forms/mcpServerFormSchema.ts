@@ -71,16 +71,17 @@ export function getMCPServerFormDefaults(
 
   // Add remote-specific fields if applicable.
   if (isRemoteMCPServerType(view.server)) {
+    const customHeaders = Object.entries(view.server.customHeaders ?? {}).map(
+      ([key, value]) => ({
+        key,
+        value: String(value),
+      })
+    );
     return {
       ...baseDefaults,
       icon: view.server.icon,
       sharedSecret: view.server.sharedSecret ?? "",
-      customHeaders: Object.entries(view.server.customHeaders ?? {}).map(
-        ([key, value]) => ({
-          key,
-          value: String(value),
-        })
-      ),
+      customHeaders,
       toolSettings,
       sharingSettings,
     };
