@@ -1,3 +1,4 @@
+import { jwtDecode } from "jwt-decode";
 import fetch from "node-fetch";
 
 import { resetDustClient } from "./dustClient.js";
@@ -19,49 +20,52 @@ export const AuthService = {
    * Refreshes the access token using the stored refresh token
    */
   async refreshTokens(): Promise<boolean> {
-    const refreshToken = await TokenStorage.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error("No refresh token available.");
-    }
-
-    const workOSDomain = process.env.WORKOS_DOMAIN || "";
-    const clientId = process.env.WORKOS_CLIENT_ID || "";
-
-    const response = await fetch(
-      `https://${workOSDomain}/user_management/authenticate`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          grant_type: "refresh_token",
-          client_id: clientId,
-          refresh_token: refreshToken,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorData = await response.text();
-
-      if (response.status === 400 || response.status === 401) {
-        await TokenStorage.clearTokens();
-        resetDustClient();
+    try {
+      const refreshToken = await TokenStorage.getRefreshToken();
+      if (!refreshToken) {
+        return false;
       }
 
-      throw new Error(`Token refresh failed: ${errorData}`);
+      const workOSDomain = process.env.WORKOS_DOMAIN || "";
+      const clientId = process.env.WORKOS_CLIENT_ID || "";
+
+      const response = await fetch(
+        `https://${workOSDomain}/user_management/authenticate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: clientId,
+            refresh_token: refreshToken,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        // Clear tokens on authentication errors
+        if (response.status === 400 || response.status === 401) {
+          await TokenStorage.clearTokens();
+          resetDustClient();
+        }
+        return false;
+      }
+
+      const data = (await response.json()) as RefreshTokenResponse;
+
+      // Store the new tokens
+      await TokenStorage.saveTokens(data.access_token, data.refresh_token);
+
+      // Reset the API client to use the new tokens
+      resetDustClient();
+
+      return true;
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      return false;
     }
-
-    const data = (await response.json()) as RefreshTokenResponse;
-
-    // Store the new tokens
-    await TokenStorage.saveTokens(data.access_token, data.refresh_token);
-
-    // Reset the API client to use the new tokens
-    resetDustClient();
-
-    return true;
   },
 
   /**
@@ -70,19 +74,47 @@ export const AuthService = {
   async getValidAccessToken(): Promise<string | null> {
     const accessToken = await TokenStorage.getAccessToken();
 
+    // Handle API keys (they don't expire)
     if (accessToken?.startsWith("sk-")) {
       return accessToken;
     }
 
+    // Check if we have a valid access token
     const isValid = await TokenStorage.hasValidAccessToken();
 
-    if (!isValid) {
-      const refreshed = await this.refreshTokens();
-      if (!refreshed) {
-        return null;
+    if (isValid && accessToken) {
+      // Even if the token appears valid, refresh it if it's close to expiring
+      // This is more aggressive but prevents 401s during long-running streams
+      try {
+        const decoded = jwtDecode(accessToken);
+        const currentTime = Math.floor(Date.now() / 1000);
+        const timeUntilExpiry = decoded.exp ?? -currentTime;
+
+        // If token expires in less than 5 minutes, refresh it proactively
+        if (timeUntilExpiry < 300) {
+          const refreshed = await this.refreshTokens();
+          if (refreshed) {
+            return await TokenStorage.getAccessToken();
+          }
+        }
+      } catch (_) {
+        // If we can't decode the token, try to refresh
+        const refreshed = await this.refreshTokens();
+        if (refreshed) {
+          return TokenStorage.getAccessToken();
+        }
       }
+
+      return accessToken;
     }
 
+    // Try to refresh if token is invalid or missing
+    const refreshed = await this.refreshTokens();
+    if (!refreshed) {
+      return null;
+    }
+
+    // Return the newly refreshed token
     return TokenStorage.getAccessToken();
   },
 
@@ -90,9 +122,13 @@ export const AuthService = {
    * Checks if the user is authenticated with valid tokens
    */
   async isAuthenticated(): Promise<boolean> {
-    return (
-      (await TokenStorage.hasValidAccessToken()) || (await this.refreshTokens())
-    );
+    // First check if we have a valid access token
+    if (await TokenStorage.hasValidAccessToken()) {
+      return true;
+    }
+
+    // If not, try to refresh tokens
+    return this.refreshTokens();
   },
 
   /**
@@ -109,6 +145,28 @@ export const AuthService = {
    */
   async getSelectedWorkspaceId(): Promise<string | null> {
     return TokenStorage.getWorkspaceId();
+  },
+
+  /**
+   * Gets a fresh access token by always refreshing
+   * Use this for long-running requests like streaming
+   */
+  async getFreshAccessToken(): Promise<string | null> {
+    const accessToken = await TokenStorage.getAccessToken();
+
+    // Handle API keys (they don't expire)
+    if (accessToken?.startsWith("sk-")) {
+      return accessToken;
+    }
+
+    // Always refresh the token to ensure it's as fresh as possible
+    const refreshed = await this.refreshTokens();
+    if (!refreshed) {
+      return null;
+    }
+
+    // Return the newly refreshed token
+    return TokenStorage.getAccessToken();
   },
 };
 

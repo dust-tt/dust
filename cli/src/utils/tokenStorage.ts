@@ -43,15 +43,25 @@ export const TokenStorage = {
    * Checks if an access token exists and is not expired
    */
   async hasValidAccessToken(): Promise<boolean> {
-    const accessToken = await this.getAccessToken();
-    if (!accessToken) {
+    try {
+      const accessToken = await this.getAccessToken();
+      if (!accessToken) {
+        return false;
+      }
+
+      // API keys don't expire
+      if (accessToken.startsWith("sk-")) {
+        return true;
+      }
+
+      const decoded = jwtDecode<JWTPayload>(accessToken);
+      const currentTime = Math.floor(Date.now() / 1000);
+
+      return decoded.exp > currentTime;
+    } catch (_) {
+      // If we can't decode the token, it's invalid
       return false;
     }
-
-    const decoded = jwtDecode<JWTPayload>(accessToken);
-    const currentTime = Math.floor(Date.now() / 1000);
-
-    return decoded.exp > currentTime;
   },
 
   /**

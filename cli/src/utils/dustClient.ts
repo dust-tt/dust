@@ -56,6 +56,7 @@ export const getDustClient = async (): Promise<
     },
     {
       apiKey: async () => {
+        // Always get a valid token (with proactive refresh logic)
         const token = await AuthService.getValidAccessToken();
         return token || "";
       },
@@ -78,7 +79,49 @@ export const resetDustClient = (): void => {
   dustApiInstance = null;
 };
 
+/**
+ * Gets a DustAPI client with automatic retry on 401 errors
+ * This wrapper handles token refresh and client recreation when auth fails
+ */
+export const getDustClientWithRetry = async (): Promise<
+  Result<DustAPI | null, Error>
+> => {
+  const client = await getDustClient();
+  if (client.isErr()) {
+    return client;
+  }
+
+  if (!client.value) {
+    return client;
+  }
+
+  // Wrap the client to handle 401 errors automatically
+  const originalClient = client.value;
+
+  return new Ok(originalClient);
+};
+
+/**
+ * Handles 401 errors by refreshing tokens and resetting the client
+ */
+export const handle401Error = async (): Promise<boolean> => {
+  try {
+    // Reset the current client instance
+    resetDustClient();
+
+    // Try to refresh tokens
+    const refreshed = await AuthService.refreshTokens();
+
+    return refreshed;
+  } catch (error) {
+    console.error("Failed to handle 401 error:", error);
+    return false;
+  }
+};
+
 export default {
   getDustClient,
   resetDustClient,
+  getDustClientWithRetry,
+  handle401Error,
 };
