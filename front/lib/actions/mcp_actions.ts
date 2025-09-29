@@ -276,7 +276,7 @@ export async function* tryCallMCPTool(
       content: [
         {
           type: "text",
-          text: "Invalid action configuration: not an MCP action configuration",
+          text: "Could not call tool, invalid action configuration: not an MCP action configuration",
         },
       ],
     };
@@ -299,7 +299,7 @@ export async function* tryCallMCPTool(
       content: [
         {
           type: "text",
-          text: connectionParamsRes.error.message,
+          text: `The tool execution failed with the following error: ${connectionParamsRes.error.message}`,
         },
       ],
     };
@@ -331,7 +331,7 @@ export async function* tryCallMCPTool(
         content: [
           {
             type: "text",
-            text: connectionResult.error.message,
+            text: `The tool execution failed with the following error: ${connectionResult.error.message}`,
           },
         ],
       };
@@ -412,7 +412,9 @@ export async function* tryCallMCPTool(
         content: [
           {
             type: "text",
-            text: `Too many output items: ${content.length} (max is ${MAX_OUTPUT_ITEMS})`,
+            text:
+              "The tool execution failed because of too many output items: " +
+              `${content.length} (max is ${MAX_OUTPUT_ITEMS})`,
           },
         ],
       };
@@ -442,7 +444,9 @@ export async function* tryCallMCPTool(
           content: [
             {
               type: "text",
-              text: "MCP tool result content size too large.",
+              text:
+                "The tool execution failed because of a tool result content size exceeding " +
+                "the maximum limit.",
             },
           ],
         };
@@ -476,14 +480,22 @@ export async function* tryCallMCPTool(
         const info = Context.current().info;
         const isLastAttempt = info.attempt >= RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
         if (!isLastAttempt) {
-          throw new Error(`Error: ${error.message}`, { cause: error });
+          throw new Error(
+            `The tool execution timed out, error: ${error.message}`,
+            { cause: error }
+          );
         }
       }
     }
 
     return {
       isError: true,
-      content: [{ type: "text", text: normalizeError(error).message }],
+      content: [
+        {
+          type: "text",
+          text: `The tool execution failed with the following error: ${normalizeError(error).message}`,
+        },
+      ],
     };
   } finally {
     await mcpClient?.close();
