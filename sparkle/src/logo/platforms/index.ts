@@ -8,6 +8,7 @@ export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
 export { default as DatadogLogo } from "./Datadog";
 export { default as DeepseekLogo } from "./Deepseek";
+export { default as DiscordLogo } from "./Discord";
 export { default as DriveLogo } from "./Drive";
 export { default as FigmaLogo } from "./Figma";
 export { default as FireworksLogo } from "./Fireworks";
