@@ -14,11 +14,11 @@ import {
   userAndWorkspacesFromEmail,
 } from "@app/lib/api/assistant/email_trigger";
 import { Authenticator } from "@app/lib/auth";
+import { getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
-import { getAgentRoute } from "@app/lib/utils/router";
 
 const { DUST_CLIENT_FACING_URL = "", EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
