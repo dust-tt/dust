@@ -63,7 +63,7 @@ function getDisabledClass(
   isBatchEdit: boolean
 ): string | undefined {
   return !canArchive && isBatchEdit
-    ? "cursor-not-allowed opacity-50"
+    ? "s-cursor-not-allowed s-opacity-50"
     : undefined;
 }
 
@@ -101,7 +101,7 @@ const getTableColumns = ({
               <DataTable.CellContent
                 className={
                   !info.row.original.canArchive && isBatchEdit
-                    ? "cursor-not-allowed opacity-50"
+                    ? "s-cursor-not-allowed s-opacity-50"
                     : undefined
                 }
               >
