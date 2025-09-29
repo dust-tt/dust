@@ -44,6 +44,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
+import { getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
 import {
@@ -425,7 +426,11 @@ ${query}`
         }) => {
           let text = finalContent;
 
-          const convoUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversationId}`;
+          const convoUrl = getAgentRoute(
+            auth.getNonNullableWorkspace().sId,
+            conversationId,
+            config.getClientFacingUrl()
+          );
           const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(

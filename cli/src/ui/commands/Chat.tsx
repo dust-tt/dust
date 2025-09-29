@@ -880,7 +880,7 @@ const CliChat: FC<CliChatProps> = ({
         void (async () => {
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (workspaceId) {
-            const url = `https://dust.tt/w/${workspaceId}/assistant/${currentConversationId}`;
+            const url = `https://dust.tt/w/${workspaceId}/agent/${currentConversationId}`;
             await open(url);
           } else {
             console.error("\nCould not determine workspace ID");
