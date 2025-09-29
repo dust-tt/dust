@@ -10,8 +10,11 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isDevelopment } from "@app/types";
-import { CreateTemplateFormSchema, isTemplateTagCodeArray } from "@app/types";
+import {
+  CreateTemplateFormSchema,
+  isDevelopment,
+  isTemplateTagCodeArray,
+} from "@app/types";
 
 export type PokeFetchAssistantTemplateResponse = ReturnType<
   TemplateResource["toJSON"]
@@ -140,7 +143,7 @@ async function handler(
         helpInstructions: body.helpInstructions ?? null,
         presetActions: body.presetActions,
         timeFrameDuration: body.timeFrameDuration
-          ? parseInt(body.timeFrameDuration)
+          ? parseInt(body.timeFrameDuration, 10)
           : null,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         timeFrameUnit: body.timeFrameUnit || null,
@@ -182,7 +185,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, GET, PATCH or DELETE is expected.",
         },
       });
   }
