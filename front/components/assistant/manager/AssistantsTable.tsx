@@ -58,13 +58,8 @@ type RowData = {
   canArchive: boolean;
 };
 
-function getDisabledClass(
-  canArchive: boolean,
-  isBatchEdit: boolean
-): string | undefined {
-  return !canArchive && isBatchEdit
-    ? "s-cursor-not-allowed s-opacity-50"
-    : undefined;
+function isDisabled(canArchive: boolean, isBatchEdit: boolean): boolean {
+  return !canArchive && isBatchEdit;
 }
 
 const getTableColumns = ({
@@ -99,11 +94,7 @@ const getTableColumns = ({
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
               <DataTable.CellContent
-                className={
-                  !info.row.original.canArchive && isBatchEdit
-                    ? "s-cursor-not-allowed s-opacity-50"
-                    : undefined
-                }
+                disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               >
                 <Checkbox
                   checked={info.row.original.isSelected}
@@ -124,10 +115,7 @@ const getTableColumns = ({
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
-          className={getDisabledClass(
-            info.row.original.canArchive,
-            isBatchEdit
-          )}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div>
@@ -153,10 +141,7 @@ const getTableColumns = ({
       accessorKey: "scope",
       cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
         <DataTable.CellContent
-          className={getDisabledClass(
-            info.row.original.canArchive,
-            isBatchEdit
-          )}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
           {info.getValue() !== "hidden" && (
             <Chip
@@ -181,10 +166,7 @@ const getTableColumns = ({
         if (!editors) {
           return (
             <DataTable.BasicCellContent
-              className={getDisabledClass(
-                info.row.original.canArchive,
-                isBatchEdit
-              )}
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               label="-"
             />
           );
@@ -192,10 +174,7 @@ const getTableColumns = ({
 
         return (
           <DataTable.CellContent
-            className={getDisabledClass(
-              info.row.original.canArchive,
-              isBatchEdit
-            )}
+            disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           >
             <Avatar.Stack
               avatars={editors.map((editor) => ({
@@ -219,10 +198,8 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
           grow
-          className={classNames(
-            "flex flex-row items-center",
-            getDisabledClass(info.row.original.canArchive, isBatchEdit) ?? null
-          )}
+          className={classNames("flex flex-row items-center")}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
           <div className="group flex flex-row items-center gap-1">
             <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
@@ -253,10 +230,8 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
-          className={classNames(
-            "font-semibold",
-            getDisabledClass(info.row.original.canArchive, isBatchEdit) ?? null
-          )}
+          className={classNames("font-semibold")}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -287,11 +262,8 @@ const getTableColumns = ({
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
             <DataTable.BasicCellContent
-              className={classNames(
-                "font-semibold",
-                getDisabledClass(info.row.original.canArchive, isBatchEdit) ??
-                  null
-              )}
+              className={classNames("font-semibold")}
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
             />
@@ -308,10 +280,7 @@ const getTableColumns = ({
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
-          className={getDisabledClass(
-            info.row.original.canArchive,
-            isBatchEdit
-          )}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
@@ -329,10 +298,7 @@ const getTableColumns = ({
         if (info.row.original.scope === "global") {
           return (
             <DataTable.CellContent
-              className={getDisabledClass(
-                info.row.original.canArchive,
-                isBatchEdit
-              )}
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
             >
               {info.row.original.action}
             </DataTable.CellContent>
@@ -341,10 +307,7 @@ const getTableColumns = ({
         return (
           <DataTable.MoreButton
             menuItems={info.row.original.menuItems}
-            className={getDisabledClass(
-              info.row.original.canArchive,
-              isBatchEdit
-            )}
+            disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           />
         );
       },
