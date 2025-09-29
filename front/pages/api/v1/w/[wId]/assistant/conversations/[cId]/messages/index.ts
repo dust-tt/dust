@@ -187,6 +187,7 @@ async function handler(
         email: context.email?.toLowerCase() ?? null,
         fullName: context.fullName ?? null,
         origin: context.origin ?? "api",
+        originMessageId: context.originMessageId ?? null,
         profilePictureUrl: context.profilePictureUrl ?? null,
         timezone: context.timezone,
         username: context.username,

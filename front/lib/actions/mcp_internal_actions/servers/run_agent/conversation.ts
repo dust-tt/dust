@@ -137,6 +137,7 @@ export async function getOrCreateConversation(
               ? "run_agent"
               : "agent_handover",
           selectedMCPServerViewIds: toolsetsToAdd,
+          originMessageId: originMessage.sId,
         },
       },
     });
