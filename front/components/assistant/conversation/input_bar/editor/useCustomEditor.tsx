@@ -28,7 +28,7 @@ export interface EditorMention {
   label: string;
 }
 
-const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 2000;
+const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 
 function getTextAndMentionsFromNode(node?: JSONContent) {
   let textContent = "";
