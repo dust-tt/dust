@@ -3,14 +3,27 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
+  createSelectionColumn,
+  DataTable,
   DustLogoSquare,
+  FolderIcon,
+  Icon,
   Page,
   PlusIcon,
+  SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -19,10 +32,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import {
-  getDisplayNameForDataSource,
-  isRemoteDatabase,
-} from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isRemoteDatabase } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -119,36 +129,15 @@ export default function EditDustAgent({
     [unfilteredSpaceDataSourceViews]
   );
 
-  const sortedDatasources = spaceDataSourceViews.sort((a, b) => {
-    if (a.dataSource.connectorProvider && !b.dataSource.connectorProvider) {
-      return -1;
-    }
-    if (!a.dataSource.connectorProvider && b.dataSource.connectorProvider) {
-      return 1;
-    }
-    if (
-      a.dataSource.connectorProvider === "webcrawler" &&
-      b.dataSource.connectorProvider !== "webcrawler"
-    ) {
-      return 1;
-    }
-    if (
-      a.dataSource.connectorProvider !== "webcrawler" &&
-      b.dataSource.connectorProvider === "webcrawler"
-    ) {
-      return -1;
-    }
-    return a.dataSource.name.localeCompare(b.dataSource.name);
-  });
-
-  const dustAgentConfiguration = agentConfigurations?.find(
-    (c) => c.name === "dust"
+  const sortedDataSources = useMemo(
+    () =>
+      [...spaceDataSourceViews].sort((a, b) =>
+        a.dataSource.name.localeCompare(b.dataSource.name)
+      ),
+    [spaceDataSourceViews]
   );
-  if (!dustAgentConfiguration) {
-    return null;
-  }
 
-  const handleToggleAgentStatus = async (
+  const handleToggleAgentStatus = useCallback(async (
     agent: LightAgentConfigurationType
   ) => {
     if (agent.status === "disabled_missing_datasource") {
@@ -178,14 +167,18 @@ export default function EditDustAgent({
 
     if (!res.ok) {
       const data = await res.json();
-      window.alert(`Error toggling agent: ${data.error.message}`);
+      sendNotification({
+        title: "Error",
+        description: `Failed to toggle agent: ${data.error?.message ?? "unknown error"}`,
+        type: "error",
+      });
       return;
     }
 
     await mutateAgentConfigurations();
-  };
+  }, [mutateAgentConfigurations, owner.sId, sendNotification]);
 
-  const updateDatasourceSettings = async (
+  const updateDataSourceSettings = useCallback(async (
     settings: {
       assistantDefaultSelected: boolean;
     },
@@ -203,13 +196,22 @@ export default function EditDustAgent({
     );
     if (!res.ok) {
       const err = (await res.json()) as { error: APIError };
-      window.alert(
-        `Failed to update the Data Source (contact support@dust.tt for assistance) (internal error: type=${err.error.type} message=${err.error.message})`
-      );
+      sendNotification({
+        title: "Update failed",
+        description: `Could not update data source: ${err.error.message}`,
+        type: "error",
+      });
     }
     await mutateDataSourceViews();
     await mutateAgentConfigurations();
-  };
+  }, [mutateAgentConfigurations, mutateDataSourceViews, owner.sId, sendNotification]);
+
+  const dustAgentConfiguration = agentConfigurations?.find(
+    (c) => c.name === "dust"
+  );
+  if (!dustAgentConfiguration) {
+    return null;
+  }
 
   return (
     <AppCenteredLayout
@@ -232,7 +234,7 @@ export default function EditDustAgent({
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">
         <div className="flex w-full flex-col gap-4">
-          {!!spaceDataSourceViews.length && (
+          {spaceDataSourceViews.length > 0 && (
             <>
               <Page.SectionHeader
                 title="Availability"
@@ -262,7 +264,7 @@ export default function EditDustAgent({
               />
             </>
           )}
-          {spaceDataSourceViews.length &&
+          {spaceDataSourceViews.length > 0 &&
           dustAgentConfiguration?.status !== "disabled_by_admin" ? (
             <>
               <Page.SectionHeader
@@ -270,7 +272,7 @@ export default function EditDustAgent({
                 description="Configure which Company Data connections and data sources will be searched by the Dust agent."
               />
               <ContextItem.List>
-                {sortedDatasources.map((dsView) => (
+                {sortedDataSources.map((dsView) => (
                   <ContextItem
                     key={dsView.id}
                     title={getDisplayNameForDataSource(dsView.dataSource)}
@@ -281,7 +283,7 @@ export default function EditDustAgent({
                       <SliderToggle
                         selected={dsView.dataSource.assistantDefaultSelected}
                         onClick={async () => {
-                          await updateDatasourceSettings(
+                          await updateDataSourceSettings(
                             {
                               assistantDefaultSelected:
                                 !dsView.dataSource.assistantDefaultSelected,
@@ -302,7 +304,18 @@ export default function EditDustAgent({
                       })}
                     />
                   }
-                  action={<Button icon={Cog6ToothIcon} variant="outline" />}
+                  action={
+                    <DataSourceCategorySheet
+                      owner={owner}
+                      spaceId={globalSpace.sId}
+                      category="website"
+                      title="Websites"
+                      trigger={
+                        <Button icon={Cog6ToothIcon} variant="outline" />
+                      }
+                      updateDataSourceSettings={updateDataSourceSettings}
+                    />
+                  }
                 />
                 <ContextItem
                   title="Folders"
@@ -313,7 +326,18 @@ export default function EditDustAgent({
                       })}
                     />
                   }
-                  action={<Button icon={Cog6ToothIcon} variant="outline" />}
+                  action={
+                    <DataSourceCategorySheet
+                      owner={owner}
+                      spaceId={globalSpace.sId}
+                      category="folder"
+                      title="Folders"
+                      trigger={
+                        <Button icon={Cog6ToothIcon} variant="outline" />
+                      }
+                      updateDataSourceSettings={updateDataSourceSettings}
+                    />
+                  }
                 />
               </ContextItem.List>
             </>
@@ -343,3 +367,207 @@ export default function EditDustAgent({
 EditDustAgent.getLayout = (page: React.ReactElement) => {
   return <AppRootLayout>{page}</AppRootLayout>;
 };
+
+function DataSourceCategorySheet({
+  owner,
+  spaceId,
+  category,
+  title,
+  trigger,
+  updateDataSourceSettings,
+}: {
+  owner: WorkspaceType;
+  spaceId: string;
+  category: "website" | "folder";
+  title: string;
+  trigger: React.ReactNode;
+  updateDataSourceSettings: (
+    settings: { assistantDefaultSelected: boolean },
+    dataSource: DataSourceType
+  ) => Promise<void>;
+}) {
+  const { spaceDataSourceViews } = useSpaceDataSourceViews({
+    workspaceId: owner.sId,
+    spaceId,
+    category,
+  });
+
+  const [search, setSearch] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [open, setOpen] = useState(false);
+  const sendNotification = useSendNotification();
+
+  type Data = {
+    name: string;
+    id: string;
+    dataSourceView: DataSourceViewType;
+    onClick?: () => void;
+  };
+
+  const rows: Data[] = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return spaceDataSourceViews
+      .map((dsv) => ({
+        id: dsv.sId,
+        name: getDisplayNameForDataSource(dsv.dataSource),
+        dataSourceView: dsv,
+      }))
+      .filter((r) => (query ? r.name.toLowerCase().includes(query) : true));
+  }, [spaceDataSourceViews, search]);
+
+  const computeInitialSelection = useMemo(() => {
+    const initial: RowSelectionState = {};
+    for (const v of spaceDataSourceViews) {
+      if (v.dataSource.assistantDefaultSelected) {
+        initial[v.sId] = true;
+      }
+    }
+    return initial;
+  }, [spaceDataSourceViews]);
+
+  const columns: ColumnDef<Data>[] = useMemo(
+    () => [
+      {
+        header: "Name",
+        accessorKey: "name",
+        cell: (info) => (
+          <DataTable.CellContent>
+            {info.row.original.name}
+          </DataTable.CellContent>
+        ),
+      },
+    ],
+    []
+  );
+  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
+    () => [createSelectionColumn<Data>(), ...columns],
+    [columns]
+  );
+
+  const onClose = () => {
+    setRowSelection({});
+    setSearch("");
+  };
+
+  const onSave = async (): Promise<boolean> => {
+    setIsSaving(true);
+    try {
+      const selectedIds = new Set(
+        Object.keys(rowSelection).filter((k) => rowSelection[k])
+      );
+
+      const changes = spaceDataSourceViews.filter(
+        (v) => v.dataSource.assistantDefaultSelected !== selectedIds.has(v.sId)
+      );
+
+      if (changes.length === 0) {
+        sendNotification({
+          title: "No changes",
+          description: "Your selection already matches current settings.",
+          type: "info",
+        });
+        return true;
+      }
+
+      await Promise.all(
+        changes.map((v) =>
+          updateDataSourceSettings(
+            { assistantDefaultSelected: selectedIds.has(v.sId) },
+            v.dataSource
+          )
+        )
+      );
+
+      sendNotification({
+        title: "Saved",
+        description: `Updated ${changes.length} ${
+          changes.length === 1 ? "data source" : "data sources"
+        }`,
+        type: "success",
+      });
+      setRowSelection({});
+      return true;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      sendNotification({
+        title: "Save failed",
+        description: message,
+        type: "error",
+      });
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(open) => {
+        setOpen(open);
+        if (open) {
+          setRowSelection(computeInitialSelection);
+        } else {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="inline-flex"
+        data-testid={`dsv-${category}-sheet-trigger`}
+      >
+        <SheetTrigger asChild>{trigger}</SheetTrigger>
+      </div>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <div className="flex items-center gap-2">
+            <Avatar visual={<Icon visual={FolderIcon} />} size="md" />
+            <div>
+              <SheetTitle>{title}</SheetTitle>
+            </div>
+          </div>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-4">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              name={`search-${category}`}
+              placeholder={`Search ${title.toLowerCase()}...`}
+            />
+            <DataTable
+              data={rows}
+              columns={columnsWithSelection}
+              rowSelection={rowSelection}
+              enableRowSelection
+              setRowSelection={setRowSelection}
+              getRowId={(row) => row.id}
+            />
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: isSaving ? "Saving..." : "Save",
+            variant: "primary",
+            onClick: isSaving
+              ? undefined
+              : async () => {
+                  const ok = await onSave();
+                  if (ok) {
+                    setOpen(false);
+                  }
+                },
+            disabled: isSaving,
+            loading: isSaving,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
+  );
+}
