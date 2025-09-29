@@ -51,15 +51,3 @@
     --tw-checker-color: theme("colors.slate.950"); /* Dark mode pattern color */
   }
 }
-
-.s-blinking-cursor > :not(pre):last-child::after {
-  content: "";
-  width: 8px;
-  height: 16px;
-  @apply s-bg-success-400;
-  display: inline-block;
-  @apply s-animate-cursor-blink;
-  margin-left: 5px;
-  position: relative;
-  top: 4px;
-}

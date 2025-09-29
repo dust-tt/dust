@@ -1,8 +1,8 @@
 import {
   Checkbox,
-  CodeBlockWithExtendedSupport,
   CollapsibleComponent,
   Label,
+  MemoCodeBlockWithExtendedSupport,
 } from "@dust-tt/sparkle";
 
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
@@ -46,9 +46,9 @@ export function ToolValidationDialogPage({
           triggerChildren={<span className="font-medium">Details</span>}
           contentChildren={
             <div className="max-h-80 overflow-auto">
-              <CodeBlockWithExtendedSupport className="language-json">
+              <MemoCodeBlockWithExtendedSupport className="language-json">
                 {JSON.stringify(blockedAction.inputs, null, 2)}
-              </CodeBlockWithExtendedSupport>
+              </MemoCodeBlockWithExtendedSupport>
             </div>
           }
         />
