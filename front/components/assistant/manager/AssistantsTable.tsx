@@ -58,6 +58,15 @@ type RowData = {
   canArchive: boolean;
 };
 
+function getDisabledClass(
+  canArchive: boolean,
+  isBatchEdit: boolean
+): string | undefined {
+  return !canArchive && isBatchEdit
+    ? "cursor-not-allowed opacity-50"
+    : undefined;
+}
+
 const getTableColumns = ({
   owner,
   tags,
@@ -115,11 +124,10 @@ const getTableColumns = ({
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
-          className={
-            !info.row.original.canArchive && isBatchEdit
-              ? "cursor-not-allowed opacity-50"
-              : undefined
-          }
+          className={getDisabledClass(
+            info.row.original.canArchive,
+            isBatchEdit
+          )}
         >
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div>
@@ -145,11 +153,10 @@ const getTableColumns = ({
       accessorKey: "scope",
       cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
         <DataTable.CellContent
-          className={
-            !info.row.original.canArchive && isBatchEdit
-              ? "cursor-not-allowed opacity-50"
-              : undefined
-          }
+          className={getDisabledClass(
+            info.row.original.canArchive,
+            isBatchEdit
+          )}
         >
           {info.getValue() !== "hidden" && (
             <Chip
@@ -174,11 +181,10 @@ const getTableColumns = ({
         if (!editors) {
           return (
             <DataTable.BasicCellContent
-              className={
-                !info.row.original.canArchive && isBatchEdit
-                  ? "cursor-not-allowed opacity-50"
-                  : undefined
-              }
+              className={getDisabledClass(
+                info.row.original.canArchive,
+                isBatchEdit
+              )}
               label="-"
             />
           );
@@ -186,11 +192,10 @@ const getTableColumns = ({
 
         return (
           <DataTable.CellContent
-            className={
-              !info.row.original.canArchive && isBatchEdit
-                ? "cursor-not-allowed opacity-50"
-                : undefined
-            }
+            className={getDisabledClass(
+              info.row.original.canArchive,
+              isBatchEdit
+            )}
           >
             <Avatar.Stack
               avatars={editors.map((editor) => ({
@@ -216,9 +221,7 @@ const getTableColumns = ({
           grow
           className={classNames(
             "flex flex-row items-center",
-            !info.row.original.canArchive && isBatchEdit
-              ? "cursor-not-allowed opacity-50"
-              : null
+            getDisabledClass(info.row.original.canArchive, isBatchEdit) ?? null
           )}
         >
           <div className="group flex flex-row items-center gap-1">
@@ -252,9 +255,7 @@ const getTableColumns = ({
         <DataTable.BasicCellContent
           className={classNames(
             "font-semibold",
-            !info.row.original.canArchive && isBatchEdit
-              ? "cursor-not-allowed opacity-50"
-              : null
+            getDisabledClass(info.row.original.canArchive, isBatchEdit) ?? null
           )}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
@@ -288,9 +289,8 @@ const getTableColumns = ({
             <DataTable.BasicCellContent
               className={classNames(
                 "font-semibold",
-                !info.row.original.canArchive && isBatchEdit
-                  ? "cursor-not-allowed opacity-50"
-                  : null
+                getDisabledClass(info.row.original.canArchive, isBatchEdit) ??
+                  null
               )}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
@@ -308,11 +308,10 @@ const getTableColumns = ({
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
-          className={
-            !info.row.original.canArchive && isBatchEdit
-              ? "cursor-not-allowed opacity-50"
-              : undefined
-          }
+          className={getDisabledClass(
+            info.row.original.canArchive,
+            isBatchEdit
+          )}
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
@@ -330,17 +329,24 @@ const getTableColumns = ({
         if (info.row.original.scope === "global") {
           return (
             <DataTable.CellContent
-              className={
-                !info.row.original.canArchive && isBatchEdit
-                  ? "cursor-not-allowed opacity-50"
-                  : undefined
-              }
+              className={getDisabledClass(
+                info.row.original.canArchive,
+                isBatchEdit
+              )}
             >
               {info.row.original.action}
             </DataTable.CellContent>
           );
         }
-        return <DataTable.MoreButton menuItems={info.row.original.menuItems} />;
+        return (
+          <DataTable.MoreButton
+            menuItems={info.row.original.menuItems}
+            className={getDisabledClass(
+              info.row.original.canArchive,
+              isBatchEdit
+            )}
+          />
+        );
       },
       meta: {
         className: "w-14",
