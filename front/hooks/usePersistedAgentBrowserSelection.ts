@@ -4,10 +4,11 @@ import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { safeParseJSON } from "@app/types";
 
-export const AGENT_BROWSER_SELECTION_METADATA_NAME = "agentBrowserSelection";
+// We change the name of the metadata key to avoid conflicts with the old one, as we changed the way we store the data.
+export const AGENT_BROWSER_SELECTION_METADATA_NAME = "agentBrowserSelection-2";
 
 // workspaceId -> selected tag ids.
-type AssistantBrowserSelectionStore = Record<string, string[]>;
+type AssistantBrowserSelectionStore = Record<string, string | null>;
 
 export const usePersistedAgentBrowserSelection = (workspaceId: string) => {
   const { metadata, isMetadataLoading, isMetadataError, mutateMetadata } =
@@ -28,15 +29,15 @@ export const usePersistedAgentBrowserSelection = (workspaceId: string) => {
     return {} as AssistantBrowserSelectionStore;
   }, [metadata]);
 
-  const selectedTagIds = useMemo(() => {
-    return store[workspaceId] ?? ([] as string[]);
+  const selectedTagId = useMemo(() => {
+    return store[workspaceId] ?? (null as string | null);
   }, [store, workspaceId]);
 
-  const setSelectedTagIds = useCallback(
-    async (tagIds: string[]) => {
+  const setSelectedTagId = useCallback(
+    async (tagId: string | null) => {
       const next: AssistantBrowserSelectionStore = {
         ...store,
-        [workspaceId]: tagIds,
+        [workspaceId]: tagId,
       };
 
       await setUserMetadataFromClient({
@@ -50,8 +51,8 @@ export const usePersistedAgentBrowserSelection = (workspaceId: string) => {
   );
 
   return {
-    selectedTagIds,
-    setSelectedTagIds,
+    selectedTagId,
+    setSelectedTagId,
     isLoading: isMetadataLoading,
     isError: isMetadataError,
   };
