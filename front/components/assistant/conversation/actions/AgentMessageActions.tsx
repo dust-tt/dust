@@ -75,7 +75,10 @@ export function AgentMessageActions({
     ? actionProgress.get(lastAction.id)?.progress ?? null
     : null;
 
-  return lastAgentStateClassification !== "done" ? (
+  const showMessageBreakdownButton =
+    lastAgentStateClassification === "done" || agentMessage.status === "failed";
+
+  return !showMessageBreakdownButton ? (
     <div
       onClick={onClick}
       className={cn(

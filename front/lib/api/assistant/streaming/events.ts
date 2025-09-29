@@ -7,6 +7,7 @@ import type {
   AgentMessageEvents,
   ConversationEvents,
 } from "@app/lib/api/assistant/streaming/types";
+import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type {
   AgentMessageNewEvent,
@@ -17,6 +18,24 @@ import type {
 } from "@app/types";
 import { assertNever } from "@app/types";
 
+/**
+ * Generic event publication interface.
+ */
+export async function publishEvent({
+  origin,
+  channel,
+  event,
+}: {
+  origin: RedisUsageTagsType;
+  channel: string;
+  event: string;
+}) {
+  await getRedisHybridManager().publish(channel, event, origin);
+}
+
+/**
+ * Conversation event publication interface.
+ */
 export async function publishConversationEvent(
   event: ConversationEvents,
   {
@@ -39,6 +58,9 @@ export async function publishConversationEvent(
   );
 }
 
+/**
+ * Message event publication interface.
+ */
 async function publishMessageEvent(
   event: AgentMessageEvents,
   {
