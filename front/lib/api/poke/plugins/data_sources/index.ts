@@ -12,3 +12,4 @@ export * from "./toggle_restricted_space_agent_slack_access";
 export * from "./toggle_slack_bot";
 export * from "./webcrawler_actions";
 export * from "./webcrawler_frequency";
+export * from "./bigquery_change_location";
