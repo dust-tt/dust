@@ -194,7 +194,7 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
   declare userContextOrigin: UserMessageOrigin | null;
-  declare userContextOriginMessageId: ForeignKey<Message["id"]> | null;
+  declare userContextOriginMessageId: string | null;
 
   declare userContextLastTriggerRunAt: Date | null;
 
@@ -250,6 +250,10 @@ UserMessage.init(
     },
     userContextOrigin: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    userContextOriginMessageId: {
+      type: DataTypes.STRING(32),
       allowNull: true,
     },
     userContextLastTriggerRunAt: {
@@ -631,16 +635,6 @@ Message.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
-Message.hasMany(UserMessage, {
-  as: "childMessages",
-  foreignKey: { name: "userContextOriginMessageId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-UserMessage.belongsTo(Message, {
-  as: "userContextOriginMessage",
-  foreignKey: { name: "userContextOriginMessageId", allowNull: true },
-});
-
 export class MessageReaction extends WorkspaceAwareModel<MessageReaction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

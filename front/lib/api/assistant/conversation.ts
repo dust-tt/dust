@@ -512,6 +512,7 @@ export async function postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
+      // Fetch originMessage to ensure it exists
       const originMessage = context.originMessageId
         ? await Message.findOne({
             where: {
@@ -540,7 +541,7 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userContextOriginMessageId: originMessage?.id ?? null,
+                  userContextOriginMessageId: originMessage?.sId ?? null,
                   userContextLastTriggerRunAt: context.lastTriggerRunAt,
                   userId: user
                     ? user.id
