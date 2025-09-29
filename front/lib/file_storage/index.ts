@@ -53,16 +53,13 @@ export class FileStorage {
     contentType,
     filePath,
   }: {
-    content: string | Buffer;
+    content: string;
     contentType: AllSupportedFileContentType;
     filePath: string;
   }) {
     const gcsFile = this.file(filePath);
 
-    const contentToSave =
-      typeof content === "string"
-        ? Buffer.from(stripNullBytes(content), "utf8")
-        : content;
+    const contentToSave = Buffer.from(stripNullBytes(content), "utf8");
 
     await gcsFile.save(contentToSave, {
       contentType,
