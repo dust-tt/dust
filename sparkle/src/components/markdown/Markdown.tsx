@@ -12,13 +12,14 @@ import { visit } from "unist-util-visit";
 import { Chip } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import markdownHeaderClasses, {
+import {
   H1Block,
   H2Block,
   H3Block,
   H4Block,
   H5Block,
   H6Block,
+  markdownHeaderClasses,
 } from "@sparkle/components/markdown/HeaderBlocks";
 import { InputBlock } from "@sparkle/components/markdown/InputBlock";
 import { LinkBlock } from "@sparkle/components/markdown/LinkBlock";
