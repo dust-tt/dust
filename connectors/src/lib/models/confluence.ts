@@ -55,6 +55,7 @@ export class ConfluenceSpace extends ConnectorBaseModel<ConfluenceSpace> {
   declare name: string;
   declare spaceId: string;
   declare urlSuffix?: string;
+  declare deletedAt: Date | null;
 }
 ConfluenceSpace.init(
   {
@@ -78,6 +79,10 @@ ConfluenceSpace.init(
     },
     urlSuffix: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   },
