@@ -49,10 +49,9 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import type { CreateTemplateFormType, TemplateTagCodeType } from "@app/types";
 import {
-  ASSISTANT_CREATIVITY_LEVELS,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CreateTemplateFormSchema,
   generateTailwindBackgroundColors,
-  GPT_4_TURBO_MODEL_CONFIG,
   MULTI_ACTION_PRESETS,
   removeNulls,
   TEMPLATE_VISIBILITIES,
@@ -554,7 +553,7 @@ function TemplatesPage({
       description: "",
       handle: "",
       presetInstructions: "",
-      presetModelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+      presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       presetTemperature: "balanced",
       helpInstructions: "",
       helpActions: "",
@@ -666,14 +665,6 @@ function TemplatesPage({
               options={USED_MODEL_CONFIGS.map((config) => ({
                 value: config.modelId,
                 display: config.displayName,
-              }))}
-            />
-            <SelectField
-              control={form.control}
-              name="presetTemperature"
-              title="Preset Temperature"
-              options={ASSISTANT_CREATIVITY_LEVELS.map((acl) => ({
-                value: acl,
               }))}
             />
           </div>
