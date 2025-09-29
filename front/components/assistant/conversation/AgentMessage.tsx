@@ -511,7 +511,7 @@ export function AgentMessage({
           references: references,
           streaming: shouldStream,
           lastTokenClassification:
-            messageStreamState.agentState === "thinking" ? "tokens" : null,
+            messageStreamState.agentState === "writing" ? "tokens" : null,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -667,6 +667,7 @@ export function AgentMessage({
                   isStreaming={
                     streaming && lastTokenClassification === "tokens"
                   }
+                  shouldHaveStreamingAnimation
                   isLastMessage={isLastMessage}
                   additionalMarkdownComponents={additionalMarkdownComponents}
                   additionalMarkdownPlugins={additionalMarkdownPlugins}
