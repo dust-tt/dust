@@ -22,6 +22,8 @@ import {
   removeNulls,
 } from "@app/types";
 
+import { isPastedFile } from "../../../components/assistant/conversation/input_bar/pasted_utils";
+
 const ENABLE_LLM_SNIPPETS = false;
 
 export async function generateSnippet(
@@ -70,6 +72,14 @@ export async function generateSnippet(
     let content = await getFileContent(auth, file);
     if (!content) {
       return new Err(new Error("Failed to get file content"));
+    }
+
+    if (isPastedFile(file.contentType)) {
+      // Include up to 64K (2^16) characters in pasted text snippet
+      if (content.length > 65536) {
+        return new Ok(content.slice(0, 65536) + "... (truncated)");
+      }
+      return new Ok(content);
     }
 
     if (!ENABLE_LLM_SNIPPETS) {
