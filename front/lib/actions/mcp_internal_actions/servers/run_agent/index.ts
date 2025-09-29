@@ -348,6 +348,7 @@ export default async function createServer(
             conversationId: isHandoff
               ? mainConversation.sId
               : conversationId ?? null,
+            originMessage: agentLoopContext.runContext.agentMessage,
           }
         );
 
