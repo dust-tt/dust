@@ -59,6 +59,7 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
 export const TOOLS_SHEET_PAGE_IDS = {
   TOOL_SELECTION: "tool-selection",
   CONFIGURATION: "configuration",
+  ADDITIONAL_CONFIGURATION: "additional-configuration",
   INFO: "info",
 };
 

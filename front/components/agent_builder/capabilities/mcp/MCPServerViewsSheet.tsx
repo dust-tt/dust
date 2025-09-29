@@ -24,6 +24,8 @@ import type {
   MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
+import type { SelectionSummary } from "@app/components/agent_builder/capabilities/mcp/MCPAdditionalConfigurationPage";
+import { MCPAdditionalConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPAdditionalConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
@@ -42,18 +44,18 @@ import {
   getInfoPageIcon,
   getInfoPageTitle,
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
+import { buildSelectionSummary } from "@app/components/agent_builder/capabilities/mcp/utils/selectionSummaryUtils";
 import {
   getFooterButtons,
   getInitialConfigurationTool,
   getInitialPageId,
   handleConfigurationSave as handleConfigurationSaveUtil,
+  hasAnyAdditionalConfigs,
   shouldGenerateUniqueName,
 } from "@app/components/agent_builder/capabilities/mcp/utils/sheetUtils";
-import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
 import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
-import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
 import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
@@ -77,6 +79,7 @@ import {
 } from "@app/lib/actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
@@ -178,6 +181,12 @@ export function MCPServerViewsSheet({
     useState<MCPServerViewType | null>(null);
 
   const hasReasoningModel = reasoningModels.length > 0;
+
+  // Fetch agents list once (used to display selected agent card on Additional page)
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+  });
 
   const shouldFilterServerView = useCallback(
     (view: MCPServerViewTypeWithLabel, actions: AgentBuilderAction[]) => {
@@ -292,6 +301,15 @@ export function MCPServerViewsSheet({
         );
         if (mcpServerView) {
           setConfigurationMCPServerView(mcpServerView);
+          // If editing a Run Agent or Run Dust App tool, jump to Additional Configuration page
+          const cfgs = getMCPServerToolsConfigurations(mcpServerView);
+          if (
+            (cfgs.childAgentConfiguration ??
+              cfgs.mayRequireDustAppConfiguration) ||
+            cfgs.reasoningConfiguration
+          ) {
+            setCurrentPageId(TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION);
+          }
         }
       }
     } else if (mode?.type === "configure") {
@@ -385,9 +403,7 @@ export function MCPServerViewsSheet({
 
     if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = toolsConfigurations.reasoningConfiguration
-        ? true
-        : false;
+      const isReasoning = !!toolsConfigurations.reasoningConfiguration;
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -535,6 +551,14 @@ export function MCPServerViewsSheet({
     [mcpServerView]
   );
 
+  const hasAdditionalConfiguration = useMemo(() => {
+    if (!toolsConfigurations) {
+      return false;
+    }
+    const hasName = configurationTool?.configurable ?? false;
+    return hasAnyAdditionalConfigs(toolsConfigurations) || hasName;
+  }, [toolsConfigurations, configurationTool?.configurable]);
+
   // Stable form reset handler - no form dependency to prevent re-renders
   const resetFormValues = useMemo(
     () => createFormResetHandler(configurationTool, mcpServerView, isOpen),
@@ -556,6 +580,50 @@ export function MCPServerViewsSheet({
     setSearchTerm("");
     resetToSelection();
   }, [resetToSelection]);
+
+  const watchedDustApp = form?.watch("configuration.dustAppConfiguration");
+  const watchedChildAgentId = form?.watch("configuration.childAgentId");
+  const watchedReasoningModel = form?.watch("configuration.reasoningModel");
+
+  const selectionSummary = useMemo<SelectionSummary | null>(() => {
+    if (!toolsConfigurations) {
+      return null;
+    }
+    const edit = () => setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
+
+    if (toolsConfigurations.mayRequireDustAppConfiguration) {
+      return buildSelectionSummary({
+        kind: "dust-app",
+        dustAppConfiguration: watchedDustApp,
+        onEdit: edit,
+      });
+    }
+
+    if (toolsConfigurations.childAgentConfiguration) {
+      return buildSelectionSummary({
+        kind: "child-agent",
+        childAgentId: watchedChildAgentId,
+        agents: agentConfigurations,
+        onEdit: edit,
+      });
+    }
+
+    return buildSelectionSummary({
+      kind: "reasoning-model",
+      reasoningModel: watchedReasoningModel,
+      models: reasoningModels,
+      onEdit: edit,
+    });
+  }, [
+    toolsConfigurations,
+    form,
+    agentConfigurations,
+    reasoningModels,
+    setCurrentPageId,
+    watchedDustApp,
+    watchedChildAgentId,
+    watchedReasoningModel,
+  ]);
 
   const pages: MultiPageSheetPage[] = [
     {
@@ -605,8 +673,7 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      title: mcpServerView?.name || "Configure Tool",
+      title: mcpServerView?.name ?? "Configure Tool",
       description: "",
       icon: undefined,
       content:
@@ -622,20 +689,24 @@ export function MCPServerViewsSheet({
                   mcpServerView={mcpServerView}
                 />
 
-                {configurationTool.configurable && (
-                  <NameSection
-                    title="Name"
-                    placeholder="My tool name…"
-                    triggerValidationOnChange
+                {toolsConfigurations.reasoningConfiguration && (
+                  <ReasoningModelSection
+                    onSelected={() =>
+                      setCurrentPageId(
+                        TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION
+                      )
+                    }
                   />
                 )}
 
-                {toolsConfigurations.reasoningConfiguration && (
-                  <ReasoningModelSection />
-                )}
-
                 {toolsConfigurations.childAgentConfiguration && (
-                  <ChildAgentSection />
+                  <ChildAgentSection
+                    onSelected={() =>
+                      setCurrentPageId(
+                        TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION
+                      )
+                    }
+                  />
                 )}
 
                 {toolsConfigurations.mayRequireTimeFrameConfiguration && (
@@ -643,7 +714,13 @@ export function MCPServerViewsSheet({
                 )}
 
                 {toolsConfigurations.mayRequireDustAppConfiguration && (
-                  <DustAppSection />
+                  <DustAppSection
+                    onSelected={() =>
+                      setCurrentPageId(
+                        TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION
+                      )
+                    }
+                  />
                 )}
 
                 {toolsConfigurations.mayRequireSecretConfiguration && (
@@ -655,22 +732,33 @@ export function MCPServerViewsSheet({
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
-
-                <AdditionalConfigurationSection
-                  stringConfigurations={
-                    toolsConfigurations.stringConfigurations
-                  }
-                  numberConfigurations={
-                    toolsConfigurations.numberConfigurations
-                  }
-                  booleanConfigurations={
-                    toolsConfigurations.booleanConfigurations
-                  }
-                  enumConfigurations={toolsConfigurations.enumConfigurations}
-                  listConfigurations={toolsConfigurations.listConfigurations}
-                />
               </div>
             </div>
+          </FormProvider>
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center">
+            <Spinner />
+          </div>
+        ),
+    },
+    {
+      id: TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION,
+      title: "Additional Configuration",
+      content:
+        toolsConfigurations && form ? (
+          <FormProvider form={form} className="h-full">
+            <MCPAdditionalConfigurationPage
+              selectionSummary={selectionSummary}
+              showNameSection={configurationTool?.configurable ?? false}
+              additionalConfigs={{
+                stringConfigurations: toolsConfigurations.stringConfigurations,
+                numberConfigurations: toolsConfigurations.numberConfigurations,
+                booleanConfigurations:
+                  toolsConfigurations.booleanConfigurations,
+                enumConfigurations: toolsConfigurations.enumConfigurations,
+                listConfigurations: toolsConfigurations.listConfigurations,
+              }}
+            />
           </FormProvider>
         ) : (
           <div className="flex h-40 w-full items-center justify-center">
@@ -794,6 +882,11 @@ export function MCPServerViewsSheet({
     },
     onConfigurationSave: handleConfigurationSave,
     resetToSelection,
+    hasAdditionalConfiguration,
+    goToAdditionalConfiguration: () =>
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION),
+    goToConfiguration: () =>
+      setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION),
   });
 
   return (

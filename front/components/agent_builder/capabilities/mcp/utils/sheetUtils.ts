@@ -11,8 +11,28 @@ import type {
 } from "@app/components/agent_builder/types";
 import { TOOLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { MCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { pluralize } from "@app/types";
+
+export function hasAnyAdditionalConfigs(
+  toolsConfigurations: MCPServerToolsConfigurations
+): boolean {
+  const hasStrings =
+    (toolsConfigurations.stringConfigurations?.length ?? 0) > 0;
+  const hasNumbers =
+    (toolsConfigurations.numberConfigurations?.length ?? 0) > 0;
+  const hasBooleans =
+    (toolsConfigurations.booleanConfigurations?.length ?? 0) > 0;
+  const hasEnums =
+    toolsConfigurations.enumConfigurations &&
+    Object.keys(toolsConfigurations.enumConfigurations).length > 0;
+  const hasLists =
+    toolsConfigurations.listConfigurations &&
+    Object.keys(toolsConfigurations.listConfigurations).length > 0;
+
+  return hasStrings || hasNumbers || hasBooleans || hasEnums || hasLists;
+}
 
 export function isValidPage<T extends Record<string, string>>(
   pageId: string,
@@ -59,6 +79,10 @@ export interface FooterButtonOptions {
   onAddSelectedTools: () => void;
   onConfigurationSave: (data: MCPFormData) => void;
   resetToSelection: () => void;
+  // Navigation helpers for multi-page configuration flows
+  hasAdditionalConfiguration?: boolean;
+  goToAdditionalConfiguration?: () => void;
+  goToConfiguration?: () => void;
 }
 
 export function getFooterButtons({
@@ -71,12 +95,17 @@ export function getFooterButtons({
   onAddSelectedTools,
   onConfigurationSave,
   resetToSelection,
+  hasAdditionalConfiguration,
+  goToAdditionalConfiguration,
+  goToConfiguration,
 }: FooterButtonOptions) {
   const isToolSelectionPage =
     currentPageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION;
   const isConfigurationPage =
     currentPageId === TOOLS_SHEET_PAGE_IDS.CONFIGURATION;
   const isInfoPage = currentPageId === TOOLS_SHEET_PAGE_IDS.INFO;
+  const isAdditionalConfigurationPage =
+    currentPageId === TOOLS_SHEET_PAGE_IDS.ADDITIONAL_CONFIGURATION;
 
   if (isToolSelectionPage) {
     return {
@@ -98,6 +127,8 @@ export function getFooterButtons({
   }
 
   if (isConfigurationPage) {
+    const showNext = !!hasAdditionalConfiguration;
+
     if (mode?.type === "edit") {
       return {
         leftButton: {
@@ -105,11 +136,18 @@ export function getFooterButtons({
           variant: "outline",
           onClick: onCancel,
         },
-        rightButton: {
-          label: "Save Changes",
-          variant: "primary",
-          onClick: form.handleSubmit(onConfigurationSave),
-        },
+        rightButton: showNext
+          ? {
+              label: "Next",
+              variant: "primary",
+              onClick: () =>
+                goToAdditionalConfiguration && goToAdditionalConfiguration(),
+            }
+          : {
+              label: "Save Changes",
+              variant: "primary",
+              onClick: form.handleSubmit(onConfigurationSave),
+            },
       };
     }
 
@@ -120,11 +158,18 @@ export function getFooterButtons({
           variant: "outline",
           onClick: () => onModeChange({ type: "add" }),
         },
-        rightButton: {
-          label: "Save Configuration",
-          variant: "primary",
-          onClick: form.handleSubmit(onConfigurationSave),
-        },
+        rightButton: showNext
+          ? {
+              label: "Next",
+              variant: "primary",
+              onClick: () =>
+                goToAdditionalConfiguration && goToAdditionalConfiguration(),
+            }
+          : {
+              label: "Save Configuration",
+              variant: "primary",
+              onClick: form.handleSubmit(onConfigurationSave),
+            },
       };
     }
 
@@ -134,8 +179,33 @@ export function getFooterButtons({
         variant: "outline",
         onClick: resetToSelection,
       },
+      rightButton: showNext
+        ? {
+            label: "Next",
+            variant: "primary",
+            onClick: () =>
+              goToAdditionalConfiguration && goToAdditionalConfiguration(),
+          }
+        : {
+            label: "Save Configuration",
+            variant: "primary",
+            onClick: form.handleSubmit(onConfigurationSave),
+          },
+    };
+  }
+
+  if (isAdditionalConfigurationPage) {
+    const saveLabel =
+      mode?.type === "edit" ? "Save Changes" : "Save Configuration";
+
+    return {
+      leftButton: {
+        label: "Back",
+        variant: "outline",
+        onClick: () => goToConfiguration && goToConfiguration(),
+      },
       rightButton: {
-        label: "Save Configuration",
+        label: saveLabel,
         variant: "primary",
         onClick: form.handleSubmit(onConfigurationSave),
       },
