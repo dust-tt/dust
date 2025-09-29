@@ -95,7 +95,7 @@ export function useTextAsCronRule({
   return textAsCronRule;
 }
 
-export function useTriggerSubscribers({
+function useTriggerSubscribers({
   workspaceId,
   agentConfigurationId,
   triggerId,

@@ -6,7 +6,7 @@ import type { AssistantBuilderMCPConfigurationWithId } from "@app/components/ass
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assistants/[aId]/actions";
 
-export function useAssistantConfigurationActions(
+function useAssistantConfigurationActions(
   ownerId: string,
   agentConfigurationId: string | null
 ) {

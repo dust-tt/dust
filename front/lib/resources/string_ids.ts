@@ -135,7 +135,7 @@ function _makeSId(
   return sId;
 }
 
-export function getIdsFromSId(sId: string): Result<
+function getIdsFromSId(sId: string): Result<
   {
     workspaceModelId: ModelId;
     resourceModelId: ModelId;

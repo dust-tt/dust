@@ -1198,6 +1198,6 @@ function recursiveInlineAllRefs(
  * @param schema The schema to inline references in.
  * @returns The schema with all references inlined.
  */
-export function inlineAllRefs(schema: JSONSchema): JSONSchema {
+function inlineAllRefs(schema: JSONSchema): JSONSchema {
   return recursiveInlineAllRefs(schema, schema);
 }

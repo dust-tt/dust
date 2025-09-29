@@ -237,7 +237,7 @@ export function useDeleteWebhookSource({
   };
 }
 
-export function useWebhookSourceViewsByWebhookSource({
+function useWebhookSourceViewsByWebhookSource({
   owner,
   webhookSourceId,
   disabled,

@@ -145,7 +145,7 @@ export const UseCases: UseCaseProps = {
   ],
 };
 
-export const ROI: ROIProps = {
+const ROI: ROIProps = {
   number: "50%",
   subtitle: "reduction in ticket resolution time",
   logo: "/static/landing/logos/gray/malt.png",

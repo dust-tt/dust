@@ -44,7 +44,7 @@ export async function launchTrackersGenerationWorkflow({
   });
 }
 
-export async function launchTrackerNotificationWorkflow(
+async function launchTrackerNotificationWorkflow(
   signaledTrackerIds: TrackerIdWorkspaceId[] = []
 ) {
   const client = await getTemporalClientForFrontNamespace();
@@ -58,7 +58,7 @@ export async function launchTrackerNotificationWorkflow(
   });
 }
 
-export async function stopTrackerNotificationWorkflow() {
+async function stopTrackerNotificationWorkflow() {
   const client = await getTemporalClientForFrontNamespace();
 
   try {

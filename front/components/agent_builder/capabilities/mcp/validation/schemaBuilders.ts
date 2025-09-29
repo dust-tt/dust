@@ -18,7 +18,7 @@ import type { MCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal
  * Creates base form validation schema with consistent error messages
  * Contains common fields that are present in all MCP forms
  */
-export function createBaseFormSchema() {
+function createBaseFormSchema() {
   return {
     name: z
       .string()
@@ -36,7 +36,7 @@ export function createBaseFormSchema() {
  * Creates base configuration schema fields that are always present
  * These fields are common to all MCP configurations regardless of requirements
  */
-export function createBaseConfigurationFields() {
+function createBaseConfigurationFields() {
   return {
     mcpServerViewId: mcpServerViewIdSchema,
     dataSourceConfigurations: dataSourceConfigurationSchema,
@@ -51,7 +51,7 @@ export function createBaseConfigurationFields() {
  * Creates dynamic configuration fields based on MCP server requirements
  * Uses direct conditional logic for clarity
  */
-export function createDynamicConfigurationFields(
+function createDynamicConfigurationFields(
   toolsConfigurations: MCPServerToolsConfigurations
 ) {
   return {
@@ -180,7 +180,7 @@ function createAdditionalConfigurationSchema(
  * Creates default configuration schema when no requirements are available
  * Fallback schema that accepts all possible fields
  */
-export function createDefaultConfigurationSchema() {
+function createDefaultConfigurationSchema() {
   return z.object({
     ...createBaseConfigurationFields(),
     childAgentId: childAgentIdSchema,
@@ -195,7 +195,7 @@ export function createDefaultConfigurationSchema() {
  * @param requirements - MCP server requirements or null for default schema
  * @returns Configuration validation schema
  */
-export function createConfigurationSchema(
+function createConfigurationSchema(
   requirements: MCPServerToolsConfigurations | null
 ) {
   const baseFields = createBaseConfigurationFields();

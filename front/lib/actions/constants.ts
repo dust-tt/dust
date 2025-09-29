@@ -62,7 +62,7 @@ export const FALLBACK_MCP_TOOL_STAKE_LEVEL = "high" as const;
 
 export const DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL = "low" as const;
 
-export const MCP_VALIDATION_OUTPUTS = [
+const MCP_VALIDATION_OUTPUTS = [
   "approved",
   "rejected",
   "always_approved",

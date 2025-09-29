@@ -46,7 +46,7 @@ export type VisualizationRPCRequest = {
   };
 }[VisualizationRPCCommand];
 
-export const validCommands: VisualizationRPCCommand[] = [
+const validCommands: VisualizationRPCCommand[] = [
   "getFile",
   "getCodeToExecute",
   "setContentHeight",
@@ -67,9 +67,7 @@ export interface CommandResultMap {
 // TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
 
 // Type guard for getFile.
-export function isGetFileRequest(
-  value: unknown
-): value is VisualizationRPCRequest & {
+function isGetFileRequest(value: unknown): value is VisualizationRPCRequest & {
   command: "getFile";
   params: GetFileParams;
 } {
@@ -90,7 +88,7 @@ export function isGetFileRequest(
 }
 
 // Type guard for getCodeToExecute.
-export function isGetCodeToExecuteRequest(
+function isGetCodeToExecuteRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
   command: "getCodeToExecute";
@@ -110,7 +108,7 @@ export function isGetCodeToExecuteRequest(
 }
 
 // Type guard for setContentHeight.
-export function isSetContentHeightRequest(
+function isSetContentHeightRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
   command: "setContentHeight";
@@ -132,7 +130,7 @@ export function isSetContentHeightRequest(
   );
 }
 
-export function isSetErrorMessageRequest(
+function isSetErrorMessageRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
   command: "setErrorMessage";
@@ -150,7 +148,7 @@ export function isSetErrorMessageRequest(
   );
 }
 
-export function isDownloadFileRequest(
+function isDownloadFileRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
   command: "downloadFileRequest";
@@ -173,7 +171,7 @@ export function isDownloadFileRequest(
 }
 
 // Type guard for getCodeToExecute.
-export function isDisplayCodeRequest(
+function isDisplayCodeRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
   command: "displayCode";

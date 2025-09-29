@@ -118,7 +118,7 @@ const sendTrackerDefaultEmail = async ({
   });
 };
 
-export const sendTrackerWithGenerationEmail = async ({
+const sendTrackerWithGenerationEmail = async ({
   name,
   recipient,
   generations,

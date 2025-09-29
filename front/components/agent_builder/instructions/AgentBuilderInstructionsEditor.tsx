@@ -25,7 +25,7 @@ import {
 } from "@app/lib/client/agent_builder/instructions";
 import type { LightAgentConfigurationType } from "@app/types";
 
-export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
+const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 const editorVariants = cva(
   [

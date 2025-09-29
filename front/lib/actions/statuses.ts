@@ -37,7 +37,7 @@ export function isToolExecutionStatusFinal(
   );
 }
 
-export function isToolExecutionStatusTransient(
+function isToolExecutionStatusTransient(
   state: ToolExecutionStatus
 ): state is ToolExecutionTransientStatus {
   return TOOL_EXECUTION_TRANSIENT_STATUSES.includes(

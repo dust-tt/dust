@@ -24,7 +24,7 @@ export function contentToHtml(content: CoEditionContent) {
   }
 }
 
-export function insertNode(
+function insertNode(
   editor: Editor,
   params: { position: number; content: string }
 ) {
@@ -46,7 +46,7 @@ export function insertNode(
 }
 
 // Best-effort implementation of inserting multiple nodes. Order might be broken with custom node types.
-export function insertNodes(editor: Editor, nodes: Array<CoEditionContent>) {
+function insertNodes(editor: Editor, nodes: Array<CoEditionContent>) {
   return editor
     .chain()
     .focus()

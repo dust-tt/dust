@@ -48,7 +48,7 @@ export async function launchScheduleWorkspaceScrubWorkflow({
   }
 }
 
-export async function launchImmediateWorkspaceScrubWorkflow({
+async function launchImmediateWorkspaceScrubWorkflow({
   workspaceId,
 }: {
   workspaceId: string;

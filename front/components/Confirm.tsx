@@ -51,7 +51,7 @@ interface ConfirmDialogProps {
   resolveConfirm: (result: boolean) => void;
 }
 
-export function ConfirmDialog({
+function ConfirmDialog({
   confirmData,
   resolveConfirm,
   clearConfirmData,

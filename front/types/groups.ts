@@ -20,7 +20,7 @@ import { isRoleType } from "./user";
  *
  *  provisioned group: Contains all users from a provisioned group.
  */
-export const GROUP_KINDS = [
+const GROUP_KINDS = [
   "regular",
   "global",
   "system",
@@ -39,7 +39,7 @@ export function isGlobalGroupKind(value: GroupKind): boolean {
   return value === "global";
 }
 
-export function isAgentEditorGroupKind(value: GroupKind): boolean {
+function isAgentEditorGroupKind(value: GroupKind): boolean {
   return value === "agent_editors";
 }
 

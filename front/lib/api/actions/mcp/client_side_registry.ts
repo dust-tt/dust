@@ -20,7 +20,7 @@ export class MCPServerInstanceLimitError extends Error {
 /**
  * Generate a Redis key for MCP server registration.
  */
-export function getMCPServerRegistryKey({
+function getMCPServerRegistryKey({
   workspaceId,
   userId,
   serverId,
@@ -45,7 +45,7 @@ export function getBaseServerId(serverId: string): string {
   return serverId.replace(/\.\d+$/, "");
 }
 
-export function getMCPServerIdFromServerName({
+function getMCPServerIdFromServerName({
   serverName,
 }: {
   serverName: string;

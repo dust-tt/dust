@@ -94,7 +94,7 @@ export function getAttachmentFromContentFragment(
   assertNever(cf);
 }
 
-export function getAttachmentFromContentNodeContentFragment(
+function getAttachmentFromContentNodeContentFragment(
   cf: ContentNodeContentFragmentType
 ): ContentNodeAttachmentType {
   const isQueryable =
@@ -134,7 +134,7 @@ export function getAttachmentFromContentNodeContentFragment(
   };
 }
 
-export function getAttachmentFromFileContentFragment(
+function getAttachmentFromFileContentFragment(
   cf: FileContentFragmentType
 ): FileAttachmentType | null {
   const fileId = cf.fileId;

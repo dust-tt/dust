@@ -141,7 +141,7 @@ export interface FreshserviceListResponse<T> {
 }
 
 // Error codes
-export const FRESHSERVICE_ERROR_MESSAGES = {
+const FRESHSERVICE_ERROR_MESSAGES = {
   AUTHENTICATION_REQUIRED:
     "Authentication required. Please connect your Freshservice account.",
   DOMAIN_NOT_CONFIGURED: "Freshservice domain not configured.",

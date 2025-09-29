@@ -60,7 +60,7 @@ export const timeAgoFrom = (
   return "<1m";
 };
 
-export function getWeekBoundaries(date: Date): {
+function getWeekBoundaries(date: Date): {
   startDate: Date;
   endDate: Date;
 } {
@@ -150,7 +150,7 @@ export const isDomain = (domain: string | null): boolean => {
   return DOMAIN_REGEX.test(domain);
 };
 
-export const objectToMarkdown = (obj: any, indent = 0) => {
+const objectToMarkdown = (obj: any, indent = 0) => {
   let markdown = "";
 
   for (const key in obj) {

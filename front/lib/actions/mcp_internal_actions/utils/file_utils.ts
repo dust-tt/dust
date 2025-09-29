@@ -122,7 +122,7 @@ export async function getFileFromConversationAttachment(
   });
 }
 
-export async function streamToBuffer(
+async function streamToBuffer(
   readStream: NodeJS.ReadableStream
 ): Promise<Result<Buffer, string>> {
   try {

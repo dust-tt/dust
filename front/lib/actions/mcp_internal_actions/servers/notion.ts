@@ -226,7 +226,7 @@ const FallbackBlock = z
   })
   .passthrough();
 
-export const NotionBlockSchema: z.ZodType = z.union([
+const NotionBlockSchema: z.ZodType = z.union([
   ParagraphBlock,
   Heading1Block,
   Heading2Block,

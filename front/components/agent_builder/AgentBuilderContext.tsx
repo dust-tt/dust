@@ -15,9 +15,9 @@ type AgentBuilderContextType = {
   setPresetActionToAdd: (preset: TemplateActionPreset | null) => void;
 };
 
-export const AgentBuilderContext = createContext<
-  AgentBuilderContextType | undefined
->(undefined);
+const AgentBuilderContext = createContext<AgentBuilderContextType | undefined>(
+  undefined
+);
 
 interface AgentBuilderProviderProps {
   owner: WorkspaceType;

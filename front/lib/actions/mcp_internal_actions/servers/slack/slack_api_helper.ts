@@ -74,7 +74,7 @@ const _getPublicChannels = async ({
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const getCachedPublicChannels = cacheWithRedis(
+const getCachedPublicChannels = cacheWithRedis(
   _getPublicChannels,
   ({ mcpServerId }: GetPublicChannelsArgs) => mcpServerId,
   {

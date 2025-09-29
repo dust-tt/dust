@@ -32,7 +32,7 @@ function prepareTemplatesForDisplay(templates: any[]): TemplatesDisplayType[] {
   }));
 }
 
-export function makeColumnsForTemplates() {
+function makeColumnsForTemplates() {
   return [
     {
       accessorKey: "id",

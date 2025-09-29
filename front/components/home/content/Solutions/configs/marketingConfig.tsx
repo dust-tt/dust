@@ -150,7 +150,7 @@ export const UseCases: UseCaseProps = {
   ],
 };
 
-export const ROI: ROIProps = {
+const ROI: ROIProps = {
   number: "70%",
   subtitle: "time reduction in localization",
   logo: "/static/landing/logos/gray/qonto.png",

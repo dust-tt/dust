@@ -107,7 +107,7 @@ export async function updateInvitationStatusAndRole(
   return typeFromModel(existingInvitation);
 }
 
-export async function updateOrCreateInvitation(
+async function updateOrCreateInvitation(
   owner: WorkspaceType,
   inviteEmail: string,
   initialRole: ActiveRoleType,
@@ -169,7 +169,7 @@ export function getMembershipInvitationUrl(
   return getMembershipInvitationUrlForToken(owner, invitationToken);
 }
 
-export async function sendWorkspaceInvitationEmail(
+async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
   invitation: MembershipInvitationType
@@ -238,7 +238,7 @@ export async function getPendingInvitations(
  * @returns MenbershipInvitation[] members of the workspace
  */
 
-export async function getRecentPendingAndRevokedInvitations(
+async function getRecentPendingAndRevokedInvitations(
   auth: Authenticator,
   transaction?: Transaction
 ): Promise<{
@@ -293,7 +293,7 @@ export async function getRecentPendingAndRevokedInvitations(
   return groupedInvitations;
 }
 
-export async function batchUnrevokeInvitations(
+async function batchUnrevokeInvitations(
   auth: Authenticator,
   invitationIds: string[],
   transaction?: Transaction

@@ -1,4 +1,4 @@
-export const KILL_SWITCH_TYPES = [
+const KILL_SWITCH_TYPES = [
   "save_agent_configurations",
   "save_data_source_views",
 ] as const;

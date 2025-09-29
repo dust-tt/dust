@@ -28,7 +28,7 @@ export function getUniqueTemplateTags(
   ).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
 }
 
-export function validateDataSourceConfiguration(
+function validateDataSourceConfiguration(
   config: unknown
 ): Result<DataSourceConfiguration, Error> {
   try {

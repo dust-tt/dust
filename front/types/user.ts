@@ -11,7 +11,7 @@ import { assertNever } from "./shared/utils/assert_never";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
-export const ROLES = ["admin", "builder", "user", "none"] as const;
+const ROLES = ["admin", "builder", "user", "none"] as const;
 export const ACTIVE_ROLES = ["admin", "builder", "user"] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
@@ -23,7 +23,7 @@ function keyObject<T extends readonly string[]>(
   };
 }
 
-export const RoleSchema = t.keyof(keyObject(ROLES));
+const RoleSchema = t.keyof(keyObject(ROLES));
 
 export type RoleType = t.TypeOf<typeof RoleSchema>;
 

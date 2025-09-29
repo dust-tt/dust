@@ -10,7 +10,7 @@ import type {
 } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-export class RateLimitError extends Error {}
+class RateLimitError extends Error {}
 
 let rateLimiterRedisClient: Awaited<ReturnType<typeof redisClient>> | undefined;
 
@@ -37,7 +37,7 @@ async function getRedisClient({
   return rateLimiterRedisClient;
 }
 
-export const RATE_LIMITER_PREFIX = "rate_limiter";
+const RATE_LIMITER_PREFIX = "rate_limiter";
 
 const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
 

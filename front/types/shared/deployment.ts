@@ -5,7 +5,7 @@ import type { LoggerInterface } from "./logger";
 const { SLACK_USER_OPERATION_BOT_TOKEN, NODE_ENV } = process.env;
 
 // We might want to delete this, once we make progress out of Sequelize synchronisation.
-export async function sendInitDbMessage({
+async function sendInitDbMessage({
   service,
   logger,
 }: {

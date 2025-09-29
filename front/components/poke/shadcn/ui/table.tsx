@@ -188,11 +188,9 @@ TableCellWithLink.displayName = "TableCellWithLink";
 export {
   Table as PokeTable,
   TableBody as PokeTableBody,
-  TableCaption as PokeTableCaption,
   TableCell as PokeTableCell,
   TableCellWithCopy as PokeTableCellWithCopy,
   TableCellWithLink as PokeTableCellWithLink,
-  TableFooter as PokeTableFooter,
   TableHead as PokeTableHead,
   TableHeader as PokeTableHeader,
   TableRow as PokeTableRow,

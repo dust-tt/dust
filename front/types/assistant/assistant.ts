@@ -155,56 +155,53 @@ export function getLargeWhitelistedModel(
  * MODEL IDS
  */
 
-export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
-export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
+const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
+const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
-export const GPT_4_1_MODEL_ID = "gpt-4.1-2025-04-14" as const;
+const GPT_4_1_MODEL_ID = "gpt-4.1-2025-04-14" as const;
 export const GPT_4_1_MINI_MODEL_ID = "gpt-4.1-mini-2025-04-14" as const;
-export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
-export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
-export const GPT_5_MODEL_ID = "gpt-5" as const;
-export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
-export const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
-export const O1_MODEL_ID = "o1" as const;
-export const O1_MINI_MODEL_ID = "o1-mini" as const;
-export const O3_MINI_MODEL_ID = "o3-mini" as const;
-export const O3_MODEL_ID = "o3" as const;
+const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
+const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
+const GPT_5_MODEL_ID = "gpt-5" as const;
+const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
+const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
+const O1_MODEL_ID = "o1" as const;
+const O1_MINI_MODEL_ID = "o1-mini" as const;
+const O3_MINI_MODEL_ID = "o3-mini" as const;
+const O3_MODEL_ID = "o3" as const;
 
-export const O4_MINI_MODEL_ID = "o4-mini" as const;
-export const CLAUDE_4_OPUS_20250514_MODEL_ID =
-  "claude-4-opus-20250514" as const;
+const O4_MINI_MODEL_ID = "o4-mini" as const;
+const CLAUDE_4_OPUS_20250514_MODEL_ID = "claude-4-opus-20250514" as const;
 export const CLAUDE_4_SONNET_20250514_MODEL_ID =
   "claude-4-sonnet-20250514" as const;
-export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
-export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
+const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
+const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
-export const CLAUDE_3_5_SONNET_20241022_MODEL_ID =
+const CLAUDE_3_5_SONNET_20241022_MODEL_ID =
   "claude-3-5-sonnet-20241022" as const;
-export const CLAUDE_3_7_SONNET_20250219_MODEL_ID =
+const CLAUDE_3_7_SONNET_20250219_MODEL_ID =
   "claude-3-7-sonnet-20250219" as const;
-export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
-  "claude-3-haiku-20240307" as const;
-export const CLAUDE_3_5_HAIKU_20241022_MODEL_ID =
-  "claude-3-5-haiku-20241022" as const;
-export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
-export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
+const CLAUDE_3_HAIKU_20240307_MODEL_ID = "claude-3-haiku-20240307" as const;
+const CLAUDE_3_5_HAIKU_20241022_MODEL_ID = "claude-3-5-haiku-20241022" as const;
+const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
+const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
-export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
-export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
-export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
+const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
+const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
+const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
 
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
 export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
-export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
-export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
-export const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
-export const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
+const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
+const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
+const GEMINI_2_5_FLASH_MODEL_ID = "gemini-2.5-flash" as const;
+const GEMINI_2_5_FLASH_LITE_MODEL_ID = "gemini-2.5-flash-lite" as const;
 export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 
 // These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
-export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
+const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
 export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID =
   "gemini-2.0-flash-thinking-exp-01-21" as const;
 export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID =
@@ -224,18 +221,18 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_ID =
   "deepseek-ai/DeepSeek-V3" as const;
 export const TOGETHERAI_DEEPSEEK_R1_MODEL_ID =
   "deepseek-ai/DeepSeek-R1" as const;
-export const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
-export const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;
+const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
+const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;
 export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
   "accounts/fireworks/models/deepseek-r1" as const;
-export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
+const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct" as const;
 
-export const GROK_3_MODEL_ID = "grok-3-latest" as const;
-export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
-export const GROK_3_FAST_MODEL_ID = "grok-3-fast-latest" as const;
-export const GROK_3_MINI_FAST_MODEL_ID = "grok-3-mini-fast-latest" as const;
-export const GROK_4_MODEL_ID = "grok-4-latest" as const;
+const GROK_3_MODEL_ID = "grok-3-latest" as const;
+const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
+const GROK_3_FAST_MODEL_ID = "grok-3-fast-latest" as const;
+const GROK_3_MINI_FAST_MODEL_ID = "grok-3-mini-fast-latest" as const;
+const GROK_4_MODEL_ID = "grok-4-latest" as const;
 
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
@@ -414,7 +411,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
 };
-export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
+const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4_1_MINI_MODEL_ID,
   displayName: "GPT 4.1 mini",
@@ -452,7 +449,7 @@ export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
 };
-export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
+const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4O_20240806_MODEL_ID,
   displayName: "GPT 4o",
@@ -724,7 +721,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 
-export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
+const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "anthropic",
     modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
@@ -1011,7 +1008,7 @@ export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // DEPRECATED -- Replaced by 2.5 family
-export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_1_5_PRO_LATEST_MODEL_ID,
   displayName: "Gemini Pro 1.5",
@@ -1032,7 +1029,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // DEPRECATED -- Replaced by 2.5 family
-export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_1_5_FLASH_LATEST_MODEL_ID,
   displayName: "Gemini Flash 1.5",
@@ -1073,7 +1070,7 @@ export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // DEPRECATED -- Replaced by 2.5 family
-export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
+const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_FLASH_LITE_MODEL_ID,
   displayName: "Gemini Flash 2.0 Lite",
@@ -1093,7 +1090,7 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // DEPRECATED -- Replaced by Gemini 2.5 Pro
-export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
   displayName: "Gemini 2.5 Pro Preview",
@@ -1113,29 +1110,28 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // DEPRECATED -- Replaced by GA model
-export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "google_ai_studio",
-    modelId: GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
-    displayName: "Gemini Flash 2.0 Lite Preview",
-    contextSize: 1_000_000,
-    recommendedTopK: 64,
-    recommendedExhaustiveTopK: 64,
-    largeModel: true,
-    description: "Google's lightweight large context model (1m context).",
-    shortDescription: "Google's lightweight model (preview).",
-    isLegacy: true,
-    isLatest: false,
-    generationTokensCount: 2048,
-    supportsVision: true,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
-    defaultReasoningEffort: "none",
-    featureFlag: "google_ai_studio_experimental_models_feature",
-  };
+const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
+  displayName: "Gemini Flash 2.0 Lite Preview",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "Google's lightweight large context model (1m context).",
+  shortDescription: "Google's lightweight model (preview).",
+  isLegacy: true,
+  isLatest: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+  featureFlag: "google_ai_studio_experimental_models_feature",
+};
 
 // DEPRECATED -- Replaced by GA model
-export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_FLASH_PREVIEW_MODEL_ID,
   displayName: "Gemini Flash 2.0",
@@ -1157,7 +1153,7 @@ export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // DEPRECATED -- Not making it to GA
-export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_PRO_PREVIEW_MODEL_ID,
   displayName: "Gemini Flash 2.0 Pro Preview",
@@ -1178,27 +1174,26 @@ export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // DEPRECATED -- Not making it to GA
-export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "google_ai_studio",
-    modelId: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
-    displayName: "Gemini Flash 2.0 Thinking",
-    contextSize: 32_000,
-    recommendedTopK: 64,
-    recommendedExhaustiveTopK: 64,
-    largeModel: true,
-    description:
-      "Google's lightweight model optimized for reasoning (1m context).",
-    shortDescription: "Google's reasoning-focused model (preview).",
-    isLegacy: false,
-    isLatest: false,
-    generationTokensCount: 2048,
-    supportsVision: true,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
-    defaultReasoningEffort: "none",
-    featureFlag: "google_ai_studio_experimental_models_feature",
-  };
+const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+  displayName: "Gemini Flash 2.0 Thinking",
+  contextSize: 32_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Google's lightweight model optimized for reasoning (1m context).",
+  shortDescription: "Google's reasoning-focused model (preview).",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+  featureFlag: "google_ai_studio_experimental_models_feature",
+};
 
 export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -1257,7 +1252,7 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
 };
 
-export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
+const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "togetherai",
     modelId: TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
@@ -1277,7 +1272,7 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     defaultReasoningEffort: "none",
   };
 
-export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
+const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "togetherai",
     modelId: TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
@@ -1297,47 +1292,45 @@ export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigura
     defaultReasoningEffort: "none",
   };
 
-export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "togetherai",
-    modelId: TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
-    displayName: "Qwen QwQ 32B Preview",
-    contextSize: 32_000,
-    recommendedTopK: 16,
-    recommendedExhaustiveTopK: 56, // 28_672
-    largeModel: false,
-    description: "Alibaba's fast reasoning model (32k context).",
-    shortDescription: "Alibaba's fast reasoning model.",
-    isLegacy: false,
-    isLatest: false,
-    generationTokensCount: 2048,
-    supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
-    defaultReasoningEffort: "none",
-  };
+const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "togetherai",
+  modelId: TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
+  displayName: "Qwen QwQ 32B Preview",
+  contextSize: 32_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
+  largeModel: false,
+  description: "Alibaba's fast reasoning model (32k context).",
+  shortDescription: "Alibaba's fast reasoning model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 2048,
+  supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+};
 
-export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "togetherai",
-    modelId: TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
-    displayName: "Qwen 72B Instruct",
-    contextSize: 32_000,
-    recommendedTopK: 16,
-    recommendedExhaustiveTopK: 56, // 28_672
-    largeModel: false,
-    description: "Alibaba's powerful model (32k context).",
-    shortDescription: "Alibaba's powerful model.",
-    isLegacy: false,
-    isLatest: false,
-    generationTokensCount: 2048,
-    supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
-    defaultReasoningEffort: "none",
-  };
+const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "togetherai",
+  modelId: TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
+  displayName: "Qwen 72B Instruct",
+  contextSize: 32_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
+  largeModel: false,
+  description: "Alibaba's powerful model (32k context).",
+  shortDescription: "Alibaba's powerful model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 2048,
+  supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+};
 
-export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
+const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "togetherai",
   modelId: TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
   displayName: "DeepSeek V3 (TogetherAI)",
@@ -1356,7 +1349,7 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
-export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
+const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "togetherai",
   modelId: TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   displayName: "DeepSeek R1 (TogetherAI)",
@@ -1375,7 +1368,7 @@ export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
-export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
+const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "deepseek",
   modelId: DEEPSEEK_CHAT_MODEL_ID,
   displayName: "DeepSeek",
@@ -1395,7 +1388,7 @@ export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "deepseek_feature",
 };
 
-export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
+const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "deepseek",
   modelId: DEEPSEEK_REASONER_MODEL_ID,
   displayName: "DeepSeek R1",
@@ -1497,7 +1490,7 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // Deprecated
-export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
+const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_3_FAST_MODEL_ID,
   displayName: "Grok 3 Fast",
@@ -1519,7 +1512,7 @@ export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 // Deprecated
-export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
+const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_3_MINI_FAST_MODEL_ID,
   displayName: "Grok 3 Mini (Fast)",

@@ -3,7 +3,7 @@ import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";
 
-export const MessageBaseSchema = t.type({
+const MessageBaseSchema = t.type({
   content: t.refinement(
     t.string,
     (s): s is string => s.length > 0,
@@ -36,7 +36,7 @@ const ContentFragmentBaseSchema = t.intersection([
   }),
 ]);
 
-export const getSupportedInlinedContentType = () => {
+const getSupportedInlinedContentType = () => {
   const [first, second, ...rest] = getSupportedNonImageMimeTypes();
   return t.union([
     t.literal(first),
@@ -49,7 +49,7 @@ const [first, second, ...rest] = [
   ...INTERNAL_MIME_TYPES_VALUES,
   ...getSupportedNonImageMimeTypes(),
 ];
-export const getSupportedContentNodeContentTypeSchema = () => {
+const getSupportedContentNodeContentTypeSchema = () => {
   return t.union([
     t.literal(first),
     t.literal(second),
@@ -65,7 +65,7 @@ export type SupportedInlinedContentFragmentTypeSchema = t.TypeOf<
   ReturnType<typeof getSupportedInlinedContentType>
 >;
 
-export const isSupportedInlinedFragmentContentType = (
+const isSupportedInlinedFragmentContentType = (
   contentType: string
 ): contentType is SupportedInlinedContentFragmentTypeSchema => {
   return (

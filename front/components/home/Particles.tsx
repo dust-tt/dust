@@ -38,7 +38,7 @@ export const shapeNames = {
   galaxy: "galaxy",
 };
 
-export const shapeNamesArray = Object.values(shapeNames).map((value) => ({
+const shapeNamesArray = Object.values(shapeNames).map((value) => ({
   name: value,
 }));
 
@@ -50,7 +50,7 @@ interface ParticulesProps {
   currentShape: number;
 }
 
-export default function Particules({ currentShape }: ParticulesProps) {
+function Particules({ currentShape }: ParticulesProps) {
   useEffect(() => {
     if (typeof window !== "undefined") {
       init();

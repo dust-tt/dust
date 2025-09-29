@@ -5,7 +5,7 @@ import { NumberAsStringCodec } from "../../shared/utils/iots_utils";
 /**
  * <Connectors>
  */
-export const ConnectorsCommandSchema = t.type({
+const ConnectorsCommandSchema = t.type({
   majorCommand: t.literal("connectors"),
   command: t.union([
     t.literal("stop"),
@@ -34,7 +34,7 @@ export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
 /**
  * <Confluence>
  */
-export const ConfluenceCommandSchema = t.type({
+const ConfluenceCommandSchema = t.type({
   majorCommand: t.literal("confluence"),
   command: t.union([
     t.literal("check-page-exists"),
@@ -62,14 +62,14 @@ export const ConfluenceCommandSchema = t.type({
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
 
-export const ConfluenceMeResponseSchema = t.type({
+const ConfluenceMeResponseSchema = t.type({
   me: t.UnknownRecord,
 });
 export type ConfluenceMeResponseType = t.TypeOf<
   typeof ConfluenceMeResponseSchema
 >;
 
-export const ConfluenceUpsertPageResponseSchema = t.type({
+const ConfluenceUpsertPageResponseSchema = t.type({
   workflowId: t.string,
   workflowUrl: t.union([t.string, t.undefined]),
 });
@@ -77,7 +77,7 @@ export type ConfluenceUpsertPageResponseType = t.TypeOf<
   typeof ConfluenceUpsertPageResponseSchema
 >;
 
-export const ConfluenceSkipPageResponseSchema = t.type({
+const ConfluenceSkipPageResponseSchema = t.type({
   skipped: t.boolean,
   reason: t.union([t.string, t.undefined]),
 });
@@ -85,7 +85,7 @@ export type ConfluenceSkipPageResponseType = t.TypeOf<
   typeof ConfluenceSkipPageResponseSchema
 >;
 
-export const ConfluenceCheckSpaceAccessResponseSchema = t.type({
+const ConfluenceCheckSpaceAccessResponseSchema = t.type({
   hasAccess: t.boolean,
   space: t.UnknownRecord,
 });
@@ -93,7 +93,7 @@ export type ConfluenceCheckSpaceAccessResponseType = t.TypeOf<
   typeof ConfluenceCheckSpaceAccessResponseSchema
 >;
 
-export const ConfluenceResolveSpaceFromUrlResponseSchema = t.intersection([
+const ConfluenceResolveSpaceFromUrlResponseSchema = t.intersection([
   t.type({
     found: t.boolean,
   }),
@@ -141,7 +141,7 @@ export type ConfluenceCheckPageExistsResponseType = t.TypeOf<
 /**
  * <Batch>
  */
-export const BatchCommandSchema = t.type({
+const BatchCommandSchema = t.type({
   majorCommand: t.literal("batch"),
   command: t.union([
     t.literal("full-resync"),
@@ -156,7 +156,7 @@ export const BatchCommandSchema = t.type({
 });
 export type BatchCommandType = t.TypeOf<typeof BatchCommandSchema>;
 
-export const BatchAllResponseSchema = t.type({
+const BatchAllResponseSchema = t.type({
   succeeded: t.number,
   failed: t.number,
 });
@@ -168,7 +168,7 @@ export type BatchAllResponseType = t.TypeOf<typeof BatchAllResponseSchema>;
 /**
  * <GitHub>
  */
-export const GithubCommandSchema = t.type({
+const GithubCommandSchema = t.type({
   majorCommand: t.literal("github"),
   command: t.union([
     t.literal("resync-repo"),
@@ -197,7 +197,7 @@ export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
 /**
  * <Gong>
  */
-export const GongCommandSchema = t.type({
+const GongCommandSchema = t.type({
   majorCommand: t.literal("gong"),
   command: t.literal("force-resync"),
   args: t.type({
@@ -207,7 +207,7 @@ export const GongCommandSchema = t.type({
 });
 export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;
 
-export const GongForceResyncResponseSchema = t.type({
+const GongForceResyncResponseSchema = t.type({
   workflowId: t.string,
   workflowUrl: t.union([t.string, t.undefined]),
 });
@@ -221,7 +221,7 @@ export type GongForceResyncResponseType = t.TypeOf<
 /**
  * <GoogleDrive>
  */
-export const GoogleDriveCommandSchema = t.type({
+const GoogleDriveCommandSchema = t.type({
   majorCommand: t.literal("google_drive"),
   command: t.union([
     t.literal("garbage-collect-all"),
@@ -246,7 +246,7 @@ export const GoogleDriveCommandSchema = t.type({
 });
 export type GoogleDriveCommandType = t.TypeOf<typeof GoogleDriveCommandSchema>;
 
-export const CheckFileGenericResponseSchema = t.type({
+const CheckFileGenericResponseSchema = t.type({
   status: t.number,
   // all literals from js `typeof`
   type: t.union([
@@ -271,7 +271,7 @@ export type CheckFileGenericResponseType = t.TypeOf<
 /**
  * <Intercom>
  */
-export const IntercomCommandSchema = t.type({
+const IntercomCommandSchema = t.type({
   majorCommand: t.literal("intercom"),
   command: t.union([
     t.literal("force-resync-articles"),
@@ -293,7 +293,7 @@ export const IntercomCommandSchema = t.type({
 });
 export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
 
-export const IntercomCheckConversationResponseSchema = t.type({
+const IntercomCheckConversationResponseSchema = t.type({
   isConversationOnIntercom: t.boolean,
   isConversationOnDB: t.boolean,
   conversationTeamIdOnIntercom: t.union([t.string, t.undefined]),
@@ -303,21 +303,21 @@ export type IntercomCheckConversationResponseType = t.TypeOf<
   typeof IntercomCheckConversationResponseSchema
 >;
 
-export const IntercomFetchConversationResponseSchema = t.type({
+const IntercomFetchConversationResponseSchema = t.type({
   conversation: t.union([t.UnknownRecord, t.null]), // intercom type, can't be iots'd
 });
 export type IntercomFetchConversationResponseType = t.TypeOf<
   typeof IntercomFetchConversationResponseSchema
 >;
 
-export const IntercomFetchArticlesResponseSchema = t.type({
+const IntercomFetchArticlesResponseSchema = t.type({
   articles: t.array(t.union([t.UnknownRecord, t.null])), // intercom type, can't be iots'd
 });
 export type IntercomFetchArticlesResponseType = t.TypeOf<
   typeof IntercomFetchArticlesResponseSchema
 >;
 
-export const IntercomCheckTeamsResponseSchema = t.type({
+const IntercomCheckTeamsResponseSchema = t.type({
   teams: t.array(
     t.type({
       teamId: t.string,
@@ -330,7 +330,7 @@ export type IntercomCheckTeamsResponseType = t.TypeOf<
   typeof IntercomCheckTeamsResponseSchema
 >;
 
-export const IntercomCheckMissingConversationsResponseSchema = t.type({
+const IntercomCheckMissingConversationsResponseSchema = t.type({
   missingConversations: t.array(
     t.type({
       conversationId: t.string,
@@ -344,7 +344,7 @@ export type IntercomCheckMissingConversationsResponseType = t.TypeOf<
   typeof IntercomCheckMissingConversationsResponseSchema
 >;
 
-export const IntercomForceResyncArticlesResponseSchema = t.type({
+const IntercomForceResyncArticlesResponseSchema = t.type({
   affectedCount: t.number,
 });
 export type IntercomForceResyncArticlesResponseType = t.TypeOf<
@@ -357,7 +357,7 @@ export type IntercomForceResyncArticlesResponseType = t.TypeOf<
 /**
  * <Microsoft>
  */
-export const MicrosoftCommandSchema = t.type({
+const MicrosoftCommandSchema = t.type({
   majorCommand: t.literal("microsoft"),
   command: t.union([
     t.literal("garbage-collect-all"),
@@ -383,7 +383,7 @@ export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
 /**
  * <Notion>
  */
-export const NotionCommandSchema = t.type({
+const NotionCommandSchema = t.type({
   majorCommand: t.literal("notion"),
   command: t.union([
     t.literal("skip-page"),
@@ -408,7 +408,7 @@ export const NotionCommandSchema = t.type({
 });
 export type NotionCommandType = t.TypeOf<typeof NotionCommandSchema>;
 
-export const NotionUpsertResponseSchema = t.type({
+const NotionUpsertResponseSchema = t.type({
   workflowId: t.string,
   workflowUrl: t.union([t.string, t.undefined]),
 });
@@ -416,7 +416,7 @@ export type NotionUpsertResponseType = t.TypeOf<
   typeof NotionUpsertResponseSchema
 >;
 
-export const NotionSearchPagesResponseSchema = t.type({
+const NotionSearchPagesResponseSchema = t.type({
   pages: t.array(
     t.type({
       id: t.string,
@@ -431,7 +431,7 @@ export type NotionSearchPagesResponseType = t.TypeOf<
   typeof NotionSearchPagesResponseSchema
 >;
 
-export const NotionCheckUrlResponseSchema = t.type({
+const NotionCheckUrlResponseSchema = t.type({
   page: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
   db: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
 });
@@ -439,7 +439,7 @@ export type NotionCheckUrlResponseType = t.TypeOf<
   typeof NotionCheckUrlResponseSchema
 >;
 
-export const NotionDeleteUrlResponseSchema = t.type({
+const NotionDeleteUrlResponseSchema = t.type({
   deletedPage: t.boolean,
   deletedDb: t.boolean,
 });
@@ -455,7 +455,7 @@ export type NotionFindUrlResponseType = t.TypeOf<
   typeof NotionFindUrlResponseSchema
 >;
 
-export const NotionMeResponseSchema = t.type({
+const NotionMeResponseSchema = t.type({
   me: t.UnknownRecord, // notion type, can't be iots'd
   botOwner: t.UnknownRecord, // notion type, can't be iots'd
 });
@@ -467,7 +467,7 @@ export type NotionMeResponseType = t.TypeOf<typeof NotionMeResponseSchema>;
 /**
  * <Salesforce>
  */
-export const SalesforceCommandSchema = t.type({
+const SalesforceCommandSchema = t.type({
   majorCommand: t.literal("salesforce"),
   command: t.union([
     t.literal("check-connection"),
@@ -497,14 +497,14 @@ export const SalesforceCommandSchema = t.type({
 });
 export type SalesforceCommandType = t.TypeOf<typeof SalesforceCommandSchema>;
 
-export const SalesforceCheckConnectionResponseSchema = t.type({
+const SalesforceCheckConnectionResponseSchema = t.type({
   ok: t.boolean,
 });
 export type SalesforceCheckConnectionResponseType = t.TypeOf<
   typeof SalesforceCheckConnectionResponseSchema
 >;
 
-export const SalesforceRunSoqlResponseSchema = t.type({
+const SalesforceRunSoqlResponseSchema = t.type({
   records: t.array(t.UnknownRecord), // Salesforce type, can't be iots'd
   totalSize: t.number,
   done: t.boolean,
@@ -513,7 +513,7 @@ export type SalesforceRunSoqlResponseType = t.TypeOf<
   typeof SalesforceRunSoqlResponseSchema
 >;
 
-export const SalesforceSetupSyncedQueryResponseSchema = t.type({
+const SalesforceSetupSyncedQueryResponseSchema = t.type({
   documents: t.array(
     t.type({
       id: t.string,
@@ -530,7 +530,7 @@ export type SalesforceSetupSyncedQueryResponseType = t.TypeOf<
   typeof SalesforceSetupSyncedQueryResponseSchema
 >;
 
-export const SalesforceSyncQueryResponseSchema = t.type({
+const SalesforceSyncQueryResponseSchema = t.type({
   workflowId: t.string,
 });
 export type SalesforceSyncQueryResponseType = t.TypeOf<
@@ -543,7 +543,7 @@ export type SalesforceSyncQueryResponseType = t.TypeOf<
 /**
  * <Slack>
  */
-export const SlackCommandSchema = t.type({
+const SlackCommandSchema = t.type({
   majorCommand: t.literal("slack"),
   command: t.union([
     t.literal("add-channel-to-sync"),
@@ -568,7 +568,7 @@ export const SlackCommandSchema = t.type({
 });
 export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
 
-export const SlackJoinResponseSchema = t.type({
+const SlackJoinResponseSchema = t.type({
   total: t.number,
   processed: t.number,
 });
@@ -580,7 +580,7 @@ export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
 /**
  * <Snowflake>
  */
-export const SnowflakeCommandSchema = t.type({
+const SnowflakeCommandSchema = t.type({
   majorCommand: t.literal("snowflake"),
   command: t.union([
     t.literal("fetch-databases"),
@@ -595,7 +595,7 @@ export const SnowflakeCommandSchema = t.type({
 });
 export type SnowflakeCommandType = t.TypeOf<typeof SnowflakeCommandSchema>;
 
-export const SnowflakeFetchDatabaseResponseSchema = t.array(
+const SnowflakeFetchDatabaseResponseSchema = t.array(
   t.type({
     name: t.string,
   })
@@ -604,7 +604,7 @@ export type SnowflakeFetchDatabaseResponseType = t.TypeOf<
   typeof SnowflakeFetchDatabaseResponseSchema
 >;
 
-export const SnowflakeFetchSchemaResponseSchema = t.array(
+const SnowflakeFetchSchemaResponseSchema = t.array(
   t.type({
     name: t.string,
     database_name: t.string,
@@ -614,7 +614,7 @@ export type SnowflakeFetchSchemaResponseType = t.TypeOf<
   typeof SnowflakeFetchSchemaResponseSchema
 >;
 
-export const SnowflakeFetchTableResponseSchema = t.array(
+const SnowflakeFetchTableResponseSchema = t.array(
   t.type({
     name: t.string,
     database_name: t.string,
@@ -631,7 +631,7 @@ export type SnowflakeFetchTableResponseType = t.TypeOf<
 /**
  * <Temporal>
  */
-export const TemporalCommandSchema = t.type({
+const TemporalCommandSchema = t.type({
   majorCommand: t.literal("temporal"),
   command: t.union([
     t.literal("find-unprocessed-workflows"),
@@ -644,14 +644,14 @@ export const TemporalCommandSchema = t.type({
 });
 export type TemporalCommandType = t.TypeOf<typeof TemporalCommandSchema>;
 
-export const TemporalCheckQueueResponseSchema = t.type({
+const TemporalCheckQueueResponseSchema = t.type({
   taskQueue: t.UnknownRecord, // temporal type, can't be iots'd
 });
 export type TemporalCheckQueueResponseType = t.TypeOf<
   typeof TemporalCheckQueueResponseSchema
 >;
 
-export const TemporalUnprocessedWorkflowsResponseSchema = t.type({
+const TemporalUnprocessedWorkflowsResponseSchema = t.type({
   queuesAndPollers: t.array(t.type({ queue: t.string, pollers: t.number })),
   unprocessedQueues: t.array(t.string),
 });
@@ -665,7 +665,7 @@ export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
 /**
  * <Webcrawler>
  */
-export const WebcrawlerCommandSchema = t.type({
+const WebcrawlerCommandSchema = t.type({
   majorCommand: t.literal("webcrawler"),
   command: t.union([
     t.literal("start-scheduler"),
@@ -682,7 +682,7 @@ export type WebcrawlerCommandType = t.TypeOf<typeof WebcrawlerCommandSchema>;
 /**
  * <Zendesk>
  */
-export const ZendeskCommandSchema = t.type({
+const ZendeskCommandSchema = t.type({
   majorCommand: t.literal("zendesk"),
   command: t.union([
     t.literal("check-is-admin"),
@@ -717,7 +717,7 @@ export const ZendeskCommandSchema = t.type({
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
 
-export const ZendeskCheckIsAdminResponseSchema = t.type({
+const ZendeskCheckIsAdminResponseSchema = t.type({
   userRole: t.string,
   userActive: t.boolean,
   userIsAdmin: t.boolean,
@@ -726,14 +726,14 @@ export type ZendeskCheckIsAdminResponseType = t.TypeOf<
   typeof ZendeskCheckIsAdminResponseSchema
 >;
 
-export const ZendeskCountTicketsResponseSchema = t.type({
+const ZendeskCountTicketsResponseSchema = t.type({
   ticketCount: t.number,
 });
 export type ZendeskCountTicketsResponseType = t.TypeOf<
   typeof ZendeskCountTicketsResponseSchema
 >;
 
-export const ZendeskFetchTicketResponseSchema = t.type({
+const ZendeskFetchTicketResponseSchema = t.type({
   ticket: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
   shouldSyncTicket: t.type({
     shouldSync: t.boolean,
@@ -745,7 +745,7 @@ export type ZendeskFetchTicketResponseType = t.TypeOf<
   typeof ZendeskFetchTicketResponseSchema
 >;
 
-export const ZendeskFetchBrandResponseSchema = t.type({
+const ZendeskFetchBrandResponseSchema = t.type({
   brand: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
   brandOnDb: t.union([t.UnknownRecord, t.null]),
 });
@@ -753,14 +753,14 @@ export type ZendeskFetchBrandResponseType = t.TypeOf<
   typeof ZendeskFetchBrandResponseSchema
 >;
 
-export const ZendeskGetRetentionPeriodResponseSchema = t.type({
+const ZendeskGetRetentionPeriodResponseSchema = t.type({
   retentionPeriodDays: t.number,
 });
 export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
   typeof ZendeskGetRetentionPeriodResponseSchema
 >;
 
-export const ZendeskOrganizationTagResponseSchema = t.type({
+const ZendeskOrganizationTagResponseSchema = t.type({
   success: t.literal(true),
   message: t.union([t.string, t.undefined]),
 });
@@ -793,14 +793,14 @@ export const AdminCommandSchema = t.union([
 ]);
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
 
-export const AdminSuccessResponseSchema = t.type({
+const AdminSuccessResponseSchema = t.type({
   success: t.literal(true),
 });
 export type AdminSuccessResponseType = t.TypeOf<
   typeof AdminSuccessResponseSchema
 >;
 
-export const AdminResponseSchema = t.union([
+const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
   BatchAllResponseSchema,
   CheckFileGenericResponseSchema,

@@ -147,7 +147,7 @@ type FileFormat = {
 
 // NOTE: if we add more content types, we need to update the public api package. (but the
 // typechecker should catch it).
-export const FILE_FORMATS = {
+const FILE_FORMATS = {
   // Images.
   "image/jpeg": {
     cat: "image",
@@ -416,7 +416,7 @@ export type SupportedAudioContentType = {
 }[keyof typeof FILE_FORMATS];
 
 // All the ones listed above
-export const supportedUploadableContentType = Object.keys(FILE_FORMATS);
+const supportedUploadableContentType = Object.keys(FILE_FORMATS);
 
 export const DEFAULT_FILE_CONTENT_TYPE: SupportedFileContentType =
   "application/octet-stream";
@@ -435,7 +435,7 @@ export function isContentCreationFileContentType(
   ];
 }
 
-export function isAllSupportedFileContentType(
+function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (

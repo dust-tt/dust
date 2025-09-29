@@ -41,7 +41,7 @@ export function isBrowseScrapeSuccessResponse(
 /**
  * Fetches the content of a URL and returns it as markdown, HTML, or extracted data using Firecrawl
  */
-export const browseUrl = async (
+const browseUrl = async (
   url: string,
   format: "markdown" | "html" = "markdown",
   options?: {

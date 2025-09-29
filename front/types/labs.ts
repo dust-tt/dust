@@ -2,15 +2,11 @@ import type { ModelId, WhitelistableFeature } from "@app/types";
 
 // Constants
 
-export const labsTranscriptsProviders = [
-  "google_drive",
-  "gong",
-  "modjo",
-] as const;
+const labsTranscriptsProviders = ["google_drive", "gong", "modjo"] as const;
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
-export const labsFeatures = [
+const labsFeatures = [
   "transcripts",
   "trackers",
   "mcp_actions",

@@ -208,7 +208,7 @@ export interface IndustryPageConfig {
 }
 
 // Utility functions for section management
-export const defaultSectionOrder: SectionType[] = [
+const defaultSectionOrder: SectionType[] = [
   "hero",
   "aiAgents",
   "trustedBy",

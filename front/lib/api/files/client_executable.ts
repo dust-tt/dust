@@ -293,7 +293,7 @@ export async function getClientExecutableFileContent(
   }
 }
 
-export function isCreateFileActionType(
+function isCreateFileActionType(
   action: AgentMCPActionModel
 ): action is AgentMCPActionModel & {
   augmentedInputs: {

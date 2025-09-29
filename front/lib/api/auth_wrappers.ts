@@ -25,13 +25,7 @@ import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export const SUPPORTED_METHODS = [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-] as const;
+const SUPPORTED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 export type MethodType = (typeof SUPPORTED_METHODS)[number];
 
 export type ScopeType =

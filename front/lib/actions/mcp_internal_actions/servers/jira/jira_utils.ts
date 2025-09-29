@@ -8,7 +8,7 @@ import type {
 import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 
 // Helper function to escape JQL values that contain spaces or special characters
-export const escapeJQLValue = (value: string): string => {
+const escapeJQLValue = (value: string): string => {
   // JQL special characters that need quoting: space, quotes, backslash, forward slash,
   const hasSpecialChars = /[\s"'\\/]/.test(value);
 
@@ -103,7 +103,7 @@ export function createJQLFromSearchFilters(
  * @param fieldMetadata - Optional field metadata from Jira API containing schema information
  * @returns true if the field should be converted to ADF, false otherwise
  */
-export function shouldConvertToADF(
+function shouldConvertToADF(
   fieldKey: string,
   fieldValue: unknown,
   fieldMetadata?: {

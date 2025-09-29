@@ -7,7 +7,7 @@ import {
   REASONING_EFFORT_IDS,
 } from "@app/types/assistant/assistant";
 
-export const agentYAMLBasicInfoSchema = z.object({
+const agentYAMLBasicInfoSchema = z.object({
   handle: z.string().min(1, "Handle is required"),
   description: z.string().min(1, "Description is required"),
   scope: z.enum(["visible", "hidden"]),
@@ -16,7 +16,7 @@ export const agentYAMLBasicInfoSchema = z.object({
   visualization_enabled: z.boolean(),
 });
 
-export const agentYAMLGenerationSettingsSchema = z.object({
+const agentYAMLGenerationSettingsSchema = z.object({
   model_id: z.enum(MODEL_IDS),
   provider_id: z.enum(MODEL_PROVIDER_IDS),
   temperature: z.number().min(0).max(1, "Temperature must be between 0 and 1"),
@@ -24,38 +24,38 @@ export const agentYAMLGenerationSettingsSchema = z.object({
   response_format: z.string().optional(),
 });
 
-export const agentYAMLTagSchema = z.object({
+const agentYAMLTagSchema = z.object({
   name: z.string().min(1, "Tag name is required"),
   kind: z.enum(["standard", "protected"]),
 });
 
-export const agentYAMLEditorSchema = z.object({
+const agentYAMLEditorSchema = z.object({
   user_id: z.string().min(1, "User ID is required"),
   email: z.string().email("Invalid email address"),
   full_name: z.string().min(1, "Full name is required"),
 });
 
-export const agentYAMLTimeFrameSchema = z
+const agentYAMLTimeFrameSchema = z
   .object({
     duration: z.number().min(1, "Duration must be at least 1"),
     unit: z.enum(["hour", "day", "week", "month", "year"]),
   })
   .nullable();
 
-export const agentYAMLTagsFilterSchema = z.object({
+const agentYAMLTagsFilterSchema = z.object({
   in: z.array(z.string()),
   not: z.array(z.string()),
   mode: z.enum(["custom", "auto"]),
 });
 
-export const agentYAMLDataSourceConfigurationSchema = z.object({
+const agentYAMLDataSourceConfigurationSchema = z.object({
   view_id: z.string().min(1, "View ID is required"),
   selected_resources: z.array(z.string()),
   is_select_all: z.boolean(),
   tags_filter: agentYAMLTagsFilterSchema.nullable(),
 });
 
-export const baseAgentYAMLActionSchema = z.object({
+const baseAgentYAMLActionSchema = z.object({
   name: z.string().min(1, "Action name is required"),
   description: z.string().min(1, "Action description is required"),
 });
@@ -64,11 +64,11 @@ export const baseAgentYAMLActionSchema = z.object({
  * Base Data Source Action Configuration
  * Common configuration for actions that work with data sources
  */
-export const baseDataSourceActionConfigurationSchema = z.object({
+const baseDataSourceActionConfigurationSchema = z.object({
   data_sources: z.record(z.string(), agentYAMLDataSourceConfigurationSchema),
 });
 
-export const timeFrameActionConfigurationSchema =
+const timeFrameActionConfigurationSchema =
   baseDataSourceActionConfigurationSchema.extend({
     time_frame: agentYAMLTimeFrameSchema,
   });
@@ -76,13 +76,14 @@ export const timeFrameActionConfigurationSchema =
 /**
  * YAML Action Schemas
  */
-export const agentYAMLDataVisualizationActionSchema =
-  baseAgentYAMLActionSchema.extend({
+const agentYAMLDataVisualizationActionSchema = baseAgentYAMLActionSchema.extend(
+  {
     type: z.literal("DATA_VISUALIZATION"),
     configuration: z.object({}), // Empty configuration
-  });
+  }
+);
 
-export const agentYAMLReasoningModelSchema = z
+const agentYAMLReasoningModelSchema = z
   .object({
     model_id: z.enum(MODEL_IDS),
     provider_id: z.enum(MODEL_PROVIDER_IDS),
@@ -91,7 +92,7 @@ export const agentYAMLReasoningModelSchema = z
   })
   .nullable();
 
-export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
+const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
   type: z.literal("MCP"),
   configuration: z.object({
     mcp_server_name: z.string(),
@@ -105,12 +106,12 @@ export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
   }),
 });
 
-export const agentYAMLActionSchema = z.discriminatedUnion("type", [
+const agentYAMLActionSchema = z.discriminatedUnion("type", [
   agentYAMLDataVisualizationActionSchema,
   agentYAMLMCPActionSchema,
 ]);
 
-export const agentYAMLSlackIntegrationSchema = z.object({
+const agentYAMLSlackIntegrationSchema = z.object({
   provider: z.enum(["slack", "slack_bot"]).nullable(),
   channels: z.array(
     z.object({

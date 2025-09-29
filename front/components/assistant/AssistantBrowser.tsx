@@ -82,7 +82,7 @@ type AgentGridProps = {
   handleMoreClick: (agentId: string) => void;
 };
 
-export const AgentGrid = ({
+const AgentGrid = ({
   agentConfigurations,
   handleAssistantClick,
   handleMoreClick,

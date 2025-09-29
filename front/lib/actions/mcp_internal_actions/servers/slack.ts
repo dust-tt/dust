@@ -39,7 +39,7 @@ export type SlackSearchMatch = {
   permalink?: string;
 };
 
-export const slackSearch = async (
+const slackSearch = async (
   query: string,
   accessToken: string
 ): Promise<SlackSearchMatch[]> => {

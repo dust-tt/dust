@@ -17,7 +17,7 @@ type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
 
-export const AGENT_CREATIVITY_LEVELS = [
+const AGENT_CREATIVITY_LEVELS = [
   "deterministic",
   "factual",
   "balanced",

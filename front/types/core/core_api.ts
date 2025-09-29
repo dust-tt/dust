@@ -37,7 +37,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
-export const MAX_CHUNK_SIZE = 512;
+const MAX_CHUNK_SIZE = 512;
 
 export const EMBEDDING_CONFIGS: Record<EmbeddingProviderIdType, EmbedderType> =
   {
@@ -60,7 +60,7 @@ export type CoreAPIError = {
   code: string;
 };
 
-export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
+function isCoreAPIError(obj: unknown): obj is CoreAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&
@@ -214,7 +214,7 @@ export interface CoreAPISearchTagsResponse {
   }[];
 }
 
-export const CoreAPISearchScopeSchema = t.union([
+const CoreAPISearchScopeSchema = t.union([
   t.literal("nodes_titles"),
   t.literal("data_source_name"),
   t.literal("both"),
@@ -222,7 +222,7 @@ export const CoreAPISearchScopeSchema = t.union([
 
 export type CoreAPISearchScope = t.TypeOf<typeof CoreAPISearchScopeSchema>;
 
-export const CoreAPIDatasourceViewFilterSchema = t.intersection([
+const CoreAPIDatasourceViewFilterSchema = t.intersection([
   t.type({
     data_source_id: t.string,
     view_filter: t.array(t.string),
@@ -239,7 +239,7 @@ export type CoreAPIDatasourceViewFilter = t.TypeOf<
 // Edge-ngram starts at 2 characters.
 export const MIN_SEARCH_QUERY_SIZE = 2;
 
-export const CoreAPINodesSearchFilterSchema = t.intersection([
+const CoreAPINodesSearchFilterSchema = t.intersection([
   t.type({
     data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),
   }),

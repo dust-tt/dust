@@ -226,7 +226,7 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
   }
 };
 
-export const extractTextFromAudioAndUpload: ProcessingFunction = async (
+const extractTextFromAudioAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {

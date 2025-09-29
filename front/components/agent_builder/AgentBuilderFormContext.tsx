@@ -19,7 +19,7 @@ const supportedModelSchema = z.object({
   providerId: providerIdSchema,
 });
 
-export const generationSettingsSchema = z.object({
+const generationSettingsSchema = z.object({
   modelSettings: supportedModelSchema,
   temperature: z.number().min(0).max(1),
   reasoningEffort: reasoningEffortSchema,
@@ -87,7 +87,7 @@ export const dataSourceConfigurationSchema = z
   .record(z.string(), dataSourceViewSelectionConfigurationSchema)
   .nullable();
 
-export const timeFrameSchema = z
+const timeFrameSchema = z
   .object({
     duration: z.number().min(1),
     unit: z.enum(["hour", "day", "week", "month", "year"]),
@@ -231,13 +231,13 @@ export type AgentBuilderScheduleTriggerType = z.infer<
   typeof scheduleTriggerSchema
 >;
 
-export function isAgentBuilderWebhookTriggerType(
+function isAgentBuilderWebhookTriggerType(
   trigger: AgentBuilderTriggerType
 ): trigger is AgentBuilderWebhookTriggerType {
   return trigger.kind === "webhook";
 }
 
-export function isAgentBuilderScheduleTriggerType(
+function isAgentBuilderScheduleTriggerType(
   trigger: AgentBuilderTriggerType
 ): trigger is AgentBuilderScheduleTriggerType {
   return trigger.kind === "schedule";

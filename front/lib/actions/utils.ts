@@ -25,7 +25,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationType, AgentMessageType } from "@app/types";
 import { assertNever } from "@app/types";
 
-export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
+const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
@@ -46,7 +46,7 @@ export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
   flag: null,
 };
 
-export const SEARCH_SPECIFICATION: ActionSpecification = {
+const SEARCH_SPECIFICATION: ActionSpecification = {
   label: "Search",
   description: "Search across selected data sources",
   cardIcon: MagnifyingGlassIcon,
@@ -54,7 +54,7 @@ export const SEARCH_SPECIFICATION: ActionSpecification = {
   flag: null,
 };
 
-export const INCLUDE_DATA_SPECIFICATION: ActionSpecification = {
+const INCLUDE_DATA_SPECIFICATION: ActionSpecification = {
   label: "Include Data",
   description: "Include recent documents from selected data sources",
   cardIcon: ActionIncludeIcon,
@@ -62,7 +62,7 @@ export const INCLUDE_DATA_SPECIFICATION: ActionSpecification = {
   flag: null,
 };
 
-export const EXTRACT_DATA_SPECIFICATION: ActionSpecification = {
+const EXTRACT_DATA_SPECIFICATION: ActionSpecification = {
   label: "Extract Data",
   description: "Extract structured data from selected data sources",
   cardIcon: ActionScanIcon,
@@ -78,7 +78,7 @@ export const ACTION_SPECIFICATIONS_MAP = {
   EXTRACT_DATA: EXTRACT_DATA_SPECIFICATION,
 } as const;
 
-export function getActionSpecification(
+function getActionSpecification(
   actionType: string
 ): ActionSpecification | null {
   return (
@@ -96,7 +96,7 @@ export function getActionSpecification(
  * actions in the same step we get the maximum topK and divide it by the number of retrieval actions
  * in the step.
  */
-export function getRetrievalTopK({
+function getRetrievalTopK({
   agentConfiguration,
   stepActions,
 }: {
@@ -133,7 +133,7 @@ export function getRetrievalTopK({
  * websearch actions in the same step we get the maximum number of results and divide it by The
  * number of websearch actions in the step.
  */
-export function getWebsearchNumResults({
+function getWebsearchNumResults({
   stepActions,
 }: {
   stepActions: MCPToolConfigurationType[];
@@ -157,7 +157,7 @@ export function getWebsearchNumResults({
  * - Returns the shared topK for retrieval actions.
  * - Returns the shared number of results for websearch actions.
  */
-export function getCitationsCount({
+function getCitationsCount({
   agentConfiguration,
   stepActions,
   stepActionIndex,
@@ -234,7 +234,7 @@ export function computeStepContexts({
   return stepContexts;
 }
 
-export function getMCPApprovalKey({
+function getMCPApprovalKey({
   conversationId,
   messageId,
   actionId,

@@ -115,7 +115,7 @@ export function renderRelativeTimeFrameForToolOutput(
     : "across all time periods";
 }
 
-export function renderTagsForToolOutput(
+function renderTagsForToolOutput(
   tagsIn?: string[],
   tagsNot?: string[]
 ): string {

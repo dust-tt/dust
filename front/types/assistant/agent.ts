@@ -46,11 +46,7 @@ export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
  * - 'visible' scope are published agents
  * - 'hidden' scope are unpuiblished agents, visible by editors only
  */
-export const AGENT_CONFIGURATION_SCOPES = [
-  "global",
-  "visible",
-  "hidden",
-] as const;
+const AGENT_CONFIGURATION_SCOPES = ["global", "visible", "hidden"] as const;
 export type AgentConfigurationScope =
   (typeof AGENT_CONFIGURATION_SCOPES)[number];
 
@@ -173,7 +169,7 @@ export interface TemplateAgentConfigurationType {
   tags: TagType[];
 }
 
-export function isTemplateAgentConfiguration(
+function isTemplateAgentConfiguration(
   agentConfiguration:
     | LightAgentConfigurationType
     | TemplateAgentConfigurationType
@@ -193,7 +189,7 @@ export const MAX_ACTIONS_PER_STEP = 16;
  * Agent events
  */
 
-export const AgentErrorCategories = [
+const AgentErrorCategories = [
   "retryable_model_error",
   "context_window_exceeded",
   "provider_internal_error",
@@ -236,7 +232,7 @@ export type MCPServerPersonalAuthenticationRequiredMetadata = {
   messageId: string;
 };
 
-export function isMCPServerPersonalAuthenticationRequiredMetadata(
+function isMCPServerPersonalAuthenticationRequiredMetadata(
   metadata: unknown
 ): metadata is MCPServerPersonalAuthenticationRequiredMetadata {
   return (

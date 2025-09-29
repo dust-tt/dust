@@ -2,7 +2,7 @@ import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 
 // Supported operations for resource permissions.
-export const SUPPORTED_OPERATIONS = ["admin", "read", "write"] as const;
+const SUPPORTED_OPERATIONS = ["admin", "read", "write"] as const;
 
 export type PermissionType = (typeof SUPPORTED_OPERATIONS)[number];
 

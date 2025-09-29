@@ -161,12 +161,7 @@ SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
 export {
   Select as PokeSelect,
   SelectContent as PokeSelectContent,
-  SelectGroup as PokeSelectGroup,
   SelectItem as PokeSelectItem,
-  SelectLabel as PokeSelectLabel,
-  SelectScrollDownButton as PokeSelectScrollDownButton,
-  SelectScrollUpButton as PokeSelectScrollUpButton,
-  SelectSeparator as PokeSelectSeparator,
   SelectTrigger as PokeSelectTrigger,
   SelectValue as PokeSelectValue,
 };

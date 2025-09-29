@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 
-export const OAUTH_USE_CASES = [
+const OAUTH_USE_CASES = [
   "connection",
   "labs_transcripts",
   "platform_actions",
@@ -22,7 +22,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
   return OAUTH_USE_CASES.includes(obj as OAuthUseCase);
 }
 
-export const OAUTH_PROVIDERS = [
+const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
   "freshservice",
@@ -285,21 +285,18 @@ export function isValidClientIdOrSecret(s: unknown): s is string {
   return typeof s === "string" && s.trim().length > 0;
 }
 
-export function isValidUrl(s: unknown): s is string {
+function isValidUrl(s: unknown): s is string {
   return typeof s === "string" && validateUrl(s).valid;
 }
 
 // Credentials Providers
 
-export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
-  "gong",
-  "modjo",
-] as const;
+const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong", "modjo"] as const;
 
 export type ProvidersWithWorkspaceConfigurations =
   (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
 
-export const CREDENTIALS_PROVIDERS = [
+const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "bigquery",
   "salesforce",
@@ -332,14 +329,14 @@ const SnowflakeBaseCredentialsSchema = t.type({
 });
 
 // Legacy schema for backward compatibility
-export const SnowflakeLegacyCredentialsSchema = t.intersection([
+const SnowflakeLegacyCredentialsSchema = t.intersection([
   SnowflakeBaseCredentialsSchema,
   t.type({
     password: t.string,
   }),
 ]);
 
-export const SnowflakePasswordCredentialsSchema = t.intersection([
+const SnowflakePasswordCredentialsSchema = t.intersection([
   SnowflakeBaseCredentialsSchema,
   t.type({
     auth_type: t.literal("password"),
@@ -347,7 +344,7 @@ export const SnowflakePasswordCredentialsSchema = t.intersection([
   }),
 ]);
 
-export const SnowflakeKeyPairCredentialsSchema = t.intersection([
+const SnowflakeKeyPairCredentialsSchema = t.intersection([
   SnowflakeBaseCredentialsSchema,
   t.type({
     auth_type: t.literal("keypair"),
@@ -401,13 +398,13 @@ export type BigQueryCredentialsWithLocation = t.TypeOf<
   typeof BigQueryCredentialsWithLocationSchema
 >;
 
-export const ApiKeyCredentialsSchema = t.type({
+const ApiKeyCredentialsSchema = t.type({
   api_key: t.string,
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 export type LinearCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 
-export const HubspotCredentialsSchema = t.type({
+const HubspotCredentialsSchema = t.type({
   accessToken: t.string,
   portalId: t.string,
 });

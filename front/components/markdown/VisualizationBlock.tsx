@@ -21,7 +21,7 @@ type VisualizationBlockProps = {
   position: PositionType;
   customRenderer?: CustomRenderers;
 };
-export function VisualizationBlock({
+function VisualizationBlock({
   position,
   customRenderer,
 }: VisualizationBlockProps) {

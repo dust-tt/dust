@@ -113,7 +113,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
 /**
  * Function to call when we edit something in FREE_PLANS_DATA to update the database. It will create or update the plans.
  */
-export const upsertFreePlans = async () => {
+const upsertFreePlans = async () => {
   for (const planData of FREE_PLANS_DATA) {
     const plan = await Plan.findOne({
       where: {

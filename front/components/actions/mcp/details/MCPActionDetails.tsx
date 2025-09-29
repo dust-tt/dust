@@ -267,7 +267,7 @@ export function MCPActionDetails({
   );
 }
 
-export function GenericActionDetails({
+function GenericActionDetails({
   owner,
   action,
   viewType,

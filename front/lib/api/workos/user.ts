@@ -76,7 +76,7 @@ export async function getWorkOSSession(
   return undefined;
 }
 
-export async function _getRefreshedCookie(
+async function _getRefreshedCookie(
   workOSSessionCookie: string,
   session: ReturnType<WorkOS["userManagement"]["loadSealedSession"]>,
   organizationId: string | undefined,
@@ -117,7 +117,7 @@ const getRefreshedCookie = cacheWithRedis(
   }
 );
 
-export async function getWorkOSSessionFromCookie(
+async function getWorkOSSessionFromCookie(
   workOSSessionCookie: string
 ): Promise<{
   cookie: string | undefined;
@@ -213,7 +213,7 @@ export async function setRegionForUser(user: WorkOSUser, region: RegionType) {
   });
 }
 
-export async function updateUserFromAuth0(
+async function updateUserFromAuth0(
   session: SessionWithUser,
   region: RegionType,
   emailVerified: boolean

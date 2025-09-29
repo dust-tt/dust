@@ -6,7 +6,7 @@ import type { ModelIdType as BaseModelIdType } from "@app/types";
 type ModelIdType = BaseModelIdType | string;
 
 // Pricing (in USD) per million of tokens by model.
-export const MODEL_PRICING: Record<
+const MODEL_PRICING: Record<
   ModelIdType,
   {
     input: number;

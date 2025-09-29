@@ -172,7 +172,7 @@ export function convertUrlToPoke(url: string): string | null {
   }
 }
 
-export function convertPokeToUrl(pokeUrl: string): string | null {
+function convertPokeToUrl(pokeUrl: string): string | null {
   try {
     const urlObj = new URL(pokeUrl);
 

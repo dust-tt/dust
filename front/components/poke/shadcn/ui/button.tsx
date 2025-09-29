@@ -54,4 +54,4 @@ const PokeButton = React.forwardRef<HTMLButtonElement, PokeButtonProps>(
 );
 PokeButton.displayName = "Button";
 
-export { buttonVariants, PokeButton };
+export { PokeButton };

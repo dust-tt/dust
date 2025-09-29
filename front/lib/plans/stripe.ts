@@ -231,9 +231,7 @@ export const createCustomerPortalSession = async ({
 /**
  * Calls the Stripe API to retrieve a product by its ID.
  */
-export const getProduct = async (
-  productId: string
-): Promise<Stripe.Product> => {
+const getProduct = async (productId: string): Promise<Stripe.Product> => {
   const stripe = getStripeClient();
   const product = await stripe.products.retrieve(productId);
   return product;
@@ -294,7 +292,7 @@ export const extendStripeSubscriptionTrial = async (
  * subscription items with prices of type "licensed" (that is, per seat).
  * https://stripe.com/docs/billing/subscriptions/upgrade-downgrade
  */
-export const updateStripeQuantityForSubscriptionItem = async (
+const updateStripeQuantityForSubscriptionItem = async (
   subscriptionItem: Stripe.SubscriptionItem,
   quantity: number
 ): Promise<void> => {

@@ -290,7 +290,7 @@ interface QuoteProps {
 }
 
 // Collection of all quotes from across the site
-export const AllQuotes: QuoteProps[] = [
+const AllQuotes: QuoteProps[] = [
   {
     quote:
       "It’s not just about retrieving information from one place. Our sales team needs information that’s often scattered across multiple internal applications. Dust brings it all together.",
@@ -424,7 +424,7 @@ interface CarousselContentBlockProps {
   roi?: ROIProps;
 }
 
-export const CarousselContentBlock = ({
+const CarousselContentBlock = ({
   title,
   from,
   to,
@@ -589,7 +589,7 @@ interface ImgContentProps {
   }[];
 }
 
-export const ImgContent: React.FC<ImgContentProps> = ({ images }) => {
+const ImgContent: React.FC<ImgContentProps> = ({ images }) => {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <div className="relative flex h-full w-full max-w-md items-center justify-center">

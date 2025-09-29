@@ -5,12 +5,12 @@ import type { JSONContent } from "@tiptap/react";
 /**
  * Tag name pattern (XML-like, simplified): start with letter/_ then [A-Za-z0-9._:-]*
  */
-export const TAG_NAME_PATTERN = "[A-Za-z_][A-Za-z0-9._:-]*";
+const TAG_NAME_PATTERN = "[A-Za-z_][A-Za-z0-9._:-]*";
 
 /**
  * Regex pattern for matching XML-style instruction blocks
  */
-export const INSTRUCTION_BLOCK_REGEX = new RegExp(
+const INSTRUCTION_BLOCK_REGEX = new RegExp(
   `<(${TAG_NAME_PATTERN})>([\\s\\S]*?)<\\/\\1>`,
   "g"
 );
@@ -35,9 +35,7 @@ export interface InstructionBlockMatch {
 /**
  * Parse instruction block matches from text
  */
-export function parseInstructionBlockMatches(
-  text: string
-): InstructionBlockMatch[] {
+function parseInstructionBlockMatches(text: string): InstructionBlockMatch[] {
   const matches: InstructionBlockMatch[] = [];
   const regex = new RegExp(
     INSTRUCTION_BLOCK_REGEX.source,
@@ -61,7 +59,7 @@ export function parseInstructionBlockMatches(
 /**
  * Convert text content to paragraph JSONContent nodes
  */
-export function textToParagraphNodes(content: string): JSONContent[] {
+function textToParagraphNodes(content: string): JSONContent[] {
   const lines = content.split("\n");
   return lines.map((line) => ({
     type: "paragraph",
@@ -138,7 +136,7 @@ export function textToBlockNodes(content: string): JSONContent[] {
 /**
  * Convert text content to ProseMirror paragraph nodes
  */
-export function textToProseMirrorParagraphs(
+function textToProseMirrorParagraphs(
   content: string,
   schema: Schema
 ): ProseMirrorNode[] {
@@ -155,7 +153,7 @@ export function textToProseMirrorParagraphs(
 /**
  * Convert text content to ProseMirror block nodes (paragraphs, headings, and code blocks)
  */
-export function textToProseMirrorBlocks(
+function textToProseMirrorBlocks(
   content: string,
   schema: Schema
 ): ProseMirrorNode[] {
@@ -250,7 +248,7 @@ export function createInstructionBlockNode(
  * Split content into segments preserving fenced code blocks.
  * Supports info strings and languages with symbols (e.g., c++, objective-c).
  */
-export function splitContentByCodeFences(
+function splitContentByCodeFences(
   content: string
 ): Array<{ type: "code" | "text"; content: string; info?: string }> {
   const codeBlockRegex = /```([^\n]*)\n([\s\S]*?)```/g;
@@ -300,7 +298,7 @@ function extractLanguageFromInfo(info?: string): string {
 /**
  * Create ProseMirror instruction block node
  */
-export function createProseMirrorInstructionBlock(
+function createProseMirrorInstructionBlock(
   type: string,
   content: string,
   nodeType: NodeType,

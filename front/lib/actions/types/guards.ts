@@ -16,7 +16,7 @@ import type {
   TemplateAgentConfigurationType,
 } from "@app/types";
 
-export function isDustAppRunConfiguration(
+function isDustAppRunConfiguration(
   arg: unknown
 ): arg is DustAppRunConfigurationType {
   return (
@@ -245,7 +245,7 @@ export function isLightClientSideMCPToolConfiguration(
   );
 }
 
-export function isLightMCPToolConfiguration(
+function isLightMCPToolConfiguration(
   arg: unknown
 ): arg is LightMCPToolConfigurationType {
   return (

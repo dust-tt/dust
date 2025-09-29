@@ -4,7 +4,7 @@ import { injectReplacements } from "sequelize/lib/utils/sql";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 
-export function getInsertSQL(model: any, data: any) {
+function getInsertSQL(model: any, data: any) {
   // Build an instance but don't save it
   const instance = model.build(data);
 

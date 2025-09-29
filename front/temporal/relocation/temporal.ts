@@ -17,6 +17,6 @@ export async function getTemporalRelocationWorkerConnection(): Promise<{
   return { connection, namespace: process.env.TEMPORAL_RELOCATION_NAMESPACE };
 }
 
-export async function getTemporalRelocationClient() {
+async function getTemporalRelocationClient() {
   return getTemporalClientForNamespace("relocation");
 }

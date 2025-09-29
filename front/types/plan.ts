@@ -93,7 +93,7 @@ export type SubscriptionPerSeatPricing = {
   quantity: number;
 };
 
-export const CreatePlanFormSchema = t.type({
+const CreatePlanFormSchema = t.type({
   code: NonEmptyString,
   name: NonEmptyString,
   isSlackbotAllowed: t.boolean,

@@ -19,7 +19,7 @@ export interface EditorContentForModel {
   }[];
 }
 
-export function getEditorContentFromDom(editor: Editor): EditorContentForModel {
+function getEditorContentFromDom(editor: Editor): EditorContentForModel {
   const nodes: EditorContentForModel["nodes"] = [];
 
   let currentNodeIndex = 0;
@@ -87,9 +87,7 @@ export function getEditorContentFromDom(editor: Editor): EditorContentForModel {
   };
 }
 
-export function getEditorContentForModel(
-  editor: Editor
-): EditorContentForModel {
+function getEditorContentForModel(editor: Editor): EditorContentForModel {
   const editorJSON = editor.getJSON();
 
   if (!editorJSON.content) {

@@ -11,7 +11,7 @@ import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
 let sgMailClient: sgMail.MailService | null = null;
 
-export function getSgMailClient(): any {
+function getSgMailClient(): any {
   if (!sgMailClient) {
     sgMail.setApiKey(config.getSendgridApiKey());
     sgMailClient = sgMail;

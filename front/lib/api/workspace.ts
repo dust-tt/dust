@@ -58,7 +58,7 @@ export async function getWorkspaceInfos(
   return renderLightWorkspaceType({ workspace });
 }
 
-export async function removeAllWorkspaceDomains(
+async function removeAllWorkspaceDomains(
   workspace: LightWorkspaceType
 ): Promise<void> {
   await WorkspaceHasDomainModel.destroy({
@@ -272,7 +272,7 @@ export async function searchMembers(
   return { members: usersWithWorkspace, total };
 }
 
-export async function getMembersCount(
+async function getMembersCount(
   auth: Authenticator,
   { activeOnly = false }: { activeOnly?: boolean } = {}
 ): Promise<number> {
@@ -399,7 +399,7 @@ export interface WorkspaceMetadata {
   allowContentCreationFileSharing?: boolean;
 }
 
-export async function updateWorkspaceMetadata(
+async function updateWorkspaceMetadata(
   owner: LightWorkspaceType,
   metadata: WorkspaceMetadata
 ): Promise<Result<void, Error>> {
@@ -409,21 +409,19 @@ export async function updateWorkspaceMetadata(
   return WorkspaceResource.updateMetadata(owner.id, newMetadata);
 }
 
-export async function setWorkspaceRelocating(
+async function setWorkspaceRelocating(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
   return updateWorkspaceMetadata(owner, { maintenance: "relocation" });
 }
 
-export async function setWorkspaceRelocated(
+async function setWorkspaceRelocated(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
   return updateWorkspaceMetadata(owner, { maintenance: "relocation-done" });
 }
 
-export function isWorkspaceRelocationOngoing(
-  owner: LightWorkspaceType
-): boolean {
+function isWorkspaceRelocationOngoing(owner: LightWorkspaceType): boolean {
   return owner.metadata?.maintenance === "relocation";
 }
 

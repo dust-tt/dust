@@ -41,7 +41,7 @@ export async function listAgentConfigurationsForGroups(
   });
 }
 
-export function getDataSourceViewIdsFromActions(
+function getDataSourceViewIdsFromActions(
   actions: UnsavedMCPServerConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
@@ -65,7 +65,7 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
-export function groupsFromRequestedPermissions(
+function groupsFromRequestedPermissions(
   requestedPermissions: CombinedResourcePermissions[]
 ) {
   return (

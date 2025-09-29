@@ -43,7 +43,7 @@ export const DATA_SOURCE_VIEW_CATEGORIES = [
 export type DataSourceViewCategory =
   (typeof DATA_SOURCE_VIEW_CATEGORIES)[number];
 
-export function isValidDataSourceViewCategory(
+function isValidDataSourceViewCategory(
   category: unknown
 ): category is DataSourceViewCategory {
   return DATA_SOURCE_VIEW_CATEGORIES.includes(

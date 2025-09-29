@@ -30,7 +30,7 @@ interface CustomerStoriesSectionProps {
   stories: CustomerStory[];
 }
 
-export const defaultCustomerStories: CustomerStory[] = [
+const defaultCustomerStories: CustomerStory[] = [
   {
     title: "Doctolib uses Dust for AI adoption of 3,000 employees",
     content:

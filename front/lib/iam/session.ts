@@ -63,7 +63,7 @@ export type CustomGetServerSideProps<
   session: RequireUserPrivilege extends "none" ? null : SessionWithUser
 ) => Promise<GetServerSidePropsResult<Props>>;
 
-export function statisfiesEnforceEntrepriseConnection(
+function statisfiesEnforceEntrepriseConnection(
   auth: Authenticator,
   session: SessionWithUser
 ) {
@@ -269,7 +269,7 @@ export const withDefaultUserAuthRequirements =
  * This should only be used for pages that don't require
  * the current user to be in the current workspace.
  */
-export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
+const withDefaultUserAuthRequirementsNoWorkspaceCheck =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: true,

@@ -62,7 +62,7 @@ export function getConnectorsPrimaryDbConnection() {
   return connectorsPrimaryDbInstance;
 }
 
-export function getCorePrimaryDbConnection() {
+function getCorePrimaryDbConnection() {
   if (!corePrimaryDbInstance) {
     corePrimaryDbInstance = new Sequelize(config.getCoreDatabasePrimaryUri(), {
       logging: false,

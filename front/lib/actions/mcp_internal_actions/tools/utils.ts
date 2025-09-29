@@ -208,7 +208,7 @@ type DataSourceConfigInfo =
       configuration: DataSourceConfiguration;
     };
 
-export function parseDataSourceConfigurationURI(
+function parseDataSourceConfigurationURI(
   uri: string
 ): Result<DataSourceConfigInfo, Error> {
   const match = uri.match(DATA_SOURCE_CONFIGURATION_URI_PATTERN);

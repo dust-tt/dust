@@ -1,5 +1,5 @@
 // EU member states country codes (ISO 3166-1 alpha-2)
-export const EU_COUNTRY_CODES = new Set([
+const EU_COUNTRY_CODES = new Set([
   "AT", // Austria
   "BE", // Belgium
   "BG", // Bulgaria
@@ -30,7 +30,7 @@ export const EU_COUNTRY_CODES = new Set([
 ]);
 
 // Additional countries that follow GDPR (EEA countries + UK)
-export const GDPR_COUNTRY_CODES = new Set([
+const GDPR_COUNTRY_CODES = new Set([
   ...EU_COUNTRY_CODES,
   "IS", // Iceland
   "LI", // Liechtenstein

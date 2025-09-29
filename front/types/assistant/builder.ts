@@ -28,7 +28,7 @@ export const ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES: Record<
   creative: 1.0,
 };
 
-export const ASSISTANT_BUILDER_DRAWER_TABS = [
+const ASSISTANT_BUILDER_DRAWER_TABS = [
   "Template",
   "Preview",
   "Performance",
@@ -37,7 +37,7 @@ export const ASSISTANT_BUILDER_DRAWER_TABS = [
 export type AssistantBuilderRightPanelTabType =
   (typeof ASSISTANT_BUILDER_DRAWER_TABS)[number];
 
-export function isAssistantBuilderRightPanelTab(
+function isAssistantBuilderRightPanelTab(
   value: unknown
 ): value is AssistantBuilderRightPanelTabType {
   return (

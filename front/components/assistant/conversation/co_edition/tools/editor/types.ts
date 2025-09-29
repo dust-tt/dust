@@ -6,7 +6,7 @@ const BaseNodeSchema = z.object({
 });
 
 // Text node type.
-export const CoEditionTextNodeSchema = BaseNodeSchema.extend({
+const CoEditionTextNodeSchema = BaseNodeSchema.extend({
   type: z.literal("text"),
   content: z
     .string()
@@ -23,7 +23,7 @@ export const CoEditionTextNodeSchema = BaseNodeSchema.extend({
 });
 
 // Image node type.
-export const CoEditionImageNodeSchema = BaseNodeSchema.extend({
+const CoEditionImageNodeSchema = BaseNodeSchema.extend({
   type: z.literal("image"),
   fileId: z
     .string()

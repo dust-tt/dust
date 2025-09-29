@@ -12,7 +12,7 @@ export function getPurgeRunExecutionsScheduleId() {
   return "purge-run-executions-schedule";
 }
 
-export const RUN_EXECUTIONS_RETENTION_DAYS_THRESHOLD = 30;
+const RUN_EXECUTIONS_RETENTION_DAYS_THRESHOLD = 30;
 
 export function getRunExecutionsDeletionCutoffDate(): number {
   const cutoffDate = new Date();

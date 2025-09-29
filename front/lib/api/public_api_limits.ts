@@ -59,7 +59,7 @@ export async function hasReachedPublicAPILimits(
   });
 }
 
-export async function trackTokenUsageCost(
+async function trackTokenUsageCost(
   workspace: LightWorkspaceType,
   amount: number
 ): Promise<number> {
@@ -124,7 +124,7 @@ async function initializeCredits(
   await redis.expire(key, secondsUntilEnd);
 }
 
-export async function maybeTrackTokenUsageCost(
+async function maybeTrackTokenUsageCost(
   auth: Authenticator,
   { dustRunIds }: { dustRunIds: string[] }
 ) {

@@ -8,7 +8,7 @@ export interface RegionInfo {
   url: string;
 }
 
-export function isRegionType(region: string): region is RegionType {
+function isRegionType(region: string): region is RegionType {
   return SUPPORTED_REGIONS.includes(region as RegionType);
 }
 

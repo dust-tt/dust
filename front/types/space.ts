@@ -1,8 +1,4 @@
-export const UNIQUE_SPACE_KINDS = [
-  "global",
-  "system",
-  "conversations",
-] as const;
+const UNIQUE_SPACE_KINDS = ["global", "system", "conversations"] as const;
 
 export const SPACE_KINDS = [
   ...UNIQUE_SPACE_KINDS,

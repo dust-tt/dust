@@ -379,9 +379,7 @@ async function getJiraResourceInfo(accessToken: string): Promise<{
   return null;
 }
 
-export async function getJiraBaseUrl(
-  accessToken: string
-): Promise<string | null> {
+async function getJiraBaseUrl(accessToken: string): Promise<string | null> {
   const resourceInfo = await getJiraResourceInfo(accessToken);
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const cloudId = resourceInfo?.id || null;
@@ -707,7 +705,7 @@ export async function transitionIssue(
   return handleResults(result, null);
 }
 
-export async function getAllFields(
+async function getAllFields(
   baseUrl: string,
   accessToken: string
 ): Promise<

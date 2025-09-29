@@ -29,7 +29,7 @@ export function recomputeIndents(spec: SpecificationType): SpecificationType {
   return spec;
 }
 
-export function getNextName(spec: SpecificationType, name: string): string {
+function getNextName(spec: SpecificationType, name: string): string {
   let suffix = 0;
   let n = name;
   spec.forEach((b) => {
@@ -381,7 +381,7 @@ export function moveBlockDown(
   return recomputeIndents(s);
 }
 
-export function escapeTripleBackticks(s: string): string {
+function escapeTripleBackticks(s: string): string {
   return s.replace(/```/g, "<DUST_TRIPLE_BACKTICKS>");
 }
 export function restoreTripleBackticks(s: string): string {

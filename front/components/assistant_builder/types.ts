@@ -99,7 +99,7 @@ export interface ActionSpecification {
   flag: WhitelistableFeature | null;
 }
 
-export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
+function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
   return {
     type: "DATA_VISUALIZATION",
     configuration: null,

@@ -64,7 +64,7 @@ export function getMaximalVersionAgentStepContent(
   return Array.from(maxVersionStepContents.values());
 }
 
-export async function generateParsedContents(
+async function generateParsedContents(
   actions: AgentMCPActionWithOutputType[],
   agentConfiguration: LightAgentConfigurationType,
   messageId: string,

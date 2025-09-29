@@ -1,9 +1,9 @@
 import * as t from "io-ts";
 
-export const WEBCRAWLER_MAX_DEPTH = 5;
+const WEBCRAWLER_MAX_DEPTH = 5;
 export const WEBCRAWLER_MAX_PAGES = 1024;
 
-export const CrawlingModes = ["child", "website"] as const;
+const CrawlingModes = ["child", "website"] as const;
 export type CrawlingMode = (typeof CrawlingModes)[number];
 
 export const CrawlingFrequencies = [
@@ -20,7 +20,7 @@ export type WebCrawlerConfigurationType = t.TypeOf<
   typeof WebCrawlerConfigurationTypeSchema
 >;
 
-export function isDepthOption(value: unknown): value is DepthOption {
+function isDepthOption(value: unknown): value is DepthOption {
   return DepthOptions.includes(value as DepthOption);
 }
 

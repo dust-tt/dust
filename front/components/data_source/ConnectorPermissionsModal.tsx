@@ -91,7 +91,7 @@ const getUseResourceHook =
       viewType: "all",
     });
 
-export async function handleUpdatePermissions(
+async function handleUpdatePermissions(
   connector: ConnectorType,
   dataSource: DataSourceType,
   owner: LightWorkspaceType,

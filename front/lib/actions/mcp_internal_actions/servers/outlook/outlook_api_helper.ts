@@ -4,7 +4,7 @@ import logger from "@app/logger/logger";
 
 const localLogger = logger.child({ module: "outlook_api_helper" });
 
-export const OutlookCalendarSchema = z.object({
+const OutlookCalendarSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
@@ -19,7 +19,7 @@ export const OutlookCalendarSchema = z.object({
     .optional(),
 });
 
-export const OutlookEventSchema = z.object({
+const OutlookEventSchema = z.object({
   id: z.string(),
   subject: z.string().optional(),
   body: z

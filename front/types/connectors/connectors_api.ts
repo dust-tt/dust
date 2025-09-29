@@ -27,7 +27,7 @@ export type UpdateConnectorConfigurationType = t.TypeOf<
   typeof UpdateConnectorConfigurationTypeSchema
 >;
 
-export const ConnectorCreateRequestBodySchema = t.type({
+const ConnectorCreateRequestBodySchema = t.type({
   workspaceAPIKey: t.string,
   dataSourceId: t.string,
   workspaceId: t.string,
@@ -63,7 +63,7 @@ export const CONNECTORS_ERROR_TYPES = [
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
-export function isConnectorError(val: string): val is ConnectorErrorType {
+function isConnectorError(val: string): val is ConnectorErrorType {
   return (CONNECTORS_ERROR_TYPES as unknown as string[]).includes(val);
 }
 

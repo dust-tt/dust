@@ -1,6 +1,6 @@
 import { EnvironmentConfig, isDevelopment } from "@app/types";
 
-export const PRODUCTION_DUST_API = "https://dust.tt";
+const PRODUCTION_DUST_API = "https://dust.tt";
 
 const config = {
   getClientFacingUrl: (): string => {

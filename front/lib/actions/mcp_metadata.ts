@@ -58,7 +58,7 @@ export type AuthorizationInfo = {
   scope?: string;
 };
 
-export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
+function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
   return (
     typeof a === "object" &&
     a !== null &&
@@ -68,7 +68,7 @@ export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
   );
 }
 
-export function isInternalMCPServerDefinition(
+function isInternalMCPServerDefinition(
   server: Implementation
 ): server is InternalMCPServerDefinitionType {
   return (

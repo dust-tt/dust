@@ -33,7 +33,7 @@ types.setTypeParser(types.builtins.INT8, function (val: unknown) {
   return Number(val);
 });
 
-export const statsDClient = getStatsDClient();
+const statsDClient = getStatsDClient();
 const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;
 
 export const frontSequelize = new Sequelize(

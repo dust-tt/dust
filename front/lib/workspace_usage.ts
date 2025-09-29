@@ -254,7 +254,7 @@ export async function getMessageUsageData(
   return generateCsvFromQueryResult(results);
 }
 
-export async function getGroupMembershipsData(
+async function getGroupMembershipsData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
@@ -275,7 +275,7 @@ export async function getGroupMembershipsData(
   return generateCsvFromQueryResult(groupMembershipsData);
 }
 
-export async function getUserGroupMemberships(
+async function getUserGroupMemberships(
   workspaceId: number,
   startDate: Date,
   endDate: Date

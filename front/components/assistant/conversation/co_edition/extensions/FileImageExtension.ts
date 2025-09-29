@@ -8,7 +8,7 @@ interface FileImageOptions {
   workspaceId: string;
 }
 
-export const FileImageExtension = Node.create<FileImageOptions>({
+const FileImageExtension = Node.create<FileImageOptions>({
   name: "fileImage",
   group: "block",
   atom: true,

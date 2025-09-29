@@ -9,7 +9,7 @@ import { readableStreamToReadable } from "../utils/streams";
 import { transformStream } from "./transform";
 import { transformStreamToCSV } from "./transformToCSV";
 
-export const pagePrefixesPerMimeType: Record<string, string> = {
+const pagePrefixesPerMimeType: Record<string, string> = {
   "application/pdf": "$pdfPage",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation":
     "$slideNumber",

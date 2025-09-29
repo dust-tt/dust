@@ -24,7 +24,7 @@ export type MigratedCredentialsType = {
   raw_json: unknown;
 };
 
-export function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
+function isOAuthAPIError(obj: unknown): obj is OAuthAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&

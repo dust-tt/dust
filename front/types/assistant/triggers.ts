@@ -53,9 +53,7 @@ export type ScheduleTriggerType = TriggerType & {
   configuration: ScheduleConfig;
 };
 
-export function isWebhookTrigger(
-  trigger: TriggerType
-): trigger is WebhookTriggerType {
+function isWebhookTrigger(trigger: TriggerType): trigger is WebhookTriggerType {
   return trigger.kind === "webhook";
 }
 

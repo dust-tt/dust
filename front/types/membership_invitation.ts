@@ -20,7 +20,7 @@ export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
 
 // Types for the invite form in Poke.
 
-export const InviteMemberFormSchema = t.type({
+const InviteMemberFormSchema = t.type({
   email: NonEmptyString,
   role: ActiveRoleSchema,
 });

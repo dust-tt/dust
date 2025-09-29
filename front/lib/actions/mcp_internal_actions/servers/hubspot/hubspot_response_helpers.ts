@@ -26,7 +26,7 @@ const IMPORTANT_DATE_FIELDS: Record<string, string[]> = {
   deals: ["closedate", "createdate", "lastmodifieddate"],
 };
 
-export function formatHubSpotObject(
+function formatHubSpotObject(
   object: SimplePublicObject,
   objectType: string,
   portalId?: string
@@ -105,9 +105,7 @@ export function formatHubSpotObject(
   };
 }
 
-export function formatHubSpotProperty(
-  property: Property
-): HubSpotPropertySummary {
+function formatHubSpotProperty(property: Property): HubSpotPropertySummary {
   return {
     name: property.name,
     label: property.label || property.name,
@@ -155,7 +153,7 @@ export function formatHubSpotObjectsAsText(
   return `Found ${objects.length} ${objectType}:\n\n${formatted}`;
 }
 
-export function formatHubSpotPropertiesAsText(
+function formatHubSpotPropertiesAsText(
   properties: Property[],
   objectType: string,
   creatableOnly: boolean = false

@@ -46,7 +46,7 @@ const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GEMINI_2_5_PRO_MODEL_ID,
 ] as const;
 
-export const CREATIVITY_LEVELS = Object.entries(
+const CREATIVITY_LEVELS = Object.entries(
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
 ).map(([k, v]) => ({
   label:

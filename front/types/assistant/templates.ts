@@ -8,7 +8,7 @@ import { AssistantCreativityLevelCodec } from "./builder";
 
 // TAGS
 
-export const TEMPLATES_TAG_CODES = [
+const TEMPLATES_TAG_CODES = [
   "CONTENT",
   "DATA",
   "DESIGN",
@@ -128,7 +128,7 @@ export const MULTI_ACTION_PRESETS: Record<MultiActionType, string> = {
   WEB_NAVIGATION: "Web navigation",
 } as const;
 export type MultiActionPreset = keyof typeof MULTI_ACTION_PRESETS;
-export const MultiActionPresetCodec = ioTsEnum<MultiActionPreset>(
+const MultiActionPresetCodec = ioTsEnum<MultiActionPreset>(
   Object.keys(MULTI_ACTION_PRESETS),
   "MultiActionPreset"
 );
@@ -151,7 +151,7 @@ export const TEMPLATE_VISIBILITIES = [
   "disabled",
 ] as const;
 export type TemplateVisibility = (typeof TEMPLATE_VISIBILITIES)[number];
-export const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
+const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
   TEMPLATE_VISIBILITIES,
   "TemplateVisibility"
 );

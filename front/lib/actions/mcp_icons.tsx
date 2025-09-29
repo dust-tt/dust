@@ -110,7 +110,7 @@ export const getAvatar = (
   return getAvatarFromIcon(mcpServer.icon, size);
 };
 
-export const getAvatarFromIcon = (
+const getAvatarFromIcon = (
   icon: InternalAllowedIconType | CustomServerIconType,
   size: ComponentProps<typeof Avatar>["size"] = "sm"
 ) => {

@@ -72,7 +72,7 @@ export function assistantUsageMessage<T extends boolean>({
   return "" as T extends true ? string : ReactNode;
 }
 
-export function assistantActiveUsersMessage<T extends boolean>({
+function assistantActiveUsersMessage<T extends boolean>({
   usage,
   isLoading,
   isError,

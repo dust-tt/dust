@@ -41,7 +41,7 @@ export function buildSelectedEmojiType(
   return null;
 }
 
-export function getDefaultAvatarUrlForPreview(): string | null {
+function getDefaultAvatarUrlForPreview(): string | null {
   const emoji = buildSelectedEmojiType("🤖");
   if (!emoji) {
     return null;

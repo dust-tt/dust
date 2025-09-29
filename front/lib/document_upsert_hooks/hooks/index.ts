@@ -8,8 +8,7 @@ const _hooks = {
   tracker: trackerUpsertHook,
 } as const;
 
-export const DOCUMENT_UPSERT_HOOKS: Array<DocumentUpsertHook> =
-  Object.values(_hooks);
+const DOCUMENT_UPSERT_HOOKS: Array<DocumentUpsertHook> = Object.values(_hooks);
 
 export type DocumentUpsertHook = {
   type: string;

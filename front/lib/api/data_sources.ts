@@ -1189,7 +1189,7 @@ async function getAllManagedDataSources(auth: Authenticator) {
   return dataSources.filter((ds) => ds.connectorId !== null);
 }
 
-export async function pauseAllManagedDataSources(
+async function pauseAllManagedDataSources(
   auth: Authenticator,
   { markAsError }: { markAsError: boolean }
 ) {
@@ -1253,7 +1253,7 @@ export async function pauseAllManagedDataSources(
   return new Ok(res);
 }
 
-export async function unpauseAllManagedDataSources(
+async function unpauseAllManagedDataSources(
   auth: Authenticator,
   providers?: ConnectorProvider[]
 ) {

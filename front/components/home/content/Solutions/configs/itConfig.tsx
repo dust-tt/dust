@@ -175,7 +175,7 @@ export const DemoVideo: DemoVideoProps = {
   showCaptions: true,
 };
 
-export const Stories: CustomerStory[] = [
+const Stories: CustomerStory[] = [
   {
     title: "Lifen Saves Two Hours per Week per Employee with Dust", // Soon to be replaced with Clay for RFP?
     content:

@@ -4,7 +4,7 @@ import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { safeParseJSON } from "@app/types";
 
-export const AGENT_BROWSER_SELECTION_METADATA_NAME = "agentBrowserSelection";
+const AGENT_BROWSER_SELECTION_METADATA_NAME = "agentBrowserSelection";
 
 // workspaceId -> selected tag ids.
 type AssistantBrowserSelectionStore = Record<string, string[]>;

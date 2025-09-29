@@ -164,7 +164,7 @@ export async function updateConversationTitle(
  *  Mark the conversation as deleted, but does not remove it from database
  *  unless destroy is explicitly set to true
  */
-export async function deleteConversation(
+async function deleteConversation(
   auth: Authenticator,
   {
     conversationId,
@@ -1638,7 +1638,7 @@ async function isMessagesLimitReached({
  * - Within each requirement (sub-array), groups are combined with OR logic.
  * - Different requirements (different sub-arrays) are combined with AND logic.
  */
-export async function updateConversationRequestedGroupIds(
+async function updateConversationRequestedGroupIds(
   auth: Authenticator,
   {
     agents,

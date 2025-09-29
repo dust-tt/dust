@@ -67,7 +67,7 @@ export function useMembers({
   };
 }
 
-export function useMembersCount(owner: LightWorkspaceType) {
+function useMembersCount(owner: LightWorkspaceType) {
   const { total } = useMembers({
     workspaceId: owner.sId,
     pagination: { limit: 0, orderColumn: "createdAt", orderDirection: "asc" },
@@ -77,10 +77,7 @@ export function useMembersCount(owner: LightWorkspaceType) {
   return total;
 }
 
-export function useAdmins(
-  owner: LightWorkspaceType,
-  pagination?: PaginationParams
-) {
+function useAdmins(owner: LightWorkspaceType, pagination?: PaginationParams) {
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
 
@@ -114,7 +111,7 @@ export function useWorkspaceInvitations(owner: LightWorkspaceType) {
   };
 }
 
-export function useMembersByEmails({
+function useMembersByEmails({
   workspaceId,
   emails,
   disabled,
