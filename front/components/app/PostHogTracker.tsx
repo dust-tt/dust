@@ -4,6 +4,7 @@ import { PostHogProvider } from "posthog-js/react";
 import { useEffect } from "react";
 import { useCookies } from "react-cookie";
 
+import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
@@ -16,17 +17,12 @@ interface PostHogTrackerProps {
 
 export function PostHogTracker({ children }: PostHogTrackerProps) {
   const router = useRouter();
-  const [cookies] = useCookies(["dust-cookies-accepted"]);
+  const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
   const { user } = useUser();
 
-  const cookieValue = cookies["dust-cookies-accepted"];
-  const hasAcceptedCookies =
-    !!user ||
-    cookieValue === "true" ||
-    cookieValue === "auto" ||
-    cookieValue === true;
+  const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
+  const hasAcceptedCookies = hasCookiesAccepted(cookieValue, user);
 
-  // Extract workspace ID from router query for /w/ routes
   const workspaceId = router.query.wId as string | undefined;
   const { hasFeature } = useFeatureFlags({
     workspaceId: workspaceId ?? "",
@@ -36,7 +32,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   const isProductRoute = router.pathname.startsWith("/w/");
   const hasPostHogFeatureFlag = hasFeature("enable_posthog");
 
-  // Exclude certain paths from tracking (but not /w/ anymore)
   const excludedPaths = [
     "/poke",
     "/poke/",
