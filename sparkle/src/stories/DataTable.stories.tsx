@@ -182,7 +182,6 @@ const data: TransformedData[] = [
   },
 ];
 
-// Sample data for avatar stack story
 const avatarStackData: TransformedData[] = [
   {
     name: "Team Alpha",
