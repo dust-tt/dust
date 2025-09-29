@@ -16,6 +16,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
+  AgentMessageType,
   ConversationType,
   Result,
 } from "@app/types";
@@ -28,6 +29,7 @@ export async function getOrCreateConversation(
     childAgentBlob,
     childAgentId,
     mainAgent,
+    originMessage,
     mainConversation,
     query,
     toolsetsToAdd,
@@ -37,6 +39,7 @@ export async function getOrCreateConversation(
     childAgentBlob: ChildAgentBlob;
     childAgentId: string;
     mainAgent: AgentConfigurationType;
+    originMessage: AgentMessageType;
     mainConversation: ConversationType;
     query: string;
     toolsetsToAdd: string[] | null;
@@ -197,6 +200,7 @@ export async function getOrCreateConversation(
         // `run_agent` origin will skip adding the conversation to the user history.
         origin: "run_agent",
         selectedMCPServerViewIds: toolsetsToAdd,
+        originMessageId: originMessage.sId,
       },
     },
     contentFragments,

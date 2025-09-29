@@ -304,6 +304,7 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
+  declare originMessageId: ForeignKey<Message["id"]> | null;
 
   declare completedAt: Date | null;
 }
@@ -628,6 +629,15 @@ ContentFragmentModel.hasOne(Message, {
 Message.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
+});
+Message.hasMany(AgentMessage, {
+  as: "childMessages",
+  foreignKey: { name: "originMessageId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentMessage.belongsTo(Message, {
+  as: "originMessage",
+  foreignKey: { name: "originMessageId", allowNull: true },
 });
 
 export class MessageReaction extends WorkspaceAwareModel<MessageReaction> {

@@ -95,6 +95,7 @@ export type UserMessageContext = {
   email: string | null;
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
+  originMessageId?: string | null;
   lastTriggerRunAt?: Date | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
