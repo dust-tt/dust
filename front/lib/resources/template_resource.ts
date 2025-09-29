@@ -111,6 +111,15 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       await existing.update(blob);
       return new Ok(new TemplateResource(TemplateModel, existing.get()));
     }
+
+    const templateWithSameId = await TemplateModel.findOne({
+      where: { id: blob.id },
+    });
+
+    if (templateWithSameId) {
+      return new Err(new Error("Template id already taken"));
+    }
+
     const template = await TemplateResource.makeNew(blob);
     return new Ok(template);
   }

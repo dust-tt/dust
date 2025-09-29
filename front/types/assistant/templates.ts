@@ -170,7 +170,6 @@ export const CreateTemplateFormSchema = t.type({
   presetActions: TemplateActionsPreset,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModelId: t.string,
-  presetTemperature: AssistantCreativityLevelCodec,
   tags: nonEmptyArray(TemplateTagCodeTypeCodec),
   visibility: TemplateVisibilityCodec,
 });

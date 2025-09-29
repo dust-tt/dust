@@ -112,7 +112,9 @@ async function handler(
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
         presetProviderId: model.providerId,
-        presetTemperature: body.presetTemperature ?? null,
+        // Not configurable in the template, keeping the column for now since some templates do
+        // have a custom temperature.
+        presetTemperature: "balanced",
         tags: body.tags,
         visibility: body.visibility,
       });

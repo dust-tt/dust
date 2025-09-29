@@ -555,7 +555,6 @@ function TemplatesPage({
       handle: "",
       presetInstructions: "",
       presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-      presetTemperature: "balanced",
       helpInstructions: "",
       helpActions: "",
       emoji: "black_cat/1f408-200d-2b1b", // 🐈‍⬛.
