@@ -36,7 +36,7 @@ export async function publishEvent({
 /**
  * Conversation event publication interface.
  */
-export async function publishConversationEvent(
+async function publishConversationEvent(
   event: ConversationEvents,
   {
     conversationId,
