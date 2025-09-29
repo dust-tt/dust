@@ -172,7 +172,8 @@ export function MCPServerDetails({
           const hasIconChanges = diff.remoteIcon !== undefined;
           const hasSecretChanges = diff.remoteSharedSecret !== undefined;
           const hasHeaderChanges = diff.remoteCustomHeaders !== undefined;
-          const hasRemoteChanges = hasIconChanges || hasSecretChanges || hasHeaderChanges;
+          const hasRemoteChanges =
+            hasIconChanges || hasSecretChanges || hasHeaderChanges;
 
           if (hasServerViewChanges || hasRemoteChanges) {
             // Need to submit via the existing API.
