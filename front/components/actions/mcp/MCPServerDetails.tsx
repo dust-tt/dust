@@ -69,7 +69,7 @@ export function MCPServerDetails({
   const form = useForm<MCPServerFormValues>({
     values: defaults,
     mode: "onChange",
-    shouldUnregister: true,
+    shouldUnregister: false, // Keep all fields registered even when not rendered
     resolver: mcpServerView
       ? zodResolver(getMCPServerFormSchema(mcpServerView))
       : undefined,
@@ -265,11 +265,20 @@ export function MCPServerDetails({
         if (firstErrorKey) {
           form.setFocus(firstErrorKey as any);
         }
+
+        // Create detailed error message
+        const errorDetails = keys.map(key => {
+          const error = errors[key as keyof typeof errors];
+          return `${key}: ${error?.message || 'invalid'}`;
+        }).join(", ");
+
         const details =
-          keys.length > 0 ? `Invalid: ${keys.join(", ")}` : undefined;
+          keys.length > 0 ? `Invalid: ${errorDetails}` : undefined;
         datadogLogger.error(
           {
             fields: keys,
+            errors: errors,
+            values: form.getValues(),
             serverViewId: mcpServerView?.sId,
           },
           "[MCP Details] - Form validation error"
