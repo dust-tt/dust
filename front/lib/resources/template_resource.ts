@@ -5,11 +5,9 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
 
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
   CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
   getResourceIdFromSId,
@@ -17,7 +15,6 @@ import {
   makeSId,
 } from "@app/lib/resources//string_ids";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelId, Result, TemplateVisibility } from "@app/types";
