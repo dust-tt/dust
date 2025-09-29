@@ -194,6 +194,8 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
   declare userContextOrigin: UserMessageOrigin | null;
+  declare userContextOriginMessageId: ForeignKey<Message["id"]> | null;
+
   declare userContextLastTriggerRunAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
@@ -304,7 +306,6 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
-  declare originMessageId: ForeignKey<Message["id"]> | null;
 
   declare completedAt: Date | null;
 }
@@ -630,14 +631,14 @@ Message.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
-Message.hasMany(AgentMessage, {
+Message.hasMany(UserMessage, {
   as: "childMessages",
-  foreignKey: { name: "originMessageId", allowNull: true },
+  foreignKey: { name: "userContextOriginMessageId", allowNull: true },
   onDelete: "RESTRICT",
 });
-AgentMessage.belongsTo(Message, {
-  as: "originMessage",
-  foreignKey: { name: "originMessageId", allowNull: true },
+UserMessage.belongsTo(Message, {
+  as: "userContextOriginMessage",
+  foreignKey: { name: "userContextOriginMessageId", allowNull: true },
 });
 
 export class MessageReaction extends WorkspaceAwareModel<MessageReaction> {

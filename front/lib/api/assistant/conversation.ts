@@ -512,6 +512,15 @@ export async function postUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
+      const originMessage = context.originMessageId
+        ? await Message.findOne({
+            where: {
+              workspaceId: owner.id,
+              sId: context.originMessageId,
+            },
+          })
+        : null;
+
       async function createMessageAndUserMessage(workspace: WorkspaceType) {
         return Message.create(
           {
@@ -531,6 +540,7 @@ export async function postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
+                  userContextOriginMessageId: originMessage?.id ?? null,
                   userContextLastTriggerRunAt: context.lastTriggerRunAt,
                   userId: user
                     ? user.id
@@ -597,15 +607,6 @@ export async function postUserMessage(
                 { transaction: t }
               );
 
-              const originMessage = context.originMessageId
-                ? await Message.findOne({
-                    where: {
-                      workspaceId: owner.id,
-                      sId: context.originMessageId,
-                    },
-                  })
-                : null;
-
               const agentMessageRow = await AgentMessage.create(
                 {
                   status: "created",
@@ -613,7 +614,6 @@ export async function postUserMessage(
                   agentConfigurationVersion: configuration.version,
                   workspaceId: owner.id,
                   skipToolsValidation,
-                  originMessageId: originMessage?.id ?? null,
                 },
                 { transaction: t }
               );
