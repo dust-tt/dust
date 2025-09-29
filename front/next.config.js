@@ -1,7 +1,7 @@
 const path = require("path");
-const { StatsWriterPlugin } = require('webpack-stats-plugin');
-const bundleAnalyzer = require('@next/bundle-analyzer');
-const StatoscopeWebpackPlugin = require('@statoscope/webpack-plugin').default;
+const { StatsWriterPlugin } = require("webpack-stats-plugin");
+const bundleAnalyzer = require("@next/bundle-analyzer");
+const StatoscopeWebpackPlugin = require("@statoscope/webpack-plugin").default;
 
 const isDev = process.env.NODE_ENV === "development";
 const showReactScan = isDev && process.env.REACT_SCAN === "true";
@@ -26,9 +26,8 @@ const CONTENT_SECURITY_POLICIES = [
   `upgrade-insecure-requests;`,
 ].join(" ");
 
-
 const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
+  enabled: process.env.ANALYZE === "true",
   openAnalyzer: false,
 });
 
@@ -192,17 +191,17 @@ const config = {
     if (!dev && !isServer && process.env.ANALYZE === "true") {
       config.plugins.push(
         new StatsWriterPlugin({
-          filename: '../.next/analyze/webpack-stats.json',
+          filename: "../.next/analyze/webpack-stats.json",
           stats: {
             assets: true,
             chunks: true,
-            modules: true
-          }
+            modules: true,
+          },
         }),
         new StatoscopeWebpackPlugin({
-          saveReportTo: '.next/analyze/report-[name]-[hash].html',
-          saveStatsTo: '.next/analyze/stats-[name]-[hash].json',
-          open: false
+          saveReportTo: ".next/analyze/report-[name]-[hash].html",
+          saveStatsTo: ".next/analyze/stats-[name]-[hash].json",
+          open: false,
         })
       );
     }
