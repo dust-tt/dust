@@ -71,8 +71,6 @@ export function MCPServerDetailsSheet({
   }, [isOpen, prevIsOpen]);
 
   const changeTab = async (next: TabType) => {
-    // Since we now have a unified form, we can switch tabs freely
-    // without worrying about losing changes.
     setSelectedTab(next);
   };
 
