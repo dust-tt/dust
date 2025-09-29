@@ -317,7 +317,7 @@ export function CreateMCPServerDialog({
                 : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
-        <DialogContainer className="max-h-[80vh] space-y-6 overflow-y-auto">
+        <DialogContainer className="max-h-[80vh] space-y-4 overflow-y-auto">
           {!internalMCPServer &&
             (!authorization || authorization.provider === "mcp_static") && (
               <>
