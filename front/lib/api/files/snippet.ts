@@ -1,6 +1,7 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
+import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
 import { getFileContent } from "@app/lib/api/files/utils";
@@ -70,6 +71,14 @@ export async function generateSnippet(
     let content = await getFileContent(auth, file);
     if (!content) {
       return new Err(new Error("Failed to get file content"));
+    }
+
+    if (isPastedFile(file.contentType)) {
+      // Include up to 2^16 characters in pasted text snippet
+      if (content.length > 65536) {
+        return new Ok(content.slice(0, 65536) + "... (truncated)");
+      }
+      return new Ok(content);
     }
 
     if (!ENABLE_LLM_SNIPPETS) {
