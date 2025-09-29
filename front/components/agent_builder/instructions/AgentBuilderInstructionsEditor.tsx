@@ -15,6 +15,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/extensions/AgentInstructionDiffExtension";
 import { BlockInsertExtension } from "@app/components/agent_builder/instructions/extensions/BlockInsertExtension";
+import { HeadingExtension } from "@app/components/agent_builder/instructions/extensions/HeadingExtension";
 import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
@@ -78,12 +79,7 @@ export function AgentBuilderInstructionsEditor({
     return [
       StarterKit.configure({
         paragraph: false, // We use custom ParagraphExtension
-        heading: {
-          levels: [1, 2, 3, 4, 5, 6],
-          HTMLAttributes: {
-            class: "text-xl font-semibold mt-4 mb-3",
-          },
-        },
+        heading: false,
         bulletList: false,
         orderedList: false,
         listItem: false,
@@ -115,6 +111,12 @@ export function AgentBuilderInstructionsEditor({
       }),
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+      }),
+      HeadingExtension.configure({
+        levels: [1, 2, 3, 4, 5, 6],
+        HTMLAttributes: {
+          class: "mt-4 mb-3",
+        },
       }),
     ];
   }, [suggestionHandler]);
