@@ -45,6 +45,8 @@ import {
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
+import { useAnimatedText } from "./useAnimatedText";
+
 const sizes = {
   p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
   ...markdownHeaderClasses,
@@ -65,6 +67,7 @@ function showUnsupportedDirective() {
 export function Markdown({
   content,
   isStreaming = false,
+  shouldHaveStreamingAnimation = false,
   textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
@@ -73,6 +76,7 @@ export function Markdown({
 }: {
   content: string;
   isStreaming?: boolean;
+  shouldHaveStreamingAnimation?: boolean;
   textColor?: string;
   isLastMessage?: boolean;
   forcedTextSize?: string;
@@ -80,6 +84,11 @@ export function Markdown({
   additionalMarkdownPlugins?: PluggableList;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
+
+  const markdownContent = useAnimatedText(
+    processedContent,
+    isStreaming && shouldHaveStreamingAnimation
+  );
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
@@ -224,7 +233,7 @@ export function Markdown({
 
   try {
     return (
-      <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
+      <div className={cn("s-w-full")}>
         <MarkdownContentContext.Provider
           value={{
             content: processedContent,
@@ -238,14 +247,14 @@ export function Markdown({
             remarkPlugins={markdownPlugins}
             rehypePlugins={rehypePlugins}
           >
-            {processedContent}
+            {markdownContent}
           </ReactMarkdown>
         </MarkdownContentContext.Provider>
       </div>
     );
   } catch (error) {
     return (
-      <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
+      <div className={cn("s-w-full")}>
         <Chip color="warning">
           There was an error parsing this markdown content
         </Chip>
