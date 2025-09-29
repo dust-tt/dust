@@ -21,7 +21,6 @@ const SAMPLE_TEMPLATE = {
   presetInstructions: "my instructions",
   presetModelId: "gpt-4o",
   presetProviderId: "openai",
-  presetTemperature: "balanced",
   sId: "tpl_vomozn1XNz",
   tags: ["PRODUCTIVITY"],
   visibility: "published",
