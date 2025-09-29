@@ -60,10 +60,16 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     });
   }
 
-  static async makeNew(blob: CreationAttributes<TemplateModel>) {
-    const template = await TemplateModel.create({
-      ...blob,
-    });
+  static async makeNew(
+    blob: CreationAttributes<TemplateModel>,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const template = await TemplateModel.create(
+      {
+        ...blob,
+      },
+      { transaction }
+    );
 
     return new this(TemplateModel, template.get());
   }
