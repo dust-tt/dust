@@ -1,6 +1,5 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
-import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -214,16 +213,4 @@ export async function* getMessagesEvents(
 
 function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
-}
-
-export async function publishEvent({
-  origin,
-  channel,
-  event,
-}: {
-  origin: RedisUsageTagsType;
-  channel: string;
-  event: string;
-}) {
-  await getRedisHybridManager().publish(channel, event, origin);
 }

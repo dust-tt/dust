@@ -479,6 +479,11 @@ export function AgentMessage({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
+  const messageTimestamp = agentMessageToRender.completedTs
+    ? formatTimestring(agentMessageToRender.completedTs)
+    : formatTimestring(agentMessageToRender.created);
+  const shouldDisplayTimestamp = agentMessageToRender.status !== "created";
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -496,7 +501,7 @@ export function AgentMessage({
           isDisabled={isArchived}
         />
       )}
-      timestamp={formatTimestring(agentMessageToRender.created)}
+      timestamp={shouldDisplayTimestamp ? messageTimestamp : undefined}
       type="agent"
       citations={citations}
     >
@@ -529,46 +534,61 @@ export function AgentMessage({
       const { error } = agentMessage;
       if (isPersonalAuthenticationRequiredErrorContent(error)) {
         return (
-          <MCPServerPersonalAuthenticationRequired
-            owner={owner}
-            mcpServerId={error.metadata.mcp_server_id}
-            provider={error.metadata.provider}
-            scope={error.metadata.scope}
-            retryHandler={async () => {
-              // Dispatch retry event to reset failed state and re-enable streaming.
-              dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
-              // Retry on the event's conversationId, which may be coming from a subagent.
-              if (error.metadata.conversationId !== conversationId) {
+          <div className="flex flex-col gap-y-4">
+            <AgentMessageActions
+              agentMessage={agentMessage}
+              lastAgentStateClassification={messageStreamState.agentState}
+              actionProgress={messageStreamState.actionProgress}
+              owner={owner}
+            />
+            <MCPServerPersonalAuthenticationRequired
+              owner={owner}
+              mcpServerId={error.metadata.mcp_server_id}
+              provider={error.metadata.provider}
+              scope={error.metadata.scope}
+              retryHandler={async () => {
+                // Dispatch retry event to reset failed state and re-enable streaming.
+                dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
+                // Retry on the event's conversationId, which may be coming from a subagent.
+                if (error.metadata.conversationId !== conversationId) {
+                  await retryHandler({
+                    conversationId: error.metadata.conversationId,
+                    messageId: error.metadata.messageId,
+                    blockedOnly: true,
+                  });
+                }
+                // Retry on the main conversation.
                 await retryHandler({
-                  conversationId: error.metadata.conversationId,
-                  messageId: error.metadata.messageId,
+                  conversationId,
+                  messageId: agentMessage.sId,
                   blockedOnly: true,
                 });
-              }
-              // Retry on the main conversation.
-              await retryHandler({
-                conversationId,
-                messageId: agentMessage.sId,
-                blockedOnly: true,
-              });
-            }}
-          />
+              }}
+            />
+          </div>
         );
       }
       return (
-        <ErrorMessage
-          error={
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            agentMessage.error || {
-              message: "Unexpected Error",
-              code: "unexpected_error",
-              metadata: {},
+        <div className="flex flex-col gap-y-4">
+          <AgentMessageActions
+            agentMessage={agentMessage}
+            lastAgentStateClassification={messageStreamState.agentState}
+            actionProgress={messageStreamState.actionProgress}
+            owner={owner}
+          />
+          <ErrorMessage
+            error={
+              agentMessage.error ?? {
+                message: "Unexpected Error",
+                code: "unexpected_error",
+                metadata: {},
+              }
             }
-          }
-          retryHandler={async () =>
-            retryHandler({ conversationId, messageId: agentMessage.sId })
-          }
-        />
+            retryHandler={async () =>
+              retryHandler({ conversationId, messageId: agentMessage.sId })
+            }
+          />
+        </div>
       );
     }
 

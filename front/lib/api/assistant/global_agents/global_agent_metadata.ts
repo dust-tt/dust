@@ -11,7 +11,9 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
+  GPT_5_NANO_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -56,6 +58,27 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.GPT5,
         name: "gpt5",
         description: GPT_5_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_THINKING:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_THINKING,
+        name: "gpt5-thinking",
+        description: GPT_5_MINI_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_NANO:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_NANO,
+        name: "gpt5-nano",
+        description: GPT_5_NANO_MODEL_CONFIG.description,
+        pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.GPT5_MINI:
+      return {
+        sId: GLOBAL_AGENTS_SID.GPT5_MINI,
+        name: "gpt5-mini",
+        description: GPT_5_MINI_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O1:

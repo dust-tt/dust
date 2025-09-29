@@ -136,63 +136,61 @@ export const NavigationSidebar = React.forwardRef<
             {navs.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
                 <NavigationList className="px-3">
-                  {subNavigation && tab.isCurrent(activePath) && (
-                    <>
-                      {subNavigation.map((nav) => (
-                        <React.Fragment key={`nav-${nav.label}`}>
-                          {nav.label && (
-                            <NavigationListLabel
-                              label={nav.label}
-                              variant={nav.variant}
-                            />
-                          )}
-                          {nav.menus
-                            .filter(
-                              (menu) =>
-                                !menu.featureFlag ||
-                                featureFlags.includes(menu.featureFlag)
-                            )
-                            .map((menu) => (
-                              <React.Fragment key={menu.id}>
-                                <NavigationListItem
-                                  selected={menu.current}
-                                  label={menu.label}
-                                  icon={menu.icon}
-                                  href={menu.href}
-                                  target={menu.target}
-                                  onClick={() => handleTabClick(menu.href)}
-                                />
-                                {menu.subMenuLabel && (
-                                  <div
-                                    className={classNames(
-                                      "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
-                                      "text-muted-foreground dark:text-muted-foreground-night"
-                                    )}
-                                  >
-                                    {menu.subMenuLabel}
-                                  </div>
-                                )}
-                                {menu.subMenu && (
-                                  <div className="mb-2 flex flex-col">
-                                    {menu.subMenu.map((nav) => (
-                                      <NavigationListItem
-                                        key={nav.id}
-                                        selected={nav.current}
-                                        label={nav.label}
-                                        icon={nav.icon}
-                                        className="grow pl-14 pr-4"
-                                        href={nav.href ? nav.href : undefined}
-                                        onClick={() => handleTabClick(nav.href)}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                              </React.Fragment>
-                            ))}
-                        </React.Fragment>
-                      ))}
-                    </>
-                  )}
+                  {subNavigation &&
+                    tab.isCurrent(activePath) &&
+                    subNavigation.map((nav) => (
+                      <React.Fragment key={`nav-${nav.label}`}>
+                        {nav.label && (
+                          <NavigationListLabel
+                            label={nav.label}
+                            variant={nav.variant}
+                          />
+                        )}
+                        {nav.menus
+                          .filter(
+                            (menu) =>
+                              !menu.featureFlag ||
+                              featureFlags.includes(menu.featureFlag)
+                          )
+                          .map((menu) => (
+                            <React.Fragment key={menu.id}>
+                              <NavigationListItem
+                                selected={menu.current}
+                                label={menu.label}
+                                icon={menu.icon}
+                                href={menu.href}
+                                target={menu.target}
+                                onClick={() => handleTabClick(menu.href)}
+                              />
+                              {menu.subMenuLabel && (
+                                <div
+                                  className={classNames(
+                                    "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
+                                    "text-muted-foreground dark:text-muted-foreground-night"
+                                  )}
+                                >
+                                  {menu.subMenuLabel}
+                                </div>
+                              )}
+                              {menu.subMenu && (
+                                <div className="mb-2 flex flex-col">
+                                  {menu.subMenu.map((nav) => (
+                                    <NavigationListItem
+                                      key={nav.id}
+                                      selected={nav.current}
+                                      label={nav.label}
+                                      icon={nav.icon}
+                                      className="grow pl-14 pr-4"
+                                      href={nav.href ? nav.href : undefined}
+                                      onClick={() => handleTabClick(nav.href)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </React.Fragment>
+                          ))}
+                      </React.Fragment>
+                    ))}
                 </NavigationList>
               </TabsContent>
             ))}
@@ -204,7 +202,7 @@ export const NavigationSidebar = React.forwardRef<
         <div
           className={classNames(
             "flex items-center border-t px-2 py-2",
-            "border-border-dark dark:border-border-dark-night",
+            "border-border-dark dark:border-border-darker-night",
             "text-foreground dark:text-foreground-night"
           )}
         >

@@ -5,6 +5,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useEffect, useMemo } from "react";
 
+import { cleanupPastedHTML } from "@app/components/assistant/conversation/input_bar/editor/cleanupPastedHTML";
 import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
@@ -272,19 +273,13 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
-  });
-
-  // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
-  useEffect(() => {
-    if (editor) {
-      editor.storage.MentionStorage.suggestions = suggestions;
-    }
-  }, [suggestions, editor]);
-
-  editor?.setOptions({
     editorProps: {
       attributes: {
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
+      },
+      // cleans up incoming HTML to remove all style that could mess up with our theme
+      transformPastedHTML(html: string) {
+        return cleanupPastedHTML(html);
       },
       handlePaste: (view, event) => {
         const text = event.clipboardData?.getData("text/plain") ?? "";
@@ -297,6 +292,19 @@ const useCustomEditor = ({
         }
         return false;
       },
+    },
+  });
+
+  // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
+  useEffect(() => {
+    if (editor) {
+      editor.storage.MentionStorage.suggestions = suggestions;
+    }
+  }, [suggestions, editor]);
+
+  // setting after as we need the editor to be initialized
+  editor?.setOptions({
+    editorProps: {
       handleKeyDown: (view, event) => {
         const submitMessageKey = localStorage.getItem("submitMessageKey");
         const isCmdEnterForSubmission =

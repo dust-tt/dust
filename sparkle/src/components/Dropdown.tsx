@@ -291,7 +291,7 @@ const DropdownMenuContent = React.forwardRef<
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
-        <div className="s-sticky s-top-0 s-bg-background dark:s-bg-background-night">
+        <div className="s-sticky s-top-0 s-bg-background dark:s-bg-muted-background-night">
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea

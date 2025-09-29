@@ -9,6 +9,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { apiError } from "@app/logger/withlogging";
+import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type { PlanType, WithAPIErrorResponse } from "@app/types";
 
 export const PlanTypeSchema = t.type({
@@ -107,6 +108,19 @@ async function handler(
         });
       }
       const body = bodyValidation.right;
+
+      const { sizeLimit } = documentBodyParserConfig.api.bodyParser;
+      const maxSizeMb = parseInt(sizeLimit.replace("mb", ""), 10);
+
+      if (body.limits.dataSources.documents.sizeMb >= maxSizeMb) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Document size limit must be less than ${maxSizeMb}MB.`,
+          },
+        });
+      }
 
       await Plan.upsert({
         code: body.code,

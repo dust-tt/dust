@@ -29,6 +29,9 @@ import {
 import {
   _getGPT4GlobalAgent,
   _getGPT5GlobalAgent,
+  _getGPT5MiniGlobalAgent,
+  _getGPT5NanoGlobalAgent,
+  _getGPT5ThinkingGlobalAgent,
   _getGPT35TurboGlobalAgent,
   _getO1GlobalAgent,
   _getO1HighReasoningGlobalAgent,
@@ -138,6 +141,27 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.GPT5:
       agentConfiguration = _getGPT5GlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.GPT5_NANO:
+      agentConfiguration = _getGPT5NanoGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.GPT5_MINI:
+      agentConfiguration = _getGPT5MiniGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.GPT5_THINKING:
+      agentConfiguration = _getGPT5ThinkingGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
