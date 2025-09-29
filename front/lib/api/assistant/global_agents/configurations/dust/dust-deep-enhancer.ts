@@ -143,7 +143,7 @@ async function mergeDataWarehousesAction(
   }
 }
 
-export async function enhanceDustDeep(
+export async function augmentDustDeep(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType,
   agentMessage: AgentMessageType,

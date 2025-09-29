@@ -1,4 +1,4 @@
-import { enhanceDustDeep } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep-enhancer";
+import { augmentDustDeep } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep-enhancer";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
@@ -8,7 +8,12 @@ import type {
 } from "@app/types";
 import { GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
-export async function enhanceGlobalAgent(
+/*
+ * Augment the global agent, based on the context.
+ * For example, if the agent is dust-deep and has been called by another agent,
+ * we augment it with the actions and scope of the custom agent that called it.
+ */
+export async function augmentGlobalAgent(
   auth: Authenticator,
   agentConfiguration: AgentConfigurationType,
   agentMessage: AgentMessageType,
@@ -16,7 +21,7 @@ export async function enhanceGlobalAgent(
 ): Promise<Result<AgentConfigurationType, Error>> {
   switch (agentConfiguration.sId) {
     case GLOBAL_AGENTS_SID.DUST_DEEP:
-      return enhanceDustDeep(
+      return augmentDustDeep(
         auth,
         agentConfiguration,
         agentMessage,
