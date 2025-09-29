@@ -50,10 +50,7 @@ export function MCPServerDetailsInfo({
       <Separator className="mb-4 mt-4" />
       <div className="heading-lg">Available Tools</div>
 
-      <ToolsList
-        owner={owner}
-        mcpServerView={mcpServerView}
-      />
+      <ToolsList owner={owner} mcpServerView={mcpServerView} />
     </div>
   );
 }

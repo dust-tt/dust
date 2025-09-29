@@ -6,7 +6,7 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
@@ -41,8 +41,6 @@ interface MCPServerDetailsSharingProps {
 }
 
 export function MCPServerDetailsSharing({
-  mcpServer,
-  owner,
   spaces,
 }: MCPServerDetailsSharingProps) {
   const form = useFormContext<MCPServerFormValues>();
@@ -52,9 +50,7 @@ export function MCPServerDetailsSharing({
   const availableSpaces = spaces.filter((s) => s.kind === "regular");
 
   // Determine if currently restricted based on form state.
-  const isRestricted = globalSpace
-    ? !sharingSettings?.[globalSpace.sId]
-    : true;
+  const isRestricted = globalSpace ? !sharingSettings?.[globalSpace.sId] : true;
 
   const handleToggle = (space: SpaceType) => {
     const currentState = sharingSettings?.[space.sId] ?? false;

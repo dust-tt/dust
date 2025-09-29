@@ -56,7 +56,11 @@ export function MCPServerDetails({
 
   const defaults = useMemo<MCPServerFormValues>(() => {
     if (mcpServerView) {
-      return getMCPServerFormDefaults(mcpServerView, mcpServerWithViews, spaces);
+      return getMCPServerFormDefaults(
+        mcpServerView,
+        mcpServerWithViews,
+        spaces
+      );
     }
     return {
       name: "",
@@ -110,7 +114,7 @@ export function MCPServerDetails({
               if (!response.ok) {
                 const body = await response.json();
                 throw new Error(
-                  body.error?.message || "Failed to update tool settings"
+                  body.error?.message ?? "Failed to update tool settings"
                 );
               }
             }
@@ -138,7 +142,7 @@ export function MCPServerDetails({
                 if (!response.ok) {
                   const body = await response.json();
                   throw new Error(
-                    body.error?.message || "Failed to add to space"
+                    body.error?.message ?? "Failed to add to space"
                   );
                 }
               } else {
@@ -155,7 +159,7 @@ export function MCPServerDetails({
                   if (!response.ok) {
                     const body = await response.json();
                     throw new Error(
-                      body.error?.message || "Failed to remove from space"
+                      body.error?.message ?? "Failed to remove from space"
                     );
                   }
                 }
@@ -184,7 +188,7 @@ export function MCPServerDetails({
               if (!response.ok) {
                 const body = await response.json();
                 throw new Error(
-                  body.error?.message || "Failed to update server view"
+                  body.error?.message ?? "Failed to update server view"
                 );
               }
             }
@@ -220,7 +224,7 @@ export function MCPServerDetails({
               if (!response.ok) {
                 const body = await response.json();
                 throw new Error(
-                  body.error?.message || "Failed to update server"
+                  body.error?.message ?? "Failed to update server"
                 );
               }
             }
@@ -267,10 +271,12 @@ export function MCPServerDetails({
         }
 
         // Create detailed error message
-        const errorDetails = keys.map(key => {
-          const error = errors[key as keyof typeof errors];
-          return `${key}: ${error?.message || 'invalid'}`;
-        }).join(", ");
+        const errorDetails = keys
+          .map((key) => {
+            const error = errors[key as keyof typeof errors];
+            return `${key}: ${error?.message ?? "invalid"}`;
+          })
+          .join(", ");
 
         const details =
           keys.length > 0 ? `Invalid: ${errorDetails}` : undefined;

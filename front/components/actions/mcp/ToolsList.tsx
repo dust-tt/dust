@@ -74,15 +74,18 @@ export function ToolsList({
     permission: CustomRemoteMCPToolStakeLevelType | "never_ask",
     enabled: boolean
   ) => {
-    form.setValue(`toolSettings.${name}`, { permission, enabled }, {
-      shouldDirty: true,
-    });
+    form.setValue(
+      `toolSettings.${name}`,
+      { permission, enabled },
+      {
+        shouldDirty: true,
+      }
+    );
   };
 
   const getToolPermission = (toolName: string) => {
     return (
-      toolSettings?.[toolName]?.permission ??
-      FALLBACK_MCP_TOOL_STAKE_LEVEL
+      toolSettings?.[toolName]?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL
     );
   };
 
