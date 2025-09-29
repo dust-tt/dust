@@ -72,7 +72,7 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
   image: 5 * 1024 * 1024, // 5 MB
-  audio: 25 * 1024 * 1024, // 25 MB
+  audio: 25 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {
