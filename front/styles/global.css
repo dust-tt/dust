@@ -141,9 +141,6 @@ main {
   animation: fade-collapse 500ms ease-out forwards;
 }
 
-.s-blinking-cursor > :not(pre):last-child::after {
-  /* ... existing code ... */
-}
 
 /* Privacy mask style for dd-privacy-mask elements - only when enabled */
 .privacy-mask-enabled .dd-privacy-mask {
