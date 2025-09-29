@@ -90,8 +90,8 @@ export const AuthService = {
         const currentTime = Math.floor(Date.now() / 1000);
         const timeUntilExpiry = decoded.exp ?? -currentTime;
 
-        // If token expires in less than 5 minutes, refresh it proactively
-        if (timeUntilExpiry < 300) {
+        // If token expires in less than 30 seconds, refresh it proactively
+        if (timeUntilExpiry < 30) {
           const refreshed = await this.refreshTokens();
           if (refreshed) {
             return await TokenStorage.getAccessToken();
