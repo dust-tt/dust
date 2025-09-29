@@ -40,6 +40,7 @@ import {
 } from "@app/types";
 import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
+import { getAgentRoute } from "@app/lib/utils/router";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string
@@ -730,7 +731,7 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="${config.getClientFacingUrl()}/w/${owner.sId}/agent/${conversation.sId}"
+    <a href="${getAgentRoute(owner.sId, conversation.sId, config.getClientFacingUrl())}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;

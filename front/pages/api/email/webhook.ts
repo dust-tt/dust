@@ -261,9 +261,7 @@ async function handler(
             agentConfiguration: answer.agentConfiguration,
             htmlContent: `<div><div>${
               answer.html
-            }</div><br/><a href="${DUST_CLIENT_FACING_URL}/w/${
-              auth.workspace()?.sId
-            }/agent/${conversation.sId}">Open in Dust</a></div>`,
+            }</div><br/><a href="${getAgentRoute(auth.workspace()?.sId, conversation.sId, DUST_CLIENT_FACING_URL)}">Open in Dust</a></div>`,
           });
         });
       }

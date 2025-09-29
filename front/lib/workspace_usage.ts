@@ -17,6 +17,7 @@ import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
   ModelId,
@@ -698,7 +699,11 @@ function reconstructConversationUrl(
   workspace: WorkspaceType,
   conversationId: string
 ) {
-  return `${config.getClientFacingUrl()}/w/${workspace.sId}/agent/${conversationId}`;
+  return getAgentRoute(
+    workspace.sId,
+    conversationId,
+    config.getClientFacingUrl()
+  );
 }
 
 function generateCsvFromQueryResult(
