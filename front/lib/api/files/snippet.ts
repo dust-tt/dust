@@ -75,7 +75,7 @@ export async function generateSnippet(
     }
 
     if (isPastedFile(file.contentType)) {
-      // Include up to 64K (2^16) characters in pasted text snippet
+      // Include up to 2^16 characters in pasted text snippet
       if (content.length > 65536) {
         return new Ok(content.slice(0, 65536) + "... (truncated)");
       }
