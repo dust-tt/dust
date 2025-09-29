@@ -27,7 +27,9 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     cookieValue === true;
 
   // Extract workspace ID from router query for /w/ routes
-  const workspaceId = router.query.wId as string | undefined;
+  // Extract workspace ID from router query for /w/ routes
+  const { wId } = router.query;
+  const workspaceId = isString(wId) ? wId : undefined;
   const { hasFeature } = useFeatureFlags({
     workspaceId: workspaceId ?? "",
     disabled: !workspaceId,
