@@ -12,7 +12,7 @@ type HandleErrorParams = {
   action: AgentMCPActionResource;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
-  errorMessage: string;
+  errorContent: CallToolResult["content"];
   status: ToolExecutionStatus;
 };
 
@@ -22,19 +22,16 @@ type HandleErrorParams = {
 export async function handleMCPActionError(
   params: HandleErrorParams
 ): Promise<MCPErrorEvent | MCPSuccessEvent> {
-  const { action, agentConfiguration, agentMessage, errorMessage, status } =
+  const { action, agentConfiguration, agentMessage, errorContent, status } =
     params;
 
-  const outputContent: CallToolResult["content"][number] = {
-    type: "text",
-    text: errorMessage,
-  };
-
-  await AgentMCPActionOutputItem.create({
-    workspaceId: action.workspaceId,
-    agentMCPActionId: action.id,
-    content: outputContent,
-  });
+  await AgentMCPActionOutputItem.bulkCreate(
+    errorContent.map((item) => ({
+      workspaceId: action.workspaceId,
+      agentMCPActionId: action.id,
+      content: item,
+    }))
+  );
 
   // If the tool is not already in a final state, we set it to errored (could be denied).
   if (!isToolExecutionStatusFinal(status)) {
@@ -49,7 +46,7 @@ export async function handleMCPActionError(
     messageId: agentMessage.sId,
     action: {
       ...action.toJSON(),
-      output: [outputContent],
+      output: errorContent,
       generatedFiles: [],
     },
   };

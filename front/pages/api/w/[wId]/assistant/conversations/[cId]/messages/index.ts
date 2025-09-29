@@ -15,15 +15,22 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
+  ContentFragmentType,
   FetchConversationMessagesResponse,
   UserMessageType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { InternalPostMessagesRequestBodySchema } from "@app/types";
+import {
+  InternalPostMessagesRequestBodySchema,
+  isContentFragmentType,
+  isUserMessageType,
+  removeNulls,
+} from "@app/types";
 import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
+  contentFragments: ContentFragmentType[];
   agentMessages: AgentMessageType[];
 };
 
@@ -157,6 +164,28 @@ async function handler(
 
       const conversation = conversationRes.value;
 
+      // Find all the contentFragments that are above the user message.
+      // Messages may have multiple versions, so we need to return only the max version of each message.
+      const allMessages = removeNulls(
+        [...conversation.content].map((messages) => {
+          if (messages.length === 0) {
+            return null;
+          }
+          return messages.toSorted((a, b) => b.version - a.version)[0];
+        })
+      );
+
+      // Iterate over all messages sorted by rank descending and collect content fragments until we find a user message
+      const contentFragments: ContentFragmentType[] = [];
+      for (const message of allMessages.toSorted((a, b) => b.rank - a.rank)) {
+        if (isUserMessageType(message)) {
+          break;
+        }
+        if (isContentFragmentType(message)) {
+          contentFragments.push(message);
+        }
+      }
+
       const messageRes = await postUserMessage(auth, {
         conversation,
         content,
@@ -181,6 +210,7 @@ async function handler(
 
       res.status(200).json({
         message: messageRes.value.userMessage,
+        contentFragments,
         agentMessages: messageRes.value.agentMessages,
       });
       return;
