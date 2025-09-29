@@ -41,7 +41,7 @@ export function ToolsList({
   disableUpdates,
 }: ToolsListProps) {
   const form = useFormContext<MCPServerFormValues>();
-  const toolSettings = form.watch("toolSettings");
+  const toolSettings = form.watch("toolSettings") || {};
 
   const mayUpdate = useMemo(
     () => (disableUpdates ? false : isAdmin(owner)),
@@ -81,13 +81,13 @@ export function ToolsList({
 
   const getToolPermission = (toolName: string) => {
     return (
-      toolSettings[toolName]?.permission ??
+      toolSettings?.[toolName]?.permission ??
       FALLBACK_MCP_TOOL_STAKE_LEVEL
     );
   };
 
   const getToolEnabled = (toolName: string) => {
-    return toolSettings[toolName]?.enabled ?? true;
+    return toolSettings?.[toolName]?.enabled ?? true;
   };
 
   const toolPermissionLabel: Record<string, string> = {

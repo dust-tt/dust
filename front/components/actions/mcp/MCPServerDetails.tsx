@@ -56,7 +56,7 @@ export function MCPServerDetails({
 
   const defaults = useMemo<MCPServerFormValues>(() => {
     if (mcpServerView) {
-      return getMCPServerFormDefaults(mcpServerView, mcpServerWithViews);
+      return getMCPServerFormDefaults(mcpServerView, mcpServerWithViews, spaces);
     }
     return {
       name: "",
@@ -64,7 +64,7 @@ export function MCPServerDetails({
       toolSettings: {},
       sharingSettings: {},
     };
-  }, [mcpServerView, mcpServerWithViews]);
+  }, [mcpServerView, mcpServerWithViews, spaces]);
 
   const form = useForm<MCPServerFormValues>({
     values: defaults,
@@ -120,7 +120,7 @@ export function MCPServerDetails({
           if (diff.sharingChanges && diff.sharingChanges.length > 0) {
             for (const change of diff.sharingChanges) {
               const space = spaces.find((s) => s.sId === change.spaceId);
-              if (!space) {
+              if (!space || space.kind === "system") {
                 continue;
               }
 

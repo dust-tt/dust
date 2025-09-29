@@ -33,7 +33,8 @@ export type MCPServerFormValues = {
 
 export function getMCPServerFormDefaults(
   view: MCPServerViewType,
-  mcpServerWithViews?: { views: Array<{ spaceId: string }> }
+  mcpServerWithViews?: { views: Array<{ spaceId: string }> },
+  spaces?: Array<{ sId: string; kind: string }>
 ): MCPServerFormValues {
   // Base info defaults.
   const baseDefaults = {
@@ -52,8 +53,17 @@ export function getMCPServerFormDefaults(
   }
 
   // Sharing settings defaults - which spaces have this server.
+  // Only include regular and global spaces, not system spaces.
   const sharingSettings: Record<string, boolean> = {};
-  if (mcpServerWithViews) {
+  if (mcpServerWithViews && spaces) {
+    for (const serverView of mcpServerWithViews.views) {
+      const space = spaces.find((s) => s.sId === serverView.spaceId);
+      if (space && (space.kind === "regular" || space.kind === "global")) {
+        sharingSettings[serverView.spaceId] = true;
+      }
+    }
+  } else if (mcpServerWithViews) {
+    // Fallback if spaces not provided (shouldn't happen in practice)
     for (const serverView of mcpServerWithViews.views) {
       sharingSettings[serverView.spaceId] = true;
     }

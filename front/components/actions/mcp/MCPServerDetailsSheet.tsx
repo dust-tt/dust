@@ -71,21 +71,8 @@ export function MCPServerDetailsSheet({
   }, [isOpen, prevIsOpen]);
 
   const changeTab = async (next: TabType) => {
-    // Since everything is now in one form, we check if the form is dirty.
-    if (form.formState.isDirty && next !== selectedTab) {
-      const confirmed = await confirm({
-        title: "Unsaved changes",
-        message:
-          "You have unsaved changes. Are you sure you want to switch tabs without saving?",
-        validateLabel: "Discard changes",
-        validateVariant: "warning",
-      });
-      if (!confirmed) {
-        return;
-      }
-      // Reset form when switching tabs after confirmation.
-      onCancel();
-    }
+    // Since we now have a unified form, we can switch tabs freely
+    // without worrying about losing changes.
     setSelectedTab(next);
   };
 

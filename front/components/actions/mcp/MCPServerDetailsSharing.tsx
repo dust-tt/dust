@@ -46,18 +46,18 @@ export function MCPServerDetailsSharing({
   spaces,
 }: MCPServerDetailsSharingProps) {
   const form = useFormContext<MCPServerFormValues>();
-  const sharingSettings = form.watch("sharingSettings");
+  const sharingSettings = form.watch("sharingSettings") || {};
 
   const globalSpace = spaces.find((space) => space.kind === "global");
   const availableSpaces = spaces.filter((s) => s.kind === "regular");
 
   // Determine if currently restricted based on form state.
   const isRestricted = globalSpace
-    ? !sharingSettings[globalSpace.sId]
+    ? !sharingSettings?.[globalSpace.sId]
     : true;
 
   const handleToggle = (space: SpaceType) => {
-    const currentState = sharingSettings[space.sId] ?? false;
+    const currentState = sharingSettings?.[space.sId] ?? false;
     form.setValue(`sharingSettings.${space.sId}`, !currentState, {
       shouldDirty: true,
     });
@@ -67,7 +67,7 @@ export function MCPServerDetailsSharing({
     .map((space) => ({
       name: space.name,
       space: space,
-      isEnabled: sharingSettings[space.sId] ?? false,
+      isEnabled: sharingSettings?.[space.sId] ?? false,
       onClick: () => handleToggle(space),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

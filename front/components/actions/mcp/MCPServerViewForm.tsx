@@ -1,7 +1,7 @@
 import { Input } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
-import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -10,7 +10,7 @@ interface MCPServerViewFormProps {
 }
 
 export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
-  const form = useFormContext<InfoFormValues>();
+  const form = useFormContext<MCPServerFormValues>();
 
   return (
     <div className="space-y-5 text-foreground dark:text-foreground-night">
