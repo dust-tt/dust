@@ -141,7 +141,6 @@ main {
   animation: fade-collapse 500ms ease-out forwards;
 }
 
-
 /* Privacy mask style for dd-privacy-mask elements - only when enabled */
 .privacy-mask-enabled .dd-privacy-mask {
   filter: blur(5px) !important;
