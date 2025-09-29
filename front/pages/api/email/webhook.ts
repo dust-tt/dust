@@ -18,6 +18,7 @@ import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
+import { getAgentRoute } from "@app/lib/utils/router";
 
 const { DUST_CLIENT_FACING_URL = "", EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
@@ -261,7 +262,7 @@ async function handler(
             agentConfiguration: answer.agentConfiguration,
             htmlContent: `<div><div>${
               answer.html
-            }</div><br/><a href="${getAgentRoute(auth.workspace()?.sId, conversation.sId, DUST_CLIENT_FACING_URL)}">Open in Dust</a></div>`,
+            }</div><br/><a href="${getAgentRoute(auth.workspace()?.sId ?? "", conversation.sId, DUST_CLIENT_FACING_URL)}">Open in Dust</a></div>`,
           });
         });
       }
