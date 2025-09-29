@@ -581,7 +581,11 @@ const createServer = (
         if (isDataSourceNodeId(nodeId)) {
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return new Err(new MCPError("Invalid data source node ID format"));
+            return new Err(
+              new MCPError("Invalid data source node ID format", {
+                tracked: false,
+              })
+            );
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -590,7 +594,9 @@ const createServer = (
 
           if (!dataSourceConfig) {
             return new Err(
-              new MCPError(`Data source not found for ID: ${dataSourceId}`)
+              new MCPError(`Data source not found for ID: ${dataSourceId}`, {
+                tracked: false,
+              })
             );
           }
 
