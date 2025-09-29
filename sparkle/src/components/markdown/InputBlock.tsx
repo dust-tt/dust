@@ -50,9 +50,9 @@ export const InputBlock = memo(
       </div>
     );
   },
-  (prevProps, nextProps) =>
-    sameNodePosition(prevProps.node, nextProps.node) &&
-    prevProps.type === nextProps.type &&
-    prevProps.checked === nextProps.checked &&
-    prevProps.className === nextProps.className
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) &&
+    prev.type === next.type &&
+    prev.checked === next.checked &&
+    prev.className === next.className
 );

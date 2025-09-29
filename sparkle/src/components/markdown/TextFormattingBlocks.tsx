@@ -17,7 +17,7 @@ export const StrongBlock = memo(
       </strong>
     );
   },
-  (prevProps, nextProps) => sameNodePosition(prevProps.node, nextProps.node)
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
 export const HorizontalRuleBlock = memo(() => {

@@ -1,5 +1,5 @@
 import mermaid from "mermaid";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { memo, useContext, useEffect, useRef, useState } from "react";
 import {
   amber,
   blue,
@@ -25,6 +25,8 @@ import {
   JsonValueType,
   PrettyJsonViewer,
 } from "@sparkle/components/markdown/PrettyJsonViewer";
+import { MarkdownNode } from "@sparkle/components/markdown/types";
+import { sameNodePosition } from "@sparkle/components/markdown/utils";
 import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -313,150 +315,157 @@ export function StyledMermaidGraph({
   );
 }
 
-export function CodeBlockWithExtendedSupport({
-  children,
-  className,
-  inline,
-}: {
-  children?: React.ReactNode;
-  className?: string;
-  inline?: boolean;
-}) {
-  const validChildrenContent = String(children).trim();
-  const [showMermaid, setShowMermaid] = useState<boolean>(false);
-  const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
-  const [showPrettyJson, setShowPrettyJson] = useState<boolean>(false);
-  const [parsedJson, setParsedJson] = useState<JsonValueType | null>(null);
-  const { isStreaming } = useContext(MarkdownContentContext);
+export const CodeBlockWithExtendedSupport = memo(
+  ({
+    children,
+    className,
+    inline,
+  }: {
+    children?: React.ReactNode;
+    className?: string;
+    inline?: boolean;
+    node?: MarkdownNode;
+  }) => {
+    const validChildrenContent = String(children).trim();
+    const [showMermaid, setShowMermaid] = useState<boolean>(false);
+    const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
+    const [showPrettyJson, setShowPrettyJson] = useState<boolean>(false);
+    const [parsedJson, setParsedJson] = useState<JsonValueType | null>(null);
+    const { isStreaming } = useContext(MarkdownContentContext);
 
-  // Detect language from className
-  const language = className?.split("-")[1];
+    // Detect language from className
+    const language = className?.split("-")[1];
 
-  // Only create getContentToDownload when we actually want to enable downloads
-  const getContentToDownload: GetContentToDownloadFunction | undefined =
-    !inline &&
-    validChildrenContent &&
-    (language === "csv" || language === "json")
-      ? async () => ({
-          content: validChildrenContent,
-          filename: `dust_output_${Date.now()}`,
-          type: language === "csv" ? "text/csv" : "application/json",
-        })
-      : undefined;
+    // Only create getContentToDownload when we actually want to enable downloads
+    const getContentToDownload: GetContentToDownloadFunction | undefined =
+      !inline &&
+      validChildrenContent &&
+      (language === "csv" || language === "json")
+        ? async () => ({
+            content: validChildrenContent,
+            filename: `dust_output_${Date.now()}`,
+            type: language === "csv" ? "text/csv" : "application/json",
+          })
+        : undefined;
 
-  // Check for valid Mermaid and JSON.
-  useEffect(() => {
-    if (isStreaming || !validChildrenContent) {
-      return;
-    }
-    if (language === "mermaid") {
-      const checkValidMermaid = async () => {
-        try {
-          await mermaid.parse(validChildrenContent);
-          setIsValidMermaid(true);
-          setShowMermaid(true);
-        } catch (e) {
-          setIsValidMermaid(false);
-          setShowMermaid(false);
-        }
-      };
-      void checkValidMermaid();
-    }
-    if (language === "json") {
-      try {
-        const parsed = JSON.parse(validChildrenContent);
-        setParsedJson(parsed);
-        const prettyJsonPreference = getPrettyJsonPreference();
-        setShowPrettyJson(prettyJsonPreference);
-      } catch (e) {
-        setParsedJson(null);
-        setShowPrettyJson(false);
+    // Check for valid Mermaid and JSON.
+    useEffect(() => {
+      if (isStreaming || !validChildrenContent) {
+        return;
       }
+      if (language === "mermaid") {
+        const checkValidMermaid = async () => {
+          try {
+            await mermaid.parse(validChildrenContent);
+            setIsValidMermaid(true);
+            setShowMermaid(true);
+          } catch (e) {
+            setIsValidMermaid(false);
+            setShowMermaid(false);
+          }
+        };
+        void checkValidMermaid();
+      }
+      if (language === "json") {
+        try {
+          const parsed = JSON.parse(validChildrenContent);
+          setParsedJson(parsed);
+          const prettyJsonPreference = getPrettyJsonPreference();
+          setShowPrettyJson(prettyJsonPreference);
+        } catch (e) {
+          setParsedJson(null);
+          setShowPrettyJson(false);
+        }
+      }
+    }, [isStreaming, language, validChildrenContent]);
+
+    if (inline) {
+      return (
+        <CodeBlock className={className} inline={inline}>
+          {children}
+        </CodeBlock>
+      );
     }
-  }, [isStreaming, language, validChildrenContent]);
 
-  if (inline) {
-    return (
-      <CodeBlock className={className} inline={inline}>
-        {children}
-      </CodeBlock>
-    );
-  }
+    if (isValidMermaid) {
+      return (
+        <ContentBlockWrapper
+          content={validChildrenContent}
+          getContentToDownload={getContentToDownload}
+          actions={
+            <Button
+              className="s-font-sans"
+              size="xs"
+              variant={"outline"}
+              label={showMermaid ? "Markdown" : "Mermaid"}
+              icon={showMermaid ? CommandLineIcon : SparklesIcon}
+              onClick={() => setShowMermaid(!showMermaid)}
+              tooltip={showMermaid ? "Switch to Markdown" : "Switch to Mermaid"}
+            />
+          }
+        >
+          {showMermaid ? (
+            <MermaidGraph chart={validChildrenContent} />
+          ) : (
+            <CodeBlock className={className} inline={inline}>
+              {children}
+            </CodeBlock>
+          )}
+        </ContentBlockWrapper>
+      );
+    }
 
-  if (isValidMermaid) {
+    if (parsedJson !== null) {
+      return (
+        <ContentBlockWrapper
+          content={validChildrenContent}
+          getContentToDownload={getContentToDownload}
+          actions={
+            <Button
+              className="s-font-sans"
+              size="xs"
+              variant={"outline"}
+              label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
+              icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
+              onClick={() => {
+                const newValue = !showPrettyJson;
+                setShowPrettyJson(newValue);
+                setPrettyJsonPreference(newValue);
+              }}
+              tooltip={
+                showPrettyJson ? "Switch to Raw JSON" : "Switch to Pretty View"
+              }
+            />
+          }
+          displayActions="hover"
+          buttonDisplay="inside"
+        >
+          {showPrettyJson ? (
+            <PrettyJsonViewer data={parsedJson} />
+          ) : (
+            <CodeBlock className={className} inline={inline}>
+              {children}
+            </CodeBlock>
+          )}
+        </ContentBlockWrapper>
+      );
+    }
+
     return (
       <ContentBlockWrapper
         content={validChildrenContent}
         getContentToDownload={getContentToDownload}
-        actions={
-          <Button
-            className="s-font-sans"
-            size="xs"
-            variant={"outline"}
-            label={showMermaid ? "Markdown" : "Mermaid"}
-            icon={showMermaid ? CommandLineIcon : SparklesIcon}
-            onClick={() => setShowMermaid(!showMermaid)}
-            tooltip={showMermaid ? "Switch to Markdown" : "Switch to Mermaid"}
-          />
-        }
-      >
-        {showMermaid ? (
-          <MermaidGraph chart={validChildrenContent} />
-        ) : (
-          <CodeBlock className={className} inline={inline}>
-            {children}
-          </CodeBlock>
-        )}
-      </ContentBlockWrapper>
-    );
-  }
-
-  if (parsedJson !== null) {
-    return (
-      <ContentBlockWrapper
-        content={validChildrenContent}
-        getContentToDownload={getContentToDownload}
-        actions={
-          <Button
-            className="s-font-sans"
-            size="xs"
-            variant={"outline"}
-            label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
-            icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
-            onClick={() => {
-              const newValue = !showPrettyJson;
-              setShowPrettyJson(newValue);
-              setPrettyJsonPreference(newValue);
-            }}
-            tooltip={
-              showPrettyJson ? "Switch to Raw JSON" : "Switch to Pretty View"
-            }
-          />
-        }
-        displayActions="hover"
         buttonDisplay="inside"
+        displayActions="hover"
       >
-        {showPrettyJson ? (
-          <PrettyJsonViewer data={parsedJson} />
-        ) : (
-          <CodeBlock className={className} inline={inline}>
-            {children}
-          </CodeBlock>
-        )}
+        <CodeBlock className={className} inline={inline}>
+          {children}
+        </CodeBlock>
       </ContentBlockWrapper>
     );
-  }
-
-  return (
-    <ContentBlockWrapper
-      content={validChildrenContent}
-      getContentToDownload={getContentToDownload}
-      buttonDisplay="inside"
-      displayActions="hover"
-    >
-      <CodeBlock className={className} inline={inline}>
-        {children}
-      </CodeBlock>
-    </ContentBlockWrapper>
-  );
-}
+  },
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) &&
+    prev.className === next.className &&
+    prev.inline === next.inline
+);

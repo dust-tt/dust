@@ -67,11 +67,8 @@ export function sameNodePosition(
 }
 
 export function sameTextStyling(
-  prevProps: { textColor?: string; textSize?: string },
-  nextProps: { textColor?: string; textSize?: string }
+  prev: { textColor?: string; textSize?: string },
+  next: { textColor?: string; textSize?: string }
 ): boolean {
-  return (
-    prevProps.textColor === nextProps.textColor &&
-    prevProps.textSize === nextProps.textSize
-  );
+  return prev.textColor === next.textColor && prev.textSize === next.textSize;
 }

@@ -94,37 +94,41 @@ export function Markdown({
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(() => {
     return {
-      pre: ({ children }) => <PreBlock>{children}</PreBlock>,
+      pre: ({ children, node }) => <PreBlock node={node}>{children}</PreBlock>,
       a: LinkBlock,
-      ul: ({ children }) => (
+      ul: ({ children, node }) => (
         <UlBlock
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
           textColor={textColor}
+          node={node}
         >
           {children}
         </UlBlock>
       ),
-      ol: ({ children, start }) => (
+      ol: ({ children, start, node }) => (
         <OlBlock
           start={start}
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          node={node}
         >
           {children}
         </OlBlock>
       ),
-      li: ({ children }) => (
+      li: ({ children, node }) => (
         <LiBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          node={node}
         >
           {children}
         </LiBlock>
       ),
-      p: ({ children }) => (
+      p: ({ children, node }) => (
         <ParagraphBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
+          node={node}
         >
           {children}
         </ParagraphBlock>
@@ -134,37 +138,63 @@ export function Markdown({
       tbody: TableBodyBlock,
       th: TableHeaderBlock,
       td: TableDataBlock,
-      h1: ({ children }) => (
-        <H1Block textColor={textColor} forcedTextSize={forcedTextSize}>
+      h1: ({ children, node }) => (
+        <H1Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
+        >
           {children}
         </H1Block>
       ),
-      h2: ({ children }) => (
-        <H2Block textColor={textColor} forcedTextSize={forcedTextSize}>
+      h2: ({ children, node }) => (
+        <H2Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
+        >
           {children}
         </H2Block>
       ),
-      h3: ({ children }) => (
-        <H3Block textColor={textColor} forcedTextSize={forcedTextSize}>
+      h3: ({ children, node }) => (
+        <H3Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
+        >
           {children}
         </H3Block>
       ),
-      h4: ({ children }) => (
-        <H4Block textColor={textColor} forcedTextSize={forcedTextSize}>
+      h4: ({ children, node }) => (
+        <H4Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
+        >
           {children}
         </H4Block>
       ),
-      h5: ({ children }) => (
-        <H5Block textColor={textColor} forcedTextSize={forcedTextSize}>
+      h5: ({ children, node }) => (
+        <H5Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
+        >
           {children}
         </H5Block>
       ),
-      h6: ({ children }) => (
-        <H6Block textColor={textColor} forcedTextSize={forcedTextSize}>
+      h6: ({ children, node }) => (
+        <H6Block
+          textColor={textColor}
+          forcedTextSize={forcedTextSize}
+          node={node}
+        >
           {children}
         </H6Block>
       ),
-      strong: ({ children }) => <StrongBlock>{children}</StrongBlock>,
+      strong: ({ children, node }) => (
+        <StrongBlock node={node}>{children}</StrongBlock>
+      ),
       input: InputBlock,
       blockquote: BlockquoteBlock,
       hr: HorizontalRuleBlock,

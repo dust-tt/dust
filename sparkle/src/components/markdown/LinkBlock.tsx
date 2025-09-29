@@ -29,7 +29,6 @@ export const LinkBlock = memo(
       </a>
     );
   },
-  (prevProps, nextProps) =>
-    sameNodePosition(prevProps.node, nextProps.node) &&
-    prevProps.href === nextProps.href
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) && prev.href === next.href
 );

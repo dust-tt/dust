@@ -26,9 +26,8 @@ export const UlBlock = memo(
       <ul className={cn(ulBlockVariants(), textColor, textSize)}>{children}</ul>
     );
   },
-  (prevProps, nextProps) =>
-    sameNodePosition(prevProps.node, nextProps.node) &&
-    sameTextStyling(prevProps, nextProps)
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
 );
 
 export const olBlockVariants = cva(["s-list-decimal s-pb-2 s-pl-6"]);
@@ -49,10 +48,10 @@ export const OlBlock = memo(
       </ol>
     );
   },
-  (prevProps, nextProps) =>
-    sameNodePosition(prevProps.node, nextProps.node) &&
-    prevProps.start === nextProps.start &&
-    sameTextStyling(prevProps, nextProps)
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) &&
+    prev.start === next.start &&
+    sameTextStyling(prev, next)
 );
 
 export const liBlockVariants = cva(["s-break-words"]);
@@ -73,8 +72,8 @@ export const LiBlock = memo(
       </li>
     );
   },
-  (prevProps, nextProps) =>
-    sameNodePosition(prevProps.node, nextProps.node) &&
-    prevProps.className === nextProps.className &&
-    sameTextStyling(prevProps, nextProps)
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) &&
+    prev.className === next.className &&
+    sameTextStyling(prev, next)
 );

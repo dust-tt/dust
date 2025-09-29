@@ -80,7 +80,7 @@ export const TableBlock = memo(
       </ContentBlockWrapper>
     );
   },
-  (prevProps, nextProps) => sameNodePosition(prevProps.node, nextProps.node)
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
 export const TableHeadBlock = memo(
@@ -91,7 +91,7 @@ export const TableHeadBlock = memo(
       </thead>
     );
   },
-  (prevProps, nextProps) => sameNodePosition(prevProps.node, nextProps.node)
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
 export const TableBodyBlock = memo(
@@ -102,7 +102,7 @@ export const TableBodyBlock = memo(
       </tbody>
     );
   },
-  (prevProps, nextProps) => sameNodePosition(prevProps.node, nextProps.node)
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
 export const TableHeaderBlock = memo(
@@ -113,7 +113,7 @@ export const TableHeaderBlock = memo(
       </th>
     );
   },
-  (prevProps, nextProps) => sameNodePosition(prevProps.node, nextProps.node)
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
 export const TableDataBlock = memo(
@@ -133,5 +133,5 @@ export const TableDataBlock = memo(
       </td>
     );
   },
-  (prevProps, nextProps) => sameNodePosition(prevProps.node, nextProps.node)
+  (prev, next) => sameNodePosition(prev.node, next.node)
 );

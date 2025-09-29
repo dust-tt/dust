@@ -35,10 +35,9 @@ export const H1Block = memo(
       </h1>
     );
   },
-  (prevProps, nextProps) => {
+  (prev, next) => {
     return (
-      sameNodePosition(prevProps.node, nextProps.node) &&
-      sameTextStyling(prevProps, nextProps)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -57,10 +56,9 @@ export const H2Block = memo(
       </h2>
     );
   },
-  (prevProps, nextProps) => {
+  (prev, next) => {
     return (
-      sameNodePosition(prevProps.node, nextProps.node) &&
-      sameTextStyling(prevProps, nextProps)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -79,10 +77,9 @@ export const H3Block = memo(
       </h3>
     );
   },
-  (prevProps, nextProps) => {
+  (prev, next) => {
     return (
-      sameNodePosition(prevProps.node, nextProps.node) &&
-      sameTextStyling(prevProps, nextProps)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -101,10 +98,9 @@ export const H4Block = memo(
       </h4>
     );
   },
-  (prevProps, nextProps) => {
+  (prev, next) => {
     return (
-      sameNodePosition(prevProps.node, nextProps.node) &&
-      sameTextStyling(prevProps, nextProps)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -123,10 +119,9 @@ export const H5Block = memo(
       </h5>
     );
   },
-  (prevProps, nextProps) => {
+  (prev, next) => {
     return (
-      sameNodePosition(prevProps.node, nextProps.node) &&
-      sameTextStyling(prevProps, nextProps)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );
@@ -145,10 +140,9 @@ export const H6Block = memo(
       </h6>
     );
   },
-  (prevProps, nextProps) => {
+  (prev, next) => {
     return (
-      sameNodePosition(prevProps.node, nextProps.node) &&
-      sameTextStyling(prevProps, nextProps)
+      sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
     );
   }
 );

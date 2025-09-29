@@ -1,5 +1,8 @@
 import { cva } from "class-variance-authority";
-import React from "react";
+import React, { memo } from "react";
+
+import { MarkdownNode } from "./types";
+import { sameNodePosition } from "./utils";
 
 export const preBlockVariants = cva(
   [
@@ -18,25 +21,30 @@ export const preBlockVariants = cva(
 interface PreBlockProps {
   children: React.ReactNode;
   variant?: "surface";
+  node?: MarkdownNode;
 }
 
-export function PreBlock({ children, variant = "surface" }: PreBlockProps) {
-  const validChildrenContent =
-    Array.isArray(children) && children[0]
-      ? children[0].props.children[0]
-      : null;
-
-  let fallbackData: string | null = null;
-  if (!validChildrenContent) {
-    fallbackData =
+export const PreBlock = memo(
+  ({ children, variant = "surface" }: PreBlockProps) => {
+    const validChildrenContent =
       Array.isArray(children) && children[0]
-        ? children[0].props?.node?.data?.meta
+        ? children[0].props.children[0]
         : null;
-  }
 
-  return (
-    <pre className={preBlockVariants({ variant })}>
-      {validChildrenContent ? children : fallbackData || children}
-    </pre>
-  );
-}
+    let fallbackData: string | null = null;
+    if (!validChildrenContent) {
+      fallbackData =
+        Array.isArray(children) && children[0]
+          ? children[0].props?.node?.data?.meta
+          : null;
+    }
+
+    return (
+      <pre className={preBlockVariants({ variant })}>
+        {validChildrenContent ? children : fallbackData || children}
+      </pre>
+    );
+  },
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) && prev.variant === next.variant
+);
