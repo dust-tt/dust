@@ -112,7 +112,11 @@ async function handler(
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
         presetProviderId: model.providerId,
-        presetTemperature: body.presetTemperature ?? null,
+        // Not configurable in the template, keeping the column for now since some templates do
+        // have a custom temperature.
+        // TODO(2025-09-29 aubin): update old templates to remove temperature setting.
+        //  Dependent on fixing it in Agent Builder.
+        presetTemperature: "balanced",
         tags: body.tags,
         visibility: body.visibility,
       });
