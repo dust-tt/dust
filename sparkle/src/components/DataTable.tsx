@@ -1039,6 +1039,10 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   description?: string;
   grow?: boolean;
   disabled?: boolean;
+  avatarStack?: {
+    items: { name: string; visual: string }[];
+    nbVisibleItems?: number;
+  };
 }
 
 DataTable.CellContent = function CellContent({
@@ -1052,6 +1056,7 @@ DataTable.CellContent = function CellContent({
   description,
   grow = false,
   disabled,
+  avatarStack,
   ...props
 }: CellContentProps) {
   return (
@@ -1083,6 +1088,14 @@ DataTable.CellContent = function CellContent({
           visual={avatarUrl}
           size="xs"
           className="s-mr-2"
+          isRounded={roundedAvatar ?? false}
+        />
+      )}
+      {avatarStack && (
+        <Avatar.Stack
+          avatars={avatarStack.items}
+          nbVisibleItems={avatarStack.nbVisibleItems}
+          size="xs"
           isRounded={roundedAvatar ?? false}
         />
       )}
