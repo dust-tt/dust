@@ -22,7 +22,8 @@
     "prepare": "cd .. && husky .husky",
     "debug:profiler": "tsx ./scripts/debug/run_profiler.ts",
     "sitemap": "next-sitemap",
-    "sparkle:dev": "./admin/sparkle_dev.sh"
+    "sparkle:dev": "./admin/sparkle_dev.sh",
+    "analyze": "NODE_OPTIONS=--max-old-space-size=8192 ANALYZE=true npm run build"
   },
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",

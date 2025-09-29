@@ -2,7 +2,8 @@ import type { LightWorkspaceType } from "../user";
 
 export function isDevelopment() {
   return (
-    process.env.NODE_ENV === "development" || process.env.ANALYZE === "true"
+    process.env.NODE_ENV === "development" ||
+    process.env.IS_DEVELOPMENT === "true"
   );
 }
 export function isTest() {
