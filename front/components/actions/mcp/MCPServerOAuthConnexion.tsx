@@ -112,7 +112,7 @@ export function MCPServerOAuthConnexion({
 
   return (
     <div
-      className="flex flex-col items-center gap-2"
+      className="flex flex-col items-center gap-4"
       id="mcp-server-oauth-connexion-container"
       ref={setContainerRef}
     >
