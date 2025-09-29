@@ -404,7 +404,6 @@ export async function* tryCallMCPTool(
     // Type inference is not working here because of them using passthrough in the zod schema.
     const content: CallToolResult["content"] = (toolCallResult.content ??
       []) as CallToolResult["content"];
-    const isError: boolean = (toolCallResult.isError as boolean) ?? false;
 
     if (content.length >= MAX_OUTPUT_ITEMS) {
       return {
@@ -453,7 +452,10 @@ export async function* tryCallMCPTool(
       }
     }
 
-    return { isError, content };
+    return {
+      isError: (toolCallResult.isError as boolean) ?? false,
+      content,
+    };
   } catch (error) {
     logger.error(
       {
