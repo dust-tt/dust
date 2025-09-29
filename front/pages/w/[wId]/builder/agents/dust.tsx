@@ -49,6 +49,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
+import { pluralize } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -438,8 +439,9 @@ function DataSourceCategorySheet({
     return initial;
   }, [spaceDataSourceViews]);
 
-  const columns: ColumnDef<Data>[] = useMemo(
+  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
     () => [
+      createSelectionColumn<Data>(),
       {
         header: "Name",
         accessorKey: "name",
@@ -451,10 +453,6 @@ function DataSourceCategorySheet({
       },
     ],
     []
-  );
-  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
-    () => [createSelectionColumn<Data>(), ...columns],
-    [columns]
   );
 
   const onClose = () => {
@@ -493,9 +491,7 @@ function DataSourceCategorySheet({
 
       sendNotification({
         title: "Saved",
-        description: `Updated ${changes.length} ${
-          changes.length === 1 ? "data source" : "data sources"
-        }`,
+        description: `Updated ${changes.length} data source${pluralize(changes.length)}`,
         type: "success",
       });
       setRowSelection({});
@@ -525,10 +521,7 @@ function DataSourceCategorySheet({
         }
       }}
     >
-      <div
-        className="inline-flex"
-        data-testid={`dsv-${category}-sheet-trigger`}
-      >
+      <div className="inline-flex">
         <SheetTrigger asChild>{trigger}</SheetTrigger>
       </div>
       <SheetContent size="lg">
