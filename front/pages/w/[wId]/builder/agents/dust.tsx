@@ -266,56 +266,48 @@ export default function EditDustAgent({
                 title="Data Sources and Connections"
                 description="Configure which Company Data connections and data sources will be searched by the Dust agent."
               />
-              <>
-                {
-                  <ContextItem.List>
-                    {sortedDatasources.map((dsView) => (
-                      <ContextItem
-                        key={dsView.id}
-                        title={getDisplayNameForDataSource(dsView.dataSource)}
-                        visual={
-                          <DustAgentDataSourceVisual dataSourceView={dsView} />
-                        }
-                        action={
-                          <SliderToggle
-                            selected={
-                              dsView.dataSource.assistantDefaultSelected
-                            }
-                            onClick={async () => {
-                              await updateDatasourceSettings(
-                                {
-                                  assistantDefaultSelected:
-                                    !dsView.dataSource.assistantDefaultSelected,
-                                },
-                                dsView.dataSource
-                              );
-                            }}
-                          />
-                        }
+              <ContextItem.List>
+                {sortedDatasources.map((dsView) => (
+                  <ContextItem
+                    key={dsView.id}
+                    title={getDisplayNameForDataSource(dsView.dataSource)}
+                    visual={
+                      <DustAgentDataSourceVisual dataSourceView={dsView} />
+                    }
+                    action={
+                      <SliderToggle
+                        selected={dsView.dataSource.assistantDefaultSelected}
+                        onClick={async () => {
+                          await updateDatasourceSettings(
+                            {
+                              assistantDefaultSelected:
+                                !dsView.dataSource.assistantDefaultSelected,
+                            },
+                            dsView.dataSource
+                          );
+                        }}
                       />
-                    ))}
-                  </ContextItem.List>
-                }
-              </>
+                    }
+                  />
+                ))}
+              </ContextItem.List>
             </>
           ) : dustAgentConfiguration?.status ===
             "disabled_missing_datasource" ? (
-            <>
-              <Page.SectionHeader
-                title="This workspace doesn't currently have any data sources."
-                description="Add Company Data connections or data sources to enable the Dust agent."
-                action={{
-                  label: "Add data",
-                  variant: "primary",
-                  icon: PlusIcon,
-                  onClick: async () => {
-                    await router.push(
-                      `/w/${owner.sId}/spaces/${globalSpace.sId}`
-                    );
-                  },
-                }}
-              />
-            </>
+            <Page.SectionHeader
+              title="This workspace doesn't currently have any data sources."
+              description="Add Company Data connections or data sources to enable the Dust agent."
+              action={{
+                label: "Add data",
+                variant: "primary",
+                icon: PlusIcon,
+                onClick: async () => {
+                  await router.push(
+                    `/w/${owner.sId}/spaces/${globalSpace.sId}`
+                  );
+                },
+              }}
+            />
           ) : null}
         </div>
       </div>
