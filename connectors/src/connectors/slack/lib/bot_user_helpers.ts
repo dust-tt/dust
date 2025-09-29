@@ -7,9 +7,9 @@ import {
 } from "@connectors/connectors/slack/lib/errors";
 import {
   getSlackBotInfo,
+  getSlackUserInfoMemoized,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
-import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import logger from "@connectors/logger/logger";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
@@ -49,45 +49,31 @@ export async function getUserName(
   connectorId: ModelId,
   slackClient: WebClient
 ): Promise<string | null> {
-  const fromCache = await cacheGet(getUserCacheKey(slackUserId, connectorId));
-  if (fromCache) {
-    return fromCache;
-  }
-
   try {
-    reportSlackUsage({
+    const info = await getSlackUserInfoMemoized(
       connectorId,
-      method: "users.info",
-    });
-    const info = await slackClient.users.info({ user: slackUserId });
+      slackClient,
+      slackUserId
+    );
 
-    if (info && info.user) {
-      const displayName = info.user.profile?.display_name;
-      const realName = info.user.profile?.real_name;
-      const userName = displayName || realName || info.user.name;
+    const userName = info.display_name || info.real_name || info.name;
 
-      if (userName) {
-        await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
-        return userName;
-      }
+    if (userName) {
+      return userName;
     }
-
     return null;
   } catch (err) {
     if (isSlackWebAPIPlatformError(err)) {
       if (err.data.error === "user_not_found") {
-        logger.info({ connectorId, slackUserId }, "Slack user not found.");
-
+        logger.info(
+          { provider: "slack", connectorId, slackUserId },
+          "Slack user not found."
+        );
         return null;
       }
     }
-
     throw err;
   }
-}
-
-export function getUserCacheKey(userId: string, connectorId: ModelId) {
-  return `slack-userid2name-${connectorId}-${userId}`;
 }
 
 export function shouldIndexSlackMessage(

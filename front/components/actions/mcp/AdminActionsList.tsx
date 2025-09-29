@@ -217,13 +217,13 @@ export const AdminActionsList = ({
             rowB.original.mcpServer.name
           );
         },
+        meta: {
+          className: "w-28 @2xl:w-32",
+        },
       },
       {
         header: "Used by",
         accessorFn: (row: RowData) => row.usage?.count ?? 0,
-        meta: {
-          className: "w-24",
-        },
         cell: (info) => (
           <DataTable.CellContent>
             <UsedByButton
@@ -232,6 +232,9 @@ export const AdminActionsList = ({
             />
           </DataTable.CellContent>
         ),
+        meta: {
+          className: "hidden @sm:w-10 @sm:table-cell",
+        },
       },
       {
         id: "access",
@@ -260,7 +263,7 @@ export const AdminActionsList = ({
           );
         },
         meta: {
-          className: "w-28",
+          className: "hidden w-28 @2xl:w-10 @sm:table-cell",
         },
       },
       {
@@ -279,7 +282,7 @@ export const AdminActionsList = ({
           );
         },
         meta: {
-          className: "w-10",
+          className: "hidden @sm:w-10 @sm:table-cell",
         },
       },
       {
@@ -296,7 +299,7 @@ export const AdminActionsList = ({
           />
         ),
         meta: {
-          className: "w-28",
+          className: "hidden @sm:w-28 @sm:table-cell @2xl:w-10",
         },
       }
     );

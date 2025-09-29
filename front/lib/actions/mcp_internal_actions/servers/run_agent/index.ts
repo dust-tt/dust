@@ -53,7 +53,6 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
-import { isAgentMCPActionWithOutputType } from "@app/types/actions";
 
 const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
 
@@ -353,7 +352,7 @@ export default async function createServer(
         );
 
         if (convRes.isErr()) {
-          return new Err(new MCPError(convRes.error.message));
+          return new Err(convRes.error);
         }
 
         if (isHandoff) {
@@ -482,25 +481,13 @@ export default async function createServer(
         };
 
         const getFinishedContent = (agentMessage: AgentMessagePublicType) => {
-          const finalText: string = agentMessage.content ?? "";
-          const cot: string = agentMessage.chainOfThought ?? "";
-
-          let refsFromAgent: Record<string, CitationType> = {};
-          let files: ActionGeneratedFileType[] = [];
-          if (
-            Array.isArray(agentMessage.actions) &&
-            agentMessage.actions.every(isAgentMCPActionWithOutputType)
-          ) {
-            refsFromAgent = getCitationsFromActions(agentMessage.actions);
-            files = agentMessage.actions.flatMap((action) =>
-              action.generatedFiles.filter((f) => !f.hidden)
-            );
-          }
           return {
-            finalText,
-            cot,
-            refsFromAgent,
-            files,
+            finalText: agentMessage.content ?? "",
+            cot: agentMessage.chainOfThought ?? "",
+            refsFromAgent: getCitationsFromActions(agentMessage.actions),
+            files: agentMessage.actions.flatMap((action) =>
+              action.generatedFiles.filter((f) => !f.hidden)
+            ),
           };
         };
         // Early finish: if the child conversation already succeeded, return its stored result.
@@ -624,22 +611,27 @@ export default async function createServer(
               }
             } else if (event.type === "agent_error") {
               const errorMessage = `Agent error: ${event.error.message}`;
-              return new Err(new MCPError(errorMessage));
+              // Certain types of agent errors should not be tracked as run_agent tool execution
+              // errors (they will be exposed to the model and will be tracked as errors from the
+              // agentic loop in the sub agent conversation).
+              const tracked = ![
+                "retryable_model_error",
+                "context_window_exceeded",
+                "provider_internal_error",
+              ].includes(event.error.metadata?.category);
+              return new Err(
+                new MCPError(errorMessage, {
+                  tracked,
+                })
+              );
             } else if (event.type === "user_message_error") {
               const errorMessage = `User message error: ${event.error.message}`;
               return new Err(new MCPError(errorMessage));
             } else if (event.type === "agent_message_success") {
-              // TODO(2025-09-22 aubin): update the SDK type to remove the need for this typeguard
-              //  (event.message.actions should always be an AgentMCPActionWithOutputType[]).
-              if (
-                Array.isArray(event.message.actions) &&
-                event.message.actions.every(isAgentMCPActionWithOutputType)
-              ) {
-                refsFromAgent = getCitationsFromActions(event.message.actions);
-                files = event.message.actions.flatMap((action) =>
-                  action.generatedFiles.filter((f) => !f.hidden)
-                );
-              }
+              refsFromAgent = getCitationsFromActions(event.message.actions);
+              files = event.message.actions.flatMap((action) =>
+                action.generatedFiles.filter((f) => !f.hidden)
+              );
               break;
             } else if (event.type === "tool_approve_execution") {
               // Collect this blocking event.
@@ -719,10 +711,15 @@ export default async function createServer(
             }
           }
 
-          const errorMessage = `Error processing agent stream: ${
-            normalizeError(streamError).message
-          }`;
-          return new Err(new MCPError(errorMessage));
+          const normalizedError = normalizeError(streamError);
+          const isNotConnected = normalizedError.message === "Not connected";
+          const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
+          return new Err(
+            new MCPError(errorMessage, {
+              tracked: !isNotConnected,
+              cause: normalizedError,
+            })
+          );
         }
         finalContent = finalContent.trim();
         chainOfThought = chainOfThought.trim();

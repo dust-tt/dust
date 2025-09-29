@@ -43,7 +43,7 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import {
   getSlackBotInfo,
   getSlackClient,
-  getSlackUserInfo,
+  getSlackUserInfoMemoized,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
@@ -51,6 +51,7 @@ import {
   isBotAllowed,
   notifyIfSlackUserIsNotAllowed,
 } from "@connectors/connectors/slack/lib/workspace_limits";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
@@ -61,6 +62,7 @@ import {
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
 import { createProxyAwareFetch } from "@connectors/lib/proxy";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -445,11 +447,21 @@ async function processErrorResult(
         channelId: slackChannel,
         useCase: "bot",
       });
-      await slackClient.chat.update({
-        ...errorPost,
-        channel: slackChannel,
-        ts: mainMessage.ts,
-      });
+
+      const mainMessageTs = mainMessage.ts;
+
+      await throttleWithRedis(
+        RATE_LIMITS["chat.update"],
+        `${connector.id}-chat-update`,
+        false,
+        async () =>
+          slackClient.chat.update({
+            ...errorPost,
+            channel: slackChannel,
+            ts: mainMessageTs,
+          }),
+        { source: "processErrorResult" }
+      );
     } else {
       reportSlackUsage({
         connectorId: connector.id,
@@ -509,11 +521,25 @@ async function answerMessage(
   // The order is important here because we want to prioritize the user id over the bot id.
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
-    slackUserInfo = await getSlackUserInfo(
-      connector.id,
-      slackClient,
-      slackUserId
-    );
+    try {
+      slackUserInfo = await getSlackUserInfoMemoized(
+        connector.id,
+        slackClient,
+        slackUserId
+      );
+    } catch (e) {
+      if (isSlackWebAPIPlatformError(e)) {
+        logger.error(
+          {
+            error: e,
+            connectorId: connector.id,
+            slackUserId,
+          },
+          "Failed to get slack user info"
+        );
+      }
+      throw e;
+    }
   } else if (slackBotId) {
     try {
       slackUserInfo = await getSlackBotInfo(
@@ -523,6 +549,16 @@ async function answerMessage(
       );
     } catch (e) {
       if (isSlackWebAPIPlatformError(e)) {
+        logger.error(
+          {
+            error: e,
+            connectorId: connector.id,
+            slackUserId,
+            slackBotId,
+            slackTeamId,
+          },
+          "Failed to get slack bot info"
+        );
         if (e.data.error === "bot_not_found") {
           // We received a bot message from a bot that is not accessible to us. We log and ignore
           // the message.
@@ -612,6 +648,9 @@ async function answerMessage(
 
   if (slackUserInfo.is_bot) {
     const botName = slackUserInfo.real_name;
+    if (!botName) {
+      throw new Error("Failed to get bot name. Should never happen.");
+    }
     requestedGroups = await slackConfig.getBotGroupIds(botName);
   }
 

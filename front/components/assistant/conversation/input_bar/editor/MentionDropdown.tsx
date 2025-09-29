@@ -3,8 +3,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import type { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
@@ -98,6 +98,11 @@ export const MentionDropdown = ({
                     e.stopPropagation();
                     onSelect(suggestion);
                   }}
+                  onMouseDown={(e) => {
+                    // This prevents the browser from taking focus away from the editor when onClick is
+                    // triggered.
+                    e.preventDefault();
+                  }}
                   onMouseEnter={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -105,7 +110,9 @@ export const MentionDropdown = ({
                   }}
                 >
                   <Avatar size="xs" visual={suggestion.pictureUrl} />
-                  {suggestion.label}
+                  <span className="truncate" title={suggestion.label}>
+                    {suggestion.label}
+                  </span>
                 </button>
               </div>
             ))}

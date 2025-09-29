@@ -33,6 +33,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Collaborative editing features",
     stage: "dust_only",
   },
+  confluence_tool: {
+    description: "Confluence MCP tool",
+    stage: "on_demand",
+  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
@@ -53,10 +57,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   disallow_agent_creation_to_users: {
     description:
       "Prevent users from creating agents, allowing only admins and builders",
-    stage: "on_demand",
-  },
-  exploded_tables_query: {
-    description: "Enhanced table querying with exploded views",
     stage: "on_demand",
   },
   interactive_content_server: {

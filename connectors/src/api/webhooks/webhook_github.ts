@@ -76,14 +76,6 @@ const _webhookGithubAPIHandler = async (
     return res.status(200).end();
   }
 
-  logger.info(
-    {
-      event,
-      action: jsonBody.action,
-    },
-    "Received webhook"
-  );
-
   const rejectEvent = (pathError?: string): Response<GithubWebhookResBody> => {
     logger.error(
       {
@@ -116,11 +108,19 @@ const _webhookGithubAPIHandler = async (
     },
   });
 
+  const connectorIds = githubConnectorStates.map((s) => s.connectorId);
+
+  logger.info(
+    {
+      event,
+      action: jsonBody.action,
+      connectorIds,
+    },
+    "Received webhook"
+  );
+
   const connectors = (
-    await ConnectorResource.fetchByIds(
-      "github",
-      githubConnectorStates.map((s) => s.connectorId)
-    )
+    await ConnectorResource.fetchByIds("github", connectorIds)
   ).reduce(
     (acc, curr) => Object.assign(acc, { [curr.id]: curr }),
     {} as Record<ModelId, ConnectorResource>

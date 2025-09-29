@@ -1,12 +1,12 @@
 import type { EditorSuggestion } from "@app/ui/components/input_bar/editor/suggestion";
 import {
   Avatar,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
-import { cn } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface MentionDropdownProps {
@@ -93,7 +93,9 @@ export const MentionDropdown = ({
                   onMouseEnter={() => onSelectedIndexChange(index)}
                 >
                   <Avatar size="xs" visual={suggestion.pictureUrl} />
-                  {suggestion.label}
+                  <span className="truncate" title={suggestion.label}>
+                    {suggestion.label}
+                  </span>
                 </button>
               </div>
             ))}

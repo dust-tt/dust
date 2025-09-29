@@ -128,8 +128,9 @@ export function Navigation({
           </div>
 
           <div
+            // center handle vertically (top at 50% + translate half the handle height)
             className={classNames(
-              "fixed z-40 hidden lg:top-1/2 lg:flex",
+              "fixed z-40 hidden lg:top-1/2 lg:flex lg:-translate-y-1/2",
               isNavigationBarOpen ? "lg:ml-80" : ""
             )}
           >

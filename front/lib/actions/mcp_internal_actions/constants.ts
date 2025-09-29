@@ -8,6 +8,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { InternalAllowedIconType } from "@app/lib/actions/mcp_icons";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
@@ -51,9 +52,13 @@ export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
 export const SEARCH_SERVER_NAME = "search";
-export const TABLE_QUERY_SERVER_NAME = "query_tables";
-export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
+
+export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
+
+// IDs of internal MCP servers that are no longer present.
+// We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -63,6 +68,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_management",
   "agent_memory",
   "agent_router",
+  "confluence",
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
@@ -101,7 +107,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   "web_search_&_browse_with_summary",
   SEARCH_SERVER_NAME,
-  TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
 
@@ -182,26 +187,6 @@ export const INTERNAL_MCP_SERVERS = {
       description: "Agent can generate and convert files.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
-  [TABLE_QUERY_SERVER_NAME]: {
-    id: 4,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_stakes: undefined,
-    tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: undefined,
-    serverInfo: {
-      name: TABLE_QUERY_SERVER_NAME,
-      version: "1.0.0",
-      description:
-        "TablesQuery structured data like a spreadsheet or database for data analyses.",
-      icon: "ActionTableIcon",
-      authorization: null,
       documentationUrl: null,
       instructions: null,
     },
@@ -1051,6 +1036,34 @@ The directive should be used to display a clickable version of the agent name in
       requiresSecret: true,
     },
   },
+  confluence: {
+    id: 33,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("confluence_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      // Read operations - never ask (no side effects)
+      get_page: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "confluence",
+      version: "1.0.0",
+      description:
+        "Basic Confluence integration for retrieving page information using the Confluence REST API.",
+      authorization: {
+        provider: "confluence_tools" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ConfluenceLogo",
+      documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
+      instructions: null,
+    },
+  },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
@@ -1175,15 +1188,12 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  query_tables_v2: {
+  [TABLE_QUERY_V2_SERVER_NAME]: {
     id: 1009,
     availability: "auto",
     allowMultipleInstances: false,
-    // We'll eventually switch everyone to this new tables query toolset.
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("exploded_tables_query");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1428,6 +1438,12 @@ export const getInternalMCPServerNameFromSId = (
   }
 
   return null;
+};
+
+export const getInternalMCPServerIconByName = (
+  name: InternalMCPServerNameType
+): InternalAllowedIconType => {
+  return INTERNAL_MCP_SERVERS[name].serverInfo.icon ?? undefined;
 };
 
 export const isInternalMCPServerName = (

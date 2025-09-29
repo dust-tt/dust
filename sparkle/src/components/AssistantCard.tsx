@@ -17,6 +17,7 @@ interface BaseAssistantCardProps {
   subtitle?: string;
   className?: string;
   onClick?: () => void;
+  onContextMenu?: (event: React.MouseEvent) => void;
   variant?: CardVariantType;
 }
 
@@ -42,6 +43,7 @@ export const AssistantCard = React.forwardRef<
     {
       className,
       onClick,
+      onContextMenu,
       title,
       description,
       pictureUrl,
@@ -57,6 +59,7 @@ export const AssistantCard = React.forwardRef<
         size="md"
         className={cn("s-flex s-flex-col s-gap-3", className)}
         onClick={onClick}
+        onContextMenu={onContextMenu}
         action={action}
         variant={variant}
       >

@@ -1,5 +1,13 @@
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import {
+  AgentChildAgentConfiguration,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Mention } from "@app/lib/models/assistant/conversation";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -42,6 +50,42 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   if (!execute) {
     return true;
   }
+
+  const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+
+  await AgentDataSourceConfiguration.destroy({
+    where: {
+      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
+    },
+  });
+
+  await AgentTablesQueryConfigurationTable.destroy({
+    where: {
+      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
+    },
+  });
+
+  await AgentReasoningConfiguration.destroy({
+    where: {
+      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
+    },
+  });
+
+  await AgentChildAgentConfiguration.destroy({
+    where: {
+      mcpServerConfigurationId: mcpServerConfigurations.map((r) => r.id),
+    },
+  });
+
+  await TagAgentModel.destroy({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
 
   // Finally delete the agent configuration.
   await AgentConfiguration.destroy({

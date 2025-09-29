@@ -3,10 +3,8 @@ import _ from "lodash";
 import type {
   Attributes,
   CreationAttributes,
-  IncludeOptions,
   NonAttribute,
   Transaction,
-  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -29,12 +27,7 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import {
-  AgentMessage,
-  ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
+import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -46,8 +39,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
-import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
-import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
 import type {
   AgentMCPActionType,
@@ -69,7 +61,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   constructor(
     model: ModelStaticWorkspaceAware<AgentMCPActionModel>,
     blob: Attributes<AgentMCPActionModel>,
-    // TODO(DURABLE-AGENTS, 2025-08-21): consider using the resource instead of the model.
     readonly stepContent: NonAttribute<
       AgentStepContentResource & { value: FunctionCallContentType }
     >,
@@ -468,127 +459,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  static async listByAgent(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      limit,
-      cursor,
-    }: {
-      agentConfiguration: LightAgentConfigurationType;
-      limit: number;
-      cursor?: string;
-    }
-    // TODO(2025-09-19 aubin): fix this return type, the resource should not need to be aware of
-    //  API-specific types.
-  ): Promise<Result<GetMCPActionsResult, Error>> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const whereClause: WhereOptions<AgentStepContentModel> = {
-      workspaceId: owner.id,
-      type: "function_call",
-    };
-
-    if (cursor) {
-      const cursorDate = new Date(cursor);
-      if (isNaN(cursorDate.getTime())) {
-        return new Err(new Error("Invalid cursor format"));
-      }
-      whereClause.createdAt = {
-        [Op.lt]: cursorDate,
-      };
-    }
-
-    const includeClause: IncludeOptions[] = [
-      {
-        model: AgentMessage,
-        as: "agentMessage",
-        required: true,
-        where: {
-          agentConfigurationId: agentConfiguration.sId,
-        },
-        include: [
-          {
-            model: Message,
-            as: "message",
-            required: true,
-            include: [
-              {
-                model: ConversationModel,
-                as: "conversation",
-                required: true,
-                where: {
-                  visibility: { [Op.ne]: "deleted" },
-                },
-              },
-            ],
-          },
-        ],
-      },
-      {
-        model: AgentMCPActionModel,
-        as: "agentMCPActions",
-        required: true,
-      },
-    ];
-
-    // TODO(2025-09-19 aubin): extract these in methods of AgentStepContentResource.
-    const [totalCount, stepContents] = await Promise.all([
-      AgentStepContentModel.count({
-        include: includeClause,
-        where: whereClause,
-      }),
-      AgentStepContentModel.findAll({
-        include: includeClause,
-        where: whereClause,
-        order: [["createdAt", "DESC"]],
-        limit: limit + 1,
-      }),
-    ]);
-
-    const hasMore = stepContents.length > limit;
-    const actualStepContents = hasMore
-      ? stepContents.slice(0, limit)
-      : stepContents;
-    const nextCursor = hasMore
-      ? actualStepContents[
-          actualStepContents.length - 1
-        ].createdAt.toISOString()
-      : null;
-
-    const actions = actualStepContents.flatMap((stepContent) =>
-      (stepContent.agentMCPActions ?? []).map((action) => {
-        assert(
-          stepContent.agentMessage?.message?.conversation,
-          "Missing required relations"
-        );
-        assert(
-          stepContent.value.type === "function_call",
-          "Step content must be a function call"
-        );
-
-        return {
-          sId: AgentMCPActionResource.modelIdToSId({
-            id: action.id,
-            workspaceId: action.workspaceId,
-          }),
-          createdAt: action.createdAt.toISOString(),
-          functionCallName: stepContent.value.value.name,
-          params: JSON.parse(stepContent.value.value.arguments),
-          status: action.status,
-          conversationId: stepContent.agentMessage.message.conversation.sId,
-          messageId: stepContent.agentMessage.message.sId,
-        };
-      })
-    );
-
-    return new Ok({
-      actions,
-      nextCursor,
-      totalCount,
-    });
-  }
-
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: ModelId }
@@ -704,11 +574,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
 
     return {
+      id: this.id,
+      sId: this.sId,
+      createdAt: this.createdAt.getTime(),
       agentMessageId: this.agentMessageId,
       citationsAllocated: this.citationsAllocated,
       functionCallName: this.functionCallName,
       functionCallId: this.stepContent.value.value.id,
-      id: this.id,
       internalMCPServerName: this.metadata.internalMCPServerName,
       mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,

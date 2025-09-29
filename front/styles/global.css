@@ -149,3 +149,13 @@ main {
 .privacy-mask-enabled .dd-privacy-mask {
   filter: blur(5px) !important;
 }
+
+/* Custom scrollbar styles */
+@layer base {
+  * {
+    scrollbar-width: thin;
+  }
+  .dark * {
+    scrollbar-color: theme("colors.gray.700") theme("colors.gray.900");
+  }
+}

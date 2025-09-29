@@ -77,3 +77,22 @@ export function safeParseJSON(str: string): Result<object | null, Error> {
 export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
 }
+
+export function fileSizeToHumanReadable(
+  size: number,
+  decimals: number = 0
+): string {
+  if (size < 1024) {
+    return `${size.toFixed(decimals)} B`;
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(decimals)} KB`;
+  }
+
+  if (size < 1024 * 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(decimals)} MB`;
+  }
+
+  return `${(size / (1024 * 1024 * 1024)).toFixed(decimals)} GB`;
+}

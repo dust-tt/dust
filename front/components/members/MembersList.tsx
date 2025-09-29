@@ -2,7 +2,7 @@ import {
   Chip,
   DataTable,
   IconButton,
-  Spinner,
+  LoadingBlock,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
@@ -199,8 +199,10 @@ export function MembersList({
   return (
     <>
       {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Spinner size="lg" />
+        <div className="flex w-full flex-col space-y-2">
+          <LoadingBlock className="h-8 w-full rounded-xl" />
+          <LoadingBlock className="h-8 w-full rounded-xl" />
+          <LoadingBlock className="h-8 w-full rounded-xl" />
         </div>
       ) : (
         <DataTable

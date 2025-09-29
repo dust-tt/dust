@@ -1,6 +1,5 @@
 import type { InternalToolInputMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { Ajv } from "ajv";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -20,7 +19,9 @@ import {
   areSchemasEqual,
   findSchemaAtPath,
   followInternalRef,
+  getValueAtPath,
   isJSONSchemaObject,
+  iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
@@ -117,8 +118,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        })) || []
+        })) ?? []
       );
     }
 
@@ -127,8 +127,7 @@ function generateConfiguredInput({
         actionConfiguration.dataSources?.map((config) => ({
           uri: getDataSourceURI(config),
           mimeType,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        })) || []
+        })) ?? []
       );
     }
 
@@ -137,8 +136,7 @@ function generateConfiguredInput({
         actionConfiguration.tables?.map((config) => ({
           uri: getTableURI(config),
           mimeType,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        })) || []
+        })) ?? []
       );
     }
 
@@ -237,7 +235,6 @@ function generateConfiguredInput({
         "string",
         (val): val is string => typeof val === "string"
       );
-
       return { value, mimeType };
     }
 
@@ -446,53 +443,28 @@ export function augmentInputsWithConfiguration({
   }
 
   const inputs = { ...rawInputs };
-
-  const ajv = new Ajv({ allErrors: true, strict: false });
-
-  // Note: When using AJV validation, string patterns must use regex syntax (e.g. /^fil_/) instead
-  // of startsWith() to avoid "Invalid escape" errors. This is important because our Zod schemas are
-  // converted to JSON Schema for AJV validation, and AJV requires regex patterns for string
-  // validation.
-
-  const validate = ajv.compile(inputSchema);
-  const isValid = validate(inputs);
-
-  if (!isValid && validate.errors) {
-    for (const error of validate.errors) {
-      if (error.keyword !== "required" || !error.params.missingProperty) {
-        continue;
-      }
-      const missingProp = error.params.missingProperty;
-
-      const parentPath = error.instancePath
-        ? error.instancePath.split("/").filter(Boolean)
-        : [];
-
-      const fullPath = [...parentPath, missingProp];
-      let propSchema = findSchemaAtPath(inputSchema, fullPath);
-      // If the schema we found is a reference, follow it.
-      if (propSchema?.$ref) {
-        propSchema = followInternalRef(inputSchema, propSchema.$ref);
-      }
-
-      // If we found a schema and it has a matching MIME type, inject the value
-      if (propSchema) {
-        for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
-          if (isSchemaConfigurable(propSchema, mimeType)) {
-            const value = generateConfiguredInput({
-              owner,
-              actionConfiguration,
-              mimeType,
-              keyPath: fullPath.join("."),
-            });
-
-            // We found a matching mimeType, augment the inputs
-            setValueAtPath(inputs, fullPath, value);
-          }
+  iterateOverSchemaPropertiesRecursive(inputSchema, (fullPath, propSchema) => {
+    for (const mimeType of Object.values(INTERNAL_MIME_TYPES.TOOL_INPUT)) {
+      if (isSchemaConfigurable(propSchema, mimeType)) {
+        const valueAtPath = getValueAtPath(inputs, fullPath);
+        if (valueAtPath) {
+          return false;
         }
+
+        const value = generateConfiguredInput({
+          owner,
+          actionConfiguration,
+          mimeType,
+          keyPath: fullPath.join("."),
+        });
+
+        // We found a matching mimeType, augment the inputs
+        setValueAtPath(inputs, fullPath, value);
+        return false;
       }
     }
-  }
+    return true;
+  });
 
   return inputs;
 }
@@ -981,7 +953,7 @@ export function getMCPServerToolsConfigurations(
     mayRequireDustAppConfiguration ||
     mayRequireJsonSchemaConfiguration ||
     mayRequireTimeFrameConfiguration
-      ? "optional"
+      ? "required"
       : realConfigurable;
 
   return {

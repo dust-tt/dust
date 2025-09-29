@@ -237,6 +237,20 @@ export function generateRandomModelSId(prefix?: string): string {
 }
 
 /**
+ * Generates a long, secure, non-guessable secret composed of
+ * URL-safe alphanumeric characters.
+ *
+ * length: number of characters to return (default 64).
+ */
+export function generateSecureSecret(length = 64): string {
+  const digest = blake3(uuidv4(), { length });
+  return Buffer.from(digest)
+    .map(uniformByteToCode62)
+    .map(alphanumFromCode62)
+    .toString();
+}
+
+/**
  * Given a code in between 0 and 61 included, returns the corresponding
  * character from [A-Za-z0-9]
  */

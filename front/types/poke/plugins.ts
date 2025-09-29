@@ -106,6 +106,7 @@ export interface PluginManifest<
   name: string;
   resourceTypes: R[];
   warning?: string;
+  isHidden?: boolean;
 }
 
 interface PluginResourceScope {

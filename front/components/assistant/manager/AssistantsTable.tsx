@@ -1,3 +1,4 @@
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
   BracesIcon,
@@ -12,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
@@ -35,29 +37,23 @@ import type {
 } from "@app/types";
 import { isAdmin, pluralize } from "@app/types";
 import type { TagType } from "@app/types/tag";
-
-type MoreMenuItem = {
-  label: string;
-  icon: React.ComponentType;
-  onClick: (e: React.MouseEvent) => void;
-  variant?: "warning" | "default";
-  kind: "item";
-};
+import type { UserType } from "@app/types/user";
 
 type RowData = {
   sId: string;
   name: string;
   description: string;
   pictureUrl: string;
+  editors: UserType[];
   usage: AgentUsageType | undefined;
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: string | null;
   scope: AgentConfigurationScope;
   onClick?: () => void;
-  moreMenuItems?: MoreMenuItem[];
+  menuItems?: MenuItem[];
   agentTags: TagType[];
   agentTagsAsString: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
   isSelected: boolean;
   canArchive: boolean;
 };
@@ -73,6 +69,19 @@ const getTableColumns = ({
   isBatchEdit: boolean;
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
+  /**
+   * Columns order:
+   * - Select (if batch edit)
+   * - Name (always)
+   * - Access (hidden on mobile)
+   * - Editors (hidden on mobile)
+   * - Tags (always)
+   * - Usage (hidden on mobile)
+   * - Feedback (hidden on mobile)
+   * - Last Edited (hidden on mobile)
+   * - Actions (always)
+   */
+
   return [
     ...(isBatchEdit
       ? [
@@ -115,6 +124,9 @@ const getTableColumns = ({
           </div>
         </DataTable.CellContent>
       ),
+      meta: {
+        className: "w-40 @lg:w-full",
+      },
     },
     {
       header: "Access",
@@ -132,7 +144,35 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-32",
+        className: "hidden @sm:w-32 @sm:table-cell",
+      },
+    },
+    {
+      header: "Editors",
+      accessorKey: "editors",
+      cell: (info: CellContext<RowData, UserType[]>) => {
+        const { editors } = info.row.original;
+
+        if (!editors) {
+          return <DataTable.BasicCellContent label="-" />;
+        }
+
+        return (
+          <DataTable.CellContent>
+            <Avatar.Stack
+              avatars={editors.map((editor) => ({
+                name: editor.fullName,
+                visual: editor.image,
+              }))}
+              nbVisibleItems={4}
+              size="xs"
+              isRounded
+            />
+          </DataTable.CellContent>
+        );
+      },
+      meta: {
+        className: "hidden @sm:w-32 @sm:table-cell",
       },
     },
     {
@@ -160,7 +200,7 @@ const getTableColumns = ({
       ),
       isFilterable: true,
       meta: {
-        className: "w-32 xl:w-64",
+        className: "w-32 xl:w-60",
         tooltip: "Tags",
       },
     },
@@ -182,7 +222,10 @@ const getTableColumns = ({
           label={info.row.original.usage?.messageCount ?? 0}
         />
       ),
-      meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
+      meta: {
+        className: "hidden @sm:w-16 @sm:table-cell",
+        tooltip: "Messages in the last 30 days",
+      },
     },
     {
       header: "Feedback",
@@ -204,7 +247,10 @@ const getTableColumns = ({
           );
         }
       },
-      meta: { className: "w-20", tooltip: "Active users in the last 30 days" },
+      meta: {
+        className: "hidden @sm:w-20 @sm:table-cell",
+        tooltip: "Active users in the last 30 days",
+      },
     },
     {
       header: "Last Edited",
@@ -214,12 +260,12 @@ const getTableColumns = ({
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "short")
+              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
               : "-"
           }
         />
       ),
-      meta: { className: "w-32" },
+      meta: { className: "hidden @sm:w-32 @sm:table-cell" },
     },
     {
       header: "",
@@ -232,9 +278,7 @@ const getTableColumns = ({
             </DataTable.CellContent>
           );
         }
-        return (
-          <DataTable.MoreButton menuItems={info.row.original.moreMenuItems} />
-        );
+        return <DataTable.MoreButton menuItems={info.row.original.menuItems} />;
       },
       meta: {
         className: "w-14",
@@ -290,6 +334,7 @@ export function AssistantsTable({
           (agentConfiguration.canEdit || isAdmin(owner)) &&
           agentConfiguration.status !== "archived" &&
           agentConfiguration.scope !== "global";
+
         return {
           sId: agentConfiguration.sId,
           name: agentConfiguration.name,
@@ -303,7 +348,7 @@ export function AssistantsTable({
           pictureUrl: agentConfiguration.pictureUrl,
           lastUpdate: agentConfiguration.versionCreatedAt,
           feedbacks: agentConfiguration.feedbacks,
-          editors: agentConfiguration.editors,
+          editors: agentConfiguration.editors ?? [],
           scope: agentConfiguration.scope,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
@@ -337,7 +382,7 @@ export function AssistantsTable({
               setShowDetails(agentConfiguration);
             }
           },
-          moreMenuItems:
+          menuItems:
             agentConfiguration.scope !== "global" &&
             agentConfiguration.status !== "archived"
               ? [

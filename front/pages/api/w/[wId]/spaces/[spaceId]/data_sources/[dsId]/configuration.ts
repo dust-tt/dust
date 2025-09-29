@@ -94,7 +94,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "connector_not_found_error",
-            message: `An error occured while fetching the connector's configuration`,
+            message: `An error occurred while fetching the connector's configuration`,
           },
         });
       }
@@ -151,7 +151,7 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "connector_update_error",
-              message: `An error occured while updating the connector's configuration`,
+              message: `An error occurred while updating the connector's configuration`,
             },
           },
           new Error(updateRes.error.message)

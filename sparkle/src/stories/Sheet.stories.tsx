@@ -50,8 +50,10 @@ export function Demo() {
 }
 
 export function SheetDemo() {
+  const [saveCount, setSaveCount] = React.useState(0);
+
   return (
-    <div>
+    <div className="s-flex s-items-center s-gap-3">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" label="Edit demo" />
@@ -64,15 +66,25 @@ export function SheetDemo() {
             <div className="s-flex s-flex-col s-gap-6">
               <Input label="Firstname" placeholder="John" />
               <Input label="Lastname" placeholder="Doe" />
+              <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                Tip: Press Cmd/Ctrl + Enter to Save
+              </div>
             </div>
           </SheetContainer>
           <SheetFooter
             sheetCloseClassName="s-flex s-gap-2"
             leftButtonProps={{ label: "Cancel", variant: "warning" }}
-            rightButtonProps={{ label: "Save", disabled: true }}
+            rightButtonProps={{
+              label: "Save",
+              variant: "primary",
+              onClick: () => setSaveCount((c) => c + 1),
+            }}
           />
         </SheetContent>
       </Sheet>
+      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+        Saved: {saveCount}
+      </span>
     </div>
   );
 }

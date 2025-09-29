@@ -26,9 +26,7 @@ import {
 import { registerCatTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/cat";
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import {
-  DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
   extractDataSourceIdFromNodeId,
-  getSearchNodesSortDirection,
   isDataSourceNodeId,
   makeQueryResourceForFind,
 } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
@@ -191,7 +189,10 @@ async function searchCallback(
   if (coreSearchArgs.length === 0) {
     return new Err(
       new MCPError(
-        "Search action must have at least one data source configured."
+        "Search action must have at least one data source configured.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -354,8 +355,7 @@ const createServer = (
         .describe(
           "The title to search for. This supports partial matching and does not require the " +
             "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
-            "'Q1 Budget Report', etc. This parameter is mutually exclusive with the `sortBy` " +
-            "parameter."
+            "'Q1 Budget Report', etc..."
         ),
       rootNodeId: z
         .string()
@@ -379,7 +379,20 @@ const createServer = (
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
         ],
-      ...DATA_SOURCE_FILE_SYSTEM_OPTION_PARAMETERS,
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "Maximum number of results to return. Initial searches should use 10-20."
+        ),
+      nextPageCursor: z
+        .string()
+        .optional()
+        .describe(
+          "Cursor for fetching the next page of results. This parameter should only be used to fetch " +
+            "the next page of a previous search. The value should be exactly the 'nextPageCursor' from " +
+            "the previous search result."
+        ),
     },
     withToolLogging(
       auth,
@@ -388,7 +401,6 @@ const createServer = (
         query,
         dataSources,
         limit,
-        sortBy,
         nextPageCursor,
         rootNodeId,
         mimeTypes,
@@ -439,14 +451,6 @@ const createServer = (
           options: {
             cursor: nextPageCursor,
             limit,
-            sort: sortBy
-              ? [
-                  {
-                    field: sortBy,
-                    direction: getSearchNodesSortDirection(sortBy),
-                  },
-                ]
-              : undefined,
           },
         });
 

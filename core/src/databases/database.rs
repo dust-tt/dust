@@ -61,6 +61,7 @@ pub async fn execute_query(
     tables: Vec<Table>,
     query: &str,
     store: Box<dyn Store + Sync + Send>,
+    databases_store: Box<dyn DatabasesStore + Sync + Send>,
 ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
     match get_table_type_for_tables(tables.iter().collect()) {
         Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
@@ -77,15 +78,21 @@ pub async fn execute_query(
             }
         }
         Ok(TableType::Local) => {
-            execute_query_on_transient_database(
-                &tables
-                    .into_iter()
-                    .map(|t| LocalTable::from_table(t))
-                    .collect::<Result<Vec<_>>>()?,
-                store,
-                query,
+            let mut local_tables = tables
+                .into_iter()
+                .map(|t| LocalTable::from_table(t))
+                .collect::<Result<Vec<_>>>()?;
+
+            // Load the schema for each table.
+            // If the schema cache is stale, this will update it in place.
+            try_join_all(
+                local_tables
+                    .iter_mut()
+                    .map(|t| t.schema(store.clone(), databases_store.clone())),
             )
-            .await
+            .await?;
+
+            execute_query_on_transient_database(&local_tables, store, query).await
         }
     }
 }

@@ -293,7 +293,7 @@ const createServer = async (
   if (slackAIStatus === "disabled" || slackAIStatus === "disconnected") {
     server.tool(
       "search_messages",
-      "Search messages accross all channels and dms for the current user",
+      "Search messages across all channels and dms for the current user",
       {
         keywords: z
           .string()

@@ -1,3 +1,9 @@
+import _ from "lodash";
+
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/api/assistant/agent_message_content_parser";
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
@@ -6,7 +12,10 @@ import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types";
+import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
+import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
@@ -23,6 +32,7 @@ async function processEventForDatabase(
         errorCode: event.error.code,
         errorMessage: event.error.message,
         errorMetadata: event.error.metadata,
+        completedAt: new Date(),
       });
 
       if (event.type === "agent_error") {
@@ -39,7 +49,7 @@ async function processEventForDatabase(
               message: event.error.message,
               metadata: {
                 ...event.error.metadata,
-                category: event.error.metadata?.category || "",
+                category: event.error.metadata?.category ?? "",
               },
             },
           },
@@ -51,6 +61,7 @@ async function processEventForDatabase(
       // Store cancellation in database.
       await agentMessageRow.update({
         status: "cancelled",
+        completedAt: new Date(),
       });
       break;
 
@@ -59,6 +70,7 @@ async function processEventForDatabase(
       await agentMessageRow.update({
         runIds: event.runIds,
         status: "succeeded",
+        completedAt: new Date(),
       });
 
       break;
@@ -189,4 +201,66 @@ export async function notifyWorkflowError(
     conversation,
     step: 0, // Workflow-level error, not tied to a specific step
   });
+}
+
+/**
+ * Activity executed after a cancel signal
+ */
+export async function finalizeCancellationActivity(
+  authType: AuthenticatorType,
+  runAgentArgs: RunAgentAsynchronousArgs
+): Promise<void> {
+  const runAgentDataRes = await getRunAgentData(authType, {
+    sync: false,
+    idArgs: runAgentArgs,
+  });
+  if (runAgentDataRes.isErr()) {
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const {
+    auth,
+    agentConfiguration,
+    agentMessage,
+    conversation,
+    agentMessageRow,
+  } = runAgentDataRes.value;
+
+  // get the last step of the agent message
+  const step = _.maxBy(agentMessage.contents, "step")?.step || 0;
+
+  const contentParser = new AgentMessageContentParser(
+    agentConfiguration,
+    agentMessage.sId,
+    getDelimitersConfiguration({ agentConfiguration })
+  );
+
+  // Flush pending tokens from the content parser, if any.
+  for await (const tokenEvent of contentParser.flushTokens()) {
+    await updateResourceAndPublishEvent(auth, {
+      event: tokenEvent,
+      agentMessageRow,
+      conversation,
+      step,
+    });
+  }
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_generation_cancelled",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+    },
+    agentMessageRow,
+    conversation,
+    step,
+  });
+  logger.info(
+    {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+    },
+    "Agent generation cancelled"
+  );
 }

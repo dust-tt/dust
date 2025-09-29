@@ -1,4 +1,3 @@
-import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
@@ -8,6 +7,7 @@ import {
 } from "./mcp_icon_types";
 import { NotificationContentCreationFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
+import { TIMEZONE_NAMES } from "./timezone_names";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -40,6 +40,8 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "gpt-4.1-2025-04-14"
   | "gpt-4.1-mini-2025-04-14"
+  | "gpt-5-nano"
+  | "gpt-5-mini"
   | "gpt-5"
   | "o1"
   | "o1-mini"
@@ -167,6 +169,7 @@ export const supportedOtherFileFormats = {
   "text/tab-separated-values": [".tsv"],
   "text/tsv": [".tsv"],
   "text/vnd.dust.attachment.slack.thread": [".txt"],
+  "text/vnd.dust.attachment.pasted": [".txt"],
   "text/html": [".html", ".htm", ".xhtml", ".xhtml+xml"],
   "text/xml": [".xml"],
   "text/calendar": [".ics"],
@@ -267,6 +270,15 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedAudioFileFormats
 >();
 
+const ContentCreationExecutableSchema = z.literal(
+  "application/vnd.dust.client-executable"
+);
+
+const ActionGeneratedFileContentTypeSchema = z.union([
+  SupportedFileContentFragmentTypeSchema,
+  ContentCreationExecutableSchema,
+]);
+
 export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {
@@ -348,7 +360,7 @@ export class Err<E> {
 export type Result<T, E> = Ok<T> | Err<E>;
 
 // Custom codec to validate the timezone
-const Timezone = z.string().refine((s) => moment.tz.names().includes(s), {
+const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
   message: "Invalid timezone",
 });
 
@@ -633,13 +645,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
+  | "confluence_tool"
   | "deep_research_as_a_tool"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "exploded_tables_query"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
@@ -729,15 +741,29 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const MCPActionTypeSchema = z.object({
+const ActionGeneratedFileSchema = z.object({
+  fileId: z.string(),
+  title: z.string(),
+  contentType: ActionGeneratedFileContentTypeSchema,
+  snippet: z.string().nullable(),
+  hidden: z.boolean().optional(),
+});
+
+const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
+  sId: z.string(),
+  createdAt: z.number(),
   mcpServerId: z.string().nullable(),
   internalMCPServerName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
   functionCallName: z.string(),
+  functionCallId: z.string(),
   status: z.string(),
   params: z.record(z.any()),
+  step: z.number(),
+  citationsAllocated: z.number(),
   output: CallToolResultSchema.shape.content.nullable(),
+  generatedFiles: z.array(ActionGeneratedFileSchema),
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
@@ -923,7 +949,7 @@ export type UserMessageWithRankType = z.infer<
   typeof UserMessageWithRankTypeSchema
 >;
 
-export type AgentActionPublicType = z.infer<typeof MCPActionTypeSchema>;
+export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
 const AgentMessageStatusSchema = FlexibleEnumSchema<
   "created" | "succeeded" | "failed" | "cancelled"
@@ -940,7 +966,7 @@ const AgentMessageTypeSchema = z.object({
   parentMessageId: z.string().nullable(),
   configuration: LightAgentConfigurationSchema,
   status: AgentMessageStatusSchema,
-  actions: z.array(MCPActionTypeSchema),
+  actions: z.array(AgentActionTypeSchema),
   content: z.string().nullable(),
   chainOfThought: z.string().nullable(),
   rawContents: z.array(
@@ -1058,7 +1084,7 @@ const MCPParamsEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
 });
 
 const NotificationImageContentSchema = z.object({
@@ -1148,7 +1174,7 @@ const ToolNotificationEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
   notification: ToolNotificationProgressSchema,
 });
 
@@ -1249,7 +1275,7 @@ const AgentActionSuccessEventSchema = z.object({
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
-  action: MCPActionTypeSchema,
+  action: AgentActionTypeSchema,
 });
 export type AgentActionSuccessEvent = z.infer<
   typeof AgentActionSuccessEventSchema
@@ -2714,6 +2740,7 @@ export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
 
 const OAuthProviderSchema = FlexibleEnumSchema<
   | "confluence"
+  | "confluence_tools"
   | "freshservice"
   | "github"
   | "google_drive"
@@ -2750,6 +2777,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTimeIcon"
   | "AsanaLogo"
   | "CommandLineIcon"
+  | "ConfluenceLogo"
   | "DriveLogo"
   | "GcalLogo"
   | "GithubLogo"
@@ -3057,6 +3085,7 @@ export type SearchWarningCode = z.infer<typeof SearchWarningCodeSchema>;
 export const PostWorkspaceSearchResponseBodySchema = z.object({
   nodes: DataSourceContentNodeSchema.array(),
   warningCode: SearchWarningCodeSchema.optional().nullable(),
+  resultsCount: z.number().optional().nullable(),
 });
 
 export type PostWorkspaceSearchResponseBodyType = z.infer<

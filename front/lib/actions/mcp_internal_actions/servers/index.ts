@@ -5,6 +5,7 @@ import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/co
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence/server";
 import { default as contentCreationServer } from "@app/lib/actions/mcp_internal_actions/servers/content_creation";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
@@ -39,7 +40,6 @@ import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
-import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
@@ -98,8 +98,6 @@ export async function getInternalMCPServer(
       return generateFileServer(auth);
     case "content_creation":
       return contentCreationServer(auth, agentLoopContext);
-    case "query_tables":
-      return tablesQueryServer(auth, agentLoopContext);
     case "query_tables_v2":
       return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
@@ -164,6 +162,8 @@ export async function getInternalMCPServer(
       return slackBotServer(auth, mcpServerId, agentLoopContext);
     case "agent_memory":
       return agentMemoryServer(auth, agentLoopContext);
+    case "confluence":
+      return confluenceServer();
     case "outlook":
       return outlookServer();
     case "outlook_calendar":

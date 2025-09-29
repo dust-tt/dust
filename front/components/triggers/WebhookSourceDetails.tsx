@@ -106,7 +106,7 @@ export function WebhookSourceDetails({
             </Tabs>
           </SheetHeader>
 
-          <SheetContainer>
+          <SheetContainer className="pb-4">
             {selectedTab === "info" && (
               <WebhookSourceDetailsInfo
                 webhookSourceView={systemView}

@@ -28,7 +28,7 @@ export interface FeedbackSelectorProps {
     }
   ) => Promise<void>;
   isSubmittingThumb: boolean;
-  getPopoverInfo?: () => JSX.Element | null;
+  getPopoverInfo?: () => React.JSX.Element | null;
 }
 
 export function FeedbackSelector({
@@ -136,7 +136,7 @@ export function FeedbackSelector({
           <div className="flex items-center gap-2">
             <Button
               tooltip="I found this helpful"
-              variant={feedback?.thumb === "up" ? "primary" : "outline"}
+              variant={feedback?.thumb === "up" ? "primary" : "ghost-secondary"}
               size="xs"
               disabled={isSubmittingThumb}
               onClick={handleThumbUp}
@@ -149,7 +149,9 @@ export function FeedbackSelector({
             />
             <Button
               tooltip="Report an issue with this answer"
-              variant={feedback?.thumb === "down" ? "primary" : "outline"}
+              variant={
+                feedback?.thumb === "down" ? "primary" : "ghost-secondary"
+              }
               size="xs"
               disabled={isSubmittingThumb}
               onClick={handleThumbDown}

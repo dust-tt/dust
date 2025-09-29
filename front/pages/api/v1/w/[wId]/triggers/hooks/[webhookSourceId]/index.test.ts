@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
@@ -61,6 +62,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
       webhookSourceId: webhookSource.sId(),
     };
     req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "application/json",
+    };
 
     await handler(req, res);
 
@@ -84,6 +88,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
       webhookSourceId: "webhook_source/nonexistent",
     };
     req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "application/json",
+    };
 
     await handler(req, res);
 
@@ -106,5 +113,138 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(405);
+  });
+
+  it("returns 400 when content-type is not application/json", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: "webhook_source/whatever",
+    };
+    req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "text/plain",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("error");
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toBe("Content-Type must be application/json.");
+  });
+
+  it("returns 200 when webhook source has valid signature", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    // Create a webhook source with signature configuration
+    const secret = "my-secret-key";
+    const signatureHeader = "x-signature";
+    const algorithm = "sha256";
+
+    const webhookSourceFactory = new WebhookSourceFactory(workspace);
+    const webhookSourceResult = await webhookSourceFactory.create({
+      name: "Test Webhook Source with Signature",
+      secret,
+      signatureHeader,
+      signatureAlgorithm: algorithm,
+    });
+
+    if (webhookSourceResult.isErr()) {
+      throw new Error(
+        `Failed to create webhook source: ${webhookSourceResult.error.message}`
+      );
+    }
+
+    const webhookSource = webhookSourceResult.value;
+    const payload = { test: "data", timestamp: Date.now() };
+    const payloadString = JSON.stringify(payload);
+
+    // Generate valid signature
+    const validSignature = `${algorithm}=${createHmac(algorithm, secret)
+      .update(payloadString, "utf8")
+      .digest("hex")}`;
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId(),
+    };
+    req.body = payload;
+    req.headers = {
+      "content-type": "application/json",
+      [signatureHeader.toLowerCase()]: validSignature,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
+  });
+
+  it("returns 401 when webhook source has invalid signature", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    // Create a webhook source with signature configuration
+    const secret = "my-secret-key";
+    const signatureHeader = "x-signature";
+    const algorithm = "sha256";
+
+    const webhookSourceFactory = new WebhookSourceFactory(workspace);
+    const webhookSourceResult = await webhookSourceFactory.create({
+      name: "Test Webhook Source with Invalid Signature",
+      secret,
+      signatureHeader,
+      signatureAlgorithm: algorithm,
+    });
+
+    if (webhookSourceResult.isErr()) {
+      throw new Error(
+        `Failed to create webhook source: ${webhookSourceResult.error.message}`
+      );
+    }
+
+    const webhookSource = webhookSourceResult.value;
+    const payload = { test: "data", timestamp: Date.now() };
+
+    // Use an invalid signature
+    const invalidSignature = `${algorithm}=invalid_signature_hash`;
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId(),
+    };
+    req.body = payload;
+    req.headers = {
+      "content-type": "application/json",
+      [signatureHeader.toLowerCase()]: invalidSignature,
+    };
+
+    await handler(req, res);
+
+    if (res._getStatusCode() !== 401) {
+      // Help debugging in CI-like environments
+      // eslint-disable-next-line no-console
+      console.error("Handler error response:", res._getJSONData());
+    }
+
+    expect(res._getStatusCode()).toBe(401);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("error");
+    expect(data.error.type).toBe("not_authenticated");
+    expect(data.error.message).toBe("Invalid webhook signature.");
   });
 });

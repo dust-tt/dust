@@ -43,7 +43,7 @@ const columns = [
     accessorKey: "action",
     header: "",
     cell: (info: CellContext<any, number>) => (
-      <DataTable.MoreButton menuItems={info.row.original.moreMenuItems} />
+      <DataTable.MoreButton menuItems={info.row.original.menuItems} />
     ),
     meta: { className: "w-14" },
   },
@@ -112,7 +112,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
 
   const rows = tags.map((tag) => ({
     ...tag,
-    moreMenuItems: [
+    menuItems: [
       {
         icon: PencilSquareIcon,
         label: "Edit tag",

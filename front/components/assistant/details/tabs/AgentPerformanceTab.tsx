@@ -1,23 +1,24 @@
-import { Page } from "@dust-tt/sparkle";
-import { DropdownMenu } from "@dust-tt/sparkle";
-import { DropdownMenuTrigger } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
-import { DropdownMenuContent } from "@dust-tt/sparkle";
-import { DropdownMenuItem } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
-import { CardGrid } from "@dust-tt/sparkle";
-import { ValueCard } from "@dust-tt/sparkle";
-import { Avatar } from "@dust-tt/sparkle";
-import { HandThumbUpIcon } from "@dust-tt/sparkle";
-import { HandThumbDownIcon } from "@dust-tt/sparkle";
-import { ChatBubbleLeftRightIcon } from "@dust-tt/sparkle";
-import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  CardGrid,
+  ChatBubbleLeftRightIcon,
+  ChatBubbleThoughtIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+  Page,
+  Spinner,
+  ValueCard,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types";
-import type { WorkspaceType } from "@app/types";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
 
 const PERIODS = [
@@ -45,7 +46,7 @@ export function AgentPerformanceTab({
   });
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       <div className="flex flex-row items-center justify-between gap-3">
         <Page.H variant="h5">Analytics</Page.H>
         <div className="self-end">
@@ -187,6 +188,6 @@ export function AgentPerformanceTab({
           />
         </div>
       )}
-    </>
+    </div>
   );
 }

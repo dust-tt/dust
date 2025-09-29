@@ -1,3 +1,4 @@
+import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import { redisClient } from "@app/lib/utils/redis_client";
 
 // JSON-serializable primitive types.
@@ -194,51 +195,4 @@ function unlock(key: string) {
     throw new Error("Unreachable: unlock called without lock");
   }
   unlockFn();
-}
-
-// Distributed lock implementation using Redis
-// Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
-async function distributedLock(
-  redisCli: Awaited<ReturnType<typeof redisClient>>,
-  key: string
-): Promise<string | undefined> {
-  const lockKey = `lock:${key}`;
-  const lockValue = `${Date.now()}-${Math.random()}`;
-  const lockTimeout = 5000; // 5 seconds timeout
-
-  // Try to acquire the lock using SET with NX and PX options
-  const result = await redisCli.set(lockKey, lockValue, {
-    NX: true,
-    PX: lockTimeout,
-  });
-
-  if (result !== "OK") {
-    // Lock acquisition failed, return undefined - no lock value.
-    return undefined;
-  }
-
-  // Return the lock value that can be used to unlock.
-  return lockValue;
-}
-
-async function distributedUnlock(
-  redisCli: Awaited<ReturnType<typeof redisClient>>,
-  key: string,
-  lockValue: string
-): Promise<void> {
-  const lockKey = `lock:${key}`;
-
-  // Use Lua script to ensure atomic unlock (only delete if we own the lock: lock value matches)
-  const luaScript = `
-    if redis.call("get", KEYS[1]) == ARGV[1] then
-      return redis.call("del", KEYS[1])
-    else
-      return 0
-    end
-  `;
-
-  await redisCli.eval(luaScript, {
-    keys: [lockKey],
-    arguments: [lockValue],
-  });
 }

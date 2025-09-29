@@ -70,6 +70,7 @@ export * from "./shared/utils/global_error_handler";
 export * from "./shared/utils/hashing";
 export * from "./shared/utils/iots_utils";
 export * from "./shared/utils/string_utils";
+export * from "./shared/utils/http_headers";
 export * from "./shared/utils/structured_data";
 export * from "./shared/utils/time_frame";
 export * from "./shared/utils/url_utils";

@@ -1,4 +1,7 @@
 const path = require("path");
+const { StatsWriterPlugin } = require("webpack-stats-plugin");
+const bundleAnalyzer = require("@next/bundle-analyzer");
+const StatoscopeWebpackPlugin = require("@statoscope/webpack-plugin").default;
 
 const isDev = process.env.NODE_ENV === "development";
 const showReactScan = isDev && process.env.REACT_SCAN === "true";
@@ -10,7 +13,7 @@ const CONTENT_SECURITY_POLICIES = [
   `style-src 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com;`,
   `style-src-elem 'self' 'unsafe-inline' *.fontawesome.com *.googleapis.com *.gstatic.com;`,
   `img-src 'self' data: blob: webkit-fake-url: https:;`,
-  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com;`,
+  `connect-src 'self' blob: dust.tt *.dust.tt https://dust.tt https://*.dust.tt browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com *.googleadservices.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.hubapi.com *.hsappstatic.net *.cr-relay.com *.usercentrics.eu *.ads.linkedin.com px.ads.linkedin.com google.com *.google.com *.workos.com translate-pa.googleapis.com;`,
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net *.hsforms.com${isDev ? " http://localhost:3007" : ""};`,
   `font-src 'self' data: dust.tt *.dust.tt https://dust.tt https://*.dust.tt *.gstatic.com *.wistia.net fonts.cdnfonts.com migaku-public-data.migaku.com;`,
   `media-src 'self' data:;`,
@@ -23,7 +26,12 @@ const CONTENT_SECURITY_POLICIES = [
   `upgrade-insecure-requests;`,
 ].join(" ");
 
-module.exports = {
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+  openAnalyzer: false,
+});
+
+const config = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
   // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,
@@ -65,7 +73,12 @@ module.exports = {
       {
         source: "/w/:wId/u/chat/:cId",
         destination: "/w/:wId/assistant/:cId",
-        permanent: false,
+        permanent: true,
+      },
+      {
+        source: "/w/:wId/assistant/:cId",
+        destination: "/w/:wId/agent/:cId",
+        permanent: true,
       },
       {
         source: "/contact",
@@ -126,6 +139,7 @@ module.exports = {
     ];
   },
   poweredByHeader: false,
+  skipTrailingSlashRedirect: true,
   async headers() {
     return [
       {
@@ -155,14 +169,41 @@ module.exports = {
         source: "/api/v1/w/:wId/vaults",
         destination: "/api/v1/w/:wId/spaces",
       },
+      // Posthog tracking
+      {
+        source: "/ingest/static/:path*",
+        destination: "https://eu-assets.i.posthog.com/static/:path*",
+      },
+      {
+        source: "/ingest/:path*",
+        destination: "https://eu.i.posthog.com/:path*",
+      },
     ];
   },
-  webpack(config, { dev }) {
+  webpack(config, { dev, isServer }) {
     if (process.env.BUILD_WITH_SOURCE_MAPS === "true" && !dev) {
       // Force webpack to generate source maps for both client and server code
       // This is used in production builds to upload source maps to Datadog for error tracking
       // Note: Next.js normally only generates source maps for client code in development
       config.devtool = "source-map";
+    }
+
+    if (!dev && !isServer && process.env.ANALYZE === "true") {
+      config.plugins.push(
+        new StatsWriterPlugin({
+          filename: "../.next/analyze/webpack-stats.json",
+          stats: {
+            assets: true,
+            chunks: true,
+            modules: true,
+          },
+        }),
+        new StatoscopeWebpackPlugin({
+          saveReportTo: ".next/analyze/report-[name]-[hash].html",
+          saveStatsTo: ".next/analyze/stats-[name]-[hash].json",
+          open: false,
+        })
+      );
     }
 
     // Trim noisy watches in dev (don’t ignore node_modules)
@@ -200,3 +241,5 @@ module.exports = {
     return config;
   },
 };
+
+module.exports = withBundleAnalyzer(config);

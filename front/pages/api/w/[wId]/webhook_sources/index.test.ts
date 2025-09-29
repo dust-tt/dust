@@ -63,3 +63,54 @@ describe("GET /api/w/[wId]/webhook_sources/", () => {
     expect(responseData.webhookSourcesWithViews).toHaveLength(0);
   });
 });
+
+describe("POST /api/w/[wId]/webhook_sources/", () => {
+  it("uses provided non-empty secret as-is", async () => {
+    const { req, res } = await setupTest("admin", "POST");
+
+    const providedSecret = "my-provided-secret-123";
+
+    req.body = {
+      name: "Webhook With Provided Secret",
+      secret: providedSecret,
+      signatureHeader: "X-Signature",
+      signatureAlgorithm: "sha256",
+      customHeaders: null,
+      includeGlobal: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+
+    const data = res._getJSONData();
+    expect(data.success).toBe(true);
+    expect(data.webhookSource).toBeDefined();
+    expect(data.webhookSource.secret).toBe(providedSecret);
+  });
+
+  it.each([
+    { label: "empty string", secret: "" },
+    { label: "null", secret: null },
+  ])("generates a 64-char secret when $label provided", async ({ secret }) => {
+    const { req, res } = await setupTest("admin", "POST");
+
+    req.body = {
+      name: "Webhook With Auto Secret",
+      secret,
+      signatureHeader: "X-Signature",
+      signatureAlgorithm: "sha256",
+      customHeaders: null,
+      includeGlobal: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+
+    const data = res._getJSONData();
+    expect(data.success).toBe(true);
+    expect(typeof data.webhookSource.secret).toBe("string");
+    expect(data.webhookSource.secret.length).toBe(64);
+  });
+});

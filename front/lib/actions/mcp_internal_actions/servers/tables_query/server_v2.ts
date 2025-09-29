@@ -1,4 +1,4 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -28,10 +28,6 @@ import {
   getQueryWritingInstructionsContent,
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
-import {
-  getSectionColumnsPrefix,
-  TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
-} from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import {
   makeInternalMCPServer,
@@ -47,6 +43,39 @@ import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
+
+/**
+ * Get the prefix for a row in a section file.
+ * This prefix is used to identify the row in the section file.
+ * We currently only support Salesforce since it's the only connector for which we can generate a prefix.
+ */
+function getSectionColumnsPrefix(
+  provider: ConnectorProvider | null
+): string[] | null {
+  switch (provider) {
+    case "salesforce":
+      return ["Id", "Name"];
+    case "confluence":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "notion":
+    case "slack_bot":
+    case "slack":
+    case "microsoft":
+    case "webcrawler":
+    case "snowflake":
+    case "zendesk":
+    case "bigquery":
+    case "gong":
+    case null:
+      return null;
+    default:
+      assertNever(provider);
+  }
+}
+
+const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
 // Types for the resources that are output by the tools of this server.
 type TablesQueryOutputResources =

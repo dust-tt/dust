@@ -119,7 +119,7 @@ export function AgentSuggestion({
 
   const showAssistantDetails = useCallback(
     (agentConfiguration: LightAgentConfigurationType) => {
-      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
+      setQueryParam(router, "agentDetails", agentConfiguration.sId);
     },
     [router]
   );

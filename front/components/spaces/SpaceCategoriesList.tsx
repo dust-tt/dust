@@ -155,7 +155,7 @@ export const SpaceCategoriesList = ({
         <DropdownMenuContent>
           <DropdownMenuItem
             disabled={!isAdmin && !canWriteInSpace}
-            href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed`}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed?modal=managed`}
             icon={CloudArrowLeftRightIcon}
             label="Connected Data"
           />
@@ -167,19 +167,19 @@ export const SpaceCategoriesList = ({
           />
           <DropdownMenuItem
             disabled={!canWriteInSpace}
-            href={`/w/${owner.sId}/spaces/${space.sId}/categories/website`}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/website?modal=website`}
             icon={GlobeAltIcon}
             label="Scrape a website"
           />
           <DropdownMenuItem
             disabled={!isBuilder || !canWriteInSpace}
-            href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
             icon={CommandLineIcon}
             label="Create a Dust App"
           />
           <DropdownMenuItem
             disabled={!isAdmin}
-            href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions`}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions?modal=tools`}
             icon={MCP_SPECIFICATION.cardIcon}
             label="Tools"
           />

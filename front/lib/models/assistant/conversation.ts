@@ -1,5 +1,5 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, literal } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -259,7 +259,21 @@ UserMessage.init(
   {
     modelName: "user_message",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["userContextOrigin"], concurrently: true }],
+    indexes: [
+      { fields: ["userContextOrigin"], concurrently: true },
+      { fields: ["workspaceId"], concurrently: true },
+      {
+        // WARNING we use full capital functions and constants as the query where we want this index to be used is in capital letters, and indices are case-sensitive
+        // The query https://github.com/dust-tt/dust/blob/6cb11eecb8c8bb549efc5afb25197606d76672b9/front/pages/api/w/%5BwId%5D/workspace-analytics.ts#L67-L126
+        fields: [
+          "workspaceId",
+          literal("DATE(TIMEZONE('UTC', \"createdAt\"))"),
+          "userId",
+        ],
+        concurrently: true,
+        name: "user_messages_workspace_id_date_created_at_user_id_idx",
+      },
+    ],
   }
 );
 
@@ -290,6 +304,8 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
+
+  declare completedAt: Date | null;
 }
 
 AgentMessage.init(
@@ -360,10 +376,16 @@ AgentMessage.init(
       allowNull: false,
       defaultValue: 0,
     },
+    completedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "agent_message",
     sequelize: frontSequelize,
+    indexes: [{ fields: ["workspaceId"], concurrently: true }],
   }
 );
 
@@ -436,6 +458,7 @@ AgentMessageFeedback.init(
         unique: true,
         name: "agent_message_feedbacks_agent_configuration_id_agent_message_id",
       },
+      { fields: ["workspaceId"], concurrently: true },
     ],
   }
 );
@@ -659,6 +682,7 @@ MessageReaction.init(
         fields: ["userId"],
         concurrently: true,
       },
+      { fields: ["workspaceId"], concurrently: true },
     ],
   }
 );

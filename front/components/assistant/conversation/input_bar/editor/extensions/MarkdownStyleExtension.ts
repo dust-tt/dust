@@ -7,6 +7,14 @@ export const MarkdownStyleExtension = Extension.create({
   addGlobalAttributes() {
     return [
       {
+        types: ["code"],
+        attributes: {
+          class: {
+            default: markdownStyles.code(),
+          },
+        },
+      },
+      {
         types: ["textContent"],
         attributes: {
           class: {

@@ -29,6 +29,7 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -1025,11 +1026,27 @@ export async function restoreAgentConfiguration(
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
+  auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  await TagAgentModel.destroy({
+    where: {
+      agentConfigurationId: agentConfiguration.id,
+      workspaceId,
+    },
+  });
+  await GroupAgentModel.destroy({
+    where: {
+      agentConfigurationId: agentConfiguration.id,
+      workspaceId,
+    },
+  });
   await AgentConfiguration.destroy({
     where: {
       id: agentConfiguration.id,
+      workspaceId,
     },
   });
 }

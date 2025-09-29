@@ -199,6 +199,9 @@ impl Table {
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
+    pub fn is_schema_stale(&self) -> bool {
+        self.schema_stale_at.is_some()
+    }
     pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
     }
@@ -232,6 +235,7 @@ impl Table {
     }
     pub fn set_schema(&mut self, schema: TableSchema) {
         self.schema = Some(schema);
+        self.schema_stale_at = None;
     }
     pub fn set_remote_database_secret_id(&mut self, remote_database_secret_id: String) {
         self.remote_database_secret_id = Some(remote_database_secret_id);
@@ -756,27 +760,22 @@ impl LocalTable {
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<TableSchema> {
-        let mut schema: TableSchema = TableSchema::empty();
-        let limit = 500;
-        let mut offset = 0;
-        loop {
-            let (rows, total) = self
-                .list_rows(databases_store.clone(), Some((limit, offset)))
-                .await?;
-
-            let rows = Arc::new(rows);
-            if offset == 0 {
-                schema = TableSchema::from_rows_async(rows.clone()).await?;
-            } else {
-                schema = schema.merge(&TableSchema::from_rows_async(rows.clone()).await?)?;
-            }
-
-            offset += limit;
-            if offset >= total {
-                break;
-            }
-        }
-
+        let mut now = utils::now();
+        let (rows, _) = self.list_rows(databases_store, None).await?;
+        let rows = Arc::new(rows);
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            row_count = rows.len(),
+            "DSSTRUCTSTAT [compute_schema] list rows"
+        );
+        now = utils::now();
+        let schema = TableSchema::from_rows_async(rows).await?;
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            "DSSTRUCTSTAT [compute_schema] compute schema"
+        );
         Ok(schema)
     }
 

@@ -34,7 +34,7 @@ export async function publishConversationEvent(
     JSON.stringify(event),
     "user_message_events",
     // Conversation & message initial states are setup before starting to listen to events so we really care about getting new events.
-    // We are setting a low value to accomodate for reconnections to the event stream.
+    // We are setting a low value to accommodate for reconnections to the event stream.
     5
   );
 }

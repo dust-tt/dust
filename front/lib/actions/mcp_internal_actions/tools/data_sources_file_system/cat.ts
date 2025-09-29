@@ -93,7 +93,9 @@ export function registerCatTool(
           return new Err(
             new MCPError(
               `Could not find node: ${nodeId} (error: ${
-                searchResult.isErr() ? searchResult.error : "No nodes found"
+                searchResult.isErr()
+                  ? searchResult.error.message
+                  : "No nodes found"
               })`,
               { tracked: false }
             )
@@ -141,7 +143,7 @@ export function registerCatTool(
         if (readResult.isErr()) {
           return new Err(
             new MCPError(
-              `Could not read node: ${nodeId} (error: ${readResult.error})`
+              `Could not read node: ${nodeId} (error: ${readResult.error.message})`
             )
           );
         }

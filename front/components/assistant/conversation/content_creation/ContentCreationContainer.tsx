@@ -13,7 +13,7 @@ import type {
 import { clientExecutableContentType } from "@app/types";
 
 interface ContentCreationContainerProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 

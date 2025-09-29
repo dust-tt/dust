@@ -198,6 +198,7 @@ Clone.init(
   {
     modelName: "clone",
     sequelize: frontSequelize,
+    indexes: [{ fields: ["workspaceId"], concurrently: true }],
   }
 );
 Clone.belongsTo(AppModel, {

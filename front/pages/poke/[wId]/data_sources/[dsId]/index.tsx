@@ -13,6 +13,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
+import capitalize from "lodash/capitalize";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -30,7 +31,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
-import { timeAgoFrom } from "@app/lib/utils";
+import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import type {
@@ -561,9 +562,16 @@ const DataSourcePage = ({
           {owner.name}
         </a>
       </h3>
-      <p>
-        The data displayed here is fetched from <b>connectors</b>.
-      </p>
+      {dataSource.connectorProvider && (
+        <p>
+          The data displayed here is fetched from <b>connectors</b>, please
+          refer to the method{" "}
+          {capitalize(dataSource.connectorProvider)
+            .replace(/_\w/g, (char) => char.toUpperCase())
+            .replace("_", "")}
+          ConnectorManager.retrievePermissions
+        </p>
+      )}
 
       <div className="flex flex-row gap-x-6">
         <ViewDataSourceTable
@@ -867,7 +875,7 @@ function NotionUrlCheckOrFind({
                     <>
                       <JsonViewer
                         theme={isDark ? "dark" : "light"}
-                        value={urlDetails.page}
+                        value={decodeSqids(urlDetails.page)}
                         rootName={false}
                       />
                       {command === "find-url" && (
@@ -903,7 +911,7 @@ function NotionUrlCheckOrFind({
                     <>
                       <JsonViewer
                         theme={isDark ? "dark" : "light"}
-                        value={urlDetails.db}
+                        value={decodeSqids(urlDetails.db)}
                         rootName={false}
                       />
                       {command === "find-url" && (
@@ -1101,7 +1109,7 @@ function ZendeskTicketCheck({
                 <div className="mb-1 font-bold">Details</div>
                 <JsonViewer
                   theme={isDark ? "dark" : "light"}
-                  value={ticketDetails.ticket}
+                  value={decodeSqids(ticketDetails.ticket)}
                   rootName={false}
                 />
               </div>
