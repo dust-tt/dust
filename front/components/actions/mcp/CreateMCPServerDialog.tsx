@@ -347,7 +347,6 @@ export function CreateMCPServerDialog({
                   </div>
                 )}
 
-                {/* URL section */}
                 {!defaultServerConfig?.url && (
                   <div className="space-y-2">
                     <Label htmlFor="url">URL</Label>
@@ -367,7 +366,6 @@ export function CreateMCPServerDialog({
                   </div>
                 )}
 
-                {/* Authentication section */}
                 {(!defaultServerConfig ||
                   defaultServerConfig?.authMethod === "bearer") && (
                   <div className="space-y-2">
@@ -488,7 +486,6 @@ export function CreateMCPServerDialog({
               </>
             )}
 
-          {/* OAuth section */}
           {authorization && (
             <MCPServerOAuthConnexion
               authorization={authorization}
@@ -503,7 +500,6 @@ export function CreateMCPServerDialog({
             />
           )}
 
-          {/* Custom headers toggle */}
           {!defaultServerConfig && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -529,7 +525,6 @@ export function CreateMCPServerDialog({
             </div>
           )}
 
-          {/* Custom headers form section */}
           {useCustomHeaders && (
             <McpServerHeaders
               headers={customHeaders}
