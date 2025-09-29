@@ -27,6 +27,7 @@ import { MultiSelect } from "react-multi-select-component";
 
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   PokeForm,
   PokeFormControl,
@@ -623,7 +624,13 @@ function TemplatesPage({
                       }}
                       labelledBy="Select"
                       hasSelectAll={false}
-                      className="dark:bg-primary-50-night dark:text-white [&_.dropdown-content]:dark:bg-primary-50-night [&_.dropdown-content]:dark:text-white [&_.dropdown-heading]:dark:bg-primary-50-night [&_.dropdown-heading]:dark:text-white [&_.select-item]:hover:bg-primary-100 [&_.select-item]:dark:hover:bg-primary-100-night [&_.select-panel]:dark:bg-primary-50-night [&_.select-panel]:dark:text-white"
+                      className={cn(
+                        "dark:bg-primary-50-night dark:text-white",
+                        "[&_.dropdown-content]:dark:bg-primary-50-night [&_.dropdown-content]:dark:text-white",
+                        "[&_.dropdown-heading]:dark:bg-primary-50-night [&_.dropdown-heading]:dark:text-white",
+                        "[&_.select-item]:hover:bg-primary-100 [&_.select-item]:dark:hover:bg-primary-100-night",
+                        "[&_.select-panel]:dark:bg-primary-50-night [&_.select-panel]:dark:text-white"
+                      )}
                       ItemRenderer={({
                         checked,
                         option,
@@ -645,7 +652,7 @@ function TemplatesPage({
                             type="checkbox"
                             onChange={() => {}}
                             checked={checked}
-                            className="mr-2 accent-primary"
+                            className="mr-2 accent-primary dark:accent-primary-night"
                           />
                           <span>{option.label}</span>
                         </div>
