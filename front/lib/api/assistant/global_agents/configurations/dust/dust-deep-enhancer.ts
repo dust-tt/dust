@@ -13,6 +13,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
 import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
+import { Message } from "@app/lib/models/assistant/conversation";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
@@ -150,20 +151,23 @@ export async function augmentDustDeep(
   userMessage: UserMessageType
 ): Promise<Result<AgentConfigurationType, Error>> {
   try {
-    const content = userMessage.content;
+    const agentMessageId = userMessage.context.userContextOriginMessageId;
 
-    // Extract main agent id from content if specified in <main_agent> tags
-    const mainAgentMatch = content.match(/<main_agent>(.*?)<\/main_agent>/s);
-    const mainAgentFromContent = mainAgentMatch
-      ? mainAgentMatch[1].trim()
-      : null;
+    const agentMessage = await Message.findOne({
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
 
-    if (!mainAgentFromContent) {
+    const mainAgentId = agentMessage?.agentMessage?.agentConfigurationId;
+
+    if (!mainAgentId) {
       return new Ok(agentConfiguration);
     }
 
     const mainAgent = await getAgentConfiguration(auth, {
-      agentId: mainAgentFromContent,
+      agentId: mainAgentId,
       variant: "full",
     });
     if (!mainAgent) {

@@ -56,7 +56,7 @@ const createServer = (
         const runContext = agentLoopContext.runContext;
         const { agentConfiguration, conversation } = runContext;
 
-        const query = `You have been summoned by @${agentConfiguration.name} (<main_agent>${agentConfiguration.sId}</main_agent>).`;
+        const query = `You have been summoned by @${agentConfiguration.name}.`;
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
