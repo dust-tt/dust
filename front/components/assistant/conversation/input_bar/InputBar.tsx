@@ -218,6 +218,7 @@ export function AssistantInputBar({
             return {
               title: cf.filename,
               fileId: cf.fileId,
+              contentType: cf.contentType,
             };
           }),
           contentNodes: attachedNodes,
@@ -239,6 +240,7 @@ export function AssistantInputBar({
           return {
             title: cf.filename,
             fileId: cf.fileId,
+            contentType: cf.contentType,
           };
         }),
         contentNodes: attachedNodes,
