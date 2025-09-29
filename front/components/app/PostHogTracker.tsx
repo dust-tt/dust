@@ -7,6 +7,7 @@ import { useCookies } from "react-cookie";
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
 import { useUser } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const NODE_ENV = process.env.NODE_ENV;
@@ -23,7 +24,8 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
   const hasAcceptedCookies = hasCookiesAccepted(cookieValue, user);
 
-  const workspaceId = router.query.wId as string | undefined;
+  const { wId } = router.query;
+  const workspaceId = isString(wId) ? wId : undefined;
   const { hasFeature } = useFeatureFlags({
     workspaceId: workspaceId ?? "",
     disabled: !workspaceId,
