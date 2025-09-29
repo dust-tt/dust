@@ -101,8 +101,6 @@ const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
   "pDddXWMzWYw4oN/acYfLiOwxB3tlp51IH6MuMYD3YXQ=",
 ]);
 
-const CACHE_DELETION_BATCH_SIZE = 512;
-
 const wrapWithErrorCheck = async <T>(
   callback: () => Promise<T>,
   loggerArgs: Record<string, string | number>
@@ -2339,18 +2337,12 @@ export async function clearWorkflowCache({
       workflowId: topLevelWorkflowId,
     },
   });
-
-  let deletedCount = 0;
-  do {
-    deletedCount = await NotionConnectorBlockCacheEntry.destroy({
-      where: {
-        connectorId: connector.id,
-        workflowId: topLevelWorkflowId,
-      },
-      limit: CACHE_DELETION_BATCH_SIZE,
-    });
-  } while (deletedCount === CACHE_DELETION_BATCH_SIZE);
-
+  await NotionConnectorBlockCacheEntry.destroy({
+    where: {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+  });
   await NotionConnectorResourcesToCheckCacheEntry.destroy({
     where: {
       connectorId: connector.id,
