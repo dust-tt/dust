@@ -1,5 +1,7 @@
 import {
   Avatar,
+  Button,
+  Cog6ToothIcon,
   ContextItem,
   DustLogoSquare,
   Page,
@@ -105,6 +107,7 @@ export default function EditDustAgent({
   } = useSpaceDataSourceViews({
     workspaceId: owner.sId,
     spaceId: globalSpace.sId,
+    category: "managed",
   });
 
   // We do not support remote databases for the Dust agent at the moment.
@@ -290,6 +293,28 @@ export default function EditDustAgent({
                     }
                   />
                 ))}
+                <ContextItem
+                  title="Websites"
+                  visual={
+                    <ContextItem.Visual
+                      visual={getConnectorProviderLogoWithFallback({
+                        provider: "webcrawler",
+                      })}
+                    />
+                  }
+                  action={<Button icon={Cog6ToothIcon} variant="outline" />}
+                />
+                <ContextItem
+                  title="Folders"
+                  visual={
+                    <ContextItem.Visual
+                      visual={getConnectorProviderLogoWithFallback({
+                        provider: null,
+                      })}
+                    />
+                  }
+                  action={<Button icon={Cog6ToothIcon} variant="outline" />}
+                />
               </ContextItem.List>
             </>
           ) : dustAgentConfiguration?.status ===
