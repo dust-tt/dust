@@ -1,3 +1,5 @@
+import { MarkdownNode } from "./types";
+
 export function sanitizeContent(str: string): string {
   // (1) Add closing backticks if they are missing such that we render a code block or inline
   // element during streaming.
@@ -38,4 +40,38 @@ export function detectLanguage(children: React.ReactNode) {
   }
 
   return "text";
+}
+
+export function sameNodePosition(
+  prev?: MarkdownNode,
+  next?: MarkdownNode
+): boolean {
+  if (!(prev?.position || next?.position)) {
+    return true;
+  }
+  if (!(prev?.position && next?.position)) {
+    return false;
+  }
+
+  const prevStart = prev.position.start;
+  const nextStart = next.position.start;
+  const prevEnd = prev.position.end;
+  const nextEnd = next.position.end;
+
+  return (
+    prevStart?.line === nextStart?.line &&
+    prevStart?.column === nextStart?.column &&
+    prevEnd?.line === nextEnd?.line &&
+    prevEnd?.column === nextEnd?.column
+  );
+}
+
+export function sameTextStyling(
+  prevProps: { textColor?: string; textSize?: string },
+  nextProps: { textColor?: string; textSize?: string }
+): boolean {
+  return (
+    prevProps.textColor === nextProps.textColor &&
+    prevProps.textSize === nextProps.textSize
+  );
 }
