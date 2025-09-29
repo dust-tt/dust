@@ -46,6 +46,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to DeepSeek R1 model as global agent",
     stage: "on_demand",
   },
+  enable_posthog: {
+    description: "Enable PostHog tracking within the product (/w/ routes)",
+    stage: "on_demand",
+  },
   dev_mcp_actions: {
     description: "MCP tools currently in development",
     stage: "dust_only",
@@ -183,6 +187,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
+    stage: "on_demand",
+  },
+  slack_semantic_search: {
+    description: "Slack semantic search feature",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
