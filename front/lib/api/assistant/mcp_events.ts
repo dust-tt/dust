@@ -3,7 +3,7 @@ import {
   getMCPServerResultsChannelId,
   isMCPEventResult,
 } from "@app/lib/api/actions/mcp_client_side";
-import { publishEvent } from "@app/lib/api/assistant/pubsub";
+import { publishEvent } from "@app/lib/api/assistant/streaming/events";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
