@@ -578,8 +578,7 @@ export function AgentMessage({
           />
           <ErrorMessage
             error={
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              agentMessage.error || {
+              agentMessage.error ?? {
                 message: "Unexpected Error",
                 code: "unexpected_error",
                 metadata: {},
