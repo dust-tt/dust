@@ -92,7 +92,7 @@ const getTableColumns = ({
               <DataTable.CellContent
                 className={
                   !info.row.original.canArchive && isBatchEdit
-                    ? "opacity-50 cursor-not-allowed"
+                    ? "cursor-not-allowed opacity-50"
                     : undefined
                 }
               >
@@ -117,7 +117,7 @@ const getTableColumns = ({
         <DataTable.CellContent
           className={
             !info.row.original.canArchive && isBatchEdit
-              ? "opacity-50 cursor-not-allowed"
+              ? "cursor-not-allowed opacity-50"
               : undefined
           }
         >
@@ -147,7 +147,7 @@ const getTableColumns = ({
         <DataTable.CellContent
           className={
             !info.row.original.canArchive && isBatchEdit
-              ? "opacity-50 cursor-not-allowed"
+              ? "cursor-not-allowed opacity-50"
               : undefined
           }
         >
@@ -176,7 +176,7 @@ const getTableColumns = ({
             <DataTable.BasicCellContent
               className={
                 !info.row.original.canArchive && isBatchEdit
-                  ? "opacity-50 cursor-not-allowed"
+                  ? "cursor-not-allowed opacity-50"
                   : undefined
               }
               label="-"
@@ -188,7 +188,7 @@ const getTableColumns = ({
           <DataTable.CellContent
             className={
               !info.row.original.canArchive && isBatchEdit
-                ? "opacity-50 cursor-not-allowed"
+                ? "cursor-not-allowed opacity-50"
                 : undefined
             }
           >
@@ -217,7 +217,7 @@ const getTableColumns = ({
           className={classNames(
             "flex flex-row items-center",
             !info.row.original.canArchive && isBatchEdit
-              ? "opacity-50 cursor-not-allowed"
+              ? "cursor-not-allowed opacity-50"
               : null
           )}
         >
@@ -253,7 +253,7 @@ const getTableColumns = ({
           className={classNames(
             "font-semibold",
             !info.row.original.canArchive && isBatchEdit
-              ? "opacity-50 cursor-not-allowed"
+              ? "cursor-not-allowed opacity-50"
               : null
           )}
           tooltip={assistantUsageMessage({
@@ -289,7 +289,7 @@ const getTableColumns = ({
               className={classNames(
                 "font-semibold",
                 !info.row.original.canArchive && isBatchEdit
-                  ? "opacity-50 cursor-not-allowed"
+                  ? "cursor-not-allowed opacity-50"
                   : null
               )}
               tooltip={feedbacksCount}
@@ -310,7 +310,7 @@ const getTableColumns = ({
         <DataTable.BasicCellContent
           className={
             !info.row.original.canArchive && isBatchEdit
-              ? "opacity-50 cursor-not-allowed"
+              ? "cursor-not-allowed opacity-50"
               : undefined
           }
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
@@ -332,7 +332,7 @@ const getTableColumns = ({
             <DataTable.CellContent
               className={
                 !info.row.original.canArchive && isBatchEdit
-                  ? "opacity-50 cursor-not-allowed"
+                  ? "cursor-not-allowed opacity-50"
                   : undefined
               }
             >
