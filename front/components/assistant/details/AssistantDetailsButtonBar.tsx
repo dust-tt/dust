@@ -62,7 +62,7 @@ export function AssistantDetailsButtonBar({
     agentConfiguration.status === "archived" ||
     !user
   ) {
-    return false;
+    return null;
   }
 
   const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
