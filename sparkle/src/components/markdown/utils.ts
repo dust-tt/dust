@@ -67,8 +67,12 @@ export function sameNodePosition(
 }
 
 export function sameTextStyling(
-  prev: { textColor?: string; textSize?: string },
-  next: { textColor?: string; textSize?: string }
+  prev: { textColor?: string; textSize?: string; forcedTextSize?: string },
+  next: { textColor?: string; textSize?: string; forcedTextSize?: string }
 ): boolean {
-  return prev.textColor === next.textColor && prev.textSize === next.textSize;
+  return (
+    prev.textColor === next.textColor &&
+    prev.textSize === next.textSize &&
+    prev.forcedTextSize === next.forcedTextSize
+  );
 }
