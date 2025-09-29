@@ -131,7 +131,7 @@ export async function streamToBuffer(
       if (Buffer.isBuffer(chunk)) {
         chunks.push(chunk);
       } else {
-        chunks.push(Buffer.from(chunk as string));
+        chunks.push(Buffer.from(chunk));
       }
     }
     return new Ok(Buffer.concat(chunks));
