@@ -26,7 +26,6 @@ export const ParagraphBlock = memo(
       </div>
     );
   },
-  (prevProps, next) =>
-    sameNodePosition(prevProps.node, next.node) &&
-    sameTextStyling(prevProps, next)
+  (prev, next) =>
+    sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
 );
