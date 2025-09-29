@@ -89,7 +89,13 @@ const getTableColumns = ({
             header: "",
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
-              <DataTable.CellContent>
+              <DataTable.CellContent
+                className={
+                  !info.row.original.canArchive && isBatchEdit
+                    ? "opacity-50 cursor-not-allowed"
+                    : undefined
+                }
+              >
                 <Checkbox
                   checked={info.row.original.isSelected}
                   disabled={!info.row.original.canArchive}
@@ -108,7 +114,13 @@ const getTableColumns = ({
       header: "Name",
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
+        <DataTable.CellContent
+          className={
+            !info.row.original.canArchive && isBatchEdit
+              ? "opacity-50 cursor-not-allowed"
+              : undefined
+          }
+        >
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div>
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
@@ -132,7 +144,13 @@ const getTableColumns = ({
       header: "Access",
       accessorKey: "scope",
       cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
-        <DataTable.CellContent>
+        <DataTable.CellContent
+          className={
+            !info.row.original.canArchive && isBatchEdit
+              ? "opacity-50 cursor-not-allowed"
+              : undefined
+          }
+        >
           {info.getValue() !== "hidden" && (
             <Chip
               size="xs"
@@ -154,11 +172,26 @@ const getTableColumns = ({
         const { editors } = info.row.original;
 
         if (!editors) {
-          return <DataTable.BasicCellContent label="-" />;
+          return (
+            <DataTable.BasicCellContent
+              className={
+                !info.row.original.canArchive && isBatchEdit
+                  ? "opacity-50 cursor-not-allowed"
+                  : undefined
+              }
+              label="-"
+            />
+          );
         }
 
         return (
-          <DataTable.CellContent>
+          <DataTable.CellContent
+            className={
+              !info.row.original.canArchive && isBatchEdit
+                ? "opacity-50 cursor-not-allowed"
+                : undefined
+            }
+          >
             <Avatar.Stack
               avatars={editors.map((editor) => ({
                 name: editor.fullName,
@@ -179,7 +212,15 @@ const getTableColumns = ({
       header: "Tags",
       accessorKey: "agentTagsAsString",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent grow className="flex flex-row items-center">
+        <DataTable.CellContent
+          grow
+          className={classNames(
+            "flex flex-row items-center",
+            !info.row.original.canArchive && isBatchEdit
+              ? "opacity-50 cursor-not-allowed"
+              : null
+          )}
+        >
           <div className="group flex flex-row items-center gap-1">
             <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
               <Tooltip
@@ -209,7 +250,12 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
-          className="font-semibold"
+          className={classNames(
+            "font-semibold",
+            !info.row.original.canArchive && isBatchEdit
+              ? "opacity-50 cursor-not-allowed"
+              : null
+          )}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -240,7 +286,12 @@ const getTableColumns = ({
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
             <DataTable.BasicCellContent
-              className="font-semibold"
+              className={classNames(
+                "font-semibold",
+                !info.row.original.canArchive && isBatchEdit
+                  ? "opacity-50 cursor-not-allowed"
+                  : null
+              )}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
             />
@@ -257,6 +308,11 @@ const getTableColumns = ({
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
+          className={
+            !info.row.original.canArchive && isBatchEdit
+              ? "opacity-50 cursor-not-allowed"
+              : undefined
+          }
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
@@ -273,7 +329,13 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, number>) => {
         if (info.row.original.scope === "global") {
           return (
-            <DataTable.CellContent>
+            <DataTable.CellContent
+              className={
+                !info.row.original.canArchive && isBatchEdit
+                  ? "opacity-50 cursor-not-allowed"
+                  : undefined
+              }
+            >
               {info.row.original.action}
             </DataTable.CellContent>
           );
