@@ -8,6 +8,7 @@ import {
   isBrowseResultResourceType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export function MCPBrowseActionDetails({
   toolOutput,
@@ -50,13 +51,22 @@ export function MCPBrowseActionDetails({
                   >
                     {r.responseCode === "200" ? (
                       <>
-                        <Link
-                          href={r.uri}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {r.title ?? r.requestedUrl}
-                        </Link>
+                        {(() => {
+                          const urlValidation = validateUrl(r.uri);
+                          return urlValidation.valid ? (
+                            <Link
+                              href={urlValidation.standardized}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {r.title ?? r.requestedUrl}
+                            </Link>
+                          ) : (
+                            <span className="text-sm text-foreground dark:text-foreground-night">
+                              {r.title ?? r.requestedUrl} (invalid URL)
+                            </span>
+                          );
+                        })()}
                         {r.text && (
                           <span className="whitespace-pre-wrap text-sm text-foreground dark:text-foreground-night">
                             {r.description ?? r.text.slice(0, 2048)}
