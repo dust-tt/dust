@@ -1,3 +1,4 @@
+export * from "./bigquery_change_location";
 export * from "./compute_statistics";
 export * from "./confluence_page_checker";
 export * from "./delete_data_source";
