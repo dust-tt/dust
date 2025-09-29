@@ -18,7 +18,7 @@ interface ParagraphBlockProps {
   node?: MarkdownNode;
 }
 
-export const ParagraphBlock = memo(
+export const MemoParagraphBlock = memo(
   ({ children, textColor, textSize }: ParagraphBlockProps) => {
     return (
       <div className={cn(paragraphBlockVariants(), textSize, textColor)}>
@@ -29,3 +29,5 @@ export const ParagraphBlock = memo(
   (prev, next) =>
     sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
 );
+
+MemoParagraphBlock.displayName = "ParagraphBlock";

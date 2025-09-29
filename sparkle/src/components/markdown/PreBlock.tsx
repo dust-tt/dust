@@ -24,7 +24,7 @@ interface PreBlockProps {
   node?: MarkdownNode;
 }
 
-export const PreBlock = memo(
+export const MemoPreBlock = memo(
   ({ children, variant = "surface" }: PreBlockProps) => {
     const validChildrenContent =
       Array.isArray(children) && children[0]
@@ -48,3 +48,5 @@ export const PreBlock = memo(
   (prev, next) =>
     sameNodePosition(prev.node, next.node) && prev.variant === next.variant
 );
+
+MemoPreBlock.displayName = "PreBlock";

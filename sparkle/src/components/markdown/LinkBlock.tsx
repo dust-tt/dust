@@ -11,7 +11,7 @@ interface LinkBlockProps {
   node?: MarkdownNode;
 }
 
-export const LinkBlock = memo(
+export const MemoLinkBlock = memo(
   ({ href, children }: LinkBlockProps) => {
     return (
       <a
@@ -32,3 +32,5 @@ export const LinkBlock = memo(
   (prev, next) =>
     sameNodePosition(prev.node, next.node) && prev.href === next.href
 );
+
+MemoLinkBlock.displayName = "LinkBlock";

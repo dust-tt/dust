@@ -315,7 +315,7 @@ export function StyledMermaidGraph({
   );
 }
 
-export const CodeBlockWithExtendedSupport = memo(
+export const MemoCodeBlockWithExtendedSupport = memo(
   ({
     children,
     className,
@@ -469,3 +469,5 @@ export const CodeBlockWithExtendedSupport = memo(
     prev.className === next.className &&
     prev.inline === next.inline
 );
+
+MemoCodeBlockWithExtendedSupport.displayName = "CodeBlockWithExtendedSupport";

@@ -21,7 +21,7 @@ interface HeaderBlockProps {
   node?: MarkdownNode;
 }
 
-export const H1Block = memo(
+export const MemoH1Block = memo(
   ({ children, textColor, forcedTextSize }: HeaderBlockProps) => {
     return (
       <h1
@@ -42,7 +42,9 @@ export const H1Block = memo(
   }
 );
 
-export const H2Block = memo(
+MemoH1Block.displayName = "H1Block";
+
+export const MemoH2Block = memo(
   ({ children, textColor, forcedTextSize }: HeaderBlockProps) => {
     return (
       <h2
@@ -63,7 +65,9 @@ export const H2Block = memo(
   }
 );
 
-export const H3Block = memo(
+MemoH2Block.displayName = "H2Block";
+
+export const MemoH3Block = memo(
   ({ children, textColor, forcedTextSize }: HeaderBlockProps) => {
     return (
       <h3
@@ -84,7 +88,9 @@ export const H3Block = memo(
   }
 );
 
-export const H4Block = memo(
+MemoH3Block.displayName = "H3Block";
+
+export const MemoH4Block = memo(
   ({ children, textColor, forcedTextSize }: HeaderBlockProps) => {
     return (
       <h4
@@ -105,7 +111,9 @@ export const H4Block = memo(
   }
 );
 
-export const H5Block = memo(
+MemoH4Block.displayName = "H4Block";
+
+export const MemoH5Block = memo(
   ({ children, textColor, forcedTextSize }: HeaderBlockProps) => {
     return (
       <h5
@@ -126,7 +134,9 @@ export const H5Block = memo(
   }
 );
 
-export const H6Block = memo(
+MemoH5Block.displayName = "H5Block";
+
+export const MemoH6Block = memo(
   ({ children, textColor, forcedTextSize }: HeaderBlockProps) => {
     return (
       <h6
@@ -146,3 +156,5 @@ export const H6Block = memo(
     );
   }
 );
+
+MemoH6Block.displayName = "H6Block";

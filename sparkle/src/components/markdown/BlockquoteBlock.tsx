@@ -26,7 +26,7 @@ interface BlockquoteBlockProps {
   node?: MarkdownNode;
 }
 
-export const BlockquoteBlock = memo(
+export const MemoBlockquoteBlock = memo(
   ({ children, variant = "surface" }: BlockquoteBlockProps) => {
     const elementAt1 = React.Children.toArray(children)[1];
     const childrenContent =
@@ -55,3 +55,5 @@ export const BlockquoteBlock = memo(
   (prev, next) =>
     sameNodePosition(prev.node, next.node) && prev.variant === next.variant
 );
+
+MemoBlockquoteBlock.displayName = "BlockquoteBlock";

@@ -15,7 +15,7 @@ type InputBlockProps = Omit<
     node?: MarkdownNode;
   };
 
-export const InputBlock = memo(
+export const MemoInputBlock = memo(
   ({ type, checked, className, onChange, ref, ...props }: InputBlockProps) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
     React.useImperativeHandle(ref, () => inputRef.current!);
@@ -56,3 +56,5 @@ export const InputBlock = memo(
     prev.checked === next.checked &&
     prev.className === next.className
 );
+
+MemoInputBlock.displayName = "InputBlock";

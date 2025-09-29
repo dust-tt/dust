@@ -21,7 +21,7 @@ const getNodeText = (node: ReactNode): string => {
   return "";
 };
 
-export const TableBlock = memo(
+export const MemoTableBlock = memo(
   ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
     const tableData = useMemo(() => {
       const [headNode, bodyNode] = Array.from(children as [any, any]);
@@ -83,7 +83,9 @@ export const TableBlock = memo(
   (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
-export const TableHeadBlock = memo(
+MemoTableBlock.displayName = "TableBlock";
+
+export const MemoTableHeadBlock = memo(
   ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
     return (
       <thead className="s-bg-muted-background s-px-2 s-py-2 dark:s-bg-muted-background-night">
@@ -94,7 +96,9 @@ export const TableHeadBlock = memo(
   (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
-export const TableBodyBlock = memo(
+MemoTableHeadBlock.displayName = "TableHeadBlock";
+
+export const MemoTableBodyBlock = memo(
   ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
     return (
       <tbody className="s-bg-white dark:s-bg-background-night">
@@ -105,7 +109,9 @@ export const TableBodyBlock = memo(
   (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
-export const TableHeaderBlock = memo(
+MemoTableBodyBlock.displayName = "TableBodyBlock";
+
+export const MemoTableHeaderBlock = memo(
   ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
     return (
       <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-semibold s-text-muted-foreground dark:s-text-muted-foreground-night">
@@ -116,7 +122,9 @@ export const TableHeaderBlock = memo(
   (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
-export const TableDataBlock = memo(
+MemoTableHeaderBlock.displayName = "TableHeaderBlock";
+
+export const MemoTableDataBlock = memo(
   ({ children }: { children: React.ReactNode; node?: MarkdownNode }) => {
     return (
       <td className="s-px-4 s-py-3 s-text-sm s-text-foreground dark:s-text-foreground-night">
@@ -135,3 +143,5 @@ export const TableDataBlock = memo(
   },
   (prev, next) => sameNodePosition(prev.node, next.node)
 );
+
+MemoTableDataBlock.displayName = "TableDataBlock";

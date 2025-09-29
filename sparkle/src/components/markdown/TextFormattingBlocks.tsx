@@ -9,7 +9,7 @@ interface StrongBlockProps {
   node?: MarkdownNode;
 }
 
-export const StrongBlock = memo(
+export const MemoStrongBlock = memo(
   ({ children }: StrongBlockProps) => {
     return (
       <strong className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
@@ -20,8 +20,12 @@ export const StrongBlock = memo(
   (prev, next) => sameNodePosition(prev.node, next.node)
 );
 
-export const HorizontalRuleBlock = memo(() => {
+MemoStrongBlock.displayName = "StrongBlock";
+
+export const MemoHorizontalRuleBlock = memo(() => {
   return (
     <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
   );
 });
+
+MemoHorizontalRuleBlock.displayName = "HorizontalRuleBlock";

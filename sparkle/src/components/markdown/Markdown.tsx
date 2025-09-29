@@ -10,33 +10,37 @@ import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
 import { Chip } from "@sparkle/components";
-import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
-import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
+import { MemoBlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
+import { MemoCodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
 import {
-  H1Block,
-  H2Block,
-  H3Block,
-  H4Block,
-  H5Block,
-  H6Block,
   markdownHeaderClasses,
+  MemoH1Block,
+  MemoH2Block,
+  MemoH3Block,
+  MemoH4Block,
+  MemoH5Block,
+  MemoH6Block,
 } from "@sparkle/components/markdown/HeaderBlocks";
-import { InputBlock } from "@sparkle/components/markdown/InputBlock";
-import { LinkBlock } from "@sparkle/components/markdown/LinkBlock";
-import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
-import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
-import { PreBlock } from "@sparkle/components/markdown/PreBlock";
+import { MemoInputBlock } from "@sparkle/components/markdown/InputBlock";
+import { MemoLinkBlock } from "@sparkle/components/markdown/LinkBlock";
 import {
-  TableBlock,
-  TableBodyBlock,
-  TableDataBlock,
-  TableHeadBlock,
-  TableHeaderBlock,
+  MemoLiBlock,
+  MemoOlBlock,
+  MemoUlBlock,
+} from "@sparkle/components/markdown/List";
+import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
+import { MemoParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
+import { MemoPreBlock } from "@sparkle/components/markdown/PreBlock";
+import {
+  MemoTableBlock,
+  MemoTableBodyBlock,
+  MemoTableDataBlock,
+  MemoTableHeadBlock,
+  MemoTableHeaderBlock,
 } from "@sparkle/components/markdown/TableBlock";
 import {
-  HorizontalRuleBlock,
-  StrongBlock,
+  MemoHorizontalRuleBlock,
+  MemoStrongBlock,
 } from "@sparkle/components/markdown/TextFormattingBlocks";
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
@@ -94,111 +98,113 @@ export function Markdown({
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
   const markdownComponents: Components = useMemo(() => {
     return {
-      pre: ({ children, node }) => <PreBlock node={node}>{children}</PreBlock>,
-      a: LinkBlock,
+      pre: ({ children, node }) => (
+        <MemoPreBlock node={node}>{children}</MemoPreBlock>
+      ),
+      a: MemoLinkBlock,
       ul: ({ children, node }) => (
-        <UlBlock
+        <MemoUlBlock
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
           textColor={textColor}
           node={node}
         >
           {children}
-        </UlBlock>
+        </MemoUlBlock>
       ),
       ol: ({ children, start, node }) => (
-        <OlBlock
+        <MemoOlBlock
           start={start}
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
           node={node}
         >
           {children}
-        </OlBlock>
+        </MemoOlBlock>
       ),
       li: ({ children, node }) => (
-        <LiBlock
+        <MemoLiBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
           node={node}
         >
           {children}
-        </LiBlock>
+        </MemoLiBlock>
       ),
       p: ({ children, node }) => (
-        <ParagraphBlock
+        <MemoParagraphBlock
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
           node={node}
         >
           {children}
-        </ParagraphBlock>
+        </MemoParagraphBlock>
       ),
-      table: TableBlock,
-      thead: TableHeadBlock,
-      tbody: TableBodyBlock,
-      th: TableHeaderBlock,
-      td: TableDataBlock,
+      table: MemoTableBlock,
+      thead: MemoTableHeadBlock,
+      tbody: MemoTableBodyBlock,
+      th: MemoTableHeaderBlock,
+      td: MemoTableDataBlock,
       h1: ({ children, node }) => (
-        <H1Block
+        <MemoH1Block
           textColor={textColor}
           forcedTextSize={forcedTextSize}
           node={node}
         >
           {children}
-        </H1Block>
+        </MemoH1Block>
       ),
       h2: ({ children, node }) => (
-        <H2Block
+        <MemoH2Block
           textColor={textColor}
           forcedTextSize={forcedTextSize}
           node={node}
         >
           {children}
-        </H2Block>
+        </MemoH2Block>
       ),
       h3: ({ children, node }) => (
-        <H3Block
+        <MemoH3Block
           textColor={textColor}
           forcedTextSize={forcedTextSize}
           node={node}
         >
           {children}
-        </H3Block>
+        </MemoH3Block>
       ),
       h4: ({ children, node }) => (
-        <H4Block
+        <MemoH4Block
           textColor={textColor}
           forcedTextSize={forcedTextSize}
           node={node}
         >
           {children}
-        </H4Block>
+        </MemoH4Block>
       ),
       h5: ({ children, node }) => (
-        <H5Block
+        <MemoH5Block
           textColor={textColor}
           forcedTextSize={forcedTextSize}
           node={node}
         >
           {children}
-        </H5Block>
+        </MemoH5Block>
       ),
       h6: ({ children, node }) => (
-        <H6Block
+        <MemoH6Block
           textColor={textColor}
           forcedTextSize={forcedTextSize}
           node={node}
         >
           {children}
-        </H6Block>
+        </MemoH6Block>
       ),
       strong: ({ children, node }) => (
-        <StrongBlock node={node}>{children}</StrongBlock>
+        <MemoStrongBlock node={node}>{children}</MemoStrongBlock>
       ),
-      input: InputBlock,
-      blockquote: BlockquoteBlock,
-      hr: HorizontalRuleBlock,
-      code: CodeBlockWithExtendedSupport,
+      input: MemoInputBlock,
+      blockquote: MemoBlockquoteBlock,
+      hr: MemoHorizontalRuleBlock,
+      code: MemoCodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
   }, [textColor, additionalMarkdownComponents]);

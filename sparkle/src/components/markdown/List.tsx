@@ -20,7 +20,7 @@ interface UlBlockProps {
   node?: MarkdownNode;
 }
 
-export const UlBlock = memo(
+export const MemoUlBlock = memo(
   ({ children, textColor, textSize }: UlBlockProps) => {
     return (
       <ul className={cn(ulBlockVariants(), textColor, textSize)}>{children}</ul>
@@ -29,6 +29,8 @@ export const UlBlock = memo(
   (prev, next) =>
     sameNodePosition(prev.node, next.node) && sameTextStyling(prev, next)
 );
+
+MemoUlBlock.displayName = "UlBlock";
 
 export const olBlockVariants = cva(["s-list-decimal s-pb-2 s-pl-6"]);
 
@@ -40,7 +42,7 @@ interface OlBlockProps {
   node?: MarkdownNode;
 }
 
-export const OlBlock = memo(
+export const MemoOlBlock = memo(
   ({ children, start, textColor, textSize }: OlBlockProps) => {
     return (
       <ol start={start} className={cn(olBlockVariants(), textColor, textSize)}>
@@ -54,6 +56,8 @@ export const OlBlock = memo(
     sameTextStyling(prev, next)
 );
 
+MemoOlBlock.displayName = "OlBlock";
+
 export const liBlockVariants = cva(["s-break-words"]);
 
 interface LiBlockProps {
@@ -64,7 +68,7 @@ interface LiBlockProps {
   node?: MarkdownNode;
 }
 
-export const LiBlock = memo(
+export const MemoLiBlock = memo(
   ({ children, className, textColor, textSize }: LiBlockProps) => {
     return (
       <li className={cn(liBlockVariants(), textColor, textSize, className)}>
@@ -77,3 +81,5 @@ export const LiBlock = memo(
     prev.className === next.className &&
     sameTextStyling(prev, next)
 );
+
+MemoLiBlock.displayName = "LiBlock";
