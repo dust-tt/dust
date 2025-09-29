@@ -26,7 +26,7 @@ export function useAnimatedText(text: string, shouldAnimate: boolean) {
 
       return () => controls.stop();
     }
-  }, [startingCursor, text]);
+  }, [startingCursor, text, shouldAnimate]);
 
   if (!shouldAnimate) {
     return text;
