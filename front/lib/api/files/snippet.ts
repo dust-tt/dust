@@ -1,6 +1,7 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
+import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
 import { getFileContent } from "@app/lib/api/files/utils";
@@ -21,8 +22,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-
-import { isPastedFile } from "../../../components/assistant/conversation/input_bar/pasted_utils";
 
 const ENABLE_LLM_SNIPPETS = false;
 
