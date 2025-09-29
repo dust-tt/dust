@@ -263,7 +263,7 @@ async function handler(
               answer.html
             }</div><br/><a href="${DUST_CLIENT_FACING_URL}/w/${
               auth.workspace()?.sId
-            }/assistant/${conversation.sId}">Open in Dust</a></div>`,
+            }/agent/${conversation.sId}">Open in Dust</a></div>`,
           });
         });
       }

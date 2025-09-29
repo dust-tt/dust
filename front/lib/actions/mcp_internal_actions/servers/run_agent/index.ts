@@ -424,7 +424,7 @@ ${query}`
         }) => {
           let text = finalContent;
 
-          const convoUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversationId}`;
+          const convoUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/agent/${conversationId}`;
           const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(

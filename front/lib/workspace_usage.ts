@@ -698,7 +698,7 @@ function reconstructConversationUrl(
   workspace: WorkspaceType,
   conversationId: string
 ) {
-  return `${config.getClientFacingUrl()}/w/${workspace.sId}/assistant/${conversationId}`;
+  return `${config.getClientFacingUrl()}/w/${workspace.sId}/agent/${conversationId}`;
 }
 
 function generateCsvFromQueryResult(

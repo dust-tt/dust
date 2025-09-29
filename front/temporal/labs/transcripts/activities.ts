@@ -730,7 +730,7 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="${config.getClientFacingUrl()}/w/${owner.sId}/assistant/${conversation.sId}"
+    <a href="${config.getClientFacingUrl()}/w/${owner.sId}/agent/${conversation.sId}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;
