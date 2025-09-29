@@ -16,6 +16,7 @@ import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types";
 import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
@@ -81,6 +82,7 @@ async function processEventForDatabase(
   }
 }
 
+// Process unread state for agent events before publishing to Redis.
 async function processEventForUnreadState(
   auth: Authenticator,
   {
@@ -115,6 +117,17 @@ async function processEventForUnreadState(
   }
 }
 
+// Process potential token usage tracking for agent events before publishing to Redis.
+async function processEventForTokenUsageTracking(
+  auth: Authenticator,
+  { event }: { event: AgentMessageEvents }
+) {
+  if (event.type === "agent_message_success") {
+    const { runIds } = event;
+    await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
+  }
+}
+
 export async function updateResourceAndPublishEvent(
   auth: Authenticator,
   {
@@ -129,10 +142,12 @@ export async function updateResourceAndPublishEvent(
     step: number;
   }
 ): Promise<void> {
-  // Process database operations BEFORE publishing to Redis.
-  await processEventForDatabase(event, agentMessageRow, step);
-
-  await processEventForUnreadState(auth, { event, conversation });
+  // Processing of events before publishing to Redis.
+  await Promise.all([
+    processEventForDatabase(event, agentMessageRow, step),
+    processEventForUnreadState(auth, { event, conversation }),
+    processEventForTokenUsageTracking(auth, { event }),
+  ]);
 
   await publishConversationRelatedEvent({
     conversationId: conversation.sId,
