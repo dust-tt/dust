@@ -58,13 +58,6 @@ export type MessageWithContentFragmentsType =
       contentFragments?: ContentFragmentType[];
     });
 
-export type WithRank<T> = T & {
-  rank: number;
-};
-export type MessageWithRankType = WithRank<MessageType>;
-
-export type LightMessageWithRankType = WithRank<LightMessageType>;
-
 /**
  * User messages
  */
@@ -107,12 +100,12 @@ export type UserMessageType = {
   sId: string;
   visibility: MessageVisibility;
   version: number;
+  rank: number;
   user: UserType | null;
   mentions: MentionType[];
   content: string;
   context: UserMessageContext;
 };
-export type UserMessageWithRankType = WithRank<UserMessageType>;
 
 export function isUserMessageType(
   arg: MessageType | LightMessageType
@@ -148,6 +141,7 @@ export type BaseAgentMessageType = {
   type: "agent_message";
   sId: string;
   version: number;
+  rank: number;
   created: number;
   completedTs: number | null;
   parentMessageId: string | null;
@@ -203,8 +197,6 @@ export function isLightAgentMessageWithActionsType(
   // LightAgentMessageWithActionsType; message.actions can therefore only be a AgentMCPActionType[].
   return "actions" in message;
 }
-
-export type AgentMessageWithRankType = WithRank<AgentMessageType>;
 
 export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";
@@ -304,7 +296,7 @@ export type SubmitMessageError = {
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
-  messages: LightMessageWithRankType[];
+  messages: LightMessageType[];
 }
 
 /**
@@ -316,7 +308,7 @@ export type UserMessageNewEvent = {
   type: "user_message_new";
   created: number;
   messageId: string;
-  message: UserMessageWithRankType;
+  message: UserMessageType;
 };
 
 // Event sent when the user message is created.
@@ -335,7 +327,7 @@ export type AgentMessageNewEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  message: AgentMessageWithRankType;
+  message: AgentMessageType;
 };
 
 // Event sent when the conversation title is updated.

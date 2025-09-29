@@ -4,10 +4,10 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   AgentMessageNewEvent,
-  AgentMessageWithRankType,
+  AgentMessageType,
   FetchConversationMessagesResponse,
   UserMessageNewEvent,
-  UserMessageWithRankType,
+  UserMessageType,
 } from "@app/types";
 import { isAgentMessageType, isUserMessageType } from "@app/types";
 
@@ -18,7 +18,7 @@ import { isAgentMessageType, isUserMessageType } from "@app/types";
  */
 export function updateMessagePagesWithOptimisticData(
   currentMessagePages: FetchConversationMessagesResponse[] | undefined,
-  messageOrPlaceholder: AgentMessageWithRankType | UserMessageWithRankType
+  messageOrPlaceholder: AgentMessageType | UserMessageType
 ): FetchConversationMessagesResponse[] {
   const m = isAgentMessageType(messageOrPlaceholder)
     ? {

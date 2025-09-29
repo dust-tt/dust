@@ -11,10 +11,10 @@ import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type {
   AgentMessageNewEvent,
-  AgentMessageWithRankType,
+  AgentMessageType,
   ConversationType,
   UserMessageNewEvent,
-  UserMessageWithRankType,
+  UserMessageType,
 } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -144,8 +144,8 @@ export async function publishConversationRelatedEvent(
 
 export async function publishMessageEventsOnMessagePostOrEdit(
   conversation: ConversationType,
-  userMessage: UserMessageWithRankType,
-  agentMessages: AgentMessageWithRankType[]
+  userMessage: UserMessageType,
+  agentMessages: AgentMessageType[]
 ) {
   const userMessageEvent: UserMessageNewEvent = {
     type: "user_message_new",
@@ -182,7 +182,7 @@ export async function publishMessageEventsOnMessagePostOrEdit(
 
 export async function publishAgentMessageEventOnMessageRetry(
   conversation: ConversationType,
-  agentMessage: AgentMessageWithRankType
+  agentMessage: AgentMessageType
 ) {
   const agentMessageEvent: AgentMessageNewEvent = {
     type: "agent_message_new",
