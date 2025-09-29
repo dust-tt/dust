@@ -356,6 +356,7 @@ ${query}`
             conversationId: isHandoff
               ? mainConversation.sId
               : conversationId ?? null,
+            originMessage: agentLoopContext.runContext.agentMessage,
           }
         );
 

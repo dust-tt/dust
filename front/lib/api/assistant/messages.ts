@@ -185,6 +185,7 @@ async function batchRenderUserMessages(
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
         origin: userMessage.userContextOrigin,
+        originMessageId: userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt: userMessage.userContextLastTriggerRunAt,
       },
