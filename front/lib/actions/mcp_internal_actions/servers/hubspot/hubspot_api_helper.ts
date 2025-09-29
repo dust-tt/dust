@@ -327,19 +327,70 @@ function buildHubspotFilters(
           throw new Error(`Values array is required for ${operator} operator`);
         }
       } else if (operator === FilterOperatorEnum.Between) {
-        // BETWEEN operator needs separate value and highValue fields
+        // Date properties need to be converted to Unix timestamps in milliseconds
+        const isDateProperty =
+          propertyName.includes("date") ||
+          propertyName.includes("time") ||
+          propertyName.includes("timestamp") ||
+          propertyName === "createdate" ||
+          propertyName === "lastmodifieddate" ||
+          propertyName === "hs_lastmodifieddate";
+
         if (values?.length === 2) {
-          const cleanValues = values
+          let cleanValues = values
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
+
+          // Convert date strings to timestamps for date properties
+          if (isDateProperty) {
+            cleanValues = cleanValues.map((dateStr) => {
+              // Check if it's already a timestamp (all digits)
+              if (/^\d+$/.test(dateStr)) {
+                return dateStr;
+              }
+              // Convert ISO date string to timestamp
+              const timestamp = new Date(dateStr).getTime();
+              if (isNaN(timestamp)) {
+                throw new Error(
+                  `Invalid date format for BETWEEN operator: ${dateStr}`
+                );
+              }
+              return String(timestamp);
+            });
+          }
+
           filter.value = cleanValues[0];
           filter.highValue = cleanValues[1];
         } else if (value !== undefined && value !== null) {
           // If single value provided, assume it's semicolon-separated
           const parts = String(value).split(";");
           if (parts.length === 2) {
-            filter.value = parts[0];
-            filter.highValue = parts[1];
+            let [lowValue, highValue] = parts;
+
+            // Convert date strings to timestamps for date properties
+            if (isDateProperty) {
+              if (!/^\d+$/.test(lowValue)) {
+                const timestamp = new Date(lowValue).getTime();
+                if (isNaN(timestamp)) {
+                  throw new Error(
+                    `Invalid date format for BETWEEN operator: ${lowValue}`
+                  );
+                }
+                lowValue = String(timestamp);
+              }
+              if (!/^\d+$/.test(highValue)) {
+                const timestamp = new Date(highValue).getTime();
+                if (isNaN(timestamp)) {
+                  throw new Error(
+                    `Invalid date format for BETWEEN operator: ${highValue}`
+                  );
+                }
+                highValue = String(timestamp);
+              }
+            }
+
+            filter.value = lowValue;
+            filter.highValue = highValue;
           } else {
             throw new Error(
               `BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`
