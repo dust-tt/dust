@@ -11,9 +11,9 @@ import {
   getDataSourceFileSystemAction,
   getDataWarehousesAction,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
+import { fetchMessage } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import { Message } from "@app/lib/models/assistant/conversation";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
@@ -22,8 +22,7 @@ import type {
   Result,
   UserMessageType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
-import { removeNulls } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
 async function fetchDataSourceViews(
@@ -152,16 +151,11 @@ export async function augmentDustDeep(
 ): Promise<Result<AgentConfigurationType, Error>> {
   try {
     const agentMessageId = userMessage.context.originMessageId;
-    const agentMessage = agentMessageId
-      ? await Message.findOne({
-          where: {
-            sId: agentMessageId,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-        })
+    const originMessage = agentMessageId
+      ? await fetchMessage(auth, agentMessageId)
       : null;
 
-    const mainAgentId = agentMessage?.agentMessage?.agentConfigurationId;
+    const mainAgentId = originMessage?.agentMessage?.agentConfigurationId;
 
     if (!mainAgentId) {
       return new Ok(agentConfiguration);

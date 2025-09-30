@@ -1,4 +1,4 @@
-import { augmentDustDeep } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep-enhancer";
+import { augmentDustDeep } from "@app/lib/api/assistant/global_agents/configurations/dust/augment-dust-deep";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
