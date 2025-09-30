@@ -51,8 +51,8 @@ function ToolItem({ tool, mayUpdate, serverType, availableStakeLevels }: ToolIte
     },
   });
 
-  const toolPermission = field.value?.permission ?? FALLBACK_MCP_TOOL_STAKE_LEVEL;
-  const toolEnabled = field.value?.enabled ?? true;
+  const toolPermission = field.value.permission;
+  const toolEnabled = field.value.enabled;
 
   const handleToggle = () => {
     field.onChange({
