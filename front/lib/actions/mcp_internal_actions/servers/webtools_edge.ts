@@ -12,10 +12,8 @@ import {
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  AGENT_CONFIGURATION_URI_PATTERN,
-  ConfigurableToolInputSchemas,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { WebsearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   makeInternalMCPServer,
@@ -38,11 +36,6 @@ import { webSearch } from "@app/lib/utils/websearch";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getHeaderFromUserEmail, Ok } from "@app/types";
-
-export function parseAgentConfigurationUri(uri: string): string | null {
-  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
-  return match ? match[2] : null;
-}
 
 async function summarizeWithAgent({
   auth,
@@ -331,3 +324,8 @@ const createServer = (
 };
 
 export default createServer;
+
+function parseAgentConfigurationUri(uri: string): string | null {
+  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
+  return match ? match[2] : null;
+}

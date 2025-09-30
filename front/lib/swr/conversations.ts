@@ -11,6 +11,7 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
@@ -265,6 +266,39 @@ export const useDeleteConversation = (owner: LightWorkspaceType) => {
   return doDelete;
 };
 
+// Cancel message generation for one or multiple messages within a conversation.
+// Returns an async function that accepts a list of message IDs to cancel.
+export function useCancelMessage({
+  owner,
+  conversationId,
+}: {
+  owner: LightWorkspaceType;
+  conversationId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+
+  return useCallback(
+    async (messageIds: string[]) => {
+      if (!conversationId || messageIds.length === 0) {
+        return;
+      }
+      try {
+        await fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "cancel", messageIds }),
+          }
+        );
+      } catch (error) {
+        sendNotification({ type: "error", title: "Failed to cancel message" });
+      }
+    },
+    [owner.sId, conversationId, sendNotification]
+  );
+}
+
 export function useAddDeleteConversationTool({
   conversationId,
   workspaceId,
@@ -365,6 +399,62 @@ export function useAddDeleteConversationTool({
   return { addTool, deleteTool };
 }
 
+export function useVisualizationRevert({
+  workspaceId,
+  conversationId,
+}: {
+  workspaceId: string | null;
+  conversationId: string | null;
+}) {
+  const handleVisualizationRevert = useCallback(
+    async ({
+      fileId,
+      agentConfigurationId,
+    }: {
+      fileId: string;
+      agentConfigurationId: string;
+    }): Promise<boolean> => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              content: `Please revert the previous change in ${fileId}`,
+              mentions: [
+                {
+                  configurationId: agentConfigurationId,
+                },
+              ],
+              context: {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                profilePictureUrl: null,
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to send revert message");
+        }
+
+        return true;
+      } catch (error) {
+        datadogLogger.error({ error }, "Error sending revert message");
+        return false;
+      }
+    },
+    [workspaceId, conversationId]
+  );
+
+  return {
+    handleVisualizationRevert,
+  };
+}
+
 export function useVisualizationRetry({
   workspaceId,
   conversationId,
@@ -432,7 +522,7 @@ export function useConversationMessage({
   messageId,
   options,
 }: {
-  conversationId: string | null;
+  conversationId: string;
   workspaceId: string;
   messageId: string | null;
   options?: {

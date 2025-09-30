@@ -15,7 +15,6 @@ import { CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/type
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
-  TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -70,21 +69,9 @@ export const CAPABILITY_CONFIGS: Record<string, CapabilityConfig> = {
       maxLength: DESCRIPTION_MAX_LENGTH,
     },
   },
-  [TABLE_QUERY_SERVER_NAME]: {
-    icon: TableIcon,
-    configPageTitle: "Configure Query Tables",
-    configPageDescription:
-      "Describe how you want to query the selected tables.",
-    descriptionConfig: {
-      title: "Query Description",
-      description:
-        "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.",
-      placeholder: "Describe what you want to query from your tables...",
-    },
-  },
   [TABLE_QUERY_V2_SERVER_NAME]: {
     icon: TableIcon,
-    configPageTitle: "Configure Query Tables v2",
+    configPageTitle: "Configure Query Tables",
     configPageDescription:
       "Describe how you want to query the selected tables.",
     descriptionConfig: {

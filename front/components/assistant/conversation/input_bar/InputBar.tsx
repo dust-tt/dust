@@ -15,6 +15,7 @@ import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationTool,
+  useCancelMessage,
   useConversation,
   useConversationTools,
 } from "@app/lib/swr/conversations";
@@ -78,6 +79,7 @@ export function AssistantInputBar({
     workspaceId: owner.sId,
     options: { disabled: true }, // We just want to get the mutation function
   });
+  const cancelMessage = useCancelMessage({ owner, conversationId });
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations: baseAgentConfigurations } =
@@ -151,8 +153,8 @@ export function AssistantInputBar({
 
   // Tools selection
 
-  const [selectedMCPServerViewIds, setSelectedMCPServerViewIds] = useState<
-    string[]
+  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
+    MCPServerViewType[]
   >([]);
 
   const { conversationTools } = useConversationTools({
@@ -162,7 +164,7 @@ export function AssistantInputBar({
 
   // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
   useEffect(() => {
-    setSelectedMCPServerViewIds(conversationTools.map((tool) => tool.sId));
+    setSelectedMCPServerViews(conversationTools);
   }, [conversationTools]);
 
   const { addTool, deleteTool } = useAddDeleteConversationTool({
@@ -172,14 +174,14 @@ export function AssistantInputBar({
 
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
     // Optimistic update
-    setSelectedMCPServerViewIds((prev) => [...prev, serverView.sId]);
+    setSelectedMCPServerViews((prev) => [...prev, serverView]);
     void addTool(serverView.sId);
   };
 
   const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
     // Optimistic update
-    setSelectedMCPServerViewIds((prev) =>
-      prev.filter((sv) => sv !== serverView.sId)
+    setSelectedMCPServerViews((prev) =>
+      prev.filter((sv) => sv.sId !== serverView.sId)
     );
     void deleteTool(serverView.sId);
   };
@@ -216,13 +218,14 @@ export function AssistantInputBar({
             return {
               title: cf.filename,
               fileId: cf.fileId,
+              contentType: cf.contentType,
             };
           }),
           contentNodes: attachedNodes,
         },
         // Only send the selectedMCPServerViewIds if we are creating a new conversation.
         // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-        selectedMCPServerViewIds
+        selectedMCPServerViews.map((sv) => sv.sId)
       );
 
       setLoading(false);
@@ -237,6 +240,7 @@ export function AssistantInputBar({
           return {
             title: cf.filename,
             fileId: cf.fileId,
+            contentType: cf.contentType,
           };
         }),
         contentNodes: attachedNodes,
@@ -276,20 +280,10 @@ export function AssistantInputBar({
       return;
     }
     setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "cancel",
-          messageIds: generationContext.generatingMessages
-            .filter((m) => m.conversationId === conversationId)
-            .map((m) => m.messageId),
-        }),
-      }
+    await cancelMessage(
+      generationContext.generatingMessages
+        .filter((m) => m.conversationId === conversationId)
+        .map((m) => m.messageId)
     );
     mutateConversation();
   };
@@ -309,6 +303,16 @@ export function AssistantInputBar({
     setDisableSendButton(disable);
   }, [disable]);
 
+  const getStopButtonLabel = () => {
+    if (isStopping) {
+      return "Stopping...";
+    }
+    const generatingCount = generationContext.generatingMessages.filter(
+      (m) => m.conversationId === conversationId
+    ).length;
+    return generatingCount > 1 ? "Stop all agents" : "Stop agent";
+  };
+
   return (
     <div className="flex w-full flex-col">
       {generationContext.generatingMessages.some(
@@ -317,7 +321,7 @@ export function AssistantInputBar({
         <div className="flex justify-center px-4 pb-4">
           <Button
             variant="outline"
-            label={isStopping ? "Stopping generation..." : "Stop generation"}
+            label={getStopButtonLabel()}
             icon={StopIcon}
             onClick={handleStopGeneration}
             disabled={isStopping}
@@ -373,7 +377,7 @@ export function AssistantInputBar({
             disableTextInput={disable}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
-            selectedMCPServerViewIds={selectedMCPServerViewIds}
+            selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             attachedNodes={attachedNodes}

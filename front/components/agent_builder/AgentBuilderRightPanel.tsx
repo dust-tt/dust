@@ -48,7 +48,6 @@ function PanelHeader({
                   variant="ghost-secondary"
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
-                  className="ml-4"
                 />
                 <TabsTrigger
                   value="testing"
@@ -144,7 +143,7 @@ function ExpandedContent({
         />
       )}
       {selectedTab === "testing" && (
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 px-1">
           <AgentBuilderPreview />
         </div>
       )}

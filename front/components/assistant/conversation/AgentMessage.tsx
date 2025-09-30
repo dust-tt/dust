@@ -9,6 +9,7 @@ import {
   InteractiveImageGrid,
   Markdown,
   Separator,
+  StopIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -17,11 +18,11 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import {
   AgentMessageContentCreationGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
-import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
@@ -52,6 +53,7 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
+import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
@@ -65,7 +67,6 @@ import {
   GLOBAL_AGENTS_SID,
   isContentCreationFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
-  isString,
   isSupportedImageContentType,
 } from "@app/types";
 
@@ -152,12 +153,18 @@ export function AgentMessage({
     message,
     messageStreamState,
   });
+  const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = Object.entries(
     agentMessageToRender.citations ?? {}
   ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
     if (citation) {
-      const IconComponent = getCitationIcon(citation.provider, isDark);
+      const IconComponent = getCitationIcon(
+        citation.provider,
+        isDark,
+        citation.faviconUrl,
+        citation.href
+      );
       return {
         ...acc,
         [key]: {
@@ -182,6 +189,19 @@ export function AgentMessage({
   // happen.
   const isAtBottom = React.useRef(true);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  const streamingSignature = React.useMemo(() => {
+    return [
+      messageStreamState.agentState,
+      messageStreamState.message.content ?? "",
+      messageStreamState.message.chainOfThought ?? "",
+      messageStreamState.message.actions.length,
+    ].join("::");
+  }, [
+    messageStreamState.agentState,
+    messageStreamState.message.actions.length,
+    messageStreamState.message.chainOfThought,
+    messageStreamState.message.content,
+  ]);
   React.useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -203,6 +223,24 @@ export function AgentMessage({
     };
   }, []);
 
+  React.useEffect(() => {
+    if (!shouldStream) {
+      return;
+    }
+
+    if (!isAtBottom.current) {
+      return;
+    }
+
+    const anchor = bottomRef.current;
+
+    if (!anchor) {
+      return;
+    }
+
+    anchor.scrollIntoView({ behavior: "smooth" });
+  }, [shouldStream, streamingSignature]);
+
   // GenerationContext: to know if we are generating or not.
   const generationContext = React.useContext(GenerationContext);
   if (!generationContext) {
@@ -215,10 +253,13 @@ export function AgentMessage({
       (m) => m.messageId === message.sId
     );
     if (agentMessageToRender.status === "created" && !isInArray) {
-      generationContext.setGeneratingMessages((s) => [
-        ...s,
-        { messageId: message.sId, conversationId },
-      ]);
+      generationContext.setGeneratingMessages((s) =>
+        // Re-check if the message is already in the array since there may be
+        // a race condition on the update (double call of useEffect).
+        s.some((m) => m.messageId === message.sId)
+          ? s
+          : [...s, { messageId: message.sId, conversationId }]
+      );
     } else if (agentMessageToRender.status !== "created" && isInArray) {
       generationContext.setGeneratingMessages((s) =>
         s.filter((m) => m.messageId !== message.sId)
@@ -313,47 +354,87 @@ export function AgentMessage({
     );
   }
 
-  const buttons =
-    message.status === "failed" || messageStreamState.agentState === "thinking"
-      ? []
-      : [
-          <Button
-            key="copy-msg-button"
-            tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-            variant="outline"
-            size="xs"
-            onClick={handleCopyToClipboard}
-            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-            className="text-muted-foreground"
-          />,
-          <Button
-            key="retry-msg-button"
-            tooltip="Retry"
-            variant="outline"
-            size="xs"
-            onClick={() => {
-              void retryHandler({
-                conversationId,
-                messageId: agentMessageToRender.sId,
-              });
-            }}
-            icon={ArrowPathIcon}
-            className="text-muted-foreground"
-            disabled={isRetryHandlerProcessing || shouldStream}
-          />,
-          // One cannot leave feedback on global agents.
-          ...(isGlobalAgent ||
-          agentMessageToRender.configuration.status === "draft"
-            ? []
-            : [
-                <Separator key="separator" orientation="vertical" />,
-                <FeedbackSelector
-                  key="feedback-selector"
-                  {...messageFeedback}
-                  getPopoverInfo={PopoverContent}
-                />,
-              ]),
-        ];
+  const buttons: React.ReactElement[] = [];
+
+  const hasMultiAgents =
+    generationContext.generatingMessages.filter(
+      (m) => m.conversationId === conversationId
+    ).length > 1;
+
+  // Show stop agent button only when streaming with multiple agents
+  // (it feels distractive to show buttons while streaming so we would like to avoid as much as possible.
+  // However, when there are multiple agents there is no other way to stop only single agent so we need to show it here).
+  if (hasMultiAgents && agentMessageToRender.status === "created") {
+    buttons.push(
+      <Button
+        key="stop-msg-button"
+        label="Stop agent"
+        variant="ghost-secondary"
+        size="xs"
+        onClick={async () => {
+          await cancelMessage([message.sId]);
+        }}
+        icon={StopIcon}
+        className="text-muted-foreground"
+      />
+    );
+  }
+
+  // Show copy & feedback buttons only when streaming is done and it didn't fail
+  if (
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed"
+  ) {
+    buttons.push(
+      <Button
+        key="copy-msg-button"
+        tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+        variant="ghost-secondary"
+        size="xs"
+        onClick={handleCopyToClipboard}
+        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+        className="text-muted-foreground"
+      />
+    );
+  }
+
+  // Show retry button as long as it's not streaming
+  if (agentMessageToRender.status !== "created") {
+    buttons.push(
+      <Button
+        key="retry-msg-button"
+        tooltip="Retry"
+        variant="ghost-secondary"
+        size="xs"
+        onClick={() => {
+          void retryHandler({
+            conversationId,
+            messageId: agentMessageToRender.sId,
+          });
+        }}
+        icon={ArrowPathIcon}
+        className="text-muted-foreground"
+        disabled={isRetryHandlerProcessing || shouldStream}
+      />
+    );
+  }
+
+  // Add feedback buttons in the end of the array if the agent is not global nor in draft (= inside agent builder)
+  if (
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed" &&
+    !isGlobalAgent &&
+    agentMessageToRender.configuration.status !== "draft"
+  ) {
+    buttons.push(
+      <Separator key="separator" orientation="vertical" />,
+      <FeedbackSelector
+        key="feedback-selector"
+        {...messageFeedback}
+        getPopoverInfo={PopoverContent}
+      />
+    );
+  }
 
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
@@ -398,6 +479,11 @@ export function AgentMessage({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
+  const messageTimestamp = agentMessageToRender.completedTs
+    ? formatTimestring(agentMessageToRender.completedTs)
+    : formatTimestring(agentMessageToRender.created);
+  const shouldDisplayTimestamp = agentMessageToRender.status !== "created";
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -406,7 +492,7 @@ export function AgentMessage({
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
       renderName={() => (
-        <AssistantHandle
+        <AgentHandle
           assistant={{
             sId: agentConfiguration.sId,
             name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
@@ -415,7 +501,7 @@ export function AgentMessage({
           isDisabled={isArchived}
         />
       )}
-      timestamp={formatTimestring(agentMessageToRender.created)}
+      timestamp={shouldDisplayTimestamp ? messageTimestamp : undefined}
       type="agent"
       citations={citations}
     >
@@ -448,52 +534,61 @@ export function AgentMessage({
       const { error } = agentMessage;
       if (isPersonalAuthenticationRequiredErrorContent(error)) {
         return (
-          <MCPServerPersonalAuthenticationRequired
-            owner={owner}
-            mcpServerId={error.metadata.mcp_server_id}
-            provider={error.metadata.provider}
-            scope={error.metadata.scope}
-            retryHandler={async () => {
-              // Dispatch retry event to reset failed state and re-enable streaming.
-              dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
-              // Retry on the event's conversationId, which may be coming from a subagent.
-              // TODO(durable-agents): typeguard on a proper type here.
-              if (
-                error.metadata &&
-                isString(error.metadata.messageId) &&
-                isString(error.metadata.conversationId) &&
-                error.metadata.conversationId !== conversationId
-              ) {
+          <div className="flex flex-col gap-y-4">
+            <AgentMessageActions
+              agentMessage={agentMessage}
+              lastAgentStateClassification={messageStreamState.agentState}
+              actionProgress={messageStreamState.actionProgress}
+              owner={owner}
+            />
+            <MCPServerPersonalAuthenticationRequired
+              owner={owner}
+              mcpServerId={error.metadata.mcp_server_id}
+              provider={error.metadata.provider}
+              scope={error.metadata.scope}
+              retryHandler={async () => {
+                // Dispatch retry event to reset failed state and re-enable streaming.
+                dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
+                // Retry on the event's conversationId, which may be coming from a subagent.
+                if (error.metadata.conversationId !== conversationId) {
+                  await retryHandler({
+                    conversationId: error.metadata.conversationId,
+                    messageId: error.metadata.messageId,
+                    blockedOnly: true,
+                  });
+                }
+                // Retry on the main conversation.
                 await retryHandler({
-                  conversationId: error.metadata.conversationId,
-                  messageId: error.metadata.messageId,
+                  conversationId,
+                  messageId: agentMessage.sId,
                   blockedOnly: true,
                 });
-              }
-              // Retry on the main conversation.
-              await retryHandler({
-                conversationId,
-                messageId: agentMessage.sId,
-                blockedOnly: true,
-              });
-            }}
-          />
+              }}
+            />
+          </div>
         );
       }
       return (
-        <ErrorMessage
-          error={
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            agentMessage.error || {
-              message: "Unexpected Error",
-              code: "unexpected_error",
-              metadata: {},
+        <div className="flex flex-col gap-y-4">
+          <AgentMessageActions
+            agentMessage={agentMessage}
+            lastAgentStateClassification={messageStreamState.agentState}
+            actionProgress={messageStreamState.actionProgress}
+            owner={owner}
+          />
+          <ErrorMessage
+            error={
+              agentMessage.error ?? {
+                message: "Unexpected Error",
+                code: "unexpected_error",
+                metadata: {},
+              }
             }
-          }
-          retryHandler={async () =>
-            retryHandler({ conversationId, messageId: agentMessage.sId })
-          }
-        />
+            retryHandler={async () =>
+              retryHandler({ conversationId, messageId: agentMessage.sId })
+            }
+          />
+        </div>
       );
     }
 

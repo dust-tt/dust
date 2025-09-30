@@ -1,4 +1,4 @@
-import { ArrowUpIcon, Button } from "@dust-tt/sparkle";
+import { ArrowUpIcon, Button, Chip } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -20,11 +20,14 @@ import { useMentionDropdown } from "@app/components/assistant/conversation/input
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { getPastedFileName } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
@@ -38,6 +41,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
+import { assertNever, normalizeError } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
@@ -68,7 +72,7 @@ export interface InputBarContainerProps {
   attachedNodes: DataSourceViewContentNode[];
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
-  selectedMCPServerViewIds: string[];
+  selectedMCPServerViews: MCPServerViewType[];
 }
 
 const InputBarContainer = ({
@@ -88,13 +92,14 @@ const InputBarContainer = ({
   attachedNodes,
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
-  selectedMCPServerViewIds,
+  selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
+  const [pastedCount, setPastedCount] = useState(0);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -125,13 +130,52 @@ const InputBarContainer = ({
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
     owner,
+    onLongTextPaste: async (text: string) => {
+      try {
+        const newCount = pastedCount + 1;
+        setPastedCount(newCount);
+        const filename = getPastedFileName(newCount);
+        const file = new File([text], filename, {
+          type: "text/vnd.dust.attachment.pasted",
+        });
+
+        const uploaded = await fileUploaderService.handleFilesUpload([file]);
+        if (!(uploaded && uploaded.length > 0)) {
+          sendNotification({
+            type: "error",
+            title: "Failed to attach pasted text",
+            description: "Upload was rejected or failed.",
+          });
+        }
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to attach pasted text",
+          description: normalizeError(e).message,
+        });
+      }
+    },
   });
 
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,
     fileUploaderService,
-    onTranscribeDelta: (delta) => {
-      editorService.insertText(delta);
+    onTranscribeComplete: (transcript) => {
+      for (const message of transcript) {
+        switch (message.type) {
+          case "text":
+            editorService.insertText(message.text);
+            break;
+          case "mention":
+            editorService.insertMention({
+              id: message.id,
+              label: message.name,
+            });
+            break;
+          default:
+            assertNever(message);
+        }
+      }
     },
   });
 
@@ -287,92 +331,119 @@ const InputBarContainer = ({
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        <div className="flex items-center justify-between px-1 px-2 py-1.5 sm:pb-3 sm:pr-3">
-          <div className="flex items-center">
-            {actions.includes("attachment") && (
+        <div className="flex w-full flex-col px-1 px-2 py-1.5 sm:pb-2 sm:pr-3">
+          <div className="mb-1 flex flex-wrap items-center">
+            {selectedMCPServerViews.map((msv) => (
               <>
-                <input
-                  accept={getSupportedFileExtensions().join(",")}
-                  onChange={async (e) => {
-                    await fileUploaderService.handleFileChange(e);
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = "";
-                    }
-                    editorService.focusEnd();
+                <Chip
+                  key={msv.sId}
+                  size="xs"
+                  label={getMcpServerViewDisplayName(msv)}
+                  icon={getIcon(msv.server.icon)}
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
                   }}
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  type="file"
-                  multiple={true}
                 />
-                <InputBarAttachmentsPicker
-                  fileUploaderService={fileUploaderService}
-                  owner={owner}
-                  isLoading={false}
-                  onNodeSelect={onNodeSelect}
-                  onNodeUnselect={onNodeUnselect}
-                  attachedNodes={attachedNodes}
-                  disabled={disableTextInput}
+                <Chip
+                  key={`mobile-${msv.sId}`}
+                  size="xs"
+                  icon={getIcon(msv.server.icon)}
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
                 />
               </>
-            )}
-            {actions.includes("tools") && (
-              <ToolsPicker
-                owner={owner}
-                selectedMCPServerViewIds={selectedMCPServerViewIds}
-                onSelect={onMCPServerViewSelect}
-                onDeselect={onMCPServerViewDeselect}
-                disabled={disableTextInput}
-              />
-            )}
-            {(actions.includes("assistants-list") ||
-              actions.includes("assistants-list-with-actions")) && (
-              <AssistantPicker
-                owner={owner}
-                size="xs"
-                onItemClick={(c) => {
-                  editorService.insertMention({ id: c.sId, label: c.name });
-                }}
-                assistants={allAssistants}
-                showDropdownArrow={false}
-                showFooterButtons={actions.includes(
-                  "assistants-list-with-actions"
-                )}
-                disabled={disableTextInput}
-              />
-            )}
+            ))}
           </div>
-          <div className="grow" />
-          <div className="flex items-center gap-2 md:gap-1">
-            {featureFlags.hasFeature("simple_audio_transcription") &&
-              actions.includes("voice") && (
-                <VoicePicker
-                  voiceTranscriberService={voiceTranscriberService}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              {actions.includes("attachment") && (
+                <>
+                  <input
+                    accept={getSupportedFileExtensions().join(",")}
+                    onChange={async (e) => {
+                      await fileUploaderService.handleFileChange(e);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                      }
+                      editorService.focusEnd();
+                    }}
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    type="file"
+                    multiple={true}
+                  />
+                  <InputBarAttachmentsPicker
+                    fileUploaderService={fileUploaderService}
+                    owner={owner}
+                    isLoading={false}
+                    onNodeSelect={onNodeSelect}
+                    onNodeUnselect={onNodeUnselect}
+                    attachedNodes={attachedNodes}
+                    disabled={disableTextInput}
+                  />
+                </>
+              )}
+              {actions.includes("tools") && (
+                <ToolsPicker
+                  owner={owner}
+                  selectedMCPServerViews={selectedMCPServerViews}
+                  onSelect={onMCPServerViewSelect}
+                  onDeselect={onMCPServerViewDeselect}
                   disabled={disableTextInput}
                 />
               )}
-            <Button
-              size="xs"
-              isLoading={disableSendButton}
-              icon={ArrowUpIcon}
-              variant="highlight"
-              disabled={
-                editorService.isEmpty() ||
-                disableSendButton ||
-                voiceTranscriberService.isRecording ||
-                voiceTranscriberService.isTranscribing
-              }
-              onClick={async () => {
-                onEnterKeyDown(
-                  editorService.isEmpty(),
-                  editorService.getMarkdownAndMentions(),
-                  () => {
-                    editorService.clearEditor();
-                  },
-                  editorService.setLoading
-                );
-              }}
-            />
+              {(actions.includes("assistants-list") ||
+                actions.includes("assistants-list-with-actions")) && (
+                <AssistantPicker
+                  owner={owner}
+                  size="xs"
+                  onItemClick={(c) => {
+                    editorService.insertMention({ id: c.sId, label: c.name });
+                  }}
+                  assistants={allAssistants}
+                  showDropdownArrow={false}
+                  showFooterButtons={actions.includes(
+                    "assistants-list-with-actions"
+                  )}
+                  disabled={disableTextInput}
+                />
+              )}
+            </div>
+            <div className="grow" />
+            <div className="flex items-center gap-2 md:gap-1">
+              {featureFlags.hasFeature("simple_audio_transcription") &&
+                actions.includes("voice") && (
+                  <VoicePicker
+                    voiceTranscriberService={voiceTranscriberService}
+                    disabled={disableTextInput}
+                  />
+                )}
+              <Button
+                size="xs"
+                isLoading={disableSendButton}
+                icon={ArrowUpIcon}
+                variant="highlight"
+                disabled={
+                  editorService.isEmpty() ||
+                  disableSendButton ||
+                  voiceTranscriberService.isRecording ||
+                  voiceTranscriberService.isTranscribing
+                }
+                onClick={async () => {
+                  onEnterKeyDown(
+                    editorService.isEmpty(),
+                    editorService.getMarkdownAndMentions(),
+                    () => {
+                      editorService.clearEditor();
+                    },
+                    editorService.setLoading
+                  );
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>

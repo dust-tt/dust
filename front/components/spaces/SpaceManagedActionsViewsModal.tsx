@@ -8,7 +8,7 @@ import {
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -21,22 +21,44 @@ type SpaceManagedActionsViewsModelProps = {
   owner: LightWorkspaceType;
   space: SpaceType;
   onAddServer: (server: MCPServerType) => void;
+  shouldOpenMenu?: boolean;
+  onOpenMenuHandled?: () => void;
 };
 
 export default function SpaceManagedActionsViewsModel({
   owner,
   space,
   onAddServer,
+  shouldOpenMenu,
+  onOpenMenuHandled,
 }: SpaceManagedActionsViewsModelProps) {
   const [searchText, setSearchText] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
       owner,
       space,
     });
 
+  useEffect(() => {
+    if (!shouldOpenMenu) {
+      return;
+    }
+    setMenuOpen(true);
+    onOpenMenuHandled?.();
+  }, [shouldOpenMenu, onOpenMenuHandled]);
+
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu
+      modal={false}
+      open={menuOpen}
+      onOpenChange={(open) => {
+        setMenuOpen(open);
+        if (!open) {
+          setSearchText("");
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button label="Add Tools" variant="primary" icon={PlusIcon} size="sm" />
       </DropdownMenuTrigger>

@@ -8,7 +8,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -30,6 +30,7 @@ import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
+import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
   ContentFragmentsType,
@@ -257,8 +258,10 @@ export function ConversationContainer({
         });
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
+        // Navigate directly to the canonical route to avoid relying on
+        // next.config.js redirects (which can be bypassed with shallow routing).
         await router.push(
-          `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
+          getAgentRoute(owner.sId, conversationRes.value.sId),
           undefined,
           { shallow: true }
         );
@@ -354,11 +357,10 @@ export function ConversationContainer({
       ) : (
         <div
           id="assistant-input-header"
-          className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-2"
+          className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-4"
           ref={startConversationRef}
         >
           <Page.Header title={greeting} />
-          <Page.SectionHeader title="Start a conversation" />
         </div>
       )}
 
@@ -393,12 +395,13 @@ export function ConversationContainer({
       />
 
       {!activeConversationId && (
-        <AssistantBrowserContainer
+        <AgentBrowserContainer
           onAgentConfigurationClick={setInputBarMention}
           setAssistantToMention={(assistant) => {
             assistantToMention.current = assistant;
           }}
           owner={owner}
+          user={user}
         />
       )}
 

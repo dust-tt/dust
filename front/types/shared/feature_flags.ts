@@ -33,6 +33,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Collaborative editing features",
     stage: "dust_only",
   },
+  confluence_tool: {
+    description: "Confluence MCP tool",
+    stage: "on_demand",
+  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
@@ -40,6 +44,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   deepseek_r1_global_agent_feature: {
     description: "Access to DeepSeek R1 model as global agent",
+    stage: "on_demand",
+  },
+  enable_posthog: {
+    description: "Enable PostHog tracking within the product (/w/ routes)",
     stage: "on_demand",
   },
   dev_mcp_actions: {
@@ -53,10 +61,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   disallow_agent_creation_to_users: {
     description:
       "Prevent users from creating agents, allowing only admins and builders",
-    stage: "on_demand",
-  },
-  exploded_tables_query: {
-    description: "Enhanced table querying with exploded views",
     stage: "on_demand",
   },
   interactive_content_server: {
@@ -183,6 +187,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
+    stage: "on_demand",
+  },
+  slack_semantic_search: {
+    description: "Slack semantic search feature",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;

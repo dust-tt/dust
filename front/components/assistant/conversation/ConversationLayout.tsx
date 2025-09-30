@@ -37,6 +37,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export interface ConversationLayoutProps {
   baseUrl: string;
@@ -54,14 +55,13 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, owner, subscription, user, isAdmin } = pageProps;
+  const { owner, subscription, user, isAdmin } = pageProps;
 
   return (
     <ConversationsNavigationProvider
       initialConversationId={pageProps.conversationId}
     >
       <ConversationLayoutContent
-        baseUrl={baseUrl}
         owner={owner}
         subscription={subscription}
         user={user}
@@ -74,7 +74,6 @@ export default function ConversationLayout({
 }
 
 interface ConversationLayoutContentProps {
-  baseUrl: string;
   children: React.ReactNode;
   owner: LightWorkspaceType;
   subscription: SubscriptionType;
@@ -83,7 +82,6 @@ interface ConversationLayoutContentProps {
 }
 
 const ConversationLayoutContent = ({
-  baseUrl,
   children,
   owner,
   subscription,
@@ -92,7 +90,7 @@ const ConversationLayoutContent = ({
 }: ConversationLayoutContentProps) => {
   const router = useRouter();
   const { onOpenChange: onOpenChangeAssistantModal } =
-    useURLSheet("assistantDetails");
+    useURLSheet("agentDetails");
   const { activeConversationId } = useConversationsNavigation();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
@@ -109,12 +107,12 @@ const ConversationLayoutContent = ({
   );
 
   const assistantSId = useMemo(() => {
-    const sid = router.query.assistantDetails ?? [];
-    if (sid && typeof sid === "string") {
+    const sid = router.query.agentDetails ?? [];
+    if (isString(sid)) {
       return sid;
     }
     return null;
-  }, [router.query.assistantDetails]);
+  }, [router.query.agentDetails]);
 
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
@@ -151,6 +149,7 @@ const ConversationLayoutContent = ({
             assistantId={assistantSId}
             onClose={() => onOpenChangeAssistantModal(false)}
           />
+
           <CoEditionProvider
             owner={owner}
             hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
@@ -158,7 +157,6 @@ const ConversationLayoutContent = ({
             <ConversationSidePanelProvider>
               <ConversationInnerLayout
                 activeConversationId={activeConversationId}
-                baseUrl={baseUrl}
                 conversation={conversation}
                 conversationError={conversationError}
                 owner={owner}
@@ -188,7 +186,6 @@ interface ConversationInnerLayoutProps {
   children: React.ReactNode;
   conversation: ConversationWithoutContentType | null;
   owner: LightWorkspaceType;
-  baseUrl: string;
   conversationError: ConversationError | null;
   activeConversationId: string | null;
 }
@@ -209,7 +206,6 @@ function ConversationInnerLayout({
   children,
   conversation,
   owner,
-  baseUrl,
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
@@ -224,9 +220,7 @@ function ConversationInnerLayout({
         >
           <ResizablePanel defaultSize={100}>
             <div className="flex h-full flex-col">
-              {activeConversationId && (
-                <ConversationTitle owner={owner} baseUrl={baseUrl} />
-              )}
+              {activeConversationId && <ConversationTitle owner={owner} />}
               {conversationError ? (
                 <ConversationErrorDisplay error={conversationError} />
               ) : (

@@ -64,7 +64,7 @@ function checkDeployPlanSection() {
   const match = PRDescription.match(deployPlanSectionRegex);
   if (!match || match[1].trim().length < 20) {
     fail(
-      "Please include a detailed Deploy Plan section in your PR description."
+      "Please include a detailed Deploy Plan section in your PR description, at least 20 characters long."
     );
   }
 }
@@ -103,7 +103,7 @@ function checkDocumentationLabel() {
 function failDocumentationAck() {
   fail(
     "Files in `**/api/v1/` have been modified. " +
-      `Please add the \`${documentationAckLabel}\` label to acknowlegde that if anything changes 
+      `Please add the \`${documentationAckLabel}\` label to acknowledge that if anything changes 
       in a public endpoint, you need to edit the JSDoc comment 
       above the handler definition and/or the swagger_schemas.ts file and regenerate the documentation using \`npm run docs\``
   );

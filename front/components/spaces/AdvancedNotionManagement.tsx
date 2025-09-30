@@ -1,8 +1,4 @@
-import type {
-  DropdownMenu,
-  DropdownMenuItemProps,
-  NotificationType,
-} from "@dust-tt/sparkle";
+import type { DropdownMenu, NotificationType } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -30,7 +26,6 @@ interface TableData {
   method: "sync" | "delete";
   error_message?: string;
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
 }
 

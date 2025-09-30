@@ -52,6 +52,7 @@ import {
   DocumentPileIcon,
   DocumentTextIcon,
   EyeIcon,
+  FaviconIcon,
   InformationCircleIcon,
   Markdown,
   Page,
@@ -103,7 +104,11 @@ export function makeMCPActionCitation(
   return {
     href: result.uri,
     title: result.text,
-    icon: <DocumentTextIcon />,
+    icon: result.uri ? (
+      <FaviconIcon websiteUrl={result.uri} size="sm" />
+    ) : (
+      <DocumentTextIcon />
+    ),
   };
 }
 
@@ -147,7 +152,11 @@ export const getCitationsFromActions = (
         runAgentRefs[ref] = {
           href: citation.href ?? "",
           title: citation.title,
-          icon: <DocumentTextIcon />,
+          icon: citation.href ? (
+            <FaviconIcon websiteUrl={citation.href} size="sm" />
+          ) : (
+            <DocumentTextIcon />
+          ),
         };
       });
     }
@@ -408,7 +417,7 @@ export function AgentMessage({
             label="See visualization on Dust website"
             onClick={() => {
               window.open(
-                `${user.dustDomain}/w/${owner.sId}/assistant/${conversationId}`
+                `${user.dustDomain}/w/${owner.sId}/agent/${conversationId}`
               );
             }}
           />

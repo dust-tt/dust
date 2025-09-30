@@ -7,6 +7,7 @@ import {
   CollapsibleComponent,
   ContentBlockWrapper,
   ContentMessage,
+  FaviconIcon,
   Icon,
   InformationCircleIcon,
   Markdown,
@@ -225,12 +226,11 @@ export function SearchResultDetails({
     return removeNulls(
       actionOutput.flatMap((r) => {
         if (isWebsearchResultResourceType(r)) {
-          const IconComponent = getDocumentIcon("webcrawler");
           return [
             {
               description: r.resource.text,
               title: r.resource.title,
-              icon: <IconComponent />,
+              icon: <FaviconIcon websiteUrl={r.resource.uri} size="sm" />,
               href: r.resource.uri,
             },
           ];

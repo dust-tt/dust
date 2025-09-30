@@ -29,7 +29,6 @@ interface UserTableRow {
   connection: MCPServerConnectionType | undefined;
   visual: React.JSX.Element;
   onClick?: () => void;
-  moreMenuItems?: any[];
 }
 
 interface UserToolsTableProps {
@@ -116,7 +115,6 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         connection: connectionsByServerId[serverView.server.sId],
         visual: getAvatar(serverView.server),
         onClick: () => {},
-        moreMenuItems: [],
       }));
   }, [serverViews, connections, approvals, searchQuery]);
 

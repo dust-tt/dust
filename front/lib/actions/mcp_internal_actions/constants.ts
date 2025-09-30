@@ -8,6 +8,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { InternalAllowedIconType } from "@app/lib/actions/mcp_icons";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
@@ -51,9 +52,14 @@ export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
 export const SEARCH_SERVER_NAME = "search";
-export const TABLE_QUERY_SERVER_NAME = "query_tables";
-export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2";
+
+export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
+export const AGENT_MEMORY_SERVER_NAME = "agent_memory";
+
+// IDs of internal MCP servers that are no longer present.
+// We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -61,8 +67,9 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_management",
-  "agent_memory",
+  AGENT_MEMORY_SERVER_NAME,
   "agent_router",
+  "confluence",
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
@@ -101,7 +108,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   "web_search_&_browse_with_summary",
   SEARCH_SERVER_NAME,
-  TABLE_QUERY_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 ] as const;
 
@@ -138,7 +144,7 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "github",
       version: "1.0.0",
-      description: "GitHub tools to manage issues and pull requests.",
+      description: "Manage issues and pull requests.",
       authorization: {
         provider: "github" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
@@ -160,7 +166,7 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "image_generation",
       version: "1.0.0",
-      description: "Agent can generate images (GPT Image 1).",
+      description: "Create visual content from text descriptions.",
       icon: "ActionImageIcon",
       authorization: null,
       documentationUrl: null,
@@ -179,29 +185,9 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "file_generation",
       version: "1.0.0",
-      description: "Agent can generate and convert files.",
+      description: "Generate and convert documents.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
-  [TABLE_QUERY_SERVER_NAME]: {
-    id: 4,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_stakes: undefined,
-    tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: undefined,
-    serverInfo: {
-      name: TABLE_QUERY_SERVER_NAME,
-      version: "1.0.0",
-      description:
-        "TablesQuery structured data like a spreadsheet or database for data analyses.",
-      icon: "ActionTableIcon",
-      authorization: null,
       documentationUrl: null,
       instructions: null,
     },
@@ -297,10 +283,7 @@ export const INTERNAL_MCP_SERVERS = {
     serverInfo: {
       name: "hubspot",
       version: "1.0.0",
-      description:
-        "Comprehensive HubSpot CRM integration supporting all object types (contacts, companies, deals) and ALL engagement types (tasks, notes, meetings, calls, emails). " +
-        "Features advanced user activity tracking, owner search and listing, association management, and enhanced search capabilities with owner filtering. " +
-        "Perfect for CRM data management and user activity analysis.",
+      description: "Access CRM contacts, deals and customer activities.",
       authorization: {
         provider: "hubspot" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
@@ -363,7 +346,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "run_dust_app",
       version: "1.0.0",
-      description: "Run Dust Apps with specified parameters",
+      description: "Run Dust Apps with specified parameters.",
       icon: "CommandLineIcon",
       authorization: null,
       documentationUrl: null,
@@ -403,7 +386,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "notion",
       version: "1.0.0",
-      description: "Notion tools to manage pages and databases.",
+      description: "Access workspace pages and databases.",
       authorization: {
         provider: "notion" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
@@ -499,7 +482,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "gmail",
       version: "1.0.0",
-      description: "Gmail tools for reading emails and managing email drafts.",
+      description: "Access messages and email drafts.",
       authorization: {
         provider: "google_drive" as const,
         supported_use_cases: ["personal_actions"] as const,
@@ -531,7 +514,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "google_calendar",
       version: "1.0.0",
-      description: "Tools for managing Google calendars and events.",
+      description: "Access calendar schedules and appointments.",
       authorization: {
         provider: "google_drive",
         supported_use_cases: ["personal_actions"] as const,
@@ -555,7 +538,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "conversation_files",
       version: "1.0.0",
-      description: "Include files from conversation attachments",
+      description: "Include files from conversation attachments.",
       icon: "ActionDocumentTextIcon",
       authorization: null,
       documentationUrl: null,
@@ -623,7 +606,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "google_sheets",
       version: "1.0.0",
-      description: "Tools for managing Google Sheets spreadsheets and data.",
+      description: "Work with spreadsheet data and tables.",
       authorization: {
         provider: "gmail",
         supported_use_cases: ["personal_actions"] as const,
@@ -678,8 +661,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "monday",
       version: "1.0.0",
-      description:
-        "Monday.com integration providing CRM-like operations for boards, items, and updates. Enables reading and managing Monday.com boards and items through the GraphQL API.",
+      description: "Manage project boards, items and updates.",
       authorization: {
         provider: "monday" as const,
         supported_use_cases: ["personal_actions", "platform_actions"] as const,
@@ -690,7 +672,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  agent_memory: {
+  [AGENT_MEMORY_SERVER_NAME]: {
     id: 21,
     availability: "auto",
     allowMultipleInstances: false,
@@ -700,7 +682,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "agent_memory",
+      name: AGENT_MEMORY_SERVER_NAME,
       version: "1.0.0",
       description: "User-scoped long-term memory tools for agents.",
       authorization: null,
@@ -746,8 +728,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "jira",
       version: "1.0.0",
-      description:
-        "Comprehensive JIRA integration providing full issue management capabilities including create, read, update, comment, workflow transitions, and issue linking operations using the JIRA REST API.",
+      description: "Create, update and track project issues.",
       authorization: {
         provider: "jira" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
@@ -800,8 +781,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "outlook",
       version: "1.0.0",
-      description:
-        "Outlook tools for reading emails, managing email drafts, and managing contacts.",
+      description: "Read emails, manage drafts and contacts.",
       authorization: {
         provider: "microsoft_tools" as const,
         supported_use_cases: ["personal_actions"] as const,
@@ -884,10 +864,7 @@ The directive should be used to display a clickable version of the agent name in
       name: "freshservice",
       icon: "FreshserviceLogo",
       version: "1.0.0",
-      description:
-        "Freshservice integration supporting ticket management, service catalog, solutions, departments, " +
-        "on-call schedules, and more. Provides comprehensive access to Freshservice resources with " +
-        "OAuth authentication and secure API access.",
+      description: "Connect to tickets, schedules and service catalog.",
       authorization: {
         provider: "freshservice" as const,
         supported_use_cases: ["platform_actions", "personal_actions"] as const,
@@ -912,8 +889,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "google_drive",
       version: "1.0.0",
-      description:
-        "Tools for searching and reading content from Google Drive files (Docs, Sheets, Presentations, text files).",
+      description: "Search and read files (Docs, Sheets, Presentations).",
       authorization: {
         provider: "google_drive" as const,
         supported_use_cases: ["personal_actions"] as const,
@@ -1011,8 +987,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "slack_bot",
       version: "1.0.0",
-      description:
-        "Slack tools using workspace bot credentials. Messages and actions will appear as coming from the Dust Slack bot rather than your personal account.",
+      description: "Post messages and reactions as the workspace Dust bot.",
       authorization: {
         provider: "slack" as const,
         supported_use_cases: ["platform_actions"] as const,
@@ -1042,13 +1017,39 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "openai_usage",
       version: "1.0.0",
-      description:
-        "Direct access to OpenAI APIs for tracking API consumption and costs. Requires OpenAI Admin API key configured as a secret.",
+      description: "Track API consumption and costs.",
       authorization: null,
       icon: "OpenaiLogo",
       documentationUrl: null,
       instructions: null,
       requiresSecret: true,
+    },
+  },
+  confluence: {
+    id: 33,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("confluence_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      // Read operations - never ask (no side effects)
+      get_page: "never_ask",
+    },
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "confluence",
+      version: "1.0.0",
+      description: "Retrieve page information.",
+      authorization: {
+        provider: "confluence_tools" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ConfluenceLogo",
+      documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
+      instructions: null,
     },
   },
   [SEARCH_SERVER_NAME]: {
@@ -1157,7 +1158,7 @@ The directive should be used to display a clickable version of the agent name in
   },
   reasoning: {
     id: 1007,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
@@ -1175,15 +1176,12 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  query_tables_v2: {
+  [TABLE_QUERY_V2_SERVER_NAME]: {
     id: 1009,
     availability: "auto",
     allowMultipleInstances: false,
-    // We'll eventually switch everyone to this new tables query toolset.
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("exploded_tables_query");
-    },
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1212,12 +1210,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "data_sources_file_system",
       version: "1.0.0",
-      description:
-        "Comprehensive content navigation toolkit for browsing user data sources. Provides Unix-like " +
-        "browsing (ls, find) and smart search tools to help agents efficiently explore and discover " +
-        "content from manually uploaded files or data synced from SaaS products (Notion, Slack, Github" +
-        ", etc.) organized in a filesystem-like hierarchy. Each item in this tree-like hierarchy is " +
-        "called a node, nodes are referenced by a nodeId.",
+      description: "Browse and search content with filesystem-like navigation.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
@@ -1240,7 +1233,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "agent_management",
       version: "1.0.0",
-      description: "Tools for managing agent configurations",
+      description: "Tools for managing agent configurations.",
       authorization: null,
       icon: "ActionRobotIcon",
       documentationUrl: null,
@@ -1259,10 +1252,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: DATA_WAREHOUSE_SERVER_NAME,
       version: "1.0.0",
-      description:
-        "Comprehensive tables navigation toolkit for browsing data warehouses and tables. Provides Unix-like " +
-        "browsing (ls, find) to help agents efficiently explore and discover tables organized in a " +
-        "warehouse-centric hierarchy. Each warehouse contains schemas/databases which contain tables.",
+      description: "Browse tables organized by warehouse and schema.",
       authorization: null,
       icon: "ActionTableIcon",
       documentationUrl: null,
@@ -1281,9 +1271,7 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "toolsets",
       version: "1.0.0",
-      description:
-        "Comprehensive navigation toolkit for browsing available toolsets. " +
-        "Toolsets provide functions for the agent to use.",
+      description: "Browse available toolsets and functions.",
       authorization: null,
       icon: "ActionLightbulbIcon",
       documentationUrl: null,
@@ -1428,6 +1416,12 @@ export const getInternalMCPServerNameFromSId = (
   }
 
   return null;
+};
+
+export const getInternalMCPServerIconByName = (
+  name: InternalMCPServerNameType
+): InternalAllowedIconType => {
+  return INTERNAL_MCP_SERVERS[name].serverInfo.icon ?? undefined;
 };
 
 export const isInternalMCPServerName = (

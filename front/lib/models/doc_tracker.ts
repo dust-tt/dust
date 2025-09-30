@@ -296,7 +296,10 @@ TrackerGenerationModel.init(
   {
     modelName: "tracker_generation",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["trackerConfigurationId"] }],
+    indexes: [
+      { fields: ["trackerConfigurationId"] },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );
 

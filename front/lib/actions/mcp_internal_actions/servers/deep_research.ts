@@ -65,6 +65,7 @@ const createServer = (
           },
           childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
           mainAgent: agentConfiguration,
+          originMessage: agentLoopContext.runContext.agentMessage,
           mainConversation: conversation,
           query,
           toolsetsToAdd: null,
@@ -73,7 +74,7 @@ const createServer = (
         });
 
         if (convRes.isErr()) {
-          return new Err(new MCPError(convRes.error.message));
+          return new Err(convRes.error);
         }
 
         const response = makeMCPToolExit({

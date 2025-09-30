@@ -2,6 +2,14 @@
 const colors = require("tailwindcss/colors");
 const plugin = require("tailwindcss/plugin");
 
+// Remove unused deprecated colors that just generate noise
+// See here for the hack: https://github.com/tailwindlabs/tailwindcss/discussions/15127
+delete colors.lightBlue;
+delete colors.warmGray;
+delete colors.trueGray;
+delete colors.coolGray;
+delete colors.blueGray;
+
 const safeColorsArray = [
   "gray",
   "green",
@@ -33,6 +41,7 @@ const customColors = {
   gray: {
     950: "#111418",
     900: "#1C222D",
+    850: "#232A37",
     800: "#2A3241",
     700: "#364153",
     600: "#545D6C",
@@ -631,10 +640,10 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.black },
+        background: { DEFAULT: colors.white, night: colors.gray[950] },
         foreground: {
           DEFAULT: colors.gray[950],
-          night: colors.gray[50],
+          night: colors.gray[200],
           warning: {
             DEFAULT: colors.rose[500],
             night: colors.rose[500],
@@ -649,7 +658,7 @@ module.exports = {
           },
           background: {
             DEFAULT: colors.gray[50],
-            night: colors.gray[950],
+            night: colors.gray[900],
           },
         },
         faint: {

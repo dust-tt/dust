@@ -17,10 +17,11 @@ import {
   useWatch,
 } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
-import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
+  CAPABILITY_CONFIGS,
   getInitialPageId,
   getKnowledgeDefaultValues,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
@@ -62,6 +63,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { TemplateActionPreset } from "@app/types";
 
 import { KnowledgeFooter } from "./KnowledgeFooter";
@@ -162,9 +164,9 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      (toolsConfigurations.dataSourceConfiguration ??
+      toolsConfigurations.dataSourceConfiguration ??
       toolsConfigurations.dataWarehouseConfiguration ??
-      false)
+      false
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -252,10 +254,12 @@ function KnowledgeConfigurationSheetContent({
   getAgentInstructions,
   isEditing,
 }: KnowledgeConfigurationSheetContentProps) {
+  const { owner } = useAgentBuilderContext();
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const { setValue, getValues, setFocus } =
     useFormContext<CapabilityFormData>();
   const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -293,7 +297,7 @@ function KnowledgeConfigurationSheetContent({
     }
   }, [currentPageId, setFocus]);
 
-  // Prefill name field with processing method display name when mcpServerView changes
+  // Prefill name field with processing method display name when mcpServerView.id changes
   useEffect(() => {
     if (mcpServerView && !isEditing) {
       const processingMethodName = getMcpServerViewDisplayName(mcpServerView);
@@ -306,7 +310,12 @@ function KnowledgeConfigurationSheetContent({
         });
       }
     }
-  }, [mcpServerView, isEditing, setValue, getValues]);
+    // We only watch mcpServerView?.id instead of the full object because:
+    // 1. When id changes, the entire mcpServerView object updates with new values
+    // 2. Object reference can change even if the mcpServerView content is the same
+    // 3. Watching the id ensures we re-run when the server actually changes, avoiding name change on form invalidation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcpServerView?.id, isEditing, setValue, getValues]);
 
   const handlePageChange = useCallback(
     (pageId: string) => {
@@ -361,7 +370,7 @@ function KnowledgeConfigurationSheetContent({
       icon: undefined,
       noScroll: true,
       content: <DataSourceBuilderSelector viewType="all" />,
-      footerContent: hasSourceSelection ? <KnowledgeFooter /> : undefined,
+      footerContent: <KnowledgeFooter />,
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
@@ -378,7 +387,11 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-6">
           <ProcessingMethodSection />
 
-          <NameSection title="Name" placeholder="Name ..." />
+          <NameSection
+            title="Name"
+            placeholder="Name ..."
+            triggerValidationOnChange={true}
+          />
 
           {toolsConfigurations.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
@@ -388,11 +401,17 @@ function KnowledgeConfigurationSheetContent({
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 
-          {config && <DescriptionSection {...config?.descriptionConfig} />}
+          {config && (
+            <DescriptionSection
+              {...config?.descriptionConfig}
+              triggerValidationOnChange={true}
+            />
+          )}
 
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
-            mcpServerView.server.name === SEARCH_SERVER_NAME && (
+            mcpServerView.server.name === SEARCH_SERVER_NAME &&
+            hasFeature("advanced_search") && (
               <Collapsible
                 open={isAdvancedSettingsOpen}
                 onOpenChange={setAdvancedSettingsOpen}

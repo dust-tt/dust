@@ -67,7 +67,7 @@ export async function getFileFromConversationAttachment(
         }
       }
     } else if (isAgentMessageType(m)) {
-      const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
+      const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
         if (isContentCreationFileContentType(f.contentType)) {
@@ -131,7 +131,7 @@ export async function streamToBuffer(
       if (Buffer.isBuffer(chunk)) {
         chunks.push(chunk);
       } else {
-        chunks.push(Buffer.from(chunk as string));
+        chunks.push(Buffer.from(chunk));
       }
     }
     return new Ok(Buffer.concat(chunks));

@@ -125,8 +125,13 @@ pub async fn databases_query_run(
                     "No table found",
                     None,
                 ),
-                Some(tables) => match execute_query(tables, &payload.query, state.store.clone())
-                    .await
+                Some(tables) => match execute_query(
+                    tables,
+                    &payload.query,
+                    state.store.clone(),
+                    state.databases_store.clone(),
+                )
+                .await
                 {
                     Err(QueryDatabaseError::TooManyResultRows) => error_response(
                         StatusCode::BAD_REQUEST,

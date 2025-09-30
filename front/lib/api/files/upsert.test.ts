@@ -256,6 +256,7 @@ id,category,description
     expect(firstUpsertCall.params.parentId).toBe(file.sId);
     expect(firstUpsertCall.params.parents).toEqual([
       `${file.sId}-${slugify("Sheet1")}`,
+      file.sId,
     ]);
     expect(firstUpsertCall.params.mimeType).toBe("text/csv");
 
@@ -268,6 +269,7 @@ id,category,description
     expect(secondUpsertCall.params.parentId).toBe(file.sId);
     expect(secondUpsertCall.params.parents).toEqual([
       `${file.sId}-${slugify("Sheet2")}`,
+      file.sId,
     ]);
     expect(secondUpsertCall.params.mimeType).toBe("text/csv");
 

@@ -68,8 +68,9 @@ declare module "@tanstack/react-table" {
 
 interface TBaseData {
   onClick?: () => void;
-  moreMenuItems?: DropdownMenuItemProps[];
+  onDoubleClick?: () => void;
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
+  menuItems?: MenuItem[];
 }
 
 interface ColumnBreakpoint {
@@ -235,9 +236,13 @@ export function DataTable<TData extends TBaseData>({
                   <DataTable.Head
                     column={header.column}
                     key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
+                    onClick={
+                      header.column.getCanSort()
+                        ? header.column.getToggleSortingHandler()
+                        : undefined
+                    }
                     className={cn(
-                      header.column.getCanSort() ? "s-cursor-pointer" : ""
+                      header.column.getCanSort() && "s-cursor-pointer"
                     )}
                   >
                     <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
@@ -250,9 +255,7 @@ export function DataTable<TData extends TBaseData>({
                           visual={
                             header.column.getIsSorted() === "asc"
                               ? ArrowUpIcon
-                              : header.column.getIsSorted() === "desc"
-                                ? ArrowDownIcon
-                                : ArrowDownIcon
+                              : ArrowDownIcon
                           }
                           size="xs"
                           className={cn(
@@ -286,6 +289,8 @@ export function DataTable<TData extends TBaseData>({
                 onClick={
                   enableRowSelection ? handleRowClick : row.original.onClick
                 }
+                onDoubleClick={row.original.onDoubleClick}
+                rowData={row.original}
                 {...(enableRowSelection && {
                   "data-selected": row.getIsSelected(),
                 })}
@@ -333,6 +338,7 @@ export interface ScrollableDataTableProps<TData extends TBaseData>
   maxHeight?: string | boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
+  containerRef?: React.Ref<HTMLDivElement>;
 }
 
 // cellHeight in pixels
@@ -348,17 +354,36 @@ export function ScrollableDataTable<TData extends TBaseData>({
   columnsBreakpoints = {},
   maxHeight,
   onLoadMore,
+  sorting,
+  setSorting,
   isLoading = false,
   rowSelection,
   setRowSelection,
   enableRowSelection,
   enableMultiRowSelection = true,
   getRowId,
+  containerRef,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
-  const tableContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
+  const tableContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const isSorting = !!setSorting;
+
+  // Handle container ref
+  const setRef = (element: HTMLDivElement | null) => {
+    tableContainerRef.current = element;
+    if (containerRef) {
+      if (typeof containerRef === "function") {
+        containerRef(element);
+      } else if ("current" in containerRef) {
+        (
+          containerRef as React.MutableRefObject<HTMLDivElement | null>
+        ).current = element;
+      }
+    }
+  };
 
   // Monitor table width changes
   useEffect(() => {
@@ -378,6 +403,15 @@ export function ScrollableDataTable<TData extends TBaseData>({
       resizeObserver.disconnect();
     };
   }, []);
+
+  const onSortingChange =
+    sorting && setSorting
+      ? (updater: Updater<SortingState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(sorting) : updater;
+          setSorting(newValue);
+        }
+      : undefined;
 
   const onRowSelectionChange =
     rowSelection && setRowSelection
@@ -399,7 +433,15 @@ export function ScrollableDataTable<TData extends TBaseData>({
     }),
     state: {
       ...(enableRowSelection && { rowSelection }),
+      ...(isSorting && {
+        sorting,
+      }),
     },
+    manualSorting: isSorting,
+    ...(isSorting && {
+      onSortingChange: onSortingChange,
+    }),
+    enableSortingRemoval: true,
     enableRowSelection,
     enableMultiRowSelection,
     getRowId,
@@ -494,7 +536,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
             ? maxHeight
             : "s-max-h-100"
       )}
-      ref={tableContainerRef}
+      ref={setRef}
     >
       <div className="s-relative">
         <DataTable.Root className="s-w-full s-table-fixed">
@@ -517,19 +559,45 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     <DataTable.Head
                       column={header.column}
                       key={header.id}
-                      className="s-max-w-0"
+                      onClick={
+                        isSorting && header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                      className={cn(
+                        "s-max-w-0",
+                        header.column.getCanSort() &&
+                          isSorting &&
+                          "s-cursor-pointer"
+                      )}
                       style={{
                         width: columnSizing[header.id],
                         minWidth: columnSizing[header.id],
                       }}
                     >
-                      <div className="s-flex s-w-full s-items-center s-space-x-1">
+                      <div className="s-flex s-w-full s-items-center s-space-x-1 s-whitespace-nowrap">
                         <span className="s-truncate">
                           {flexRender(
                             header.column.columnDef.header,
                             header.getContext()
                           )}
                         </span>
+                        {isSorting && header.column.getCanSort() && (
+                          <Icon
+                            visual={
+                              header.column.getIsSorted() === "asc"
+                                ? ArrowUpIcon
+                                : ArrowDownIcon
+                            }
+                            size="xs"
+                            className={cn(
+                              "s-ml-1",
+                              header.column.getIsSorted()
+                                ? "s-opacity-100"
+                                : "s-opacity-0"
+                            )}
+                          />
+                        )}
                       </div>
                     </DataTable.Head>
                   );
@@ -562,6 +630,8 @@ export function ScrollableDataTable<TData extends TBaseData>({
                   onClick={
                     enableRowSelection ? handleRowClick : row.original.onClick
                   }
+                  onDoubleClick={row.original.onDoubleClick}
+                  rowData={row.original}
                   className="s-absolute s-w-full"
                   {...(enableRowSelection && {
                     "data-selected": row.getIsSelected(),
@@ -714,33 +784,83 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   widthClassName: string;
   "data-selected"?: boolean;
+  rowData?: TBaseData;
 }
 
 DataTable.Row = function Row({
   children,
   className,
   onClick,
+  onDoubleClick,
   widthClassName,
+  rowData,
   ...props
 }: RowProps) {
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const handleContextMenu = (event: React.MouseEvent) => {
+    if (!rowData?.menuItems?.length) {
+      return;
+    }
+
+    event.preventDefault();
+    setContextMenuPosition({ x: event.clientX, y: event.clientY });
+  };
+
   return (
-    <tr
-      className={cn(
-        "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
-        "s-border-separator dark:s-border-separator-night",
-        onClick &&
-          "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
-        props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
-        widthClassName,
-        className
+    <>
+      <tr
+        className={cn(
+          "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
+          "s-border-separator dark:s-border-separator-night",
+          (onClick || onDoubleClick) &&
+            "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-night",
+          props["data-selected"] && "s-bg-muted/50 dark:s-bg-muted/50",
+          widthClassName,
+          className
+        )}
+        onClick={onClick || undefined}
+        onDoubleClick={onDoubleClick || undefined}
+        onContextMenu={handleContextMenu}
+        {...props}
+      >
+        {children}
+      </tr>
+
+      {contextMenuPosition && rowData?.menuItems?.length && (
+        <DropdownMenu
+          open={!!contextMenuPosition}
+          onOpenChange={(open) => !open && setContextMenuPosition(null)}
+          modal
+        >
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              align="start"
+              className="s-whitespace-nowrap"
+              style={{
+                position: "fixed",
+                left: contextMenuPosition?.x || 0,
+                top: contextMenuPosition?.y || 0,
+              }}
+            >
+              <DropdownMenuGroup>
+                {rowData?.menuItems?.map((item, index) =>
+                  renderMenuItem(item, index, () =>
+                    setContextMenuPosition(null)
+                  )
+                )}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
       )}
-      onClick={onClick || undefined}
-      {...props}
-    >
-      {children}
-    </tr>
+    </>
   );
 };
 
@@ -769,6 +889,71 @@ interface SubmenuMenuItem extends BaseMenuItem {
 
 export type MenuItem = RegularMenuItem | SubmenuMenuItem;
 
+// Shared menu rendering functions
+const renderSubmenuItem = (
+  item: SubmenuMenuItem,
+  index: number,
+  onItemClick?: () => void
+) => (
+  <DropdownMenuSub key={`${item.label}-${index}`}>
+    <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
+    <DropdownMenuPortal>
+      <DropdownMenuSubContent>
+        <ScrollArea
+          className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
+          hideScrollBar
+        >
+          {item.items.map((subItem) => (
+            <DropdownMenuItem
+              key={subItem.id}
+              label={subItem.name}
+              onClick={(event) => {
+                event.stopPropagation();
+                item.onSelect(subItem.id);
+                onItemClick?.();
+              }}
+            />
+          ))}
+          <ScrollBar className="s-py-0" />
+        </ScrollArea>
+      </DropdownMenuSubContent>
+    </DropdownMenuPortal>
+  </DropdownMenuSub>
+);
+
+const renderRegularItem = (
+  item: RegularMenuItem,
+  index: number,
+  onItemClick?: () => void
+) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { kind, ...itemProps } = item;
+  return (
+    <DropdownMenuItem
+      key={`item-${index}`}
+      {...itemProps}
+      onClick={(event) => {
+        event.stopPropagation();
+        itemProps.onClick?.(event);
+        onItemClick?.();
+      }}
+    />
+  );
+};
+
+const renderMenuItem = (
+  item: MenuItem,
+  index: number,
+  onItemClick?: () => void
+) => {
+  switch (item.kind) {
+    case "submenu":
+      return renderSubmenuItem(item, index, onItemClick);
+    case "item":
+      return renderRegularItem(item, index, onItemClick);
+  }
+};
+
 export interface DataTableMoreButtonProps {
   className?: string;
   menuItems?: MenuItem[];
@@ -776,66 +961,18 @@ export interface DataTableMoreButtonProps {
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
   >;
+  disabled?: boolean;
 }
 
 DataTable.MoreButton = function MoreButton({
   className,
   menuItems,
   dropdownMenuProps,
+  disabled,
 }: DataTableMoreButtonProps) {
   if (!menuItems?.length) {
     return null;
   }
-
-  const renderSubmenuItem = (item: SubmenuMenuItem, index: number) => (
-    <DropdownMenuSub key={`${item.label}-${index}`}>
-      <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
-      <DropdownMenuPortal>
-        <DropdownMenuSubContent>
-          <ScrollArea
-            className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
-            hideScrollBar
-          >
-            {item.items.map((subItem) => (
-              <DropdownMenuItem
-                key={subItem.id}
-                label={subItem.name}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  item.onSelect(subItem.id);
-                }}
-              />
-            ))}
-            <ScrollBar className="s-py-0" />
-          </ScrollArea>
-        </DropdownMenuSubContent>
-      </DropdownMenuPortal>
-    </DropdownMenuSub>
-  );
-
-  const renderRegularItem = (item: RegularMenuItem, index: number) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { kind, ...itemProps } = item;
-    return (
-      <DropdownMenuItem
-        key={`item-${index}`}
-        {...itemProps}
-        onClick={(event) => {
-          event.stopPropagation();
-          itemProps.onClick?.(event);
-        }}
-      />
-    );
-  };
-
-  const renderMenuItem = (item: MenuItem, index: number) => {
-    switch (item.kind) {
-      case "submenu":
-        return renderSubmenuItem(item, index);
-      case "item":
-        return renderRegularItem(item, index);
-    }
-  };
 
   return (
     <DropdownMenu modal={false} {...dropdownMenuProps}>
@@ -849,12 +986,18 @@ DataTable.MoreButton = function MoreButton({
           icon={MoreIcon}
           size="mini"
           variant="ghost-secondary"
-          className={cn(className)}
+          disabled={disabled}
+          className={cn(
+            disabled && "s-cursor-not-allowed s-opacity-50",
+            className
+          )}
         />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end">
-        <DropdownMenuGroup>{menuItems.map(renderMenuItem)}</DropdownMenuGroup>
+      <DropdownMenuContent align="end" hidden={disabled}>
+        <DropdownMenuGroup>
+          {menuItems.map((item, index) => renderMenuItem(item, index))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -895,6 +1038,11 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   description?: string;
   grow?: boolean;
+  disabled?: boolean;
+  avatarStack?: {
+    items: { name: string; visual: string }[];
+    nbVisibleItems?: number;
+  };
 }
 
 DataTable.CellContent = function CellContent({
@@ -907,6 +1055,8 @@ DataTable.CellContent = function CellContent({
   iconClassName,
   description,
   grow = false,
+  disabled,
+  avatarStack,
   ...props
 }: CellContentProps) {
   return (
@@ -914,8 +1064,10 @@ DataTable.CellContent = function CellContent({
       className={cn(
         "s-flex s-items-center",
         grow ? "s-flex-grow" : "",
+        disabled && "s-cursor-not-allowed s-opacity-50",
         className
       )}
+      aria-disabled={disabled || undefined}
       {...props}
     >
       {avatarUrl && avatarTooltipLabel && (
@@ -936,6 +1088,14 @@ DataTable.CellContent = function CellContent({
           visual={avatarUrl}
           size="xs"
           className="s-mr-2"
+          isRounded={roundedAvatar ?? false}
+        />
+      )}
+      {avatarStack && (
+        <Avatar.Stack
+          avatars={avatarStack.items}
+          nbVisibleItems={avatarStack.nbVisibleItems}
+          size="xs"
           isRounded={roundedAvatar ?? false}
         />
       )}
@@ -980,6 +1140,7 @@ interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   label: string | number;
   tooltip?: string | number;
   textToCopy?: string | number;
+  disabled?: boolean;
 }
 
 DataTable.BasicCellContent = function BasicCellContent({
@@ -987,6 +1148,7 @@ DataTable.BasicCellContent = function BasicCellContent({
   tooltip,
   className,
   textToCopy,
+  disabled,
   ...props
 }: BasicCellContentProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
@@ -1013,8 +1175,10 @@ DataTable.BasicCellContent = function BasicCellContent({
                 cellHeight,
                 "s-group s-flex s-items-center s-gap-2 s-text-sm",
                 "s-text-muted-foreground dark:s-text-muted-foreground-night",
+                disabled && "s-cursor-not-allowed s-opacity-50",
                 className
               )}
+              aria-disabled={disabled || undefined}
               {...props}
             >
               <span className="s-truncate">{label}</span>
@@ -1040,8 +1204,10 @@ DataTable.BasicCellContent = function BasicCellContent({
             cellHeight,
             "s-group s-flex s-items-center s-gap-2 s-text-sm",
             "s-text-muted-foreground dark:s-text-muted-foreground-night",
+            disabled && "s-cursor-not-allowed s-opacity-50",
             className
           )}
+          aria-disabled={disabled || undefined}
           {...props}
         >
           <span className="s-truncate">{label}</span>

@@ -4,6 +4,7 @@
 .idea
 test.ts
 .env.local
+.env.agent.local
 qdrant_storage
 .*.swp
 .rgignore
@@ -18,3 +19,4 @@ front/public/sitemap.xml
 front/public/robots.txt
 mprocs.log
 tsconfig.tsbuildinfo
+front/.npm-cache

@@ -81,6 +81,7 @@ export async function upsertGdriveDocument(
       tags,
       parents,
       parentId: parents[1] || null,
+      loggerArgs: localLogger.bindings(),
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },

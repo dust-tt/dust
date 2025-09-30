@@ -16,7 +16,6 @@ import { Op, Sequelize } from "sequelize";
 
 import {
   getBotUserIdMemoized,
-  getUserCacheKey,
   shouldIndexSlackMessage,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
@@ -45,7 +44,6 @@ import {
 } from "@connectors/connectors/slack/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { cacheSet } from "@connectors/lib/cache";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -970,36 +968,6 @@ export async function syncThread(
     mimeType: INTERNAL_MIME_TYPES.SLACK.THREAD,
     async: true,
   });
-}
-
-export async function fetchUsers(connectorId: ModelId) {
-  let cursor: string | undefined;
-  const slackClient = await getSlackClient(connectorId);
-  do {
-    reportSlackUsage({
-      connectorId,
-      method: "users.list",
-      limit: 100,
-    });
-    const res = await withSlackErrorHandling(() =>
-      slackClient.users.list({
-        cursor: cursor,
-        limit: 100,
-      })
-    );
-    if (res.error) {
-      throw new Error(`Failed to fetch users: ${res.error}`);
-    }
-    if (!res.members) {
-      throw new Error(`Failed to fetch users: members is undefined`);
-    }
-    for (const member of res.members) {
-      if (member.id && member.name) {
-        await cacheSet(getUserCacheKey(member.id, connectorId), member.name);
-      }
-    }
-    cursor = res.response_metadata?.next_cursor;
-  } while (cursor);
 }
 
 export async function saveSuccessSyncActivity(connectorId: ModelId) {

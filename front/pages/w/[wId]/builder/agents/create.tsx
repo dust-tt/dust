@@ -24,6 +24,7 @@ import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   SubscriptionType,
   TemplateTagCodeType,
@@ -115,13 +116,7 @@ export default function CreateAgent({
 
   const closeTemplateModal = async () => {
     setSelectedTemplateId(null);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { templateId, ...queryWithoutTemplate } = router.query;
-    await router.replace(
-      { pathname: router.pathname, query: queryWithoutTemplate },
-      undefined,
-      { shallow: true }
-    );
+    await removeParamFromRouter(router, "templateId");
   };
 
   const handleTagClick = (tagName: TemplateTagCodeType) => {

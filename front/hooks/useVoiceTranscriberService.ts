@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import type { LightWorkspaceType } from "@app/types";
 
 interface UseVoiceTranscriberServiceParams {
   owner: LightWorkspaceType;
-  onTranscribeDelta: (delta: string) => void;
+  onTranscribeDelta?: (delta: string) => void;
+  onTranscribeComplete?: (transcript: AugmentedMessage[]) => void;
   fileUploaderService: FileUploaderService;
 }
 
@@ -17,6 +19,7 @@ export type Mode = "transcribe" | "attachment";
 export function useVoiceTranscriberService({
   owner,
   onTranscribeDelta,
+  onTranscribeComplete,
   fileUploaderService,
 }: UseVoiceTranscriberServiceParams) {
   const [isRecording, setIsRecording] = useState(false);
@@ -187,7 +190,11 @@ export function useVoiceTranscriberService({
         return;
       }
 
-      await readSSEFromPostRequest({ body, onTranscribeDelta });
+      await readSSEFromPostRequest({
+        body,
+        onTranscribeDelta,
+        onTranscribeComplete,
+      });
 
       sendNotification({
         type: "success",
@@ -195,7 +202,7 @@ export function useVoiceTranscriberService({
         description: "Audio sent for transcription.",
       });
     },
-    [onTranscribeDelta, owner.sId, sendNotification]
+    [onTranscribeDelta, onTranscribeComplete, owner.sId, sendNotification]
   );
 
   const finalizeRecordingClick = useCallback(
@@ -346,9 +353,11 @@ function hasWebkitAudioContext(
 const readSSEFromPostRequest = async ({
   body,
   onTranscribeDelta,
+  onTranscribeComplete,
 }: {
   body: ReadableStream<Uint8Array>;
-  onTranscribeDelta: (delta: string) => void;
+  onTranscribeDelta?: (delta: string) => void;
+  onTranscribeComplete?: (transcript: AugmentedMessage[]) => void;
 }) => {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -397,12 +406,14 @@ const readSSEFromPostRequest = async ({
           try {
             const parsed = JSON.parse(payload) as
               | { type: "delta"; delta: string }
-              | { type: "fullTranscript"; fullTranscript: string };
+              | { type: "fullTranscript"; fullTranscript: AugmentedMessage[] };
 
             if (parsed.type === "delta") {
-              onTranscribeDelta(parsed.delta);
+              onTranscribeDelta && onTranscribeDelta(parsed.delta);
             } else if (parsed.type === "fullTranscript") {
-              // We already sent deltas; consider this completion signal.
+              onTranscribeComplete &&
+                onTranscribeComplete(parsed.fullTranscript);
+
               doneStreaming = true;
             }
           } catch {

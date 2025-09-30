@@ -13,7 +13,7 @@ import type {
 import { clientExecutableContentType } from "@app/types";
 
 interface ContentCreationContainerProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 
@@ -76,6 +76,9 @@ export function ContentCreationContainer({
           <ClientExecutableRenderer
             conversation={conversation}
             fileId={contentId}
+            lastEditedByAgentConfigurationId={
+              fileMetadata.useCaseMetadata.lastEditedByAgentConfigurationId
+            }
             owner={owner}
             contentHash={contentHash}
           />

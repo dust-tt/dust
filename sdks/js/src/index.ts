@@ -1,6 +1,7 @@
 import { createParser } from "eventsource-parser";
 import { z } from "zod";
 
+import { normalizeError } from "./error_utils";
 import {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
@@ -89,6 +90,7 @@ import {
   ValidateActionResponseType,
 } from "./types";
 
+export * from "./error_utils";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
@@ -99,6 +101,38 @@ interface DustResponse {
   ok: boolean;
   url: string;
   body: ReadableStream<Uint8Array> | string;
+}
+
+// Detects whether an error corresponds to a terminated/aborted stream.
+function isStreamTerminationError(e: unknown): boolean {
+  if (!e) {
+    return false;
+  }
+  const err = normalizeError(e);
+  const msg = err.message;
+  const name = err.name || "";
+
+  // Common patterns from undici/fetch when a stream is cut or aborted.
+  const patterns = [
+    /terminated/i,
+    /aborted/i,
+    /The operation was aborted/i,
+    /network.*(error|changed|lost)/i,
+    /socket hang up/i,
+  ];
+
+  if (name === "AbortError") {
+    return true;
+  }
+  if (name === "TypeError" && /terminated|aborted/i.test(msg)) {
+    return true;
+  }
+  return patterns.some((p) => p.test(msg));
+}
+
+function isTransientHttpStatus(status: number): boolean {
+  // Only retry on explicit transient statuses; do NOT retry on 5xx.
+  return status === 408 || status === 429;
 }
 
 // Copied from front/hooks/useEventSource.ts
@@ -865,11 +899,35 @@ export class DustAPI {
         const res = await createRequest(lastEventId);
 
         if (res.isErr()) {
+          // Treat request errors as transient and apply reconnection policy when enabled.
+          if (autoReconnect) {
+            reconnectAttempts += 1;
+            if (reconnectAttempts >= maxReconnectAttempts) {
+              throw new Error(
+                `Exceeded maximum reconnection attempts (request error): ${res.error.message}`
+              );
+            }
+            await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
+            continue;
+          }
           const error = res.error;
           throw new Error(`Error requesting event stream: ${error.message}`);
         }
 
         if (!res.value.response.ok || !res.value.response.body) {
+          if (
+            autoReconnect &&
+            isTransientHttpStatus(res.value.response.status)
+          ) {
+            reconnectAttempts += 1;
+            if (reconnectAttempts >= maxReconnectAttempts) {
+              throw new Error(
+                `Exceeded maximum reconnection attempts (http ${res.value.response.status})`
+              );
+            }
+            await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
+            continue;
+          }
           throw new Error(
             `Error requesting event stream: status_code=${res.value.response.status}`
           );
@@ -930,7 +988,15 @@ export class DustAPI {
           }
         } catch (e) {
           logger.error({ error: e }, "Failed processing event stream");
-          throw new Error(`Error processing event stream: ${e}`);
+          // Respect caller-initiated aborts.
+          if (signal?.aborted) {
+            return;
+          }
+          // Apply reconnection policy on stream termination/abort; otherwise propagate.
+          if (!isStreamTerminationError(e)) {
+            throw new Error(`Error processing event stream: ${e}`);
+          }
+          // Do not throw; flow continues to reconnection block below.
         } finally {
           reader.releaseLock();
         }

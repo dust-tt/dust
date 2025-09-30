@@ -5,19 +5,17 @@ import {
   Button,
   CardGrid,
   Chip,
+  ContactsRobotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
   MoreIcon,
-  PencilSquareIcon,
-  RobotIcon,
   ScrollArea,
   ScrollBar,
   SearchDropdownMenu,
   Spinner,
-  StarIcon,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -33,9 +31,11 @@ import React, {
 import { useInView } from "react-intersection-observer";
 
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,
@@ -44,7 +44,11 @@ import {
   tagsSorter,
 } from "@app/lib/utils";
 import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
-import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
@@ -53,9 +57,9 @@ function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
 }
 
 const AGENTS_TABS = [
-  { label: "Favorites", icon: StarIcon, id: "favorites" },
-  { label: "All agents", icon: RobotIcon, id: "all" },
-  { label: "Editable by me", icon: PencilSquareIcon, id: "editable_by_me" },
+  { label: "Favorites", id: "favorites" },
+  { label: "All agents", id: "all" },
+  { label: "Editable by me", id: "editable_by_me" },
 ] as const;
 
 type TabId = (typeof AGENTS_TABS)[number]["id"];
@@ -63,6 +67,12 @@ type TabId = (typeof AGENTS_TABS)[number]["id"];
 const MOST_POPULAR_TAG: TagType = {
   sId: "--most_popular--",
   name: "Most popular",
+  kind: "protected",
+};
+
+const ALL_TAG: TagType = {
+  sId: "--all--",
+  name: "All",
   kind: "protected",
 };
 
@@ -75,13 +85,24 @@ const OTHERS_TAG: TagType = {
 type AgentGridProps = {
   agentConfigurations: LightAgentConfigurationType[];
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
-  handleMoreClick: (agent: LightAgentConfigurationType) => void;
+  handleMoreClick: (agentId: string) => void;
+  owner: WorkspaceType;
 };
+
 export const AgentGrid = ({
   agentConfigurations,
   handleAssistantClick,
   handleMoreClick,
+  owner,
 }: AgentGridProps) => {
+  // Context menu state
+  const [contextMenuAgent, setContextMenuAgent] =
+    useState<LightAgentConfigurationType | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
   // Handle "infinite" scroll
   // We only start with 9 items shown (no need more on mobile) and load more until we fill the parent container.
   // We use an intersection observer to detect when the bottom of the list is visible and load more items.
@@ -115,36 +136,53 @@ export const AgentGrid = ({
       nextPage();
     }
   }, [inView, nextPage, entry, agentConfigurations.length, itemsPage]);
+
   const slicedAgentConfigurations = agentConfigurations.slice(
     0,
     (itemsPage + 1) * ITEMS_PER_PAGE
   );
   return (
-    <CardGrid>
-      {slicedAgentConfigurations.map((agent, index) => {
-        const isLastItem = index === slicedAgentConfigurations.length - 1;
-        return (
-          <AssistantCard
-            // Force a re-render of the last item to trigger the intersection observer
-            key={isLastItem ? `${agent.sId}-${itemsPage}` : agent.sId}
-            ref={isLastItem ? ref : undefined}
-            title={agent.name}
-            pictureUrl={agent.pictureUrl}
-            subtitle={agent.lastAuthors?.join(", ") ?? ""}
-            description={agent.description}
-            onClick={() => handleAssistantClick(agent)}
-            action={
-              <AssistantCardMore
-                onClick={(e: Event) => {
-                  e.stopPropagation();
-                  handleMoreClick(agent);
-                }}
-              />
-            }
-          />
-        );
-      })}
-    </CardGrid>
+    <>
+      <CardGrid>
+        {slicedAgentConfigurations.map((agent, index) => {
+          const isLastItem = index === slicedAgentConfigurations.length - 1;
+          return (
+            <AssistantCard
+              // Force a re-render of the last item to trigger the intersection observer
+              key={isLastItem ? `${agent.sId}-${itemsPage}` : agent.sId}
+              ref={isLastItem ? ref : undefined}
+              title={agent.name}
+              pictureUrl={agent.pictureUrl}
+              subtitle={agent.lastAuthors?.join(", ") ?? ""}
+              description={agent.description}
+              onClick={() => handleAssistantClick(agent)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenuAgent(agent);
+                setContextMenuPosition({ x: e.clientX, y: e.clientY });
+              }}
+              action={
+                <AssistantCardMore
+                  onClick={(e: Event) => {
+                    e.stopPropagation();
+                    handleMoreClick(agent.sId);
+                  }}
+                />
+              }
+            />
+          );
+        })}
+      </CardGrid>
+      <AssistantDetailsDropdownMenu
+        agentConfiguration={contextMenuAgent ?? undefined}
+        owner={owner}
+        onClose={() => {
+          setContextMenuPosition(null);
+        }}
+        showEditOption={true}
+        contextMenuPosition={contextMenuPosition ?? undefined}
+      />
+    </>
   );
 };
 
@@ -153,6 +191,7 @@ interface AssistantBrowserProps {
   agentConfigurations: LightAgentConfigurationType[];
   isLoading: boolean;
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
+  user: UserType;
 }
 
 export function AssistantBrowser({
@@ -160,17 +199,20 @@ export function AssistantBrowser({
   agentConfigurations,
   isLoading,
   handleAssistantClick,
+  user,
 }: AssistantBrowserProps) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [selectedTab, setSelectedTab] = useHashParam(
     "selectedTab",
     "favorites"
   );
+  const [displayedAssistantId, setDisplayedAssistantId] = useState<
+    string | null
+  >(null);
 
   const router = useRouter();
   const { createAgentButtonRef } = useWelcomeTourGuide();
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const { isDark } = useTheme();
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [sortType, setSortType] = useState<
     "popularity" | "alphabetical" | "updated"
   >("popularity");
@@ -178,6 +220,12 @@ export function AssistantBrowser({
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
+
+  const {
+    selectedTagId: persistedSelectedTagId,
+    setSelectedTagId,
+    isLoading: isPersistedSelectionLoading,
+  } = usePersistedAgentBrowserSelection(owner.sId);
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
@@ -231,7 +279,7 @@ export function AssistantBrowser({
         new Map(tags.map((tag) => [tag.sId, tag])).values()
       ).sort(tagsSorter);
 
-      // Always unshift most popular at the beginning
+      uniqueTags.unshift(ALL_TAG);
       uniqueTags.unshift(MOST_POPULAR_TAG);
 
       // Always append others at the end
@@ -265,9 +313,10 @@ export function AssistantBrowser({
           );
         });
 
-      const filteredTags = uniqueTags.filter((t) =>
-        subFilter(search, t.name.toLowerCase())
-      );
+      const filteredTags =
+        selectedTag === ALL_TAG.sId
+          ? uniqueTags
+          : uniqueTags.filter((t) => subFilter(search, t.name.toLowerCase()));
 
       return {
         filteredAgents,
@@ -275,7 +324,7 @@ export function AssistantBrowser({
         uniqueTags,
         noTagsDefined: uniqueTags.length === 2, // Only most popular and others
       };
-    }, [agentConfigurations, assistantSearch]);
+    }, [agentConfigurations, assistantSearch, selectedTag]);
 
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
@@ -292,16 +341,56 @@ export function AssistantBrowser({
       : enabledTabs[0]?.id;
   }, [selectedTab, agentsByTab]);
 
-  // Auto-pick the most popular tag if tags exists but no tags are selected.
+  // Initialize `selectedTag` from persisted selection (or default to Most popular).
   useEffect(() => {
-    if (!noTagsDefined) {
-      setSelectedTags([MOST_POPULAR_TAG.sId]);
+    if (noTagsDefined || selectedTag) {
+      return;
     }
-  }, [noTagsDefined]);
 
-  const handleMoreClick = (agent: LightAgentConfigurationType) => {
-    setQueryParam(router, "assistantDetails", agent.sId);
-  };
+    const validTagIds = new Set(uniqueTags.map((t) => t.sId));
+    const persistedValid =
+      persistedSelectedTagId && validTagIds.has(persistedSelectedTagId);
+
+    if (persistedValid) {
+      setSelectedTag(persistedSelectedTagId);
+    } else {
+      setSelectedTag(MOST_POPULAR_TAG.sId);
+    }
+  }, [
+    noTagsDefined,
+    persistedSelectedTagId,
+    uniqueTags,
+    selectedTag,
+    setSelectedTag,
+  ]);
+
+  // Persist selectedTag when they change (and tags exist).
+  useEffect(() => {
+    if (noTagsDefined || isPersistedSelectionLoading) {
+      return;
+    }
+
+    if (persistedSelectedTagId !== selectedTag) {
+      void setSelectedTagId(selectedTag);
+    }
+  }, [
+    selectedTag,
+    noTagsDefined,
+    isPersistedSelectionLoading,
+    persistedSelectedTagId,
+    setSelectedTagId,
+  ]);
+
+  const sortTypeLabel = useMemo(() => {
+    switch (sortType) {
+      case "popularity":
+        return "By popularity";
+      case "alphabetical":
+        return "Alphabetical";
+      case "updated":
+        return "Recently updated";
+    }
+  }, [sortType]);
 
   return (
     <>
@@ -323,6 +412,7 @@ export function AssistantBrowser({
                   onClick={() => {
                     setSelectedTab("all");
                     setAssistantSearch("");
+                    setSelectedTag(tag.sId);
                     setTimeout(() => {
                       const element = document.getElementById(
                         `anchor-${tag.sId}`
@@ -361,7 +451,7 @@ export function AssistantBrowser({
                       icon={MoreIcon}
                       onClick={(e: Event) => {
                         e.stopPropagation();
-                        setQueryParam(router, "assistantDetails", agent.sId);
+                        setQueryParam(router, "agentDetails", agent.sId);
                       }}
                     />
                   }
@@ -370,7 +460,7 @@ export function AssistantBrowser({
             </>
           ) : isLoading ? (
             <div className="flex justify-center py-8">
-              <Spinner variant={isDark ? "light" : "dark"} size="md" />
+              <Spinner size="md" />
             </div>
           ) : (
             <div className="p-2 text-sm text-gray-500">No results found</div>
@@ -386,11 +476,10 @@ export function AssistantBrowser({
             )}
 
             <Button
-              tooltip="Manage agents"
               href={getAgentBuilderRoute(owner.sId, "manage")}
               variant="primary"
-              icon={RobotIcon}
-              label="Manage"
+              icon={ContactsRobotIcon}
+              label="Manage agents"
               data-gtm-label="assistantManagementButton"
               data-gtm-location="homepage"
               size="sm"
@@ -398,6 +487,13 @@ export function AssistantBrowser({
           </div>
         </div>
       </div>
+
+      <AssistantDetails
+        owner={owner}
+        user={user}
+        assistantId={displayedAssistantId}
+        onClose={() => setDisplayedAssistantId(null)}
+      />
 
       {/* Agent tabs */}
       <div className="w-full">
@@ -410,7 +506,6 @@ export function AssistantBrowser({
                   key={tab.id}
                   value={tab.id}
                   label={tab.label}
-                  icon={tab.icon}
                 />
               ))}
               <div className="ml-auto"></div>
@@ -419,11 +514,7 @@ export function AssistantBrowser({
                   <Button
                     isSelect
                     variant="outline"
-                    label={
-                      sortType === "popularity"
-                        ? "By popularity"
-                        : "Alphabetical"
-                    }
+                    label={sortTypeLabel}
                     size="sm"
                   />
                 </DropdownMenuTrigger>
@@ -451,28 +542,27 @@ export function AssistantBrowser({
 
       {viewTab === "all" ? (
         <>
-          <div className="mb-2 flex flex-wrap gap-2">
-            {noTagsDefined
-              ? null
-              : uniqueTags.map((tag) => (
-                  <Button
-                    size="xs"
-                    variant={
-                      selectedTags.includes(tag.sId) ? "primary" : "outline"
-                    }
-                    key={tag.sId}
-                    label={tag.name}
-                    onClick={() => {
-                      if (selectedTags.includes(tag.sId)) {
-                        setSelectedTags(
-                          selectedTags.filter((t) => t !== tag.sId)
-                        );
-                      } else {
-                        setSelectedTags([...selectedTags, tag.sId]);
-                      }
-                    }}
-                  />
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {noTagsDefined ? null : (
+              <>
+                {uniqueTags.map((tag, index) => (
+                  <>
+                    <Button
+                      size="xs"
+                      variant={selectedTag === tag.sId ? "primary" : "outline"}
+                      key={tag.sId}
+                      label={tag.name}
+                      onClick={() => {
+                        setSelectedTag(tag.sId);
+                      }}
+                    />
+                    {index == 1 && uniqueTags.length > 2 && (
+                      <span className="heading-base">-</span>
+                    )}
+                  </>
                 ))}
+              </>
+            )}
           </div>
 
           <div className="flex flex-col gap-4">
@@ -480,7 +570,7 @@ export function AssistantBrowser({
               .filter(
                 (t) =>
                   // User picked specific tag(s).
-                  selectedTags.includes(t.sId) ||
+                  selectedTag === t.sId ||
                   // No tags are defined, show most popular & others.
                   noTagsDefined
               )
@@ -504,11 +594,16 @@ export function AssistantBrowser({
                         (tag.sId === MOST_POPULAR_TAG.sId &&
                           agentsByTab.most_popular.some(
                             (a_popular) => a_popular.sId === a.sId
+                          )) ||
+                        (tag.sId === ALL_TAG.sId &&
+                          agentsByTab.all.some(
+                            (a_popular) => a_popular.sId === a.sId
                           ))
                       );
                     })}
                     handleAssistantClick={handleAssistantClick}
-                    handleMoreClick={handleMoreClick}
+                    handleMoreClick={setDisplayedAssistantId}
+                    owner={owner}
                   />
                 </React.Fragment>
               ))}
@@ -519,7 +614,8 @@ export function AssistantBrowser({
           <AgentGrid
             agentConfigurations={agentsByTab[viewTab]}
             handleAssistantClick={handleAssistantClick}
-            handleMoreClick={handleMoreClick}
+            handleMoreClick={setDisplayedAssistantId}
+            owner={owner}
           />
         )
       )}

@@ -48,6 +48,14 @@ class PluginManager {
   getPluginById(pluginId: string): AllPlugins | undefined {
     return this.plugins.get(pluginId);
   }
+
+  getNonNullablePlugin(pluginId: string): AllPlugins {
+    const plugin = this.getPluginById(pluginId);
+    if (!plugin) {
+      throw new Error(`Plugin ${pluginId} not found`);
+    }
+    return plugin;
+  }
 }
 
 export const pluginManager = new PluginManager();

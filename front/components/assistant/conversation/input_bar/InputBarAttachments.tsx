@@ -1,8 +1,18 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import {
+  CitationGrid,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DoubleIcon,
+  Icon,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
 import type {
   Attachment,
@@ -13,6 +23,11 @@ import {
   AttachmentCitation,
   attachmentToAttachmentCitation,
 } from "@app/components/assistant/conversation/AttachmentCitation";
+import {
+  getDisplayDateFromPastedFileId,
+  getDisplayNameFromPastedFileId,
+  isPastedFile,
+} from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
@@ -65,16 +80,26 @@ export function InputBarAttachments({
   // Convert file blobs to FileAttachment objects
   const fileAttachments: FileAttachment[] = useMemo(() => {
     return (
-      files?.service.fileBlobs.map((blob) => ({
-        type: "file",
-        id: blob.id,
-        title: blob.id,
-        preview: blob.preview,
-        contentType: blob.contentType,
-        isUploading: blob.isUploading,
-        onRemove: () => files.service.removeFile(blob.id),
+      files?.service.fileBlobs.map((blob) => {
+        const isPasted = isPastedFile(blob.contentType);
+        const title = isPasted
+          ? getDisplayNameFromPastedFileId(blob.id)
+          : blob.id;
+        const uploadDate = isPasted
+          ? getDisplayDateFromPastedFileId(blob.id)
+          : undefined;
+        return {
+          type: "file",
+          id: blob.id,
+          title,
+          preview: blob.preview,
+          contentType: blob.contentType,
+          isUploading: blob.isUploading,
+          description: uploadDate,
+          onRemove: () => files.service.removeFile(blob.id),
+        };
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      })) || []
+      }) || []
     );
   }, [files?.service]);
 
@@ -117,24 +142,83 @@ export function InputBarAttachments({
     );
   }, [nodes, spacesMap]);
 
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerTitle, setViewerTitle] = useState("");
+  const [viewerText, setViewerText] = useState("");
+
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
   if (allAttachments.length === 0) {
     return null;
   }
 
+  const openPastedViewer = async (attachment: Attachment) => {
+    if (!files) {
+      return;
+    }
+    const blob = files.service.fileBlobs.find((b) => b.id === attachment.id);
+    if (!blob) {
+      return;
+    }
+    const text = await blob.file.text();
+    setViewerTitle(attachment.title);
+    setViewerText(text);
+    setViewerOpen(true);
+  };
+
+  const isTextualContentType = (attachment: Attachment) => {
+    if (attachment.type !== "file") {
+      return false;
+    }
+    const ct = attachment.contentType;
+    if (!ct) {
+      return false;
+    }
+    return (
+      ct.startsWith("text/") ||
+      ct === "application/json" ||
+      ct === "application/xml" ||
+      ct === "application/vnd.dust.section.json"
+    );
+  };
+
   return (
-    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
-      {allAttachments.map((attachment) => {
-        const attachmentCitation = attachmentToAttachmentCitation(attachment);
-        return (
-          <AttachmentCitation
-            key={attachmentCitation.id}
-            attachmentCitation={attachmentCitation}
-            onRemove={attachment.onRemove}
+    <>
+      <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
+        {allAttachments.map((attachment) => {
+          const attachmentCitation = attachmentToAttachmentCitation(attachment);
+          const canPreviewText = isTextualContentType(attachment);
+          return (
+            <AttachmentCitation
+              key={attachmentCitation.id}
+              attachmentCitation={attachmentCitation}
+              onRemove={attachment.onRemove}
+              onClick={
+                canPreviewText ? () => openPastedViewer(attachment) : undefined
+              }
+            />
+          );
+        })}
+      </CitationGrid>
+
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent size="xl" height="lg">
+          <DialogHeader>
+            <DialogTitle>{viewerTitle}</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
+              {viewerText}
+            </pre>
+          </DialogContainer>
+          <DialogFooter
+            rightButtonProps={{
+              label: "Close",
+              variant: "highlight",
+            }}
           />
-        );
-      })}
-    </CitationGrid>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

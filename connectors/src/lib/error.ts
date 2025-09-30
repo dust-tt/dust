@@ -101,9 +101,23 @@ export class ExternalOAuthTokenError extends Error {
 }
 
 export class WorkspaceQuotaExceededError extends Error {
-  constructor(readonly innerError?: Error) {
-    super(innerError?.message);
+  constructor() {
+    super(
+      "The workspace quota has been exceeded. This will pause the connector. " +
+        "Action: not anything straightforward, the limit is hardcoded in the workspace quota function. " +
+        "It should realistically never happen for big workspaces."
+    );
     this.name = "WorkspaceQuotaExceededError";
+  }
+}
+
+export class DataSourceQuotaExceededError extends Error {
+  constructor() {
+    super(
+      "A file size exceeded the allowed size. Action: temporarily increase the plan limit for file size to " +
+        "let the activity succeed."
+    );
+    this.name = "DataSourceQuotaExceededError";
   }
 }
 

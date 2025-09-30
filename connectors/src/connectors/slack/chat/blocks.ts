@@ -276,7 +276,7 @@ export function makeFooterBlock({
   conversationUrl: string | null;
   workspaceId: string;
 }) {
-  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
+  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/agent/new`);
   let attribution = "";
   if (assistantName) {
     if (state === "thinking") {

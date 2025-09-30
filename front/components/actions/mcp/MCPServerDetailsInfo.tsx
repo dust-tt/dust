@@ -10,7 +10,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { LightWorkspaceType } from "@app/types";
 
 type MCPServerDetailsInfoProps = {
-  mcpServerView: MCPServerViewType;
+  mcpServerView: MCPServerViewType | null;
   owner: LightWorkspaceType;
 };
 
@@ -20,9 +20,13 @@ export function MCPServerDetailsInfo({
 }: MCPServerDetailsInfoProps) {
   const editedAt = useMemo(() => {
     const d = new Date(0);
-    d.setUTCMilliseconds(mcpServerView.editedByUser?.editedAt ?? 0);
+    d.setUTCMilliseconds(mcpServerView?.editedByUser?.editedAt ?? 0);
     return d.toLocaleDateString();
-  }, [mcpServerView.editedByUser]);
+  }, [mcpServerView?.editedByUser]);
+
+  if (!mcpServerView) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -32,7 +36,7 @@ export function MCPServerDetailsInfo({
         </div>
       )}
       <Separator />
-      <MCPServerViewForm mcpServerView={mcpServerView} owner={owner} />
+      <MCPServerViewForm mcpServerView={mcpServerView} />
       {mcpServerView.server.authorization && (
         <>
           <Separator />
@@ -40,11 +44,7 @@ export function MCPServerDetailsInfo({
         </>
       )}
       {isRemoteMCPServerType(mcpServerView.server) && (
-        <RemoteMCPForm
-          mcpServerView={mcpServerView}
-          mcpServer={mcpServerView.server}
-          owner={owner}
-        />
+        <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />
       )}
 
       <Separator className="mb-4 mt-4" />

@@ -1,8 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
@@ -37,12 +39,29 @@ async function handler(
 
   switch (req.method) {
     case "POST":
+      const plugin = pluginManager.getNonNullablePlugin("downgrade-no-plan");
+      const pluginRun = await PluginRunResource.makeNew(
+        plugin,
+        {},
+        auth.getNonNullableUser(),
+        owner,
+        {
+          resourceId: owner.sId,
+          resourceType: "workspaces",
+        }
+      );
+
       await SubscriptionResource.internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: owner.sId,
       });
 
       // On downgrade, start a worklflow to pause all connectors + scrub the data after a specified retention period.
       await launchScheduleWorkspaceScrubWorkflow({ workspaceId: owner.sId });
+
+      await pluginRun.recordResult({
+        display: "text",
+        value: `Workspace ${owner.name} downgraded.`,
+      });
 
       return res.status(200).json({
         workspace: renderLightWorkspaceType({

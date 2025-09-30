@@ -3,13 +3,15 @@ import type {
   LightClientSideMCPToolConfigurationType,
   LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
-  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  AGENT_MEMORY_SERVER_NAME,
+  isInternalMCPServerOfName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,
@@ -112,7 +114,7 @@ export function isMCPConfigurationForAgentMemory(
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "agent_memory")
+    isInternalMCPServerOfName(arg.internalMCPServerId, AGENT_MEMORY_SERVER_NAME)
   );
 }
 
@@ -282,24 +284,4 @@ export function throwIfInvalidAgentConfiguration(
       throw new Error("Cannot edit archived agent");
     }
   }
-}
-
-function isMCPActionType(action: unknown): action is MCPActionType {
-  return (
-    typeof action === "object" &&
-    action !== null &&
-    "id" in action &&
-    typeof action.id === "number" &&
-    "agentMessageId" in action &&
-    typeof action.agentMessageId === "number" &&
-    "output" in action &&
-    "step" in action &&
-    typeof action.step === "number" &&
-    "citationsAllocated" in action &&
-    typeof action.citationsAllocated === "number"
-  );
-}
-
-export function isMCPActionArray(actions: unknown): actions is MCPActionType[] {
-  return Array.isArray(actions) && actions.every(isMCPActionType);
 }

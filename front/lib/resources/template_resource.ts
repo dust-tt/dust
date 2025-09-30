@@ -57,10 +57,16 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     });
   }
 
-  static async makeNew(blob: CreationAttributes<TemplateModel>) {
-    const template = await TemplateModel.create({
-      ...blob,
-    });
+  static async makeNew(
+    blob: CreationAttributes<TemplateModel>,
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    const template = await TemplateModel.create(
+      {
+        ...blob,
+      },
+      { transaction }
+    );
 
     return new this(TemplateModel, template.get());
   }
@@ -105,6 +111,15 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       await existing.update(blob);
       return new Ok(new TemplateResource(TemplateModel, existing.get()));
     }
+
+    const templateWithSameId = await TemplateModel.findOne({
+      where: { id: blob.id },
+    });
+
+    if (templateWithSameId) {
+      return new Err(new Error("Template id already taken"));
+    }
+
     const template = await TemplateResource.makeNew(blob);
     return new Ok(template);
   }
@@ -151,6 +166,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toListJSON() {
     return {
+      id: this.id,
       description: this.description,
       handle: this.handle,
       pictureUrl: this.pictureUrl,
@@ -162,6 +178,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toJSON() {
     return {
+      id: this.id,
       backgroundColor: this.backgroundColor,
       description: this.description,
       emoji: this.emoji,

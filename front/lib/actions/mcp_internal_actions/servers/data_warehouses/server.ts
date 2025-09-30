@@ -118,7 +118,7 @@ const createServer = (
               });
 
         if (result.isErr()) {
-          return new Err(new MCPError(result.error.message));
+          return new Err(result.error);
         }
 
         const { nodes, nextPageCursor: newCursor } = result.value;

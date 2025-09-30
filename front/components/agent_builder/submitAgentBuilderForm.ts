@@ -2,6 +2,7 @@ import type {
   AdditionalConfigurationInBuilderType,
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import {
   expandFoldersToTables,
   getTableIdForContentNode,
@@ -195,15 +196,23 @@ export async function submitAgentBuilderForm({
   agentConfigurationId = null,
   isDraft = false,
   areSlackChannelsChanged,
+  currentUserId,
 }: {
   formData: AgentBuilderFormData;
   owner: WorkspaceType;
   agentConfigurationId?: string | null;
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
+  currentUserId?: number;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
+  const allDefaultAvatars = [...DROID_AVATAR_URLS];
+  const getRandomDefaultAvatar = () =>
+    allDefaultAvatars[Math.floor(Math.random() * allDefaultAvatars.length)];
+  const pictureUrlToUse =
+    formData.agentSettings.pictureUrl ?? getRandomDefaultAvatar();
+
   // Process actions asynchronously to handle folder-to-table expansion
   const mcpActions = formData.actions.filter((action) => action.type === "MCP");
 
@@ -269,10 +278,7 @@ export async function submitAgentBuilderForm({
       name: formData.agentSettings.name,
       description: formData.agentSettings.description,
       instructions: formData.instructions,
-      pictureUrl:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        formData.agentSettings.pictureUrl ||
-        "https://dust.tt/static/assistants/logo.svg",
+      pictureUrl: pictureUrlToUse,
       status: isDraft ? "draft" : "active",
       scope: formData.agentSettings.scope,
       model: {
@@ -423,6 +429,13 @@ export async function submitAgentBuilderForm({
           new Error("An error occurred while linking Slack channels.")
         );
       }
+    }
+
+    // Only submit triggers that belong to the current user to avoid updating other users' triggers
+    if (!currentUserId) {
+      return new Err(
+        new Error("currentUserId is required for non-draft agents")
+      );
     }
 
     const triggerSyncRes = await fetch(

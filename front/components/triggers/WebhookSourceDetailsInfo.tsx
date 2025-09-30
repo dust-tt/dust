@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
+import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { WebhookSourceViewForm } from "@app/components/triggers/WebhookSourceViewForm";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
@@ -163,6 +164,22 @@ export function WebhookSourceDetailsInfo({
                 ))}
               </div>
             </div>
+          )}
+
+        {webhookSourceView.webhookSource.secret &&
+          webhookSourceView.webhookSource.signatureHeader &&
+          webhookSourceView.webhookSource.signatureAlgorithm && (
+            <>
+              <Separator className="mb-4 mt-4" />
+              <WebhookEndpointUsageInfo
+                signatureAlgorithm={
+                  webhookSourceView.webhookSource.signatureAlgorithm
+                }
+                signatureHeader={
+                  webhookSourceView.webhookSource.signatureHeader
+                }
+              />
+            </>
           )}
       </div>
     </div>

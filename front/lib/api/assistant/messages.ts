@@ -1,7 +1,6 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -17,6 +16,7 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -27,15 +27,16 @@ import type {
   ContentFragmentType,
   ConversationWithoutContentType,
   FetchConversationMessagesResponse,
+  LightAgentConfigurationType,
   LightAgentMessageType,
-  LightMessageWithRankType,
-  MessageWithRankType,
+  LightMessageType,
+  MessageType,
   ModelId,
   Result,
   UserMessageType,
 } from "@app/types";
-import type { LightAgentConfigurationType } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
   ReasoningContentType,
@@ -64,12 +65,12 @@ export function getMaximalVersionAgentStepContent(
 }
 
 export async function generateParsedContents(
-  actions: MCPActionType[],
+  actions: AgentMCPActionWithOutputType[],
   agentConfiguration: LightAgentConfigurationType,
   messageId: string,
   contents: { step: number; content: AgentContentItemType }[]
-): Promise<Record<number, Array<ParsedContentItem>>> {
-  const parsedContents: Record<number, Array<ParsedContentItem>> = {};
+): Promise<Record<number, ParsedContentItem[]>> {
+  const parsedContents: Record<number, ParsedContentItem[]> = {};
   const actionsByCallId = new Map(actions.map((a) => [a.functionCallId, a]));
 
   for (const c of contents) {
@@ -112,7 +113,6 @@ export async function generateParsedContents(
       if (matchingAction) {
         parsedContents[step].push({ kind: "action", action: matchingAction });
       }
-      continue;
     }
   }
 
@@ -122,7 +122,7 @@ export async function generateParsedContents(
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: Message[]
-): Promise<{ m: UserMessageType; rank: number; version: number }[]> {
+): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
   );
@@ -164,6 +164,7 @@ async function batchRenderUserMessages(
       type: "user_message",
       visibility: message.visibility,
       version: message.version,
+      rank: message.rank,
       created: message.createdAt.getTime(),
       user: user ? user.toJSON() : null,
       mentions: messageMentions
@@ -184,11 +185,12 @@ async function batchRenderUserMessages(
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
         origin: userMessage.userContextOrigin,
+        originMessageId: userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
         lastTriggerRunAt: userMessage.userContextLastTriggerRunAt,
       },
     } satisfies UserMessageType;
-    return { m, rank: message.rank, version: message.version };
+    return m;
   });
 }
 
@@ -198,9 +200,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   viewType: V
 ): Promise<
   Result<
-    V extends "full"
-      ? { m: AgentMessageType; rank: number; version: number }[]
-      : { m: LightAgentMessageType; rank: number; version: number }[],
+    V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
     ConversationError
   >
 > {
@@ -209,31 +209,26 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [agentConfigurations, agentMCPActions] = await Promise.all([
-    (async () => {
-      // Get all unique pairs id-version for the agent configurations
-      const agentConfigurationIds = agentMessages.reduce((acc, m) => {
-        if (m.agentMessage) {
-          acc.add(m.agentMessage.agentConfigurationId);
-        }
-        return acc;
-      }, new Set<string>());
+  // Get all unique pairs id-version for the agent configurations
+  const agentConfigurationIds = agentMessages.reduce((acc, m) => {
+    if (m.agentMessage) {
+      acc.add(m.agentMessage.agentConfigurationId);
+    }
+    return acc;
+  }, new Set<string>());
 
-      return getAgentConfigurations(auth, {
-        agentIds: [...agentConfigurationIds],
-        variant: "extra_light",
-      });
-    })(),
-    (async () => {
-      const agentStepContents =
-        await AgentStepContentResource.fetchByAgentMessages(auth, {
-          agentMessageIds,
-          includeMCPActions: true,
-          latestVersionsOnly: true,
-        });
-      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
-    })(),
-  ]);
+  const agentConfigurations = await getAgentConfigurations(auth, {
+    agentIds: [...agentConfigurationIds],
+    variant: "extra_light",
+  });
+
+  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds,
+      latestVersionsOnly: true,
+    }
+  );
 
   if (!agentConfigurations) {
     return new Err(
@@ -241,14 +236,18 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
-  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+  const agentMCPActions = await AgentMCPActionResource.fetchByStepContents(
     auth,
     {
-      agentMessageIds: agentMessageIds,
-      includeMCPActions: false,
+      stepContents,
       latestVersionsOnly: true,
     }
   );
+  const actionsWithOutputs =
+    await AgentMCPActionResource.enrichActionsWithOutputItems(
+      auth,
+      agentMCPActions
+    );
 
   const stepContentsByMessageId: Record<string, AgentStepContentResource[]> =
     stepContents.reduce(
@@ -273,7 +272,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions = agentMCPActions
+      const actions = actionsWithOutputs
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 
@@ -370,9 +369,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentMessageId: agentMessage.id,
         sId: message.sId,
         created: message.createdAt.getTime(),
+        completedTs: agentMessage.completedAt?.getTime() ?? null,
         type: "agent_message" as const,
         visibility: message.visibility,
         version: message.version,
+        rank: message.rank,
         parentMessageId:
           messages.find((m) => m.id === message.parentId)?.sId ?? null,
         status: agentMessage.status,
@@ -391,13 +392,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       } satisfies AgentMessageType;
 
       if (viewType === "full") {
-        return new Ok({ m, rank: message.rank, version: message.version });
+        return new Ok(m);
       } else {
-        return new Ok({
-          m: getLightAgentMessageFromAgentMessage(m),
-          rank: message.rank,
-          version: message.version,
-        });
+        return new Ok(getLightAgentMessageFromAgentMessage(m));
       }
     })
   );
@@ -410,19 +407,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   }
 
   return new Ok(
-    renderedMessages
-      .filter(
-        (
-          m
-        ): m is Ok<{
-          m: AgentMessageType;
-          rank: number;
-          version: number;
-        }> => m.isOk()
-      )
-      .map((m) => m.value) as V extends "full"
-      ? { m: AgentMessageType; rank: number; version: number }[]
-      : { m: LightAgentMessageType; rank: number; version: number }[]
+    removeNulls(
+      renderedMessages.map((m) => (m.isOk() ? m.value : null))
+    ) as V extends "full" ? AgentMessageType[] : LightAgentMessageType[]
   );
 }
 
@@ -430,7 +417,7 @@ async function batchRenderContentFragment(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
-): Promise<{ m: ContentFragmentType; rank: number; version: number }[]> {
+): Promise<ContentFragmentType[]> {
   const messagesWithContentFragment = messages.filter(
     (m) => !!m.contentFragment
   );
@@ -449,11 +436,7 @@ async function batchRenderContentFragment(
         message,
       });
 
-      return {
-        m: render,
-        rank: message.rank,
-        version: message.version,
-      };
+      return render;
     })
   );
 }
@@ -578,7 +561,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   viewType: V
 ): Promise<
   Result<
-    V extends "full" ? MessageWithRankType[] : LightMessageWithRankType[],
+    V extends "full" ? MessageType[] : LightMessageType[],
     ConversationError
   >
 > {
@@ -594,7 +577,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
 
   const agentMessages = agentMessagesRes.value;
 
-  if (agentMessages.some((m) => !canReadMessage(auth, m.m))) {
+  if (agentMessages.some((m) => !canReadMessage(auth, m))) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
@@ -602,14 +585,10 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     ...userMessages,
     ...agentMessages,
     ...contentFragments,
-  ]
-    .sort((a, b) => a.rank - b.rank || a.version - b.version)
-    .map(({ m, rank }) => ({ ...m, rank }));
+  ].sort((a, b) => a.rank - b.rank || a.version - b.version);
 
   return new Ok(
-    renderedMessages as V extends "full"
-      ? MessageWithRankType[]
-      : LightMessageWithRankType[]
+    renderedMessages as V extends "full" ? MessageType[] : LightMessageType[]
   );
 }
 

@@ -31,7 +31,6 @@ import type {
 } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
-  isMCPActionArray,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
@@ -45,6 +44,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
+import { getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
 import {
@@ -357,11 +357,12 @@ ${query}`
             conversationId: isHandoff
               ? mainConversation.sId
               : conversationId ?? null,
+            originMessage: agentLoopContext.runContext.agentMessage,
           }
         );
 
         if (convRes.isErr()) {
-          return new Err(new MCPError(convRes.error.message));
+          return new Err(convRes.error);
         }
 
         if (isHandoff) {
@@ -425,7 +426,11 @@ ${query}`
         }) => {
           let text = finalContent;
 
-          const convoUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/${conversationId}`;
+          const convoUrl = getAgentRoute(
+            auth.getNonNullableWorkspace().sId,
+            conversationId,
+            config.getClientFacingUrl()
+          );
           const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(
@@ -490,22 +495,13 @@ ${query}`
         };
 
         const getFinishedContent = (agentMessage: AgentMessagePublicType) => {
-          const finalText: string = agentMessage.content ?? "";
-          const cot: string = agentMessage.chainOfThought ?? "";
-
-          let refsFromAgent: Record<string, CitationType> = {};
-          let files: ActionGeneratedFileType[] = [];
-          if (isMCPActionArray(agentMessage.actions)) {
-            refsFromAgent = getCitationsFromActions(agentMessage.actions);
-            files = agentMessage.actions.flatMap((action: any) =>
-              action.generatedFiles.filter((f: any) => !f.hidden)
-            );
-          }
           return {
-            finalText,
-            cot,
-            refsFromAgent,
-            files,
+            finalText: agentMessage.content ?? "",
+            cot: agentMessage.chainOfThought ?? "",
+            refsFromAgent: getCitationsFromActions(agentMessage.actions),
+            files: agentMessage.actions.flatMap((action) =>
+              action.generatedFiles.filter((f) => !f.hidden)
+            ),
           };
         };
         // Early finish: if the child conversation already succeeded, return its stored result.
@@ -629,17 +625,27 @@ ${query}`
               }
             } else if (event.type === "agent_error") {
               const errorMessage = `Agent error: ${event.error.message}`;
-              return new Err(new MCPError(errorMessage));
+              // Certain types of agent errors should not be tracked as run_agent tool execution
+              // errors (they will be exposed to the model and will be tracked as errors from the
+              // agentic loop in the sub agent conversation).
+              const tracked = ![
+                "retryable_model_error",
+                "context_window_exceeded",
+                "provider_internal_error",
+              ].includes(event.error.metadata?.category);
+              return new Err(
+                new MCPError(errorMessage, {
+                  tracked,
+                })
+              );
             } else if (event.type === "user_message_error") {
               const errorMessage = `User message error: ${event.error.message}`;
               return new Err(new MCPError(errorMessage));
             } else if (event.type === "agent_message_success") {
-              if (isMCPActionArray(event.message.actions)) {
-                refsFromAgent = getCitationsFromActions(event.message.actions);
-                files = event.message.actions.flatMap((action) =>
-                  action.generatedFiles.filter((f) => !f.hidden)
-                );
-              }
+              refsFromAgent = getCitationsFromActions(event.message.actions);
+              files = event.message.actions.flatMap((action) =>
+                action.generatedFiles.filter((f) => !f.hidden)
+              );
               break;
             } else if (event.type === "tool_approve_execution") {
               // Collect this blocking event.
@@ -719,10 +725,15 @@ ${query}`
             }
           }
 
-          const errorMessage = `Error processing agent stream: ${
-            normalizeError(streamError).message
-          }`;
-          return new Err(new MCPError(errorMessage));
+          const normalizedError = normalizeError(streamError);
+          const isNotConnected = normalizedError.message === "Not connected";
+          const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
+          return new Err(
+            new MCPError(errorMessage, {
+              tracked: !isNotConnected,
+              cause: normalizedError,
+            })
+          );
         }
         finalContent = finalContent.trim();
         chainOfThought = chainOfThought.trim();

@@ -82,7 +82,12 @@ export function ConnectMCPServerDialog({
         ) {
           setIsLoading(true);
           const discoverOAuthMetadataRes = await discoverOAuthMetadata(
-            mcpServerView.server.url
+            mcpServerView.server.url,
+            mcpServerView.server.customHeaders
+              ? Object.entries(mcpServerView.server.customHeaders).map(
+                  ([key, value]) => ({ key, value: String(value) })
+                )
+              : undefined
           );
 
           if (

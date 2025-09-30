@@ -72,7 +72,7 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
   image: 5 * 1024 * 1024, // 5 MB
-  audio: 25 * 1024 * 1024, // 25 MB
+  audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {
@@ -203,6 +203,12 @@ export const FILE_FORMATS = {
   "text/markdown": {
     cat: "data",
     exts: [".md", ".markdown"],
+    isSafeToDisplay: true,
+  },
+  // Internal content type for pasted text attachments in conversations.
+  "text/vnd.dust.attachment.pasted": {
+    cat: "data",
+    exts: [".txt"],
     isSafeToDisplay: true,
   },
   "text/vnd.dust.attachment.slack.thread": {

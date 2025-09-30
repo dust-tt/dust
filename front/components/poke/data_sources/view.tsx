@@ -22,7 +22,11 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
-import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import {
+  decodeSqids,
+  formatTimestampToFriendlyDate,
+  timeAgoFrom,
+} from "@app/lib/utils";
 import type {
   ConnectorType,
   CoreAPIDataSource,
@@ -116,7 +120,13 @@ export function ViewDataSourceTable({
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>
                     <Link
-                      href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
+                      href={
+                        dataSource.connectorProvider === "gong"
+                          ? // Gong is schedule-based, linking the schedule page that has the list
+                            // of all workflow runs.
+                            `https://cloud.temporal.io/namespaces/${temporalWorkspace}/schedules/gong-sync-${dataSource.connectorId}`
+                          : `https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`
+                      }
                       target="_blank"
                       className="text-sm text-highlight-400"
                     >
@@ -275,21 +285,21 @@ function RawObjectsModal({
             <span className="text-sm font-bold">dataSource</span>
             <JsonViewer
               theme={isDark ? "dark" : "light"}
-              value={dataSource}
+              value={decodeSqids(dataSource)}
               rootName={false}
               defaultInspectDepth={1}
             />
             <span className="text-sm font-bold">coreDataSource</span>
             <JsonViewer
               theme={isDark ? "dark" : "light"}
-              value={coreDataSource}
+              value={decodeSqids(coreDataSource)}
               rootName={false}
               defaultInspectDepth={1}
             />
             <span className="text-sm font-bold">connector</span>
             <JsonViewer
               theme={isDark ? "dark" : "light"}
-              value={connector}
+              value={decodeSqids(connector)}
               rootName={false}
               defaultInspectDepth={1}
             />

@@ -51,7 +51,9 @@ export function AgentBuilderLeftPanel({
             owner={owner}
             isTriggersLoading={isTriggersLoading}
           />
-          <AgentBuilderSettingsBlock />
+          <AgentBuilderSettingsBlock
+            agentConfigurationId={agentConfigurationId}
+          />
         </div>
       </ScrollArea>
       <BarFooter

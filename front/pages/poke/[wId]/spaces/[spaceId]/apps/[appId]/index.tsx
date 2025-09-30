@@ -21,6 +21,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { decodeSqids } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   AppType,
@@ -224,7 +225,7 @@ function AppSpecification({
       <div className="p-4">
         <JsonViewer
           theme={isDark ? "dark" : "light"}
-          value={specification}
+          value={decodeSqids(specification)}
           rootName={false}
           defaultInspectDepth={2}
         />
