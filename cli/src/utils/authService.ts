@@ -1,4 +1,4 @@
-import { jwtDecode } from "jwt-decode";
+import { jwtDecode, JwtPayload } from "jwt-decode";
 import fetch from "node-fetch";
 
 import { resetDustClient } from "./dustClient.js";
@@ -85,23 +85,26 @@ export const AuthService = {
     if (isValid && accessToken) {
       // Even if the token appears valid, refresh it if it's close to expiring
       // This is more aggressive but prevents 401s during long-running streams
+      let decoded: JwtPayload;
       try {
-        const decoded = jwtDecode(accessToken);
-        const currentTime = Math.floor(Date.now() / 1000);
-        const timeUntilExpiry = decoded.exp ?? -currentTime;
-
-        // If token expires in less than 30 seconds, refresh it proactively
-        if (timeUntilExpiry < 30) {
-          const refreshed = await this.refreshTokens();
-          if (refreshed) {
-            return await TokenStorage.getAccessToken();
-          }
-        }
+        decoded = jwtDecode(accessToken);
       } catch (_) {
         // If we can't decode the token, try to refresh
         const refreshed = await this.refreshTokens();
         if (refreshed) {
           return TokenStorage.getAccessToken();
+        }
+        return null;
+      }
+
+      const currentTime = Math.floor(Date.now() / 1000);
+      const timeUntilExpiry = (decoded.exp ?? 0) - currentTime;
+
+      // If token expires in less than 30 seconds, refresh it proactively
+      if (timeUntilExpiry < 30) {
+        const refreshed = await this.refreshTokens();
+        if (refreshed) {
+          return await TokenStorage.getAccessToken();
         }
       }
 
