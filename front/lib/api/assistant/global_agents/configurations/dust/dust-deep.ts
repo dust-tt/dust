@@ -24,7 +24,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -264,10 +264,10 @@ function getModelConfig(
   } =
     prefer === "anthropic"
       ? {
-          model: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+          model: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
           reasoningEffort: reasoning
             ? "medium"
-            : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
+            : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         }
       : prefer === "openai"
         ? {
@@ -290,10 +290,10 @@ function getModelConfig(
             : GPT_5_MODEL_CONFIG.minimumReasoningEffort,
         }
       : {
-          model: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+          model: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
           reasoningEffort: reasoning
             ? "medium"
-            : CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
+            : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         };
 
   if (isProviderWhitelisted(owner, preferredModel.model.providerId)) {
@@ -346,7 +346,7 @@ function getMaxReasoningModelConfig(owner: WorkspaceType): {
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return {
-      modelConfiguration: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+      modelConfiguration: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
