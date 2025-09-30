@@ -37,10 +37,18 @@ interface ToolItemProps {
   tool: { name: string; description: string };
   mayUpdate: boolean;
   serverType: string;
-  availableStakeLevels: readonly (CustomRemoteMCPToolStakeLevelType | "never_ask")[];
+  availableStakeLevels: readonly (
+    | CustomRemoteMCPToolStakeLevelType
+    | "never_ask"
+  )[];
 }
 
-function ToolItem({ tool, mayUpdate, serverType, availableStakeLevels }: ToolItemProps) {
+function ToolItem({
+  tool,
+  mayUpdate,
+  serverType,
+  availableStakeLevels,
+}: ToolItemProps) {
   const { control } = useFormContext<MCPServerFormValues>();
   const { field } = useController({
     control,
@@ -61,7 +69,9 @@ function ToolItem({ tool, mayUpdate, serverType, availableStakeLevels }: ToolIte
     });
   };
 
-  const handlePermissionChange = (permission: CustomRemoteMCPToolStakeLevelType | "never_ask") => {
+  const handlePermissionChange = (
+    permission: CustomRemoteMCPToolStakeLevelType | "never_ask"
+  ) => {
     field.onChange({
       ...field.value,
       permission,
@@ -76,17 +86,10 @@ function ToolItem({ tool, mayUpdate, serverType, availableStakeLevels }: ToolIte
 
   return (
     <div
-      className={`flex flex-col gap-1 pb-2 ${
-        !toolEnabled ? "opacity-50" : ""
-      }`}
+      className={`flex flex-col gap-1 pb-2 ${!toolEnabled ? "opacity-50" : ""}`}
     >
       <div className="flex items-center gap-2">
-        {mayUpdate && (
-          <Checkbox
-            checked={toolEnabled}
-            onClick={handleToggle}
-          />
-        )}
+        {mayUpdate && <Checkbox checked={toolEnabled} onClick={handleToggle} />}
         <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
           {asDisplayName(tool.name)}
         </h4>
@@ -114,16 +117,14 @@ function ToolItem({ tool, mayUpdate, serverType, availableStakeLevels }: ToolIte
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {availableStakeLevels.map(
-                  (permission) => (
-                    <DropdownMenuItem
-                      key={permission}
-                      onClick={() => handlePermissionChange(permission)}
-                      label={toolPermissionLabel[permission]}
-                      disabled={!toolEnabled}
-                    />
-                  )
-                )}
+                {availableStakeLevels.map((permission) => (
+                  <DropdownMenuItem
+                    key={permission}
+                    onClick={() => handlePermissionChange(permission)}
+                    label={toolPermissionLabel[permission]}
+                    disabled={!toolEnabled}
+                  />
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -193,7 +194,9 @@ export function ToolsList({
                   tool={tool}
                   mayUpdate={mayUpdate}
                   serverType={serverType}
-                  availableStakeLevels={getAvailableStakeLevelsForTool(tool.name)}
+                  availableStakeLevels={getAvailableStakeLevelsForTool(
+                    tool.name
+                  )}
                 />
               )
             )}

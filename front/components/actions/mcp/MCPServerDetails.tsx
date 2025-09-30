@@ -139,9 +139,7 @@ export function MCPServerDetails({
         );
         if (!response.ok) {
           const body = await response.json();
-          throw new Error(
-            body.error?.message ?? "Failed to add to space"
-          );
+          throw new Error(body.error?.message ?? "Failed to add to space");
         }
       } else {
         const view = mcpServerWithViews?.views.find(
@@ -194,9 +192,7 @@ export function MCPServerDetails({
       );
       if (!response.ok) {
         const body = await response.json();
-        throw new Error(
-          body.error?.message ?? "Failed to update server view"
-        );
+        throw new Error(body.error?.message ?? "Failed to update server view");
       }
     }
 
@@ -223,9 +219,7 @@ export function MCPServerDetails({
       );
       if (!response.ok) {
         const body = await response.json();
-        throw new Error(
-          body.error?.message ?? "Failed to update server"
-        );
+        throw new Error(body.error?.message ?? "Failed to update server");
       }
     }
   };
