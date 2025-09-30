@@ -134,6 +134,10 @@ export async function confluenceGetSpaceBlobActivity({
     connectorId,
   });
 
+  const spaceInDb = await ConfluenceSpace.findOne({
+    where: { connectorId, spaceId },
+  });
+
   try {
     const space = await client.getSpaceById(spaceId);
 
@@ -144,7 +148,22 @@ export async function confluenceGetSpaceBlobActivity({
     };
   } catch (err) {
     if (isNotFoundError(err) || isConfluenceNotFoundError(err)) {
+      if (spaceInDb?.deletedAt) {
+        // If the space is already marked as deleted, we still keep it in db
+        // to save the fact that the user selected it.
+        localLogger.info(
+          { deletedAt: spaceInDb.deletedAt },
+          "Could not reach space already marked as deleted."
+        );
+        return null;
+      }
+
       localLogger.info({ error: err }, "Deleting stale Confluence space.");
+
+      if (spaceInDb) {
+        await spaceInDb.update({ deletedAt: new Date() });
+      }
+
       return null;
     }
 
@@ -190,9 +209,9 @@ export async function confluenceUpsertSpaceFolderActivity({
     sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
 
-  // Update the space name in db.
-  if (spaceInDb && spaceInDb.name != spaceName) {
-    await spaceInDb.update({ name: spaceName });
+  // Update the space name in db and reset deletedAt if it was set.
+  if (spaceInDb && (spaceInDb.name !== spaceName || spaceInDb.deletedAt)) {
+    await spaceInDb.update({ name: spaceName, deletedAt: null });
   }
 }
 
