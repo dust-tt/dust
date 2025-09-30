@@ -437,6 +437,12 @@ export class UserResource extends BaseResource<UserModel> {
 
     const { count, rows: users } = await UserModel.findAndCountAll({
       where: userWhereClause,
+      include: [
+        {
+          model: MembershipModel,
+          as: "memberships",
+        },
+      ],
       order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
       limit: paginationParams.limit,
       offset: paginationParams.offset,
