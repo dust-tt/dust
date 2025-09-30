@@ -6,7 +6,6 @@ import { useCookies } from "react-cookie";
 
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -26,13 +25,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
 
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
-  const { hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: workspaceId ?? "",
-    disabled: !workspaceId,
-  });
-
-  const isProductRoute = router.pathname.startsWith("/w/");
-  const hasPostHogFeatureFlag = hasFeature("enable_posthog");
 
   const excludedPaths = [
     "/poke",
@@ -47,10 +39,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   const isExcludedPath = excludedPaths.some((path) =>
     router.pathname.startsWith(path)
   );
-  const isProductRouteWithFeatureFlag =
-    isProductRoute && hasPostHogFeatureFlag && !isFeatureFlagsLoading;
-  const isTrackablePage =
-    !isExcludedPath && (!isProductRoute || isProductRouteWithFeatureFlag);
+  const isTrackablePage = !isExcludedPath;
 
   useEffect(() => {
     const shouldTrack = isTrackablePage && hasAcceptedCookies;
@@ -68,6 +57,23 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         person_profiles: "identified_only",
         defaults: "2025-05-24",
         opt_out_capturing_by_default: true, // Start opted out
+        // GDPR compliance: disable IP collection
+        property_denylist: ["$ip"],
+        // Strip query parameters from URLs
+        sanitize_properties: (properties) => {
+          if (properties.$current_url) {
+            properties.$current_url = properties.$current_url.split("?")[0];
+          }
+          if (properties.$pathname) {
+            properties.$pathname = properties.$pathname.split("?")[0];
+          }
+          return properties;
+        },
+        // Session replay settings for GDPR compliance
+        session_recording: {
+          maskAllInputs: true,
+          maskTextSelector: "*",
+        },
         loaded: (posthog) => {
           if (NODE_ENV === "development") {
             posthog.debug();
@@ -81,28 +87,16 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     // Identify user if tracking is enabled and user exists
+    // GDPR compliance: only use internal user ID, no email or names
     if (posthog.__loaded && user) {
-      posthog.identify(user.sId, {
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      });
+      posthog.identify(user.sId);
 
-      // Group by workspace if we're in a product route
-      if (isProductRoute && workspaceId) {
+      // Group by workspace
+      if (workspaceId) {
         posthog.group("workspace", workspaceId);
       }
     }
-  }, [
-    router.pathname,
-    hasAcceptedCookies,
-    isTrackablePage,
-    user,
-    workspaceId,
-    isProductRoute,
-    isFeatureFlagsLoading,
-    hasPostHogFeatureFlag,
-  ]);
+  }, [router.pathname, hasAcceptedCookies, isTrackablePage, user, workspaceId]);
 
   // Only wrap with PostHogProvider when tracking is enabled
   if (isTrackablePage && hasAcceptedCookies) {
