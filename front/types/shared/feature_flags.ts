@@ -46,10 +46,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to DeepSeek R1 model as global agent",
     stage: "on_demand",
   },
-  enable_posthog: {
-    description: "Enable PostHog tracking within the product (/w/ routes)",
-    stage: "on_demand",
-  },
   dev_mcp_actions: {
     description: "MCP tools currently in development",
     stage: "dust_only",

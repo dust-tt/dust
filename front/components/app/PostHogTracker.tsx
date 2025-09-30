@@ -6,11 +6,9 @@ import { useCookies } from "react-cookie";
 
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const NODE_ENV = process.env.NODE_ENV;
 
 interface PostHogTrackerProps {
   children: React.ReactNode;
@@ -26,15 +24,11 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
 
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
-  const { hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
-    workspaceId: workspaceId ?? "",
-    disabled: !workspaceId,
-  });
-
-  const isProductRoute = router.pathname.startsWith("/w/");
-  const hasPostHogFeatureFlag = hasFeature("enable_posthog");
 
   const excludedPaths = [
+    "/w",
+    "/w/",
+    "/subscribe",
     "/poke",
     "/poke/",
     "/sso-enforced",
@@ -43,14 +37,11 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     "/share/",
   ];
 
-  // Determine if we should enable tracking
-  const isExcludedPath = excludedPaths.some((path) =>
-    router.pathname.startsWith(path)
-  );
-  const isProductRouteWithFeatureFlag =
-    isProductRoute && hasPostHogFeatureFlag && !isFeatureFlagsLoading;
-  const isTrackablePage =
-    !isExcludedPath && (!isProductRoute || isProductRouteWithFeatureFlag);
+  const isExcludedPath = excludedPaths.some((path) => {
+    const pathname = router.pathname;
+    return pathname.startsWith(path) || pathname.endsWith(path);
+  });
+  const isTrackablePage = !isExcludedPath;
 
   useEffect(() => {
     const shouldTrack = isTrackablePage && hasAcceptedCookies;
@@ -68,11 +59,21 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         person_profiles: "identified_only",
         defaults: "2025-05-24",
         opt_out_capturing_by_default: true, // Start opted out
-        loaded: (posthog) => {
-          if (NODE_ENV === "development") {
-            posthog.debug();
+        property_denylist: ["$ip"],
+        sanitize_properties: (properties) => {
+          if (properties.$current_url) {
+            properties.$current_url = properties.$current_url.split("?")[0];
           }
-          // Opt in after initialization since shouldTrack is true
+          if (properties.$pathname) {
+            properties.$pathname = properties.$pathname.split("?")[0];
+          }
+          return properties;
+        },
+        session_recording: {
+          maskAllInputs: true,
+          maskTextSelector: "*",
+        },
+        loaded: (posthog) => {
           posthog.opt_in_capturing();
         },
       });
@@ -80,31 +81,16 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       posthog.opt_in_capturing();
     }
 
-    // Identify user if tracking is enabled and user exists
     if (posthog.__loaded && user) {
-      posthog.identify(user.sId, {
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      });
+      posthog.identify(user.sId);
 
-      // Group by workspace if we're in a product route
-      if (isProductRoute && workspaceId) {
+      // Group by workspace
+      if (workspaceId) {
         posthog.group("workspace", workspaceId);
       }
     }
-  }, [
-    router.pathname,
-    hasAcceptedCookies,
-    isTrackablePage,
-    user,
-    workspaceId,
-    isProductRoute,
-    isFeatureFlagsLoading,
-    hasPostHogFeatureFlag,
-  ]);
+  }, [router.pathname, hasAcceptedCookies, isTrackablePage, user, workspaceId]);
 
-  // Only wrap with PostHogProvider when tracking is enabled
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
   }

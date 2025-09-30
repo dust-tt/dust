@@ -653,7 +653,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "enable_posthog"
   | "freshservice_tool"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
