@@ -342,7 +342,9 @@ export default async function createServer(
             childAgentId,
             mainAgent,
             mainConversation,
-            query,
+            query: isHandoff
+              ? `You have been summoned by @${mainAgent.name}.`
+              : query,
             toolsetsToAdd: toolsetsToAdd ?? null,
             fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
             conversationId: isHandoff
