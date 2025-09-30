@@ -34,7 +34,10 @@ pub struct AnthropicLLM {
 }
 
 fn get_max_tokens(model_id: &str) -> u64 {
-    if model_id.starts_with("claude-3-7-sonnet") || model_id.starts_with("claude-4-sonnet") {
+    if model_id.starts_with("claude-3-7-sonnet")
+        || model_id.starts_with("claude-4-sonnet")
+        || model_id.starts_with("claude-sonnet-4-")
+    {
         64000
     } else if model_id.starts_with("claude-4-opus") {
         32000
@@ -83,16 +86,22 @@ impl AnthropicLLM {
         beta_flags: &Vec<&str>,
         prompt_caching: bool,
     ) -> Value {
+        let is_claude_4_5 = self.id.starts_with("claude-sonnet-4-5");
+
         let mut body = json!({
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
-            "top_p": top_p,
             "stop_sequences": match stop_sequences.len() {
                 0 => None,
                 _ => Some(stop_sequences),
             },
         });
+
+        // Claude 4+ models don't support both temperature and top_p.
+        if !is_claude_4_5 {
+            body["top_p"] = json!(top_p);
+        }
 
         if stream {
             body["stream"] = json!(true);
@@ -119,7 +128,6 @@ impl AnthropicLLM {
             });
             // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
             body["temperature"] = 1.0f32.into();
-            body.as_object_mut().unwrap().remove("top_p");
         }
 
         if !tools.is_empty() {
@@ -453,7 +461,8 @@ impl LLM for AnthropicLLM {
             },
         };
 
-        let is_claude_4 = self.id.starts_with("claude-4-");
+        let is_claude_4 =
+            self.id.starts_with("claude-4-") || self.id.starts_with("claude-sonnet-4-");
 
         let is_auto_tool = match tool_choice {
             Some(AnthropicToolChoice {
