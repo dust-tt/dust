@@ -1,4 +1,5 @@
-import { jwtDecode, JwtPayload } from "jwt-decode";
+import type {JwtPayload} from "jwt-decode";
+import { jwtDecode  } from "jwt-decode";
 import fetch from "node-fetch";
 
 import { resetDustClient } from "./dustClient.js";
@@ -104,7 +105,7 @@ export const AuthService = {
       if (timeUntilExpiry < 30) {
         const refreshed = await this.refreshTokens();
         if (refreshed) {
-          return await TokenStorage.getAccessToken();
+          return TokenStorage.getAccessToken();
         }
       }
 
