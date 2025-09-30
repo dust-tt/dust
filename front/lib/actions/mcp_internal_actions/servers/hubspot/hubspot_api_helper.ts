@@ -36,6 +36,27 @@ const isEnumerationProperty = (
   propertyTypes?: Record<string, string>
 ) => propertyTypes?.[propertyName] === "enumeration";
 
+const isDateProperty = (
+  propertyName: string,
+  propertyTypes?: Record<string, string>
+): boolean => {
+  // If we have property type metadata, use it (most reliable)
+  if (propertyTypes?.[propertyName]) {
+    const type = propertyTypes[propertyName];
+    return type === "date" || type === "datetime";
+  }
+
+  // Fallback to name-based detection if metadata is not available
+  return (
+    propertyName.includes("date") ||
+    propertyName.includes("time") ||
+    propertyName.includes("timestamp") ||
+    propertyName === "createdate" ||
+    propertyName === "lastmodifieddate" ||
+    propertyName === "hs_lastmodifieddate"
+  );
+};
+
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
@@ -300,16 +321,8 @@ function buildHubspotFilters(
       ) {
         // For string properties, values must be lowercase, but not for date or enumeration properties
         if (values?.length) {
-          // Check if this is a date property to avoid lowercasing dates
-          const isDateProperty =
-            propertyName.includes("date") ||
-            propertyName.includes("time") ||
-            propertyName.includes("timestamp") ||
-            propertyName === "createdate" ||
-            propertyName === "lastmodifieddate" ||
-            propertyName === "hs_lastmodifieddate";
-
-          // Check if this is an enumeration property that should preserve case
+          // Check if this is a date or enumeration property that should preserve case
+          const isDateProp = isDateProperty(propertyName, propertyTypes);
           const isEnumProperty = isEnumerationProperty(
             propertyName,
             propertyTypes
@@ -320,7 +333,7 @@ function buildHubspotFilters(
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
           filter.values =
-            isDateProperty || isEnumProperty
+            isDateProp || isEnumProperty
               ? cleanValues
               : cleanValues.map((v) => v.toLowerCase());
         } else {
@@ -328,13 +341,7 @@ function buildHubspotFilters(
         }
       } else if (operator === FilterOperatorEnum.Between) {
         // Date properties need to be converted to Unix timestamps in milliseconds
-        const isDateProperty =
-          propertyName.includes("date") ||
-          propertyName.includes("time") ||
-          propertyName.includes("timestamp") ||
-          propertyName === "createdate" ||
-          propertyName === "lastmodifieddate" ||
-          propertyName === "hs_lastmodifieddate";
+        const isDateProp = isDateProperty(propertyName, propertyTypes);
 
         if (values?.length === 2) {
           let cleanValues = values
@@ -342,7 +349,7 @@ function buildHubspotFilters(
             .map((v) => String(v));
 
           // Convert date strings to timestamps for date properties
-          if (isDateProperty) {
+          if (isDateProp) {
             cleanValues = cleanValues.map((dateStr) => {
               // Check if it's already a timestamp (all digits)
               if (/^\d+$/.test(dateStr)) {
@@ -368,7 +375,7 @@ function buildHubspotFilters(
             let [lowValue, highValue] = parts;
 
             // Convert date strings to timestamps for date properties
-            if (isDateProperty) {
+            if (isDateProp) {
               if (!/^\d+$/.test(lowValue)) {
                 const timestamp = new Date(lowValue).getTime();
                 if (isNaN(timestamp)) {
@@ -404,16 +411,8 @@ function buildHubspotFilters(
       } else {
         // Handle all single-value operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN
         if (value !== undefined && value !== null) {
-          // Check if this is a date property to preserve proper formatting
-          const isDateProperty =
-            propertyName.includes("date") ||
-            propertyName.includes("time") ||
-            propertyName.includes("timestamp") ||
-            propertyName === "createdate" ||
-            propertyName === "lastmodifieddate" ||
-            propertyName === "hs_lastmodifieddate";
-
-          // Check if this is an enumeration property that should preserve case
+          // Check if this is a date or enumeration property that should preserve case
+          const isDateProp = isDateProperty(propertyName, propertyTypes);
           const isEnumProperty = isEnumerationProperty(
             propertyName,
             propertyTypes
@@ -422,7 +421,7 @@ function buildHubspotFilters(
           const stringValue = String(value);
           // For string comparison operators, lowercase non-date, non-enumeration values for consistency
           if (
-            !isDateProperty &&
+            !isDateProp &&
             !isEnumProperty &&
             (operator === FilterOperatorEnum.Eq ||
               operator === FilterOperatorEnum.Neq ||
