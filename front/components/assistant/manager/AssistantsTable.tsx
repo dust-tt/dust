@@ -58,7 +58,7 @@ type RowData = {
   canArchive: boolean;
 };
 
-// We disable the global agents in batch mode edit since they cannot be archived.
+// Global agents (canArchive: false) cannot be edited, so we disable them in batch edit.
 function isDisabled(canArchive: boolean, isBatchEdit: boolean): boolean {
   return !canArchive && isBatchEdit;
 }
