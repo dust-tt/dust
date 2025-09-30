@@ -175,18 +175,14 @@ const getTableColumns = ({
 
         return (
           <DataTable.CellContent
-            disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-          >
-            <Avatar.Stack
-              avatars={editors.map((editor) => ({
+            avatarStack={{
+              items: editors.map((editor) => ({
                 name: editor.fullName,
                 visual: editor.image,
-              }))}
-              nbVisibleItems={4}
-              size="xs"
-              isRounded
-            />
-          </DataTable.CellContent>
+              })),
+              nbVisibleItems: 4,
+            }}
+          />
         );
       },
       meta: {
