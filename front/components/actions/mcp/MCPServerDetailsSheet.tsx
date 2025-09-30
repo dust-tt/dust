@@ -17,7 +17,7 @@ import {
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -29,10 +29,10 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
-import type { WorkspaceType } from "@app/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 const DETAILS_TABS = ["info", "sharing"] as const;
-type TabType = (typeof DETAILS_TABS)[number];
+export type TabType = (typeof DETAILS_TABS)[number];
 
 interface MCPServerDetailsSheetProps {
   owner: WorkspaceType;
@@ -41,6 +41,7 @@ interface MCPServerDetailsSheetProps {
   isOpen: boolean;
   onSave: () => Promise<boolean>;
   onCancel: () => void;
+  spaces: SpaceType[];
 }
 
 export function MCPServerDetailsSheet({
@@ -50,33 +51,26 @@ export function MCPServerDetailsSheet({
   onClose,
   onSave,
   onCancel,
+  spaces,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [isSaving, setIsSaving] = useState(false);
 
   const confirm = useContext(ConfirmContext);
   const { deleteServer, isDeleting } = useDeleteMCPServer(owner);
 
-  const form = useFormContext<InfoFormValues>();
+  const form = useFormContext<MCPServerFormValues>();
 
   useEffect(() => {
-    if (mcpServerView) {
+    // Only reset to info tab when modal transitions from closed to open.
+    if (isOpen && !prevIsOpen) {
       setSelectedTab("info");
     }
-  }, [mcpServerView]);
+    setPrevIsOpen(isOpen);
+  }, [isOpen, prevIsOpen]);
 
   const changeTab = async (next: TabType) => {
-    if (selectedTab === "info" && next !== "info") {
-      const confirmed = await confirm({
-        title: "Unsaved changes",
-        message:
-          "You have unsaved changes. Are you sure you want to switch tabs without saving?",
-        validateLabel: "Discard changes",
-        validateVariant: "warning",
-      });
-      if (!confirmed) {
-        return;
-      }
-    }
     setSelectedTab(next);
   };
 
@@ -103,16 +97,22 @@ export function MCPServerDetailsSheet({
     if (open) {
       return;
     }
-    const confirmed = await confirm({
-      title: "Unsaved changes will be lost",
-      message:
-        "All unsaved changes will be lost. Are you sure you want to close?",
-      validateLabel: "Close without saving",
-      validateVariant: "warning",
-    });
-    if (!confirmed) {
-      return;
+
+    const hasUnsavedChanges = form.formState.isDirty;
+
+    if (hasUnsavedChanges) {
+      const confirmed = await confirm({
+        title: "Unsaved changes will be lost",
+        message:
+          "All unsaved changes will be lost. Are you sure you want to close?",
+        validateLabel: "Close without saving",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
     }
+
     onCancel();
     onClose();
   };
@@ -197,6 +197,7 @@ export function MCPServerDetailsSheet({
                 <MCPServerDetailsSharing
                   mcpServer={mcpServerView?.server}
                   owner={owner}
+                  spaces={spaces}
                 />
               </TabsContent>
             </div>
@@ -207,18 +208,22 @@ export function MCPServerDetailsSheet({
             <Button
               label="Cancel"
               variant="outline"
-              disabled={form.formState.isSubmitting}
+              disabled={isSaving || form.formState.isSubmitting}
               onClick={() => handleOpenChange(false)}
             />
             <div className="flex-grow" />
             <Button
-              label={form.formState.isSubmitting ? "Saving..." : "Save"}
+              label={
+                isSaving || form.formState.isSubmitting ? "Saving..." : "Save"
+              }
               variant="primary"
-              disabled={form.formState.isSubmitting}
+              disabled={isSaving || form.formState.isSubmitting}
               onClick={async () => {
-                const ok = await onSave();
-                if (ok) {
-                  onClose();
+                setIsSaving(true);
+                try {
+                  await onSave();
+                } finally {
+                  setIsSaving(false);
                 }
               }}
             />

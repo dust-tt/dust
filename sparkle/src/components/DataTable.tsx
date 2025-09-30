@@ -1040,7 +1040,7 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   grow?: boolean;
   disabled?: boolean;
   avatarStack?: {
-    items: { name: string; visual: string }[];
+    items: { name: string; visual?: string | React.ReactNode }[];
     nbVisibleItems?: number;
   };
 }

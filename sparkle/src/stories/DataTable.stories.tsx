@@ -52,7 +52,7 @@ type Data = {
   >;
   id?: number;
   roundedAvatar?: boolean;
-  avatarStack?: { name: string; visual: string }[];
+  avatarStack?: { name: string; visual?: string | React.ReactNode }[];
 };
 
 type TransformedData = {
