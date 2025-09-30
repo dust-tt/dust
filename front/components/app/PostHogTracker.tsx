@@ -44,9 +44,13 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   ];
 
   // Determine if we should enable tracking
-  const isExcludedPath = excludedPaths.some((path) => router.pathname.startsWith(path));
-  const isProductRouteWithFeatureFlag = isProductRoute && hasPostHogFeatureFlag && !isFeatureFlagsLoading;
-  const isTrackablePage = !isExcludedPath && (!isProductRoute || isProductRouteWithFeatureFlag);
+  const isExcludedPath = excludedPaths.some((path) =>
+    router.pathname.startsWith(path)
+  );
+  const isProductRouteWithFeatureFlag =
+    isProductRoute && hasPostHogFeatureFlag && !isFeatureFlagsLoading;
+  const isTrackablePage =
+    !isExcludedPath && (!isProductRoute || isProductRouteWithFeatureFlag);
 
   useEffect(() => {
     const shouldTrack = isTrackablePage && hasAcceptedCookies;
