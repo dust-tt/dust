@@ -26,7 +26,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
 
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
-  const { hasFeature } = useFeatureFlags({
+  const { hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: workspaceId ?? "",
     disabled: !workspaceId,
   });
@@ -43,9 +43,14 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     "/share/",
   ];
 
+  // Determine if we should enable tracking
+  const isExcludedPath = excludedPaths.some((path) =>
+    router.pathname.startsWith(path)
+  );
+  const isProductRouteWithFeatureFlag =
+    isProductRoute && hasPostHogFeatureFlag && !isFeatureFlagsLoading;
   const isTrackablePage =
-    !excludedPaths.some((path) => router.pathname.startsWith(path)) &&
-    (!isProductRoute || hasPostHogFeatureFlag);
+    !isExcludedPath && (!isProductRoute || isProductRouteWithFeatureFlag);
 
   useEffect(() => {
     const shouldTrack = isTrackablePage && hasAcceptedCookies;
@@ -62,17 +67,20 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         api_host: "/ingest",
         person_profiles: "identified_only",
         defaults: "2025-05-24",
+        opt_out_capturing_by_default: true, // Start opted out
         loaded: (posthog) => {
           if (NODE_ENV === "development") {
             posthog.debug();
           }
+          // Opt in after initialization since shouldTrack is true
+          posthog.opt_in_capturing();
         },
       });
     } else if (posthog.__loaded) {
       posthog.opt_in_capturing();
     }
 
-    // Identify user if logged in
+    // Identify user if tracking is enabled and user exists
     if (posthog.__loaded && user) {
       posthog.identify(user.sId, {
         email: user.email,
@@ -92,9 +100,11 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     user,
     workspaceId,
     isProductRoute,
+    isFeatureFlagsLoading,
+    hasPostHogFeatureFlag,
   ]);
 
-  // Only wrap with PostHogProvider for trackable pages when cookies are accepted
+  // Only wrap with PostHogProvider when tracking is enabled
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
   }
