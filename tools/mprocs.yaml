@@ -24,25 +24,21 @@ procs:
     shell: "bacon oauth"
   front:
     cwd: "<CONFIG_DIR>/../front"
-    shell: "./admin/dev.sh"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh"
   front-workers:
     cwd: "<CONFIG_DIR>/../front"
-    shell: "./admin/dev_worker.sh"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev_worker.sh"
   sdks-js:
     cwd: "<CONFIG_DIR>/../sdks/js"
-    shell: "./admin/dev.sh"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh"
   connectors:
     cwd: "<CONFIG_DIR>/../connectors"
-    shell: "./admin/dev.sh"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh"
   sparkle:
     cwd: "<CONFIG_DIR>/../sparkle"
-    shell: "npm run storybook"
-    autostart: false
-  docs:
-    cwd: "<CONFIG_DIR>/../docs"
-    shell: "npm run start"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run storybook"
     autostart: false
   extension:
     cwd: "<CONFIG_DIR>/../extension"
-    shell: "npm run dev:chrome"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev:chrome"
     autostart: false
