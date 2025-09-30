@@ -63,7 +63,8 @@ export function useWebhookSourcesWithViews({
     }
   );
 
-  const webhookSourcesWithViews = data?.webhookSourcesWithViews ?? emptyArray();
+  const webhookSourcesWithViews =
+    data?.webhookSourcesWithDetails ?? emptyArray();
 
   return {
     webhookSourcesWithViews,

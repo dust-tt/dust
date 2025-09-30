@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
 
@@ -42,6 +43,15 @@ export type WebhookSourceWithViews = WebhookSourceType & {
 export type WebhookSourceWithSystemView = WebhookSourceWithViews & {
   systemView: WebhookSourceViewType | null;
 };
+
+export type WebhookSourceWithViewsAndUsage = WebhookSourceWithViews & {
+  usage: AgentsUsageType | null;
+};
+
+export type WebhookSourceWithSystemViewAndUsage =
+  WebhookSourceWithSystemView & {
+    usage: AgentsUsageType | null;
+  };
 
 export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
 
