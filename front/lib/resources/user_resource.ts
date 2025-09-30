@@ -10,6 +10,7 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
   UserMetadataModel,
@@ -417,27 +418,26 @@ export class UserResource extends BaseResource<UserModel> {
     },
     paginationParams: SearchMembersPaginationParams
   ): Promise<{ users: UserResource[]; total: number }> {
-    const userWhereClause: any = {};
+    const userWhereClause: WhereOptions<UserModel> = {};
     if (options.email) {
       userWhereClause.email = {
         [Op.iLike]: `%${options.email}%`,
       };
     }
 
+    const memberships = await MembershipModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        startAt: { [Op.lte]: new Date() },
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+      },
+    });
+    userWhereClause.id = {
+      [Op.in]: memberships.map((m) => m.userId),
+    };
+
     const { count, rows: users } = await UserModel.findAndCountAll({
       where: userWhereClause,
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-          },
-          required: true,
-        },
-      ],
       order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
       limit: paginationParams.limit,
       offset: paginationParams.offset,
