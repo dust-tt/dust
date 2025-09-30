@@ -152,6 +152,149 @@ describe("augmentInputsWithConfiguration", () => {
     });
   });
 
+  describe("optionality handling", () => {
+    it("should inject optional configurable when missing", () => {
+      const rawInputs = {} as Record<string, unknown>;
+
+      // Build a schema where the configurable STRING is optional at the property level
+      const optionalStringSchema = z.object({
+        maybeString: ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+        ].optional(),
+      });
+
+      const config = createBasicMCPConfiguration({
+        additionalConfiguration: {
+          // value for the configurable path `maybeString`
+          "maybeString": "from-config",
+        },
+        inputSchema: zodToJsonSchema(optionalStringSchema, {
+          $refStrategy: "none",
+        }) as JSONSchema,
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual({
+        maybeString: {
+          value: "from-config",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      });
+    });
+
+    it("should preserve provided value for optional configurable", () => {
+      const rawInputs = {
+        maybeString: {
+          value: "user-provided",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      } as Record<string, unknown>;
+
+      const optionalStringSchema = z.object({
+        maybeString: ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+        ].optional(),
+      });
+
+      const config = createBasicMCPConfiguration({
+        additionalConfiguration: {
+          // Even if a config value exists, user-provided should win
+          "maybeString": "from-config",
+        },
+        inputSchema: zodToJsonSchema(optionalStringSchema, {
+          $refStrategy: "none",
+        }) as JSONSchema,
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual(rawInputs);
+    });
+
+    it("should not throw when optional configurable is omitted but has a schema default", () => {
+      const rawInputs = {} as Record<string, unknown>;
+
+      // Define an optional configurable with a schema-level default ({ value, mimeType })
+      const optionalWithDefaultSchema = z.object({
+        maybeString: ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+        ]
+          .default({
+            value: "schema-default",
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+          })
+          .optional(),
+      });
+
+      const config = createBasicMCPConfiguration({
+        // No additionalConfiguration provided for maybeString
+        inputSchema: zodToJsonSchema(optionalWithDefaultSchema, {
+          $refStrategy: "none",
+        }) as JSONSchema,
+      });
+
+      const fn = () =>
+        augmentInputsWithConfiguration({
+          owner: mockWorkspace,
+          rawInputs,
+          actionConfiguration: config,
+        });
+
+      // Should not throw due to the presence of a schema default
+      expect(fn).not.toThrow();
+
+      const result = fn();
+      expect(result).toEqual({
+        maybeString: {
+          value: "schema-default",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      });
+    });
+
+    it("should allow optional nullable time frame to be omitted and inject null", () => {
+      const rawInputs = {} as Record<string, unknown>;
+
+      // Optional nullable time frame
+      const optionalTimeFrameSchema = z.object({
+        timeFrame: ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+        ].optional(),
+      });
+
+      const config = createBasicMCPConfiguration({
+        // No timeFrame provided in action configuration
+        inputSchema: zodToJsonSchema(optionalTimeFrameSchema, {
+          $refStrategy: "none",
+        }) as JSONSchema,
+      });
+
+      const fn = () =>
+        augmentInputsWithConfiguration({
+          owner: mockWorkspace,
+          rawInputs,
+          actionConfiguration: config,
+        });
+
+      // Should not throw; nullable time frame injects null when missing
+      expect(fn).not.toThrow();
+
+      const result = fn();
+      expect(result).toEqual({
+        timeFrame: null,
+      });
+    });
+  });
+
   describe("DATA_SOURCE mime type", () => {
     it("should augment inputs with data source configuration", () => {
       const rawInputs = {};
@@ -2142,5 +2285,68 @@ describe("findPathsToConfiguration", () => {
     expect(paths).toHaveLength(2);
     expect(paths).toContain("user.name");
     expect(paths).toContain("user.location");
+  });
+
+  it("should find configurations when the schema is optional", () => {
+    // Create a tool schema where a configurable STRING is wrapped in .optional()
+    const optionalStringSchema = z.object({
+      maybeName: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+      ].optional(),
+    });
+
+    const mcpServerView: MCPServerViewType = {
+      id: 2,
+      sId: "server-optional",
+      name: "Optional Wrapper",
+      description: "Server with optional configurable field",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "optional-wrapper",
+        name: "optional_wrapper",
+        version: "1.0.0",
+        description: "Tool with optional configurable input",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          {
+            name: "tool_with_optional",
+            description: "Tool exposing optional configurable STRING",
+            inputSchema: zodToJsonSchema(optionalStringSchema, {
+              $refStrategy: "none",
+            }) as JSONSchema,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null,
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [
+        { toolName: "tool_with_optional", permission: "high", enabled: true },
+      ],
+    };
+
+    const matches = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+    });
+
+    // should still detect the configurable schema under the optional wrapper
+    expect(Object.keys(matches)).toEqual(["maybeName"]);
+    expect(matches["maybeName"]).toMatchObject({
+      type: "object",
+      properties: {
+        value: { type: "string" },
+        mimeType: {
+          type: "string",
+          const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      },
+    });
   });
 });
