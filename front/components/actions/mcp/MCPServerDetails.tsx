@@ -79,10 +79,10 @@ export function MCPServerDetails({
       : undefined,
   });
 
-  // Reset form when mcpServerView changes (e.g., when switching between servers)
+  // Reset form when defaults change (e.g., when switching between servers)
   useEffect(() => {
     form.reset(defaults);
-  }, [mcpServerView?.sId]); // Only reset when server ID changes
+  }, [defaults, form]);
 
   const applyToolChanges = async (
     toolChanges: Array<{
