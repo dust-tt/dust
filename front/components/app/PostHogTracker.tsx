@@ -27,6 +27,9 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   const workspaceId = isString(wId) ? wId : undefined;
 
   const excludedPaths = [
+    "/w",
+    "/w/",
+    "/subscribe",
     "/poke",
     "/poke/",
     "/sso-enforced",
@@ -35,10 +38,10 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     "/share/",
   ];
 
-  // Determine if we should enable tracking
-  const isExcludedPath = excludedPaths.some((path) =>
-    router.pathname.startsWith(path)
-  );
+  const isExcludedPath = excludedPaths.some((path) => {
+    const pathname = router.pathname;
+    return pathname.startsWith(path) || pathname.endsWith(path);
+  });
   const isTrackablePage = !isExcludedPath;
 
   useEffect(() => {
@@ -57,9 +60,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         person_profiles: "identified_only",
         defaults: "2025-05-24",
         opt_out_capturing_by_default: true, // Start opted out
-        // GDPR compliance: disable IP collection
         property_denylist: ["$ip"],
-        // Strip query parameters from URLs
         sanitize_properties: (properties) => {
           if (properties.$current_url) {
             properties.$current_url = properties.$current_url.split("?")[0];
@@ -69,16 +70,11 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
           }
           return properties;
         },
-        // Session replay settings for GDPR compliance
         session_recording: {
           maskAllInputs: true,
           maskTextSelector: "*",
         },
         loaded: (posthog) => {
-          if (NODE_ENV === "development") {
-            posthog.debug();
-          }
-          // Opt in after initialization since shouldTrack is true
           posthog.opt_in_capturing();
         },
       });
@@ -86,8 +82,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       posthog.opt_in_capturing();
     }
 
-    // Identify user if tracking is enabled and user exists
-    // GDPR compliance: only use internal user ID, no email or names
     if (posthog.__loaded && user) {
       posthog.identify(user.sId);
 
@@ -98,7 +92,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
   }, [router.pathname, hasAcceptedCookies, isTrackablePage, user, workspaceId]);
 
-  // Only wrap with PostHogProvider when tracking is enabled
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
   }
