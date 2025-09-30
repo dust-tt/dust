@@ -40,13 +40,13 @@ const isDateProperty = (
   propertyName: string,
   propertyTypes?: Record<string, string>
 ): boolean => {
-  // If we have property type metadata, use it (most reliable)
+  // If we have property type metadata, use it (most reliable).
   if (propertyTypes?.[propertyName]) {
     const type = propertyTypes[propertyName];
     return type === "date" || type === "datetime";
   }
 
-  // Fallback to name-based detection if metadata is not available
+  // Fallback to name-based detection.
   return (
     propertyName.includes("date") ||
     propertyName.includes("time") ||
