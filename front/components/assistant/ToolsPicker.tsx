@@ -18,7 +18,7 @@ import {
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useInternalMCPServerViewsFromSpaces,
@@ -96,8 +96,7 @@ export function ToolsPicker({
       ...manualServerViews,
     ].filter(
       (v) =>
-        // Only tools that do not require any configuration can be enabled directly in a conversation.
-        getMCPServerToolsConfigurations(v).configurable !== "required" &&
+        isJITMCPServerView(v) &&
         (searchText.length === 0 ||
           getMcpServerViewDisplayName(v)
             .toLowerCase()
