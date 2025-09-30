@@ -1,4 +1,5 @@
 import { augmentDustDeep } from "@app/lib/api/assistant/global_agents/configurations/dust/augment-dust-deep-2";
+import { augmentDustTask } from "@app/lib/api/assistant/global_agents/configurations/dust/augment-dust-task";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
@@ -22,6 +23,13 @@ export async function augmentGlobalAgent(
   switch (agentConfiguration.sId) {
     case GLOBAL_AGENTS_SID.DUST_DEEP:
       return augmentDustDeep(
+        auth,
+        agentConfiguration,
+        agentMessage,
+        userMessage
+      );
+    case GLOBAL_AGENTS_SID.DUST_TASK:
+      return augmentDustTask(
         auth,
         agentConfiguration,
         agentMessage,

@@ -25,6 +25,26 @@ import type {
 import { Err, Ok, removeNulls } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 
+export async function getMainAgent(
+  auth: Authenticator,
+  mainAgentMessageId?: string | null
+) {
+  const originMessage = mainAgentMessageId
+    ? await fetchMessage(auth, mainAgentMessageId)
+    : null;
+
+  const mainAgentId = originMessage?.agentMessage?.agentConfigurationId;
+
+  if (!mainAgentId) {
+    return null;
+  }
+
+  return getAgentConfiguration(auth, {
+    agentId: mainAgentId,
+    variant: "full",
+  });
+}
+
 async function fetchDataSourceViews(
   auth: Authenticator,
   dataSourceViewIds: string[]
@@ -150,21 +170,10 @@ export async function augmentDustDeep(
   userMessage: UserMessageType
 ): Promise<Result<AgentConfigurationType, Error>> {
   try {
-    const agentMessageId = userMessage.context.originMessageId;
-    const originMessage = agentMessageId
-      ? await fetchMessage(auth, agentMessageId)
-      : null;
-
-    const mainAgentId = originMessage?.agentMessage?.agentConfigurationId;
-
-    if (!mainAgentId) {
-      return new Ok(agentConfiguration);
-    }
-
-    const mainAgent = await getAgentConfiguration(auth, {
-      agentId: mainAgentId,
-      variant: "full",
-    });
+    const mainAgent = await getMainAgent(
+      auth,
+      userMessage.context.originMessageId
+    );
     if (!mainAgent) {
       return new Ok(agentConfiguration);
     }
