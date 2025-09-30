@@ -9,7 +9,6 @@ import { useUser } from "@app/lib/swr/user";
 import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const NODE_ENV = process.env.NODE_ENV;
 
 interface PostHogTrackerProps {
   children: React.ReactNode;
