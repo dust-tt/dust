@@ -1,16 +1,11 @@
-import {
-  Avatar,
-  ClockIcon,
-  ConversationMessage,
-  Markdown,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Avatar, ClockIcon, Markdown, Tooltip } from "@dust-tt/sparkle";
 import { BellIcon } from "lucide-react";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import {
   CiteBlock,
   getCiteDirective,
