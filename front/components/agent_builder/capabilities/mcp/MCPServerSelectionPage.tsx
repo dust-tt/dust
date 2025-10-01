@@ -15,6 +15,7 @@ import {
   isCustomServerIconType,
 } from "@app/lib/actions/mcp_icons";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { WhitelistableFeature } from "@app/types";
 
 interface DataVisualizationCardProps {
   specification: ActionSpecification;
@@ -45,6 +46,7 @@ interface MCPServerCardProps {
   isSelected: boolean;
   onClick: () => void;
   onToolInfoClick: () => void;
+  featureFlags?: WhitelistableFeature[];
 }
 
 function MCPServerCard({
@@ -52,8 +54,9 @@ function MCPServerCard({
   isSelected,
   onClick,
   onToolInfoClick,
+  featureFlags,
 }: MCPServerCardProps) {
-  const requirement = getMCPServerToolsConfigurations(view);
+  const requirement = getMCPServerToolsConfigurations(view, featureFlags);
   const canAdd = requirement.configurable !== "no" ? true : !isSelected;
 
   const icon = isCustomServerIconType(view.server.icon)
@@ -114,6 +117,7 @@ interface MCPServerSelectionPageProps {
   onDataVisualizationClick?: () => void;
   selectedToolsInSheet?: SelectedTool[];
   onToolDetailsClick?: (tool: SelectedTool) => void;
+  featureFlags?: WhitelistableFeature[];
 }
 
 export function MCPServerSelectionPage({
@@ -124,6 +128,7 @@ export function MCPServerSelectionPage({
   onDataVisualizationClick,
   selectedToolsInSheet = [],
   onToolDetailsClick,
+  featureFlags,
 }: MCPServerSelectionPageProps) {
   // Optimize selection lookup with Set-based approach
   const selectedMCPIds = useMemo(() => {
@@ -190,6 +195,7 @@ export function MCPServerSelectionPage({
                   onToolDetailsClick({ type: "MCP", view });
                 }
               }}
+              featureFlags={featureFlags}
             />
           ))}
         </div>
@@ -208,6 +214,7 @@ export function MCPServerSelectionPage({
                   onToolDetailsClick({ type: "MCP", view });
                 }
               }}
+              featureFlags={featureFlags}
             />
           ))}
         </div>

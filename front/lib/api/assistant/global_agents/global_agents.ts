@@ -71,7 +71,6 @@ function getGlobalAgent({
   globalAgentSettings,
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
-  webSearchBrowseWithSummaryMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
   contentCreationMCPServerView,
@@ -88,7 +87,6 @@ function getGlobalAgent({
   globalAgentSettings: GlobalAgentSettings[];
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  webSearchBrowseWithSummaryMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
   contentCreationMCPServerView: MCPServerViewResource | null;
@@ -330,7 +328,7 @@ function getGlobalAgent({
       agentConfiguration = _getDustTaskGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
-        webSearchBrowseWithSummaryMCPServerView,
+        webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
         dataWarehousesMCPServerView,
       });
@@ -402,7 +400,6 @@ export async function getGlobalAgents(
     helperPromptInstance,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
-    webSearchBrowseWithSummaryMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
     contentCreationMCPServerView,
@@ -429,12 +426,6 @@ export async function getGlobalAgents(
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
           "web_search_&_browse"
-        )
-      : null,
-    variant === "full"
-      ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-          auth,
-          "web_search_&_browse_with_summary"
         )
       : null,
     variant === "full"
@@ -534,7 +525,6 @@ export async function getGlobalAgents(
       globalAgentSettings,
       agentRouterMCPServerView,
       webSearchBrowseMCPServerView,
-      webSearchBrowseWithSummaryMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
       contentCreationMCPServerView,

@@ -15,8 +15,10 @@ import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { asDisplayName } from "@app/types";
 
 type OptionalDescribedKey = { key: string; description?: string };
@@ -547,6 +549,20 @@ export function AdditionalConfigurationSection({
   enumConfigurations,
   listConfigurations,
 }: AdditionalConfigurationSectionProps) {
+  const { owner } = useAgentBuilderContext();
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const hasWebSummarizationFlag = featureFlags.includes("web_summarization");
+
+  const filteredBooleanConfigurations = useMemo(
+    () =>
+      booleanConfigurations.filter(
+        ({ key }) => !(key === "useSummary" && !hasWebSummarizationFlag)
+      ),
+    [booleanConfigurations, hasWebSummarizationFlag]
+  );
+
   // Group configuration fields by prefix.
   const groupedStrings = useMemo(
     () => groupKeysByPrefix(stringConfigurations),
@@ -557,8 +573,8 @@ export function AdditionalConfigurationSection({
     [numberConfigurations]
   );
   const groupedBooleans = useMemo(
-    () => groupKeysByPrefix(booleanConfigurations),
-    [booleanConfigurations]
+    () => groupKeysByPrefix(filteredBooleanConfigurations),
+    [filteredBooleanConfigurations]
   );
   const groupedEnums = useMemo(() => {
     const groups: Record<
@@ -632,7 +648,7 @@ export function AdditionalConfigurationSection({
   const hasConfiguration =
     stringConfigurations.length > 0 ||
     numberConfigurations.length > 0 ||
-    booleanConfigurations.length > 0 ||
+    filteredBooleanConfigurations.length > 0 ||
     Object.keys(enumConfigurations).length > 0 ||
     Object.keys(listConfigurations).length > 0;
 

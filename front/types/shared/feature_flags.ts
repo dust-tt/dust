@@ -193,6 +193,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Use virtualized conversations display",
     stage: "dust_only",
   },
+  web_summarization: {
+    description: "AI-powered web page summarization in the web browser tool",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
