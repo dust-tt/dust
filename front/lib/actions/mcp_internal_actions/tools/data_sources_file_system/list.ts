@@ -189,7 +189,11 @@ export function registerListTool(
         }
 
         if (searchResult.isErr()) {
-          return new Err(new MCPError("Failed to list folder contents"));
+          return new Err(
+            new MCPError(
+              `Failed to list folder contents: ${searchResult.error.message}`
+            )
+          );
         }
 
         return new Ok([
