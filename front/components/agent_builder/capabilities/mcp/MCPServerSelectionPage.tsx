@@ -15,7 +15,7 @@ import {
   isCustomServerIconType,
 } from "@app/lib/actions/mcp_icons";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { WhitelistableFeature } from "@app/types";
+import type { WhitelistableFeature } from "@app/types";
 
 interface DataVisualizationCardProps {
   specification: ActionSpecification;
