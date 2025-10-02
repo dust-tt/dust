@@ -405,7 +405,8 @@ async function handler(
                 content: message.content,
                 context: ctx,
                 conversation,
-                executionMode,
+                // TODO(pr) remove in follow-up PR.
+                _executionMode: executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               })
@@ -413,7 +414,6 @@ async function handler(
                 content: message.content,
                 context: ctx,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               });

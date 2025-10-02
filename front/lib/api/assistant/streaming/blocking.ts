@@ -145,14 +145,15 @@ export async function postUserMessageAndWaitForCompletion(
     content,
     context,
     conversation,
-    executionMode,
+    // TODO(pr) remove in follow-up pr.
+    _executionMode,
     mentions,
     skipToolsValidation,
   }: {
     content: string;
     context: UserMessageContext;
     conversation: ConversationType;
-    executionMode?: ExecutionMode;
+    _executionMode?: ExecutionMode;
     mentions: MentionType[];
     skipToolsValidation: boolean;
   }
@@ -169,7 +170,6 @@ export async function postUserMessageAndWaitForCompletion(
     content,
     context,
     conversation,
-    executionMode,
     mentions,
     skipToolsValidation,
   });

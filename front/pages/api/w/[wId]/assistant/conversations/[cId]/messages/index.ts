@@ -61,6 +61,8 @@ async function handler(
     req.query.execution
   );
 
+  // TODO(pr) remove in follow-up PR
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const executionMode = executionModeParseResult.success
     ? executionModeParseResult.data
     : undefined;
@@ -201,7 +203,6 @@ async function handler(
         },
         // For now we never skip tools when interacting with agents from the web client.
         skipToolsValidation: false,
-        executionMode,
       });
 
       if (messageRes.isErr()) {

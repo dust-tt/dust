@@ -199,7 +199,8 @@ async function handler(
               content,
               context: ctx,
               conversation,
-              executionMode,
+              // TODO(pr) Remove in follow-up PR
+              _executionMode: executionMode,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
             })
@@ -207,7 +208,6 @@ async function handler(
               content,
               context: ctx,
               conversation,
-              executionMode,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
             });
