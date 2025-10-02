@@ -7,6 +7,7 @@ import {
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -14,9 +15,8 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types";
-import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
@@ -187,7 +187,8 @@ export async function notifyWorkflowError(
   const messageRow = await fetchMessageInConversation(
     auth,
     conversation,
-    agentMessageId
+    agentMessageId,
+    agentMessageVersion
   );
 
   if (!messageRow?.agentMessage) {
@@ -223,7 +224,7 @@ export async function notifyWorkflowError(
  */
 export async function finalizeCancellationActivity(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentAsynchronousArgs
+  runAgentArgs: AgentLoopArgs
 ): Promise<void> {
   const runAgentDataRes = await getRunAgentData(authType, {
     sync: false,
@@ -243,7 +244,7 @@ export async function finalizeCancellationActivity(
   } = runAgentDataRes.value;
 
   // get the last step of the agent message
-  const step = _.maxBy(agentMessage.contents, "step")?.step || 0;
+  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,

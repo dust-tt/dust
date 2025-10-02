@@ -50,7 +50,7 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 const MAX_AUTO_RETRY = 3;
 
@@ -69,7 +69,7 @@ export async function runModelActivity(
     functionCallStepContentIds,
     autoRetryCount = 0,
   }: {
-    runAgentData: RunAgentExecutionData;
+    runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;

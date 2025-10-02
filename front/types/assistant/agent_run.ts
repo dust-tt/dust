@@ -24,7 +24,7 @@ import {
 export const ExecutionModeSchema = z.enum(["sync", "async", "auto"]);
 export type ExecutionMode = z.infer<typeof ExecutionModeSchema>;
 
-export type RunAgentAsynchronousArgs = {
+export type AgentLoopArgs = {
   agentMessageId: string;
   agentMessageVersion: number;
   conversationId: string;
@@ -33,7 +33,7 @@ export type RunAgentAsynchronousArgs = {
   userMessageVersion: number;
 };
 
-export type RunAgentExecutionData = {
+export type AgentLoopExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   agentMessageRow: AgentMessage;
@@ -41,33 +41,15 @@ export type RunAgentExecutionData = {
   userMessage: UserMessageType;
 };
 
-export type RunAgentArgsInput =
-  | {
-      sync: true;
-      inMemoryData: RunAgentExecutionData;
-      syncToAsyncTimeoutMs?: number;
-    }
-  | {
-      sync: false;
-      idArgs: RunAgentAsynchronousArgs;
-    };
-
-export type RunAgentArgs = RunAgentArgsInput & {
+export type AgentLoopArgsWithTiming = AgentLoopArgs & {
   initialStartTime: number;
 };
 
 export async function getRunAgentData(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentArgsInput
-): Promise<Result<RunAgentExecutionData & { auth: Authenticator }, Error>> {
+  agentLoopArgs: AgentLoopArgs
+): Promise<Result<AgentLoopExecutionData & { auth: Authenticator }, Error>> {
   const auth = await Authenticator.fromJSON(authType);
-
-  if (runAgentArgs.sync) {
-    return new Ok({
-      ...runAgentArgs.inMemoryData,
-      auth,
-    });
-  }
 
   const {
     agentMessageId,
@@ -75,7 +57,7 @@ export async function getRunAgentData(
     conversationId,
     userMessageId,
     userMessageVersion,
-  } = runAgentArgs.idArgs;
+  } = agentLoopArgs;
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err(

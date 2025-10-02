@@ -11,7 +11,7 @@ import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import type { RunAgentArgs } from "@app/types/assistant/agent_run";
+import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 export async function runToolActivity(
@@ -23,7 +23,7 @@ export async function runToolActivity(
     runIds,
   }: {
     actionId: ModelId;
-    runAgentArgs: RunAgentArgs;
+    runAgentArgs: AgentLoopArgsWithTiming;
     step: number;
     runIds?: string[];
   }
