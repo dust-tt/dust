@@ -17,7 +17,7 @@ import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -45,7 +45,7 @@ export async function runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     return null;
   }

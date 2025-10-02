@@ -45,7 +45,7 @@ export type AgentLoopArgsWithTiming = AgentLoopArgs & {
   initialStartTime: number;
 };
 
-export async function getRunAgentData(
+export async function getAgentLoopData(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<Result<AgentLoopExecutionData & { auth: Authenticator }, Error>> {

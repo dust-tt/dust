@@ -6,7 +6,6 @@ import {
   isMCPApproveExecutionEvent,
 } from "@app/lib/actions/mcp";
 import { setUserAlwaysApprovedTool } from "@app/lib/actions/utils";
-import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,7 +16,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import logger from "@app/logger/logger";
 import type { ConversationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 
 async function getUserMessageIdFromMessageId(
   auth: Authenticator,
@@ -159,9 +158,9 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
-  const runAgentDataRes = await getRunAgentData(auth.toJSON(), {
-    sync: false,
-    idArgs: {
+  await launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
       agentMessageId,
       agentMessageVersion,
       conversationId,
@@ -169,31 +168,9 @@ export async function validateAction(
       userMessageId,
       userMessageVersion,
     },
+    // Resume from the step where the action was created.
+    startStep: agentStepContent.step,
   });
-
-  if (runAgentDataRes.isErr()) {
-    logger.error(
-      {
-        error: runAgentDataRes.error,
-      },
-      "Error getting run agent data"
-    );
-    return new Err(
-      new DustError("internal_error", runAgentDataRes.error.message)
-    );
-  }
-
-  await runAgentLoop(
-    auth,
-    {
-      sync: true,
-      inMemoryData: runAgentDataRes.value,
-    },
-    {
-      // Resume from the step where the action was created.
-      startStep: agentStepContent.step,
-    }
-  );
 
   logger.info(
     {

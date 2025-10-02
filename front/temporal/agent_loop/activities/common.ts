@@ -16,7 +16,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
@@ -224,12 +224,9 @@ export async function notifyWorkflowError(
  */
 export async function finalizeCancellationActivity(
   authType: AuthenticatorType,
-  runAgentArgs: AgentLoopArgs
+  agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getRunAgentData(authType, {
-    sync: false,
-    idArgs: runAgentArgs,
-  });
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`

@@ -23,7 +23,6 @@ export async function launchAgentLoopWorkflow({
   auth: Authenticator;
   agentLoopArgs: AgentLoopArgs;
   startStep: number;
-  initialStartTime: number;
 }): Promise<
   Result<undefined, Error | DustError<"agent_loop_already_running">>
 > {
