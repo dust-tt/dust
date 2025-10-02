@@ -11,8 +11,8 @@ export const PastedAttachmentExtension = Node.create({
 
   addAttributes() {
     return {
-      fileId: { default: null as string | null },
-      title: { default: null as string | null },
+      fileId: { default: null },
+      title: { default: null },
     };
   },
 
