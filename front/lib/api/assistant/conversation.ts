@@ -48,6 +48,7 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgentMessageType,
   APIErrorWithStatusCode,
@@ -73,7 +74,6 @@ import {
   ConversationError,
   Err,
   isAgentMention,
-  isAgentMessageType,
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
@@ -82,7 +82,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
@@ -715,13 +714,6 @@ export async function postUserMessage(
   await concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const enrichedConversation = {
-        ...conversation,
-        content: [...conversation.content, [userMessage], [agentMessage]],
-      };
-
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
       const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
@@ -1388,18 +1380,6 @@ export async function retryAgentMessage(
       `Parent message ${agentMessage.parentMessageId} not found in conversation`
     );
   }
-
-  // Then, find this agentmessage's array in conversation.content and add the
-  // new agent message to it.
-  const agentMessageArray = conversation.content.find((messages) => {
-    return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
-  }) as AgentMessageType[];
-
-  // Finally, stitch the conversation.
-  const newContent = [
-    ...conversation.content.slice(0, parentMessageIndex + 1),
-    [...agentMessageArray, agentMessage],
-  ];
 
   const userMessage =
     conversation.content[parentMessageIndex][

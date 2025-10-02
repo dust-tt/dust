@@ -14,9 +14,9 @@ import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import logger from "@app/logger/logger";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { ConversationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 
 async function getUserMessageIdFromMessageId(
   auth: Authenticator,
