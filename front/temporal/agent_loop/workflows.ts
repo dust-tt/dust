@@ -15,11 +15,10 @@ import {
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
-import type * as logAgentLoopMetricsActivities from "@app/temporal/agent_loop/activities/instrumentation";
+import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
-import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
 import type {
@@ -30,44 +29,43 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 
 const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
 
-const logMetricsActivities = proxyActivities<
-  typeof logAgentLoopMetricsActivities
+const { runModelAndCreateActionsActivity } = proxyActivities<
+  typeof runModelAndCreateWrapperActivities
 >({
-  startToCloseTimeout: "30 seconds",
+  startToCloseTimeout: "10 minutes",
 });
 
-const activities: AgentLoopActivities = {
-  runModelAndCreateActionsActivity: proxyActivities<
-    typeof runModelAndCreateWrapperActivities
-  >({
-    startToCloseTimeout: "10 minutes",
-  }).runModelAndCreateActionsActivity,
-  runToolActivity: proxyActivities<typeof runToolActivities>({
-    // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
-    startToCloseTimeout: toolActivityStartToCloseTimeout,
-    retry: {
-      // Do not retry tool activities. Those are not idempotent.
-      maximumAttempts: 1,
-    },
-  }).runToolActivity,
-  runRetryableToolActivity: proxyActivities<typeof runToolActivities>({
-    startToCloseTimeout: toolActivityStartToCloseTimeout,
-    retry: {
-      maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
-    },
-  }).runToolActivity,
-  publishDeferredEventsActivity: proxyActivities<
-    typeof publishDeferredEventsActivities
-  >({
-    startToCloseTimeout: "2 minutes",
-  }).publishDeferredEventsActivity,
-  logAgentLoopPhaseStartActivity:
-    logMetricsActivities.logAgentLoopPhaseStartActivity,
-  logAgentLoopPhaseCompletionActivity:
-    logMetricsActivities.logAgentLoopPhaseCompletionActivity,
-  logAgentLoopStepCompletionActivity:
-    logMetricsActivities.logAgentLoopStepCompletionActivity,
-};
+const { runToolActivity } = proxyActivities<typeof runToolActivities>({
+  // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
+  startToCloseTimeout: toolActivityStartToCloseTimeout,
+  retry: {
+    // Do not retry tool activities. Those are not idempotent.
+    maximumAttempts: 1,
+  },
+});
+
+const { runToolActivity: runRetryableToolActivity } = proxyActivities<
+  typeof runToolActivities
+>({
+  startToCloseTimeout: toolActivityStartToCloseTimeout,
+  retry: {
+    maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+  },
+});
+
+const { publishDeferredEventsActivity } = proxyActivities<
+  typeof publishDeferredEventsActivities
+>({
+  startToCloseTimeout: "2 minutes",
+});
+
+const {
+  logAgentLoopPhaseStartActivity,
+  logAgentLoopPhaseCompletionActivity,
+  logAgentLoopStepCompletionActivity,
+} = proxyActivities<typeof instrumentationActivities>({
+  startToCloseTimeout: "30 seconds",
+});
 
 const { ensureConversationTitleActivity } = proxyActivities<
   typeof ensureTitleActivities
@@ -158,7 +156,7 @@ export async function agentLoopWorkflow({
       const syncStartTime = Date.now();
       let currentStep = startStep;
 
-      await activities.logAgentLoopPhaseStartActivity({
+      await logAgentLoopPhaseStartActivity({
         authType,
         eventData: {
           agentMessageId,
@@ -178,7 +176,6 @@ export async function agentLoopWorkflow({
             ...agentLoopArgs,
             initialStartTime,
           },
-          activities,
           currentStep,
           runIds,
           startStep,
@@ -189,7 +186,7 @@ export async function agentLoopWorkflow({
           runIds.push(runId);
         }
 
-        await activities.logAgentLoopStepCompletionActivity({
+        await logAgentLoopStepCompletionActivity({
           agentMessageId,
           conversationId,
           step: currentStep,
@@ -203,7 +200,7 @@ export async function agentLoopWorkflow({
 
       const stepsCompleted = currentStep - startStep;
 
-      await activities.logAgentLoopPhaseCompletionActivity({
+      await logAgentLoopPhaseCompletionActivity({
         authType,
         eventData: {
           agentMessageId,
@@ -246,14 +243,12 @@ export async function agentLoopWorkflow({
 }
 
 async function executeStepIteration({
-  activities,
   authType,
   currentStep,
   agentLoopArgs,
   runIds,
   startStep,
 }: {
-  activities: AgentLoopActivities;
   authType: AuthenticatorType;
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
@@ -263,7 +258,7 @@ async function executeStepIteration({
   runId: string | null;
   shouldContinue: boolean;
 }> {
-  const result = await activities.runModelAndCreateActionsActivity({
+  const result = await runModelAndCreateActionsActivity({
     authType,
     autoRetryCount: 0,
     checkForResume: currentStep === startStep, // Only run resume the first time.
@@ -296,13 +291,13 @@ async function executeStepIteration({
   const toolResults = await Promise.all(
     actionBlobs.map(({ actionId, retryPolicy }) =>
       retryPolicy === "no_retry"
-        ? activities.runToolActivity(authType, {
+        ? runToolActivity(authType, {
             actionId,
             runAgentArgs: agentLoopArgs,
             step: currentStep,
             runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
           })
-        : activities.runRetryableToolActivity(authType, {
+        : runRetryableToolActivity(authType, {
             actionId,
             runAgentArgs: agentLoopArgs,
             step: currentStep,
@@ -319,7 +314,7 @@ async function executeStepIteration({
   // If there are deferred events, publish them after all tools have completed.
   if (allDeferredEvents.length > 0) {
     const shouldPauseWorkflow =
-      await activities.publishDeferredEventsActivity(allDeferredEvents);
+      await publishDeferredEventsActivity(allDeferredEvents);
 
     if (shouldPauseWorkflow) {
       // Break the loop - workflow will be restarted externally once required action is completed.
