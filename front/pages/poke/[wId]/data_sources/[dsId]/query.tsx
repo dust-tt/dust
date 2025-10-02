@@ -1,10 +1,4 @@
-import {
-  Button,
-  Checkbox,
-  Chip,
-  Spinner,
-  TextArea,
-} from "@dust-tt/sparkle";
+import { Button, Checkbox, Chip, Spinner, TextArea } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -114,9 +108,7 @@ export default function DataSourceQueryPage({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(
-          errorData.error?.message || "Failed to execute query"
-        );
+        throw new Error(errorData.error?.message || "Failed to execute query");
       }
 
       const result = await response.json();
