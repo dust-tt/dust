@@ -5,11 +5,11 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
-  RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+  CREATE_FRAME_FILE_TOOL_NAME,
+  EDIT_FRAME_FILE_TOOL_NAME,
+  RENAME_FRAME_FILE_TOOL_NAME,
+  RETRIEVE_FRAME_FILE_TOOL_NAME,
+  REVERT_FRAME_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -75,14 +75,14 @@ const createServer = (
   const server = makeInternalMCPServer("content_creation");
 
   server.tool(
-    CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Create a new Content Creation file that users can execute or interact with. Use this for " +
+    CREATE_FRAME_FILE_TOOL_NAME,
+    "Create a new Frame file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing.",
     {
       file_name: z
         .string()
         .describe(
-          "The name of the Content Creation file to create, including extension (e.g. " +
+          "The name of the Frame file to create, including extension (e.g. " +
             "DataVisualization.tsx)"
         ),
       mime_type: z
@@ -92,28 +92,28 @@ const createServer = (
           ]
         )
         .describe(
-          "The MIME type for the Content Creation file. Currently supports " +
+          "The MIME type for the Frame file. Currently supports " +
             `'${clientExecutableContentType}' for client-side executable files.`
         ),
       content: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "The content for the Content Creation file. Should be complete and ready for execution or " +
+          "The content for the Frame file. Should be complete and ready for execution or " +
             "interaction."
         ),
       description: z
         .string()
         .optional()
         .describe(
-          "Optional description of what this Content Creation file does (e.g., " +
+          "Optional description of what this Frame file does (e.g., " +
             "'Interactive data visualization', 'Executable analysis script', " +
             "'Dynamic dashboard')"
         ),
     },
     withToolLogging(
       auth,
-      { toolName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: CREATE_FRAME_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
@@ -156,10 +156,10 @@ const createServer = (
             buildContentCreationFileNotification(
               _meta.progressToken,
               fileResource,
-              "Creating Content Creation file..."
+              "Creating Frame file..."
             );
 
-          // Send a notification to the MCP Client, to display the Content Creation file.
+          // Send a notification to the MCP Client, to display the Frame file.
           await sendNotification(notification);
         }
 
@@ -182,12 +182,12 @@ const createServer = (
   );
 
   server.tool(
-    EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Modifies content within a Content Creation file by substituting specified text segments. " +
+    EDIT_FRAME_FILE_TOOL_NAME,
+    "Modifies content within a Frame file by substituting specified text segments. " +
       "Performs single substitution by default, or multiple substitutions when " +
       "`expected_replacements` is defined. This function demands comprehensive contextual " +
       "information surrounding the target modification to ensure accurate targeting. " +
-      `Use the ${RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME} tool to review the file's ` +
+      `Use the ${RETRIEVE_FRAME_FILE_TOOL_NAME} tool to review the file's ` +
       "existing content prior to executing any text substitution. Requirements: " +
       "1. `old_string` MUST contain the precise literal content for substitution " +
       "(preserving all spacing, formatting, line breaks). " +
@@ -198,9 +198,7 @@ const createServer = (
     {
       file_id: z
         .string()
-        .describe(
-          "The ID of the Content Creation file to update (e.g., 'fil_abc123')"
-        ),
+        .describe("The ID of the Frame file to update (e.g., 'fil_abc123')"),
       old_string: z
         .string()
         .describe(
@@ -226,7 +224,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: EDIT_FRAME_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
@@ -261,10 +259,10 @@ const createServer = (
             buildContentCreationFileNotification(
               _meta.progressToken,
               fileResource,
-              "Updating Content Creation file..."
+              "Updating Frame file..."
             );
 
-          // Send a notification to the MCP Client, to refresh the Content Creation file.
+          // Send a notification to the MCP Client, to refresh the Frame file.
           await sendNotification(notification);
         }
 
@@ -278,25 +276,23 @@ const createServer = (
     )
   );
   server.tool(
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Reverts a Content Creation file by canceling the edits and file renames in the last agent message.",
+    REVERT_FRAME_FILE_TOOL_NAME,
+    "Reverts a Frame file by canceling the edits and file renames in the last agent message.",
     {
       file_id: z
         .string()
-        .describe(
-          "The ID of the Content Creation file to revert (e.g., 'fil_abc123')"
-        ),
+        .describe("The ID of the Frame file to revert (e.g., 'fil_abc123')"),
     },
     withToolLogging(
       auth,
       {
-        toolName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+        toolName: REVERT_FRAME_FILE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ file_id }, { sendNotification, _meta }) => {
         if (!agentLoopContext?.runContext) {
           throw new Error(
-            "Could not access Agent Loop Context from revert content creation file tool."
+            "Could not access Agent Loop Context from revert frame file tool."
           );
         }
 
@@ -326,10 +322,10 @@ const createServer = (
             buildContentCreationFileNotification(
               _meta.progressToken,
               fileResource,
-              "Reverting Content Creation file..."
+              "Reverting Frame file..."
             );
 
-          // Send a notification to the MCP Client, to refresh the Content Creation file.
+          // Send a notification to the MCP Client, to refresh the Frame file.
           await sendNotification(notification);
         }
 
@@ -344,14 +340,12 @@ const createServer = (
   );
 
   server.tool(
-    RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Rename a Content Creation file. Use this to change the file name while keeping the content unchanged.",
+    RENAME_FRAME_FILE_TOOL_NAME,
+    "Rename a Frame file. Use this to change the file name while keeping the content unchanged.",
     {
       file_id: z
         .string()
-        .describe(
-          "The ID of the Content Creation file to rename (e.g., 'fil_abc123')"
-        ),
+        .describe("The ID of the Frame file to rename (e.g., 'fil_abc123')"),
       new_file_name: z
         .string()
         .describe(
@@ -360,7 +354,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: RENAME_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: RENAME_FRAME_FILE_TOOL_NAME, agentLoopContext },
       async ({ file_id, new_file_name }, { sendNotification, _meta }) => {
         const { agentConfiguration } = agentLoopContext?.runContext ?? {};
 
@@ -387,7 +381,7 @@ const createServer = (
             buildContentCreationFileNotification(
               _meta.progressToken,
               fileResource,
-              "Renaming Content Creation file..."
+              "Renaming Frame file..."
             );
 
           await sendNotification(notification);
@@ -404,21 +398,19 @@ const createServer = (
   );
 
   server.tool(
-    RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Retrieve the current content of an existing Content Creation file by its file ID. " +
-      "Use this to read back the content of Content Creation files you have previously created or " +
-      `updated. Use this tool before calling ${EDIT_CONTENT_CREATION_FILE_TOOL_NAME} to ` +
+    RETRIEVE_FRAME_FILE_TOOL_NAME,
+    "Retrieve the current content of an existing Frame file by its file ID. " +
+      "Use this to read back the content of Frame files you have previously created or " +
+      `updated. Use this tool before calling ${EDIT_FRAME_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
     {
       file_id: z
         .string()
-        .describe(
-          "The ID of the Content Creation file to retrieve (e.g., 'fil_abc123')"
-        ),
+        .describe("The ID of the Frame file to retrieve (e.g., 'fil_abc123')"),
     },
     withToolLogging(
       auth,
-      { toolName: RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
+      { toolName: RETRIEVE_FRAME_FILE_TOOL_NAME, agentLoopContext },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);
 

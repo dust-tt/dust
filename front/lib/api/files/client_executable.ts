@@ -1,10 +1,10 @@
 import groupBy from "lodash/groupBy";
 
 import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+  CREATE_FRAME_FILE_TOOL_NAME,
+  EDIT_FRAME_FILE_TOOL_NAME,
+  RENAME_FRAME_FILE_TOOL_NAME,
+  REVERT_FRAME_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
   getFileContent,
@@ -376,7 +376,7 @@ export function isCreateFileActionType(
 } {
   return (
     action.toolConfiguration.originalName ===
-      CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
+      CREATE_FRAME_FILE_TOOL_NAME &&
     typeof action.augmentedInputs.content === "string" &&
     typeof action.augmentedInputs.file_name === "string"
   );
@@ -389,7 +389,7 @@ function isEditFileActionType(
 } {
   return (
     action.toolConfiguration.originalName ===
-      EDIT_CONTENT_CREATION_FILE_TOOL_NAME &&
+      EDIT_FRAME_FILE_TOOL_NAME &&
     typeof action.augmentedInputs.old_string === "string" &&
     typeof action.augmentedInputs.new_string === "string"
   );
@@ -400,7 +400,7 @@ function isRevertFileActionType(
 ): action is AgentMCPActionModel {
   return (
     action.toolConfiguration.originalName ===
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
+    REVERT_FRAME_FILE_TOOL_NAME
   );
 }
 
@@ -411,7 +411,7 @@ function isRenameFileActionType(
 } {
   return (
     action.toolConfiguration.originalName ===
-      RENAME_CONTENT_CREATION_FILE_TOOL_NAME &&
+      RENAME_FRAME_FILE_TOOL_NAME &&
     typeof action.augmentedInputs.new_file_name === "string"
   );
 }
@@ -490,9 +490,9 @@ function isEditOrRevertOrRenameFileAction(
   }
 
   return [
-    EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
+    EDIT_FRAME_FILE_TOOL_NAME,
+    REVERT_FRAME_FILE_TOOL_NAME,
+    RENAME_FRAME_FILE_TOOL_NAME,
   ].includes(action.toolConfiguration.originalName);
 }
 

@@ -421,7 +421,7 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Content Creation files should not be processed.
+  // Frame files should not be processed.
   if (isContentCreationFileContentType(contentType)) {
     return undefined;
   }
