@@ -56,7 +56,7 @@ function ExportContentDropdown({
           title: "Export Failed",
           type: "error",
           description:
-            "Cannot export to PNG: content contains images with external URLs, which are blocked for security purposes.",
+            "Content contains images with external URLs, which are blocked for security purposes. Please use images uploaded to the conversation instead.",
         });
         return;
       }
