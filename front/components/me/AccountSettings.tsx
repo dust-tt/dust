@@ -201,7 +201,7 @@ export function AccountSettings({
   };
 
   return (
-    <>
+    <FormProvider form={form} onSubmit={updateUserProfile}>
       <input
         type="file"
         ref={fileInputRef}
@@ -225,124 +225,122 @@ export function AccountSettings({
         </div>
       </div>
 
-      <FormProvider form={form} onSubmit={updateUserProfile}>
-        <div className="flex flex-col gap-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              {renderNameInput({ label: "First Name", fieldName: "firstName" })}
-            </div>
-            <div className="flex-1">
-              {renderNameInput({ label: "Last Name", fieldName: "lastName" })}
-            </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-4">
+          <div className="flex-1">
+            {renderNameInput({ label: "First Name", fieldName: "firstName" })}
           </div>
-
-          <div className="flex items-center gap-2 py-2">
-            <Label>Email</Label>
-            <span className="text-muted-foreground dark:text-muted-foreground-night">
-              {user?.email}
-            </span>
+          <div className="flex-1">
+            {renderNameInput({ label: "Last Name", fieldName: "lastName" })}
           </div>
+        </div>
 
-          <div className="flex w-full flex-row justify-between gap-4">
-            <div className="flex-1">
-              <div>
-                <Label>Theme</Label>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+        <div className="flex items-center gap-2 py-2">
+          <Label>Email</Label>
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
+            {user?.email}
+          </span>
+        </div>
+
+        <div className="flex w-full flex-row justify-between gap-4">
+          <div className="flex-1">
+            <div>
+              <Label>Theme</Label>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  icon={
+                    themeField.value === "light"
+                      ? SunIcon
+                      : themeField.value === "dark"
+                        ? MoonIcon
+                        : LightModeIcon
+                  }
+                  label={
+                    themeField.value === "light"
+                      ? "Light"
+                      : themeField.value === "dark"
+                        ? "Dark"
+                        : "System"
+                  }
+                  isSelect
+                  className="w-fit"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  icon={SunIcon}
+                  onClick={() => themeField.onChange("light")}
+                  label="Light"
+                />
+                <DropdownMenuItem
+                  icon={MoonIcon}
+                  onClick={() => themeField.onChange("dark")}
+                  label="Dark"
+                />
+                <DropdownMenuItem
+                  icon={LightModeIcon}
+                  onClick={() => themeField.onChange("system")}
+                  label="System"
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="flex-1">
+            <Label>Keyboard Shortcuts</Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="copy-sm flex items-center gap-2 text-foreground dark:text-foreground-night">
+                  Send message:
                   <Button
                     variant="outline"
-                    icon={
-                      themeField.value === "light"
-                        ? SunIcon
-                        : themeField.value === "dark"
-                          ? MoonIcon
-                          : LightModeIcon
-                    }
                     label={
-                      themeField.value === "light"
-                        ? "Light"
-                        : themeField.value === "dark"
-                          ? "Dark"
-                          : "System"
+                      submitKeyField.value === "enter"
+                        ? "Enter (↵)"
+                        : "Cmd + Enter (⌘ + ↵)"
                     }
                     isSelect
                     className="w-fit"
                   />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    icon={SunIcon}
-                    onClick={() => themeField.onChange("light")}
-                    label="Light"
-                  />
-                  <DropdownMenuItem
-                    icon={MoonIcon}
-                    onClick={() => themeField.onChange("dark")}
-                    label="Dark"
-                  />
-                  <DropdownMenuItem
-                    icon={LightModeIcon}
-                    onClick={() => themeField.onChange("system")}
-                    label="System"
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="flex-1">
-              <Label>Keyboard Shortcuts</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <div className="copy-sm flex items-center gap-2 text-foreground dark:text-foreground-night">
-                    Send message:
-                    <Button
-                      variant="outline"
-                      label={
-                        submitKeyField.value === "enter"
-                          ? "Enter (↵)"
-                          : "Cmd + Enter (⌘ + ↵)"
-                      }
-                      isSelect
-                      className="w-fit"
-                    />
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    onClick={() => submitKeyField.onChange("enter")}
-                  >
-                    Enter
-                    <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => submitKeyField.onChange("cmd+enter")}
-                  >
-                    Cmd + Enter
-                    <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              label="Cancel"
-              variant="ghost"
-              onClick={handleCancel}
-              type="button"
-              disabled={!form.formState.isDirty || form.formState.isSubmitting}
-            />
-            <Button
-              label="Save"
-              variant="primary"
-              type="submit"
-              disabled={!form.formState.isDirty || form.formState.isSubmitting}
-              loading={form.formState.isSubmitting}
-            />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() => submitKeyField.onChange("enter")}
+                >
+                  Enter
+                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => submitKeyField.onChange("cmd+enter")}
+                >
+                  Cmd + Enter
+                  <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </FormProvider>
-    </>
+
+        <div className="flex justify-end gap-2">
+          <Button
+            label="Cancel"
+            variant="ghost"
+            onClick={handleCancel}
+            type="button"
+            disabled={!form.formState.isDirty || form.formState.isSubmitting}
+          />
+          <Button
+            label="Save"
+            variant="primary"
+            type="submit"
+            disabled={!form.formState.isDirty || form.formState.isSubmitting}
+            loading={form.formState.isSubmitting}
+          />
+        </div>
+      </div>
+    </FormProvider>
   );
 }
