@@ -99,6 +99,7 @@ interface MultiPageDialogProps {
   footerContent?: React.ReactNode;
   addFooterSeparator?: boolean;
   hideCloseButton?: boolean;
+  dataAnalytics?: string;
 }
 
 interface MultiPageDialogContentProps extends MultiPageDialogProps {
@@ -129,6 +130,7 @@ const MultiPageDialogContent = React.forwardRef<
       rightButton,
       footerContent,
       hideCloseButton,
+      dataAnalytics,
       ...props
     },
     ref
@@ -188,6 +190,7 @@ const MultiPageDialogContent = React.forwardRef<
         isAlertDialog={isAlertDialog}
         preventAutoFocusOnClose={preventAutoFocusOnClose}
         className={className}
+        dataAnalytics={dataAnalytics}
         {...props}
       >
         <div className={cn(multiPageDialogLayoutVariants())}>
@@ -259,7 +262,7 @@ const MultiPageDialogContent = React.forwardRef<
               {showNavigation && pages.length > 1 && (
                 <div
                   className={cn(
-                    "s-text-xs s-font-semibold s-text-muted-foreground-night",
+                    "s-heading-xs s-text-muted-foreground-night",
                     !hideCloseButton && "s-pr-8"
                   )}
                 >

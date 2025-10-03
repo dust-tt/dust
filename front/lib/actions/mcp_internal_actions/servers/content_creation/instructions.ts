@@ -11,6 +11,7 @@ import {
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
   REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
@@ -33,7 +34,12 @@ You have access to a Content Creation system that allows you to create and updat
 - Never attempt to edit without first retrieving the current file content
 
 ### Reverting Files:
-- Use \`${REVERT_CONTENT_CREATION_FILE_TOOL_NAME}\` to revert the edits made in the last agent message.
+- Use \`${REVERT_CONTENT_CREATION_FILE_TOOL_NAME}\` to revert the edits or file renames made in the last agent message.
+
+### Renaming Files:
+- Use \`${RENAME_CONTENT_CREATION_FILE_TOOL_NAME}\` to rename an existing Content Creation file
+- The new file name must include a valid extension (e.g., .js, .jsx, .ts, .tsx)
+- Renaming only changes the file name; the content remains unchanged
 
 ${VIZ_REACT_COMPONENT_GUIDELINES}
 

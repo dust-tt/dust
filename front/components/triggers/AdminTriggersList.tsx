@@ -11,6 +11,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -18,10 +19,10 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
-import type { WebhookSourceWithSystemView } from "@app/types/triggers/webhooks";
+import type { WebhookSourceWithSystemViewAndUsage } from "@app/types/triggers/webhooks";
 
 type RowData = {
-  webhookSource: WebhookSourceWithSystemView;
+  webhookSource: WebhookSourceWithSystemViewAndUsage;
   spaces: SpaceType[];
   onClick?: () => void;
 };
@@ -47,13 +48,14 @@ const NameCell = ({ row }: { row: RowData }) => {
   );
 };
 
-type AdminTriggersListProps = {
+interface AdminTriggersListProps {
   owner: LightWorkspaceType;
   setSelectedWebhookSourceId: Dispatch<SetStateAction<string | null>>;
   isWebhookSourcesWithViewsLoading: boolean;
-  webhookSourcesWithSystemView: WebhookSourceWithSystemView[];
+  webhookSourcesWithSystemView: WebhookSourceWithSystemViewAndUsage[];
   filter: string;
-};
+  setAgentSId: (a: string | null) => void;
+}
 
 export const AdminTriggersList = ({
   owner,
@@ -61,6 +63,7 @@ export const AdminTriggersList = ({
   isWebhookSourcesWithViewsLoading,
   webhookSourcesWithSystemView,
   filter,
+  setAgentSId,
 }: AdminTriggersListProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { spaces } = useSpacesAsAdmin({
@@ -105,6 +108,24 @@ export const AdminTriggersList = ({
           return rowA.original.webhookSource.name.localeCompare(
             rowB.original.webhookSource.name
           );
+        },
+      },
+      {
+        header: "Used by",
+        accessorFn: (row) => row.webhookSource.usage?.count ?? 0,
+        cell: (info) => (
+          <DataTable.CellContent>
+            <UsedByButton
+              usage={{
+                count: info.row.original.webhookSource.usage?.count ?? 0,
+                agents: info.row.original.webhookSource.usage?.agents ?? [],
+              }}
+              onItemClick={setAgentSId}
+            />
+          </DataTable.CellContent>
+        ),
+        meta: {
+          className: "w-24",
         },
       },
       {
@@ -175,7 +196,7 @@ export const AdminTriggersList = ({
     );
 
     return columns;
-  }, []);
+  }, [setAgentSId]);
 
   const CreateWebhookCTA = () => (
     <Button

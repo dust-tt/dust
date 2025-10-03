@@ -7,6 +7,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
   RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME,
   REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
@@ -17,6 +18,7 @@ import {
   createClientExecutableFile,
   editClientExecutableFile,
   getClientExecutableFileContent,
+  renameClientExecutableFile,
   revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
@@ -277,7 +279,7 @@ const createServer = (
   );
   server.tool(
     REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    "Reverts a Content Creation file by canceling the edits in the last agent message.",
+    "Reverts a Content Creation file by canceling the edits and file renames in the last agent message.",
     {
       file_id: z
         .string()
@@ -335,6 +337,66 @@ const createServer = (
           {
             type: "text",
             text: `File '${fileResource.sId}' reverted successfully.`,
+          },
+        ]);
+      }
+    )
+  );
+
+  server.tool(
+    RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
+    "Rename a Content Creation file. Use this to change the file name while keeping the content unchanged.",
+    {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Content Creation file to rename (e.g., 'fil_abc123')"
+        ),
+      new_file_name: z
+        .string()
+        .describe(
+          "The new name for the file, including extension (e.g., 'UpdatedChart.tsx')"
+        ),
+    },
+    withToolLogging(
+      auth,
+      { toolName: RENAME_CONTENT_CREATION_FILE_TOOL_NAME, agentLoopContext },
+      async ({ file_id, new_file_name }, { sendNotification, _meta }) => {
+        const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+
+        const result = await renameClientExecutableFile(auth, {
+          fileId: file_id,
+          newFileName: new_file_name,
+          renamedByAgentConfigurationId: agentConfiguration?.sId,
+        });
+
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(result.error.message, {
+              tracked: result.error.tracked,
+            })
+          );
+        }
+
+        const fileResource = result.value;
+
+        const responseText = `File '${fileResource.sId}' renamed successfully to '${fileResource.fileName}'.`;
+
+        if (_meta?.progressToken) {
+          const notification: MCPProgressNotificationType =
+            buildContentCreationFileNotification(
+              _meta.progressToken,
+              fileResource,
+              "Renaming Content Creation file..."
+            );
+
+          await sendNotification(notification);
+        }
+
+        return new Ok([
+          {
+            type: "text",
+            text: responseText,
           },
         ]);
       }

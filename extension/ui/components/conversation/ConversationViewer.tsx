@@ -90,6 +90,7 @@ export function ConversationViewer({
     return messages.findLast(
       (message) =>
         message.type === "user_message" &&
+        message.context.origin !== "agent_handover" &&
         message.visibility !== "deleted" &&
         message.user?.sId === user.sId
     );

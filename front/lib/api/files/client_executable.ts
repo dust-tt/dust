@@ -3,6 +3,7 @@ import groupBy from "lodash/groupBy";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
   REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
@@ -32,9 +33,10 @@ import {
   Ok,
 } from "@app/types";
 
-// Regular expression to capture the value inside a className attribute. This pattern assumes
-// double quotes for simplicity.
-const classNameRegex = /className\s*=\s*"([^"]*)"/g;
+// Regular expressions to capture the value inside a className attribute.
+// We check both double and single quotes separately to handle mixed usage.
+const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
+const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
 
 // Regular expression to capture Tailwind arbitrary values:
 // Matches a word boundary, then one or more lowercase letters or hyphens,
@@ -51,15 +53,24 @@ const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
  */
 function validateTailwindCode(code: string): Result<undefined, Error> {
   const matches: string[] = [];
-  let classMatch: RegExpExecArray | null = null;
 
-  // Iterate through all occurrences of the className attribute in the code.
-  while ((classMatch = classNameRegex.exec(code)) !== null) {
+  // Check double-quoted className attributes
+  let classMatch: RegExpExecArray | null = null;
+  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
     const classContent = classMatch[1];
     if (classContent) {
       // Find all matching arbitrary values within the class attribute's value.
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const arbitraryMatches = classContent.match(arbitraryRegex) || [];
+      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
+      matches.push(...arbitraryMatches);
+    }
+  }
+
+  // Check single-quoted className attributes
+  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
+    const classContent = classMatch[1];
+    if (classContent) {
+      // Find all matching arbitrary values within the class attribute's value.
+      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
       matches.push(...arbitraryMatches);
     }
   }
@@ -75,6 +86,39 @@ function validateTailwindCode(code: string): Result<undefined, Error> {
           `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`
       )
     );
+  }
+  return new Ok(undefined);
+}
+
+function validateFileTitle({
+  fileName,
+  mimeType,
+}: {
+  fileName: string;
+  mimeType: ContentCreationFileContentType;
+}): Result<undefined, { tracked: boolean; message: string }> {
+  // Validate that the file extension matches the MIME type.
+  const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
+  const fileNameParts = fileName.split(".");
+  if (fileNameParts.length < 2) {
+    const supportedExts = fileFormat.exts.join(", ");
+    return new Err({
+      message:
+        `File name must include a valid extension. Supported extensions for ` +
+        `${mimeType}: ${supportedExts}.`,
+      tracked: false,
+    });
+  }
+
+  const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
+  if (!(fileFormat.exts as string[]).includes(extension)) {
+    const supportedExts = fileFormat.exts.join(", ");
+    return new Err({
+      message:
+        `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
+        `Supported extensions: ${supportedExts}.`,
+      tracked: false,
+    });
   }
   return new Ok(undefined);
 }
@@ -118,28 +162,9 @@ export async function createClientExecutableFile(
       });
     }
 
-    // Validate that the file extension matches the MIME type.
-    const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
-    const fileNameParts = fileName.split(".");
-    if (fileNameParts.length < 2) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message:
-          `File name must include a valid extension. Supported extensions for ` +
-          `${mimeType}: ${supportedExts}.`,
-        tracked: false,
-      });
-    }
-
-    const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-    if (!(fileFormat.exts as string[]).includes(extension)) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message:
-          `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
-          `Supported extensions: ${supportedExts}.`,
-        tracked: false,
-      });
+    const fileNameValidationResult = validateFileTitle({ fileName, mimeType });
+    if (fileNameValidationResult.isErr()) {
+      return fileNameValidationResult;
     }
 
     // Create the file resource.
@@ -256,6 +281,54 @@ export async function editClientExecutableFile(
   return new Ok({ fileResource, replacementCount: occurrences });
 }
 
+export async function renameClientExecutableFile(
+  auth: Authenticator,
+  {
+    fileId,
+    newFileName,
+    renamedByAgentConfigurationId,
+  }: {
+    fileId: string;
+    newFileName: string;
+    renamedByAgentConfigurationId?: string;
+  }
+): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
+  const fileResource = await FileResource.fetchById(auth, fileId);
+  if (!fileResource) {
+    return new Err({ message: `File not found: ${fileId}`, tracked: true });
+  }
+
+  if (fileResource.contentType !== clientExecutableContentType) {
+    return new Err({
+      message: `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`,
+      tracked: false,
+    });
+  }
+
+  const fileNameValidationResult = validateFileTitle({
+    fileName: newFileName,
+    mimeType: fileResource.contentType,
+  });
+  if (fileNameValidationResult.isErr()) {
+    return fileNameValidationResult;
+  }
+
+  await fileResource.rename(newFileName);
+
+  if (
+    renamedByAgentConfigurationId &&
+    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+      renamedByAgentConfigurationId
+  ) {
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
+    });
+  }
+
+  return new Ok(fileResource);
+}
+
 export async function getClientExecutableFileContent(
   auth: Authenticator,
   fileId: string
@@ -298,12 +371,14 @@ export function isCreateFileActionType(
 ): action is AgentMCPActionModel & {
   augmentedInputs: {
     content: string;
+    file_name: string;
   };
 } {
   return (
     action.toolConfiguration.originalName ===
       CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.content === "string"
+    typeof action.augmentedInputs.content === "string" &&
+    typeof action.augmentedInputs.file_name === "string"
   );
 }
 
@@ -326,6 +401,18 @@ function isRevertFileActionType(
   return (
     action.toolConfiguration.originalName ===
     REVERT_CONTENT_CREATION_FILE_TOOL_NAME
+  );
+}
+
+function isRenameFileActionType(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel & {
+  augmentedInputs: { new_file_name: string };
+} {
+  return (
+    action.toolConfiguration.originalName ===
+      RENAME_CONTENT_CREATION_FILE_TOOL_NAME &&
+    typeof action.augmentedInputs.new_file_name === "string"
   );
 }
 
@@ -394,7 +481,10 @@ export async function isCreateFileActionForFileId({
   return false;
 }
 
-function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
+function isEditOrRevertOrRenameFileAction(
+  action: AgentMCPActionModel,
+  fileId: string
+) {
   if (action.augmentedInputs.file_id !== fileId) {
     return false;
   }
@@ -402,6 +492,7 @@ function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
   return [
     EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
     REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+    RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
   ].includes(action.toolConfiguration.originalName);
 }
 
@@ -412,7 +503,7 @@ export async function getFileActionsByType(
   workspace: WorkspaceType
 ) {
   let createFileAction: AgentMCPActionModel | null = null;
-  const editOrRevertFileActions: AgentMCPActionModel[] = [];
+  const nonCreateFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
     const isCreateAction = await isCreateFileActionForFileId({
@@ -425,58 +516,61 @@ export async function getFileActionsByType(
       createFileAction = action;
     }
 
-    if (isEditOrRevertFileAction(action, fileId)) {
-      editOrRevertFileActions.push(action);
+    if (isEditOrRevertOrRenameFileAction(action, fileId)) {
+      nonCreateFileActions.push(action);
     }
   }
 
   return {
     createFileAction,
-    editOrRevertFileActions,
+    nonCreateFileActions,
   };
 }
 
 /**
- * Returns the edit actions that still apply after a revert operation.
+ * Returns the edit and rename actions that still apply after a revert operation.
  *
  * How it works:
  * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest => newest.
- * - Process groups newest => oldest so the revert cancels the most recent edit first.
+ * - Process groups newest => oldest so the revert cancels the most recent changes first.
  * - Maintain a cancellation counter starting at 1 (single revert step).
  *   While counter > 0:
- *     • Edit-only group => skip it and decrement counter by 1.
- *     • Group with any revert(s) => do not decrement; increase counter by 1 per revert. Drop edits in that group.
- * - When counter = 0, collect edit actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
+ *     • Edit/rename-only group => skip it and decrement counter by 1.
+ *     • Group with any revert(s) => do not decrement; increase counter by 1 per revert. Drop edits/renames in that group.
+ * - When counter = 0, collect edit and rename actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
  *
  * Note:
- * - `editOrRevertActions` includes only past reverts; the current revert is not included.
- * - We expect that all changes on the file were done through the edit tool.
+ * - `nonCreateFileActions` includes only past reverts; the current revert is not included.
+ * - We expect that all changes on the file were done through the edit and rename tools.
  */
-export function getEditActionsToApply(
-  editOrRevertActions: AgentMCPActionModel[]
+export function getEditAndRenameActionsToApply(
+  nonCreateFileActions: AgentMCPActionModel[]
 ) {
-  const editOrRevertActionsByMessage = groupBy(
-    editOrRevertActions,
+  const clientExecutableFileActionsByMessage = groupBy(
+    nonCreateFileActions,
     (action) => action.agentMessageId
   );
 
   // Within each group, sort actions chronologically (oldest → newest).
-  Object.keys(editOrRevertActionsByMessage).forEach((messageId) => {
-    editOrRevertActionsByMessage[messageId] = editOrRevertActionsByMessage[
-      messageId
-    ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  Object.keys(clientExecutableFileActionsByMessage).forEach((messageId) => {
+    clientExecutableFileActionsByMessage[messageId] =
+      clientExecutableFileActionsByMessage[messageId].sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+      );
   });
 
   // Order groups newest => oldest (based on the group's earliest action time).
-  const sortedActionGroups = Object.values(editOrRevertActionsByMessage).sort(
+  const sortedActionGroups = Object.values(
+    clientExecutableFileActionsByMessage
+  ).sort(
     (actionsA, actionsB) =>
       actionsB[0].createdAt.getTime() - actionsA[0].createdAt.getTime()
   );
 
-  // Remaining edit-only groups to cancel. Starts from the current revert.
+  // Remaining edit/rename-only groups to cancel. Starts from the current revert.
   let cancelGroupActionCounter = 1;
 
-  const pickedEditActions = [];
+  const editAndRenameActionsToApply = [];
 
   for (const actionGroup of sortedActionGroups) {
     if (cancelGroupActionCounter > 0) {
@@ -484,22 +578,25 @@ export function getEditActionsToApply(
         isRevertFileActionType(a)
       );
 
-      // Cancel everything if there are only edit actions in the group.
+      // Cancel everything if there are only edit/rename actions in the group.
       if (revertActions.length === 0) {
         cancelGroupActionCounter--;
         continue;
       }
 
-      // Extend cancellation window by each revert (any edits in the group will be cancelled).
+      // Extend cancellation window by each revert (any edits/renames in the group will be cancelled).
       cancelGroupActionCounter += revertActions.length;
 
       continue;
     }
 
-    // Not cancelling: collect edits. A revert here reopens cancellation for older groups.
+    // Not cancelling: collect edits and renames. A revert here reopens cancellation for older groups.
     for (const currentAction of actionGroup) {
-      if (isEditFileActionType(currentAction)) {
-        pickedEditActions.push(currentAction);
+      if (
+        isEditFileActionType(currentAction) ||
+        isRenameFileActionType(currentAction)
+      ) {
+        editAndRenameActionsToApply.push(currentAction);
         continue;
       }
 
@@ -509,7 +606,7 @@ export function getEditActionsToApply(
     }
   }
 
-  return pickedEditActions;
+  return editAndRenameActionsToApply;
 }
 
 export function getRevertedContent(
@@ -527,12 +624,13 @@ export function getRevertedContent(
 
   let revertedContent = createFileAction.augmentedInputs.content;
 
-  for (const editAction of sortedActions) {
-    if (!isEditFileActionType(editAction)) {
-      throw new Error("Wrong file action type for edit file action");
+  for (const action of sortedActions) {
+    if (!isEditFileActionType(action)) {
+      // Skip non-edit actions (e.g., rename).
+      continue;
     }
 
-    const { old_string, new_string } = editAction.augmentedInputs;
+    const { old_string, new_string } = action.augmentedInputs;
 
     const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
       oldString: old_string,
@@ -550,9 +648,29 @@ export function getRevertedContent(
   return revertedContent;
 }
 
+export function getRevertedFileName(
+  createFileAction: AgentMCPActionModel,
+  actionsToApply: AgentMCPActionModel[]
+) {
+  // Loop backwards to find the most recent rename.
+  for (let i = actionsToApply.length - 1; i >= 0; i--) {
+    const action = actionsToApply[i];
+    if (isRenameFileActionType(action)) {
+      return action.augmentedInputs.new_file_name;
+    }
+  }
+
+  if (!isCreateFileActionType(createFileAction)) {
+    throw new Error("Wrong file action type for create file action");
+  }
+
+  // No rename were found, the file kept its original name.
+  return createFileAction.augmentedInputs.file_name;
+}
+
 // Revert the changes made to the Content Creation file in the last agent message.
-// This reconstructs the previous file content by replaying edit operations chronologically
-// from the create action.
+// This reconstructs the previous file content and name by replaying edit and rename
+// operations chronologically from the create action.
 export async function revertClientExecutableFileChanges(
   auth: Authenticator,
   {
@@ -619,7 +737,7 @@ export async function revertClientExecutableFileChanges(
       });
     }
 
-    const { createFileAction, editOrRevertFileActions } =
+    const { createFileAction, nonCreateFileActions } =
       await getFileActionsByType(conversationActions, fileId, workspace);
 
     if (createFileAction === null) {
@@ -629,12 +747,23 @@ export async function revertClientExecutableFileChanges(
       });
     }
 
-    const editActionsToApply = getEditActionsToApply(editOrRevertFileActions);
+    const editAndRenameActionsToApply =
+      getEditAndRenameActionsToApply(nonCreateFileActions);
 
     const revertedContent = getRevertedContent(
       createFileAction,
-      editActionsToApply
+      editAndRenameActionsToApply
     );
+
+    const revertedFileName = getRevertedFileName(
+      createFileAction,
+      editAndRenameActionsToApply
+    );
+
+    // Apply the reverted file name if it differs from the current name
+    if (fileResource.fileName !== revertedFileName) {
+      await fileResource.rename(revertedFileName);
+    }
 
     await fileResource.setUseCaseMetadata({
       ...fileResource.useCaseMetadata,

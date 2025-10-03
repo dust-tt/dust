@@ -25,9 +25,10 @@ import * as shadcnAll from "@viz/components/ui";
 import * as lucideAll from "lucide-react";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 
-// Regular expression to capture the value inside a className attribute. This pattern assumes
-// double quotes for simplicity.
-const classNameRegex = /className\s*=\s*"([^"]*)"/g;
+// Regular expressions to capture the value inside a className attribute.
+// We check both double and single quotes separately to handle mixed usage.
+const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
+const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
 
 // Regular expression to capture Tailwind arbitrary values:
 // Matches a word boundary, then one or more lowercase letters or hyphens,
@@ -44,10 +45,20 @@ const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
  */
 function validateTailwindCode(code: string): void {
   const matches: string[] = [];
-  let classMatch: RegExpExecArray | null = null;
 
-  // Iterate through all occurrences of the className attribute in the code.
-  while ((classMatch = classNameRegex.exec(code)) !== null) {
+  // Check double-quoted className attributes
+  let classMatch: RegExpExecArray | null = null;
+  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
+    const classContent = classMatch[1];
+    if (classContent) {
+      // Find all matching arbitrary values within the class attribute's value.
+      const arbitraryMatches = classContent.match(arbitraryRegex) || [];
+      matches.push(...arbitraryMatches);
+    }
+  }
+
+  // Check single-quoted className attributes
+  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
     const classContent = classMatch[1];
     if (classContent) {
       // Find all matching arbitrary values within the class attribute's value.
@@ -365,6 +376,15 @@ export function VisualizationWrapper({
         }
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as PNG. This can happen when the content references external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);
@@ -381,6 +401,15 @@ export function VisualizationWrapper({
         await downloadFile(blob, `visualization-${identifier}.svg`);
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as SVG. This can happen when the content references external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);

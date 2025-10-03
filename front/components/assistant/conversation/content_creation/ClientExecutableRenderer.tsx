@@ -27,8 +27,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useVisualizationRevert } from "@app/lib/swr/conversations";
-import { useFileContent } from "@app/lib/swr/files";
-import { useFileMetadata } from "@app/lib/swr/files";
+import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -39,15 +38,31 @@ interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
   owner: LightWorkspaceType;
   fileId: string;
+  fileContent: string | null;
 }
 
 function ExportContentDropdown({
   iframeRef,
   owner,
   fileId,
+  fileContent,
 }: ExportContentDropdownProps) {
   const sendNotification = useSendNotification();
   const exportAsPng = () => {
+    if (fileContent) {
+      const imgRegex = /<img[^>]+src=["'](https?:\/\/[^"']+)["']/gi;
+      if (imgRegex.test(fileContent)) {
+        sendNotification({
+          type: "error",
+          title: "Cannot export as PNG",
+          description:
+            "Content contains images with external URLs, which are blocked for " +
+            "security purposes. Please use images uploaded to the conversation instead.",
+        });
+        return;
+      }
+    }
+
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage({ type: `EXPORT_PNG` }, "*");
     } else {
@@ -266,6 +281,7 @@ export function ClientExecutableRenderer({
           iframeRef={iframeRef}
           owner={owner}
           fileId={fileId}
+          fileContent={fileContent ?? null}
         />
         <ShareContentCreationFilePopover
           fileId={fileId}

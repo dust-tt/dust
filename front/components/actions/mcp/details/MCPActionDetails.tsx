@@ -187,10 +187,7 @@ export function MCPActionDetails({
     }
   }
 
-  if (
-    isInternalMCPServerOfName(mcpServerId, "web_search_&_browse") ||
-    isInternalMCPServerOfName(mcpServerId, "web_search_&_browse_with_summary")
-  ) {
+  if (isInternalMCPServerOfName(mcpServerId, "web_search_&_browse")) {
     if (toolName === WEBSEARCH_TOOL_NAME) {
       return (
         <SearchResultDetails

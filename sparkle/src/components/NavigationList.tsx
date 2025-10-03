@@ -71,6 +71,7 @@ interface NavigationListItemProps
   icon?: React.ComponentType;
   moreMenu?: React.ReactNode;
   status?: "idle" | "unread" | "blocked";
+  dataAnalytics?: string;
 }
 
 const NavigationListItem = React.forwardRef<
@@ -90,6 +91,7 @@ const NavigationListItem = React.forwardRef<
       shallow,
       moreMenu,
       status = "idle",
+      dataAnalytics,
       ...props
     },
     ref
@@ -129,6 +131,7 @@ const NavigationListItem = React.forwardRef<
           rel={rel}
           replace={replace}
           shallow={shallow}
+          dataAnalytics={dataAnalytics}
         >
           <div
             className={cn(
@@ -216,7 +219,7 @@ const variantStyles = cva("", {
 });
 
 const labelStyles = cva(
-  "s-font-semibold s-pt-4 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+  "s-pt-4 s-pb-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
 );
 
 interface NavigationListLabelProps

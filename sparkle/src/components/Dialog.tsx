@@ -80,6 +80,7 @@ interface DialogContentProps
   isAlertDialog?: boolean;
   preventAutoFocusOnClose?: boolean;
   mountPortalContainer?: HTMLElement;
+  dataAnalytics?: string;
 }
 
 const DialogContent = React.forwardRef<
@@ -97,6 +98,7 @@ const DialogContent = React.forwardRef<
       preventAutoFocusOnClose = true,
       onCloseAutoFocus,
       mountPortalContainer,
+      dataAnalytics,
       ...props
     },
     ref
@@ -124,6 +126,7 @@ const DialogContent = React.forwardRef<
                 : props.onInteractOutside
             }
             onCloseAutoFocus={handleCloseAutoFocus}
+            data-analytics={dataAnalytics}
             {...props}
           >
             {children}

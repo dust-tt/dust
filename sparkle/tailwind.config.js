@@ -236,6 +236,9 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
 ]);
 
 module.exports = {
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     screens: {
       xxs: "384px",

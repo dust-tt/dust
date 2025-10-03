@@ -1,6 +1,7 @@
 export { default as ArrowCircleIcon } from "./ArrowCircle";
 export { default as ArrowDownIcon } from "./ArrowDown";
 export { default as ArrowDownCircleIcon } from "./ArrowDownCircle";
+export { default as ArrowDownDashIcon } from "./ArrowDownDash";
 export { default as ArrowDownOnSquareIcon } from "./ArrowDownOnSquare";
 export { default as ArrowDownSIcon } from "./ArrowDownS";
 export { default as ArrowGoBackIcon } from "./ArrowGoBack";

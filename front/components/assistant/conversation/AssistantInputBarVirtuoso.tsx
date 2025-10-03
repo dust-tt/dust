@@ -4,6 +4,7 @@ import {
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
 import { ArrowBigDownDashIcon } from "lucide-react";
+import { useMemo } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
@@ -12,6 +13,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import { isUserMessage } from "@app/components/assistant/conversation/types";
 import { emptyArray } from "@app/lib/swr/swr";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentMention } from "@app/types";
 import { isAgentMention } from "@app/types";
 
@@ -20,6 +22,7 @@ export const AssistantInputBarVirtuoso = ({
 }: {
   context: VirtuosoMessageListContext;
 }) => {
+  const isMobile = useIsMobile();
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const lastUserMessage = methods.data
     .get()
@@ -30,10 +33,11 @@ export const AssistantInputBarVirtuoso = ({
         m.visibility !== "deleted"
     );
 
-  const agentMentions =
-    !lastUserMessage || !isUserMessage(lastUserMessage)
+  const agentMentions = useMemo(() => {
+    return !lastUserMessage || !isUserMessage(lastUserMessage)
       ? emptyArray<AgentMention>()
       : lastUserMessage.mentions.filter(isAgentMention);
+  }, [lastUserMessage]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisibe = 100;
@@ -51,7 +55,7 @@ export const AssistantInputBarVirtuoso = ({
   return (
     <div
       className={
-        "z-20 mx-auto flex max-h-screen w-full py-2 sm:w-full sm:max-w-3xl sm:py-4"
+        "max-h-dvh z-20 mx-auto flex w-full py-2 sm:w-full sm:max-w-3xl sm:py-4"
       }
     >
       <div
@@ -83,7 +87,7 @@ export const AssistantInputBarVirtuoso = ({
         onSubmit={context.handleSubmit}
         stickyMentions={agentMentions}
         conversationId={context.conversationId}
-        disableAutoFocus={false}
+        disableAutoFocus={isMobile}
       />
     </div>
   );

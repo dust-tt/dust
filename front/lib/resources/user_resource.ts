@@ -193,6 +193,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async updateImage(imageUrl: string | null) {
+    return this.update({
+      imageUrl,
+    });
+  }
+
   async updateInfo(
     username: string,
     firstName: string,

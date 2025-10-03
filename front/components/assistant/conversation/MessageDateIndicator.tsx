@@ -9,7 +9,7 @@ export const MessageDateIndicator = ({
   message: VirtuosoMessage;
 }) => {
   return (
-    <div className="text-center">
+    <div className="select-none text-center">
       <span className="rounded bg-background px-4 text-xs text-muted-foreground dark:bg-background-night dark:text-muted-foreground-night">
         {moment(getMessageDate(message)).calendar(null, {
           sameDay: "[Today]",

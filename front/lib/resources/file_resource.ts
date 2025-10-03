@@ -524,6 +524,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
+  rename(newFileName: string) {
+    return this.update({ fileName: newFileName });
+  }
+
   // Sharing logic.
 
   async setShareScope(

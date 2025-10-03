@@ -575,7 +575,7 @@ function TemplatesPage({
 
   if (isSubmitting) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-primary-50 dark:bg-primary-50-night">
+      <div className="min-h-dvh flex items-center justify-center bg-primary-50 dark:bg-primary-50-night">
         <div className="text-primary-900">Creating/Updating template...</div>
       </div>
     );

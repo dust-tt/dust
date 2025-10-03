@@ -1,25 +1,29 @@
 import { useMemo, useState } from "react";
 
+import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { AdminTriggersList } from "@app/components/triggers/AdminTriggersList";
 import { WebhookSourceDetails } from "@app/components/triggers/WebhookSourceDetails";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { LightWorkspaceType, SpaceType, UserType } from "@app/types";
 
 interface SpaceActionsListProps {
   isAdmin: boolean;
   owner: LightWorkspaceType;
   space: SpaceType;
+  user: UserType;
 }
 
 export const SystemSpaceTriggersList = ({
   owner,
   isAdmin,
   space,
+  user,
 }: SpaceActionsListProps) => {
   const [selectedWebhookSourceId, setSelectedWebhookSourceId] = useState<
     string | null
   >(null);
+  const [agentSId, setAgentSId] = useState<string | null>(null);
 
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
     useWebhookSourcesWithViews({
@@ -62,6 +66,12 @@ export const SystemSpaceTriggersList = ({
 
   return (
     <>
+      <AssistantDetails
+        owner={owner}
+        user={user}
+        assistantId={agentSId}
+        onClose={() => setAgentSId(null)}
+      />
       {selectedWebhookSource?.systemView && (
         <WebhookSourceDetails
           owner={owner}
@@ -76,6 +86,7 @@ export const SystemSpaceTriggersList = ({
         setSelectedWebhookSourceId={setSelectedWebhookSourceId}
         webhookSourcesWithSystemView={webhookSourcesWithSystemView}
         isWebhookSourcesWithViewsLoading={isWebhookSourcesWithViewsLoading}
+        setAgentSId={setAgentSId}
       />
     </>
   );
