@@ -80,6 +80,39 @@ function validateTailwindCode(code: string): Result<undefined, Error> {
   return new Ok(undefined);
 }
 
+function validateFileTitle({
+  fileName,
+  mimeType,
+}: {
+  fileName: string;
+  mimeType: ContentCreationFileContentType;
+}): Result<undefined, { tracked: boolean; message: string }> {
+  // Validate that the file extension matches the MIME type.
+  const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
+  const fileNameParts = fileName.split(".");
+  if (fileNameParts.length < 2) {
+    const supportedExts = fileFormat.exts.join(", ");
+    return new Err({
+      message:
+        `File name must include a valid extension. Supported extensions for ` +
+        `${mimeType}: ${supportedExts}.`,
+      tracked: false,
+    });
+  }
+
+  const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
+  if (!(fileFormat.exts as string[]).includes(extension)) {
+    const supportedExts = fileFormat.exts.join(", ");
+    return new Err({
+      message:
+        `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
+        `Supported extensions: ${supportedExts}.`,
+      tracked: false,
+    });
+  }
+  return new Ok(undefined);
+}
+
 export async function createClientExecutableFile(
   auth: Authenticator,
   {
@@ -119,28 +152,9 @@ export async function createClientExecutableFile(
       });
     }
 
-    // Validate that the file extension matches the MIME type.
-    const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
-    const fileNameParts = fileName.split(".");
-    if (fileNameParts.length < 2) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message:
-          `File name must include a valid extension. Supported extensions for ` +
-          `${mimeType}: ${supportedExts}.`,
-        tracked: false,
-      });
-    }
-
-    const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-    if (!(fileFormat.exts as string[]).includes(extension)) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message:
-          `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
-          `Supported extensions: ${supportedExts}.`,
-        tracked: false,
-      });
+    const fileNameValidationResult = validateFileTitle({ fileName, mimeType });
+    if (fileNameValidationResult.isErr()) {
+      return fileNameValidationResult;
     }
 
     // Create the file resource.
@@ -282,23 +296,12 @@ export async function renameClientExecutableFile(
   }
 
   try {
-    const fileFormat = CONTENT_CREATION_FILE_FORMATS[fileResource.contentType];
-    const fileNameParts = newFileName.split(".");
-    if (fileNameParts.length < 2) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message: `File name must include a valid extension. Supported extensions for ${fileResource.contentType}: ${supportedExts}.`,
-        tracked: false,
-      });
-    }
-
-    const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-    if (!(fileFormat.exts as string[]).includes(extension)) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message: `File extension ${extension} is not supported for MIME type ${fileResource.contentType}. Supported extensions: ${supportedExts}.`,
-        tracked: false,
-      });
+    const fileNameValidationResult = validateFileTitle({
+      fileName: newFileName,
+      mimeType: fileResource.contentType,
+    });
+    if (fileNameValidationResult.isErr()) {
+      return fileNameValidationResult;
     }
 
     await fileResource.update({ fileName: newFileName });
