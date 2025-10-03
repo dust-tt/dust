@@ -1,4 +1,5 @@
 import {
+  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,7 @@ import {
   LightModeIcon,
   MoonIcon,
   Page,
+  PencilSquareIcon,
   Spinner,
   SunIcon,
   Tooltip,
@@ -200,27 +202,22 @@ export function AccountSettings({
       />
 
       <Page.Horizontal>
-        <Label>Email</Label>
-        <Label className="text-muted-foreground dark:text-muted-foreground-night">
-          {user?.email}
-        </Label>
-      </Page.Horizontal>
-
-      <Page.Horizontal>
-        <Label>Profile Picture</Label>
-        <div className="flex items-center gap-4">
-          <img
-            src={currentImageUrl}
-            alt="Profile"
-            className="h-16 w-16 rounded-full object-cover"
-          />
-          <Button
-            label={isUploadingImage ? "Uploading..." : "Change Picture"}
-            variant="secondary"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploadingImage}
-            loading={isUploadingImage}
-          />
+        <div className="flex w-full items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="group relative">
+              <Avatar size="lg" visual={currentImageUrl ?? null} />
+              <Button
+                variant="outline"
+                size="sm"
+                icon={PencilSquareIcon}
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+                disabled={isUploadingImage}
+                loading={isUploadingImage}
+              />
+            </div>
+          </div>
         </div>
       </Page.Horizontal>
 
@@ -242,6 +239,15 @@ export function AccountSettings({
                 fieldName: "lastName",
               })}
             </Page.Vertical>
+          </Page.Horizontal>
+
+          <Page.Horizontal>
+            <div className="flex gap-2">
+              <Label>Email</Label>
+              <Label className="text-muted-foreground dark:text-muted-foreground-night">
+                {user?.email}
+              </Label>
+            </div>
           </Page.Horizontal>
 
           <Page.Horizontal sizing="grow">
@@ -340,25 +346,23 @@ export function AccountSettings({
         </Page.Vertical>
       </form>
 
-      <div className="sticky bottom-0 z-20 w-full border-t border-border bg-background px-4 py-3 dark:border-border-night dark:bg-background-night">
-        <Page.Horizontal align="right">
-          <Button
-            label="Cancel"
-            variant="ghost"
-            onClick={handleCancel}
-            type="button"
-            disabled={!formState.isDirty || formState.isSubmitting}
-          />
-          <Button
-            label="Save"
-            variant="primary"
-            type="submit"
-            form="account-settings-form"
-            disabled={!formState.isDirty || formState.isSubmitting}
-            loading={formState.isSubmitting}
-          />
-        </Page.Horizontal>
-      </div>
+      <Page.Horizontal align="right">
+        <Button
+          label="Cancel"
+          variant="ghost"
+          onClick={handleCancel}
+          type="button"
+          disabled={!formState.isDirty || formState.isSubmitting}
+        />
+        <Button
+          label="Save"
+          variant="primary"
+          type="submit"
+          form="account-settings-form"
+          disabled={!formState.isDirty || formState.isSubmitting}
+          loading={formState.isSubmitting}
+        />
+      </Page.Horizontal>
     </>
   );
 }

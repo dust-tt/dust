@@ -71,8 +71,6 @@ export default function ProfilePage({
 
             <Separator />
 
-            {/* Preferences moved into AccountSettings form */}
-
             <Page.SectionHeader
               title={
                 hasFeature("hootl_subscriptions") ? "Tools & Triggers" : "Tools"
