@@ -3,10 +3,7 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type {
-  WebhookSourceSecretLocation,
-  WebhookSourceSignatureAlgorithm,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceSignatureAlgorithm } from "@app/types/triggers/webhooks";
 
 export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> {
   declare createdAt: CreationOptional<Date>;
@@ -15,7 +12,6 @@ export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> 
   declare name: string;
 
   declare secret: string | null;
-  declare secretLocation: WebhookSourceSecretLocation | null;
   declare signatureHeader: string | null;
   declare signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
 
@@ -40,10 +36,6 @@ WebhookSourceModel.init(
     },
     secret: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    secretLocation: {
-      type: DataTypes.STRING,
       allowNull: true,
     },
     signatureHeader: {
