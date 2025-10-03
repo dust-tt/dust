@@ -138,13 +138,8 @@ const _webhookFirecrawlAPIHandler = async (
               },
               "[Firecrawl] Page crawled with no scrapeId"
             );
-            // Interrupt and refuse the webhook.
-            return res.status(400).json({
-              error: {
-                type: "invalid_request_error",
-                message: "Page metadata missing scrapeId",
-              },
-            });
+            // We ignore the webhook to avoid retries from Firecrawl.
+            return res.status(200);
           }
 
           const launchRes = await launchFirecrawlCrawlPageWorkflow(
