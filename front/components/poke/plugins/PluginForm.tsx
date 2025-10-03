@@ -1,7 +1,7 @@
 import { Button, Checkbox } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useForm } from "react-hook-form";
 
@@ -98,6 +98,14 @@ export function PluginForm({
     defaultValues,
   });
 
+  // Watch for action changes to clear members field
+  const actionValue = form.watch("action");
+  useEffect(() => {
+    if (manifest?.id === "edit-editors") {
+      form.setValue("members", []);
+    }
+  }, [actionValue, form, manifest?.id]);
+
   async function handleSubmit(values: FormValues<typeof argsCodec>) {
     // Lock the form to prevent multiple submissions.
     setIsSubmitted(true);
@@ -123,6 +131,25 @@ export function PluginForm({
               arg.async && asyncArgs?.[key]
                 ? (asyncArgs[key] as AsyncEnumValues)
                 : arg.values;
+
+            // Special handling for the edit-editors plugin
+            if (
+              key === "members" &&
+              manifest.id === "edit-editors" &&
+              options
+            ) {
+              const actionValue = form.watch("action");
+              const [selectedAction] = actionValue || [];
+
+              if (selectedAction === "add") {
+                // Show only non-editors for adding
+                options = options.filter((option: any) => !option.isEditor);
+              } else if (selectedAction === "remove") {
+                // Show only current editors for removing
+                options = options.filter((option: any) => option.isEditor);
+              }
+            }
+
             defaultValue = options.filter((v) => v.checked).map((v) => v.value);
           }
 
