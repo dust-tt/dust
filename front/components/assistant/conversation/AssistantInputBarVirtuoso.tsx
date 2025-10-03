@@ -4,6 +4,7 @@ import {
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
 import { ArrowBigDownDashIcon } from "lucide-react";
+import { useMemo } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
@@ -32,10 +33,11 @@ export const AssistantInputBarVirtuoso = ({
         m.visibility !== "deleted"
     );
 
-  const agentMentions =
-    !lastUserMessage || !isUserMessage(lastUserMessage)
+  const agentMentions = useMemo(() => {
+    return !lastUserMessage || !isUserMessage(lastUserMessage)
       ? emptyArray<AgentMention>()
       : lastUserMessage.mentions.filter(isAgentMention);
+  }, [lastUserMessage]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisibe = 100;
