@@ -216,7 +216,7 @@ const variantStyles = cva("", {
 });
 
 const labelStyles = cva(
-  "s-font-semibold s-pt-4 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
+  "s-pt-4 s-pb-2 s-heading-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis"
 );
 
 interface NavigationListLabelProps
