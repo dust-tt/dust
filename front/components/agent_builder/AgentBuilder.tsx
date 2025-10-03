@@ -108,7 +108,7 @@ export default function AgentBuilder({
     duplicateAgentId ?? agentConfiguration?.sId ?? null
   );
 
-  const { triggers, isTriggersLoading } = useAgentTriggers({
+  const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
@@ -178,12 +178,14 @@ export default function AgentBuilder({
     return {
       ...baseValues,
       actions: processedActions,
-      triggers: duplicateAgentId
+      triggersToCreate: [],
+      triggersToUpdate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
             editor: user.id,
           }))
         : triggers ?? emptyArray(),
+      triggersToDelete: [],
 
       agentSettings: {
         ...baseValues.agentSettings,
@@ -287,6 +289,9 @@ export default function AgentBuilder({
           type: "success",
         });
       }
+
+      // Mutate triggers to refresh from backend (ensures newly created triggers have sIds)
+      await mutateTriggers();
 
       if (isCreatingNew && createdAgent.sId) {
         const newUrl = `/w/${owner.sId}/builder/agents/${createdAgent.sId}`;
