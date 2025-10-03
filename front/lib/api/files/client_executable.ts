@@ -79,6 +79,39 @@ function validateTailwindCode(code: string): Result<undefined, Error> {
   return new Ok(undefined);
 }
 
+function validateFileTitle({
+  fileName,
+  mimeType,
+}: {
+  fileName: string;
+  mimeType: ContentCreationFileContentType;
+}): Result<undefined, { tracked: boolean; message: string }> {
+  // Validate that the file extension matches the MIME type.
+  const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
+  const fileNameParts = fileName.split(".");
+  if (fileNameParts.length < 2) {
+    const supportedExts = fileFormat.exts.join(", ");
+    return new Err({
+      message:
+        `File name must include a valid extension. Supported extensions for ` +
+        `${mimeType}: ${supportedExts}.`,
+      tracked: false,
+    });
+  }
+
+  const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
+  if (!(fileFormat.exts as string[]).includes(extension)) {
+    const supportedExts = fileFormat.exts.join(", ");
+    return new Err({
+      message:
+        `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
+        `Supported extensions: ${supportedExts}.`,
+      tracked: false,
+    });
+  }
+  return new Ok(undefined);
+}
+
 export async function createClientExecutableFile(
   auth: Authenticator,
   {
@@ -118,28 +151,9 @@ export async function createClientExecutableFile(
       });
     }
 
-    // Validate that the file extension matches the MIME type.
-    const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
-    const fileNameParts = fileName.split(".");
-    if (fileNameParts.length < 2) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message:
-          `File name must include a valid extension. Supported extensions for ` +
-          `${mimeType}: ${supportedExts}.`,
-        tracked: false,
-      });
-    }
-
-    const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-    if (!(fileFormat.exts as string[]).includes(extension)) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message:
-          `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
-          `Supported extensions: ${supportedExts}.`,
-        tracked: false,
-      });
+    const fileNameValidationResult = validateFileTitle({ fileName, mimeType });
+    if (fileNameValidationResult.isErr()) {
+      return fileNameValidationResult;
     }
 
     // Create the file resource.
@@ -254,6 +268,54 @@ export async function editClientExecutableFile(
   await fileResource.uploadContent(auth, updatedContent);
 
   return new Ok({ fileResource, replacementCount: occurrences });
+}
+
+export async function renameClientExecutableFile(
+  auth: Authenticator,
+  {
+    fileId,
+    newFileName,
+    renamedByAgentConfigurationId,
+  }: {
+    fileId: string;
+    newFileName: string;
+    renamedByAgentConfigurationId?: string;
+  }
+): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
+  const fileResource = await FileResource.fetchById(auth, fileId);
+  if (!fileResource) {
+    return new Err({ message: `File not found: ${fileId}`, tracked: true });
+  }
+
+  if (fileResource.contentType !== clientExecutableContentType) {
+    return new Err({
+      message: `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`,
+      tracked: false,
+    });
+  }
+
+  const fileNameValidationResult = validateFileTitle({
+    fileName: newFileName,
+    mimeType: fileResource.contentType,
+  });
+  if (fileNameValidationResult.isErr()) {
+    return fileNameValidationResult;
+  }
+
+  await fileResource.rename(newFileName);
+
+  if (
+    renamedByAgentConfigurationId &&
+    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+      renamedByAgentConfigurationId
+  ) {
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
+    });
+  }
+
+  return new Ok(fileResource);
 }
 
 export async function getClientExecutableFileContent(
