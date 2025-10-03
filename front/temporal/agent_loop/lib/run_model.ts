@@ -562,6 +562,8 @@ export async function runModelActivity(
           case "us-central1":
             region = "us";
             break;
+          default:
+            throw new Error(`Unhandled region: ${currentRegion}`);
         }
 
         const contents = (block.message.contents ?? []).map((content) => {
