@@ -232,7 +232,7 @@ export function ConversationContainerVirtuoso({
     );
   }
 
-  return (
+  const body = (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
       title="Attach files to the conversation"
@@ -298,5 +298,13 @@ export function ConversationContainerVirtuoso({
         code="message_limit"
       />
     </DropzoneContainer>
+  );
+
+  // we wrap the body in a div to avoid a bug with the virtuoso scrolling
+  // when there is no active conversation
+  return activeConversationId ? (
+    body
+  ) : (
+    <div className="h-full overflow-auto">{body}</div>
   );
 }
