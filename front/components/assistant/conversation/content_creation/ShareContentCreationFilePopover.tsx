@@ -14,7 +14,6 @@ import {
   Input,
   Label,
   LinkIcon,
-  LockIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
