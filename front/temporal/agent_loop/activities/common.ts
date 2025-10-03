@@ -13,7 +13,7 @@ import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types";
+import type { AgentMessageType, ConversationWithoutContentType } from "@app/types";
 import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
@@ -59,6 +59,20 @@ async function processEventForDatabase(
       break;
 
     case "agent_generation_cancelled":
+      if (event.partialContent.length > 0) {
+        // Persist partial text content so reload retains it
+        await AgentStepContentResource.createNewVersion({
+          workspaceId: agentMessageRow.workspaceId,
+          agentMessageId: agentMessageRow.id,
+          step,
+          index: 0,
+          type: "text_content",
+          value: {
+            type: "text_content",
+            value: event.partialContent,
+          },
+        });
+      }
       // Store cancellation in database.
       await agentMessageRow.update({
         status: "cancelled",
@@ -252,20 +266,17 @@ export async function finalizeCancellationActivity(
   );
 
   // Flush pending tokens from the content parser, if any.
-  for await (const tokenEvent of contentParser.flushTokens()) {
-    await updateResourceAndPublishEvent(auth, {
-      event: tokenEvent,
-      agentMessageRow,
-      conversation,
-      step,
-    });
-  }
+  await flushParserTokens(auth, {contentParser, agentMessageRow, conversation, step});
+  const partialContent = savePartialContent({agentMessage, contentParser, nativeChainOfThought: ""});
+
+  
   await updateResourceAndPublishEvent(auth, {
     event: {
       type: "agent_generation_cancelled",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
+      partialContent,
     },
     agentMessageRow,
     conversation,
@@ -278,4 +289,44 @@ export async function finalizeCancellationActivity(
     },
     "Agent generation cancelled"
   );
+}
+
+ // Helper function to flush all pending tokens from the content parser
+ export async function flushParserTokens(auth: Authenticator, {contentParser, agentMessageRow, conversation, step}: {contentParser: AgentMessageContentParser, agentMessageRow: AgentMessage, conversation: ConversationWithoutContentType, step: number}): Promise<void> {
+  for await (const tokenEvent of contentParser.flushTokens()) {
+    await updateResourceAndPublishEvent(auth, {
+      event: tokenEvent,
+      agentMessageRow,
+      conversation,
+      step,
+    });
+  }
+}
+
+function savePartialContent({
+  agentMessage,
+  contentParser,
+  nativeChainOfThought,
+}: {
+  agentMessage: AgentMessageType;
+  contentParser: AgentMessageContentParser;
+  nativeChainOfThought: string;
+}) {
+  // Persist partial content so the UI keeps what has been generated so far.
+  const partialContent = contentParser.getContent() ?? "";
+  const partialChainOfThought =
+    (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
+
+  if (partialChainOfThought.length > 0) {
+    if (!agentMessage.chainOfThought) {
+      agentMessage.chainOfThought = "";
+    }
+    agentMessage.chainOfThought += partialChainOfThought;
+  }
+
+  if (partialContent.length > 0) {
+    agentMessage.content = (agentMessage.content ?? "") + partialContent;
+  }
+
+  return partialContent;
 }
