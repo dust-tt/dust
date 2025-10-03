@@ -75,6 +75,7 @@ const createCreateFileAction = (content: string) =>
     },
     augmentedInputs: {
       content,
+      file_name: "TestFile.tsx",
     },
   }) as unknown as AgentMCPActionModel;
 
