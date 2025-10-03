@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -167,28 +167,32 @@ export function AgentMessageVirtuoso({
   });
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
-  const references = Object.entries(
-    agentMessageToRender.citations ?? {}
-  ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
-    if (citation) {
-      const IconComponent = getCitationIcon(
-        citation.provider,
-        isDark,
-        citation.faviconUrl,
-        citation.href
-      );
-      return {
-        ...acc,
-        [key]: {
-          href: citation.href,
-          title: citation.title,
-          description: citation.description,
-          icon: <IconComponent />,
-        },
-      };
-    }
-    return acc;
-  }, {});
+  const references = useMemo(
+    () =>
+      Object.entries(agentMessageToRender.citations ?? {}).reduce<
+        Record<string, MarkdownCitation>
+      >((acc, [key, citation]) => {
+        if (citation) {
+          const IconComponent = getCitationIcon(
+            citation.provider,
+            isDark,
+            citation.faviconUrl,
+            citation.href
+          );
+          return {
+            ...acc,
+            [key]: {
+              href: citation.href,
+              title: citation.title,
+              description: citation.description,
+              icon: <IconComponent />,
+            },
+          };
+        }
+        return acc;
+      }, {}),
+    [agentMessageToRender.citations, isDark]
+  );
 
   // GenerationContext: to know if we are generating or not.
   const generationContext = React.useContext(GenerationContext);
@@ -484,36 +488,45 @@ export function AgentMessageVirtuoso({
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
       name={agentConfiguration.name}
-      buttons={buttons}
+      buttons={buttons.length > 0 ? buttons : undefined}
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
-      renderName={() => (
-        <AgentHandle
-          assistant={{
-            sId: agentConfiguration.sId,
-            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
-          }}
-          canMention={canMention}
-          isDisabled={isArchived}
-        />
+      renderName={useCallback(
+        () => (
+          <AgentHandle
+            assistant={{
+              sId: agentConfiguration.sId,
+              name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+            }}
+            canMention={canMention}
+            isDisabled={isArchived}
+          />
+        ),
+        [
+          agentConfiguration.name,
+          agentConfiguration.sId,
+          canMention,
+          isArchived,
+        ]
       )}
       timestamp={formatTimestring(agentMessageToRender.created)}
       type="agent"
       citations={citations}
     >
       <div>
-        {renderAgentMessage({
-          agentMessage: agentMessageToRender,
-          references: references,
-          streaming: shouldStream,
-          lastTokenClassification:
-            messageStreamState.agentState === "thinking" ? "tokens" : null,
-        })}
+        <AgentMessageContent
+          agentMessage={agentMessageToRender}
+          references={references}
+          streaming={shouldStream}
+          lastTokenClassification={
+            messageStreamState.agentState === "thinking" ? "tokens" : null
+          }
+        />
       </div>
     </ConversationMessage>
   );
 
-  function renderAgentMessage({
+  function AgentMessageContent({
     agentMessage,
     references,
     streaming,
