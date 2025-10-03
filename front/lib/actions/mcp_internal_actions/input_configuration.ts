@@ -24,7 +24,7 @@ import {
   iterateOverSchemaPropertiesRecursive,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
-import type { WorkspaceType } from "@app/types";
+import type { WhitelistableFeature, WorkspaceType } from "@app/types";
 import { assertNever, isString } from "@app/types";
 
 function getDataSourceURI(config: DataSourceConfiguration): string {
@@ -540,7 +540,8 @@ export interface MCPServerToolsConfigurations {
 }
 
 export function getMCPServerToolsConfigurations(
-  mcpServerView: MCPServerViewType | null | undefined
+  mcpServerView: MCPServerViewType | null | undefined,
+  featureFlags?: WhitelistableFeature[]
 ): MCPServerToolsConfigurations {
   if (!mcpServerView) {
     return {
@@ -782,14 +783,20 @@ export function getMCPServerToolsConfigurations(
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
     })
-  ).map(([key, schema]) => ({
-    key,
-    description: schema.description,
-    default: extractSchemaDefault(
-      schema,
-      (v: unknown): v is boolean => typeof v === "boolean"
-    ),
-  }));
+  )
+    .map(([key, schema]) => ({
+      key,
+      description: schema.description,
+      default: extractSchemaDefault(
+        schema,
+        (v: unknown): v is boolean => typeof v === "boolean"
+      ),
+    }))
+    // Exclude useSummary if user doesn't have web_summarization feature flag.
+    .filter(
+      ({ key }) =>
+        key !== "useSummary" || featureFlags?.includes("web_summarization")
+    );
 
   const enumConfigurations: Record<
     string,

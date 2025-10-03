@@ -638,13 +638,13 @@ export function _getDustTaskGlobalAgent(
   {
     settings,
     preFetchedDataSources,
-    webSearchBrowseWithSummaryMCPServerView,
+    webSearchBrowseMCPServerView,
     dataSourcesFileSystemMCPServerView,
     dataWarehousesMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
-    webSearchBrowseWithSummaryMCPServerView: MCPServerViewResource | null;
+    webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
   }
@@ -712,23 +712,22 @@ export function _getDustTaskGlobalAgent(
     actions.push(companyDataAction);
   }
 
-  const summaryAgent = _getBrowserSummaryAgent(auth, { settings });
-
-  if (webSearchBrowseWithSummaryMCPServerView && summaryAgent) {
+  if (webSearchBrowseMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-with-summaryaction",
+      sId: GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-action",
       type: "mcp_server_configuration",
       name: "webtools",
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-      mcpServerViewId: webSearchBrowseWithSummaryMCPServerView.sId,
-      internalMCPServerId:
-        webSearchBrowseWithSummaryMCPServerView.internalMCPServerId,
+      mcpServerViewId: webSearchBrowseMCPServerView.sId,
+      internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
-      childAgentId: summaryAgent.sId,
+      childAgentId: null,
       reasoningModel: null,
-      additionalConfiguration: {},
+      additionalConfiguration: {
+        useSummary: true,
+      },
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,
