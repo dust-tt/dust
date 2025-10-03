@@ -3,7 +3,6 @@ import groupBy from "lodash/groupBy";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
   REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
