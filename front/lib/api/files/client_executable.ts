@@ -295,35 +295,28 @@ export async function renameClientExecutableFile(
     });
   }
 
-  try {
-    const fileNameValidationResult = validateFileTitle({
-      fileName: newFileName,
-      mimeType: fileResource.contentType,
-    });
-    if (fileNameValidationResult.isErr()) {
-      return fileNameValidationResult;
-    }
+  const fileNameValidationResult = validateFileTitle({
+    fileName: newFileName,
+    mimeType: fileResource.contentType,
+  });
+  if (fileNameValidationResult.isErr()) {
+    return fileNameValidationResult;
+  }
 
-    await fileResource.update({ fileName: newFileName });
+  await fileResource.update({ fileName: newFileName });
 
-    if (
-      renamedByAgentConfigurationId &&
-      fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-        renamedByAgentConfigurationId
-    ) {
-      await fileResource.setUseCaseMetadata({
-        ...fileResource.useCaseMetadata,
-        lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
-      });
-    }
-
-    return new Ok(fileResource);
-  } catch (error) {
-    return new Err({
-      message: `Failed to rename file '${fileId}': ${normalizeError(error)}`,
-      tracked: true,
+  if (
+    renamedByAgentConfigurationId &&
+    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+      renamedByAgentConfigurationId
+  ) {
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
     });
   }
+
+  return new Ok(fileResource);
 }
 
 export async function getClientExecutableFileContent(
