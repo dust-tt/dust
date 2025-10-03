@@ -8,6 +8,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, getHeaderFromUserEmail, Ok } from "@app/types";
 
+const MAX_CHARACTERS_TO_SUMMARIZE = 100_000;
+
 export async function summarizeWithAgent({
   auth,
   agentLoopRunContext,
@@ -33,8 +35,7 @@ export async function summarizeWithAgent({
 
   const mainAgent = agentLoopRunContext.agentConfiguration;
   const mainConversation = agentLoopRunContext.conversation;
-  const maxChars = 100_000;
-  const toSummarize = content.slice(0, maxChars);
+  const toSummarize = content.slice(0, MAX_CHARACTERS_TO_SUMMARIZE);
 
   const convRes = await api.createConversation({
     title: `Summary of web page content (main conversation: ${mainConversation.sId})`,

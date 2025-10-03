@@ -152,8 +152,7 @@ const createServer = (
         .default({
           value: false,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-        })
-        .optional(),
+        }),
     },
     withToolLogging(
       auth,
@@ -199,11 +198,12 @@ const createServer = (
             results,
             async (result) => {
               const contentBlocks: CallToolResult["content"] = [];
+              let isSuccess = false;
 
               if (!isBrowseScrapeSuccessResponse(result)) {
                 const errText = `Browse error (${result.status}) for ${result.url}: ${result.error}`;
                 contentBlocks.push({ type: "text", text: errText });
-                return contentBlocks;
+                return { contentBlocks, isSuccess };
               }
 
               const { markdown, title } = result;
@@ -220,8 +220,10 @@ const createServer = (
                   type: "text",
                   text: `Failed to summarize content for ${result.url}: ${snippetRes.error.message}`,
                 });
-                return contentBlocks;
+                return { contentBlocks, isSuccess };
               }
+
+              isSuccess = true;
               const snippet = snippetRes.value.slice(
                 0,
                 MAXED_OUTPUT_FILE_SNIPPET_LENGTH
@@ -266,12 +268,23 @@ const createServer = (
                 });
               }
 
-              return contentBlocks;
+              return { contentBlocks, isSuccess };
             },
             { concurrency: 8 }
           );
 
-          return new Ok(perUrlContents.flat());
+          const hasAnySuccess = perUrlContents.some(
+            (result) => result.isSuccess
+          );
+          if (!hasAnySuccess) {
+            return new Err(
+              new MCPError("All web browsing and summarization attempts failed")
+            );
+          }
+
+          return new Ok(
+            perUrlContents.flatMap((result) => result.contentBlocks)
+          );
         }
 
         const toolContent: CallToolResult["content"] = [];
