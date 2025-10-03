@@ -13,7 +13,7 @@ import {
 import React from "react";
 
 import {
-  AgentMessageContentCreationGeneratedFiles,
+  AgentMessageFrameGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
@@ -126,7 +126,7 @@ function FileGroupSection({
   onFileClick,
   owner,
 }: FileGroupSectionProps) {
-  const isContentCreation = group.contentType === clientExecutableContentType;
+  const isFrame = group.contentType === clientExecutableContentType;
 
   return (
     <div className="space-y-2">
@@ -134,8 +134,8 @@ function FileGroupSection({
         {group.title}
       </div>
       <div>
-        {isContentCreation ? (
-          <AgentMessageContentCreationGeneratedFiles
+        {isFrame ? (
+          <AgentMessageFrameGeneratedFiles
             files={group.files}
             variant="grid"
             onClick={onFileClick}

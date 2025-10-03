@@ -21,11 +21,11 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import {
-  AgentMessageContentCreationGeneratedFiles,
+  AgentMessageFrameGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
+import { useAutoOpenFrame } from "@app/components/assistant/conversation/frame/useAutoOpenFrame";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -75,7 +75,7 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
-  isContentCreationFileContentType,
+  isFrameFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
 } from "@app/types";
@@ -213,8 +213,8 @@ export function AgentMessageVirtuoso({
     }
   }, [agentMessageToRender.status, generationContext, sId, conversationId]);
 
-  // Auto-open content creation drawer when content creation files are available.
-  const { contentCreationFiles } = useAutoOpenContentCreation({
+  // Auto-open frame drawer when frame files are available.
+  const { contentCreationFiles } = useAutoOpenFrame({
     messageStreamState,
     agentMessageToRender,
     isLastMessage,
@@ -576,7 +576,7 @@ export function AgentMessageVirtuoso({
       .filter(
         (file) =>
           !isSupportedImageContentType(file.contentType) &&
-          !isContentCreationFileContentType(file.contentType)
+          !isFrameFileContentType(file.contentType)
       );
 
     return (
@@ -587,7 +587,7 @@ export function AgentMessageVirtuoso({
           actionProgress={messageStreamState.actionProgress}
           owner={owner}
         />
-        <AgentMessageContentCreationGeneratedFiles
+        <AgentMessageFrameGeneratedFiles
           files={contentCreationFiles}
         />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (

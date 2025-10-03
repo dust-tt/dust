@@ -3,19 +3,19 @@ import { useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
 
-interface UseContentCreationSharingToggleProps {
+interface UseFrameSharingToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useContentCreationSharingToggle({
+export function useFrameSharingToggle({
   owner,
-}: UseContentCreationSharingToggleProps) {
+}: UseFrameSharingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
 
   const isEnabled = owner.metadata?.allowContentCreationFileSharing !== false;
 
-  const doToggleContentCreationSharing = async () => {
+  const doToggleFrameSharing = async () => {
     setIsChanging(true);
     try {
       const res = await fetch(`/api/w/${owner.sId}`, {
@@ -29,16 +29,16 @@ export function useContentCreationSharingToggle({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update Content Creation sharing setting");
+        throw new Error("Failed to update Frame sharing setting");
       }
 
       window.location.reload();
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update Content Creation sharing setting",
+        title: "Failed to update Frame sharing setting",
         description:
-          "Could not update the Content Creation file sharing setting.",
+          "Could not update the Frame file sharing setting.",
       });
       setIsChanging(false);
     }
@@ -47,6 +47,6 @@ export function useContentCreationSharingToggle({
   return {
     isEnabled,
     isChanging,
-    doToggleContentCreationSharing,
+    doToggleFrameSharing,
   };
 }

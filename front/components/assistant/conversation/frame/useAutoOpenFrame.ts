@@ -1,10 +1,10 @@
 import React from "react";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { isContentCreationFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isFrameFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType } from "@app/types";
-import { isContentCreationFileContentType, removeNulls } from "@app/types";
+import { isFrameFileContentType, removeNulls } from "@app/types";
 
 interface UseAutoOpenContentCreationProps {
   agentMessageToRender: LightAgentMessageType;
@@ -13,14 +13,14 @@ interface UseAutoOpenContentCreationProps {
 }
 
 /**
- * Custom hook to automatically open content creation drawer based on agent message state.
- * Also returns the content creation files that were generated in the agent message.
+ * Custom hook to automatically open frame drawer based on agent message state.
+ * Also returns the frame files that were generated in the agent message.
  *
  * Logic:
  * - Progress notifications (real-time): Always open drawer with updatedAt timestamp.
  * - Generated files (completed): Only open drawer on last message, skip updatedAt.
  */
-export function useAutoOpenContentCreation({
+export function useAutoOpenFrame({
   agentMessageToRender,
   isLastMessage,
   messageStreamState,
@@ -42,14 +42,14 @@ export function useAutoOpenContentCreation({
   // allowing generated→progress refreshes (when file is updated with new timestamp).
   const lastOpenedFileIdRef = React.useRef<string | null>(null);
 
-  // Get content creation files from progress notifications.
+  // Get frame files from progress notifications.
   const contentCreationFilesFromProgress = React.useMemo(
     () =>
       removeNulls(
         Array.from(messageStreamState.actionProgress.entries()).map(
           ([, progress]) => {
             const output = progress.progress?.data.output;
-            if (isContentCreationFileContentOutput(output)) {
+            if (isFrameFileContentOutput(output)) {
               return output;
             }
             return null;
@@ -59,11 +59,11 @@ export function useAutoOpenContentCreation({
     [messageStreamState.actionProgress]
   );
 
-  // Get completed content creation files from generatedFiles.
+  // Get completed frame files from generatedFiles.
   const completedContentCreationFiles = React.useMemo(
     () =>
       agentMessageToRender.generatedFiles.filter((file) =>
-        isContentCreationFileContentType(file.contentType)
+        isFrameFileContentType(file.contentType)
       ),
     [agentMessageToRender.generatedFiles]
   );

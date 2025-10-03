@@ -18,10 +18,10 @@ import {
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
-import type { ContentCreationFileContentType } from "@app/types";
+import type { FrameFileContentType } from "@app/types";
 import {
   clientExecutableContentType,
-  CONTENT_CREATION_FILE_FORMATS,
+  FRAME_FILE_FORMATS,
   Err,
   Ok,
 } from "@app/types";
@@ -53,8 +53,8 @@ const createServer = (
         ),
       mime_type: z
         .enum(
-          Object.keys(CONTENT_CREATION_FILE_FORMATS) as [
-            ContentCreationFileContentType,
+          Object.keys(FRAME_FILE_FORMATS) as [
+            FrameFileContentType,
           ]
         )
         .describe(

@@ -3,7 +3,7 @@ import { cn } from "@dust-tt/sparkle";
 import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 
-interface PublicContentCreationHeaderProps {
+interface PublicFrameHeaderProps {
   title: string;
 }
 
@@ -12,9 +12,9 @@ interface PublicContentCreationHeaderProps {
 // To make it perfectly centered, we need to set the same flex basis for both the right and left
 // elements.
 // TODO(CONTENT_CREATION 2025-08-27): optimize the header for mobile views once we have buttons.
-export function PublicContentCreationHeader({
+export function PublicFrameHeader({
   title,
-}: PublicContentCreationHeaderProps) {
+}: PublicFrameHeaderProps) {
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">

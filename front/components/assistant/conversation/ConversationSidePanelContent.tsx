@@ -1,5 +1,5 @@
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
-import { ContentCreationContainer } from "@app/components/assistant/conversation/content_creation/ContentCreationContainer";
+import { FrameContainer } from "@app/components/assistant/conversation/frame/FrameContainer";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -27,7 +27,7 @@ export default function ConversationSidePanelContent({
 
     case CONTENT_CREATION_SIDE_PANEL_TYPE:
       return (
-        <ContentCreationContainer conversation={conversation} owner={owner} />
+        <FrameContainer conversation={conversation} owner={owner} />
       );
 
     default:

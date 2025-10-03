@@ -14,7 +14,7 @@ import {
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
-import { CONTENT_CREATION_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/instructions";
+import { FRAME_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/frame/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import { DUST_DEEP_DESCRIPTION } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
@@ -85,7 +85,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
-  "content_creation",
+  "frame",
   "slideshow",
   "jira",
   "missing_action_catcher",
@@ -737,7 +737,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: JIRA_SERVER_INSTRUCTIONS,
     },
   },
-  content_creation: {
+  frame: {
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
@@ -749,14 +749,14 @@ The directive should be used to display a clickable version of the agent name in
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "content_creation",
+      name: "frame",
       version: "1.0.0",
       description:
         "Create dashboards, presentations, or any interactive content.",
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
-      instructions: CONTENT_CREATION_INSTRUCTIONS,
+      instructions: FRAME_INSTRUCTIONS,
     },
   },
   outlook: {

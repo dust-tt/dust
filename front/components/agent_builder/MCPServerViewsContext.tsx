@@ -103,10 +103,10 @@ function getGroupedMCPServerViews({
       // Special handling for content_creation server:
       // The content_creation server includes list and cat tools for convenience, but its primary purpose is
       // not data source operations. We don't want it to be classified as requiring knowledge.
-      const isContentCreationServer = view.server.name === "content_creation";
+      const isFrameServer = view.server.name === "content_creation";
 
       const isWithKnowledge =
-        !isContentCreationServer &&
+        !isFrameServer &&
         (toolsConfigurations.dataSourceConfiguration ??
           toolsConfigurations.dataWarehouseConfiguration ??
           toolsConfigurations.tableConfiguration ??

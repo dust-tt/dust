@@ -37,7 +37,7 @@ import type {
 import {
   ALL_FILE_FORMATS,
   Err,
-  isContentCreationFileContentType,
+  isFrameFileContentType,
   normalizeError,
   Ok,
   removeNulls,
@@ -310,7 +310,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     // For Content Creation conversation files, automatically create a ShareableFileModel with
     // default conversation_participants scope.
-    if (this.isContentCreation) {
+    if (this.isFrame) {
       await ShareableFileModel.upsert({
         fileId: this.id,
         shareScope: "conversation_participants",
@@ -340,10 +340,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.updatedAt.getTime();
   }
 
-  get isContentCreation(): boolean {
+  get isFrame(): boolean {
     return (
       this.useCase === "conversation" &&
-      isContentCreationFileContentType(this.contentType)
+      isFrameFileContentType(this.contentType)
     );
   }
 
@@ -534,9 +534,9 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     scope: FileShareScope
   ): Promise<void> {
-    // Only Content Creation files can be shared.
-    if (!this.isContentCreation) {
-      throw new Error("Only Content Creation files can be shared");
+    // Only Frame files can be shared.
+    if (!this.isFrame) {
+      throw new Error("Only Frame files can be shared");
     }
 
     const user = auth.getNonNullableUser();
@@ -563,7 +563,7 @@ export class FileResource extends BaseResource<FileModel> {
     sharedAt: Date;
     shareUrl: string;
   } | null> {
-    if (!this.isContentCreation) {
+    if (!this.isFrame) {
       return null;
     }
 

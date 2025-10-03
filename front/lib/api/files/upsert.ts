@@ -35,7 +35,7 @@ import { isSupportedAudioContentType } from "@app/types";
 import {
   assertNever,
   Err,
-  isContentCreationFileContentType,
+  isFrameFileContentType,
   isSupportedImageContentType,
   Ok,
   slugify,
@@ -421,8 +421,8 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Content Creation files should not be processed.
-  if (isContentCreationFileContentType(contentType)) {
+  // Frame files should not be processed.
+  if (isFrameFileContentType(contentType)) {
     return undefined;
   }
 

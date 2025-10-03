@@ -441,7 +441,7 @@ export function _getDustDeepGlobalAgent(
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    contentCreationMCPServerView,
+    frameMCPServerView,
     runAgentMCPServerView,
     dataWarehousesMCPServerView,
     toolsetsMCPServerView,
@@ -451,7 +451,7 @@ export function _getDustDeepGlobalAgent(
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    contentCreationMCPServerView: MCPServerViewResource | null;
+    frameMCPServerView: MCPServerViewResource | null;
     runAgentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
@@ -536,15 +536,15 @@ export function _getDustDeepGlobalAgent(
   }
 
   // Add Content Creation tool.
-  if (contentCreationMCPServerView) {
+  if (frameMCPServerView) {
     actions.push({
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-content-creation",
       type: "mcp_server_configuration",
       name: "content_creation" satisfies InternalMCPServerNameType,
-      description: "Create & update Content Creation files.",
-      mcpServerViewId: contentCreationMCPServerView.sId,
-      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
+      description: "Create & update Frame files.",
+      mcpServerViewId: frameMCPServerView.sId,
+      internalMCPServerId: frameMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
