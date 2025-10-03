@@ -91,6 +91,12 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
     textContent += "\n";
   }
 
+  if (node.type === "pastedAttachment") {
+    const title = node.attrs?.title ?? "";
+    const fileId = node.attrs?.fileId ?? "";
+    textContent += `:pasted_attachment[${title}]{fileId=${fileId}}`;
+  }
+
   // If the node has content, recursively get text and mentions from each child node
   if (node.content) {
     node.content.forEach((childNode) => {

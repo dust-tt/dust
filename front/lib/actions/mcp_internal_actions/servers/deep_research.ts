@@ -65,6 +65,7 @@ const createServer = (
           },
           childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
           mainAgent: agentConfiguration,
+          originMessage: agentLoopContext.runContext.agentMessage,
           mainConversation: conversation,
           query,
           toolsetsToAdd: null,

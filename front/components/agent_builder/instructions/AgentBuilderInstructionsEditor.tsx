@@ -28,6 +28,8 @@ import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
+export const BLUR_EVENT_NAME = "agent:instructions:blur";
+
 const editorVariants = cva(
   [
     "overflow-auto border rounded-xl p-2 resize-y min-h-60 max-h-[1024px]",
@@ -142,6 +144,10 @@ export function AgentBuilderInstructionsEditor({
         if (transaction.docChanged) {
           debouncedUpdate(editor);
         }
+      },
+      onBlur: () => {
+        window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
+        return false;
       },
     },
     [extensions]

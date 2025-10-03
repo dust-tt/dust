@@ -1,7 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  ADVANCED_SEARCH_SWITCH,
+  AGENT_MEMORY_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
@@ -143,7 +146,7 @@ export async function getInternalMCPServer(
     case "gmail":
       return gmailServer();
     case "google_calendar":
-      return calendarServer();
+      return calendarServer(agentLoopContext);
     case "google_drive":
       return driveServer();
     case "google_sheets":
@@ -160,7 +163,7 @@ export async function getInternalMCPServer(
       return slackServer(auth, mcpServerId, agentLoopContext);
     case "slack_bot":
       return slackBotServer(auth, mcpServerId, agentLoopContext);
-    case "agent_memory":
+    case AGENT_MEMORY_SERVER_NAME:
       return agentMemoryServer(auth, agentLoopContext);
     case "confluence":
       return confluenceServer();

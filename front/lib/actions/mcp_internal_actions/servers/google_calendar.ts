@@ -9,9 +9,84 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const createServer = (): McpServer => {
+interface GoogleCalendarEventDateTime {
+  date?: string;
+  dateTime?: string;
+  timeZone?: string;
+}
+
+interface EnrichedGoogleCalendarEventDateTime
+  extends GoogleCalendarEventDateTime {
+  eventDayOfWeek?: string;
+  isAllDay?: boolean;
+}
+
+interface GoogleCalendarEvent {
+  kind?: string;
+  etag?: string;
+  id?: string;
+  status?: string;
+  htmlLink?: string;
+  created?: string;
+  updated?: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  colorId?: string;
+  start?: GoogleCalendarEventDateTime;
+  end?: GoogleCalendarEventDateTime;
+  endTimeUnspecified?: boolean;
+  recurrence?: string[];
+  recurringEventId?: string;
+  originalStartTime?: GoogleCalendarEventDateTime;
+  transparency?: string;
+  visibility?: string;
+  iCalUID?: string;
+  sequence?: number;
+  attendees?: Array<{
+    id?: string;
+    email?: string;
+    displayName?: string;
+    organizer?: boolean;
+    self?: boolean;
+    resource?: boolean;
+    optional?: boolean;
+    responseStatus?: string;
+    comment?: string;
+    additionalGuests?: number;
+  }>;
+  attendeesOmitted?: boolean;
+  hangoutLink?: string;
+  anyoneCanAddSelf?: boolean;
+  guestsCanInviteOthers?: boolean;
+  guestsCanModify?: boolean;
+  guestsCanSeeOtherGuests?: boolean;
+  privateCopy?: boolean;
+  locked?: boolean;
+  reminders?: {
+    useDefault?: boolean;
+    overrides?: Array<{
+      method?: string;
+      minutes?: number;
+    }>;
+  };
+  source?: {
+    url?: string;
+    title?: string;
+  };
+  eventType?: string;
+}
+
+interface EnrichedGoogleCalendarEvent
+  extends Omit<GoogleCalendarEvent, "start" | "end"> {
+  start?: EnrichedGoogleCalendarEventDateTime;
+  end?: EnrichedGoogleCalendarEventDateTime;
+}
+
+const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   const server = makeInternalMCPServer("google_calendar");
 
   async function getCalendarClient(authInfo?: AuthInfo) {
@@ -106,10 +181,41 @@ const createServer = (): McpServer => {
           timeMax,
           maxResults: maxResults ? Math.min(maxResults, 2500) : undefined,
           pageToken,
+          singleEvents: true,
         });
+
+        const userTimezone = getUserTimezone();
+
+        // Return only essential event fields for context efficiency
+        const enrichedData = {
+          ...res.data,
+          items: res.data.items
+            ? res.data.items.map((event) => {
+                const enriched = isGoogleCalendarEvent(event)
+                  ? enrichEventWithDayOfWeek(event, userTimezone)
+                  : event;
+                return {
+                  id: enriched.id,
+                  summary: enriched.summary,
+                  description: enriched.description,
+                  location: enriched.location,
+                  start: enriched.start,
+                  end: enriched.end,
+                  attendees: enriched.attendees?.map((a) => ({
+                    email: a.email,
+                    displayName: a.displayName,
+                    responseStatus: a.responseStatus,
+                  })),
+                  htmlLink: enriched.htmlLink,
+                  status: enriched.status,
+                };
+              })
+            : undefined,
+        };
+
         return makeMCPToolJSONSuccess({
           message: "Events listed successfully",
-          result: res.data,
+          result: enrichedData,
         });
       } catch (err) {
         return makeMCPToolTextError(
@@ -141,9 +247,15 @@ const createServer = (): McpServer => {
           calendarId,
           eventId,
         });
+
+        const userTimezone = getUserTimezone();
+        const enrichedEvent = isGoogleCalendarEvent(res.data)
+          ? enrichEventWithDayOfWeek(res.data, userTimezone)
+          : res.data;
+
         return makeMCPToolJSONSuccess({
           message: "Event fetched successfully",
-          result: res.data,
+          result: enrichedEvent,
         });
       } catch (err) {
         return makeMCPToolTextError(
@@ -223,9 +335,15 @@ const createServer = (): McpServer => {
           calendarId,
           requestBody: event,
         });
+
+        const userTimezone = getUserTimezone();
+        const enrichedEvent = isGoogleCalendarEvent(res.data)
+          ? enrichEventWithDayOfWeek(res.data, userTimezone)
+          : res.data;
+
         return makeMCPToolJSONSuccess({
           message: "Event created successfully",
-          result: res.data,
+          result: enrichedEvent,
         });
       } catch (err) {
         return makeMCPToolTextError(
@@ -317,9 +435,15 @@ const createServer = (): McpServer => {
           eventId,
           requestBody: event,
         });
+
+        const userTimezone = getUserTimezone();
+        const enrichedEvent = isGoogleCalendarEvent(res.data)
+          ? enrichEventWithDayOfWeek(res.data, userTimezone)
+          : res.data;
+
         return makeMCPToolJSONSuccess({
           message: "Event updated successfully",
-          result: res.data,
+          result: enrichedEvent,
         });
       } catch (err) {
         return makeMCPToolTextError(
@@ -421,7 +545,96 @@ const createServer = (): McpServer => {
     }
   );
 
+  function getUserTimezone(): string | null {
+    const content = agentLoopContext?.runContext?.conversation?.content;
+    if (!content) {
+      return null;
+    }
+
+    // Find the latest user message to get the timezone
+    for (let i = content.length - 1; i >= 0; i--) {
+      const contentBlock = content[i];
+      if (Array.isArray(contentBlock)) {
+        const userMessage = contentBlock.find(
+          (msg) =>
+            msg.type === "user_message" &&
+            "context" in msg &&
+            msg.context &&
+            "timezone" in msg.context
+        );
+        if (
+          userMessage &&
+          "context" in userMessage &&
+          userMessage.context &&
+          "timezone" in userMessage.context
+        ) {
+          return userMessage.context.timezone;
+        }
+      }
+    }
+
+    return null;
+  }
+
   return server;
 };
+
+// Type guard to safely convert googleapis event to our interface
+function isGoogleCalendarEvent(event: any): event is GoogleCalendarEvent {
+  return event && typeof event === "object";
+}
+
+function enrichEventWithDayOfWeek(
+  event: GoogleCalendarEvent,
+  userTimezone: string | null
+): EnrichedGoogleCalendarEvent {
+  const enrichedEvent: EnrichedGoogleCalendarEvent = { ...event };
+
+  if (event.start?.dateTime) {
+    const startDate = new Date(event.start.dateTime);
+    enrichedEvent.start = {
+      ...event.start,
+      eventDayOfWeek: startDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        timeZone: userTimezone ?? undefined,
+      }),
+      isAllDay: false,
+    };
+  } else if (event.start?.date) {
+    // Handle all-day events, intentionally timeZone agnostic
+    const startDate = new Date(event.start.date);
+    enrichedEvent.start = {
+      ...event.start,
+      eventDayOfWeek: startDate.toLocaleDateString("en-US", {
+        weekday: "long",
+      }),
+      isAllDay: true,
+    };
+  }
+
+  if (event.end?.dateTime) {
+    const endDate = new Date(event.end.dateTime);
+    enrichedEvent.end = {
+      ...event.end,
+      eventDayOfWeek: endDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        timeZone: userTimezone ?? undefined,
+      }),
+      isAllDay: false,
+    };
+  } else if (event.end?.date) {
+    // Handle all-day events, intentionally timeZone agnostic
+    const endDate = new Date(event.end.date);
+    enrichedEvent.end = {
+      ...event.end,
+      eventDayOfWeek: endDate.toLocaleDateString("en-US", {
+        weekday: "long",
+      }),
+      isAllDay: true,
+    };
+  }
+
+  return enrichedEvent;
+}
 
 export default createServer;

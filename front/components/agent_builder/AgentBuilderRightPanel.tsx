@@ -48,7 +48,6 @@ function PanelHeader({
                   variant="ghost-secondary"
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
-                  className="ml-4"
                 />
                 <TabsTrigger
                   value="testing"

@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
+import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
@@ -73,6 +74,10 @@ function AgentActionsPanelContent({
     fullAgentMessage?.type === "agent_message"
       ? fullAgentMessage.parsedContents
       : {};
+
+  const nbSteps = Object.entries(steps || {}).filter(
+    ([, entries]) => Array.isArray(entries) && entries.length > 0
+  ).length;
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Track whether the user is currently scrolled to the bottom of the panel
@@ -166,15 +171,6 @@ function AgentActionsPanelContent({
         onScroll={handleScroll}
       >
         <div className="flex h-full flex-col gap-4">
-          {!shouldStream &&
-            agentMessageToRender.actions.length === 0 &&
-            !agentMessageToRender.chainOfThought && (
-              <div className="flex h-full items-center justify-center">
-                <span className="text-sm text-muted-foreground">
-                  There's no step to display for this message.
-                </span>
-              </div>
-            )}
           {/* Render all parsed steps in order */}
           {Object.entries(steps || {})
             .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
@@ -233,6 +229,12 @@ function AgentActionsPanelContent({
                 showSeparator={currentStreamingStep > 1}
               />
             )}
+          {!shouldStream && (
+            <AgentActionSummary
+              agentMessageToRender={agentMessageToRender}
+              nbSteps={nbSteps}
+            />
+          )}
           <div>&nbsp;</div>
         </div>
       </div>

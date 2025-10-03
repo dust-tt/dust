@@ -50,6 +50,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "o4-mini"
   | "claude-4-opus-20250514"
   | "claude-4-sonnet-20250514"
+  | "claude-sonnet-4-5-20250929"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
@@ -682,6 +683,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_openai_eu_key"
   | "xai_feature"
   | "simple_audio_transcription"
+  | "virtualized_conversations"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -924,6 +926,7 @@ const UserMessageContextSchema = z.object({
   email: z.string().optional().nullable(),
   profilePictureUrl: z.string().optional().nullable(),
   origin: UserMessageOriginSchema,
+  originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
   lastTriggerRunAt: z.date().optional().nullable(),
@@ -1931,7 +1934,7 @@ export type PublicPostMessagesRequestBody = z.infer<
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
-  agentMessages?: AgentMessagePublicType[];
+  agentMessages: AgentMessagePublicType[];
 };
 
 export const PublicPostEditMessagesRequestBodySchema = z.object({

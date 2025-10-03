@@ -23,7 +23,6 @@ import type {
   MCPFormData,
   MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { MCPServerSelectionPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import { MCPServerViewsFooter } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsFooter";
@@ -75,6 +74,8 @@ import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
@@ -83,7 +84,7 @@ import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
   "image_generation",
-  "agent_memory",
+  AGENT_MEMORY_SERVER_NAME,
   "deep_research",
   "content_creation",
   "slack",
@@ -94,7 +95,7 @@ const TOP_MCP_SERVER_VIEWS = [
 export type SelectedTool =
   | {
       type: "MCP";
-      view: MCPServerViewType;
+      view: MCPServerViewTypeWithLabel;
       configuredAction?: AgentBuilderAction;
     }
   | { type: "DATA_VISUALIZATION" };
@@ -104,7 +105,7 @@ export type SheetMode =
   | {
       type: "configure";
       action: AgentBuilderAction;
-      mcpServerView: MCPServerViewType;
+      mcpServerView: MCPServerViewTypeWithLabel;
     }
   | { type: "edit"; action: AgentBuilderAction; index: number }
   | {
@@ -155,6 +156,7 @@ export function MCPServerViewsSheet({
   const { reasoningModels } = useModels({ owner });
   const {
     mcpServerViews: allMcpServerViews,
+    mcpServerViewsWithKnowledge,
     mcpServerViewsWithoutKnowledge,
     isMCPServerViewsLoading,
   } = useMCPServerViewsContext();
@@ -173,7 +175,7 @@ export function MCPServerViewsSheet({
     useState<AgentBuilderAction | null>(getInitialConfigurationTool(mode));
 
   const [configurationMCPServerView, setConfigurationMCPServerView] =
-    useState<MCPServerViewType | null>(null);
+    useState<MCPServerViewTypeWithLabel | null>(null);
   const [infoMCPServerView, setInfoMCPServerView] =
     useState<MCPServerViewType | null>(null);
 
@@ -283,11 +285,12 @@ export function MCPServerViewsSheet({
       setSelectedToolsInSheet([]);
 
       const action = mode.action;
-      if (
-        isMCPActionWithConfiguration(action) &&
-        allMcpServerViews.length > 0
-      ) {
-        const mcpServerView = allMcpServerViews.find(
+      if (isMCPActionWithConfiguration(action)) {
+        const labeledViews: MCPServerViewTypeWithLabel[] = [
+          ...mcpServerViewsWithKnowledge,
+          ...mcpServerViewsWithoutKnowledge,
+        ];
+        const mcpServerView = labeledViews.find(
           (view) => view.sId === action.configuration.mcpServerViewId
         );
         if (mcpServerView) {
@@ -324,7 +327,12 @@ export function MCPServerViewsSheet({
       setSearchTerm("");
     }
     setIsOpen(!!mode);
-  }, [mode, allMcpServerViews]);
+  }, [
+    mode,
+    allMcpServerViews,
+    mcpServerViewsWithKnowledge,
+    mcpServerViewsWithoutKnowledge,
+  ]);
 
   // Focus SearchInput when opening on TOOL_SELECTION page
   useEffect(() => {
@@ -379,7 +387,7 @@ export function MCPServerViewsSheet({
     }
   }, [dataVisualization, toggleToolSelection]);
 
-  function onClickMCPServer(mcpServerView: MCPServerViewType) {
+  function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
     const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
 
@@ -605,10 +613,11 @@ export function MCPServerViewsSheet({
     },
     {
       id: TOOLS_SHEET_PAGE_IDS.CONFIGURATION,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      title: mcpServerView?.name || "Configure Tool",
+      title: `Configure ${mcpServerView?.label ?? "tool"}`,
       description: "",
-      icon: undefined,
+      icon: mcpServerView
+        ? () => getAvatar(mcpServerView.server, "md")
+        : undefined,
       content:
         configurationTool &&
         mcpServerView &&
@@ -617,11 +626,6 @@ export function MCPServerViewsSheet({
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
-                <MCPActionHeader
-                  action={configurationTool}
-                  mcpServerView={mcpServerView}
-                />
-
                 {configurationTool.configurable && (
                   <NameSection
                     title="Name"

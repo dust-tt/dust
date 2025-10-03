@@ -4,7 +4,6 @@ import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
 import { ioTsEnum } from "../shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "../shared/utils/time_frame";
-import { AssistantCreativityLevelCodec } from "./builder";
 
 // TAGS
 
@@ -170,7 +169,6 @@ export const CreateTemplateFormSchema = t.type({
   presetActions: TemplateActionsPreset,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModelId: t.string,
-  presetTemperature: AssistantCreativityLevelCodec,
   tags: nonEmptyArray(TemplateTagCodeTypeCodec),
   visibility: TemplateVisibilityCodec,
 });

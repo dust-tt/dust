@@ -9,9 +9,10 @@ import type { CellContext } from "@tanstack/react-table";
 import Link from "next/link";
 import React, { useState } from "react";
 
+import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
 import type { TemplateTagCodeType, TemplateVisibility } from "@app/types";
-import { TEMPLATES_TAGS_CONFIG } from "@app/types";
+import { isDevelopment, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export interface TemplatesDisplayType {
   id: string;
@@ -23,7 +24,9 @@ export interface TemplatesDisplayType {
 
 type Info = CellContext<TemplatesDisplayType, unknown>;
 
-function prepareTemplatesForDisplay(templates: any[]): TemplatesDisplayType[] {
+function prepareTemplatesForDisplay(
+  templates: FetchAssistantTemplatesResponse["templates"]
+): TemplatesDisplayType[] {
   return templates.map((t) => ({
     id: t.sId,
     name: t.handle,
@@ -39,14 +42,12 @@ export function makeColumnsForTemplates() {
       cell: (info: Info) => {
         const id: string = info.row.getValue("id");
         return (
-          <>
-            <Link
-              className="font-bold hover:underline"
-              href={`/poke/templates/${id}`}
-            >
-              {id}
-            </Link>
-          </>
+          <Link
+            className="font-bold hover:underline"
+            href={`/poke/templates/${id}`}
+          >
+            {id}
+          </Link>
         );
       },
     },
@@ -59,11 +60,9 @@ export function makeColumnsForTemplates() {
     {
       accessorKey: "visibility",
       cell: (info: Info) => (
-        <>
-          <DataTable.CellContent>
-            {info.row.original.visibility}
-          </DataTable.CellContent>
-        </>
+        <DataTable.CellContent>
+          {info.row.original.visibility}
+        </DataTable.CellContent>
       ),
     },
     {
@@ -79,11 +78,7 @@ export function makeColumnsForTemplates() {
             size="xs"
           />
         ));
-        return (
-          <>
-            <div className="flex gap-x-2">{tagChips}</div>
-          </>
-        );
+        return <div className="flex gap-x-2">{tagChips}</div>;
       },
     },
   ];
@@ -106,7 +101,7 @@ export function TemplatesDataTable({
     <div className="border-material-200 my-4 flex w-full flex-col gap-2 rounded-lg border p-4">
       <div className="flex w-full items-center justify-between gap-3">
         <h2 className="text-md flex-grow pb-4 font-bold">Templates:</h2>
-        {dustRegionSyncEnabled && (
+        {(dustRegionSyncEnabled || isDevelopment()) && (
           <Button
             variant="outline"
             size="sm"
@@ -118,13 +113,15 @@ export function TemplatesDataTable({
             label={isPulling ? "Pulling..." : "Pull templates"}
           />
         )}
-        <Button
-          aria-label="Create template"
-          variant="outline"
-          size="sm"
-          label="Create template"
-          href="/poke/templates/new"
-        />
+        {(!dustRegionSyncEnabled || isDevelopment()) && (
+          <Button
+            aria-label="Create template"
+            variant="outline"
+            size="sm"
+            label="Create template"
+            href="/poke/templates/new"
+          />
+        )}
       </div>
       <SearchInput
         name="search"

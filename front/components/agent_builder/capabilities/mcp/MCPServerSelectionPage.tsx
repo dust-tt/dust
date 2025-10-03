@@ -15,7 +15,6 @@ import {
   isCustomServerIconType,
 } from "@app/lib/actions/mcp_icons";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 interface DataVisualizationCardProps {
   specification: ActionSpecification;
@@ -110,7 +109,7 @@ function MCPServerCard({
 interface MCPServerSelectionPageProps {
   topMCPServerViews: MCPServerViewTypeWithLabel[];
   nonTopMCPServerViews: MCPServerViewTypeWithLabel[];
-  onItemClick: (mcpServerView: MCPServerViewType) => void;
+  onItemClick: (mcpServerView: MCPServerViewTypeWithLabel) => void;
   dataVisualization?: ActionSpecification | null;
   onDataVisualizationClick?: () => void;
   selectedToolsInSheet?: SelectedTool[];

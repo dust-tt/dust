@@ -46,6 +46,7 @@ export interface ConversationLayoutProps {
   subscription: SubscriptionType;
   user: UserType;
   isAdmin: boolean;
+  useVirtualizedConversation: boolean;
 }
 
 export default function ConversationLayout({

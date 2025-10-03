@@ -153,9 +153,15 @@ fn generate_jwt_from_key_pair(
 
 fn try_parse_private_key(pem: &str, password: Option<&[u8]>) -> Result<RsaPrivateKey> {
     if let Some(password) = password {
-        if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(pem, password) {
-            return Ok(private);
+        if !password.is_empty() {
+            if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(pem, password) {
+                return Ok(private);
+            }
         }
+    }
+
+    if let Ok(private) = RsaPrivateKey::from_pkcs8_encrypted_pem(pem, b"") {
+        return Ok(private);
     }
 
     RsaPrivateKey::from_pkcs8_pem(pem).or_else(|pkcs8_err| {

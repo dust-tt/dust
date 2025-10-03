@@ -21,6 +21,11 @@ import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import UTMHandler from "@app/components/UTMHandler";
+import {
+  DUST_COOKIES_ACCEPTED,
+  hasCookiesAccepted,
+  shouldCheckGeolocation,
+} from "@app/lib/cookies";
 import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 
@@ -44,16 +49,16 @@ export default function LandingLayout({
     utmParams,
   } = pageProps;
 
-  const [cookies, setCookie] = useCookies(["dust-cookies-accepted"], {
+  const [cookies, setCookie] = useCookies([DUST_COOKIES_ACCEPTED], {
     doNotParse: true,
   });
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
-  const cookieValue = cookies["dust-cookies-accepted"];
+  const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
-    ["true", "auto"].includes(cookieValue)
+    hasCookiesAccepted(cookieValue, null)
   );
 
-  const shouldCheckGeo = cookieValue === undefined;
+  const shouldCheckGeo = shouldCheckGeolocation(cookieValue);
 
   const { geoData, isGeoDataLoading } = useGeolocation({
     disabled: !shouldCheckGeo,
@@ -67,7 +72,7 @@ export default function LandingLayout({
         setHasAcceptedCookies(true);
       }
       setShowCookieBanner(false);
-      setCookie("dust-cookies-accepted", type, {
+      setCookie(DUST_COOKIES_ACCEPTED, type, {
         path: "/",
         maxAge: 183 * 24 * 60 * 60, // 6 months
         sameSite: "lax",
@@ -370,7 +375,7 @@ export const PublicWebsiteLogo = ({
   const className = logoVariants({ size });
 
   return (
-    <Link href="/home">
+    <Link href="/">
       <Hover3D className={`relative ${className}`}>
         <Div3D depth={0} className={className}>
           <DustLogoLayer1 className={className} />

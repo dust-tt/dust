@@ -187,6 +187,7 @@ async function handler(
         email: context.email?.toLowerCase() ?? null,
         fullName: context.fullName ?? null,
         origin: context.origin ?? "api",
+        originMessageId: context.originMessageId ?? null,
         profilePictureUrl: context.profilePictureUrl ?? null,
         timezone: context.timezone,
         username: context.username,
@@ -216,7 +217,7 @@ async function handler(
 
       res.status(200).json({
         message: messageRes.value.userMessage,
-        agentMessages: messageRes.value.agentMessages ?? undefined,
+        agentMessages: messageRes.value.agentMessages,
       });
       return;
 

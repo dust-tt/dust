@@ -5,13 +5,13 @@ import type {
   SelectedTool,
   SheetMode,
 } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
+import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
   AgentBuilderAction,
   ConfigurationPagePageId,
 } from "@app/components/agent_builder/types";
 import { TOOLS_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { pluralize } from "@app/types";
 
 export function isValidPage<T extends Record<string, string>>(
@@ -168,7 +168,7 @@ export function getFooterButtons({
 export interface SaveConfigurationOptions {
   mode: SheetMode | null;
   configuredAction: AgentBuilderAction;
-  mcpServerView: MCPServerViewType;
+  mcpServerView: MCPServerViewTypeWithLabel;
   onActionUpdate?: (action: AgentBuilderAction, index: number) => void;
   onModeChange: (mode: SheetMode | null) => void;
   setSelectedToolsInSheet: React.Dispatch<React.SetStateAction<SelectedTool[]>>;

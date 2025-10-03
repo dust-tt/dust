@@ -293,6 +293,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       created: message.createdAt.getTime(),
       visibility: message.visibility,
       version: message.version,
+      rank: message.rank,
       sourceUrl: this.sourceUrl,
       title: this.title,
       contentType: this.contentType,

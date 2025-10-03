@@ -314,7 +314,7 @@ async function handler(
             name: owner.name,
           },
           app: app.sId,
-          useOpenAIEUKeyFlag,
+          useOpenAIEUEndpoint: credentials?.OPENAI_USE_EU_ENDPOINT,
           userWorkspace: keyAuth.getNonNullableWorkspace().sId,
         },
         "App run creation"

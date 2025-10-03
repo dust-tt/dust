@@ -52,6 +52,8 @@ ConfluenceConfiguration.init(
 export class ConfluenceSpace extends ConnectorBaseModel<ConfluenceSpace> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare deletedAt: Date | null;
+
   declare name: string;
   declare spaceId: string;
   declare urlSuffix?: string;
@@ -78,6 +80,10 @@ ConfluenceSpace.init(
     },
     urlSuffix: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   },
