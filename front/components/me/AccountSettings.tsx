@@ -181,23 +181,22 @@ export function AccountSettings({
             </Page.Vertical>
           </Page.Horizontal>
 
-          {formState.isDirty && !isProvisioned && (
-            <Page.Horizontal align="right">
-              <Button
-                label="Cancel"
-                variant="ghost"
-                onClick={handleCancel}
-                type="button"
-              />
-              <Button
-                label="Save"
-                variant="primary"
-                type="submit"
-                disabled={formState.isSubmitting}
-                loading={formState.isSubmitting}
-              />
-            </Page.Horizontal>
-          )}
+          <Page.Horizontal align="right">
+            <Button
+              label="Cancel"
+              variant="ghost"
+              onClick={handleCancel}
+              type="button"
+              disabled={!formState.isDirty || formState.isSubmitting}
+            />
+            <Button
+              label="Save"
+              variant="primary"
+              type="submit"
+              disabled={!formState.isDirty || formState.isSubmitting}
+              loading={formState.isSubmitting}
+            />
+          </Page.Horizontal>
         </Page.Vertical>
       </form>
     </>
