@@ -3,10 +3,7 @@ import { faker } from "@faker-js/faker";
 import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import type { WorkspaceType } from "@app/types";
-import type {
-  WebhookSourceSecretLocation,
-  WebhookSourceSignatureAlgorithm,
-} from "@app/types/triggers/webhooks";
+import type { WebhookSourceSignatureAlgorithm } from "@app/types/triggers/webhooks";
 
 export class WebhookSourceFactory {
   private workspace: WorkspaceType;
@@ -19,7 +16,7 @@ export class WebhookSourceFactory {
     options: {
       name?: string;
       secret?: string;
-      secretLocation?: WebhookSourceSecretLocation;
+      urlSecret?: string;
       signatureHeader?: string;
       signatureAlgorithm?: WebhookSourceSignatureAlgorithm;
       customHeaders?: Record<string, string>;
@@ -35,8 +32,8 @@ export class WebhookSourceFactory {
     const result = await WebhookSourceResource.makeNew(auth, {
       workspaceId: this.workspace.id,
       name: cachedName,
+      urlSecret: options.urlSecret ?? faker.string.alphanumeric(64),
       secret: options.secret ?? null,
-      secretLocation: options.secretLocation ?? "url",
       signatureHeader: options.signatureHeader ?? null,
       signatureAlgorithm: options.signatureAlgorithm ?? null,
       customHeaders: options.customHeaders ?? null,
