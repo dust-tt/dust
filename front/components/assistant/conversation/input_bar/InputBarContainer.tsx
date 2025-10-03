@@ -566,6 +566,7 @@ const InputBarContainer = ({
                     if (isMobile) {
                       editorService.setLoading(true);
                       await new Promise((resolve) => setTimeout(resolve, 500));
+                      editorService.setLoading(false);
                     }
                   }
                   onEnterKeyDown(
