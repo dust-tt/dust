@@ -126,6 +126,52 @@ async function handler(
               });
           }
         }
+
+        // Propagate changes to system view and all space views
+        const systemView =
+          await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+            auth,
+            webhookSourceView.webhookSourceSId
+          );
+
+        const isSystemView = systemView?.sId === webhookSourceView.sId;
+
+        if (isSystemView) {
+          // This is the system view, update all space views with the same webhook source
+          const allViews = await WebhookSourcesViewResource.listByWebhookSource(
+            auth,
+            webhookSourceView.webhookSourceId
+          );
+
+          for (const view of allViews) {
+            if (view.sId !== webhookSourceView.sId) {
+              const viewUpdateResult = await view.updateDescriptionAndIcon(
+                auth,
+                description,
+                icon
+              );
+              if (viewUpdateResult.isErr()) {
+                console.error(
+                  `Failed to update view ${view.sId}:`,
+                  viewUpdateResult.error
+                );
+              }
+            }
+          }
+        } else if (systemView) {
+          // This is a space view, also update the system view so future space additions get correct values
+          const systemUpdateResult = await systemView.updateDescriptionAndIcon(
+            auth,
+            description,
+            icon
+          );
+          if (systemUpdateResult.isErr()) {
+            console.error(
+              "Failed to update system view description or icon:",
+              systemUpdateResult.error
+            );
+          }
+        }
       }
 
       return res.status(200).json({

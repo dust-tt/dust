@@ -335,7 +335,10 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
-        new DustError("unauthorized", "Not allowed to update description and icon.")
+        new DustError(
+          "unauthorized",
+          "Not allowed to update description and icon."
+        )
       );
     }
 

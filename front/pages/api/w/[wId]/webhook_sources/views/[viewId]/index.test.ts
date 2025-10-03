@@ -254,4 +254,182 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     // Restore the spy
     fetchByIdSpy.mockRestore();
   });
+
+  it("should update webhook source view description and icon successfully", async () => {
+    const { req, res, workspace } = await setupTest("admin", "PATCH");
+
+    const globalSpace = await SpaceFactory.global(workspace);
+    const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
+    const webhookSourceView =
+      await webhookSourceViewFactory.create(globalSpace);
+
+    expect(webhookSourceView).not.toBeNull();
+    req.query.viewId = webhookSourceView.sId;
+    req.body = {
+      name: "Updated Webhook View Name",
+      description: "This is a test description",
+      icon: "ActionWebhookIcon",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const responseData = res._getJSONData();
+    expect(responseData.webhookSourceView).toBeDefined();
+    expect(responseData.webhookSourceView.customName).toBe(
+      "Updated Webhook View Name"
+    );
+    expect(responseData.webhookSourceView.description).toBe(
+      "This is a test description"
+    );
+    expect(responseData.webhookSourceView.icon).toBe("ActionWebhookIcon");
+  });
+
+  it("should update system view when updating description and icon in a non-system space", async () => {
+    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
+
+    const globalSpace = await SpaceFactory.global(workspace);
+    const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
+    const webhookSourceView =
+      await webhookSourceViewFactory.create(globalSpace);
+
+    expect(webhookSourceView).not.toBeNull();
+
+    // Get the system view before the update
+    const systemViewBefore =
+      await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+        auth,
+        webhookSourceView.webhookSourceSId
+      );
+    expect(systemViewBefore).not.toBeNull();
+
+    req.query.viewId = webhookSourceView.sId;
+    req.body = {
+      name: "Updated Name",
+      description: "Updated description",
+      icon: "ActionWebhookIcon",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    // Verify the system view was also updated
+    const systemViewAfter =
+      await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+        auth,
+        webhookSourceView.webhookSourceSId
+      );
+    expect(systemViewAfter).not.toBeNull();
+    expect(systemViewAfter!.description).toBe("Updated description");
+    expect(systemViewAfter!.icon).toBe("ActionWebhookIcon");
+  });
+
+  it("should continue successfully even if system view update fails", async () => {
+    const { req, res, workspace } = await setupTest("admin", "PATCH");
+
+    const globalSpace = await SpaceFactory.global(workspace);
+    const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
+    const webhookSourceView =
+      await webhookSourceViewFactory.create(globalSpace);
+
+    expect(webhookSourceView).not.toBeNull();
+    req.query.viewId = webhookSourceView.sId;
+    req.body = {
+      name: "Updated Name",
+      description: "Updated description",
+      icon: "ActionWebhookIcon",
+    };
+
+    // Mock getWebhookSourceViewForSystemSpace to return a view with failing updateDescriptionAndIcon
+    const mockSystemView = {
+      updateDescriptionAndIcon: vi
+        .fn()
+        .mockResolvedValue(
+          new Err(new DustError("internal_error", "System view update failed"))
+        ),
+    };
+
+    const getSystemViewSpy = vi
+      .spyOn(WebhookSourcesViewResource, "getWebhookSourceViewForSystemSpace")
+      .mockResolvedValue(mockSystemView as any);
+
+    await handler(req, res);
+
+    // Should still succeed even though system view update failed
+    expect(res._getStatusCode()).toBe(200);
+    const responseData = res._getJSONData();
+    expect(responseData.webhookSourceView).toBeDefined();
+    expect(responseData.webhookSourceView.description).toBe(
+      "Updated description"
+    );
+
+    // Restore the spy
+    getSystemViewSpy.mockRestore();
+  });
+
+  it("should update all space views when updating system view description and icon", async () => {
+    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
+
+    const globalSpace = await SpaceFactory.global(workspace);
+    const regularSpace1 = await SpaceFactory.regular(workspace, {
+      name: "Space 1",
+    });
+    const regularSpace2 = await SpaceFactory.regular(workspace, {
+      name: "Space 2",
+    });
+
+    const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
+
+    // Create system view
+    const systemView = await webhookSourceViewFactory.create(globalSpace);
+    expect(systemView).not.toBeNull();
+
+    // Add webhook to two spaces
+    const spaceView1 = await webhookSourceViewFactory.createInSpace(
+      regularSpace1,
+      systemView.webhookSourceId
+    );
+    const spaceView2 = await webhookSourceViewFactory.createInSpace(
+      regularSpace2,
+      systemView.webhookSourceId
+    );
+
+    // Get the actual system view
+    const actualSystemView =
+      await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+        auth,
+        systemView.webhookSourceSId
+      );
+    expect(actualSystemView).not.toBeNull();
+
+    // Update the system view
+    req.query.viewId = actualSystemView!.sId;
+    req.body = {
+      name: "Updated System Name",
+      description: "Updated system description",
+      icon: "ActionWebhookIcon",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    // Verify all space views were also updated
+    const updatedSpaceView1 = await WebhookSourcesViewResource.fetchById(
+      auth,
+      spaceView1.sId
+    );
+    expect(updatedSpaceView1).not.toBeNull();
+    expect(updatedSpaceView1!.description).toBe("Updated system description");
+    expect(updatedSpaceView1!.icon).toBe("ActionWebhookIcon");
+
+    const updatedSpaceView2 = await WebhookSourcesViewResource.fetchById(
+      auth,
+      spaceView2.sId
+    );
+    expect(updatedSpaceView2).not.toBeNull();
+    expect(updatedSpaceView2!.description).toBe("Updated system description");
+    expect(updatedSpaceView2!.icon).toBe("ActionWebhookIcon");
+  });
 });

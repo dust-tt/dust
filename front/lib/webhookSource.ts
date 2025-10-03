@@ -5,6 +5,8 @@ import type {
   WebhookSourceWithViews,
 } from "@app/types/triggers/webhooks";
 
+export const DEFAULT_WEBHOOK_ICON = "ActionGlobeAltIcon" as const;
+
 export const filterWebhookSource = (
   webhookSource: WebhookSourceWithViews,
   filterValue: string

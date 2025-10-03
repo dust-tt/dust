@@ -7,7 +7,6 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { WebhookSourceModel } from "@app/lib/models/assistant/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/assistant/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -15,6 +14,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, redactString } from "@app/types";
 import type { WebhookSourceType } from "@app/types/triggers/webhooks";
@@ -63,7 +63,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
           editedByUserId: auth.user()?.id,
           webhookSourceId: webhookSource.id,
           description: "",
-          icon: DEFAULT_MCP_SERVER_ICON,
+          icon: DEFAULT_WEBHOOK_ICON,
         },
         {
           transaction,

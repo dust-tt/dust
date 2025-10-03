@@ -13,11 +13,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   useUpdateWebhookSourceView,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
 import type {
   PatchWebhookSourceViewBody,
@@ -43,7 +43,7 @@ export function WebhookSourceViewForm({
       name:
         webhookSourceView.customName ?? webhookSourceView.webhookSource.name,
       description: webhookSourceView.description ?? "",
-      icon: webhookSourceView.icon ?? DEFAULT_MCP_SERVER_ICON,
+      icon: webhookSourceView.icon ?? DEFAULT_WEBHOOK_ICON,
     },
   });
 
@@ -73,10 +73,10 @@ export function WebhookSourceViewForm({
     ]
   );
 
-  const selectedIcon = form.watch("icon") ?? DEFAULT_MCP_SERVER_ICON;
+  const selectedIcon = form.watch("icon") ?? DEFAULT_WEBHOOK_ICON;
   const IconComponent =
     ActionIcons[selectedIcon as keyof typeof ActionIcons] ??
-    ActionIcons[DEFAULT_MCP_SERVER_ICON];
+    ActionIcons[DEFAULT_WEBHOOK_ICON];
 
   return (
     <div className="space-y-5 text-foreground dark:text-foreground-night">

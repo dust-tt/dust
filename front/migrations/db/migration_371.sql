@@ -8,7 +8,7 @@ ADD COLUMN "icon" VARCHAR(255);
 -- Update existing rows with default values
 UPDATE "webhook_sources_views"
 SET "description" = '',
-    "icon" = 'ActionCommand1Icon'
+    "icon" = 'ActionGlobeAltIcon'
 WHERE "description" IS NULL OR "icon" IS NULL;
 
 -- Now make the columns NOT NULL (no default at DB level)

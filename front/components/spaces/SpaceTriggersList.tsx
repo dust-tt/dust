@@ -2,8 +2,8 @@ import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
-import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -42,11 +42,6 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
             <div>{info.row.original.avatar}</div>
             <div className="flex flex-col">
               <div className="flex-grow truncate">{info.getValue()}</div>
-              {info.row.original.description && (
-                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {info.row.original.description}
-                </div>
-              )}
             </div>
           </div>
         </DataTable.CellContent>
@@ -54,6 +49,18 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
       accessorFn: (row: RowData) => row.name,
       meta: {
         className: "w-80",
+      },
+    },
+    {
+      id: "description",
+      header: "Description",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.BasicCellContent
+          label={info.row.original.description ?? "FAILED"}
+        />
+      ),
+      meta: {
+        className: "w-full",
       },
     },
     {
@@ -82,7 +89,8 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
         return {
           id: webhookSourceView.sId,
           name:
-            webhookSourceView.customName ?? webhookSourceView.webhookSource.name,
+            webhookSourceView.customName ??
+            webhookSourceView.webhookSource.name,
           description: webhookSourceView.description ?? "",
           avatar: getAvatarFromIcon(icon, "sm"),
           lastUpdated: webhookSourceView.updatedAt,
