@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -5,12 +7,9 @@ import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/m
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
-import { CoreAPI, ModelId } from "@app/types";
-import { Op, Sequelize } from "sequelize";
+import { CoreAPI } from "@app/types";
 
 makeScript(
   {
@@ -30,7 +29,7 @@ makeScript(
       description: "Table ID to get agent usage from",
     },
   },
-  async ({ wId, dataSourceId, tableId, execute }, logger) => {
+  async ({ wId, dataSourceId, tableId }, logger) => {
     // Find the workspace
     const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
@@ -104,8 +103,20 @@ makeScript(
       }
     });
     Object.values(dsAgents).forEach((agent: any) => {
+      logger.info(
+        {
+          tableId,
+          type: "search",
+          agent: {
+            sId: agent.sId,
+            name: agent.name,
+            depths: agent.depths,
+          },
+        },
+        "SEARCH"
+      );
       console.log(
-        `table=${tableId} type=search sId=${agent.sId}, name=${agent.name} depths=[${agent.depths.join(",")}]`
+        `${tableId},search,${agent.sId},${agent.name},${agent.depths.join("|")}`
       );
     });
 
@@ -149,9 +160,18 @@ makeScript(
     });
 
     Object.values(tableAgents).forEach((agent: any) => {
-      console.log(
-        `table=${tableId} type=table sId=${agent.sId}, name=${agent.name}`
+      logger.info(
+        {
+          tableId,
+          type: "table",
+          agent: {
+            sId: agent.sId,
+            name: agent.name,
+          },
+        },
+        "TABLE"
       );
+      console.log(`${tableId},table,${agent.sId},${agent.name}`);
     });
   }
 );
