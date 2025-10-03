@@ -3,6 +3,7 @@ import groupBy from "lodash/groupBy";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
   REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
@@ -370,12 +371,14 @@ export function isCreateFileActionType(
 ): action is AgentMCPActionModel & {
   augmentedInputs: {
     content: string;
+    file_name: string;
   };
 } {
   return (
     action.toolConfiguration.originalName ===
       CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
-    typeof action.augmentedInputs.content === "string"
+    typeof action.augmentedInputs.content === "string" &&
+    typeof action.augmentedInputs.file_name === "string"
   );
 }
 
@@ -398,6 +401,18 @@ function isRevertFileActionType(
   return (
     action.toolConfiguration.originalName ===
     REVERT_CONTENT_CREATION_FILE_TOOL_NAME
+  );
+}
+
+function isRenameFileActionType(
+  action: AgentMCPActionModel
+): action is AgentMCPActionModel & {
+  augmentedInputs: { new_file_name: string };
+} {
+  return (
+    action.toolConfiguration.originalName ===
+      RENAME_CONTENT_CREATION_FILE_TOOL_NAME &&
+    typeof action.augmentedInputs.new_file_name === "string"
   );
 }
 
@@ -466,7 +481,10 @@ export async function isCreateFileActionForFileId({
   return false;
 }
 
-function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
+function isEditOrRevertOrRenameFileAction(
+  action: AgentMCPActionModel,
+  fileId: string
+) {
   if (action.augmentedInputs.file_id !== fileId) {
     return false;
   }
@@ -474,6 +492,7 @@ function isEditOrRevertFileAction(action: AgentMCPActionModel, fileId: string) {
   return [
     EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
     REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
+    RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
   ].includes(action.toolConfiguration.originalName);
 }
 
@@ -484,7 +503,7 @@ export async function getFileActionsByType(
   workspace: WorkspaceType
 ) {
   let createFileAction: AgentMCPActionModel | null = null;
-  const editOrRevertFileActions: AgentMCPActionModel[] = [];
+  const clientExecutableFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
     const isCreateAction = await isCreateFileActionForFileId({
@@ -497,58 +516,61 @@ export async function getFileActionsByType(
       createFileAction = action;
     }
 
-    if (isEditOrRevertFileAction(action, fileId)) {
-      editOrRevertFileActions.push(action);
+    if (isEditOrRevertOrRenameFileAction(action, fileId)) {
+      clientExecutableFileActions.push(action);
     }
   }
 
   return {
     createFileAction,
-    editOrRevertFileActions,
+    clientExecutableFileActions,
   };
 }
 
 /**
- * Returns the edit actions that still apply after a revert operation.
+ * Returns the edit and rename actions that still apply after a revert operation.
  *
  * How it works:
  * - Group by agentMessageId (a "group" = one agent message). Sort within a group oldest => newest.
- * - Process groups newest => oldest so the revert cancels the most recent edit first.
+ * - Process groups newest => oldest so the revert cancels the most recent changes first.
  * - Maintain a cancellation counter starting at 1 (single revert step).
  *   While counter > 0:
- *     • Edit-only group => skip it and decrement counter by 1.
- *     • Group with any revert(s) => do not decrement; increase counter by 1 per revert. Drop edits in that group.
- * - When counter = 0, collect edit actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
+ *     • Edit/rename-only group => skip it and decrement counter by 1.
+ *     • Group with any revert(s) => do not decrement; increase counter by 1 per revert. Drop edits/renames in that group.
+ * - When counter = 0, collect edit and rename actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
  *
  * Note:
- * - `editOrRevertActions` includes only past reverts; the current revert is not included.
- * - We expect that all changes on the file were done through the edit tool.
+ * - `clientExecutableFileActions` includes only past reverts; the current revert is not included.
+ * - We expect that all changes on the file were done through the edit and rename tools.
  */
-export function getEditActionsToApply(
-  editOrRevertActions: AgentMCPActionModel[]
+export function getEditAndRenameActionsToApply(
+  clientExecutableFileActions: AgentMCPActionModel[]
 ) {
-  const editOrRevertActionsByMessage = groupBy(
-    editOrRevertActions,
+  const clientExecutableFileActionsByMessage = groupBy(
+    clientExecutableFileActions,
     (action) => action.agentMessageId
   );
 
   // Within each group, sort actions chronologically (oldest → newest).
-  Object.keys(editOrRevertActionsByMessage).forEach((messageId) => {
-    editOrRevertActionsByMessage[messageId] = editOrRevertActionsByMessage[
-      messageId
-    ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  Object.keys(clientExecutableFileActionsByMessage).forEach((messageId) => {
+    clientExecutableFileActionsByMessage[messageId] =
+      clientExecutableFileActionsByMessage[messageId].sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+      );
   });
 
   // Order groups newest => oldest (based on the group's earliest action time).
-  const sortedActionGroups = Object.values(editOrRevertActionsByMessage).sort(
+  const sortedActionGroups = Object.values(
+    clientExecutableFileActionsByMessage
+  ).sort(
     (actionsA, actionsB) =>
       actionsB[0].createdAt.getTime() - actionsA[0].createdAt.getTime()
   );
 
-  // Remaining edit-only groups to cancel. Starts from the current revert.
+  // Remaining edit/rename-only groups to cancel. Starts from the current revert.
   let cancelGroupActionCounter = 1;
 
-  const pickedEditActions = [];
+  const pickedEditAndRenameActions = [];
 
   for (const actionGroup of sortedActionGroups) {
     if (cancelGroupActionCounter > 0) {
@@ -556,22 +578,25 @@ export function getEditActionsToApply(
         isRevertFileActionType(a)
       );
 
-      // Cancel everything if there are only edit actions in the group.
+      // Cancel everything if there are only edit/rename actions in the group.
       if (revertActions.length === 0) {
         cancelGroupActionCounter--;
         continue;
       }
 
-      // Extend cancellation window by each revert (any edits in the group will be cancelled).
+      // Extend cancellation window by each revert (any edits/renames in the group will be cancelled).
       cancelGroupActionCounter += revertActions.length;
 
       continue;
     }
 
-    // Not cancelling: collect edits. A revert here reopens cancellation for older groups.
+    // Not cancelling: collect edits and renames. A revert here reopens cancellation for older groups.
     for (const currentAction of actionGroup) {
-      if (isEditFileActionType(currentAction)) {
-        pickedEditActions.push(currentAction);
+      if (
+        isEditFileActionType(currentAction) ||
+        isRenameFileActionType(currentAction)
+      ) {
+        pickedEditAndRenameActions.push(currentAction);
         continue;
       }
 
@@ -581,7 +606,7 @@ export function getEditActionsToApply(
     }
   }
 
-  return pickedEditActions;
+  return pickedEditAndRenameActions;
 }
 
 export function getRevertedContent(
@@ -601,7 +626,8 @@ export function getRevertedContent(
 
   for (const editAction of sortedActions) {
     if (!isEditFileActionType(editAction)) {
-      throw new Error("Wrong file action type for edit file action");
+      // Skip non-edit actions (e.g., rename).
+      continue;
     }
 
     const { old_string, new_string } = editAction.augmentedInputs;
@@ -622,9 +648,29 @@ export function getRevertedContent(
   return revertedContent;
 }
 
+export function getRevertedFileName(
+  createFileAction: AgentMCPActionModel,
+  actionsToApply: AgentMCPActionModel[]
+) {
+  // Loop backwards to find the most recent rename.
+  for (let i = actionsToApply.length - 1; i >= 0; i--) {
+    const action = actionsToApply[i];
+    if (isRenameFileActionType(action)) {
+      return action.augmentedInputs.new_file_name;
+    }
+  }
+
+  if (!isCreateFileActionType(createFileAction)) {
+    throw new Error("Wrong file action type for create file action");
+  }
+
+  // No rename were found, the file kept its original name.
+  return createFileAction.augmentedInputs.file_name;
+}
+
 // Revert the changes made to the Content Creation file in the last agent message.
-// This reconstructs the previous file content by replaying edit operations chronologically
-// from the create action.
+// This reconstructs the previous file content and name by replaying edit and rename
+// operations chronologically from the create action.
 export async function revertClientExecutableFileChanges(
   auth: Authenticator,
   {
@@ -691,7 +737,7 @@ export async function revertClientExecutableFileChanges(
       });
     }
 
-    const { createFileAction, editOrRevertFileActions } =
+    const { createFileAction, clientExecutableFileActions } =
       await getFileActionsByType(conversationActions, fileId, workspace);
 
     if (createFileAction === null) {
@@ -701,12 +747,24 @@ export async function revertClientExecutableFileChanges(
       });
     }
 
-    const editActionsToApply = getEditActionsToApply(editOrRevertFileActions);
+    const editAndRenameActionsToApply = getEditAndRenameActionsToApply(
+      clientExecutableFileActions
+    );
 
     const revertedContent = getRevertedContent(
       createFileAction,
-      editActionsToApply
+      editAndRenameActionsToApply
     );
+
+    const revertedFileName = getRevertedFileName(
+      createFileAction,
+      editAndRenameActionsToApply
+    );
+
+    // Apply the reverted file name if it differs from the current name
+    if (fileResource.fileName !== revertedFileName) {
+      await fileResource.rename(revertedFileName);
+    }
 
     await fileResource.setUseCaseMetadata({
       ...fileResource.useCaseMetadata,

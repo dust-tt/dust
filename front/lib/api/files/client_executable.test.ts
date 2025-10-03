@@ -6,7 +6,7 @@ import {
   REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
-  getEditActionsToApply,
+  getEditAndRenameActionsToApply,
   getFileActionsByType,
   getRevertedContent,
   isCreateFileActionForFileId,
@@ -218,7 +218,7 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBe(createAction);
-    expect(result.editOrRevertFileActions).toEqual([editAction, revertAction]);
+    expect(result.clientExecutableFileActions).toEqual([editAction, revertAction]);
   });
 
   it("should return null createFileAction when no create action exists", async () => {
@@ -228,10 +228,10 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeNull();
-    expect(result.editOrRevertFileActions).toEqual([editAction, revertAction]);
+    expect(result.clientExecutableFileActions).toEqual([editAction, revertAction]);
   });
 
-  it("should return empty editOrRevertFileActions when no edit/revert actions exist", async () => {
+  it("should return empty clientExecutableFileActions when no edit/revert actions exist", async () => {
     const mockCreateOutput = {
       content: {
         resource: {
@@ -248,7 +248,7 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBe(createAction);
-    expect(result.editOrRevertFileActions).toEqual([]);
+    expect(result.clientExecutableFileActions).toEqual([]);
   });
 
   it("should filter actions by fileId correctly", async () => {
@@ -258,8 +258,8 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeNull();
-    expect(result.editOrRevertFileActions).toEqual([editAction]);
-    expect(result.editOrRevertFileActions).not.toContain(
+    expect(result.clientExecutableFileActions).toEqual([editAction]);
+    expect(result.clientExecutableFileActions).not.toContain(
       editActionDifferentFile
     );
   });
@@ -271,7 +271,7 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeNull();
-    expect(result.editOrRevertFileActions).toEqual([]);
+    expect(result.clientExecutableFileActions).toEqual([]);
   });
 
   it("should handle empty actions array", async () => {
@@ -279,17 +279,17 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeNull();
-    expect(result.editOrRevertFileActions).toEqual([]);
+    expect(result.clientExecutableFileActions).toEqual([]);
   });
 });
 
-describe("getEditActionsToApply", () => {
+describe("getEditAndRenameActionsToApply", () => {
   it("should skip the last edit action when no reverts are present", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const edit3 = createEditAction("edit3", "msg3", new Date(3000));
 
-    const result = getEditActionsToApply([edit1, edit2, edit3]);
+    const result = getEditAndRenameActionsToApply([edit1, edit2, edit3]);
 
     // Should skip newest edit group (msg3) and return msg2, msg1
     expect(result).toEqual([edit2, edit1]);
@@ -300,7 +300,7 @@ describe("getEditActionsToApply", () => {
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const revert1 = createRevertAction("revert1", "msg3", new Date(3000));
 
-    const result = getEditActionsToApply([edit1, edit2, revert1]);
+    const result = getEditAndRenameActionsToApply([edit1, edit2, revert1]);
 
     // Current revert (1) + revert action count=1 = 2 total reverts
     // Should cancel msg2 and msg1, leaving nothing
@@ -312,7 +312,7 @@ describe("getEditActionsToApply", () => {
     const edit1b = createEditAction("edit1b", "msg1", new Date(1100));
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
 
-    const result = getEditActionsToApply([edit1a, edit1b, edit2]);
+    const result = getEditAndRenameActionsToApply([edit1a, edit1b, edit2]);
 
     expect(result).toEqual([edit1a, edit1b]);
   });
@@ -322,7 +322,7 @@ describe("getEditActionsToApply", () => {
     const edit2 = createEditAction("edit2", "msg2", new Date(2000));
     const revert1 = createRevertAction("revert1", "msg3", new Date(3000));
 
-    const result = getEditActionsToApply([edit1, edit2, revert1]);
+    const result = getEditAndRenameActionsToApply([edit1, edit2, revert1]);
 
     expect(result).toEqual([]);
   });
@@ -331,7 +331,7 @@ describe("getEditActionsToApply", () => {
     const edit1 = createEditAction("edit1", "msg1", new Date(1000));
     const revert1 = createRevertAction("revert1", "msg2", new Date(2000));
 
-    const result = getEditActionsToApply([edit1, revert1]);
+    const result = getEditAndRenameActionsToApply([edit1, revert1]);
 
     expect(result).toEqual([]);
   });
@@ -344,7 +344,7 @@ describe("getEditActionsToApply", () => {
     const edit4 = createEditAction("edit4", "msg4", new Date(4000));
     const edit5 = createEditAction("edit5", "msg4", new Date(4100));
 
-    const result = getEditActionsToApply([
+    const result = getEditAndRenameActionsToApply([
       edit1,
       edit2,
       edit3,
@@ -368,7 +368,7 @@ describe("getEditActionsToApply", () => {
     const revert1 = createRevertAction("revert1", "msg4", new Date(4000));
     const revert2 = createRevertAction("revert2", "msg4", new Date(4100));
 
-    const result = getEditActionsToApply([
+    const result = getEditAndRenameActionsToApply([
       edit1,
       edit2,
       edit3,
@@ -382,7 +382,7 @@ describe("getEditActionsToApply", () => {
   });
 
   it("should handle empty actions array", () => {
-    const result = getEditActionsToApply([]);
+    const result = getEditAndRenameActionsToApply([]);
     expect(result).toEqual([]);
   });
 
@@ -392,7 +392,7 @@ describe("getEditActionsToApply", () => {
     const edit3 = createEditAction("edit3", "msg3", new Date(3000));
     const revert1 = createRevertAction("revert1", "msg4", new Date(4000));
 
-    const result = getEditActionsToApply([edit1, edit2, edit3, revert1]);
+    const result = getEditAndRenameActionsToApply([edit1, edit2, edit3, revert1]);
 
     // Current revert (1) + revert action (1) = 2 total reverts
     // Should cancel msg3 and msg2, leaving msg1
