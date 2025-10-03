@@ -27,7 +27,7 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-semibold s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-heading-sm s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
@@ -67,7 +67,7 @@ export const menuStyleClasses = {
     span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
   },
   label: cn(
-    "s-font-semibold s-px-2 s-py-2 s-text-xs",
+    "s-px-2 s-py-2 s-heading-xs",
     "s-text-muted-foreground dark:s-text-muted-foreground-night"
   ),
   description: cn(
@@ -698,7 +698,7 @@ const DropdownMenuStaticItem = React.forwardRef<
       className
     )}
   >
-    <span className="s-grow s-font-semibold">{label}</span>
+    <span className="s-grow s-font-medium">{label}</span>
     {value && (
       <span
         className={cn(
