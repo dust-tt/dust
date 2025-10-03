@@ -48,10 +48,20 @@ export const TokenStorage = {
       return false;
     }
 
-    const decoded = jwtDecode<JWTPayload>(accessToken);
-    const currentTime = Math.floor(Date.now() / 1000);
+    // API keys don't expire
+    if (accessToken.startsWith("sk-")) {
+      return true;
+    }
 
-    return decoded.exp > currentTime;
+    try {
+      const decoded = jwtDecode<JWTPayload>(accessToken);
+      const currentTime = Math.floor(Date.now() / 1000);
+
+      return decoded.exp > currentTime;
+    } catch (_) {
+      // If we can't decode the token, it's invalid
+      return false;
+    }
   },
 
   /**
