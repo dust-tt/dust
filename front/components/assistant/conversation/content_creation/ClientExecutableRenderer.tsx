@@ -53,7 +53,7 @@ function ExportContentDropdown({
       const imgRegex = /<img[^>]+src=["'](https?:\/\/[^"']+)["']/gi;
       if (imgRegex.test(fileContent)) {
         sendNotification({
-          title: "Export Failed",
+          title: "Cannot export as PNG",
           type: "error",
           description:
             "Content contains images with external URLs, which are blocked for " +
