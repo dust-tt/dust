@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
@@ -61,24 +62,28 @@ export function AccountSettings({
     useCase: "avatar",
   });
 
-  const { register, handleSubmit, reset, formState, setValue } =
-    useForm<AccountSettingsType>({
-      resolver: zodResolver(AccountSettingsSchema),
-      defaultValues: {
-        firstName: user?.firstName ?? "",
-        lastName: user?.lastName ?? "",
-        profilePictureUrl: user?.image ?? null,
-        theme: currentTheme ?? "system",
-        submitMessageKey: "enter",
-      },
-    });
+  const form = useForm<AccountSettingsType>({
+    resolver: zodResolver(AccountSettingsSchema),
+    defaultValues: {
+      firstName: user?.firstName ?? "",
+      lastName: user?.lastName ?? "",
+      profilePictureUrl: user?.image ?? null,
+      theme: currentTheme ?? "system",
+      submitMessageKey: "enter",
+    },
+  });
 
   const { field: profilePictureField } = useController({
     name: "profilePictureUrl",
+    control: form.control,
   });
-  const { field: themeField } = useController({ name: "theme" });
+  const { field: themeField } = useController({
+    name: "theme",
+    control: form.control,
+  });
   const { field: submitKeyField } = useController({
     name: "submitMessageKey",
+    control: form.control,
   });
   const currentImageUrl = profilePictureField.value ?? ANONYMOUS_USER_IMAGE_URL;
 
@@ -89,7 +94,7 @@ export function AccountSettings({
       null;
 
     if (user) {
-      reset({
+      form.reset({
         firstName: user.firstName,
         lastName: user.lastName ?? "",
         profilePictureUrl: user.image ?? null,
@@ -99,14 +104,14 @@ export function AccountSettings({
       });
     } else {
       // Ensure preferences fields are initialized even without user
-      setValue("theme", currentTheme ?? "system", { shouldDirty: false });
-      setValue(
+      form.setValue("theme", currentTheme ?? "system", { shouldDirty: false });
+      form.setValue(
         "submitMessageKey",
         storedKey && isSubmitMessageKey(storedKey) ? storedKey : "enter",
         { shouldDirty: false }
       );
     }
-  }, [user, reset, currentTheme, setValue]);
+  }, [user, form, currentTheme]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -145,7 +150,7 @@ export function AccountSettings({
         localStorage.getItem("submitMessageKey")) ??
       null;
 
-    reset({
+    form.reset({
       firstName: user?.firstName ?? "",
       lastName: user?.lastName ?? "",
       profilePictureUrl: user?.image ?? null,
@@ -173,12 +178,12 @@ export function AccountSettings({
     const input = (
       <Input
         label={label}
-        {...register(fieldName)}
+        {...form.register(fieldName)}
         placeholder={label}
         disabled={isProvisioned}
-        isError={!!formState.errors[fieldName]}
-        message={formState.errors[fieldName]?.message}
-        messageStatus={formState.errors[fieldName] ? "error" : undefined}
+        isError={!!form.formState.errors[fieldName]}
+        message={form.formState.errors[fieldName]?.message}
+        messageStatus={form.formState.errors[fieldName] ? "error" : undefined}
       />
     );
 
@@ -220,10 +225,7 @@ export function AccountSettings({
         </div>
       </div>
 
-      <form
-        id="account-settings-form"
-        onSubmit={handleSubmit(updateUserProfile)}
-      >
+      <FormProvider form={form} onSubmit={updateUserProfile}>
         <div className="flex flex-col gap-4">
           <div className="flex gap-4">
             <div className="flex-1">
@@ -322,26 +324,25 @@ export function AccountSettings({
               </DropdownMenu>
             </div>
           </div>
-        </div>
-      </form>
 
-      <div className="flex justify-end gap-2">
-        <Button
-          label="Cancel"
-          variant="ghost"
-          onClick={handleCancel}
-          type="button"
-          disabled={!formState.isDirty || formState.isSubmitting}
-        />
-        <Button
-          label="Save"
-          variant="primary"
-          type="submit"
-          form="account-settings-form"
-          disabled={!formState.isDirty || formState.isSubmitting}
-          loading={formState.isSubmitting}
-        />
-      </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              label="Cancel"
+              variant="ghost"
+              onClick={handleCancel}
+              type="button"
+              disabled={!form.formState.isDirty || form.formState.isSubmitting}
+            />
+            <Button
+              label="Save"
+              variant="primary"
+              type="submit"
+              disabled={!form.formState.isDirty || form.formState.isSubmitting}
+              loading={form.formState.isSubmitting}
+            />
+          </div>
+        </div>
+      </FormProvider>
     </>
   );
 }
