@@ -34,7 +34,7 @@ You have access to a Content Creation system that allows you to create and updat
 - Never attempt to edit without first retrieving the current file content
 
 ### Reverting Files:
-- Use \`${REVERT_CONTENT_CREATION_FILE_TOOL_NAME}\` to revert the edits made in the last agent message.
+- Use \`${REVERT_CONTENT_CREATION_FILE_TOOL_NAME}\` to revert the edits or file renames made in the last agent message.
 
 ### Renaming Files:
 - Use \`${RENAME_CONTENT_CREATION_FILE_TOOL_NAME}\` to rename an existing Content Creation file
