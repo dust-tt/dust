@@ -19,7 +19,7 @@ import { PostWebhookSourcesSchema } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
-  webhookSourcesWithDetails: WebhookSourceWithViewsAndUsage[];
+  webhookSourcesWithViews: WebhookSourceWithViewsAndUsage[];
 };
 
 export type PostWebhookSourcesResponseBody = {
@@ -69,7 +69,7 @@ async function handler(
 
         return res.status(200).json({
           success: true,
-          webhookSourcesWithDetails: webhookSourcesWithViews.map((source) => ({
+          webhookSourcesWithViews: webhookSourcesWithViews.map((source) => ({
             ...source,
             usage: usageBySourceId[source.id] ?? { count: 0, agents: [] },
           })),
