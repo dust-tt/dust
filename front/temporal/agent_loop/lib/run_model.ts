@@ -34,7 +34,6 @@ import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -553,18 +552,11 @@ export async function runModelActivity(
         } | null;
         const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
 
-        // Determine the region based on feature flag and current region
+        // Determine the region, using us as the default
         let region = "us";
-        const workspace = auth.getNonNullableWorkspace();
-        const featureFlags = await getFeatureFlags(workspace);
-
-        if (featureFlags.includes("use_openai_eu_key")) {
-          const currentRegion = regionsConfig.getCurrentRegion();
-          if (currentRegion === "europe-west1") {
-            region = "eu";
-          } else if (currentRegion === "us-central1") {
-            region = "us";
-          }
+        const currentRegion = regionsConfig.getCurrentRegion();
+        if (currentRegion === "europe-west1") {
+          region = "eu";
         }
 
         const contents = (block.message.contents ?? []).map((content) => {

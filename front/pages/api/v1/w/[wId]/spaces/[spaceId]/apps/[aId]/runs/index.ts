@@ -273,14 +273,10 @@ async function handler(
         keyAuth.getNonNullableWorkspace()
       );
 
-      // Temporary flag to help test EU OpenAI in specific workspaces.
-      const useOpenAIEUKeyFlag =
-        keyWorkspaceFlags.includes("use_openai_eu_key");
-
       let credentials: CredentialsType | null = null;
       if (auth.isSystemKey() && !useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
-        credentials = dustManagedCredentials({ useOpenAIEUKeyFlag });
+        credentials = dustManagedCredentials();
       } else {
         credentials = credentialsFromProviders(providers);
       }

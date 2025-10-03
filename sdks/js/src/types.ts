@@ -680,7 +680,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "usage_data_api"
-  | "use_openai_eu_key"
   | "xai_feature"
   | "simple_audio_transcription"
 >();
