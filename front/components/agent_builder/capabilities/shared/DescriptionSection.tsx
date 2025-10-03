@@ -39,8 +39,12 @@ export function DescriptionSection({
             placeholder={placeholder}
             rows={4}
             maxLength={maxLength}
-            showErrorLabel={formState.isSubmitted}
-            error={formState.isSubmitted ? errorMessage : undefined}
+            showErrorLabel={formState.isSubmitted || formState.isDirty}
+            error={
+              formState.isSubmitted || formState.isDirty
+                ? errorMessage
+                : undefined
+            }
             onChange={onChange}
             {...registerProps}
           />
