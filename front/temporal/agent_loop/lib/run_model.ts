@@ -553,10 +553,15 @@ export async function runModelActivity(
         const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
 
         // Determine the region, using us as the default
-        let region = "us";
         const currentRegion = regionsConfig.getCurrentRegion();
-        if (currentRegion === "europe-west1") {
-          region = "eu";
+        let region: "us" | "eu";
+        switch (currentRegion) {
+          case "europe-west1":
+            region = "eu";
+            break;
+          case "us-central1":
+            region = "us";
+            break;
         }
 
         const contents = (block.message.contents ?? []).map((content) => {
