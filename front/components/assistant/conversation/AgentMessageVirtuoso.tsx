@@ -12,6 +12,7 @@ import {
   StopIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
 import React, { useCallback } from "react";
 import type { Components } from "react-markdown";
@@ -31,6 +32,16 @@ import { FeedbackSelector } from "@app/components/assistant/conversation/Feedbac
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
+import type {
+  AgentMessageStateWithControlEvent,
+  MessageTemporaryState,
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
+import {
+  getMessageSId,
+  isMessageTemporayState,
+} from "@app/components/assistant/conversation/types";
 import {
   CitationsContext,
   CiteBlock,
@@ -49,16 +60,15 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { useAgentMessageStreamVirtuoso } from "@app/hooks/useAgentMessageStreamVirtuoso";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
-import { RETRY_BLOCKED_ACTIONS_STARTED_EVENT } from "@app/lib/assistant/state/messageReducer";
 import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
+  PersonalAuthenticationRequiredErrorContent,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -73,25 +83,20 @@ import {
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  message: LightAgentMessageType;
+  messageStreamState: MessageTemporaryState;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
 }
 
-/**
- *
- * @param isInModal is the conversation happening in a side modal, i.e. when
- * testing an agent? see conversation/Conversation.tsx
- * @returns
- */
-export function AgentMessage({
+export function AgentMessageVirtuoso({
   conversationId,
   isLastMessage,
-  message,
+  messageStreamState,
   messageFeedback,
   owner,
 }: AgentMessageProps) {
+  const sId = getMessageSId(messageStreamState);
   const { isDark } = useTheme();
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
@@ -103,7 +108,7 @@ export function AgentMessage({
   const [isCopied, copy] = useCopyToClipboard();
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
-    message.configuration.sId as GLOBAL_AGENTS_SID
+    messageStreamState.message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
   const { showBlockedActionsDialog, enqueueBlockedAction } =
@@ -112,24 +117,26 @@ export function AgentMessage({
   const { mutateMessage } = useConversationMessage({
     conversationId,
     workspaceId: owner.sId,
-    messageId: message.sId,
+    messageId: sId,
     options: { disabled: true },
   });
 
-  const { messageStreamState, dispatch, shouldStream } = useAgentMessageStream({
-    message,
+  const { shouldStream } = useAgentMessageStreamVirtuoso({
+    messageStreamState,
     conversationId,
     owner,
     mutateMessage,
     onEventCallback: useCallback(
-      (eventStr: string) => {
-        const eventPayload = JSON.parse(eventStr);
+      (eventPayload: {
+        eventId: string;
+        data: AgentMessageStateWithControlEvent;
+      }) => {
         const eventType = eventPayload.data.type;
 
         if (eventType === "tool_approve_execution") {
           showBlockedActionsDialog();
           enqueueBlockedAction({
-            messageId: message.sId,
+            messageId: sId,
             blockedAction: {
               status: "blocked_validation_required",
               authorizationInfo: null,
@@ -143,15 +150,20 @@ export function AgentMessage({
           });
         }
       },
-      [showBlockedActionsDialog, enqueueBlockedAction, message]
+      [showBlockedActionsDialog, enqueueBlockedAction, sId]
     ),
-    streamId: `message-${message.sId}`,
+    streamId: `message-${sId}`,
     useFullChainOfThought: false,
   });
 
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+
   const agentMessageToRender = getAgentMessageToRender({
-    message,
-    messageStreamState,
+    message: messageStreamState.message,
+    messageStreamState: messageStreamState,
   });
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
@@ -178,38 +190,6 @@ export function AgentMessage({
     return acc;
   }, {});
 
-  // Autoscroll is performed when a message is generating and the page is
-  // already scrolled down; but if the user has scrolled the page up after the
-  // start of the message, we do not want to scroll it back down.
-  //
-  // Checking the conversation is already at the bottom of the screen is done
-  // modulo a small margin (50px). This value is small because if large, it
-  // prevents user from scrolling up when the message continues generating
-  // (forces it back down), but it cannot be zero otherwise the scroll does not
-  // happen.
-  const isAtBottom = React.useRef(true);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isAtBottom.current = entry.isIntersecting;
-      },
-      { threshold: 1 }
-    );
-
-    const currentBottomRef = bottomRef.current;
-
-    if (currentBottomRef) {
-      observer.observe(currentBottomRef);
-    }
-
-    return () => {
-      if (currentBottomRef) {
-        observer.unobserve(currentBottomRef);
-      }
-    };
-  }, []);
-
   // GenerationContext: to know if we are generating or not.
   const generationContext = React.useContext(GenerationContext);
   if (!generationContext) {
@@ -219,27 +199,19 @@ export function AgentMessage({
   }
   React.useEffect(() => {
     const isInArray = generationContext.generatingMessages.some(
-      (m) => m.messageId === message.sId
+      (m) => m.messageId === sId
     );
     if (agentMessageToRender.status === "created" && !isInArray) {
-      generationContext.setGeneratingMessages((s) =>
-        // Re-check if the message is already in the array since there may be
-        // a race condition on the update (double call of useEffect).
-        s.some((m) => m.messageId === message.sId)
-          ? s
-          : [...s, { messageId: message.sId, conversationId }]
-      );
+      generationContext.setGeneratingMessages((s) => [
+        ...s,
+        { messageId: sId, conversationId },
+      ]);
     } else if (agentMessageToRender.status !== "created" && isInArray) {
       generationContext.setGeneratingMessages((s) =>
-        s.filter((m) => m.messageId !== message.sId)
+        s.filter((m) => m.messageId !== sId)
       );
     }
-  }, [
-    agentMessageToRender.status,
-    generationContext,
-    message.sId,
-    conversationId,
-  ]);
+  }, [agentMessageToRender.status, generationContext, sId, conversationId]);
 
   // Auto-open content creation drawer when content creation files are available.
   const { contentCreationFiles } = useAutoOpenContentCreation({
@@ -259,8 +231,7 @@ export function AgentMessage({
   );
 
   async function handleCopyToClipboard() {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const messageContent = agentMessageToRender.content || "";
+    const messageContent = agentMessageToRender.content ?? "";
     let footnotesMarkdown = "";
     let footnotesHtml = "";
 
@@ -341,7 +312,7 @@ export function AgentMessage({
         variant="ghost-secondary"
         size="xs"
         onClick={async () => {
-          await cancelMessage([message.sId]);
+          await cancelMessage([sId]);
         }}
         icon={StopIcon}
         className="text-muted-foreground"
@@ -405,6 +376,67 @@ export function AgentMessage({
     );
   }
 
+  const retryHandler = useCallback(
+    async ({
+      conversationId,
+      messageId,
+      blockedOnly = false,
+    }: {
+      conversationId: string;
+      messageId: string;
+      blockedOnly?: boolean;
+    }) => {
+      setIsRetryHandlerProcessing(true);
+      await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setIsRetryHandlerProcessing(false);
+    },
+    [owner.sId]
+  );
+
+  const retryHandlerWithResetState = useCallback(
+    async (error: PersonalAuthenticationRequiredErrorContent) => {
+      methods.data.map((m) =>
+        isMessageTemporayState(m) && getMessageSId(m) === sId
+          ? {
+              ...m,
+              message: {
+                ...m.message,
+                status: "created",
+                error: null,
+              },
+              // Reset the agent state to "acting" to allow for streaming to continue.
+              agentState: "acting",
+            }
+          : m
+      );
+
+      // Retry on the event's conversationId, which may be coming from a subagent.
+      if (error.metadata.conversationId !== conversationId) {
+        await retryHandler({
+          conversationId: error.metadata.conversationId,
+          messageId: error.metadata.messageId,
+          blockedOnly: true,
+        });
+      }
+      // Retry on the main conversation.
+      await retryHandler({
+        conversationId,
+        messageId: sId,
+        blockedOnly: true,
+      });
+    },
+    [conversationId, methods.data, retryHandler, sId]
+  );
+
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
     const existingIndex = activeReferences.find((r) => r.index === index);
@@ -421,13 +453,13 @@ export function AgentMessage({
         owner,
         agentConfiguration.sId,
         conversationId,
-        message.sId
+        sId
       ),
       sup: CiteBlock,
       mention: getMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
     }),
-    [owner, conversationId, message.sId, agentConfiguration.sId]
+    [owner, conversationId, sId, agentConfiguration.sId]
   );
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
@@ -448,11 +480,6 @@ export function AgentMessage({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
-  const messageTimestamp = agentMessageToRender.completedTs
-    ? formatTimestring(agentMessageToRender.completedTs)
-    : formatTimestring(agentMessageToRender.created);
-  const shouldDisplayTimestamp = agentMessageToRender.status !== "created";
-
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -470,7 +497,7 @@ export function AgentMessage({
           isDisabled={isArchived}
         />
       )}
-      timestamp={shouldDisplayTimestamp ? messageTimestamp : undefined}
+      timestamp={formatTimestring(agentMessageToRender.created)}
       type="agent"
       citations={citations}
     >
@@ -483,8 +510,6 @@ export function AgentMessage({
             messageStreamState.agentState === "thinking" ? "tokens" : null,
         })}
       </div>
-      {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
-      <div ref={bottomRef} className="h-1.5" />
     </ConversationMessage>
   );
 
@@ -503,61 +528,28 @@ export function AgentMessage({
       const { error } = agentMessage;
       if (isPersonalAuthenticationRequiredErrorContent(error)) {
         return (
-          <div className="flex flex-col gap-y-4">
-            <AgentMessageActions
-              agentMessage={agentMessage}
-              lastAgentStateClassification={messageStreamState.agentState}
-              actionProgress={messageStreamState.actionProgress}
-              owner={owner}
-            />
-            <MCPServerPersonalAuthenticationRequired
-              owner={owner}
-              mcpServerId={error.metadata.mcp_server_id}
-              provider={error.metadata.provider}
-              scope={error.metadata.scope}
-              retryHandler={async () => {
-                // Dispatch retry event to reset failed state and re-enable streaming.
-                dispatch(RETRY_BLOCKED_ACTIONS_STARTED_EVENT);
-                // Retry on the event's conversationId, which may be coming from a subagent.
-                if (error.metadata.conversationId !== conversationId) {
-                  await retryHandler({
-                    conversationId: error.metadata.conversationId,
-                    messageId: error.metadata.messageId,
-                    blockedOnly: true,
-                  });
-                }
-                // Retry on the main conversation.
-                await retryHandler({
-                  conversationId,
-                  messageId: agentMessage.sId,
-                  blockedOnly: true,
-                });
-              }}
-            />
-          </div>
+          <MCPServerPersonalAuthenticationRequired
+            owner={owner}
+            mcpServerId={error.metadata.mcp_server_id}
+            provider={error.metadata.provider}
+            scope={error.metadata.scope}
+            retryHandler={() => retryHandlerWithResetState(error)}
+          />
         );
       }
       return (
-        <div className="flex flex-col gap-y-4">
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={messageStreamState.agentState}
-            actionProgress={messageStreamState.actionProgress}
-            owner={owner}
-          />
-          <ErrorMessage
-            error={
-              agentMessage.error ?? {
-                message: "Unexpected Error",
-                code: "unexpected_error",
-                metadata: {},
-              }
+        <ErrorMessage
+          error={
+            agentMessage.error ?? {
+              message: "Unexpected Error",
+              code: "unexpected_error",
+              metadata: {},
             }
-            retryHandler={async () =>
-              retryHandler({ conversationId, messageId: agentMessage.sId })
-            }
-          />
-        </div>
+          }
+          retryHandler={async () =>
+            retryHandler({ conversationId, messageId: agentMessage.sId })
+          }
+        />
       );
     }
 
@@ -669,29 +661,6 @@ export function AgentMessage({
         )}
       </div>
     );
-  }
-
-  async function retryHandler({
-    conversationId,
-    messageId,
-    blockedOnly = false,
-  }: {
-    conversationId: string;
-    messageId: string;
-    blockedOnly?: boolean;
-  }) {
-    setIsRetryHandlerProcessing(true);
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    setIsRetryHandlerProcessing(false);
   }
 }
 

@@ -11,6 +11,7 @@ import { MarkdownStyleExtension } from "@app/components/assistant/conversation/i
 import { MentionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionExtension";
 import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { PastedAttachmentExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
@@ -56,6 +57,12 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
   if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
     textContent += "\n";
+  }
+
+  if (node.type === "pastedAttachment") {
+    const title = node.attrs?.title ?? "";
+    const fileId = node.attrs?.fileId ?? "";
+    textContent += `:pasted_attachment[${title}]{fileId=${fileId}}`;
   }
 
   // If the node has content, recursively get text and mentions from each child node
@@ -179,6 +186,10 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.getText().trim();
       },
 
+      blur() {
+        return editor?.commands.blur();
+      },
+
       clearEditor() {
         return editor?.commands.clearContent();
       },
@@ -220,8 +231,12 @@ export interface CustomEditorProps {
     };
   };
   owner: WorkspaceType;
-  // If provided, large pasted text will be routed to this callback
-  onLongTextPaste?: (text: string) => void;
+  // If provided, large pasted text will be routed to this callback along with selection bounds
+  onLongTextPaste?: (payload: {
+    text: string;
+    from: number;
+    to: number;
+  }) => void;
   longTextPasteCharsThreshold?: number;
 }
 
@@ -260,6 +275,7 @@ const useCustomEditor = ({
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
+    PastedAttachmentExtension,
     URLStorageExtension,
   ];
   if (onUrlDetected) {
@@ -287,7 +303,8 @@ const useCustomEditor = ({
           return false;
         }
         if (isLongTextPaste(text, longTextPasteCharsThreshold)) {
-          onLongTextPaste(text);
+          const { from, to } = view.state.selection;
+          onLongTextPaste({ text, from, to });
           return true;
         }
         return false;

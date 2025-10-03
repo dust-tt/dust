@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
+import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainerVirtuoso";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
+import ConversationLayoutVirtuoso from "@app/components/assistant/conversation/ConversationLayoutVirtuoso";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
+import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
@@ -42,6 +45,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
+  const flags = await getFeatureFlags(owner);
+  const useVirtualizedConversation = flags.includes(
+    "virtualized_conversations"
+  );
+
   const { cId } = context.params;
 
   return {
@@ -52,6 +60,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       baseUrl: config.getClientFacingUrl(),
       conversationId: getValidConversationId(cId),
+      useVirtualizedConversation,
     },
   };
 });
@@ -61,6 +70,7 @@ export default function AgentConversation({
   owner,
   subscription,
   user,
+  useVirtualizedConversation,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
@@ -93,24 +103,50 @@ export default function AgentConversation({
     }
   }, [agent, setConversationKey, initialConversationId, activeConversationId]);
 
-  return (
-    <ConversationContainer
-      // Key ensures the component re-renders when conversation changes except for shallow browse.
-      key={conversationKey}
-      owner={owner}
-      subscription={subscription}
-      user={user}
-      agentIdToMention={agentIdToMention}
-    />
-  );
+  if (useVirtualizedConversation) {
+    return (
+      <ConversationContainerVirtuoso
+        // Key ensures the component re-renders when conversation changes except for shallow browse.
+        key={conversationKey}
+        owner={owner}
+        subscription={subscription}
+        user={user}
+        agentIdToMention={agentIdToMention}
+      />
+    );
+  } else {
+    return (
+      <ConversationContainer
+        // Key ensures the component re-renders when conversation changes except for shallow browse.
+        key={conversationKey}
+        owner={owner}
+        subscription={subscription}
+        user={user}
+        agentIdToMention={agentIdToMention}
+      />
+    );
+  }
 }
 
-AgentConversation.getLayout = (page: React.ReactElement, pageProps: any) => {
-  return (
-    <AppRootLayout>
-      <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
-    </AppRootLayout>
-  );
+AgentConversation.getLayout = (
+  page: React.ReactElement,
+  pageProps: ConversationLayoutProps
+) => {
+  if (pageProps.useVirtualizedConversation) {
+    return (
+      <AppRootLayout>
+        <ConversationLayoutVirtuoso pageProps={pageProps}>
+          {page}
+        </ConversationLayoutVirtuoso>
+      </AppRootLayout>
+    );
+  } else {
+    return (
+      <AppRootLayout>
+        <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
+      </AppRootLayout>
+    );
+  }
 };
 
 function getValidConversationId(cId: unknown) {

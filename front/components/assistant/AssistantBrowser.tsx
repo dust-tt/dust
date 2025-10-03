@@ -15,7 +15,6 @@ import {
   ScrollArea,
   ScrollBar,
   SearchDropdownMenu,
-  Separator,
   Spinner,
   Tabs,
   TabsList,
@@ -34,6 +33,7 @@ import { useInView } from "react-intersection-observer";
 import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/details/AssistantDetailsButtonBar";
+import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
@@ -262,13 +262,7 @@ export function AssistantBrowser({
       all: allAgents,
       favorites: allAgents.filter((a) => a.userFavorite),
       editable_by_me: allAgents.filter((a) => a.canEdit),
-      most_popular: allAgents
-        .filter((a) => a.usage && a.usage.messageCount > 0)
-        .sort(
-          (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
-        )
-        .slice(0, 6)
-        .sort(sortAgents),
+      most_popular: rankAgentsByPopularity(allAgents),
     };
   }, [agentConfigurations, sortAgents]);
 
@@ -546,21 +540,16 @@ export function AssistantBrowser({
           <div className="mb-2 flex flex-wrap items-center gap-2">
             {noTagsDefined ? null : (
               <>
-                {uniqueTags.map((tag, index) => (
-                  <>
-                    <Button
-                      size="xs"
-                      variant={selectedTag === tag.sId ? "primary" : "outline"}
-                      key={tag.sId}
-                      label={tag.name}
-                      onClick={() => {
-                        setSelectedTag(tag.sId);
-                      }}
-                    />
-                    {index == 1 && uniqueTags.length > 2 && (
-                      <Separator orientation="vertical" />
-                    )}
-                  </>
+                {uniqueTags.map((tag) => (
+                  <Button
+                    size="xs"
+                    variant={selectedTag === tag.sId ? "primary" : "outline"}
+                    key={tag.sId}
+                    label={tag.name}
+                    onClick={() => {
+                      setSelectedTag(tag.sId);
+                    }}
+                  />
                 ))}
               </>
             )}

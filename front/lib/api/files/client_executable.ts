@@ -32,9 +32,10 @@ import {
   Ok,
 } from "@app/types";
 
-// Regular expression to capture the value inside a className attribute. This pattern assumes
-// double quotes for simplicity.
-const classNameRegex = /className\s*=\s*"([^"]*)"/g;
+// Regular expressions to capture the value inside a className attribute.
+// We check both double and single quotes separately to handle mixed usage.
+const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
+const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
 
 // Regular expression to capture Tailwind arbitrary values:
 // Matches a word boundary, then one or more lowercase letters or hyphens,
@@ -51,15 +52,24 @@ const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
  */
 function validateTailwindCode(code: string): Result<undefined, Error> {
   const matches: string[] = [];
-  let classMatch: RegExpExecArray | null = null;
 
-  // Iterate through all occurrences of the className attribute in the code.
-  while ((classMatch = classNameRegex.exec(code)) !== null) {
+  // Check double-quoted className attributes
+  let classMatch: RegExpExecArray | null = null;
+  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
     const classContent = classMatch[1];
     if (classContent) {
       // Find all matching arbitrary values within the class attribute's value.
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const arbitraryMatches = classContent.match(arbitraryRegex) || [];
+      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
+      matches.push(...arbitraryMatches);
+    }
+  }
+
+  // Check single-quoted className attributes
+  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
+    const classContent = classMatch[1];
+    if (classContent) {
+      // Find all matching arbitrary values within the class attribute's value.
+      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
       matches.push(...arbitraryMatches);
     }
   }
@@ -75,6 +85,39 @@ function validateTailwindCode(code: string): Result<undefined, Error> {
           `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`
       )
     );
+  }
+  return new Ok(undefined);
+}
+
+function validateFileTitle({
+  fileName,
+  mimeType,
+}: {
+  fileName: string;
+  mimeType: ContentCreationFileContentType;
+}): Result<undefined, { tracked: boolean; message: string }> {
+  // Validate that the file extension matches the MIME type.
+  const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
+  const fileNameParts = fileName.split(".");
+  if (fileNameParts.length < 2) {
+    const supportedExts = fileFormat.exts.join(", ");
+    return new Err({
+      message:
+        `File name must include a valid extension. Supported extensions for ` +
+        `${mimeType}: ${supportedExts}.`,
+      tracked: false,
+    });
+  }
+
+  const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
+  if (!(fileFormat.exts as string[]).includes(extension)) {
+    const supportedExts = fileFormat.exts.join(", ");
+    return new Err({
+      message:
+        `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
+        `Supported extensions: ${supportedExts}.`,
+      tracked: false,
+    });
   }
   return new Ok(undefined);
 }
@@ -118,28 +161,9 @@ export async function createClientExecutableFile(
       });
     }
 
-    // Validate that the file extension matches the MIME type.
-    const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
-    const fileNameParts = fileName.split(".");
-    if (fileNameParts.length < 2) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message:
-          `File name must include a valid extension. Supported extensions for ` +
-          `${mimeType}: ${supportedExts}.`,
-        tracked: false,
-      });
-    }
-
-    const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-    if (!(fileFormat.exts as string[]).includes(extension)) {
-      const supportedExts = fileFormat.exts.join(", ");
-      return new Err({
-        message:
-          `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
-          `Supported extensions: ${supportedExts}.`,
-        tracked: false,
-      });
+    const fileNameValidationResult = validateFileTitle({ fileName, mimeType });
+    if (fileNameValidationResult.isErr()) {
+      return fileNameValidationResult;
     }
 
     // Create the file resource.
@@ -254,6 +278,54 @@ export async function editClientExecutableFile(
   await fileResource.uploadContent(auth, updatedContent);
 
   return new Ok({ fileResource, replacementCount: occurrences });
+}
+
+export async function renameClientExecutableFile(
+  auth: Authenticator,
+  {
+    fileId,
+    newFileName,
+    renamedByAgentConfigurationId,
+  }: {
+    fileId: string;
+    newFileName: string;
+    renamedByAgentConfigurationId?: string;
+  }
+): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
+  const fileResource = await FileResource.fetchById(auth, fileId);
+  if (!fileResource) {
+    return new Err({ message: `File not found: ${fileId}`, tracked: true });
+  }
+
+  if (fileResource.contentType !== clientExecutableContentType) {
+    return new Err({
+      message: `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`,
+      tracked: false,
+    });
+  }
+
+  const fileNameValidationResult = validateFileTitle({
+    fileName: newFileName,
+    mimeType: fileResource.contentType,
+  });
+  if (fileNameValidationResult.isErr()) {
+    return fileNameValidationResult;
+  }
+
+  await fileResource.rename(newFileName);
+
+  if (
+    renamedByAgentConfigurationId &&
+    fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+      renamedByAgentConfigurationId
+  ) {
+    await fileResource.setUseCaseMetadata({
+      ...fileResource.useCaseMetadata,
+      lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
+    });
+  }
+
+  return new Ok(fileResource);
 }
 
 export async function getClientExecutableFileContent(

@@ -6,12 +6,15 @@ import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assis
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type {
   ContentFragmentsType,
+  ContentFragmentType,
   ConversationType,
   ConversationVisibility,
+  FileContentFragmentType,
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
   SubmitMessageError,
+  SupportedContentFragmentType,
   SupportedContentNodeContentType,
   UserMessageType,
   UserType,
@@ -30,12 +33,14 @@ export function createPlaceholderUserMessage({
   mentions,
   user,
   lastMessageRank,
+  contentFragments,
 }: {
   input: string;
   mentions: MentionType[];
   user: UserType;
   lastMessageRank: number;
-}): UserMessageType {
+  contentFragments?: ContentFragmentsType;
+}): UserMessageType & { contentFragments: ContentFragmentType[] } {
   const createdAt = new Date().getTime();
   const { email, fullName, image, username } = user;
 
@@ -58,6 +63,79 @@ export function createPlaceholderUserMessage({
       username,
       origin: "web",
     },
+    contentFragments: [
+      ...(contentFragments?.uploaded ?? []).map(
+        (cf) =>
+          ({
+            type: "content_fragment" as const,
+            contentFragmentType: "file" as const,
+            fileId: cf.fileId,
+            title: cf.title,
+            snippet: null,
+            generatedTables: [],
+            textUrl: "",
+            textBytes: null,
+            id: Math.random(),
+            sId: cf.fileId,
+            created: Date.now(),
+            visibility: "visible" as const,
+            version: 0,
+            rank: lastMessageRank,
+            sourceUrl: null,
+            contentType: cf.contentType,
+            context: {
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              profilePictureUrl: user.image,
+            },
+            contentFragmentId: "placeholder-content-fragment",
+            contentFragmentVersion: "latest" as const,
+            expiredReason: null,
+          }) satisfies FileContentFragmentType
+      ),
+      ...(contentFragments?.contentNodes ?? []).map(
+        (cf) =>
+          ({
+            type: "content_fragment" as const,
+            contentFragmentType: "content_node" as const,
+
+            contentType: cf.mimeType as SupportedContentFragmentType,
+
+            title: cf.title,
+            id: Math.random(),
+
+            sId: cf.internalId,
+
+            nodeId: cf.internalId,
+            nodeDataSourceViewId: cf.dataSourceView.sId,
+            nodeType: cf.type,
+            contentNodeData: {
+              nodeId: cf.internalId,
+              nodeDataSourceViewId: cf.dataSourceView.sId,
+              nodeType: cf.type,
+              provider: cf.dataSourceView.dataSource.connectorProvider,
+              spaceName: "myspace",
+            },
+
+            created: Date.now(),
+            visibility: "visible" as const,
+            version: 0,
+            rank: lastMessageRank,
+            sourceUrl: null,
+
+            context: {
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              profilePictureUrl: user.image,
+            },
+            contentFragmentId: "placeholder-content-fragment",
+            contentFragmentVersion: "latest" as const,
+            expiredReason: null,
+          }) satisfies ContentFragmentType
+      ),
+    ],
   };
 }
 

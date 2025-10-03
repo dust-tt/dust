@@ -6,3 +6,5 @@ export const RETRIEVE_CONTENT_CREATION_FILE_TOOL_NAME =
   "retrieve_content_creation_file";
 export const REVERT_CONTENT_CREATION_FILE_TOOL_NAME =
   "revert_content_creation_file";
+export const RENAME_CONTENT_CREATION_FILE_TOOL_NAME =
+  "rename_content_creation_file";
