@@ -3,6 +3,7 @@ import { getEditors } from "@app/lib/api/assistant/editors";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { searchMembers } from "@app/lib/api/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
 export const editEditorsPlugin = createPlugin({
@@ -25,8 +26,7 @@ export const editEditorsPlugin = createPlugin({
       members: {
         type: "enum",
         label: "Members",
-        description:
-          "Search and select members (shows non-editors for 'Add' or current editors for 'Remove')",
+        description: "Search and select members to add/remove",
         async: true,
         values: [],
         multiple: true,
@@ -52,7 +52,6 @@ export const editEditorsPlugin = createPlugin({
     const editors = await getEditors(auth, resource);
     const editorIds = new Set(editors.map((e) => e.sId));
 
-    // Return all members with a flag indicating if they're already editors
     return new Ok({
       members: allMembers.map((m) => ({
         label: m.fullName ? `${m.fullName} (${m.email})` : m.email,
@@ -66,10 +65,7 @@ export const editEditorsPlugin = createPlugin({
       return new Err(new Error("Agent configuration not found"));
     }
 
-    const { action, members } = args as {
-      action: string[];
-      members: string[];
-    };
+    const { action, members } = args;
     const [actionValue] = action;
 
     if (!members || members.length === 0) {
@@ -80,9 +76,11 @@ export const editEditorsPlugin = createPlugin({
     if (selectedUserResources.length === 0) {
       return new Err(new Error("No valid members selected"));
     }
-    const selectedUsers = selectedUserResources.map((u) => u.toJSON());
 
-    // Get current editors
+    const selectedUsers = selectedUserResources.map((userResource) =>
+      userResource.toJSON()
+    );
+
     const currentEditors = await getEditors(auth, resource);
     const currentEditorIds = new Set(
       currentEditors.map((editor) => editor.sId)
@@ -116,6 +114,23 @@ export const editEditorsPlugin = createPlugin({
       const addedNames = membersToAddFiltered
         .map((member) => member.fullName || member.email)
         .join(", ");
+
+      logger.info(
+        {
+          agentId: resource.sId,
+          agentName: resource.name,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          action: "add_editors",
+          editorsAdded: membersToAddFiltered.map((member) => ({
+            userId: member.sId,
+            email: member.email,
+            fullName: member.fullName,
+          })),
+          editorCount: membersToAddFiltered.length,
+        },
+        "Agent editors added via poke"
+      );
+
       return new Ok({
         display: "text",
         value: `✅ Successfully added ${membersToAddFiltered.length} editor(s): ${addedNames}`,
@@ -150,6 +165,23 @@ export const editEditorsPlugin = createPlugin({
       const removedNames = membersToRemove
         .map((member) => member.fullName || member.email)
         .join(", ");
+
+      logger.info(
+        {
+          agentId: resource.sId,
+          agentName: resource.name,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          action: "remove_editors",
+          editorsRemoved: membersToRemove.map((member) => ({
+            userId: member.sId,
+            email: member.email,
+            fullName: member.fullName,
+          })),
+          editorCount: membersToRemove.length,
+        },
+        "Agent editors removed via poke"
+      );
+
       return new Ok({
         display: "text",
         value: `✅ Successfully removed ${membersToRemove.length} editor(s): ${removedNames}`,
