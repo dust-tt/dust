@@ -14,7 +14,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
-import { Preferences } from "@app/components/me/Preferences";
 import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
@@ -72,10 +71,7 @@ export default function ProfilePage({
 
             <Separator />
 
-            <Page.SectionHeader title="Preferences" />
-            <Preferences />
-
-            <Separator />
+            {/* Preferences moved into AccountSettings form */}
 
             <Page.SectionHeader
               title={
