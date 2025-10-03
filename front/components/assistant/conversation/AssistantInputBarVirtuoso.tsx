@@ -55,7 +55,7 @@ export const AssistantInputBarVirtuoso = ({
   return (
     <div
       className={
-        "z-20 mx-auto flex max-h-screen w-full py-2 sm:w-full sm:max-w-3xl sm:py-4"
+        "max-h-dvh z-20 mx-auto flex w-full py-2 sm:w-full sm:max-w-3xl sm:py-4"
       }
     >
       <div

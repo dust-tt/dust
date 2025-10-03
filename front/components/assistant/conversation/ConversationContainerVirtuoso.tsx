@@ -249,7 +249,7 @@ export function ConversationContainerVirtuoso({
             <ContentMessageInline
               icon={InformationCircleIcon}
               variant="primary"
-              className="mb-5 flex max-h-screen w-full sm:w-full sm:max-w-3xl"
+              className="max-h-dvh mb-5 flex w-full sm:w-full sm:max-w-3xl"
             >
               <span className="font-bold">
                 {totalBlockedActions} action
