@@ -15,6 +15,7 @@ import {
   ScrollArea,
   ScrollBar,
   SearchDropdownMenu,
+  Separator,
   Spinner,
   Tabs,
   TabsList,
@@ -557,7 +558,7 @@ export function AssistantBrowser({
                       }}
                     />
                     {index == 1 && uniqueTags.length > 2 && (
-                      <span className="heading-base">-</span>
+                      <Separator orientation="vertical" />
                     )}
                   </>
                 ))}
