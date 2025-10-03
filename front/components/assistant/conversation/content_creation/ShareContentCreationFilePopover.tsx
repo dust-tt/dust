@@ -48,11 +48,6 @@ function FileSharingDropdown({
     value: FileShareScope;
   }[] = [
     {
-      icon: LockIcon,
-      label: "Only conversation participants",
-      value: "conversation_participants",
-    },
-    {
       icon: UserGroupIcon,
       label: `Anyone in ${owner.name} workspace`,
       value: "workspace",
@@ -124,9 +119,8 @@ export function ShareContentCreationFilePopover({
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
-  const [selectedScope, setSelectedScope] = React.useState<FileShareScope>(
-    "conversation_participants"
-  );
+  const [selectedScope, setSelectedScope] =
+    React.useState<FileShareScope>("workspace");
 
   const isPublicSharingForbidden =
     owner.metadata?.allowContentCreationFileSharing === false;
