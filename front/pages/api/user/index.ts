@@ -23,6 +23,7 @@ const PatchUserBodySchema = t.type({
   firstName: t.string,
   lastName: t.string,
   jobType: t.union([t.string, t.undefined]),
+  imageUrl: t.union([t.string, t.null, t.undefined]),
 });
 
 export type GetUserResponseBody = {
@@ -103,6 +104,7 @@ async function handler(
       const firstName = bodyValidation.right.firstName.trim();
       const lastName = bodyValidation.right.lastName.trim();
       const jobType = bodyValidation.right.jobType?.trim();
+      const imageUrl = bodyValidation.right.imageUrl;
 
       // Update user's name
       if (firstName.length === 0 || lastName.length === 0) {
@@ -128,6 +130,19 @@ async function handler(
         }
 
         await u.updateName(firstName, lastName);
+      }
+
+      // Update user's image
+      if (imageUrl !== undefined && imageUrl !== user.image) {
+        logger.info(
+          {
+            userId: user.sId,
+            oldImage: user.image,
+            newImage: imageUrl,
+          },
+          "Updating user image"
+        );
+        await u.updateImage(imageUrl);
       }
 
       // Update user's jobType

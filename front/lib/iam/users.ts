@@ -46,7 +46,11 @@ export async function maybeUpdateFromExternalUser(
   user: UserResource,
   externalUser: ExternalUser
 ) {
-  if (externalUser.picture && externalUser.picture !== user.imageUrl) {
+  // Only hydrate the user's image from the IdP if the user
+  // doesn't have a custom image yet. This prevents overwriting
+  // a profile picture the user uploaded via the app (same pattern
+  // as agent avatars which persist once set).
+  if (!user.imageUrl && externalUser.picture) {
     void UserModel.update(
       {
         imageUrl: externalUser.picture,

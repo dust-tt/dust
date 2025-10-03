@@ -1,48 +1,95 @@
 import { Button, Input, Label, Page, Spinner, Tooltip } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { usePatchUser } from "@app/lib/swr/user";
-import type { UserTypeWithWorkspaces } from "@app/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
+import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
+
 interface AccountSettingsProps {
   user: UserTypeWithWorkspaces | null;
   isUserLoading: boolean;
+  owner: WorkspaceType;
 }
 
 const AccountSettingsSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
+  profilePictureUrl: z.string().nullable(),
 });
 
 type AccountSettingsType = z.infer<typeof AccountSettingsSchema>;
 
-export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
-  const { register, handleSubmit, reset, formState } =
+export function AccountSettings({
+  user,
+  isUserLoading,
+  owner,
+}: AccountSettingsProps) {
+  const { register, handleSubmit, reset, formState, setValue, watch } =
     useForm<AccountSettingsType>({
       defaultValues: {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        firstName: user?.firstName || "",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        lastName: user?.lastName || "",
+        firstName: user?.firstName ?? "",
+        lastName: user?.lastName ?? "",
+        profilePictureUrl: user?.image ?? null,
       },
     });
 
   const { patchUser } = usePatchUser();
   const isProvisioned = user?.origin === "provisioned";
 
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fileUploaderService = useFileUploaderService({
+    owner,
+    useCase: "avatar",
+  });
+
+  const profilePictureUrl = watch("profilePictureUrl");
+  const currentImageUrl = profilePictureUrl ?? ANONYMOUS_USER_IMAGE_URL;
+
   useEffect(() => {
     if (user) {
       reset({
         firstName: user.firstName,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        lastName: user.lastName || "",
+        lastName: user.lastName ?? "",
+        profilePictureUrl: user.image ?? null,
       });
     }
   }, [user, reset]);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    setIsUploadingImage(true);
+    const files = await fileUploaderService.handleFilesUpload([file]);
+    setIsUploadingImage(false);
+
+    if (files && files.length > 0 && files[0].publicUrl) {
+      setValue("profilePictureUrl", files[0].publicUrl, { shouldDirty: true });
+    }
+  };
+
   const updateUserProfile = async (data: AccountSettingsType) => {
-    await patchUser(data.firstName, data.lastName, true);
+    await patchUser(
+      data.firstName,
+      data.lastName,
+      true,
+      undefined,
+      data.profilePictureUrl
+    );
+  };
+
+  const handleCancel = () => {
+    reset({
+      firstName: user?.firstName ?? "",
+      lastName: user?.lastName ?? "",
+      profilePictureUrl: user?.image ?? null,
+    });
   };
 
   if (isUserLoading) {
@@ -84,11 +131,37 @@ export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
 
   return (
     <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        accept="image/png,image/jpeg,image/jpg"
+        onChange={handleImageUpload}
+      />
+
       <Page.Horizontal>
         <Label>Email</Label>
         <Label className="text-muted-foreground dark:text-muted-foreground-night">
           {user?.email}
         </Label>
+      </Page.Horizontal>
+
+      <Page.Horizontal>
+        <Label>Profile Picture</Label>
+        <div className="flex items-center gap-4">
+          <img
+            src={currentImageUrl}
+            alt="Profile"
+            className="h-16 w-16 rounded-full object-cover"
+          />
+          <Button
+            label={isUploadingImage ? "Uploading..." : "Change Picture"}
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploadingImage}
+            loading={isUploadingImage}
+          />
+        </div>
       </Page.Horizontal>
 
       <form onSubmit={handleSubmit(updateUserProfile)}>
@@ -113,14 +186,7 @@ export function AccountSettings({ user, isUserLoading }: AccountSettingsProps) {
               <Button
                 label="Cancel"
                 variant="ghost"
-                onClick={() =>
-                  reset({
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                    firstName: user?.firstName || "",
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                    lastName: user?.lastName || "",
-                  })
-                }
+                onClick={handleCancel}
                 type="button"
               />
               <Button

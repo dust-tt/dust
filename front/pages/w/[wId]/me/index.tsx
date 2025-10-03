@@ -64,7 +64,11 @@ export default function ProfilePage({
           <Page.Header title="Profile Settings" icon={UserIcon} />
           <Page.Layout direction="vertical">
             <Page.SectionHeader title="Account Settings" />
-            <AccountSettings user={user} isUserLoading={isUserLoading} />
+            <AccountSettings
+              user={user}
+              isUserLoading={isUserLoading}
+              owner={owner}
+            />
 
             <Separator />
 
