@@ -63,14 +63,14 @@ function validateTailwindCode(code: string): void {
     throw new Error(
       `Forbidden Tailwind arbitrary values detected: ${examples}. ` +
         `Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] are not allowed. ` +
-        `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`,
+        `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`
     );
   }
 }
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
-  { allowedOrigins }: { allowedOrigins: string[] },
+  { allowedOrigins }: { allowedOrigins: string[] }
 ) {
   const [error, setError] = useState<Error | null>(null);
 
@@ -90,7 +90,7 @@ export function useVisualizationAPI(
       setError(
         error instanceof Error
           ? error
-          : new Error("Failed to fetch visualization code from app."),
+          : new Error("Failed to fetch visualization code from app.")
       );
 
       return null;
@@ -110,7 +110,7 @@ export function useVisualizationAPI(
 
       return new File([blob], "fileId", { type: blob.type });
     },
-    [sendCrossDocumentMessage],
+    [sendCrossDocumentMessage]
   );
 
   const sendHeightToParent = useCallback(
@@ -123,14 +123,14 @@ export function useVisualizationAPI(
         height,
       });
     },
-    [sendCrossDocumentMessage],
+    [sendCrossDocumentMessage]
   );
 
   const downloadFile = useCallback(
     async (blob: Blob, filename?: string) => {
       await sendCrossDocumentMessage("downloadFileRequest", { blob, filename });
     },
-    [sendCrossDocumentMessage],
+    [sendCrossDocumentMessage]
   );
 
   const displayCode = useCallback(async () => {
@@ -140,12 +140,12 @@ export function useVisualizationAPI(
   const addEventListener = useCallback(
     (
       eventType: SupportedEventType,
-      handler: (data: SupportedMessage) => void,
+      handler: (data: SupportedMessage) => void
     ): (() => void) => {
       const messageHandler = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
           console.log(
-            `Ignored message from unauthorized origin: ${event.origin}, expected one of: ${allowedOrigins.join(", ")}`,
+            `Ignored message from unauthorized origin: ${event.origin}, expected one of: ${allowedOrigins.join(", ")}`
           );
           return;
         }
@@ -168,7 +168,7 @@ export function useVisualizationAPI(
       // Return cleanup function
       return () => window.removeEventListener("message", messageHandler);
     },
-    [allowedOrigins],
+    [allowedOrigins]
   );
 
   return {
@@ -184,7 +184,7 @@ export function useVisualizationAPI(
 
 const useFile = (
   fileId: string,
-  fetchFile: (fileId: string) => Promise<File | null>,
+  fetchFile: (fileId: string) => Promise<File | null>
 ) => {
   const [file, setFile] = useState<File | null>(null);
 
@@ -207,7 +207,7 @@ const useFile = (
 };
 
 function useDownloadFileCallback(
-  downloadFile: (blob: Blob, filename?: string) => Promise<void>,
+  downloadFile: (blob: Blob, filename?: string) => Promise<void>
 ) {
   return useCallback(
     async ({
@@ -220,7 +220,7 @@ function useDownloadFileCallback(
       const blob = typeof content === "string" ? new Blob([content]) : content;
       await downloadFile(blob, filename);
     },
-    [downloadFile],
+    [downloadFile]
   );
 }
 
@@ -244,7 +244,7 @@ export function VisualizationWrapperWithErrorBoundary({
         identifier,
         allowedOrigins,
       }),
-    [identifier, allowedOrigins],
+    [identifier, allowedOrigins]
   );
   const api = useVisualizationAPI(sendCrossDocumentMessage, {
     allowedOrigins,
@@ -338,7 +338,7 @@ export function VisualizationWrapper({
         setErrorMessage(
           error instanceof Error
             ? error
-            : new Error("Failed to fetch visualization code"),
+            : new Error("Failed to fetch visualization code")
         );
       }
     };
@@ -370,9 +370,9 @@ export function VisualizationWrapper({
             type: "EXPORT_ERROR",
             identifier,
             errorMessage:
-              "Failed to export as PNG. This can happen when the content references external images.",
+              "Failed to export as PNG. This can happen when the content includes external images.",
           },
-          "*",
+          "*"
         );
       }
     }
@@ -395,9 +395,9 @@ export function VisualizationWrapper({
             type: "EXPORT_ERROR",
             identifier,
             errorMessage:
-              "Failed to export as SVG. This can happen when the content references external images.",
+              "Failed to export as SVG. This can happen when the content includes external images.",
           },
-          "*",
+          "*"
         );
       }
     }
@@ -420,13 +420,13 @@ export function VisualizationWrapper({
     cleanups.push(
       addEventListener("EXPORT_PNG", async () => {
         await handleScreenshotDownload();
-      }),
+      })
     );
 
     cleanups.push(
       addEventListener("EXPORT_SVG", async () => {
         await handleSVGDownload();
-      }),
+      })
     );
 
     return () => cleanups.forEach((cleanup) => cleanup());
@@ -496,15 +496,13 @@ export function makeSendCrossDocumentMessage({
 }) {
   return <T extends VisualizationRPCCommand>(
     command: T,
-    params: VisualizationRPCRequestMap[T],
+    params: VisualizationRPCRequestMap[T]
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
-          console.log(
-            `Ignored message from unauthorized origin: ${event.origin}`,
-          );
+          console.log(`Ignored message from unauthorized origin: ${event.origin}`);
           // Simply ignore messages from unauthorized origins.
           return;
         }
@@ -526,7 +524,7 @@ export function makeSendCrossDocumentMessage({
           identifier,
           params,
         },
-        "*",
+        "*"
       );
     });
   };
