@@ -106,7 +106,7 @@ export function AgentMessageContentCreationGeneratedFiles({
             <CitationDescription>
               <div className="flow-row flex items-center gap-2">
                 <Icon visual={SparklesIcon} size="xs" />
-                Content Creation
+                Frame
               </div>
             </CitationDescription>
           </Citation>
