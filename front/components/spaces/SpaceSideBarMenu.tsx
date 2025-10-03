@@ -21,7 +21,11 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type {
+  CustomServerIconType,
+  InternalAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
+import { getAvatar, getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -44,6 +48,7 @@ import {
 } from "@app/lib/swr/spaces";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type {
   AppType,
   DataSourceViewCategory,
@@ -789,8 +794,20 @@ const SpaceActionsSubMenu = ({
   );
 };
 
-const SpaceTriggerItem = ({ label }: { label: string }): ReactElement => {
-  return <Tree.Item type="leaf" label={label} visual={BoltIcon} />;
+const SpaceTriggerItem = ({
+  label,
+  icon,
+}: {
+  label: string;
+  icon: InternalAllowedIconType | CustomServerIconType | null | undefined;
+}): ReactElement => {
+  return (
+    <Tree.Item
+      type="leaf"
+      label={label}
+      visual={() => getAvatarFromIcon(normalizeWebhookIcon(icon), "xs")}
+    />
+  );
 };
 
 const TRIGGERS_CATEGORY: DataSourceViewCategory = "triggers";
@@ -844,6 +861,7 @@ const SpaceTriggersSubMenu = ({
           {webhookSourceViews.map((webhookView) => (
             <SpaceTriggerItem
               label={webhookView.customName ?? webhookView.webhookSource.name}
+              icon={webhookView.icon}
               key={webhookView.sId}
             />
           ))}

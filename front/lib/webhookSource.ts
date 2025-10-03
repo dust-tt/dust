@@ -1,9 +1,34 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 import type {
+  CustomServerIconType,
+  InternalAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
+import {
+  isCustomServerIconType,
+  isInternalAllowedIcon,
+} from "@app/lib/actions/mcp_icons";
+import type {
   WebhookSourceSignatureAlgorithm,
   WebhookSourceWithViews,
 } from "@app/types/triggers/webhooks";
+
+export const DEFAULT_WEBHOOK_ICON: InternalAllowedIconType =
+  "ActionGlobeAltIcon" as const;
+
+export const normalizeWebhookIcon = (
+  icon: string | null | undefined
+): InternalAllowedIconType | CustomServerIconType => {
+  if (!icon) {
+    return DEFAULT_WEBHOOK_ICON;
+  }
+
+  if (isInternalAllowedIcon(icon) || isCustomServerIconType(icon)) {
+    return icon;
+  }
+
+  return DEFAULT_WEBHOOK_ICON;
+};
 
 export const filterWebhookSource = (
   webhookSource: WebhookSourceWithViews,

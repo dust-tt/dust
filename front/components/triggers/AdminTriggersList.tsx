@@ -14,6 +14,7 @@ import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHe
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhookSource";
@@ -29,7 +30,7 @@ type RowData = {
 
 const NameCell = ({ row }: { row: RowData }) => {
   const { webhookSource } = row;
-
+  const systemView = webhookSource.systemView;
   return (
     <DataTable.CellContent grow>
       <div
@@ -38,10 +39,16 @@ const NameCell = ({ row }: { row: RowData }) => {
           webhookSource.systemView ? "" : "opacity-50"
         )}
       >
+        {systemView && <div>{getAvatarFromIcon(systemView.icon, "sm")}</div>}
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-            {webhookSource.systemView?.customName ?? webhookSource.name}
+            {systemView?.customName ?? webhookSource.name}
           </div>
+          {systemView?.description && (
+            <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {systemView.description}
+            </div>
+          )}
         </div>
       </div>
     </DataTable.CellContent>

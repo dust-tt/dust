@@ -3,6 +3,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
@@ -10,6 +11,8 @@ import type { LightWorkspaceType, SpaceType } from "@app/types";
 type RowData = {
   id: string;
   name: string;
+  description: string;
+  avatar: React.ReactNode;
   lastUpdated: number;
   onClick?: () => void;
 };
@@ -36,11 +39,27 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <div className="flex flex-row items-center gap-2 py-3">
-            {info.row.original.name}
+            <div>{info.row.original.avatar}</div>
+            <div className="flex flex-col">
+              <div className="flex-grow truncate">{info.getValue()}</div>
+            </div>
           </div>
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
+      meta: {
+        className: "w-80",
+      },
+    },
+    {
+      id: "description",
+      header: "Description",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.BasicCellContent label={info.row.original.description} />
+      ),
+      meta: {
+        className: "w-full",
+      },
     },
     {
       id: "lastUpdated",
@@ -61,12 +80,17 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
 
   const rows: RowData[] = React.useMemo(
     () =>
-      webhookSourceViews.map((webhookSourceView) => ({
-        id: webhookSourceView.sId,
-        name:
-          webhookSourceView.customName ?? webhookSourceView.webhookSource.name,
-        lastUpdated: webhookSourceView.updatedAt,
-      })),
+      webhookSourceViews.map((webhookSourceView) => {
+        return {
+          id: webhookSourceView.sId,
+          name:
+            webhookSourceView.customName ??
+            webhookSourceView.webhookSource.name,
+          description: webhookSourceView.description ?? "",
+          avatar: getAvatarFromIcon(webhookSourceView.icon, "sm"),
+          lastUpdated: webhookSourceView.updatedAt,
+        };
+      }),
     [webhookSourceViews]
   );
 
