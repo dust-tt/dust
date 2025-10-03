@@ -59,8 +59,7 @@ function validateTailwindCode(code: string): Result<undefined, Error> {
     const classContent = classMatch[1];
     if (classContent) {
       // Find all matching arbitrary values within the class attribute's value.
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const arbitraryMatches = classContent.match(arbitraryRegex) || [];
+      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
       matches.push(...arbitraryMatches);
     }
   }
@@ -70,8 +69,7 @@ function validateTailwindCode(code: string): Result<undefined, Error> {
     const classContent = classMatch[1];
     if (classContent) {
       // Find all matching arbitrary values within the class attribute's value.
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const arbitraryMatches = classContent.match(arbitraryRegex) || [];
+      const arbitraryMatches = classContent.match(arbitraryRegex) ?? [];
       matches.push(...arbitraryMatches);
     }
   }
