@@ -12,6 +12,7 @@ export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> 
   declare name: string;
 
   declare secret: string | null;
+  declare urlSecret: string | null;
   declare signatureHeader: string | null;
   declare signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
 
@@ -35,6 +36,10 @@ WebhookSourceModel.init(
       allowNull: false,
     },
     secret: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    urlSecret: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
