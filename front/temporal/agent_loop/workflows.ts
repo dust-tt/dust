@@ -73,6 +73,11 @@ const { ensureConversationTitleActivity } = proxyActivities<
   typeof ensureTitleActivities
 >({
   startToCloseTimeout: "5 minutes",
+  retry: {
+    // Retry twice and fail given non criticality. The activity will fail if the conversation gets
+    // deleted before it gets to title generation.
+    maximumAttempts: 3,
+  },
 });
 
 const { notifyWorkflowError, finalizeCancellationActivity } = proxyActivities<
