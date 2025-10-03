@@ -128,6 +128,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       {
         webhookSourceId: systemView.webhookSourceId,
         customName: systemView.customName,
+        description: systemView.description,
+        icon: systemView.icon,
       },
       space,
       auth.user() ?? undefined
@@ -326,6 +328,33 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return new Ok(affectedCount);
   }
 
+  public async updateDescriptionAndIcon(
+    auth: Authenticator,
+    description?: string,
+    icon?: string
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError("unauthorized", "Not allowed to update description and icon.")
+      );
+    }
+
+    const updateData: Partial<Attributes<WebhookSourcesViewModel>> = {
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    };
+
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (icon !== undefined) {
+      updateData.icon = icon;
+    }
+
+    const [affectedCount] = await this.update(updateData);
+    return new Ok(affectedCount);
+  }
+
   // Deletion.
 
   protected async softDelete(
@@ -432,6 +461,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       id: this.id,
       sId: this.sId,
       customName: this.customName,
+      description: this.description,
+      icon: this.icon,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

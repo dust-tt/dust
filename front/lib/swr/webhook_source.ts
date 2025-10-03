@@ -131,7 +131,7 @@ export function useUpdateWebhookSourceView({
   const updateWebhookSourceView = useCallback(
     async (
       webhookSourceViewId: string,
-      updates: { name: string }
+      updates: { name: string; description?: string; icon?: string }
     ): Promise<boolean> => {
       try {
         const response = await fetch(

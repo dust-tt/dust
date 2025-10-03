@@ -29,6 +29,8 @@ export type WebhookSourceViewType = {
   id: ModelId;
   sId: string;
   customName: string | null;
+  description: string;
+  icon: string;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
@@ -71,4 +73,6 @@ export type PatchWebhookSourceViewBody = z.infer<
 
 export const patchWebhookSourceViewBodySchema = z.object({
   name: z.string().min(1, "Name is required."),
+  description: z.string().optional(),
+  icon: z.string().optional(),
 });

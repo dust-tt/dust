@@ -73,11 +73,11 @@ async function handler(
         });
       }
 
-      const { name } = bodyValidation.data;
+      const { name, description, icon } = bodyValidation.data;
 
-      const result = await webhookSourceView.updateName(auth, name);
-      if (result.isErr()) {
-        switch (result.error.code) {
+      const nameResult = await webhookSourceView.updateName(auth, name);
+      if (nameResult.isErr()) {
+        switch (nameResult.error.code) {
           case "unauthorized":
             return apiError(req, res, {
               status_code: 401,
@@ -95,6 +95,36 @@ async function handler(
                 message: "Failed to update webhook source view name.",
               },
             });
+        }
+      }
+
+      if (description !== undefined || icon !== undefined) {
+        const updateResult = await webhookSourceView.updateDescriptionAndIcon(
+          auth,
+          description,
+          icon
+        );
+        if (updateResult.isErr()) {
+          switch (updateResult.error.code) {
+            case "unauthorized":
+              return apiError(req, res, {
+                status_code: 401,
+                api_error: {
+                  type: "webhook_source_view_auth_error",
+                  message:
+                    "You are not authorized to update this webhook source view.",
+                },
+              });
+            default:
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message:
+                    "Failed to update webhook source view description or icon.",
+                },
+              });
+          }
         }
       }
 

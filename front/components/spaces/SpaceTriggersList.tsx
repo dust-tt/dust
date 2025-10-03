@@ -2,6 +2,7 @@ import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
+import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -10,6 +11,8 @@ import type { LightWorkspaceType, SpaceType } from "@app/types";
 type RowData = {
   id: string;
   name: string;
+  description: string;
+  avatar: React.ReactNode;
   lastUpdated: number;
   onClick?: () => void;
 };
@@ -36,11 +39,22 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>
           <div className="flex flex-row items-center gap-2 py-3">
-            {info.row.original.name}
+            <div>{info.row.original.avatar}</div>
+            <div className="flex flex-col">
+              <div className="flex-grow truncate">{info.getValue()}</div>
+              {info.row.original.description && (
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {info.row.original.description}
+                </div>
+              )}
+            </div>
           </div>
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
+      meta: {
+        className: "w-80",
+      },
     },
     {
       id: "lastUpdated",
@@ -61,12 +75,19 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
 
   const rows: RowData[] = React.useMemo(
     () =>
-      webhookSourceViews.map((webhookSourceView) => ({
-        id: webhookSourceView.sId,
-        name:
-          webhookSourceView.customName ?? webhookSourceView.webhookSource.name,
-        lastUpdated: webhookSourceView.updatedAt,
-      })),
+      webhookSourceViews.map((webhookSourceView) => {
+        const icon = webhookSourceView.icon as
+          | keyof typeof import("@app/lib/actions/mcp_icons").InternalActionIcons
+          | keyof typeof import("@dust-tt/sparkle").ActionIcons;
+        return {
+          id: webhookSourceView.sId,
+          name:
+            webhookSourceView.customName ?? webhookSourceView.webhookSource.name,
+          description: webhookSourceView.description ?? "",
+          avatar: getAvatarFromIcon(icon, "sm"),
+          lastUpdated: webhookSourceView.updatedAt,
+        };
+      }),
     [webhookSourceViews]
   );
 
