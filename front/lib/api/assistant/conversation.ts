@@ -1,6 +1,7 @@
 import assert from "assert";
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
@@ -1332,6 +1333,37 @@ export async function retryAgentMessage(
         conversation,
         t,
       });
+
+      // Find all sibling messages (messages with the same parentId)
+      const siblingMessages = await Message.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          parentId: messageRow.parentId,
+          visibility: "visible",
+        },
+        transaction: t,
+      });
+
+      // Find the maximum rank among all sibling messages
+      const maxSiblingRank = Math.max(...siblingMessages.map((m) => m.rank));
+
+      // Hide all messages with ranks greater than the maximum sibling rank
+      await Message.update(
+        { visibility: "hidden" },
+        {
+          where: {
+            conversationId: conversation.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            rank: {
+              [Op.gt]: maxSiblingRank,
+            },
+            visibility: "visible", // Only hide visible messages (not already deleted/hidden)
+          },
+          transaction: t,
+          validate: false, // Skip validation hooks since we're only updating visibility
+        }
+      );
 
       const agentMessage: AgentMessageType = {
         id: m.id,

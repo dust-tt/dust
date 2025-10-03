@@ -22,7 +22,7 @@ export type AgentMention = {
 
 export type MentionType = AgentMention;
 
-export type MessageVisibility = "visible" | "deleted";
+export type MessageVisibility = "visible" | "deleted" | "hidden";
 
 export function isAgentMention(arg: MentionType): arg is AgentMention {
   return (arg as AgentMention).configurationId !== undefined;
