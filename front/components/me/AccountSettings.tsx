@@ -17,7 +17,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -49,17 +49,6 @@ export function AccountSettings({
   owner,
 }: AccountSettingsProps) {
   const { theme: currentTheme, setTheme } = useTheme();
-  const { register, handleSubmit, reset, formState, setValue, watch } =
-    useForm<AccountSettingsType>({
-      resolver: zodResolver(AccountSettingsSchema),
-      defaultValues: {
-        firstName: user?.firstName ?? "",
-        lastName: user?.lastName ?? "",
-        profilePictureUrl: user?.image ?? null,
-        theme: (currentTheme as AccountSettingsType["theme"]) ?? "system",
-        submitMessageKey: "enter",
-      },
-    });
 
   const { patchUser } = usePatchUser();
   const isProvisioned = user?.origin === "provisioned";
@@ -72,10 +61,26 @@ export function AccountSettings({
     useCase: "avatar",
   });
 
-  const profilePictureUrl = watch("profilePictureUrl");
-  const selectedTheme = watch("theme");
-  const submitMessageKey = watch("submitMessageKey");
-  const currentImageUrl = profilePictureUrl ?? ANONYMOUS_USER_IMAGE_URL;
+  const { register, handleSubmit, reset, formState, setValue } =
+    useForm<AccountSettingsType>({
+      resolver: zodResolver(AccountSettingsSchema),
+      defaultValues: {
+        firstName: user?.firstName ?? "",
+        lastName: user?.lastName ?? "",
+        profilePictureUrl: user?.image ?? null,
+        theme: currentTheme ?? "system",
+        submitMessageKey: "enter",
+      },
+    });
+
+  const { field: profilePictureField } = useController({
+    name: "profilePictureUrl",
+  });
+  const { field: themeField } = useController({ name: "theme" });
+  const { field: submitKeyField } = useController({
+    name: "submitMessageKey",
+  });
+  const currentImageUrl = profilePictureField.value ?? ANONYMOUS_USER_IMAGE_URL;
 
   useEffect(() => {
     const storedKey =
@@ -113,7 +118,7 @@ export function AccountSettings({
     setIsUploadingImage(false);
 
     if (files && files.length > 0 && files[0].publicUrl) {
-      setValue("profilePictureUrl", files[0].publicUrl, { shouldDirty: true });
+      profilePictureField.onChange(files[0].publicUrl);
     }
   };
 
@@ -246,16 +251,16 @@ export function AccountSettings({
                   <Button
                     variant="outline"
                     icon={
-                      selectedTheme === "light"
+                      themeField.value === "light"
                         ? SunIcon
-                        : selectedTheme === "dark"
+                        : themeField.value === "dark"
                           ? MoonIcon
                           : LightModeIcon
                     }
                     label={
-                      selectedTheme === "light"
+                      themeField.value === "light"
                         ? "Light"
-                        : selectedTheme === "dark"
+                        : themeField.value === "dark"
                           ? "Dark"
                           : "System"
                     }
@@ -266,23 +271,17 @@ export function AccountSettings({
                 <DropdownMenuContent>
                   <DropdownMenuItem
                     icon={SunIcon}
-                    onClick={() =>
-                      setValue("theme", "light", { shouldDirty: true })
-                    }
+                    onClick={() => themeField.onChange("light")}
                     label="Light"
                   />
                   <DropdownMenuItem
                     icon={MoonIcon}
-                    onClick={() =>
-                      setValue("theme", "dark", { shouldDirty: true })
-                    }
+                    onClick={() => themeField.onChange("dark")}
                     label="Dark"
                   />
                   <DropdownMenuItem
                     icon={LightModeIcon}
-                    onClick={() =>
-                      setValue("theme", "system", { shouldDirty: true })
-                    }
+                    onClick={() => themeField.onChange("system")}
                     label="System"
                   />
                 </DropdownMenuContent>
@@ -297,7 +296,7 @@ export function AccountSettings({
                     <Button
                       variant="outline"
                       label={
-                        submitMessageKey === "enter"
+                        submitKeyField.value === "enter"
                           ? "Enter (↵)"
                           : "Cmd + Enter (⌘ + ↵)"
                       }
@@ -308,21 +307,13 @@ export function AccountSettings({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem
-                    onClick={() =>
-                      setValue("submitMessageKey", "enter", {
-                        shouldDirty: true,
-                      })
-                    }
+                    onClick={() => submitKeyField.onChange("enter")}
                   >
                     Enter
                     <DropdownMenuShortcut>↵</DropdownMenuShortcut>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() =>
-                      setValue("submitMessageKey", "cmd+enter", {
-                        shouldDirty: true,
-                      })
-                    }
+                    onClick={() => submitKeyField.onChange("cmd+enter")}
                   >
                     Cmd + Enter
                     <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>

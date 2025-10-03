@@ -132,16 +132,7 @@ async function handler(
         await u.updateName(firstName, lastName);
       }
 
-      // Update user's image
-      if (imageUrl !== undefined && imageUrl !== user.image) {
-        logger.info(
-          {
-            userId: user.sId,
-            oldImage: user.image,
-            newImage: imageUrl,
-          },
-          "Updating user image"
-        );
+      if (imageUrl && imageUrl !== user.image) {
         await u.updateImage(imageUrl);
       }
 
