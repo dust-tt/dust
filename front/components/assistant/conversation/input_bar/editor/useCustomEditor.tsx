@@ -1,4 +1,4 @@
-import Placeholder from "@tiptap/extension-placeholder";
+import { Placeholder } from "@tiptap/extensions";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -310,6 +310,7 @@ const useCustomEditor = ({
         return false;
       },
     },
+    immediatelyRender: false,
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
@@ -360,9 +361,17 @@ const useCustomEditor = ({
 
           const setLoading = (loading: boolean) => {
             if (loading) {
-              editor?.view.dom.classList.add("loading-text");
+              editor?.setOptions({
+                editorProps: {
+                  attributes: { class: "loading-text" },
+                },
+              });
             } else {
-              editor?.view.dom.classList.remove("loading-text");
+              editor?.setOptions({
+                editorProps: {
+                  attributes: { class: "" },
+                },
+              });
             }
             return editor?.setEditable(!loading);
           };
