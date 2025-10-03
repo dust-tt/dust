@@ -108,13 +108,21 @@ async function handler(
 
       const workspace = auth.getNonNullableWorkspace();
 
+      const trimmedSignatureHeader = signatureHeader.trim();
+
       try {
         const webhookSourceRes = await WebhookSourceResource.makeNew(auth, {
           workspaceId: workspace.id,
           name,
           secret:
-            secret && secret.length > 0 ? secret : generateSecureSecret(64),
-          signatureHeader,
+            trimmedSignatureHeader.length === 0
+              ? null
+              : secret && secret.length > 0
+                ? secret
+                : generateSecureSecret(64),
+          urlSecret: generateSecureSecret(64),
+          signatureHeader:
+            trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           customHeaders,
         });
