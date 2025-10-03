@@ -370,7 +370,7 @@ export function VisualizationWrapper({
             type: "EXPORT_ERROR",
             identifier,
             errorMessage:
-              "Failed to export as PNG. This can happen when the content includes external images.",
+              "Failed to export as PNG. This can happen when the content references external images.",
           },
           "*"
         );
@@ -395,7 +395,7 @@ export function VisualizationWrapper({
             type: "EXPORT_ERROR",
             identifier,
             errorMessage:
-              "Failed to export as SVG. This can happen when the content includes external images.",
+              "Failed to export as SVG. This can happen when the content references external images.",
           },
           "*"
         );
