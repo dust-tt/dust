@@ -218,7 +218,7 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBe(createAction);
-    expect(result.clientExecutableFileActions).toEqual([editAction, revertAction]);
+    expect(result.nonCreateFileActions).toEqual([editAction, revertAction]);
   });
 
   it("should return null createFileAction when no create action exists", async () => {
@@ -228,7 +228,7 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeNull();
-    expect(result.clientExecutableFileActions).toEqual([editAction, revertAction]);
+    expect(result.nonCreateFileActions).toEqual([editAction, revertAction]);
   });
 
   it("should return empty clientExecutableFileActions when no edit/revert actions exist", async () => {
@@ -248,7 +248,7 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBe(createAction);
-    expect(result.clientExecutableFileActions).toEqual([]);
+    expect(result.nonCreateFileActions).toEqual([]);
   });
 
   it("should filter actions by fileId correctly", async () => {
@@ -258,10 +258,8 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeNull();
-    expect(result.clientExecutableFileActions).toEqual([editAction]);
-    expect(result.clientExecutableFileActions).not.toContain(
-      editActionDifferentFile
-    );
+    expect(result.nonCreateFileActions).toEqual([editAction]);
+    expect(result.nonCreateFileActions).not.toContain(editActionDifferentFile);
   });
 
   it("should return empty results when no matching actions exist", async () => {
@@ -271,7 +269,7 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeNull();
-    expect(result.clientExecutableFileActions).toEqual([]);
+    expect(result.nonCreateFileActions).toEqual([]);
   });
 
   it("should handle empty actions array", async () => {
@@ -279,7 +277,7 @@ describe("getFileActionsByType", () => {
     const result = await getFileActionsByType(actions, fileId, workspace);
 
     expect(result.createFileAction).toBeNull();
-    expect(result.clientExecutableFileActions).toEqual([]);
+    expect(result.nonCreateFileActions).toEqual([]);
   });
 });
 
@@ -392,7 +390,12 @@ describe("getEditAndRenameActionsToApply", () => {
     const edit3 = createEditAction("edit3", "msg3", new Date(3000));
     const revert1 = createRevertAction("revert1", "msg4", new Date(4000));
 
-    const result = getEditAndRenameActionsToApply([edit1, edit2, edit3, revert1]);
+    const result = getEditAndRenameActionsToApply([
+      edit1,
+      edit2,
+      edit3,
+      revert1,
+    ]);
 
     // Current revert (1) + revert action (1) = 2 total reverts
     // Should cancel msg3 and msg2, leaving msg1

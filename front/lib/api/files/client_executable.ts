@@ -503,7 +503,7 @@ export async function getFileActionsByType(
   workspace: WorkspaceType
 ) {
   let createFileAction: AgentMCPActionModel | null = null;
-  const clientExecutableFileActions: AgentMCPActionModel[] = [];
+  const nonCreateFileActions: AgentMCPActionModel[] = [];
 
   for (const action of actions) {
     const isCreateAction = await isCreateFileActionForFileId({
@@ -517,13 +517,13 @@ export async function getFileActionsByType(
     }
 
     if (isEditOrRevertOrRenameFileAction(action, fileId)) {
-      clientExecutableFileActions.push(action);
+      nonCreateFileActions.push(action);
     }
   }
 
   return {
     createFileAction,
-    clientExecutableFileActions,
+    nonCreateFileActions,
   };
 }
 
@@ -540,14 +540,14 @@ export async function getFileActionsByType(
  * - When counter = 0, collect edit and rename actions in order; if a revert is encountered, increase the counter and resume cancellation for older groups.
  *
  * Note:
- * - `clientExecutableFileActions` includes only past reverts; the current revert is not included.
+ * - `nonCreateFileActions` includes only past reverts; the current revert is not included.
  * - We expect that all changes on the file were done through the edit and rename tools.
  */
 export function getEditAndRenameActionsToApply(
-  clientExecutableFileActions: AgentMCPActionModel[]
+  nonCreateFileActions: AgentMCPActionModel[]
 ) {
   const clientExecutableFileActionsByMessage = groupBy(
-    clientExecutableFileActions,
+    nonCreateFileActions,
     (action) => action.agentMessageId
   );
 
@@ -737,7 +737,7 @@ export async function revertClientExecutableFileChanges(
       });
     }
 
-    const { createFileAction, clientExecutableFileActions } =
+    const { createFileAction, nonCreateFileActions } =
       await getFileActionsByType(conversationActions, fileId, workspace);
 
     if (createFileAction === null) {
@@ -747,9 +747,8 @@ export async function revertClientExecutableFileChanges(
       });
     }
 
-    const editAndRenameActionsToApply = getEditAndRenameActionsToApply(
-      clientExecutableFileActions
-    );
+    const editAndRenameActionsToApply =
+      getEditAndRenameActionsToApply(nonCreateFileActions);
 
     const revertedContent = getRevertedContent(
       createFileAction,
