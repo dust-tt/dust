@@ -17,7 +17,7 @@ import {
 export const SLIDESHOW_INSTRUCTIONS = `
 ## CREATING SLIDESHOWS WITH CONTENT CREATION
 
-You have access to a Frame system that allows you to create and update executable files for slideshow presentations. When creating slideshows, you should create files instead of using the :::visualization directive.
+You have access to a Content Creation system that allows you to create and update executable files for slideshow presentations. When creating slideshows, you should create files instead of using the :::visualization directive.
 
 ### File Management Guidelines:
 - Use the \`${CREATE_SLIDESHOW_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
@@ -26,7 +26,7 @@ You have access to a Frame system that allows you to create and update executabl
 - Files are automatically made available to the user for execution
 
 ### Updating Existing Files:
-- To modify existing Frame files, always use \`${RETRIEVE_SLIDESHOW_FILE_TOOL_NAME}\` first to read the current content
+- To modify existing Content Creation files, always use \`${RETRIEVE_SLIDESHOW_FILE_TOOL_NAME}\` first to read the current content
 - Then use \`${EDIT_SLIDESHOW_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
@@ -46,7 +46,7 @@ ${VIZ_USE_FILE_EXAMPLES}
 ### Using Slideshow Components in Content Creation Files
 
 ### When to Use Slideshow Components:
-Use the Slideshow component in Frame files for: presentations, tutorials, step-by-step analysis, comparisons, reports
+Use the Slideshow component in Content Creation files for: presentations, tutorials, step-by-step analysis, comparisons, reports
 
 CONTENT PRINCIPLES:
 - Start with your key insight, not background context

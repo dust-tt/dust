@@ -57,17 +57,17 @@ function getDescriptionForContentType(
   return null;
 }
 
-interface AgentMessageFrameGeneratedFilesProps {
+interface AgentMessageContentCreationGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
   onClick?: () => void;
   variant?: "list" | "grid";
 }
 
-export function AgentMessageFrameGeneratedFiles({
+export function AgentMessageContentCreationGeneratedFiles({
   files,
   onClick,
   variant = "list",
-}: AgentMessageFrameGeneratedFilesProps) {
+}: AgentMessageContentCreationGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   if (files.length === 0) {

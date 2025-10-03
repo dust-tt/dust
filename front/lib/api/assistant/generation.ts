@@ -178,14 +178,14 @@ export async function constructPromptMultiActions(
   }
 
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasFrameServer =
+  const hasContentCreationServer =
     featureFlags.includes("interactive_content_server") &&
     agentConfiguration.actions.some((action) =>
       isMCPConfigurationForInternalContentCreation(action)
     );
 
   // Only inject the visualization system prompt if the Content Creation server is not enabled.
-  if (agentConfiguration.visualizationEnabled && !hasFrameServer) {
+  if (agentConfiguration.visualizationEnabled && !hasContentCreationServer) {
     guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 

@@ -64,13 +64,13 @@ async function handler(
 
   const { file, content: fileContent, shareScope } = result;
 
-  // Only allow conversation Frame files.
-  if (!file.isFrame) {
+  // Only allow conversation Content Creation files.
+  if (!file.isContentCreation) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only Frame files can be shared publicly.",
+        message: "Only Content Creation files can be shared publicly.",
       },
     });
   }

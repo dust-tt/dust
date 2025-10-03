@@ -9,7 +9,7 @@ import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence/server";
-import { default as contentCreationServer } from "@app/lib/actions/mcp_internal_actions/servers/frame";
+import { default as contentCreationServer } from "@app/lib/actions/mcp_internal_actions/servers/content_creation";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/server";

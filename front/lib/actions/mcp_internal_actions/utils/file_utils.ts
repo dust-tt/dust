@@ -13,7 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import {
   isAgentMessageType,
-  isFrameFileContentType,
+  isContentCreationFileContentType,
   isContentFragmentType,
   normalizeError,
 } from "@app/types";
@@ -70,7 +70,7 @@ export async function getFileFromConversationAttachment(
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
 
       for (const f of generatedFiles) {
-        if (isFrameFileContentType(f.contentType)) {
+        if (isContentCreationFileContentType(f.contentType)) {
           continue;
         }
 

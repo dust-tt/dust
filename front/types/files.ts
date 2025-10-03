@@ -353,9 +353,9 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 export const clientExecutableContentType =
   "application/vnd.dust.client-executable";
 
-// Frame MIME types for specialized use cases (not exposed via APIs).
-export const FRAME_FILE_FORMATS = {
-  // Custom for client-executable code files managed by frame MCP server.
+// Content Creation MIME types for specialized use cases (not exposed via APIs).
+export const CONTENT_CREATION_FILE_FORMATS = {
+  // Custom for client-executable code files managed by content_creation MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
   [clientExecutableContentType]: {
@@ -365,22 +365,22 @@ export const FRAME_FILE_FORMATS = {
   },
 } as const satisfies Record<string, FileFormat>;
 
-export function isFrameContentType(contentType: string): boolean {
-  return Object.keys(FRAME_FILE_FORMATS).includes(contentType);
+export function isContentCreationContentType(contentType: string): boolean {
+  return Object.keys(CONTENT_CREATION_FILE_FORMATS).includes(contentType);
 }
 
-// Define a type for Frame file content types.
-export type FrameFileContentType =
-  keyof typeof FRAME_FILE_FORMATS;
+// Define a type for Content Creation file content types.
+export type ContentCreationFileContentType =
+  keyof typeof CONTENT_CREATION_FILE_FORMATS;
 
 export const ALL_FILE_FORMATS = {
-  ...FRAME_FILE_FORMATS,
+  ...CONTENT_CREATION_FILE_FORMATS,
   ...FILE_FORMATS,
 };
 
-// Union type for all supported content types (public + Frame).
+// Union type for all supported content types (public + Content Creation).
 export type AllSupportedFileContentType =
-  | FrameFileContentType
+  | ContentCreationFileContentType
   | SupportedFileContentType;
 
 export type SupportedImageContentType = {
@@ -427,11 +427,11 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isFrameFileContentType(
+export function isContentCreationFileContentType(
   contentType: string
-): contentType is FrameFileContentType {
-  return !!FRAME_FILE_FORMATS[
-    contentType as FrameFileContentType
+): contentType is ContentCreationFileContentType {
+  return !!CONTENT_CREATION_FILE_FORMATS[
+    contentType as ContentCreationFileContentType
   ];
 }
 
@@ -439,7 +439,7 @@ export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
-    isFrameFileContentType(contentType) ||
+    isContentCreationFileContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }

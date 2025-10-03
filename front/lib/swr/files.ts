@@ -218,7 +218,7 @@ export function useShareContentCreationFile({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Failed to share the Frame file.",
+        title: "Failed to share the Content Creation file.",
         description: `Error: ${errorData.message}`,
       });
       return null;

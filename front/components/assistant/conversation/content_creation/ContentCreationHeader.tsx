@@ -3,15 +3,15 @@ import React from "react";
 
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 
-interface FrameHeaderProps {
+interface ContentCreationHeaderProps {
   children?: React.ReactNode;
   onClose?: () => void;
 }
 
-export function FrameHeader({
+export function ContentCreationHeader({
   children,
   onClose,
-}: FrameHeaderProps) {
+}: ContentCreationHeaderProps) {
   return (
     <AppLayoutTitle className="bg-gray-50 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center justify-end">

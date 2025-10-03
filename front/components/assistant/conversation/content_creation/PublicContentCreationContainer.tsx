@@ -1,13 +1,13 @@
 import { Spinner } from "@dust-tt/sparkle";
 
-import { CenteredState } from "@app/components/assistant/conversation/frame/CenteredState";
-import { PublicClientExecutableRenderer } from "@app/components/assistant/conversation/frame/PublicClientExecutableRenderer";
-import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/frame/UnsupportedContentRenderer";
+import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
+import { PublicClientExecutableRenderer } from "@app/components/assistant/conversation/content_creation/PublicClientExecutableRenderer";
+import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/content_creation/UnsupportedContentRenderer";
 import { usePublicFile } from "@app/lib/swr/files";
 import Custom404 from "@app/pages/404";
 import { clientExecutableContentType } from "@app/types";
 
-interface PublicFrameContainerProps {
+interface PublicContentCreationContainerProps {
   shareToken: string;
   workspaceId: string;
 }
@@ -16,10 +16,10 @@ interface PublicFrameContainerProps {
  * Public-specific container for content creation.
  * Works without authentication, conversation context, or session requirements.
  */
-export function PublicFrameContainer({
+export function PublicContentCreationContainer({
   shareToken,
   workspaceId,
-}: PublicFrameContainerProps) {
+}: PublicContentCreationContainerProps) {
   const { fileMetadata, isFileLoading, isFileError } = usePublicFile({
     shareToken,
   });

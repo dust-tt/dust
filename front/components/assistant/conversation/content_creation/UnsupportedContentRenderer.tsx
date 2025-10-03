@@ -1,8 +1,8 @@
 import { ContentMessage, ExclamationCircleIcon } from "@dust-tt/sparkle";
 import React from "react";
 
-import { CenteredState } from "@app/components/assistant/conversation/frame/CenteredState";
-import { FrameHeader } from "@app/components/assistant/conversation/frame/FrameHeader";
+import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
+import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 
 interface UnsupportedContentRendererProps {
@@ -18,7 +18,7 @@ export function UnsupportedContentRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <FrameHeader onClose={closePanel} />
+      <ContentCreationHeader onClose={closePanel} />
 
       <div className="flex-1 overflow-hidden">
         <CenteredState>

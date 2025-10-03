@@ -73,7 +73,7 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
-  frameMCPServerView,
+  contentCreationMCPServerView,
   runAgentMCPServerView,
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
@@ -89,7 +89,7 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-  frameMCPServerView: MCPServerViewResource | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
   runAgentMCPServerView: MCPServerViewResource | null;
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
@@ -317,7 +317,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
-        frameMCPServerView,
+        contentCreationMCPServerView,
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
         toolsetsMCPServerView,
@@ -402,7 +402,7 @@ export async function getGlobalAgents(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    frameMCPServerView,
+    contentCreationMCPServerView,
     runAgentMCPServerView,
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
@@ -527,7 +527,7 @@ export async function getGlobalAgents(
       webSearchBrowseMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
-      frameMCPServerView,
+      contentCreationMCPServerView,
       runAgentMCPServerView,
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,

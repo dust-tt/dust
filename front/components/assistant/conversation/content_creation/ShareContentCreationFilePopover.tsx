@@ -114,17 +114,17 @@ function FileSharingDropdown({
   );
 }
 
-interface ShareFrameFilePopoverProps {
+interface ShareContentCreationFilePopoverProps {
   fileId: string;
   owner: LightWorkspaceType;
   isUsingConversationFiles: boolean;
 }
 
-export function ShareFrameFilePopover({
+export function ShareContentCreationFilePopover({
   fileId,
   owner,
   isUsingConversationFiles,
-}: ShareFrameFilePopoverProps) {
+}: ShareContentCreationFilePopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
@@ -207,8 +207,8 @@ export function ShareFrameFilePopover({
                   icon={InformationCircleIcon}
                 >
                   {isPublicSharingForbidden
-                    ? "Your workspace administrator has turned off public sharing of Frame files."
-                    : "This Frame relies on conversation files. The sharing to public option is " +
+                    ? "Your workspace administrator has turned off public sharing of Content Creation files."
+                    : "This Content Creation relies on conversation files. The sharing to public option is " +
                       "disabled to protect company information."}
                 </ContentMessage>
               )}

@@ -18,9 +18,9 @@ import React, { useCallback, useEffect, useRef } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
-import { CenteredState } from "@app/components/assistant/conversation/frame/CenteredState";
-import { FrameHeader } from "@app/components/assistant/conversation/frame/FrameHeader";
-import { ShareFrameFilePopover } from "@app/components/assistant/conversation/frame/ShareFrameFilePopover";
+import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
+import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
+import { ShareContentCreationFilePopover } from "@app/components/assistant/conversation/content_creation/ShareContentCreationFilePopover";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -246,7 +246,7 @@ export function ClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <FrameHeader onClose={onClosePanel}>
+      <ContentCreationHeader onClose={onClosePanel}>
         {lastEditedByAgentConfigurationId && (
           <Button
             variant="ghost"
@@ -283,12 +283,12 @@ export function ClientExecutableRenderer({
           fileId={fileId}
           fileContent={fileContent ?? null}
         />
-        <ShareFrameFilePopover
+        <ShareContentCreationFilePopover
           fileId={fileId}
           owner={owner}
           isUsingConversationFiles={isFileUsingConversationFiles}
         />
-      </FrameHeader>
+      </ContentCreationHeader>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">

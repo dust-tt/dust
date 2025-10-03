@@ -26,7 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
-import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
+import { useContentCreationSharingToggle } from "@app/hooks/useContentCreationSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -407,22 +407,22 @@ function SlackBotToggle({
 }
 
 function ContentCreationSharingToggle({ owner }: { owner: WorkspaceType }) {
-  const { isEnabled, isChanging, doToggleFrameSharing } =
-    useFrameSharingToggle({ owner });
+  const { isEnabled, isChanging, doToggleContentCreationSharing } =
+    useContentCreationSharingToggle({ owner });
 
   return (
     <ContextItem.List>
       <div className="h-full border-b border-border dark:border-border-night" />
       <ContextItem
-        title="Frame file sharing"
-        subElement="Allow public sharing of Frame files"
+        title="Content Creation file sharing"
+        subElement="Allow public sharing of Content Creation files"
         visual={<DocumentTextIcon className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={
           <SliderToggle
             selected={isEnabled}
             disabled={isChanging}
-            onClick={doToggleFrameSharing}
+            onClick={doToggleContentCreationSharing}
           />
         }
       />

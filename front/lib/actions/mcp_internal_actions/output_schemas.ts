@@ -828,7 +828,7 @@ type ContentCreationFileContentProgressOutput = z.infer<
   typeof NotificationContentCreationFileContentSchema
 >;
 
-export function isFrameFileContentOutput(
+export function isContentCreationFileContentOutput(
   output: ProgressNotificationOutput
 ): output is ContentCreationFileContentProgressOutput {
   return output !== undefined && output.type === "content_creation_file";

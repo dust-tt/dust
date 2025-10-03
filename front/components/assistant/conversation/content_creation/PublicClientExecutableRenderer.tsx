@@ -1,8 +1,8 @@
 import { Spinner } from "@dust-tt/sparkle";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { CenteredState } from "@app/components/assistant/conversation/frame/CenteredState";
-import { PublicFrameHeader } from "@app/components/assistant/conversation/frame/PublicFrameHeader";
+import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
+import { PublicContentCreationHeader } from "@app/components/assistant/conversation/content_creation/PublicContentCreationHeader";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFile } from "@app/lib/swr/files";
 
@@ -43,7 +43,7 @@ export function PublicClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <PublicFrameHeader
+      <PublicContentCreationHeader
         title={formatFilenameForDisplay(fileName ?? "Content Creation")}
       />
 
