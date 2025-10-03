@@ -3,6 +3,7 @@ import groupBy from "lodash/groupBy";
 import {
   CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
   EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
   REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
@@ -254,6 +255,72 @@ export async function editClientExecutableFile(
   await fileResource.uploadContent(auth, updatedContent);
 
   return new Ok({ fileResource, replacementCount: occurrences });
+}
+
+export async function renameClientExecutableFile(
+  auth: Authenticator,
+  {
+    fileId,
+    newFileName,
+    renamedByAgentConfigurationId,
+  }: {
+    fileId: string;
+    newFileName: string;
+    renamedByAgentConfigurationId?: string;
+  }
+): Promise<Result<FileResource, { tracked: boolean; message: string }>> {
+  const fileResource = await FileResource.fetchById(auth, fileId);
+  if (!fileResource) {
+    return new Err({ message: `File not found: ${fileId}`, tracked: true });
+  }
+
+  if (fileResource.contentType !== clientExecutableContentType) {
+    return new Err({
+      message: `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`,
+      tracked: false,
+    });
+  }
+
+  try {
+    const fileFormat = CONTENT_CREATION_FILE_FORMATS[fileResource.contentType];
+    const fileNameParts = newFileName.split(".");
+    if (fileNameParts.length < 2) {
+      const supportedExts = fileFormat.exts.join(", ");
+      return new Err({
+        message: `File name must include a valid extension. Supported extensions for ${fileResource.contentType}: ${supportedExts}.`,
+        tracked: false,
+      });
+    }
+
+    const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
+    if (!(fileFormat.exts as string[]).includes(extension)) {
+      const supportedExts = fileFormat.exts.join(", ");
+      return new Err({
+        message: `File extension ${extension} is not supported for MIME type ${fileResource.contentType}. Supported extensions: ${supportedExts}.`,
+        tracked: false,
+      });
+    }
+
+    await fileResource.update({ fileName: newFileName });
+
+    if (
+      renamedByAgentConfigurationId &&
+      fileResource.useCaseMetadata?.lastEditedByAgentConfigurationId !==
+        renamedByAgentConfigurationId
+    ) {
+      await fileResource.setUseCaseMetadata({
+        ...fileResource.useCaseMetadata,
+        lastEditedByAgentConfigurationId: renamedByAgentConfigurationId,
+      });
+    }
+
+    return new Ok(fileResource);
+  } catch (error) {
+    return new Err({
+      message: `Failed to rename file '${fileId}': ${normalizeError(error)}`,
+      tracked: true,
+    });
+  }
 }
 
 export async function getClientExecutableFileContent(
