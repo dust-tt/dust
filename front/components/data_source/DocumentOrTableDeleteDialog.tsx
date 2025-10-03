@@ -134,6 +134,7 @@ export const DocumentOrTableDeleteDialog = ({
               rightButtonProps={{
                 label: "Delete",
                 variant: "warning",
+                autoFocus: true,
                 onClick: async () => {
                   void handleDelete();
                 },

@@ -46,6 +46,7 @@ export const DeleteTagDialog = ({
           rightButtonProps={{
             label: "Delete tag",
             variant: "warning",
+            autoFocus: true,
             onClick: onDeleteTag,
           }}
         />
