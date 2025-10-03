@@ -43,20 +43,22 @@ export const editEditorsPlugin = createPlugin({
       { searchTerm: "" },
       {
         offset: 0,
-        limit: 200,
+        limit: 30,
         orderColumn: "name",
         orderDirection: "asc",
       }
     );
 
     const editors = await getEditors(auth, resource);
-    const editorIds = new Set(editors.map((e) => e.sId));
+    const editorIds = new Set(editors.map((editor) => editor.sId));
 
     return new Ok({
-      members: allMembers.map((m) => ({
-        label: m.fullName ? `${m.fullName} (${m.email})` : m.email,
-        value: m.sId,
-        isEditor: editorIds.has(m.sId),
+      members: allMembers.map((member) => ({
+        label: member.fullName
+          ? `${member.fullName} (${member.email})`
+          : member.email,
+        value: member.sId,
+        isEditor: editorIds.has(member.sId),
       })),
     });
   },
@@ -117,16 +119,17 @@ export const editEditorsPlugin = createPlugin({
 
       logger.info(
         {
+          action: "add_editors",
           agentId: resource.sId,
           agentName: resource.name,
           workspaceId: auth.getNonNullableWorkspace().sId,
-          action: "add_editors",
+          performedBy: {
+            userId: auth.user()?.sId ?? "unknown",
+            email: auth.user()?.email ?? "unknown",
+          },
           editorsAdded: membersToAddFiltered.map((member) => ({
             userId: member.sId,
-            email: member.email,
-            fullName: member.fullName,
           })),
-          editorCount: membersToAddFiltered.length,
         },
         "Agent editors added via poke"
       );
@@ -168,16 +171,17 @@ export const editEditorsPlugin = createPlugin({
 
       logger.info(
         {
+          action: "remove_editors",
           agentId: resource.sId,
           agentName: resource.name,
           workspaceId: auth.getNonNullableWorkspace().sId,
-          action: "remove_editors",
+          performedBy: {
+            userId: auth.user()?.sId ?? "unknown",
+            email: auth.user()?.email ?? "unknown",
+          },
           editorsRemoved: membersToRemove.map((member) => ({
             userId: member.sId,
-            email: member.email,
-            fullName: member.fullName,
           })),
-          editorCount: membersToRemove.length,
         },
         "Agent editors removed via poke"
       );
