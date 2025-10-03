@@ -157,7 +157,11 @@ export function ConversationContainerVirtuoso({
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
         await router.push(
-          getAgentRoute(owner.sId, conversationRes.value.sId),
+          getAgentRoute(
+            owner.sId,
+            conversationRes.value.sId,
+            "justCreated=true"
+          ),
           undefined,
           { shallow: true }
         );

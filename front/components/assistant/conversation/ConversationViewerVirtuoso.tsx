@@ -9,6 +9,7 @@ import {
 } from "@virtuoso.dev/message-list";
 import _ from "lodash";
 import debounce from "lodash/debounce";
+import { useSearchParams } from "next/navigation";
 import React, {
   useCallback,
   useEffect,
@@ -152,6 +153,8 @@ const ConversationViewerVirtuoso = ({
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
   });
+
+  const justCreated = useSearchParams().get("justCreated") === "true";
 
   const { mutateConversationParticipants } = useConversationParticipants({
     conversationId,
@@ -517,8 +520,8 @@ const ConversationViewerVirtuoso = ({
           <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
             initialData={initialListData}
             initialLocation={{
-              index: "LAST",
-              align: "end",
+              index: justCreated ? 0 : "LAST",
+              align: justCreated ? "start" : "end",
               behavior: "instant",
             }}
             ref={ref}
