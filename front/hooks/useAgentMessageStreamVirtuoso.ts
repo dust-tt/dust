@@ -1,4 +1,6 @@
+import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import _ from "lodash";
 import { useCallback, useMemo, useRef } from "react";
 
 import type {
@@ -20,6 +22,35 @@ import type {
 } from "@app/types";
 import { assertNever } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+
+// Throttle the update of the message to avoid excessive re-renders.
+const updateMessageThrottled = _.throttle(
+  ({
+    chainOfThought,
+    content,
+    methods,
+    sId,
+  }: {
+    chainOfThought: string;
+    content: string;
+    methods: VirtuosoMessageListMethods<
+      VirtuosoMessage,
+      VirtuosoMessageListContext
+    >;
+    sId: string;
+  }) => {
+    methods.data.map((m) => {
+      if (isMessageTemporayState(m) && getMessageSId(m) === sId) {
+        return {
+          ...m,
+          message: { ...m.message, chainOfThought, content },
+        };
+      }
+      return m;
+    });
+  },
+  100
+);
 
 export function updateMessageWithAction(
   m: LightAgentMessageWithActionsType,
@@ -92,6 +123,11 @@ export function useAgentMessageStreamVirtuoso({
     [messageStreamState.message.status]
   );
 
+  const chainOfThought = useRef(
+    messageStreamState.message.chainOfThought ?? ""
+  );
+  const content = useRef(messageStreamState.message.content ?? "");
+
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events`;
@@ -118,7 +154,6 @@ export function useAgentMessageStreamVirtuoso({
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
       const eventType = eventPayload.data.type;
-
       switch (eventType) {
         case "end-of-stream":
           // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
@@ -135,64 +170,30 @@ export function useAgentMessageStreamVirtuoso({
           ) {
             // If this is a fresh mount with existing content and we're getting generation_tokens,
             // we need to clear the content first to avoid duplication
-            methods.data.map((m) =>
-              isMessageTemporayState(m) && getMessageSId(m) === sId
-                ? {
-                    ...m,
-                    message: {
-                      ...m.message,
-                      content: null,
-                      chainOfThought: null,
-                    },
-                  }
-                : m
-            );
+            content.current = "";
+            chainOfThought.current = "";
             isFreshMountWithContent.current = false;
           }
 
           const generationTokens = eventPayload.data;
           const classification = generationTokens.classification;
-          methods.data.map((m) => {
-            if (isMessageTemporayState(m) && getMessageSId(m) === sId) {
-              switch (classification) {
-                case "opening_delimiter":
-                case "closing_delimiter":
-                  return m;
 
-                case "tokens": {
-                  return {
-                    ...m,
-                    message: {
-                      ...m.message,
-                      content:
-                        (m.message.content ?? "") + generationTokens.text,
-                    },
-                    agentState: "writing",
-                  };
-                }
-                case "chain_of_thought": {
-                  // If we're not using the full chain of thought, reset at paragraph boundaries.
-                  const chainOfThought =
-                    !m.useFullChainOfThought && generationTokens.text === "\n\n"
-                      ? ""
-                      : (m.message.chainOfThought ?? "") +
-                        generationTokens.text;
-                  return {
-                    ...m,
-                    message: {
-                      ...m.message,
-                      chainOfThought,
-                    },
-                    agentState: "thinking",
-                  };
-                }
-                default:
-                  assertNever(classification);
-              }
-            } else {
-              return m;
+          if (
+            classification === "tokens" ||
+            classification === "chain_of_thought"
+          ) {
+            if (classification === "tokens") {
+              content.current += generationTokens.text;
+            } else if (classification === "chain_of_thought") {
+              chainOfThought.current += generationTokens.text;
             }
-          });
+            updateMessageThrottled({
+              chainOfThought: chainOfThought.current,
+              content: content.current,
+              methods,
+              sId,
+            });
+          }
           break;
 
         case "agent_action_success":
@@ -309,7 +310,7 @@ export function useAgentMessageStreamVirtuoso({
         void mutateMessage();
       }
     },
-    [customOnEventCallback, methods.data, mutateMessage, sId]
+    [customOnEventCallback, methods, mutateMessage, sId]
   );
 
   useEventSource(buildEventSourceURL, onEventCallback, streamId, {
