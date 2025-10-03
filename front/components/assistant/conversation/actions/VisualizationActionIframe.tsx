@@ -22,6 +22,7 @@ import React, {
   useState,
 } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -79,6 +80,7 @@ function useVisualizationDataHandler({
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string | null;
 }) {
+  const sendNotification = useSendNotification();
   const code = visualization.code;
 
   const getFileBlob = useCallback(
@@ -125,6 +127,22 @@ function useVisualizationDataHandler({
 
       const isOriginatingFromViz =
         event.source && event.source === vizIframeRef.current?.contentWindow;
+
+      // Handle EXPORT_ERROR messages
+      if (
+        data.type === "EXPORT_ERROR" &&
+        isOriginatingFromViz &&
+        data.identifier === visualization.identifier
+      ) {
+        sendNotification({
+          title: "Export Failed",
+          type: "error",
+          description:
+            data.errorMessage ||
+            "An error occurred while exporting the content.",
+        });
+        return;
+      }
 
       if (
         !isVisualizationRPCRequest(data) ||
@@ -183,6 +201,7 @@ function useVisualizationDataHandler({
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
+    sendNotification,
   ]);
 }
 

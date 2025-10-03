@@ -365,6 +365,15 @@ export function VisualizationWrapper({
         }
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as PNG. This can happen when the content includes external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);
@@ -381,6 +390,15 @@ export function VisualizationWrapper({
         await downloadFile(blob, `visualization-${identifier}.svg`);
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as SVG. This can happen when the content includes external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);
