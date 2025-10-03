@@ -6,6 +6,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
 
+const editEditorsLogger = logger.child({ activity: "edit-editors" });
+
 export const editEditorsPlugin = createPlugin({
   manifest: {
     id: "edit-editors",
@@ -117,16 +119,11 @@ export const editEditorsPlugin = createPlugin({
         .map((member) => member.fullName || member.email)
         .join(", ");
 
-      logger.info(
+      editEditorsLogger.info(
         {
           action: "add_editors",
           agentId: resource.sId,
           agentName: resource.name,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          performedBy: {
-            userId: auth.user()?.sId ?? "unknown",
-            email: auth.user()?.email ?? "unknown",
-          },
           editorsAdded: membersToAddFiltered.map((member) => ({
             userId: member.sId,
           })),
@@ -169,7 +166,7 @@ export const editEditorsPlugin = createPlugin({
         .map((member) => member.fullName || member.email)
         .join(", ");
 
-      logger.info(
+      editEditorsLogger.info(
         {
           action: "remove_editors",
           agentId: resource.sId,
