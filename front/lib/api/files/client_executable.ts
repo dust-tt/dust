@@ -570,7 +570,7 @@ export function getEditAndRenameActionsToApply(
   // Remaining edit/rename-only groups to cancel. Starts from the current revert.
   let cancelGroupActionCounter = 1;
 
-  const pickedEditAndRenameActions = [];
+  const editAndRenameActionsToApply = [];
 
   for (const actionGroup of sortedActionGroups) {
     if (cancelGroupActionCounter > 0) {
@@ -596,7 +596,7 @@ export function getEditAndRenameActionsToApply(
         isEditFileActionType(currentAction) ||
         isRenameFileActionType(currentAction)
       ) {
-        pickedEditAndRenameActions.push(currentAction);
+        editAndRenameActionsToApply.push(currentAction);
         continue;
       }
 
@@ -606,7 +606,7 @@ export function getEditAndRenameActionsToApply(
     }
   }
 
-  return pickedEditAndRenameActions;
+  return editAndRenameActionsToApply;
 }
 
 export function getRevertedContent(
