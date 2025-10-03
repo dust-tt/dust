@@ -303,7 +303,7 @@ export async function renameClientExecutableFile(
     return fileNameValidationResult;
   }
 
-  await fileResource.update({ fileName: newFileName });
+  await fileResource.rename(newFileName);
 
   if (
     renamedByAgentConfigurationId &&
