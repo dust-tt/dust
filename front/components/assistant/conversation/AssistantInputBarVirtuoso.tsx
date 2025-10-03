@@ -12,6 +12,7 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import { isUserMessage } from "@app/components/assistant/conversation/types";
 import { emptyArray } from "@app/lib/swr/swr";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentMention } from "@app/types";
 import { isAgentMention } from "@app/types";
 
@@ -20,6 +21,7 @@ export const AssistantInputBarVirtuoso = ({
 }: {
   context: VirtuosoMessageListContext;
 }) => {
+  const isMobile = useIsMobile();
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const lastUserMessage = methods.data
     .get()
@@ -83,7 +85,7 @@ export const AssistantInputBarVirtuoso = ({
         onSubmit={context.handleSubmit}
         stickyMentions={agentMentions}
         conversationId={context.conversationId}
-        disableAutoFocus={false}
+        disableAutoFocus={isMobile}
       />
     </div>
   );

@@ -179,6 +179,10 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.getText().trim();
       },
 
+      blur() {
+        return editor?.commands.blur();
+      },
+
       clearEditor() {
         return editor?.commands.clearContent();
       },
