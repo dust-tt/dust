@@ -137,71 +137,75 @@ export function CreateWebhookSourceFormContent({
             )}
           />
         )}
-      </div>
 
-      <Collapsible
-        open={isAdvancedSettingsOpen}
-        onOpenChange={handleAdvancedToggle}
-      >
-        <CollapsibleTrigger
-          label="Secret advanced settings"
-          variant="secondary"
-          isOpen={isAdvancedSettingsOpen}
-        />
-        <CollapsibleContent>
-          <div className="flex flex-col space-y-2">
-            <Controller
-              control={form.control}
-              name="signatureHeader"
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  label="Signature Header"
-                  placeholder="Signature header..."
-                  isError={form.formState.errors.signatureHeader !== undefined}
-                  message={form.formState.errors.signatureHeader?.message}
-                  messageStatus="error"
-                />
-              )}
-            />
-            <div className="flex items-center justify-between space-y-2">
-              <Label>Signature Algorithm</Label>
+        <Collapsible
+          open={isAdvancedSettingsOpen}
+          onOpenChange={handleAdvancedToggle}
+        >
+          <CollapsibleTrigger
+            label="Secret advanced settings"
+            variant="secondary"
+            isOpen={isAdvancedSettingsOpen}
+          />
+          <CollapsibleContent>
+            <div className="flex flex-col space-y-2">
               <Controller
                 control={form.control}
-                name="signatureAlgorithm"
+                name="signatureHeader"
                 render={({ field }) => (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        label={field.value}
-                        variant="outline"
-                        className="!mt-0"
-                        icon={ChevronDownIcon}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS.map((algorithm) => (
-                        <DropdownMenuItem
-                          key={algorithm}
-                          onClick={() => field.onChange(algorithm)}
-                        >
-                          {algorithm}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Input
+                    {...field}
+                    label="Signature Header"
+                    placeholder="Signature header..."
+                    isError={
+                      form.formState.errors.signatureHeader !== undefined
+                    }
+                    message={form.formState.errors.signatureHeader?.message}
+                    messageStatus="error"
+                  />
                 )}
               />
+              <div className="flex items-center justify-between space-y-2">
+                <Label>Signature Algorithm</Label>
+                <Controller
+                  control={form.control}
+                  name="signatureAlgorithm"
+                  render={({ field }) => (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          label={field.value}
+                          variant="outline"
+                          className="!mt-0"
+                          icon={ChevronDownIcon}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS.map(
+                          (algorithm) => (
+                            <DropdownMenuItem
+                              key={algorithm}
+                              onClick={() => field.onChange(algorithm)}
+                            >
+                              {algorithm}
+                            </DropdownMenuItem>
+                          )
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                />
+              </div>
             </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
 
       <Controller
         control={form.control}
         name="customHeaders"
         render={({ field }) => (
-          <>
+          <div>
             <Label htmlFor="customHeaders">Custom Headers (optional)</Label>
             <TextArea
               {...field}
@@ -212,7 +216,7 @@ export function CreateWebhookSourceFormContent({
               showErrorLabel={true}
               rows={4}
             />
-          </>
+          </div>
         )}
       />
     </>
