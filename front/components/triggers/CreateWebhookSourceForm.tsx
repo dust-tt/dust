@@ -13,14 +13,12 @@ import {
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
 import type { useForm } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { z } from "zod";
 
 import {
   PostWebhookSourcesSchema,
-  validateSignatureHeaderForSecretLocation,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
 } from "@app/types/triggers/webhooks";
 
@@ -44,15 +42,13 @@ export const CreateWebhookSourceSchema = PostWebhookSourcesSchema.extend({
     .nullable()
     .refine(validateCustomHeadersFromString, "Invalid JSON format"),
   autoGenerate: z.boolean().default(true),
-})
-  .refine(
-    (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
-    {
-      message: "Secret is required",
-      path: ["secret"],
-    }
-  )
-  .refine(...validateSignatureHeaderForSecretLocation);
+}).refine(
+  (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
+  {
+    message: "Secret is required",
+    path: ["secret"],
+  }
+);
 
 export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
@@ -65,13 +61,6 @@ type CreateWebhookSourceFormContentProps = {
 export function CreateWebhookSourceFormContent({
   form,
 }: CreateWebhookSourceFormContentProps) {
-  const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false);
-
-  const handleAdvancedToggle = (open: boolean) => {
-    setIsAdvancedSettingsOpen(open);
-    form.setValue("secretLocation", open ? "header" : "url");
-  };
-
   return (
     <>
       <Controller
@@ -91,15 +80,8 @@ export function CreateWebhookSourceFormContent({
       />
 
       <div>
-        <Collapsible
-          open={isAdvancedSettingsOpen}
-          onOpenChange={handleAdvancedToggle}
-        >
-          <CollapsibleTrigger
-            label="Advanced settings"
-            variant="secondary"
-            isOpen={isAdvancedSettingsOpen}
-          />
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger label="Advanced settings" variant="secondary" />
           <CollapsibleContent>
             <div className="flex flex-col space-y-2">
               <Label>Secret</Label>
