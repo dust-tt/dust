@@ -61,6 +61,7 @@ export function isDataSourceViewCategoryWithoutApps(
 ): category is DataSourceViewCategoryWithoutApps {
   return (
     isValidDataSourceViewCategory(category) &&
+    category !== "triggers" &&
     category !== "apps" &&
     category !== "actions"
   );
