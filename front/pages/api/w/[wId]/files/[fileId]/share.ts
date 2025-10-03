@@ -68,13 +68,13 @@ async function handler(
     }
   }
 
-  // Only allow sharing Content Creation files.
+  // Only allow sharing Frame files.
   if (!file.isContentCreation) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only Content Creation files can be shared publicly.",
+        message: "Only Frame files can be shared publicly.",
       },
     });
   }
@@ -113,7 +113,7 @@ async function handler(
             api_error: {
               type: "invalid_request_error",
               message:
-                "Content Creation files that use files from the conversation cannot be shared publicly.",
+                "Frame files that use files from the conversation cannot be shared publicly.",
             },
           });
         }

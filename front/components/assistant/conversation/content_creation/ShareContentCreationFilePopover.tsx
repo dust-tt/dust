@@ -184,7 +184,7 @@ export function ShareContentCreationFilePopover({
       <PopoverContent className="flex w-96 flex-col" align="end">
         <div className="flex flex-col gap-4">
           <div className="text-base font-semibold text-primary dark:text-primary-night">
-            Share this Content Creation
+            Share this Frame
           </div>
 
           <div className="flex flex-col">
@@ -207,8 +207,8 @@ export function ShareContentCreationFilePopover({
                   icon={InformationCircleIcon}
                 >
                   {isPublicSharingForbidden
-                    ? "Your workspace administrator has turned off public sharing of Content Creation files."
-                    : "This Content Creation relies on conversation files. The sharing to public option is " +
+                    ? "Your workspace administrator has turned off public sharing of Frame files."
+                    : "This Frame relies on conversation files. The sharing to public option is " +
                       "disabled to protect company information."}
                 </ContentMessage>
               )}

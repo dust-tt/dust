@@ -308,7 +308,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     const updateResult = await this.update({ status: "ready" });
 
-    // For Content Creation conversation files, automatically create a ShareableFileModel with
+    // For Frame conversation files, automatically create a ShareableFileModel with
     // default conversation_participants scope.
     if (this.isContentCreation) {
       await ShareableFileModel.upsert({
@@ -534,9 +534,9 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     scope: FileShareScope
   ): Promise<void> {
-    // Only Content Creation files can be shared.
+    // Only Frame files can be shared.
     if (!this.isContentCreation) {
-      throw new Error("Only Content Creation files can be shared");
+      throw new Error("Only Frame files can be shared");
     }
 
     const user = auth.getNonNullableUser();
