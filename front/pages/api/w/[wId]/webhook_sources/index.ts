@@ -44,28 +44,26 @@ async function handler(
         await WebhookSourceResource.listByWorkspace(auth);
 
       try {
-        const [usageBySourceId, webhookSourcesWithViews] = await Promise.all([
-          getWebhookSourcesUsage({ auth }),
-          concurrentExecutor(
-            webhookSourceResources,
-            async (webhookSourceResource) => {
-              const webhookSource = webhookSourceResource.toJSON();
-              const webhookSourceViewResources =
-                await WebhookSourcesViewResource.listByWebhookSource(
-                  auth,
-                  webhookSource.id
-                );
-              const views = webhookSourceViewResources.map((view) =>
-                view.toJSON()
+        const usageBySourceId = await getWebhookSourcesUsage({ auth });
+        const webhookSourcesWithViews = await concurrentExecutor(
+          webhookSourceResources,
+          async (webhookSourceResource) => {
+            const webhookSource = webhookSourceResource.toJSON();
+            const webhookSourceViewResources =
+              await WebhookSourcesViewResource.listByWebhookSource(
+                auth,
+                webhookSource.id
               );
+            const views = webhookSourceViewResources.map((view) =>
+              view.toJSON()
+            );
 
-              return { ...webhookSource, views };
-            },
-            {
-              concurrency: 10,
-            }
-          ),
-        ]);
+            return { ...webhookSource, views };
+          },
+          {
+            concurrency: 10,
+          }
+        );
 
         return res.status(200).json({
           success: true,
