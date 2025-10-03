@@ -35,6 +35,7 @@ export function CreateWebhookSourceDialog({
     defaultValues: {
       name: "",
       secret: "",
+      secretLocation: "url",
       autoGenerate: true,
       signatureHeader: "",
       signatureAlgorithm: "sha256",

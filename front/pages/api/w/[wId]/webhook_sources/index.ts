@@ -95,6 +95,7 @@ async function handler(
       const {
         name,
         secret,
+        secretLocation,
         signatureHeader,
         signatureAlgorithm,
         customHeaders,
@@ -111,6 +112,7 @@ async function handler(
             secret && secret.length > 0 ? secret : generateSecureSecret(64),
           signatureHeader,
           signatureAlgorithm,
+          secretLocation,
           customHeaders,
         });
 

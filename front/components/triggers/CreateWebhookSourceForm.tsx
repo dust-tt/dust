@@ -1,7 +1,9 @@
 import {
   Button,
   ChevronDownIcon,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,12 +13,14 @@ import {
   SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 import type { useForm } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { z } from "zod";
 
 import {
   PostWebhookSourcesSchema,
+  validateSignatureHeaderForSecretLocation,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
 } from "@app/types/triggers/webhooks";
 
@@ -40,13 +44,15 @@ export const CreateWebhookSourceSchema = PostWebhookSourcesSchema.extend({
     .nullable()
     .refine(validateCustomHeadersFromString, "Invalid JSON format"),
   autoGenerate: z.boolean().default(true),
-}).refine(
-  (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
-  {
-    message: "Secret is required",
-    path: ["secret"],
-  }
-);
+})
+  .refine(
+    (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
+    {
+      message: "Secret is required",
+      path: ["secret"],
+    }
+  )
+  .refine(...validateSignatureHeaderForSecretLocation);
 
 export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
@@ -59,6 +65,13 @@ type CreateWebhookSourceFormContentProps = {
 export function CreateWebhookSourceFormContent({
   form,
 }: CreateWebhookSourceFormContentProps) {
+  const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false);
+
+  const handleAdvancedToggle = (open: boolean) => {
+    setIsAdvancedSettingsOpen(open);
+    form.setValue("secretLocation", open ? "header" : "url");
+  };
+
   return (
     <>
       <Controller
@@ -126,13 +139,16 @@ export function CreateWebhookSourceFormContent({
         )}
       </div>
 
-      <CollapsibleComponent
-        rootProps={{ defaultOpen: false }}
-        triggerProps={{
-          label: "Secret advanced settings",
-          variant: "secondary",
-        }}
-        contentChildren={
+      <Collapsible
+        open={isAdvancedSettingsOpen}
+        onOpenChange={handleAdvancedToggle}
+      >
+        <CollapsibleTrigger
+          label="Secret advanced settings"
+          variant="secondary"
+          isOpen={isAdvancedSettingsOpen}
+        />
+        <CollapsibleContent>
           <div className="flex flex-col space-y-2">
             <Controller
               control={form.control}
@@ -178,8 +194,8 @@ export function CreateWebhookSourceFormContent({
               />
             </div>
           </div>
-        }
-      />
+        </CollapsibleContent>
+      </Collapsible>
 
       <Controller
         control={form.control}
