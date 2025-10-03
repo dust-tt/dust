@@ -33,6 +33,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -94,6 +95,7 @@ const InputBarContainer = ({
   onMCPServerViewDeselect,
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
+  const isMobile = useIsMobile();
   const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -432,7 +434,17 @@ const InputBarContainer = ({
                   voiceTranscriberService.isRecording ||
                   voiceTranscriberService.isTranscribing
                 }
-                onClick={async () => {
+                onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (disableAutoFocus) {
+                    editorService.blur();
+                    // wait a bit for the keyboard to be closed on mobile
+                    if (isMobile) {
+                      editorService.setLoading(true);
+                      await new Promise((resolve) => setTimeout(resolve, 500));
+                    }
+                  }
                   onEnterKeyDown(
                     editorService.isEmpty(),
                     editorService.getMarkdownAndMentions(),
