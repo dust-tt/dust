@@ -74,8 +74,7 @@ export function usePatchUser() {
     firstName: string,
     lastName: string,
     notifySuccess: boolean,
-    jobType?: JobType,
-    imageUrl?: string | null
+    jobType?: JobType
   ) => {
     const res = await fetch("/api/user", {
       method: "PATCH",
@@ -86,7 +85,6 @@ export function usePatchUser() {
         firstName,
         lastName,
         jobType,
-        imageUrl,
       }),
     });
 

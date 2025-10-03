@@ -46,7 +46,7 @@ export async function maybeUpdateFromExternalUser(
   user: UserResource,
   externalUser: ExternalUser
 ) {
-  if (!user.imageUrl && externalUser.picture) {
+  if (externalUser.picture && externalUser.picture !== user.imageUrl) {
     void UserModel.update(
       {
         imageUrl: externalUser.picture,
