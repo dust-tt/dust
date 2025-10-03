@@ -10,7 +10,6 @@ import {
   Label,
   LightModeIcon,
   MoonIcon,
-  Page,
   PencilSquareIcon,
   Spinner,
   SunIcon,
@@ -200,59 +199,48 @@ export function AccountSettings({
         accept="image/png,image/jpeg,image/jpg"
         onChange={handleImageUpload}
       />
-
-      <Page.Horizontal>
-        <div className="flex w-full items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="group relative">
-              <Avatar size="lg" visual={currentImageUrl ?? null} />
-              <Button
-                variant="outline"
-                size="sm"
-                icon={PencilSquareIcon}
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
-                disabled={isUploadingImage}
-                loading={isUploadingImage}
-              />
-            </div>
-          </div>
+      <div className="flex items-center gap-4 py-2">
+        <div className="group relative">
+          <Avatar size="lg" visual={currentImageUrl ?? null} />
+          <Button
+            variant="outline"
+            size="sm"
+            icon={PencilSquareIcon}
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+            disabled={isUploadingImage}
+            loading={isUploadingImage}
+          />
         </div>
-      </Page.Horizontal>
+      </div>
 
       <form
         id="account-settings-form"
         onSubmit={handleSubmit(updateUserProfile)}
       >
-        <Page.Vertical sizing="grow" align="stretch">
-          <Page.Horizontal sizing="grow">
-            <Page.Vertical sizing="grow" align="stretch">
-              {renderNameInput({
-                label: "First Name",
-                fieldName: "firstName",
-              })}
-            </Page.Vertical>
-            <Page.Vertical sizing="grow" align="stretch">
-              {renderNameInput({
-                label: "Last Name",
-                fieldName: "lastName",
-              })}
-            </Page.Vertical>
-          </Page.Horizontal>
-
-          <Page.Horizontal>
-            <div className="flex gap-2">
-              <Label>Email</Label>
-              <Label className="text-muted-foreground dark:text-muted-foreground-night">
-                {user?.email}
-              </Label>
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              {renderNameInput({ label: "First Name", fieldName: "firstName" })}
             </div>
-          </Page.Horizontal>
+            <div className="flex-1">
+              {renderNameInput({ label: "Last Name", fieldName: "lastName" })}
+            </div>
+          </div>
 
-          <Page.Horizontal sizing="grow">
-            <Page.Vertical sizing="grow" align="stretch">
-              <Label>Theme</Label>
+          <div className="flex items-center gap-2 py-2">
+            <Label>Email</Label>
+            <span className="text-muted-foreground dark:text-muted-foreground-night">
+              {user?.email}
+            </span>
+          </div>
+
+          <div className="flex w-full flex-row justify-between gap-4">
+            <div className="flex-1">
+              <div>
+                <Label>Theme</Label>
+              </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -299,8 +287,8 @@ export function AccountSettings({
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
-            </Page.Vertical>
-            <Page.Vertical sizing="grow" align="stretch">
+            </div>
+            <div className="flex-1">
               <Label>Keyboard Shortcuts</Label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -341,12 +329,12 @@ export function AccountSettings({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </Page.Vertical>
-          </Page.Horizontal>
-        </Page.Vertical>
+            </div>
+          </div>
+        </div>
       </form>
 
-      <Page.Horizontal align="right">
+      <div className="flex justify-end gap-2">
         <Button
           label="Cancel"
           variant="ghost"
@@ -362,7 +350,7 @@ export function AccountSettings({
           disabled={!formState.isDirty || formState.isSubmitting}
           loading={formState.isSubmitting}
         />
-      </Page.Horizontal>
+      </div>
     </>
   );
 }
