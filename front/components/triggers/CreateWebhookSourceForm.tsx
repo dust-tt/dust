@@ -91,64 +91,62 @@ export function CreateWebhookSourceFormContent({
       />
 
       <div>
-        <Label>Secret</Label>
-        <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-          <i>
-            Note: You will be able to see and copy this secret for the first 10
-            minutes after creating the webhook.
-          </i>
-        </p>
-        <div className="mb-3 flex items-center justify-between">
-          <Label>Auto-generate</Label>
-          <Controller
-            control={form.control}
-            name="autoGenerate"
-            render={({ field }) => (
-              <SliderToggle
-                selected={field.value}
-                onClick={() => {
-                  const next = !field.value;
-                  field.onChange(next);
-                  if (next) {
-                    form.setValue("secret", "");
-                  }
-                }}
-              />
-            )}
-          />
-        </div>
-
-        {!form.watch("autoGenerate") && (
-          <Controller
-            control={form.control}
-            name="secret"
-            render={({ field }) => (
-              <div className="mt-2">
-                <Input
-                  {...field}
-                  id="secret"
-                  type="password"
-                  placeholder="Secret for validation..."
-                  isError={form.formState.errors.secret !== undefined}
-                  message={form.formState.errors.secret?.message}
-                  messageStatus="error"
-                />
-              </div>
-            )}
-          />
-        )}
-
         <Collapsible
           open={isAdvancedSettingsOpen}
           onOpenChange={handleAdvancedToggle}
         >
           <CollapsibleTrigger
-            label="Secret advanced settings"
+            label="Advanced settings"
             variant="secondary"
             isOpen={isAdvancedSettingsOpen}
           />
           <CollapsibleContent>
             <div className="flex flex-col space-y-2">
+              <Label>Secret</Label>
+              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <i>
+                  Note: You will be able to see and copy this secret for the
+                  first 10 minutes after creating the webhook.
+                </i>
+              </p>
+              <div className="mb-3 flex items-center justify-between">
+                <Label>Auto-generate</Label>
+                <Controller
+                  control={form.control}
+                  name="autoGenerate"
+                  render={({ field }) => (
+                    <SliderToggle
+                      selected={field.value}
+                      onClick={() => {
+                        const next = !field.value;
+                        field.onChange(next);
+                        if (next) {
+                          form.setValue("secret", "");
+                        }
+                      }}
+                    />
+                  )}
+                />
+              </div>
+              {!form.watch("autoGenerate") && (
+                <Controller
+                  control={form.control}
+                  name="secret"
+                  render={({ field }) => (
+                    <div className="mt-2">
+                      <Input
+                        {...field}
+                        id="secret"
+                        type="password"
+                        placeholder="Secret for validation..."
+                        isError={form.formState.errors.secret !== undefined}
+                        message={form.formState.errors.secret?.message}
+                        messageStatus="error"
+                      />
+                    </div>
+                  )}
+                />
+              )}
               <Controller
                 control={form.control}
                 name="signatureHeader"
