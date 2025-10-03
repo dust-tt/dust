@@ -646,23 +646,23 @@ export function MCPServerViewsSheet({
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.childAgentConfiguration && (
+                {toolsConfigurations.childAgentConfigurable !== "no" && (
                   <ChildAgentSection />
                 )}
 
-                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+                {toolsConfigurations.timeFrameConfigurable !== "no" && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.mayRequireDustAppConfiguration && (
+                {toolsConfigurations.dustAppConfigurable !== "no" && (
                   <DustAppSection />
                 )}
 
-                {toolsConfigurations.mayRequireSecretConfiguration && (
+                {toolsConfigurations.secretConfigurable !== "no" && (
                   <SecretSection />
                 )}
 
-                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+                {toolsConfigurations.jsonSchemaConfigurable !== "no" && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />

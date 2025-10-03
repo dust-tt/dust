@@ -10,8 +10,10 @@ import {
   findPathsToConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
+  ANY_TIME_FRAME,
   ConfigurableToolInputJSONSchemas,
   ConfigurableToolInputSchemas,
+  EMPTY_JSON_SCHEMA,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -451,7 +453,7 @@ describe("augmentInputsWithConfiguration", () => {
     });
   });
 
-  describe("NULLABLE_TIME_FRAME mime type", () => {
+  describe("TIME_FRAME mime type", () => {
     it("should augment inputs with time frame configuration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
@@ -464,7 +466,7 @@ describe("augmentInputsWithConfiguration", () => {
           properties: {
             timeFrame:
               ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
               ],
           },
           required: ["timeFrame"],
@@ -481,35 +483,19 @@ describe("augmentInputsWithConfiguration", () => {
         timeFrame: {
           duration: 7,
           unit: "day",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
         },
       });
     });
 
-    it("should return null when timeFrame is not configured", () => {
+    it("should return ANY_TIME_FRAME when timeFrame is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         timeFrame: null,
         inputSchema: {
           type: "object",
           properties: {
-            timeFrame: {
-              oneOf: [
-                { type: "null" },
-                {
-                  type: "object",
-                  properties: {
-                    duration: { type: "number" },
-                    unit: { type: "string" },
-                    mimeType: {
-                      type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
-                    },
-                  },
-                  required: ["duration", "unit", "mimeType"],
-                },
-              ],
-            },
+            timeFrame: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME],
           },
           required: ["timeFrame"],
         },
@@ -522,7 +508,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        timeFrame: null,
+        timeFrame: ANY_TIME_FRAME,
       });
     });
   });
@@ -566,29 +552,14 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
-    it("should return null when jsonSchema is not configured", () => {
+    it("should return EMPTY_JSON_SCHEMA when jsonSchema is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         jsonSchema: null,
         inputSchema: {
           type: "object",
           properties: {
-            schema: {
-              oneOf: [
-                { type: "null" },
-                {
-                  type: "object",
-                  properties: {
-                    type: { type: "string" },
-                    mimeType: {
-                      type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
-                    },
-                  },
-                  required: ["type", "mimeType"],
-                },
-              ],
-            },
+            schema: ConfigurableToolInputJSONSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA],
           },
           required: ["schema"],
         },
@@ -601,7 +572,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        schema: null,
+        schema: EMPTY_JSON_SCHEMA,
       });
     });
   });
@@ -1323,13 +1294,13 @@ describe("augmentInputsWithConfiguration", () => {
                 ...ConfigurableToolInputJSONSchemas[
                   INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
                 ],
-                default: {
-                  value: "should-not-be-used",
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-                },
               },
             },
             required: ["stringParam"],
+            default: {
+              value: "should-not-be-used",
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+            },
           },
           additionalConfiguration: {
             stringParam: "user-provided-value",
