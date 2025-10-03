@@ -140,7 +140,7 @@ export default function SharedFilePage({
         {/* Favicon */}
         <link rel="icon" type="image/png" href={faviconPath} />
       </Head>
-      <div className="flex h-screen w-full">
+      <div className="h-dvh flex w-full">
         <PublicContentCreationContainer
           shareToken={token}
           workspaceId={workspaceId}
