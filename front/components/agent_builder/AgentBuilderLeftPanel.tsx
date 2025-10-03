@@ -1,6 +1,11 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
-import { BarFooter, BarHeader, Button, ScrollArea } from "@dust-tt/sparkle";
-import { XMarkIcon } from "@dust-tt/sparkle";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  ScrollArea,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -38,7 +43,12 @@ export function AgentBuilderLeftPanel({
         className="mx-4"
         title={title}
         rightActions={
-          <Button icon={XMarkIcon} onClick={handleCancel} variant="ghost" />
+          <Button
+            icon={XMarkIcon}
+            onClick={handleCancel}
+            variant="ghost"
+            type="button"
+          />
         }
       />
       <ScrollArea className="flex-1">
