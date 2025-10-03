@@ -19,7 +19,6 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import uniqueId from "lodash/uniqueId";
 import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -147,7 +146,7 @@ export function WebhookEditionModal({
     const editorEmail = trigger?.editorEmail ?? user.email ?? undefined;
 
     const triggerData: AgentBuilderWebhookTriggerType = {
-      sId: trigger?.sId ?? uniqueId(),
+      sId: trigger?.sId,
       name: data.name.trim(),
       customPrompt: data.customPrompt.trim(),
       kind: "webhook",

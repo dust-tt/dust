@@ -15,7 +15,6 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import cronstrue from "cronstrue";
-import uniqueId from "lodash/uniqueId";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -182,7 +181,7 @@ export function ScheduleEditionModal({
 
   const onSubmit = (data: ScheduleFormData) => {
     const triggerData: AgentBuilderTriggerType = {
-      sId: trigger?.sId ?? uniqueId(),
+      sId: trigger?.sId,
       name: data.name.trim(),
       kind: "schedule",
       configuration: {
