@@ -624,13 +624,13 @@ export function getRevertedContent(
 
   let revertedContent = createFileAction.augmentedInputs.content;
 
-  for (const editAction of sortedActions) {
-    if (!isEditFileActionType(editAction)) {
+  for (const action of sortedActions) {
+    if (!isEditFileActionType(action)) {
       // Skip non-edit actions (e.g., rename).
       continue;
     }
 
-    const { old_string, new_string } = editAction.augmentedInputs;
+    const { old_string, new_string } = action.augmentedInputs;
 
     const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
       oldString: old_string,
