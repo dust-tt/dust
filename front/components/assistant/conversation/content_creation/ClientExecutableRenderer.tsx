@@ -56,7 +56,8 @@ function ExportContentDropdown({
           title: "Export Failed",
           type: "error",
           description:
-            "Content contains images with external URLs, which are blocked for security purposes. Please use images uploaded to the conversation instead.",
+            "Content contains images with external URLs, which are blocked for " +
+            "security purposes. Please use images uploaded to the conversation instead.",
         });
         return;
       }
