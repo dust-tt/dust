@@ -184,7 +184,7 @@ const AgentMessageView = ({
             >
               {a.mcpIO && (
                 <Popover
-                  className="max-h-60 w-[84%]"
+                  className="w-[84%]"
                   content={
                     <CodeBlock wrapLongLines className="language-json">
                       {JSON.stringify(
