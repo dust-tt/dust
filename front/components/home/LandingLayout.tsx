@@ -375,7 +375,7 @@ export const PublicWebsiteLogo = ({
   const className = logoVariants({ size });
 
   return (
-    <Link href="/home">
+    <Link href="/">
       <Hover3D className={`relative ${className}`}>
         <Div3D depth={0} className={className}>
           <DustLogoLayer1 className={className} />
