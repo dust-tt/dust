@@ -1,9 +1,13 @@
-use crate::oauth::{
-    connection::{
-        Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+use crate::{
+    oauth::{
+        connection::{
+            Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+            PROVIDER_TIMEOUT_SECONDS,
+        },
+        credential::Credential,
+        providers::utils::execute_request,
     },
-    credential::Credential,
-    providers::utils::execute_request,
+    utils,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -47,7 +51,7 @@ impl Provider for ZendeskConnectionProvider {
             "client_id": *OAUTH_ZENDESK_CLIENT_ID,
             "client_secret": *OAUTH_ZENDESK_CLIENT_SECRET,
             "redirect_uri": redirect_uri,
-            "scope": "read"
+            "scope": "read write"
         });
 
         let subdomain = match connection.metadata()["zendesk_subdomain"].as_str() {
@@ -77,13 +81,20 @@ impl Provider for ZendeskConnectionProvider {
             None => Err(anyhow!("Missing `access_token` in response from Zendesk"))?,
         };
 
-        // The flow doesn't use refresh tokens. The access token doesn't expire.
+        // Extract refresh token if available (for future OAuth updates)
+        let refresh_token = raw_json["refresh_token"].as_str().map(|s| s.to_string());
+
+        // Extract token expiry if available (for future OAuth updates)
+        let access_token_expiry = raw_json["expires_in"]
+            .as_u64()
+            .map(|expires_in| utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000);
+
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: None,
-            refresh_token: None,
+            access_token_expiry,
+            refresh_token,
             raw_json,
             extra_metadata: None,
         })
@@ -91,12 +102,74 @@ impl Provider for ZendeskConnectionProvider {
 
     async fn refresh(
         &self,
-        _connection: &Connection,
+        connection: &Connection,
         _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
-        Err(ProviderError::ActionNotSupportedError(
-            "Zendesk access tokens do not expire".to_string(),
-        ))?
+        let refresh_token = match connection.encrypted_refresh_token() {
+            Some(token) => token,
+            None => {
+                return Err(ProviderError::ActionNotSupportedError(
+                    "No refresh token available for Zendesk connection".to_string(),
+                ))
+            }
+        };
+
+        let subdomain = match connection.metadata()["zendesk_subdomain"].as_str() {
+            Some(d) => {
+                if !ZENDESK_SUBDOMAIN_RE.is_match(d) {
+                    return Err(ProviderError::InvalidMetadataError(
+                        "Zendesk subdomain format invalid".to_string(),
+                    ));
+                }
+                d
+            }
+            None => {
+                return Err(ProviderError::InvalidMetadataError(
+                    "Zendesk subdomain is missing".to_string(),
+                ))
+            }
+        };
+
+        let body = json!({
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": *OAUTH_ZENDESK_CLIENT_ID,
+            "client_secret": *OAUTH_ZENDESK_CLIENT_SECRET,
+        });
+
+        let url = format!("https://{}.zendesk.com/oauth/tokens", subdomain);
+
+        let req = self
+            .reqwest_client()
+            .post(url)
+            .header("Content-Type", "application/json")
+            .json(&body);
+
+        let raw_json = execute_request(ConnectionProvider::Zendesk, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
+
+        let access_token = match raw_json["access_token"].as_str() {
+            Some(token) => token,
+            None => {
+                return Err(ProviderError::InternalError(anyhow!(
+                    "Missing `access_token` in refresh response from Zendesk"
+                )))
+            }
+        };
+
+        let new_refresh_token = raw_json["refresh_token"].as_str().map(|s| s.to_string());
+
+        let access_token_expiry = raw_json["expires_in"]
+            .as_u64()
+            .map(|expires_in| utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000);
+
+        Ok(RefreshResult {
+            access_token: access_token.to_string(),
+            access_token_expiry,
+            refresh_token: new_refresh_token,
+            raw_json,
+        })
     }
 
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {
