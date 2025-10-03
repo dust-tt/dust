@@ -2,7 +2,6 @@ import {
   Button,
   CheckIcon,
   CodeBlock,
-  ConversationMessage,
   Markdown,
   Page,
   Popover,
@@ -13,6 +12,7 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import { useState } from "react";
 
+import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";

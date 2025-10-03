@@ -4,7 +4,6 @@ import {
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
-  ConversationMessage,
   DocumentIcon,
   InteractiveImageGrid,
   Markdown,
@@ -25,6 +24,7 @@ import {
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
+import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
