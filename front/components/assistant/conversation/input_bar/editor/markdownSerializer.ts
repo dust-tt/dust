@@ -46,6 +46,15 @@ function buildNodeSerializers(schema: Schema) {
     state.write(`:content_node_mention[${node.attrs.title}]`);
   };
 
+  map.pastedAttachment = (
+    state: MarkdownSerializerState,
+    node: ProseMirrorNode
+  ) => {
+    state.write(
+      `:pasted_attachment[${node.attrs.title}]{fileId=${node.attrs.fileId}}`
+    );
+  };
+
   // Add fallback for any missing nodes in schema.
   Object.keys(schema.nodes).forEach((nodeName) => {
     if (!map[nodeName]) {

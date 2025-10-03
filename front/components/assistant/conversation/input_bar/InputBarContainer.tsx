@@ -20,7 +20,10 @@ import { useMentionDropdown } from "@app/components/assistant/conversation/input
 import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { getPastedFileName } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import {
+  getDisplayNameFromPastedFileId,
+  getPastedFileName,
+} from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -108,6 +111,89 @@ const InputBarContainer = ({
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
+  const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
+
+  const removePastedAttachmentChip = useCallback(
+    (fileId: string) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance) {
+        return;
+      }
+
+      editorInstance.commands.command(({ state, tr }) => {
+        let removed = false;
+        state.doc.descendants((node, pos) => {
+          if (
+            node.type.name === "pastedAttachment" &&
+            node.attrs?.fileId === fileId
+          ) {
+            tr.delete(pos, pos + node.nodeSize);
+            removed = true;
+            return false;
+          }
+          return true;
+        });
+
+        if (removed) {
+          pastedAttachmentIdsRef.current.delete(fileId);
+        }
+
+        return removed;
+      });
+    },
+    [editorRef]
+  );
+
+  const insertPastedAttachmentChip = useCallback(
+    ({
+      fileId,
+      title,
+      from,
+      to,
+    }: {
+      fileId: string;
+      title: string;
+      from: number;
+      to: number;
+    }) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance) {
+        return false;
+      }
+
+      const { doc } = editorInstance.state;
+
+      let needsLeadingSpace = false;
+      if (from > 0) {
+        const $from = doc.resolve(from);
+        const textBefore = doc.textBetween($from.start(), from, " ");
+        needsLeadingSpace = !!textBefore && !/\s$/.test(textBefore);
+      }
+
+      const content = [
+        ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),
+        {
+          type: "pastedAttachment",
+          attrs: { fileId, title },
+          text: `:pasted_attachment[${title}]{fileId=${fileId}}`,
+        },
+        { type: "text", text: " " },
+      ];
+
+      const success = editorInstance
+        .chain()
+        .focus()
+        .insertContentAt({ from, to }, content)
+        .run();
+
+      if (success) {
+        pastedAttachmentIdsRef.current.add(fileId);
+      }
+
+      return success;
+    },
+    [editorRef]
+  );
 
   const handleUrlDetected = useCallback(
     (candidate: UrlCandidate | NodeCandidate | null) => {
@@ -132,17 +218,32 @@ const InputBarContainer = ({
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
     owner,
-    onLongTextPaste: async (text: string) => {
+    onLongTextPaste: async ({ text, from, to }) => {
+      let filename = "";
+      let inserted = false;
       try {
         const newCount = pastedCount + 1;
         setPastedCount(newCount);
-        const filename = getPastedFileName(newCount);
+        filename = getPastedFileName(newCount);
+        const displayName = getDisplayNameFromPastedFileId(filename);
+
+        inserted = insertPastedAttachmentChip({
+          fileId: filename,
+          title: displayName,
+          from,
+          to,
+        });
+
         const file = new File([text], filename, {
           type: "text/vnd.dust.attachment.pasted",
         });
 
         const uploaded = await fileUploaderService.handleFilesUpload([file]);
         if (!(uploaded && uploaded.length > 0)) {
+          if (inserted) {
+            removePastedAttachmentChip(filename);
+            inserted = false;
+          }
           sendNotification({
             type: "error",
             title: "Failed to attach pasted text",
@@ -150,6 +251,9 @@ const InputBarContainer = ({
           });
         }
       } catch (e) {
+        if (inserted && filename) {
+          removePastedAttachmentChip(filename);
+        }
         sendNotification({
           type: "error",
           title: "Failed to attach pasted text",
@@ -158,6 +262,25 @@ const InputBarContainer = ({
       }
     },
   });
+
+  useEffect(() => {
+    // If an attachment disappears from the uploader, remove its chip from the editor
+    const currentPastedIds = new Set(
+      fileUploaderService.fileBlobs
+        .filter(
+          (blob) => blob.contentType === "text/vnd.dust.attachment.pasted"
+        )
+        .map((blob) => blob.id)
+    );
+
+    const idsInEditor = Array.from(pastedAttachmentIdsRef.current);
+    idsInEditor.forEach((id) => {
+      if (!currentPastedIds.has(id)) {
+        removePastedAttachmentChip(id);
+        pastedAttachmentIdsRef.current.delete(id);
+      }
+    });
+  }, [fileUploaderService.fileBlobs, removePastedAttachmentChip]);
 
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,

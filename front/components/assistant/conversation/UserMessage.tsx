@@ -23,6 +23,10 @@ import {
   getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
+import {
+  PastedAttachmentBlock,
+  pastedAttachmentDirective,
+} from "@app/components/markdown/PastedAttachmentBlock";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
@@ -46,12 +50,18 @@ export function UserMessage({
       sup: CiteBlock,
       mention: getMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
+      pasted_attachment: PastedAttachmentBlock,
     }),
     [owner]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective, contentNodeMentionDirective],
+    () => [
+      getCiteDirective(),
+      mentionDirective,
+      contentNodeMentionDirective,
+      pastedAttachmentDirective,
+    ],
     []
   );
 
