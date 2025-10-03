@@ -648,6 +648,27 @@ export function canReadMessage(
   );
 }
 
+export async function fetchMessage(auth: Authenticator, messageId: string) {
+  return Message.findOne({
+    where: {
+      sId: messageId,
+      workspaceId: auth.getNonNullableWorkspace()?.id,
+    },
+    include: [
+      {
+        model: UserMessage,
+        as: "userMessage",
+        required: false,
+      },
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: false,
+      },
+    ],
+  });
+}
+
 export async function fetchMessageInConversation(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
