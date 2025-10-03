@@ -78,6 +78,7 @@ interface CommonProps {
   variant?: CardVariantType;
   size?: CardSizeType;
   className?: string;
+  dataAnalytics?: string;
 }
 
 interface CardLinkProps extends CommonProps, LinkWrapperProps {
@@ -109,6 +110,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       rel = "",
       replace,
       shallow,
+      dataAnalytics,
       ...props
     },
     ref
@@ -135,6 +137,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
           shallow={shallow}
           target={target}
           rel={rel}
+          data-analytics={dataAnalytics}
         >
           {children}
         </Link>
@@ -146,6 +149,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
         ref={ref}
         className={cardButtonClassNames}
         onClick={onClick}
+        data-analytics={dataAnalytics}
         {...props}
       >
         {children}

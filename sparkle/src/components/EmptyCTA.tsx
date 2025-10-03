@@ -42,14 +42,24 @@ EmptyCTA.displayName = "EmptyCTA";
 interface EmptyCTAButtonProps extends RegularButtonProps {
   icon: React.ComponentType;
   label: string;
+  dataAnalytics?: string;
 }
 
 const EmptyCTAButton: React.FC<EmptyCTAButtonProps> = ({
   icon,
   label,
   variant = "highlight",
+  dataAnalytics,
   ...props
-}) => <Button icon={icon} label={label} variant={variant} {...props} />;
+}) => (
+  <Button
+    icon={icon}
+    label={label}
+    variant={variant}
+    dataAnalytics={dataAnalytics}
+    {...props}
+  />
+);
 
 EmptyCTAButton.displayName = "EmptyCTAButton";
 
