@@ -85,11 +85,8 @@ export const credentialsFromProviders = (
   return credentials;
 };
 
-export const dustManagedCredentials = (options?: {
-  useOpenAIEUKeyFlag?: boolean;
-}): CredentialsType => {
-  const useOpenAIEU =
-    options?.useOpenAIEUKeyFlag && DUST_REGION === "europe-west1";
+export const dustManagedCredentials = (): CredentialsType => {
+  const useOpenAIEU = DUST_REGION === "europe-west1";
   return {
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
     AZURE_OPENAI_API_KEY: DUST_MANAGED_AZURE_OPENAI_API_KEY,
