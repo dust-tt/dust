@@ -540,21 +540,16 @@ export function AssistantBrowser({
           <div className="mb-2 flex flex-wrap items-center gap-2">
             {noTagsDefined ? null : (
               <>
-                {uniqueTags.map((tag, index) => (
-                  <>
-                    <Button
-                      size="xs"
-                      variant={selectedTag === tag.sId ? "primary" : "outline"}
-                      key={tag.sId}
-                      label={tag.name}
-                      onClick={() => {
-                        setSelectedTag(tag.sId);
-                      }}
-                    />
-                    {index == 1 && uniqueTags.length > 2 && (
-                      <span className="heading-base">-</span>
-                    )}
-                  </>
+                {uniqueTags.map((tag) => (
+                  <Button
+                    size="xs"
+                    variant={selectedTag === tag.sId ? "primary" : "outline"}
+                    key={tag.sId}
+                    label={tag.name}
+                    onClick={() => {
+                      setSelectedTag(tag.sId);
+                    }}
+                  />
                 ))}
               </>
             )}
