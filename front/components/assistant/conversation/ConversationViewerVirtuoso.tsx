@@ -512,7 +512,9 @@ const ConversationViewerVirtuoso = ({
         <ConversationErrorDisplay error={conversationError} />
       )}
       {initialListData.length > 0 ? (
-        <VirtuosoMessageListLicense licenseKey="86c08366d0095dd1904cbc9bbbb713bdTzoxMjg7RToxNzkxMDE3OTUzOTE1">
+        <VirtuosoMessageListLicense
+          licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
+        >
           <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
             initialData={initialListData}
             initialLocation={{
