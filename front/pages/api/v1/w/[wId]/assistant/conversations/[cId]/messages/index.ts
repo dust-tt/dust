@@ -18,7 +18,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { UserMessageContext, WithAPIErrorResponse } from "@app/types";
 import { isEmptyString } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 /**
  * @swagger
@@ -102,13 +101,6 @@ async function handler(
           },
         });
       }
-
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
 
       const hasReachedLimits = await hasReachedPublicAPILimits(auth);
       if (hasReachedLimits) {
@@ -199,8 +191,6 @@ async function handler(
               content,
               context: ctx,
               conversation,
-              // TODO(pr) Remove in follow-up PR
-              _executionMode: executionMode,
               mentions,
               skipToolsValidation: skipToolsValidation ?? false,
             })

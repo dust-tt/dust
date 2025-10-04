@@ -1,8 +1,6 @@
 /**
  * Run agent arguments
  */
-import { z } from "zod";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -20,9 +18,6 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-
-export const ExecutionModeSchema = z.enum(["sync", "async", "auto"]);
-export type ExecutionMode = z.infer<typeof ExecutionModeSchema>;
 
 export type AgentLoopArgs = {
   agentMessageId: string;
