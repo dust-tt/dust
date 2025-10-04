@@ -86,18 +86,6 @@ async function handler(
     });
   }
 
-  // This endpoint does not support conversation participants sharing. It goes through the private
-  // API endpoint instead.
-  if (shareScope === "conversation_participants") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
-  }
-
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
     const isWorkspaceUser = await isSessionWithUserFromWorkspace(
