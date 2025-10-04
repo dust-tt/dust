@@ -293,7 +293,7 @@ export const fetchTree = async ({
                 tables,
               };
             },
-            { concurrency: 4 }
+            { concurrency: 2 }
           ),
         };
       },
