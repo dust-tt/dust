@@ -10,7 +10,6 @@ export interface LinkWrapperProps {
   shallow?: boolean;
   target?: string;
   prefetch?: boolean;
-  dataAnalytics?: string;
 }
 
 export const LinkWrapper = React.forwardRef<
@@ -18,7 +17,7 @@ export const LinkWrapper = React.forwardRef<
   LinkWrapperProps
 >(
   (
-    { children, href, rel, replace, shallow, target, prefetch, dataAnalytics },
+    { children, href, rel, replace, shallow, target, prefetch },
     ref
   ) => {
     const { components } = React.useContext(SparkleContext);
@@ -33,7 +32,6 @@ export const LinkWrapper = React.forwardRef<
           replace={replace}
           shallow={shallow}
           prefetch={prefetch}
-          data-analytics={dataAnalytics}
         >
           {children}
         </components.link>

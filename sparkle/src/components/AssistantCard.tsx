@@ -19,7 +19,6 @@ interface BaseAssistantCardProps {
   onClick?: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
   variant?: CardVariantType;
-  dataAnalytics?: string;
 }
 
 type AssistantCardMore = Omit<MiniButtonProps, "icon" | "size">;
@@ -51,7 +50,6 @@ export const AssistantCard = React.forwardRef<
       subtitle,
       action,
       variant = "primary",
-      dataAnalytics,
     },
     ref
   ) => {
@@ -64,7 +62,6 @@ export const AssistantCard = React.forwardRef<
         onContextMenu={onContextMenu}
         action={action}
         variant={variant}
-        dataAnalytics={dataAnalytics}
       >
         <div className="s-flex s-gap-3">
           <Avatar visual={pictureUrl} size="md" />
@@ -107,7 +104,7 @@ export const LargeAssistantCard = React.forwardRef<
   LargeAssistantCardProps
 >(
   (
-    { className, onClick, title, description, pictureUrl, dataAnalytics },
+    { className, onClick, title, description, pictureUrl },
     ref
   ) => {
     return (
@@ -117,7 +114,6 @@ export const LargeAssistantCard = React.forwardRef<
         className={className}
         onClick={onClick}
         variant="tertiary"
-        dataAnalytics={dataAnalytics}
       >
         <div className="s-flex s-gap-3">
           <Avatar visual={pictureUrl} size="lg" />

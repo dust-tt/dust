@@ -10,6 +10,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
 import { PricePlans } from "@app/components/plans/PlansTables";
 
 export async function getStaticProps() {
@@ -41,6 +42,7 @@ export default function Pricing() {
               onClick={() => {
                 window.location.href = "/api/workos/login?screenHint=sign-up";
               }}
+              {...trackClick(TRACKING_AREAS.PRICING, "hero_start_trial")}
             />
           </>
         }

@@ -13,6 +13,7 @@ import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
+import { trackingProps, TRACKING_AREAS } from "@app/lib/tracking";
 import type { BillingPeriod, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -195,6 +196,15 @@ export default function Subscribe({
                   onClick={() => {
                     void handleSubscribePlan(billingPeriod);
                   }}
+                  {...trackingProps(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_start",
+                    "click",
+                    {
+                      billing_period: billingPeriod,
+                      is_trial: noPreviousSubscription ? "true" : "false"
+                    }
+                  )}
                 />
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
