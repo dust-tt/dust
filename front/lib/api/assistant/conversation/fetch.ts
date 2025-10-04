@@ -45,6 +45,7 @@ export async function getConversation(
     where: {
       conversationId: conversation.id,
       workspaceId: owner.id,
+      visibility: "visible",
     },
     order: [
       ["rank", "ASC"],
@@ -102,21 +103,29 @@ export async function getConversation(
 
   const messagesWithRankType = renderRes.value;
 
-  // We pre-create an array that will hold
-  // the versions of each User/Assistant/ContentFragment message. The length of that array is by definition the
-  // maximal rank of the conversation messages we just retrieved. In the case there is no message
-  // the rank is -1 and the array length is 0 as expected.
-  const rankMax = messages.reduce((acc, m) => Math.max(acc, m.rank), -1);
+  // Create a compact array without gaps by grouping messages by rank
+  // and sorting by rank to maintain chronological order
+  const messagesByRank = new Map<
+    number,
+    (UserMessageType | AgentMessageType | ContentFragmentType)[]
+  >();
+
+  // Group messages by rank
+  for (const m of messagesWithRankType) {
+    if (!messagesByRank.has(m.rank)) {
+      messagesByRank.set(m.rank, []);
+    }
+    messagesByRank.get(m.rank)!.push(m);
+  }
+
+  // Create compact array sorted by rank (no empty slots)
   const content: (
     | UserMessageType[]
     | AgentMessageType[]
     | ContentFragmentType[]
-  )[] = Array.from({ length: rankMax + 1 }, () => []);
-
-  // We need to escape the type system here to fill content.
-  for (const m of messagesWithRankType) {
-    (content[m.rank] as any).push(m);
-  }
+  )[] = Array.from(messagesByRank.entries())
+    .sort(([rankA], [rankB]) => rankA - rankB)
+    .map(([, messages]) => messages);
 
   const { actionRequired, unread } =
     await ConversationResource.getActionRequiredAndUnreadForUser(
