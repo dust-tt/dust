@@ -62,7 +62,7 @@ export function AgentBrowserContainer({
     <div
       id="assistants-lists-container"
       className={classNames(
-        "duration-400 flex h-full w-full max-w-3xl flex-col gap-2 pt-8"
+        "duration-400 flex h-full w-full max-w-3xl flex-col gap-2 py-8"
       )}
     >
       <div id="assistants-list-header">
