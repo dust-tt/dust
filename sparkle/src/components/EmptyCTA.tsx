@@ -49,14 +49,7 @@ const EmptyCTAButton: React.FC<EmptyCTAButtonProps> = ({
   label,
   variant = "highlight",
   ...props
-}) => (
-  <Button
-    icon={icon}
-    label={label}
-    variant={variant}
-    {...props}
-  />
-);
+}) => <Button icon={icon} label={label} variant={variant} {...props} />;
 
 EmptyCTAButton.displayName = "EmptyCTAButton";
 
