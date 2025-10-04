@@ -71,10 +71,6 @@ export function ConversationContainer({
   const { scrollConversationsToTop } = useConversationsNavigation();
 
   const router = useRouter();
-
-  const { execution } = router.query;
-  const executionMode = typeof execution === "string" ? execution : "auto";
-
   const sendNotification = useSendNotification();
 
   const { mutateConversations } = useConversations({
@@ -143,7 +139,6 @@ export function ConversationContainer({
             user,
             conversationId: activeConversationId,
             messageData,
-            executionMode,
           });
 
           // Replace placeholder message with API response.
@@ -235,7 +230,6 @@ export function ConversationContainer({
           clientSideMCPServerIds: removeNulls([serverId]),
           selectedMCPServerViewIds,
         },
-        executionMode,
       });
 
       setIsSubmitting(false);
@@ -272,7 +266,6 @@ export function ConversationContainer({
       }
     },
     [
-      executionMode,
       isSubmitting,
       mutateConversations,
       owner,

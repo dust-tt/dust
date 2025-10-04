@@ -27,7 +27,6 @@ import {
   ConversationError,
   InternalPostConversationsRequestBodySchema,
 } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -75,16 +74,6 @@ async function handler(
 
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
-
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-
-      // TODO(pr) remove in follow-up PR
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(

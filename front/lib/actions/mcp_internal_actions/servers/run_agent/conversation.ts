@@ -206,10 +206,6 @@ export async function getOrCreateConversation(
     },
     contentFragments,
     skipToolsValidation: agentMessage.skipToolsValidation ?? false,
-    params: {
-      // TODO(DURABLE_AGENT 2025-08-20): Remove this if we decided to always use async mode.
-      execution: "async",
-    },
   });
 
   if (convRes.isErr()) {

@@ -26,7 +26,6 @@ import {
   isUserMessageType,
   removeNulls,
 } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
@@ -56,16 +55,6 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-
-  const executionModeParseResult = ExecutionModeSchema.safeParse(
-    req.query.execution
-  );
-
-  // TODO(pr) remove in follow-up PR
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const executionMode = executionModeParseResult.success
-    ? executionModeParseResult.data
-    : undefined;
 
   switch (req.method) {
     case "GET":
