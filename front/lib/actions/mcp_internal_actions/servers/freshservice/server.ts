@@ -7,7 +7,11 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 
-import type { FreshserviceTicket } from "./freshservice_api_helper";
+import type {
+  FreshserviceServiceItemField,
+  FreshserviceTicket,
+  FreshserviceTicketField,
+} from "./freshservice_api_helper";
 import { FreshserviceTicketSchema } from "./freshservice_api_helper";
 
 const createServer = (): McpServer => {
@@ -89,7 +93,18 @@ const createServer = (): McpServer => {
       throw new Error(`API error: ${response.status} - ${errorText}`);
     }
 
-    return response.json();
+    const contentType = response.headers.get("content-type");
+    const contentLength = response.headers.get("content-length");
+
+    if (contentLength === "0" || !contentType) {
+      return null;
+    }
+
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    return response.text();
   };
 
   const DEFAULT_TICKET_FIELDS_LIST = [
@@ -155,6 +170,10 @@ const createServer = (): McpServer => {
               "ISO 8601 date-time string to filter tickets updated since this time"
             ),
           type: z.string().optional().describe("Ticket type"),
+          filter_type: z
+            .enum(["new_and_my_open", "watching", "spam", "deleted"])
+            .optional()
+            .describe("Predefined Freshservice filter types"),
         })
         .optional(),
       fields: z
@@ -185,6 +204,9 @@ const createServer = (): McpServer => {
           }
           if (filter?.type) {
             params.append("type", filter.type);
+          }
+          if (filter?.filter_type) {
+            params.append("filter", filter.filter_type);
           }
 
           const result = await apiRequest(
@@ -296,7 +318,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_ticket",
-    "Creates a new ticket in Freshservice",
+    "Creates a new ticket in Freshservice. You MUST call get_ticket_write_fields first to get required fields, then provide all required field values in the custom_fields parameter.",
     {
       email: z.string().describe("Requester email address"),
       subject: z.string().describe("Ticket subject"),
@@ -331,6 +353,28 @@ const createServer = (): McpServer => {
     ) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
+          const fieldsResult = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            "ticket_form_fields"
+          );
+
+          const fields = fieldsResult.fields || [];
+          const requiredFields = fields.filter(
+            (field: FreshserviceTicketField) => field.required
+          );
+          const providedFields = custom_fields ?? {};
+          const missingRequiredFields = requiredFields.filter(
+            (field: FreshserviceTicketField) =>
+              !Object.prototype.hasOwnProperty.call(providedFields, field.name)
+          );
+
+          if (missingRequiredFields.length > 0) {
+            return makeMCPToolTextError(
+              `Missing the following required fields: ${missingRequiredFields.map((field: FreshserviceTicketField) => field.name).join(", ")}. Use get_ticket_write_fields to see all required fields.`
+            );
+          }
+
           const ticketData: any = {
             email,
             subject,
@@ -359,9 +403,13 @@ const createServer = (): McpServer => {
             }
           );
 
+          const ticket = result.ticket;
+          const apiDomain = normalizeApiDomain(freshserviceDomain);
+          const ticketUrl = `https://${apiDomain}/support/tickets/${ticket.id}`;
+
           return makeMCPToolJSONSuccess({
-            message: "Ticket created successfully",
-            result: result.ticket,
+            message: `Ticket created successfully. View ticket at: ${ticketUrl}`,
+            result: ticketUrl,
           });
         },
         authInfo,
@@ -508,6 +556,260 @@ const createServer = (): McpServer => {
           return makeMCPToolJSONSuccess({
             message: "Reply added successfully",
             result: result.conversation,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_ticket_tasks",
+    "Lists all tasks associated with a ticket",
+    {
+      ticket_id: z.number().describe("The ID of the ticket"),
+    },
+    async ({ ticket_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets/${ticket_id}/tasks`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${result.tasks?.length || 0} tasks for ticket ${ticket_id}`,
+            result: result.tasks || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_ticket_task",
+    "Gets detailed information about a specific task on a ticket",
+    {
+      ticket_id: z.number().describe("The ID of the ticket"),
+      task_id: z.number().describe("The ID of the task"),
+    },
+    async ({ ticket_id, task_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets/${ticket_id}/tasks/${task_id}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Task retrieved successfully",
+            result: result.task,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "create_ticket_task",
+    "Creates a new task on a ticket. Tasks help break down complex tickets into manageable subtasks.",
+    {
+      ticket_id: z.number().describe("The ID of the ticket"),
+      title: z.string().describe("Task title"),
+      description: z.string().optional().describe("Task description"),
+      status: z
+        .enum(["1", "2", "3"])
+        .optional()
+        .describe("Status: 1=Open, 2=In Progress, 3=Completed"),
+      due_date: z.string().optional().describe("Due date in ISO 8601 format"),
+      notify_before: z
+        .number()
+        .optional()
+        .describe("Number of hours before due date to send notification"),
+      agent_id: z
+        .number()
+        .optional()
+        .describe("Agent ID to assign the task to"),
+      group_id: z
+        .number()
+        .optional()
+        .describe("Group ID to assign the task to"),
+    },
+    async (
+      {
+        ticket_id,
+        title,
+        description,
+        status,
+        due_date,
+        notify_before,
+        agent_id,
+        group_id,
+      },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const taskData: any = {
+            title,
+            status: status ? parseInt(status) : 1,
+          };
+
+          if (description) {
+            taskData.description = description;
+          }
+          if (due_date) {
+            taskData.due_date = due_date;
+          }
+          if (notify_before !== undefined) {
+            taskData.notify_before = notify_before;
+          }
+          if (agent_id) {
+            taskData.agent_id = agent_id;
+          }
+          if (group_id) {
+            taskData.group_id = group_id;
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets/${ticket_id}/tasks`,
+            {
+              method: "POST",
+              body: JSON.stringify({
+                task: taskData,
+              }),
+            }
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Task created successfully",
+            result: result.task,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_ticket_task",
+    "Updates an existing task on a ticket",
+    {
+      ticket_id: z.number().describe("The ID of the ticket"),
+      task_id: z.number().describe("The ID of the task to update"),
+      title: z.string().optional().describe("Updated task title"),
+      description: z.string().optional().describe("Updated task description"),
+      status: z
+        .enum(["1", "2", "3"])
+        .optional()
+        .describe("Updated status: 1=Open, 2=In Progress, 3=Completed"),
+      due_date: z
+        .string()
+        .optional()
+        .describe("Updated due date in ISO 8601 format"),
+      notify_before: z
+        .number()
+        .optional()
+        .describe("Updated notification time (hours before due date)"),
+      agent_id: z
+        .number()
+        .optional()
+        .describe("Updated agent ID to assign the task to"),
+      group_id: z
+        .number()
+        .optional()
+        .describe("Updated group ID to assign the task to"),
+    },
+    async (
+      {
+        ticket_id,
+        task_id,
+        title,
+        description,
+        status,
+        due_date,
+        notify_before,
+        agent_id,
+        group_id,
+      },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const updateData: any = {};
+
+          if (title) {
+            updateData.title = title;
+          }
+          if (description) {
+            updateData.description = description;
+          }
+          if (status) {
+            updateData.status = parseInt(status);
+          }
+          if (due_date) {
+            updateData.due_date = due_date;
+          }
+          if (notify_before !== undefined) {
+            updateData.notify_before = notify_before;
+          }
+          if (agent_id !== undefined) {
+            updateData.agent_id = agent_id;
+          }
+          if (group_id !== undefined) {
+            updateData.group_id = group_id;
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets/${ticket_id}/tasks/${task_id}`,
+            {
+              method: "PUT",
+              body: JSON.stringify({
+                task: updateData,
+              }),
+            }
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Task updated successfully",
+            result: result.task,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "delete_ticket_task",
+    "Deletes a task from a ticket",
+    {
+      ticket_id: z.number().describe("The ID of the ticket"),
+      task_id: z.number().describe("The ID of the task to delete"),
+    },
+    async ({ ticket_id, task_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets/${ticket_id}/tasks/${task_id}`,
+            {
+              method: "DELETE",
+            }
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Task deleted successfully",
+            result: { deleted_task_id: task_id },
           });
         },
         authInfo,
@@ -748,15 +1050,17 @@ const createServer = (): McpServer => {
     "get_service_item",
     "Gets detailed information about a specific service catalog item including fields and pricing",
     {
-      item_id: z.number().describe("The ID of the service catalog item"),
+      display_id: z
+        .number()
+        .describe("The display ID of the service catalog item"),
     },
-    async ({ item_id }, { authInfo }) => {
+    async ({ display_id }, { authInfo }) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
           const result = await apiRequest(
             accessToken,
             freshserviceDomain,
-            `service_catalog/items/${item_id}`
+            `service_catalog/items/${display_id}`
           );
 
           return makeMCPToolJSONSuccess({
@@ -770,18 +1074,49 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "request_service_item",
-    "Creates a service request for a catalog item and optionally attaches it to an existing ticket",
+    "get_service_item_fields",
+    "Gets the field configuration for a service catalog item. You must call this before request_service_item to get required fields. Returns required_fields and hidden_required_fields that must be provided.",
     {
-      item_id: z
+      display_id: z
         .number()
-        .describe("The ID of the service catalog item to request"),
+        .describe("The display ID of the service catalog item"),
+    },
+    async ({ display_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const itemResult = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `service_catalog/items/${display_id}`
+          );
+
+          const serviceItem = itemResult.service_item;
+          const fields = serviceItem.custom_fields || [];
+          const requiredFields = fields.filter(
+            (field: FreshserviceServiceItemField) => field.required
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${requiredFields.length} service item required fields for item ${display_id}`,
+            result: {
+              fields,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "request_service_item",
+    "Creates a service request for a catalog item. This creates a new ticket. You MUST call get_service_item_fields first to get required fields, then provide all required field values in the fields parameter.",
+    {
+      display_id: z
+        .number()
+        .describe("The display ID of the service catalog item to request"),
       email: z.string().describe("Requester email address"),
-      quantity: z
-        .number()
-        .optional()
-        .default(1)
-        .describe("Quantity of items to request"),
+      quantity: z.number().optional().describe("Quantity of items to request"),
       requested_for: z
         .string()
         .optional()
@@ -798,87 +1133,71 @@ const createServer = (): McpServer => {
         .describe("Optional ticket ID to attach this service request to"),
     },
     async (
-      { item_id, email, quantity, requested_for, fields, ticket_id },
+      { display_id, email, quantity, requested_for, fields },
       { authInfo }
     ) => {
       return withAuth({
         action: async (accessToken, freshserviceDomain) => {
-          // First, get the service item details to understand required fields
           const itemResult = await apiRequest(
             accessToken,
             freshserviceDomain,
-            `service_catalog/items/${item_id}`
+            `service_catalog/items/${display_id}`
           );
 
           const serviceItem = itemResult.service_item;
 
-          // Prepare the service request data
+          const customFields = serviceItem.custom_fields || [];
+
+          const requiredFields = customFields.filter(
+            (field: any) => field.required
+          );
+          const providedFields = fields ?? {};
+          const missingRequiredFields = requiredFields.filter(
+            (field: FreshserviceServiceItemField) =>
+              !Object.prototype.hasOwnProperty.call(providedFields, field.name)
+          );
+
+          if (missingRequiredFields.length > 0) {
+            return makeMCPToolTextError(
+              `Missing the following required fields: ${missingRequiredFields.map((field: FreshserviceServiceItemField) => field.name).join(", ")}. Use get_service_item_fields to see all required fields.`
+            );
+          }
+
           const requestData: any = {
             email,
-            quantity,
-            service_item_id: item_id,
+            custom_fields: fields ?? {},
           };
+
+          if (quantity !== undefined) {
+            requestData.quantity = quantity;
+          }
 
           if (requested_for) {
             requestData.requested_for = requested_for;
-          }
-
-          if (fields) {
-            requestData.custom_fields = fields;
           }
 
           // Create the service request
           const serviceRequestResult = await apiRequest(
             accessToken,
             freshserviceDomain,
-            "service_catalog/place_request",
+            `service_catalog/items/${display_id}/place_request`,
             {
               method: "POST",
-              body: JSON.stringify({
-                service_request: requestData,
-              }),
+              body: JSON.stringify(requestData),
             }
           );
 
-          // If a ticket_id is provided, update the ticket to reference the service request
-          let ticketUpdateResult = null;
-          if (ticket_id && serviceRequestResult.service_request) {
-            try {
-              // Add a note to the ticket about the service request
-              const noteBody = `Service Request #${serviceRequestResult.service_request.id} has been created for: ${serviceItem.name}`;
-
-              await apiRequest(
-                accessToken,
-                freshserviceDomain,
-                `tickets/${ticket_id}/notes`,
-                {
-                  method: "POST",
-                  body: JSON.stringify({
-                    note: {
-                      body: noteBody,
-                      private: false,
-                    },
-                  }),
-                }
-              );
-
-              ticketUpdateResult = {
-                message: `Service request attached to ticket #${ticket_id}`,
-              };
-            } catch (error) {
-              // Non-fatal error - service request was created but couldn't link to ticket
-              ticketUpdateResult = {
-                warning: `Service request created but could not attach to ticket #${ticket_id}: ${error}`,
-              };
-            }
-          }
+          const serviceRequest = serviceRequestResult.service_request;
+          const apiDomain = normalizeApiDomain(freshserviceDomain);
+          const ticketUrl = `https://${apiDomain}/support/tickets/${serviceRequest.id}`;
 
           return makeMCPToolJSONSuccess({
-            message: `Service request created successfully${ticket_id ? ` and attached to ticket #${ticket_id}` : ""}`,
+            message: `Service request created successfully. View ticket at: ${ticketUrl}`,
             result: {
-              service_request: serviceRequestResult.service_request,
-              service_item: serviceItem,
-              ticket_update: ticketUpdateResult,
+              service_request: serviceRequest,
+              ticket_id: serviceRequest.id,
+              ticket_url: ticketUrl,
+              service_item_name: serviceItem.name,
             },
           });
         },
@@ -1211,6 +1530,264 @@ const createServer = (): McpServer => {
           return makeMCPToolJSONSuccess({
             message: `Retrieved ${result.sla_policies?.length || 0} SLA policies`,
             result: result.sla_policies || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_ticket_write_fields",
+    "Lists all available ticket fields including standard and custom fields. Use this to discover what fields are available for use in create_ticket, update_ticket, and other operations.",
+    {
+      search: z
+        .string()
+        .optional()
+        .describe("Search term to filter fields by name or label"),
+    },
+    async ({ search }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            "ticket_form_fields"
+          );
+
+          const fields = result.ticket_fields || [];
+
+          let filteredFields = fields;
+          if (search) {
+            const searchLower = search.toLowerCase();
+            filteredFields = fields.filter(
+              (field: FreshserviceTicketField) =>
+                field.name?.toLowerCase().includes(searchLower) ||
+                field.label?.toLowerCase().includes(searchLower) ||
+                field.description?.toLowerCase().includes(searchLower)
+            );
+          }
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${filteredFields.length} ticket fields${search ? ` matching "${search}"` : ""}`,
+            result: {
+              ticket_fields: filteredFields,
+              total_ticket_fields: filteredFields.length,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_canned_responses",
+    "Lists all canned responses available in Freshservice",
+    {
+      search: z
+        .string()
+        .optional()
+        .describe("Search term to filter canned responses by name or content"),
+      category_id: z.number().optional().describe("Filter by category ID"),
+      folder_id: z.number().optional().describe("Filter by folder ID"),
+      is_public: z
+        .boolean()
+        .optional()
+        .describe("Filter by public/private status"),
+      page: z.number().optional().default(1),
+      per_page: z.number().optional().default(30),
+    },
+    async (
+      { search, category_id, folder_id, is_public, page, per_page },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
+          });
+
+          if (search) {
+            params.append("search", search);
+          }
+          if (category_id) {
+            params.append("category_id", category_id.toString());
+          }
+          if (folder_id) {
+            params.append("folder_id", folder_id.toString());
+          }
+          if (is_public !== undefined) {
+            params.append("is_public", is_public.toString());
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `canned_responses?${params.toString()}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${result.canned_responses?.length || 0} canned responses`,
+            result: result.canned_responses || [],
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_canned_response",
+    "Gets detailed information about a specific canned response",
+    {
+      response_id: z.number().describe("The ID of the canned response"),
+    },
+    async ({ response_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `canned_responses/${response_id}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Canned response retrieved successfully",
+            result: result.canned_response,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_ticket_approval",
+    "Gets detailed information about a specific ticket approval",
+    {
+      ticket_id: z.number().describe("The ID of the ticket"),
+      approval_id: z.number().describe("The ID of the approval to retrieve"),
+    },
+    async ({ ticket_id, approval_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets/${ticket_id}/approvals/${approval_id}`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Ticket approval retrieved successfully",
+            result: result.approval,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_ticket_approvals",
+    "Lists all approvals for a specific ticket",
+    {
+      ticket_id: z.number().describe("The ID of the ticket"),
+    },
+    async ({ ticket_id }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets/${ticket_id}/approvals`
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${result.approvals?.length || 0} approval(s) for ticket ${ticket_id}`,
+            result: {
+              approvals: result.approvals || [],
+              total_approvals: result.approvals?.length || 0,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "request_service_approval",
+    "Requests approval for a ticket. This creates an approval request that needs to be approved before the ticket can be fulfilled. Only works on tickets that have approval workflow configured.",
+    {
+      ticket_id: z.number().describe("The ID of the ticket"),
+      approver_id: z
+        .number()
+        .describe("The ID of the user who should approve this request"),
+      approval_type: z
+        .enum(["1", "2"])
+        .describe(
+          "Approval type: 1=Everyone must approve, 2=Anyone can approve"
+        ),
+      email_content: z
+        .string()
+        .optional()
+        .describe(
+          "Custom email content for approval notification. If not provided, default notification will be sent."
+        ),
+    },
+    async (
+      { ticket_id, approver_id, approval_type, email_content },
+      { authInfo }
+    ) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          try {
+            const ticketResult = await apiRequest(
+              accessToken,
+              freshserviceDomain,
+              `tickets/${ticket_id}`
+            );
+
+            const ticket = ticketResult.ticket;
+
+            if (
+              ticket.approval_status === undefined &&
+              ticket.approval_status_name === undefined
+            ) {
+              return makeMCPToolTextError(
+                `Ticket ${ticket_id} does not support approvals. Approval actions can only be performed on tickets that have approval workflow configured.`
+              );
+            }
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Could not verify ticket ${ticket_id}: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
+          }
+
+          const approvalData: any = {
+            approver_id,
+            approval_type: parseInt(approval_type),
+          };
+
+          if (email_content) {
+            approvalData.email_content = email_content;
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets/${ticket_id}/approvals`,
+            {
+              method: "POST",
+              body: JSON.stringify(approvalData),
+            }
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: "Service request approval created successfully",
+            result: result.approval || result,
           });
         },
         authInfo,

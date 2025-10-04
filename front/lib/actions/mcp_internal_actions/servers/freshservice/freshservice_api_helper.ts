@@ -108,6 +108,41 @@ export interface FreshserviceServiceItem {
   updated_at: string;
 }
 
+export interface FreshserviceServiceItemFieldChoice {
+  id: number;
+  value: string;
+  display_id?: number;
+  requester_display_value?: string;
+  nested_options?: FreshserviceServiceItemFieldChoice[];
+}
+
+export interface FreshserviceServiceItemField {
+  id: number;
+  workspace_id?: number | null;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  label: string;
+  description?: string;
+  field_type: string;
+  required?: boolean;
+  required_for_closure: boolean;
+  default_field: boolean;
+  choices: FreshserviceServiceItemFieldChoice[];
+  nested_fields: any[];
+  required_for_agents: boolean;
+  required_for_customers: boolean;
+  label_for_customers: string;
+  customers_can_edit: boolean;
+  displayed_to_customers: boolean;
+  portal_cc?: boolean;
+  portalcc_to?: string;
+  belongs_to_section: boolean;
+  sections: any[];
+  position?: number;
+  date_only?: boolean;
+}
+
 export interface FreshserviceSolutionArticle {
   id: number;
   title: string;
@@ -138,6 +173,41 @@ export interface FreshserviceOnCallSchedule {
 // API Response interfaces
 export interface FreshserviceListResponse<T> {
   [key: string]: T[];
+}
+
+export interface FreshserviceTicketFieldChoice {
+  id: number;
+  value: string;
+  display_id?: number;
+  requester_display_value?: string;
+  nested_options?: FreshserviceTicketFieldChoice[];
+}
+
+export interface FreshserviceTicketField {
+  id: number;
+  workspace_id?: number | null;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  label: string;
+  description?: string;
+  field_type: string;
+  required?: boolean;
+  required_for_closure: boolean;
+  default_field: boolean;
+  choices: FreshserviceTicketFieldChoice[];
+  nested_fields: any[];
+  required_for_agents: boolean;
+  required_for_customers: boolean;
+  label_for_customers: string;
+  customers_can_edit: boolean;
+  displayed_to_customers: boolean;
+  portal_cc?: boolean;
+  portalcc_to?: string;
+  belongs_to_section: boolean;
+  sections: any[];
+  position?: number;
+  date_only?: boolean;
 }
 
 // Error codes
