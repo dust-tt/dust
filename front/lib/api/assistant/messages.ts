@@ -659,7 +659,7 @@ export async function fetchMessageInConversation(
       conversationId: conversation.id,
       sId: messageId,
       workspaceId: auth.getNonNullableWorkspace()?.id,
-      version,
+      ...(version ? { version } : {}),
     },
     include: [
       {
