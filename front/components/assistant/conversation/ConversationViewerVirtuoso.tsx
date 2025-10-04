@@ -50,7 +50,6 @@ import {
   useConversationMessages,
   useConversationParticipants,
   useConversations,
-  useExecutionMode,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -114,7 +113,6 @@ const ConversationViewerVirtuoso = ({
     >(null);
   const sendNotification = useSendNotification();
   const { serverId } = useCoEditionContext();
-  const executionMode = useExecutionMode();
 
   const { currentPanel } = useConversationSidePanelContext();
 
@@ -409,7 +407,6 @@ const ConversationViewerVirtuoso = ({
         user,
         conversationId,
         messageData,
-        executionMode,
       });
 
       if (result.isErr()) {
@@ -456,7 +453,6 @@ const ConversationViewerVirtuoso = ({
       user,
       owner,
       conversationId,
-      executionMode,
       mutateConversations,
       setPlanLimitReached,
       sendNotification,

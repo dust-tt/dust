@@ -24,7 +24,6 @@ import type { DustError } from "@app/lib/error";
 import {
   useConversationMessages,
   useConversations,
-  useExecutionMode,
 } from "@app/lib/swr/conversations";
 import { getAgentRoute } from "@app/lib/utils/router";
 import type {
@@ -64,8 +63,6 @@ export function ConversationContainerVirtuoso({
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
   const router = useRouter();
-
-  const executionMode = useExecutionMode();
 
   const sendNotification = useSendNotification();
 
@@ -133,7 +130,6 @@ export function ConversationContainerVirtuoso({
           clientSideMCPServerIds: removeNulls([serverId]),
           selectedMCPServerViewIds,
         },
-        executionMode,
       });
 
       setIsSubmitting(false);
@@ -171,7 +167,6 @@ export function ConversationContainerVirtuoso({
       }
     },
     [
-      executionMode,
       isSubmitting,
       mutateConversations,
       owner,
