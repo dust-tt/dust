@@ -71,7 +71,6 @@ interface NavigationListItemProps
   icon?: React.ComponentType;
   moreMenu?: React.ReactNode;
   status?: "idle" | "unread" | "blocked";
-  dataAnalytics?: string;
 }
 
 const NavigationListItem = React.forwardRef<
@@ -91,7 +90,6 @@ const NavigationListItem = React.forwardRef<
       shallow,
       moreMenu,
       status = "idle",
-      dataAnalytics,
       ...props
     },
     ref
@@ -131,7 +129,6 @@ const NavigationListItem = React.forwardRef<
           rel={rel}
           replace={replace}
           shallow={shallow}
-          dataAnalytics={dataAnalytics}
         >
           <div
             className={cn(

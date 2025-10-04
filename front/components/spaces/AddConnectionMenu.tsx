@@ -29,6 +29,7 @@ import {
 } from "@app/lib/connector_providers";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { trackClick, trackingProps, TRACKING_AREAS } from "@app/lib/tracking";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   ConnectorProvider,
@@ -483,6 +484,7 @@ export const AddConnectionMenu = ({
               variant="primary"
               icon={CloudArrowLeftRightIcon}
               size="sm"
+              {...trackClick(TRACKING_AREAS.DATA_SOURCES, "add_connection_menu")}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -494,6 +496,12 @@ export const AddConnectionMenu = ({
                   provider: i.connectorProvider,
                   isDark,
                 })}
+                {...trackingProps(
+                  TRACKING_AREAS.DATA_SOURCES,
+                  "provider_select",
+                  "click",
+                  { provider: i.connectorProvider }
+                )}
                 onClick={() => {
                   handleConnectionClick(i);
                 }}

@@ -59,6 +59,8 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         person_profiles: "identified_only",
         defaults: "2025-05-24",
         opt_out_capturing_by_default: true, // Start opted out
+        capture_pageview: true, // Automatic pageview tracking
+        capture_pageleave: true, // Track when users leave pages
         property_denylist: ["$ip"],
         sanitize_properties: (properties) => {
           if (properties.$current_url) {

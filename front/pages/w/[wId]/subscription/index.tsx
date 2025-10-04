@@ -31,6 +31,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
   SubscriptionPerSeatPricing,
@@ -328,6 +329,7 @@ export default function Subscription({
                         label="Manage my subscription"
                         onClick={handleGoToStripePortal}
                         variant="outline"
+                        {...trackClick(TRACKING_AREAS.AUTH, "subscription_manage")}
                       />
                     )}
                 </Page.Horizontal>
@@ -340,11 +342,13 @@ export default function Subscription({
                 <Button
                   onClick={() => setShowSkipFreeTrialDialog(true)}
                   label="End trial & get full access"
+                  {...trackClick(TRACKING_AREAS.AUTH, "subscription_skip_trial")}
                 />
                 <Button
                   label="Cancel subscription"
                   variant="ghost"
                   onClick={() => setShowCancelFreeTrialDialog(true)}
+                  {...trackClick(TRACKING_AREAS.AUTH, "subscription_cancel_trial")}
                 />
               </Page.Horizontal>
             </Page.Vertical>
@@ -394,6 +398,7 @@ export default function Subscription({
                   label="Your billing dashboard on Stripe"
                   variant="ghost"
                   onClick={handleGoToStripePortal}
+                  {...trackClick(TRACKING_AREAS.AUTH, "subscription_stripe_portal")}
                 />
               </div>
             </Page.Vertical>

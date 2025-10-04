@@ -14,7 +14,6 @@ interface PriceTableProps {
   className?: string;
   children: ReactNode;
   magnified?: boolean;
-  dataAnalytics?: string;
 }
 
 const colorTable = {
@@ -46,7 +45,6 @@ export function PriceTable({
   priceLabel = "",
   className = "",
   magnified = true,
-  dataAnalytics,
   children, // Use children instead of tableItems
 }: PriceTableProps) {
   // Pass size prop to all PriceTable.Item children
@@ -75,7 +73,6 @@ export function PriceTable({
         colorTable[color],
         className
       )}
-      data-analytics={dataAnalytics}
     >
       <div
         className={classNames(

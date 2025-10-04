@@ -225,7 +225,6 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isCounter?: boolean;
     counterValue?: string;
     isRounded?: boolean;
-    dataAnalytics?: string;
   };
 
 export type MiniButtonProps = CommonButtonProps & {
@@ -264,7 +263,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       replace,
       shallow,
       "aria-label": ariaLabel,
-      dataAnalytics,
       ...props
     },
     ref
@@ -374,7 +372,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className
         )}
         aria-label={ariaLabel || tooltip || label}
-        data-analytics={dataAnalytics}
         style={
           {
             "--pulse-color": "#93C5FD",
