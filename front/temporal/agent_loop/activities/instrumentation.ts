@@ -49,7 +49,6 @@ const METRICS = {
 interface BaseEventData {
   agentMessageId: string;
   conversationId: string;
-  executionMode: "sync" | "async";
 }
 
 interface StartEventData extends BaseEventData {
@@ -83,12 +82,8 @@ interface StepCompletionEventData extends StepStartEventData {
  */
 
 // Log start of complete agent loop - only called once per loop.
-export function logAgentLoopStart(eventData: StartEventData): void {
-  statsDClient.increment(
-    METRICS.LOOP_STARTS,
-    1,
-    createExecutionModeTag(eventData.executionMode)
-  );
+export function logAgentLoopStart(): void {
+  statsDClient.increment(METRICS.LOOP_STARTS, 1);
 }
 
 /**
@@ -115,11 +110,7 @@ export async function logAgentLoopPhaseStartActivity({
     "Agent loop phase execution started"
   );
 
-  statsDClient.increment(
-    METRICS.PHASE_STARTS,
-    1,
-    createExecutionModeTag(eventData.executionMode)
-  );
+  statsDClient.increment(METRICS.PHASE_STARTS, 1);
 }
 
 // Logs both phase completion and loop completion metrics.
@@ -147,21 +138,12 @@ export async function logAgentLoopPhaseCompletionActivity({
   );
 
   logAgentLoopPhaseCompletion({
-    executionMode: eventData.executionMode,
     phaseDurationMs,
     stepsCompleted: eventData.stepsCompleted,
   });
 
-  statsDClient.increment(
-    METRICS.LOOP_COMPLETIONS,
-    1,
-    createExecutionModeTag(eventData.executionMode)
-  );
-  statsDClient.distribution(
-    METRICS.LOOP_DURATION,
-    totalDurationMs,
-    createExecutionModeTag(eventData.executionMode)
-  );
+  statsDClient.increment(METRICS.LOOP_COMPLETIONS, 1);
+  statsDClient.distribution(METRICS.LOOP_DURATION, totalDurationMs);
 }
 
 // Logs phase timeout when sync execution switches to async due to timeout.
@@ -204,10 +186,7 @@ export function logAgentLoopPhaseTimeout({
 export function logAgentLoopStepStart(eventData: StepStartEventData): number {
   const stepStartTime = Date.now();
 
-  statsDClient.increment(METRICS.STEP_STARTS, 1, [
-    ...createExecutionModeTag(eventData.executionMode),
-    `step:${eventData.step}`,
-  ]);
+  statsDClient.increment(METRICS.STEP_STARTS, 1, [`step:${eventData.step}`]);
 
   return stepStartTime;
 }
@@ -218,10 +197,7 @@ export async function logAgentLoopStepCompletionActivity(
 ): Promise<void> {
   const stepDurationMs = Date.now() - eventData.stepStartTime;
 
-  const tags = [
-    ...createExecutionModeTag(eventData.executionMode),
-    `step:${eventData.step}`,
-  ];
+  const tags = [`step:${eventData.step}`];
 
   statsDClient.increment(METRICS.STEP_COMPLETIONS, 1, tags);
   statsDClient.distribution(METRICS.STEP_DURATION, stepDurationMs, tags);
@@ -232,19 +208,13 @@ export async function logAgentLoopStepCompletionActivity(
  */
 
 function logAgentLoopPhaseCompletion(
-  eventData: Pick<CompletionEventData, "executionMode" | "stepsCompleted"> & {
+  eventData: Pick<CompletionEventData, "stepsCompleted"> & {
     phaseDurationMs: number;
   }
 ): void {
-  const tags = createExecutionModeTag(eventData.executionMode);
-
-  statsDClient.increment(METRICS.PHASE_COMPLETIONS, 1, tags);
-  statsDClient.distribution(
-    METRICS.PHASE_DURATION,
-    eventData.phaseDurationMs,
-    tags
-  );
-  statsDClient.histogram(METRICS.PHASE_STEPS, eventData.stepsCompleted, tags);
+  statsDClient.increment(METRICS.PHASE_COMPLETIONS, 1);
+  statsDClient.distribution(METRICS.PHASE_DURATION, eventData.phaseDurationMs);
+  statsDClient.histogram(METRICS.PHASE_STEPS, eventData.stepsCompleted);
 }
 
 function calculateDurations(syncStartTime: number, initialStartTime?: number) {
@@ -263,11 +233,6 @@ function createBaseLogData(
   return {
     agentMessageId: eventData.agentMessageId,
     conversationId: eventData.conversationId,
-    executionMode: eventData.executionMode,
     workspaceId: authType.workspaceId,
   };
-}
-
-function createExecutionModeTag(executionMode: string) {
-  return [`execution_mode:${executionMode}`];
 }
