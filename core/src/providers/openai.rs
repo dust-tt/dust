@@ -1200,12 +1200,17 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
-        match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
-            Ok(key) => {
-                self.api_key = Some(key);
-            }
-            Err(_) => match credentials.get("OPENAI_API_KEY") {
+        // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable.
+        let core_key = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY").ok();
+        let use_eu_endpoint: bool;
+
+        if let Some(key) = core_key {
+            self.api_key = Some(key);
+            // Never use EU endpoint when using CORE_DATA_SOURCES_OPENAI_API_KEY.
+            use_eu_endpoint = false;
+        } else {
+            // Fallback to credentials or OPENAI_API_KEY env var
+            match credentials.get("OPENAI_API_KEY") {
                 Some(api_key) => {
                     self.api_key = Some(api_key.clone());
                 }
@@ -1217,17 +1222,20 @@ impl Embedder for OpenAIEmbedder {
                         "Credentials or environment variable `OPENAI_API_KEY` is not set."
                     ))?,
                 },
-            },
+            }
+
+            use_eu_endpoint = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
+                Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+                None => {
+                    match tokio::task::spawn_blocking(|| std::env::var("OPENAI_USE_EU_ENDPOINT"))
+                        .await?
+                    {
+                        Ok(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+                        Err(_) => false,
+                    }
+                }
+            };
         }
-        let use_eu_endpoint: bool = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
-            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_USE_EU_ENDPOINT"))
-                .await?
-            {
-                Ok(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
-                Err(_) => false,
-            },
-        };
         self.host = match use_eu_endpoint {
             false => Some("api.openai.com".to_string()),
             true => Some("eu.api.openai.com".to_string()),
