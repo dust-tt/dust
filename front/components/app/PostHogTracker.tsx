@@ -6,6 +6,7 @@ import { useCookies } from "react-cookie";
 
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
 import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -24,6 +25,18 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
 
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
+
+  // Find the current workspace from user's workspaces
+  const currentWorkspace =
+    user && workspaceId && "workspaces" in user
+      ? user.workspaces.find((w) => w.sId === workspaceId)
+      : undefined;
+
+  // Get active subscription for the workspace (disabled if no workspace found)
+  const { activeSubscription } = useWorkspaceActiveSubscription({
+    owner: currentWorkspace ?? { sId: "", name: "", role: "none" as const, segmentation: null, whiteListedProviders: null, defaultEmbeddingProvider: null, id: 0, metadata: {} },
+    disabled: !currentWorkspace,
+  });
 
   const excludedPaths = [
     "/w",
@@ -84,14 +97,27 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     if (posthog.__loaded && user) {
-      posthog.identify(user.sId);
+      // Build plan properties (used for both user and workspace)
+      const planProperties: Record<string, string> = {};
+      if (activeSubscription) {
+        planProperties.plan_code = activeSubscription.plan.code;
+        planProperties.plan_name = activeSubscription.plan.name;
+        planProperties.is_trial = activeSubscription.trialing ? "true" : "false";
+      }
 
-      // Group by workspace
+      // Set user properties (includes plan + workspace)
+      const userProperties: Record<string, string> = {
+        ...planProperties,
+        ...(workspaceId && { workspace_id: workspaceId }),
+      };
+      posthog.identify(user.sId, userProperties);
+
+      // Group by workspace with same plan properties
       if (workspaceId) {
-        posthog.group("workspace", workspaceId);
+        posthog.group("workspace", workspaceId, planProperties);
       }
     }
-  }, [router.pathname, hasAcceptedCookies, isTrackablePage, user, workspaceId]);
+  }, [router.pathname, hasAcceptedCookies, isTrackablePage, user, workspaceId, activeSubscription]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
