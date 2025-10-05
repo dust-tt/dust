@@ -1,9 +1,8 @@
-import { Button } from "@dust-tt/sparkle";
+import { ArrowDownDashIcon, Button } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import { ArrowBigDownDashIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -71,7 +70,7 @@ export const AssistantInputBarVirtuoso = ({
       >
         <Button
           size="xs"
-          icon={ArrowBigDownDashIcon}
+          icon={ArrowDownDashIcon}
           variant="outline"
           onClick={() => {
             methods.scrollToItem({
