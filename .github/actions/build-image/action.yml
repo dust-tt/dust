@@ -29,6 +29,9 @@ inputs:
   commit_sha_long:
     description: "Commit SHA long"
     required: false
+  virtuoso_license_key:
+    description: "Virtuoso license key"
+    required: false
 
 runs:
   using: "composite"
@@ -78,6 +81,11 @@ runs:
         while IFS='=' read -r key value; do
           [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
         done < "$CONFIG_FILE"
+
+        # Only set the Virtuoso license key if provided
+        if [[ -n "${{ inputs.virtuoso_license_key }}" ]]; then
+          build_args+=("--build-arg NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY=${{ inputs.virtuoso_license_key }}")
+        fi
 
         # Only set the Datadog API key if provided
         if [[ -n "${{ inputs.dd_api_key }}" ]]; then
