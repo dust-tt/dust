@@ -45,7 +45,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
 
   const { activeSubscription } = useWorkspaceActiveSubscription({
     owner: currentWorkspace,
-    disabled: !currentWorkspace || !isAdmin,
+    disabled: !isAdmin,
   });
 
   const planProperties = useMemo(() => {
