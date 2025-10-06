@@ -3,42 +3,29 @@ import { z } from "zod";
 
 import {
   createPage,
-  getCurrentUserWrapper,
-  getPage,
+  getCurrentUser,
   listPages,
   listSpaces,
   updatePage,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeInternalMCPServer,
+  makeMCPToolJSONSuccess,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 
 const createServer = (): McpServer => {
   const server = makeInternalMCPServer("confluence");
 
   server.tool(
-    "list_pages",
-    "List pages from Confluence with optional filtering by space, parent, title, or status. When spaceId is provided, uses optimized space-specific endpoint for better performance. Use this tool to discover pages and their IDs.",
+    "get_pages",
+    "Search for Confluence pages using CQL (Confluence Query Language). Only returns page objects. Examples: 'type=page AND space=DEV', 'type=page AND title~\"meeting\"', 'type=page AND creator=currentUser()'",
     {
-      spaceId: z
+      cql: z
         .string()
-        .optional()
-        .describe("Space ID to filter pages by (e.g., '12345')"),
-      parentId: z
-        .string()
-        .optional()
-        .describe("Parent page ID to filter child pages"),
-      title: z
-        .string()
-        .optional()
-        .describe("Page title to search for (partial match)"),
-      status: z
-        .enum(["current", "trashed", "draft", "archived"])
-        .optional()
-        .describe("Page status to filter by (default: current)"),
-      sort: z
-        .enum(["id", "created-date", "modified-date", "title"])
-        .optional()
-        .describe("Field to sort results by (default: modified-date)"),
+        .describe(
+          "CQL query string. Must include 'type=page' to filter for pages only."
+        ),
       cursor: z
         .string()
         .optional()
@@ -54,7 +41,17 @@ const createServer = (): McpServer => {
     async (params, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          return listPages(baseUrl, accessToken, params);
+          const result = await listPages(baseUrl, accessToken, params);
+          if (result.isErr()) {
+            throw new Error(`Error listing pages: ${result.error}`);
+          }
+          return makeMCPToolJSONSuccess({
+            message:
+              result.value.results.length === 0
+                ? "No pages found"
+                : `Found ${result.value.results.length} page(s)`,
+            result: result.value,
+          });
         },
         authInfo,
       });
@@ -68,7 +65,14 @@ const createServer = (): McpServer => {
     async (_, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          return getCurrentUserWrapper.execute(baseUrl, accessToken);
+          const result = await getCurrentUser(baseUrl, accessToken);
+          if (result.isErr()) {
+            throw new Error(`Error getting current user: ${result.error}`);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Current user information retrieved successfully",
+            result: result.value,
+          });
         },
         authInfo,
       });
@@ -119,28 +123,17 @@ const createServer = (): McpServer => {
     async (params, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          return listSpaces(baseUrl, accessToken, params);
-        },
-        authInfo,
-      });
-    }
-  );
-
-  server.tool(
-    "get_page",
-    "Get a specific Confluence page by its ID, optionally including the page body content in various formats.",
-    {
-      pageId: z.string().describe("The Confluence page ID"),
-      includeBody: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Whether to include page body content (default: false)"),
-    },
-    async ({ pageId, includeBody }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          return getPage(baseUrl, accessToken, pageId, includeBody);
+          const result = await listSpaces(baseUrl, accessToken, params);
+          if (result.isErr()) {
+            throw new Error(`Error listing spaces: ${result.error}`);
+          }
+          return makeMCPToolJSONSuccess({
+            message:
+              result.value.results.length === 0
+                ? "No spaces found matching the criteria"
+                : `Found ${result.value.results.length} space(s)`,
+            result: result.value,
+          });
         },
         authInfo,
       });
@@ -179,7 +172,14 @@ const createServer = (): McpServer => {
     async (params, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          return createPage(baseUrl, accessToken, params);
+          const result = await createPage(baseUrl, accessToken, params);
+          if (result.isErr()) {
+            throw new Error(`Error creating page: ${result.error}`);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Page created successfully",
+            result: result.value,
+          });
         },
         authInfo,
       });
@@ -232,7 +232,14 @@ const createServer = (): McpServer => {
     async (params, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          return updatePage(baseUrl, accessToken, params);
+          const result = await updatePage(baseUrl, accessToken, params);
+          if (result.isErr()) {
+            throw new Error(`Error updating page: ${result.error}`);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Page updated successfully",
+            result: result.value,
+          });
         },
         authInfo,
       });

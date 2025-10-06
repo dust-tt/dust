@@ -5,11 +5,11 @@ import { z } from "zod";
 import type {
   ConfluenceCreatePageRequest,
   ConfluenceCurrentUser,
-  ConfluenceListPagesRequest,
   ConfluenceListPagesResult,
   ConfluenceListSpacesRequest,
   ConfluenceListSpacesResult,
   ConfluencePage,
+  ConfluenceSearchRequest,
   ConfluenceUpdatePageRequest,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import {
@@ -34,8 +34,6 @@ const AtlassianResourceSchema = z.array(
   })
 );
 
-const ALLOWED_DOMAINS = ["api.atlassian.com"];
-
 // Schema for page creation payload
 const CreatePagePayloadSchema = z.object({
   spaceId: z.string(),
@@ -57,21 +55,7 @@ type WithAuthParams = {
 
 type ConfluenceErrorResult = string;
 
-function validateAtlassianBaseUrl(baseUrl: string): boolean {
-  try {
-    const url = new URL(baseUrl);
-    if (url.protocol !== "https:") {
-      return false;
-    }
-    const allowedDomains = ALLOWED_DOMAINS;
-
-    return allowedDomains.includes(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
-// Generic wrapper for Confluence API calls with validation
+// Generic wrapper for Confluence API calls
 async function confluenceApiCall<T extends z.ZodTypeAny>(
   {
     endpoint,
@@ -88,12 +72,6 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   }
 ): Promise<Result<z.infer<T>, ConfluenceErrorResult>> {
   try {
-    if (!validateAtlassianBaseUrl(options.baseUrl)) {
-      const msg = `Invalid or untrusted base URL: ${options.baseUrl}`;
-      logger.error(`[Confluence MCP Server] ${msg}`);
-      return new Err(msg);
-    }
-
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
       method: options.method ?? "GET",
       headers: {
@@ -180,16 +158,7 @@ async function getConfluenceBaseUrl(
 ): Promise<string | null> {
   const resourceInfo = await getConfluenceResourceInfo(accessToken);
   if (resourceInfo?.id) {
-    const baseUrl = `https://api.atlassian.com/ex/confluence/${resourceInfo.id}`;
-
-    if (!validateAtlassianBaseUrl(baseUrl)) {
-      logger.error(
-        `[Confluence MCP Server] Invalid base URL constructed: ${baseUrl}`
-      );
-      return null;
-    }
-
-    return baseUrl;
+    return `https://api.atlassian.com/ex/confluence/${resourceInfo.id}`;
   }
   return null;
 }
@@ -221,7 +190,7 @@ export const withAuth = async ({
   }
 };
 
-async function getCurrentUserInternal(
+export async function getCurrentUser(
   _baseUrl: string,
   accessToken: string
 ): Promise<Result<ConfluenceCurrentUser, string>> {
@@ -243,7 +212,7 @@ async function getCurrentUserInternal(
   return new Ok(result.value);
 }
 
-async function listSpacesInternal(
+export async function listSpaces(
   baseUrl: string,
   accessToken: string,
   params: ConfluenceListSpacesRequest
@@ -298,61 +267,24 @@ async function listSpacesInternal(
   return new Ok(result.value);
 }
 
-async function listPagesInternal(
+export async function listPages(
   baseUrl: string,
   accessToken: string,
-  params: ConfluenceListPagesRequest
+  params: ConfluenceSearchRequest
 ): Promise<Result<ConfluenceListPagesResult, string>> {
   const searchParams = new URLSearchParams();
-  let endpoint: string;
 
-  if (params.spaceId) {
-    endpoint = `/wiki/api/v2/spaces/${params.spaceId}/pages`;
-
-    if (params.parentId) {
-      searchParams.append("parent-id", params.parentId);
-    }
-    if (params.title) {
-      searchParams.append("title", params.title);
-    }
-    if (params.status) {
-      searchParams.append("status", params.status);
-    }
-    if (params.sort) {
-      searchParams.append("sort", params.sort);
-    }
-    if (params.cursor) {
-      searchParams.append("cursor", params.cursor);
-    }
-    if (params.limit) {
-      searchParams.append("limit", params.limit.toString());
-    }
-  } else {
-    endpoint = `/wiki/api/v2/pages`;
-
-    if (params.parentId) {
-      searchParams.append("parent-id", params.parentId);
-    }
-    if (params.title) {
-      searchParams.append("title", params.title);
-    }
-    if (params.status) {
-      searchParams.append("status", params.status);
-    }
-    if (params.sort) {
-      searchParams.append("sort", params.sort);
-    }
-    if (params.cursor) {
-      searchParams.append("cursor", params.cursor);
-    }
-    if (params.limit) {
-      searchParams.append("limit", params.limit.toString());
-    }
+  if (params.cql) {
+    searchParams.append("body-format", "storage");
+  }
+  if (params.cursor) {
+    searchParams.append("cursor", params.cursor);
+  }
+  if (params.limit) {
+    searchParams.append("limit", params.limit.toString());
   }
 
-  if (searchParams.toString()) {
-    endpoint += `?${searchParams.toString()}`;
-  }
+  const endpoint = `/wiki/api/v2/pages?${searchParams.toString()}`;
 
   const result = await confluenceApiCall(
     {
@@ -372,7 +304,7 @@ async function listPagesInternal(
   return new Ok(result.value);
 }
 
-async function getPageInternal(
+export async function getPage(
   baseUrl: string,
   accessToken: string,
   pageId: string,
@@ -406,12 +338,12 @@ async function getPageInternal(
   return new Ok(result.value);
 }
 
-async function updatePageInternal(
+export async function updatePage(
   baseUrl: string,
   accessToken: string,
   updateData: ConfluenceUpdatePageRequest
 ): Promise<Result<ConfluencePage, string>> {
-  const currentPageResult = await getPageInternal(
+  const currentPageResult = await getPage(
     baseUrl,
     accessToken,
     updateData.id,
@@ -479,7 +411,7 @@ async function updatePageInternal(
   return new Ok(result.value);
 }
 
-async function createPageInternal(
+export async function createPage(
   baseUrl: string,
   accessToken: string,
   createData: ConfluenceCreatePageRequest
@@ -520,209 +452,3 @@ async function createPageInternal(
 
   return new Ok(result.value);
 }
-
-export async function getCurrentUser(): Promise<CallToolResult> {
-  return makeMCPToolTextError(
-    "getCurrentUser must be called through withAuth wrapper"
-  );
-}
-
-export async function listPages(
-  baseUrl: string,
-  accessToken: string,
-  params: ConfluenceListPagesRequest
-): Promise<CallToolResult> {
-  const result = await listPagesInternal(baseUrl, accessToken, params);
-  if (result.isErr()) {
-    return makeMCPToolTextError(`Error listing pages: ${result.error}`);
-  }
-
-  const message =
-    result.value.results.length === 0
-      ? "No pages found matching the criteria"
-      : `Found ${result.value.results.length} page(s)`;
-
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          {
-            message,
-            result: result.value,
-          },
-          null,
-          2
-        ),
-      },
-    ],
-  };
-}
-
-export async function listSpaces(
-  baseUrl: string,
-  accessToken: string,
-  params: ConfluenceListSpacesRequest
-): Promise<CallToolResult> {
-  const result = await listSpacesInternal(baseUrl, accessToken, params);
-  if (result.isErr()) {
-    return makeMCPToolTextError(`Error listing spaces: ${result.error}`);
-  }
-
-  const message =
-    result.value.results.length === 0
-      ? "No spaces found matching the criteria"
-      : `Found ${result.value.results.length} space(s)`;
-
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          {
-            message,
-            result: result.value,
-          },
-          null,
-          2
-        ),
-      },
-    ],
-  };
-}
-
-export async function getPage(
-  baseUrl: string,
-  accessToken: string,
-  pageId: string,
-  includeBody: boolean = false
-): Promise<CallToolResult> {
-  const result = await getPageInternal(
-    baseUrl,
-    accessToken,
-    pageId,
-    includeBody
-  );
-  if (result.isErr()) {
-    return makeMCPToolTextError(`Error getting page: ${result.error}`);
-  }
-
-  if (result.value === null) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              message: "Page not found",
-              result: { found: false, pageId },
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
-  }
-
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          {
-            message: "Page retrieved successfully",
-            result: { page: result.value },
-          },
-          null,
-          2
-        ),
-      },
-    ],
-  };
-}
-
-export async function updatePage(
-  baseUrl: string,
-  accessToken: string,
-  updateData: ConfluenceUpdatePageRequest
-): Promise<CallToolResult> {
-  const result = await updatePageInternal(baseUrl, accessToken, updateData);
-  if (result.isErr()) {
-    return makeMCPToolTextError(`Error updating page: ${result.error}`);
-  }
-
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          {
-            message: "Page updated successfully",
-            result: result.value,
-          },
-          null,
-          2
-        ),
-      },
-    ],
-  };
-}
-
-export async function createPage(
-  baseUrl: string,
-  accessToken: string,
-  createData: ConfluenceCreatePageRequest
-): Promise<CallToolResult> {
-  const result = await createPageInternal(baseUrl, accessToken, createData);
-  if (result.isErr()) {
-    return makeMCPToolTextError(`Error creating page: ${result.error}`);
-  }
-
-  return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          {
-            message: "Page created successfully",
-            result: result.value,
-          },
-          null,
-          2
-        ),
-      },
-    ],
-  };
-}
-
-// Wrapper for getCurrentUser that follows the withAuth pattern
-export const getCurrentUserWrapper = {
-  execute: async (
-    baseUrl: string,
-    accessToken: string
-  ): Promise<CallToolResult> => {
-    const result = await getCurrentUserInternal(baseUrl, accessToken);
-    if (result.isErr()) {
-      return makeMCPToolTextError(
-        `Error getting current user: ${result.error}`
-      );
-    }
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              message: "Current user information retrieved successfully",
-              result: result.value,
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
-  },
-};

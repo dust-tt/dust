@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Confluence user schema
 export const ConfluenceUserSchema = z.object({
   accountId: z.string(),
   email: z.string().optional(),
@@ -15,7 +14,6 @@ export const ConfluenceUserSchema = z.object({
     .optional(),
 });
 
-// Confluence space schema
 export const ConfluenceSpaceSchema = z.object({
   id: z.string(),
   key: z.string(),
@@ -47,7 +45,6 @@ export const ConfluenceSpaceSchema = z.object({
     .optional(),
 });
 
-// Confluence page body schema
 export const ConfluencePageBodySchema = z.object({
   storage: z
     .object({
@@ -69,36 +66,25 @@ export const ConfluencePageBodySchema = z.object({
     .optional(),
 });
 
-// Confluence page version schema
-export const ConfluencePageVersionSchema = z.object({
-  number: z.number(),
-  when: z.string(),
-  message: z.string().optional(),
-  by: ConfluenceUserSchema,
-});
+export const ConfluencePageSchema = z
+  .object({
+    id: z.string(),
+    status: z.string(),
+    title: z.string(),
+    parentId: z.string().optional(),
+    spaceId: z.string().optional(),
+    body: ConfluencePageBodySchema.optional(),
+  })
+  .passthrough()
+  .transform((data) => ({
+    id: data.id,
+    status: data.status,
+    title: data.title,
+    parentId: data.parentId,
+    spaceId: data.spaceId,
+    body: data.body,
+  }));
 
-// Confluence page schema
-export const ConfluencePageSchema = z.object({
-  id: z.string(),
-  type: z.string(),
-  status: z.string(),
-  title: z.string(),
-  spaceId: z.string().optional(),
-  parentId: z.string().optional(),
-  authorId: z.string().optional(),
-  createdAt: z.string().optional(),
-  version: ConfluencePageVersionSchema.optional(),
-  body: ConfluencePageBodySchema.optional(),
-  _links: z
-    .object({
-      webui: z.string(),
-      editui: z.string().optional(),
-      self: z.string(),
-    })
-    .optional(),
-});
-
-// List spaces request schema
 export const ConfluenceListSpacesRequestSchema = z.object({
   ids: z
     .array(z.string())
@@ -129,8 +115,8 @@ export const ConfluenceListSpacesRequestSchema = z.object({
     .describe("Number of results per page (max 250)"),
 });
 
-// List pages request schema
 export const ConfluenceListPagesRequestSchema = z.object({
+  ids: z.array(z.string()).optional().describe("List of page IDs to filter by"),
   spaceId: z.string().optional().describe("Space ID to filter pages by"),
   parentId: z
     .string()
@@ -155,7 +141,6 @@ export const ConfluenceListPagesRequestSchema = z.object({
     .describe("Number of results per page (max 250)"),
 });
 
-// Create page request schema
 export const ConfluenceCreatePageRequestSchema = z.object({
   spaceId: z
     .string()
@@ -176,7 +161,6 @@ export const ConfluenceCreatePageRequestSchema = z.object({
     .describe("Page body content"),
 });
 
-// Update page request schema
 export const ConfluenceUpdatePageRequestSchema = z.object({
   id: z.string().describe("The page ID"),
   status: z
@@ -201,7 +185,6 @@ export const ConfluenceUpdatePageRequestSchema = z.object({
     .describe("Version information"),
 });
 
-// List spaces result schema
 export const ConfluenceListSpacesResultSchema = z.object({
   results: z.array(ConfluenceSpaceSchema),
   _links: z
@@ -212,7 +195,6 @@ export const ConfluenceListSpacesResultSchema = z.object({
     .optional(),
 });
 
-// List pages result schema
 export const ConfluenceListPagesResultSchema = z.object({
   results: z.array(ConfluencePageSchema),
   _links: z
@@ -223,18 +205,13 @@ export const ConfluenceListPagesResultSchema = z.object({
     .optional(),
 });
 
-// Current user response schema - matching Atlassian standard /me endpoint
 export const ConfluenceCurrentUserSchema = z
   .object({
     account_id: z.string(),
     account_type: z.string().optional().default("atlassian"),
     email: z.string().optional(),
     name: z.string(),
-    picture: z.string().optional(),
     nickname: z.string().optional(),
-    zoneinfo: z.string().optional(),
-    locale: z.string().optional(),
-    extended: z.record(z.any()).optional(),
   })
   .transform((data) => ({
     accountId: data.account_id,
@@ -242,14 +219,6 @@ export const ConfluenceCurrentUserSchema = z
     email: data.email,
     displayName: data.name,
     publicName: data.name,
-    profilePicture: data.picture
-      ? {
-          path: data.picture,
-          width: 48,
-          height: 48,
-          isDefault: false,
-        }
-      : undefined,
   }));
 
 export type ConfluenceUser = z.infer<typeof ConfluenceUserSchema>;
@@ -274,3 +243,19 @@ export type ConfluenceListPagesResult = z.infer<
   typeof ConfluenceListPagesResultSchema
 >;
 export type ConfluenceCurrentUser = z.infer<typeof ConfluenceCurrentUserSchema>;
+
+export const ConfluenceSearchRequestSchema = z.object({
+  cql: z.string().describe("CQL query string"),
+  cursor: z.string().optional().describe("Pagination cursor for next page"),
+  limit: z
+    .number()
+    .min(1)
+    .max(250)
+    .optional()
+    .default(25)
+    .describe("Number of results per page (max 250)"),
+});
+
+export type ConfluenceSearchRequest = z.infer<
+  typeof ConfluenceSearchRequestSchema
+>;
