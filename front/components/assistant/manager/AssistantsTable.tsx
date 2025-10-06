@@ -227,7 +227,7 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
-          className={classNames("font-mono")}
+          className="font-mono"
           disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
