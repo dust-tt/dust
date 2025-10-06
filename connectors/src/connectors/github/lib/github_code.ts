@@ -8,7 +8,6 @@ import {
 } from "@connectors/connectors/github/lib/errors";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { fileSizeToHumanReadable } from "@connectors/types";
 
 const REPO_SIZE_LIMIT = 10 * 1024 * 1024; // 10GB in KB
 
