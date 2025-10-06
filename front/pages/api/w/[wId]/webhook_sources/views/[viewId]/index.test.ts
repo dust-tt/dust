@@ -97,12 +97,14 @@ describe("GET /api/w/[wId]/webhook_sources/views/[viewId]", () => {
 
 describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   it("should update webhook source view name successfully", async () => {
-    const { req, res, workspace } = await setupTest("admin", "PATCH");
+    const { req, res, workspace, systemSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
 
-    const globalSpace = await SpaceFactory.global(workspace);
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const webhookSourceView =
-      await webhookSourceViewFactory.create(globalSpace);
+      await webhookSourceViewFactory.create(systemSpace);
 
     expect(webhookSourceView).not.toBeNull();
     req.query.viewId = webhookSourceView.sId;
@@ -121,12 +123,14 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   });
 
   it("should return 400 when name is not provided in request body", async () => {
-    const { req, res, workspace } = await setupTest("admin", "PATCH");
+    const { req, res, workspace, systemSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
 
-    const globalSpace = await SpaceFactory.global(workspace);
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const webhookSourceView =
-      await webhookSourceViewFactory.create(globalSpace);
+      await webhookSourceViewFactory.create(systemSpace);
 
     expect(webhookSourceView).not.toBeNull();
     req.query.viewId = webhookSourceView.sId;
@@ -141,12 +145,14 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   });
 
   it("should return 400 when name is empty string", async () => {
-    const { req, res, workspace } = await setupTest("admin", "PATCH");
+    const { req, res, workspace, systemSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
 
-    const globalSpace = await SpaceFactory.global(workspace);
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const webhookSourceView =
-      await webhookSourceViewFactory.create(globalSpace);
+      await webhookSourceViewFactory.create(systemSpace);
 
     expect(webhookSourceView).not.toBeNull();
     req.query.viewId = webhookSourceView.sId;
@@ -179,12 +185,14 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   });
 
   it("should fail to update view when user has insufficient permissions", async () => {
-    const { req, res, workspace } = await setupTest("user", "PATCH");
+    const { req, res, workspace, systemSpace } = await setupTest(
+      "user",
+      "PATCH"
+    );
 
-    const globalSpace = await SpaceFactory.global(workspace);
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const webhookSourceView =
-      await webhookSourceViewFactory.create(globalSpace);
+      await webhookSourceViewFactory.create(systemSpace);
 
     expect(webhookSourceView).not.toBeNull();
     req.query.viewId = webhookSourceView.sId;
@@ -214,12 +222,14 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
   });
 
   it("should handle update failure gracefully", async () => {
-    const { req, res, workspace } = await setupTest("admin", "PATCH");
+    const { req, res, workspace, systemSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
 
-    const globalSpace = await SpaceFactory.global(workspace);
     const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
     const webhookSourceView =
-      await webhookSourceViewFactory.create(globalSpace);
+      await webhookSourceViewFactory.create(systemSpace);
 
     expect(webhookSourceView).not.toBeNull();
     req.query.viewId = webhookSourceView.sId;
@@ -253,5 +263,52 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
 
     // Restore the spy
     fetchByIdSpy.mockRestore();
+  });
+
+  it("should update name for all views of the same webhook source when admin", async () => {
+    const { req, res, workspace, auth, systemSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
+
+    const webhookSourceViewFactory = new WebhookSourceViewFactory(workspace);
+    const systemView = await webhookSourceViewFactory.create(systemSpace);
+
+    expect(systemView).not.toBeNull();
+
+    // Create additional views in global space for the same webhook source
+    const globalSpace = await SpaceFactory.global(workspace);
+    await webhookSourceViewFactory.create(globalSpace, {
+      webhookSourceId: systemView.webhookSourceSId,
+    });
+
+    // Verify initial state
+    const initialViews = await WebhookSourcesViewResource.listByWebhookSource(
+      auth,
+      systemView.webhookSourceId
+    );
+    expect(initialViews.length).toBeGreaterThanOrEqual(2);
+
+    // Update via system view
+    req.query.viewId = systemView.sId;
+    req.body = { name: "Updated Webhook Name" };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const responseData = res._getJSONData();
+    expect(responseData.webhookSourceView).toBeDefined();
+    expect(responseData.webhookSourceView.customName).toBe(
+      "Updated Webhook Name"
+    );
+
+    // Verify all views were updated
+    const updatedViews = await WebhookSourcesViewResource.listByWebhookSource(
+      auth,
+      systemView.webhookSourceId
+    );
+    expect(updatedViews.length).toBe(initialViews.length);
+    for (const view of updatedViews) {
+      expect(view.customName).toBe("Updated Webhook Name");
+    }
   });
 });
