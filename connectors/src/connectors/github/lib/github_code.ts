@@ -74,7 +74,7 @@ export function isRepoTooLarge(
         repoName: repoInfo.name,
         size: repoInfo.size,
       },
-      `GitHub repository too large to sync`
+      "GitHub repository too large to sync"
     );
 
     return true;
