@@ -5,7 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { Result,WithAPIErrorResponse  } from "@app/types";
+import type { Result, WithAPIErrorResponse } from "@app/types";
 import { assertNever, Ok } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { patchWebhookSourceViewBodySchema } from "@app/types/triggers/webhooks";
