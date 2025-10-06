@@ -68,7 +68,7 @@ export function WebhookSourceDetailsInfo({
 
   const webhookUrl = useMemo(() => {
     const { url } = config.getDustAPIConfig();
-    return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}?secret=${webhookSourceView.webhookSource.urlSecret}`;
+    return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}/${webhookSourceView.webhookSource.urlSecret}`;
   }, [
     owner.sId,
     webhookSourceView.webhookSource.sId,
