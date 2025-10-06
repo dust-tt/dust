@@ -38,7 +38,7 @@ import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, trackingProps } from "@app/lib/tracking";
+import { TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -558,18 +558,6 @@ const InputBarContainer = ({
                   voiceTranscriberService.isRecording ||
                   voiceTranscriberService.isTranscribing
                 }
-                {...trackingProps(
-                  TRACKING_AREAS.CONVERSATION,
-                  "message_send",
-                  "click",
-                  {
-                    has_attachments:
-                      attachedNodes.length > 0 ? "true" : "false",
-                    has_tools:
-                      selectedMCPServerViews.length > 0 ? "true" : "false",
-                    has_assistant: selectedAssistant ? "true" : "false",
-                  }
-                )}
                 onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
                   e.preventDefault();
                   e.stopPropagation();
