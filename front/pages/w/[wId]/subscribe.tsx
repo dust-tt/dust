@@ -194,15 +194,15 @@ export default function Subscribe({
                   icon={CreditCardIcon}
                   size="sm"
                   onClick={() => {
-                    trackEvent(
-                      TRACKING_AREAS.AUTH,
-                      "subscription_start",
-                      "click",
-                      {
+                    trackEvent({
+                      area: TRACKING_AREAS.AUTH,
+                      object: "subscription_start",
+                      action: "click",
+                      extra: {
                         billing_period: billingPeriod,
                         is_trial: noPreviousSubscription ? "true" : "false",
-                      }
-                    );
+                      },
+                    });
                     void handleSubscribePlan(billingPeriod);
                   }}
                 />

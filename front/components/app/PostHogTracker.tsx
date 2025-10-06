@@ -11,6 +11,16 @@ import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
+const EXCLUDED_PATHS = [
+  "/subscribe",
+  "/poke",
+  "/poke/",
+  "/sso-enforced",
+  "/maintenance",
+  "/oauth/",
+  "/share/",
+];
+
 interface PostHogTrackerProps {
   children: React.ReactNode;
 }
@@ -52,17 +62,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   const lastIdentifiedWorkspaceId = useRef<string | null>(null);
   const lastPlanPropertiesString = useRef<string | null>(null);
 
-  const excludedPaths = [
-    "/subscribe",
-    "/poke",
-    "/poke/",
-    "/sso-enforced",
-    "/maintenance",
-    "/oauth/",
-    "/share/",
-  ];
-
-  const isExcludedPath = excludedPaths.some((path) => {
+  const isExcludedPath = EXCLUDED_PATHS.some((path) => {
     const pathname = router.pathname;
     return pathname.startsWith(path) || pathname.endsWith(path);
   });
@@ -139,7 +139,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       lastIdentifiedUserId.current = user.sId;
       lastPlanPropertiesString.current = planPropsString;
     }
-  }, [user?.sId, planProperties, workspaceId, hasOptedIn, user]);
+  }, [planProperties, workspaceId, hasOptedIn, user]);
 
   useEffect(() => {
     if (!posthog.__loaded || !workspaceId || !planProperties || !hasOptedIn) {

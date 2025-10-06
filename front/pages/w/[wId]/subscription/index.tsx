@@ -328,11 +328,11 @@ export default function Subscription({
                       <Button
                         label="Manage my subscription"
                         onClick={() => {
-                          trackEvent(
-                            TRACKING_AREAS.AUTH,
-                            "subscription_manage",
-                            "click"
-                          );
+                          trackEvent({
+                            area: TRACKING_AREAS.AUTH,
+                            object: "subscription_manage",
+                            action: "click",
+                          });
                           void handleGoToStripePortal();
                         }}
                         variant="outline"
@@ -347,11 +347,11 @@ export default function Subscription({
               <Page.Horizontal gap="sm">
                 <Button
                   onClick={() => {
-                    trackEvent(
-                      TRACKING_AREAS.AUTH,
-                      "subscription_skip_trial",
-                      "click"
-                    );
+                    trackEvent({
+                      area: TRACKING_AREAS.AUTH,
+                      object: "subscription_skip_trial",
+                      action: "click",
+                    });
                     setShowSkipFreeTrialDialog(true);
                   }}
                   label="End trial & get full access"
@@ -360,11 +360,11 @@ export default function Subscription({
                   label="Cancel subscription"
                   variant="ghost"
                   onClick={() => {
-                    trackEvent(
-                      TRACKING_AREAS.AUTH,
-                      "subscription_cancel_trial",
-                      "click"
-                    );
+                    trackEvent({
+                      area: TRACKING_AREAS.AUTH,
+                      object: "subscription_cancel_trial",
+                      action: "click",
+                    });
                     setShowCancelFreeTrialDialog(true);
                   }}
                 />
@@ -416,11 +416,11 @@ export default function Subscription({
                   label="Your billing dashboard on Stripe"
                   variant="ghost"
                   onClick={() => {
-                    trackEvent(
-                      TRACKING_AREAS.AUTH,
-                      "subscription_stripe_portal",
-                      "click"
-                    );
+                    trackEvent({
+                      area: TRACKING_AREAS.AUTH,
+                      object: "subscription_stripe_portal",
+                      action: "click",
+                    });
                     void handleGoToStripePortal();
                   }}
                 />

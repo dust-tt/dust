@@ -236,7 +236,11 @@ export function ProPriceTable({
               icon={RocketIcon}
               disabled={isProcessing}
               onClick={() => {
-                trackEvent(TRACKING_AREAS.PRICING, "plan_pro_select", "click");
+                trackEvent({
+                  area: TRACKING_AREAS.PRICING,
+                  object: "plan_pro_select",
+                  action: "click",
+                });
                 onClick();
               }}
             />
@@ -363,7 +367,11 @@ export function BusinessPriceTable({
               icon={RocketIcon}
               disabled={isProcessing}
               onClick={() => {
-                trackEvent(TRACKING_AREAS.PRICING, "plan_pro_select", "click");
+                trackEvent({
+                  area: TRACKING_AREAS.PRICING,
+                  object: "plan_pro_select",
+                  action: "click",
+                });
                 onClick();
               }}
             />
@@ -407,11 +415,11 @@ function EnterprisePriceTable({
           disabled={isProcessing}
           label="Contact Sales"
           onClick={() =>
-            trackEvent(
-              TRACKING_AREAS.PRICING,
-              "plan_enterprise_contact",
-              "click"
-            )
+            trackEvent({
+              area: TRACKING_AREAS.PRICING,
+              object: "plan_enterprise_contact",
+              action: "click",
+            })
           }
         />
       </PriceTable.ActionContainer>

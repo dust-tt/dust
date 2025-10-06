@@ -485,11 +485,11 @@ export const AddConnectionMenu = ({
               icon={CloudArrowLeftRightIcon}
               size="sm"
               onClick={() =>
-                trackEvent(
-                  TRACKING_AREAS.DATA_SOURCES,
-                  "add_connection_menu",
-                  "click"
-                )
+                trackEvent({
+                  area: TRACKING_AREAS.DATA_SOURCES,
+                  object: "add_connection_menu",
+                  action: "click",
+                })
               }
             />
           </DropdownMenuTrigger>
@@ -503,12 +503,12 @@ export const AddConnectionMenu = ({
                   isDark,
                 })}
                 onClick={() => {
-                  trackEvent(
-                    TRACKING_AREAS.DATA_SOURCES,
-                    "provider_select",
-                    "click",
-                    { provider: i.connectorProvider }
-                  );
+                  trackEvent({
+                    area: TRACKING_AREAS.DATA_SOURCES,
+                    object: "provider_select",
+                    action: "click",
+                    extra: { provider: i.connectorProvider },
+                  });
                   handleConnectionClick(i);
                 }}
               />

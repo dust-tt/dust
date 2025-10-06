@@ -116,7 +116,11 @@ export default function Welcome({
           disabled={!isFormValid || isSubmitting}
           size="sm"
           onClick={() => {
-            trackEvent(TRACKING_AREAS.AUTH, "onboarding_complete", "click");
+            trackEvent({
+              area: TRACKING_AREAS.AUTH,
+              object: "onboarding_complete",
+              action: "click",
+            });
             void submit();
           }}
         />
@@ -203,7 +207,11 @@ export default function Welcome({
             disabled={!isFormValid || isSubmitting}
             size="md"
             onClick={() => {
-              trackEvent(TRACKING_AREAS.AUTH, "onboarding_complete", "click");
+              trackEvent({
+                area: TRACKING_AREAS.AUTH,
+                object: "onboarding_complete",
+                action: "click",
+              });
               void submit();
             }}
           />

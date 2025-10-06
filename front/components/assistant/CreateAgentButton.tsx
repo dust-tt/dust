@@ -46,7 +46,11 @@ export const CreateAgentButton = ({
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
           onClick={() =>
-            trackEvent(TRACKING_AREAS.BUILDER, "create_menu", "click")
+            trackEvent({
+              area: TRACKING_AREAS.BUILDER,
+              object: "create_menu",
+              action: "click",
+            })
           }
           size="sm"
           isSelect
@@ -59,7 +63,11 @@ export const CreateAgentButton = ({
           label="agent from scratch"
           icon={DocumentIcon}
           onClick={() => {
-            trackEvent(TRACKING_AREAS.BUILDER, "create_from_scratch", "click");
+            trackEvent({
+              area: TRACKING_AREAS.BUILDER,
+              object: "create_from_scratch",
+              action: "click",
+            });
             setIsLoading(true);
             void router.push(getAgentBuilderRoute(owner.sId, "new"));
           }}
@@ -68,7 +76,11 @@ export const CreateAgentButton = ({
           label="agent from template"
           icon={MagicIcon}
           onClick={() => {
-            trackEvent(TRACKING_AREAS.BUILDER, "create_from_template", "click");
+            trackEvent({
+              area: TRACKING_AREAS.BUILDER,
+              object: "create_from_template",
+              action: "click",
+            });
             setIsLoading(true);
             void router.push(getAgentBuilderRoute(owner.sId, "create"));
           }}

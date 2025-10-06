@@ -22,7 +22,11 @@ export function CallToActionSection() {
           icon={RocketIcon}
           href="/home/pricing"
           onClick={() =>
-            trackEvent(TRACKING_AREAS.HOME, "cta_try_dust", "click")
+            trackEvent({
+              area: TRACKING_AREAS.HOME,
+              object: "cta_try_dust",
+              action: "click",
+            })
           }
         />
         <UTMButton
@@ -31,7 +35,11 @@ export function CallToActionSection() {
           label="Request demo now"
           href="/home/contact"
           onClick={() =>
-            trackEvent(TRACKING_AREAS.HOME, "cta_request_demo", "click")
+            trackEvent({
+              area: TRACKING_AREAS.HOME,
+              object: "cta_request_demo",
+              action: "click",
+            })
           }
         />
       </div>

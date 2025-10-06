@@ -397,11 +397,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                                 data-gtm-label="assistantCreationButton"
                                 data-gtm-location="sidebarMenu"
                                 onClick={() =>
-                                  trackEvent(
-                                    TRACKING_AREAS.BUILDER,
-                                    "create_from_scratch",
-                                    "click"
-                                  )
+                                  trackEvent({
+                                    area: TRACKING_AREAS.BUILDER,
+                                    object: "create_from_scratch",
+                                    action: "click",
+                                  })
                                 }
                               />
                               <DropdownMenuItem
@@ -411,11 +411,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                                 data-gtm-label="assistantCreationButton"
                                 data-gtm-location="sidebarMenu"
                                 onClick={() =>
-                                  trackEvent(
-                                    TRACKING_AREAS.BUILDER,
-                                    "create_from_template",
-                                    "click"
-                                  )
+                                  trackEvent({
+                                    area: TRACKING_AREAS.BUILDER,
+                                    object: "create_from_template",
+                                    action: "click",
+                                  })
                                 }
                               />
                               {hasFeature("agent_to_yaml") && (
@@ -487,11 +487,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                         data-gtm-label="assistantManagementButton"
                         data-gtm-location="sidebarMenu"
                         onClick={() =>
-                          trackEvent(
-                            TRACKING_AREAS.BUILDER,
-                            "manage_agents",
-                            "click"
-                          )
+                          trackEvent({
+                            area: TRACKING_AREAS.BUILDER,
+                            object: "manage_agents",
+                            action: "click",
+                          })
                         }
                       />
                     )}

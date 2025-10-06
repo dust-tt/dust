@@ -480,7 +480,11 @@ export function AssistantBrowser({
               data-gtm-location="homepage"
               size="sm"
               onClick={() =>
-                trackEvent(TRACKING_AREAS.BUILDER, "manage_agents", "click")
+                trackEvent({
+                  area: TRACKING_AREAS.BUILDER,
+                  object: "manage_agents",
+                  action: "click",
+                })
               }
             />
           </div>

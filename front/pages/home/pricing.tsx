@@ -40,7 +40,11 @@ export default function Pricing() {
               label="Start with Pro, 15 Days free"
               icon={RocketIcon}
               onClick={() => {
-                trackEvent(TRACKING_AREAS.PRICING, "hero_start_trial", "click");
+                trackEvent({
+                  area: TRACKING_AREAS.PRICING,
+                  object: "hero_start_trial",
+                  action: "click",
+                });
                 window.location.href = "/api/workos/login?screenHint=sign-up";
               }}
             />

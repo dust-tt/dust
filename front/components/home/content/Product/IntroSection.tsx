@@ -39,7 +39,11 @@ const HeroContent = () => {
           icon={RocketIcon}
           href="/home/pricing"
           onClick={() =>
-            trackEvent(TRACKING_AREAS.HOME, "hero_get_started", "click")
+            trackEvent({
+              area: TRACKING_AREAS.HOME,
+              object: "hero_get_started",
+              action: "click",
+            })
           }
         />
         <UTMButton
@@ -48,7 +52,11 @@ const HeroContent = () => {
           label="Book a demo"
           href="/home/contact"
           onClick={() =>
-            trackEvent(TRACKING_AREAS.HOME, "hero_book_demo", "click")
+            trackEvent({
+              area: TRACKING_AREAS.HOME,
+              object: "hero_book_demo",
+              action: "click",
+            })
           }
         />
       </div>
@@ -121,7 +129,11 @@ export const HeroVisual = ({
             label="Watch Dust in motion"
             icon={PlayIcon}
             onClick={() => {
-              trackEvent(TRACKING_AREAS.HOME, "hero_watch_video", "click");
+              trackEvent({
+                area: TRACKING_AREAS.HOME,
+                object: "hero_watch_video",
+                action: "click",
+              });
               onWatch();
             }}
             className="shadow-[0_8px_16px_-2px_rgba(0,0,0,0.3),0_4px_8px_-2px_rgba(255,255,255,0.1)] transition-all duration-300 hover:shadow-[0_16px_40px_-2px_rgba(255,255,255,0.2),0_8px_20px_-4px_rgba(255,255,255,0.15)]"

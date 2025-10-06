@@ -6,7 +6,11 @@
  * - Common actions: click, submit, create, delete, connect
  *
  * @example
- * trackEvent(TRACKING_AREAS.BUILDER, "create_from_template", "click")
+ * trackEvent({
+ *   area: TRACKING_AREAS.BUILDER,
+ *   object: "create_from_template",
+ *   action: "click"
+ * })
  * // Creates event: "builder:create_from_template_click"
  */
 
@@ -53,12 +57,19 @@ export const TRACKING_ACTIONS = {
 export type TrackingAction =
   (typeof TRACKING_ACTIONS)[keyof typeof TRACKING_ACTIONS];
 
-export function trackEvent(
-  area: TrackingArea | string,
-  object: string,
-  action: TrackingAction | string = TRACKING_ACTIONS.CLICK,
-  extra?: Record<string, string>
-): void {
+interface TrackEventParams {
+  area: TrackingArea | string;
+  object: string;
+  action?: TrackingAction | string;
+  extra?: Record<string, string>;
+}
+
+export function trackEvent({
+  area,
+  object,
+  action = TRACKING_ACTIONS.CLICK,
+  extra,
+}: TrackEventParams): void {
   if (typeof window === "undefined" || !posthog.__loaded) {
     return;
   }
@@ -76,13 +87,10 @@ export function trackEvent(
 
 export function trackOnClick<T extends Element = HTMLElement>(
   handler: (e: React.MouseEvent<T>) => void | Promise<void>,
-  area: TrackingArea | string,
-  object: string,
-  action: TrackingAction | string = TRACKING_ACTIONS.CLICK,
-  extra?: Record<string, string>
+  params: TrackEventParams
 ) {
   return (e: React.MouseEvent<T>) => {
-    trackEvent(area, object, action, extra);
+    trackEvent(params);
     return handler(e);
   };
 }

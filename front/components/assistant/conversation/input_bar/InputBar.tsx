@@ -205,10 +205,15 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    trackEvent(TRACKING_AREAS.CONVERSATION, "message_send", "submit", {
-      has_attachments: attachedNodes.length > 0 ? "true" : "false",
-      has_tools: selectedMCPServerViews.length > 0 ? "true" : "false",
-      has_assistant: selectedAssistant ? "true" : "false",
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "message_send",
+      action: "submit",
+      extra: {
+        has_attachments: attachedNodes.length > 0 ? "true" : "false",
+        has_tools: selectedMCPServerViews.length > 0 ? "true" : "false",
+        has_assistant: selectedAssistant ? "true" : "false",
+      },
     });
 
     // When we are creating a new conversation, we will disable the input bar, show a loading
