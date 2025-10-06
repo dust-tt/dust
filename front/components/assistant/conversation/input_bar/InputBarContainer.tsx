@@ -526,7 +526,11 @@ const InputBarContainer = ({
                   owner={owner}
                   size="xs"
                   onItemClick={(c) => {
-                    editorService.insertMention({ id: c.sId, label: c.name });
+                    editorService.insertMention({
+                      id: c.sId,
+                      label: c.name,
+                      description: c.description,
+                    });
                   }}
                   assistants={allAssistants}
                   showDropdownArrow={false}

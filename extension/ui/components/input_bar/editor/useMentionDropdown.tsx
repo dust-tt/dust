@@ -75,7 +75,11 @@ export const useMentionDropdown = (
           .deleteRange(rangeRef.current)
           .insertContent({
             type: "mention",
-            attrs: { id: suggestion.id, label: suggestion.label },
+            attrs: {
+              id: suggestion.id,
+              label: suggestion.label,
+              description: suggestion.description,
+            },
           })
           .insertContent(" ") // Add space after mention
           .run();
