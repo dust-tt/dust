@@ -60,7 +60,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      webhookSourceUrlSecret: webhookSource.urlSecret ?? undefined,
+      webhookSourceUrlSecret: webhookSource.urlSecret,
     };
     req.body = { any: "payload" };
     req.headers = {
@@ -181,7 +181,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      webhookSourceUrlSecret: webhookSource.urlSecret ?? undefined,
+      webhookSourceUrlSecret: webhookSource.urlSecret,
     };
     req.body = payload;
     req.headers = {
@@ -231,7 +231,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      webhookSourceUrlSecret: webhookSource.urlSecret ?? undefined,
+      webhookSourceUrlSecret: webhookSource.urlSecret,
     };
     req.body = payload;
     req.headers = {
