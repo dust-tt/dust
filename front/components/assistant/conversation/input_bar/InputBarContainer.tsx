@@ -548,14 +548,16 @@ const InputBarContainer = ({
                 )}
               <Button
                 size="xs"
-                isLoading={disableSendButton}
+                isLoading={
+                  disableSendButton &&
+                  voiceTranscriberService.status !== "transcribing"
+                }
                 icon={ArrowUpIcon}
                 variant="highlight"
                 disabled={
                   editorService.isEmpty() ||
                   disableSendButton ||
-                  voiceTranscriberService.isRecording ||
-                  voiceTranscriberService.isTranscribing
+                  voiceTranscriberService.status !== "idle"
                 }
                 onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
                   e.preventDefault();
