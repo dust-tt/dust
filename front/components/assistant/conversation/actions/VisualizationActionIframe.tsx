@@ -173,6 +173,7 @@ function useVisualizationDataHandler({
         case "setErrorMessage":
           datadogLogger.info("Visualization error", {
             errorMessage: data.params.errorMessage,
+            fileId: data.params.fileId,
           });
           setErrorMessage(data.params.errorMessage);
           break;

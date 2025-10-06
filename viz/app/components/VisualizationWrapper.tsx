@@ -156,7 +156,9 @@ export function useVisualizationAPI(
       const messageHandler = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
           console.log(
-            `Ignored message from unauthorized origin: ${event.origin}, expected one of: ${allowedOrigins.join(", ")}`
+            `Ignored message from unauthorized origin: ${
+              event.origin
+            }, expected one of: ${allowedOrigins.join(", ")}`
           );
           return;
         }
@@ -513,7 +515,9 @@ export function makeSendCrossDocumentMessage({
       const messageUniqueId = Math.random().toString();
       const listener = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
-          console.log(`Ignored message from unauthorized origin: ${event.origin}`);
+          console.log(
+            `Ignored message from unauthorized origin: ${event.origin}`
+          );
           // Simply ignore messages from unauthorized origins.
           return;
         }
