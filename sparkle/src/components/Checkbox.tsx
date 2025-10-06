@@ -79,7 +79,11 @@ const Checkbox = React.forwardRef<
     </CheckboxPrimitive.Root>
   );
 
-  return tooltip ? <Tooltip label={tooltip} trigger={checkbox} /> : checkbox;
+  return tooltip ? (
+    <Tooltip label={tooltip} trigger={checkbox} tooltipTriggerAsChild />
+  ) : (
+    checkbox
+  );
 });
 
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
