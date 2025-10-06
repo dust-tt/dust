@@ -210,7 +210,6 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({
         settings,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
@@ -256,7 +255,6 @@ function getGlobalAgent({
       agentConfiguration = _getClaude2GlobalAgent({
         auth,
         settings,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:

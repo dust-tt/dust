@@ -33,18 +33,15 @@ import {
 
 export function _getClaudeInstantGlobalAgent({
   settings,
-  contentCreationMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_INSTANT);
-  const sId = GLOBAL_AGENTS_SID.CLAUDE_INSTANT;
 
   return {
     id: -1,
-    sId,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -60,14 +57,9 @@ export function _getClaudeInstantGlobalAgent({
       modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [
-      ..._getContentCreationToolConfiguration({
-        agentId: sId,
-        contentCreationMCPServerView,
-      }),
-    ],
+    actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -79,11 +71,9 @@ export function _getClaudeInstantGlobalAgent({
 export function _getClaude2GlobalAgent({
   auth,
   settings,
-  contentCreationMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
@@ -91,11 +81,10 @@ export function _getClaude2GlobalAgent({
   }
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_2);
-  const sId = GLOBAL_AGENTS_SID.CLAUDE_2;
 
   return {
     id: -1,
-    sId,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_2,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -112,14 +101,9 @@ export function _getClaude2GlobalAgent({
       temperature: 0.7,
     },
 
-    actions: [
-      ..._getContentCreationToolConfiguration({
-        agentId: sId,
-        contentCreationMCPServerView,
-      }),
-    ],
+    actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
