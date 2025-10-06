@@ -48,33 +48,31 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
     setQueryParam(router, "agentDetails", agentSId);
   };
 
+  const trigger = (
+    <DropdownMenuTrigger asChild>
+      <span className="inline-block cursor-pointer font-medium text-highlight-500">
+        @{agentName}
+      </span>
+    </DropdownMenuTrigger>
+  );
+
   return (
     <NodeViewWrapper className="inline-flex">
       <TooltipProvider>
         <DropdownMenu>
-          <TooltipRoot delayDuration={300}>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <span className="inline-block cursor-pointer font-medium text-highlight-500">
-                  @{agentName}
-                </span>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            {description && (
-              <TooltipContent side="top" sideOffset={8}>
-                {description}
-              </TooltipContent>
-            )}
+          <TooltipRoot>
+            <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+            {description && <TooltipContent>{description}</TooltipContent>}
           </TooltipRoot>
           <DropdownMenuContent side="top" align="start">
             <DropdownMenuItem
               onClick={handleStartConversation}
-              icon={() => <ChatBubbleBottomCenterTextIcon />}
+              icon={ChatBubbleBottomCenterTextIcon}
               label={`New conversation with @${agentName}`}
             />
             <DropdownMenuItem
               onClick={handleSeeDetails}
-              icon={() => <EyeIcon />}
+              icon={EyeIcon}
               label={`About @${agentName}`}
             />
           </DropdownMenuContent>
