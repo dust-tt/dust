@@ -963,7 +963,7 @@ const createServer = (
 
   server.tool(
     "read_attachment",
-    "Read content from any attachment on a Jira issue. For text-based files (PDF, Word, Excel, CSV, plain text), extracts and returns the text content. For other file types, returns the content as base64. Supports text extraction with OCR for scanned documents.",
+    "Read content from any attachment on a Jira issue. For text-based files (PDF, Word, Excel, CSV, plain text), extracts and returns the text content. For other files (images, documents), returns the file for upload. Supports text extraction with OCR for scanned documents.",
     {
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
       attachmentId: z.string().describe("The ID of the attachment to read"),
@@ -1001,57 +1001,53 @@ const createServer = (
                 mimeType: targetAttachment.mimeType,
               });
 
-              if (textResult.isErr()) {
-                return makeMCPToolTextError(textResult.error);
+              if (textResult.isOk()) {
+                return makeMCPToolJSONSuccess({
+                  result: textResult.value,
+                });
               }
+            }
 
+            const contentResult = await getAttachmentContent({
+              baseUrl,
+              accessToken,
+              attachmentId,
+              mimeType: targetAttachment.mimeType,
+            });
+
+            if (contentResult.isErr()) {
+              return makeMCPToolTextError(contentResult.error);
+            }
+
+            if (targetAttachment.mimeType.startsWith("text/")) {
               return makeMCPToolJSONSuccess({
-                message: `Successfully extracted text from attachment: ${targetAttachment.filename}`,
-                result: {
-                  issueKey,
-                  attachmentId,
-                  filename: targetAttachment.filename,
-                  mimeType: targetAttachment.mimeType,
-                  size: targetAttachment.size,
-                  content: textResult.value,
-                  contentType: "text",
-                  contentLength: textResult.value.length,
-                },
-              });
-            } else {
-              const contentResult = await getAttachmentContent({
-                baseUrl,
-                accessToken,
-                attachmentId,
-                mimeType: targetAttachment.mimeType,
-              });
-
-              if (contentResult.isErr()) {
-                return makeMCPToolTextError(contentResult.error);
-              }
-
-              return makeMCPToolJSONSuccess({
-                message: `Successfully retrieved attachment content: ${targetAttachment.filename}`,
-                result: {
-                  issueKey,
-                  attachmentId,
-                  filename: targetAttachment.filename,
-                  mimeType: targetAttachment.mimeType,
-                  size: targetAttachment.size,
-                  content: contentResult.value.content,
-                  contentType: contentResult.value.contentType,
-                  contentLength: contentResult.value.content.length,
-                },
+                result: contentResult.value.content,
               });
             }
+
+            return {
+              isError: false,
+              content: [
+                {
+                  type: "resource" as const,
+                  resource: {
+                    name: targetAttachment.filename,
+                    blob: contentResult.value.content,
+                    text: `File from Jira issue ${issueKey}: ${targetAttachment.filename}`,
+                    mimeType: targetAttachment.mimeType,
+                    uri: "",
+                  },
+                },
+              ],
+            };
           } catch (error) {
             logger.error(`Error in read_attachment:`, {
-              error: error instanceof Error ? error.message : String(error),
+              error: error,
               issueKey,
               attachmentId,
             });
             return makeMCPToolTextError(
-              `${error instanceof Error ? error.message : String(error)}`
+              `Error in read_attachment: ${normalizeError(error).message}`
             );
           }
         },

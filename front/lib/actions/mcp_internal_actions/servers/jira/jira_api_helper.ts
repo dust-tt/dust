@@ -1242,7 +1242,7 @@ async function downloadAttachmentContent({
     });
     return logAndReturnApiError({
       error,
-      message: `JIRA attachment download failed: ${error instanceof Error ? error.message : String(error)}`,
+      message: `JIRA attachment download failed: ${normalizeError(error).message}`,
     });
   }
 }
@@ -1290,7 +1290,7 @@ export async function extractTextFromAttachment({
     return new Ok(fullText);
   } catch (error) {
     logger.error(`Text extraction failed:`, {
-      error: error instanceof Error ? error.message : String(error),
+      error: error,
       attachmentId,
       mimeType,
     });
@@ -1317,45 +1317,33 @@ export async function getAttachmentContent({
     JiraErrorResult
   >
 > {
-  try {
-    const downloadResult = await downloadAttachmentContent({
-      baseUrl,
-      accessToken,
-      attachmentId,
-    });
+  const downloadResult = await downloadAttachmentContent({
+    baseUrl,
+    accessToken,
+    attachmentId,
+  });
 
-    if (downloadResult.isErr()) {
-      return downloadResult;
-    }
+  if (downloadResult.isErr()) {
+    return downloadResult;
+  }
 
-    const buffer = downloadResult.value;
+  const buffer = downloadResult.value;
 
-    // For text files, return the content directly
-    if (mimeType.startsWith("text/")) {
-      const content = buffer.toString("utf-8");
-      return new Ok({
-        content,
-        contentType: mimeType,
-        size: buffer.length,
-      });
-    }
-
-    // For other file types, return as base64
-    const base64Content = buffer.toString("base64");
+  // For text files, return the content directly
+  if (mimeType.startsWith("text/")) {
+    const content = buffer.toString("utf-8");
     return new Ok({
-      content: base64Content,
+      content,
       contentType: mimeType,
       size: buffer.length,
     });
-  } catch (error) {
-    logger.error(`Failed to get attachment content:`, {
-      error: error instanceof Error ? error.message : String(error),
-      attachmentId,
-      mimeType,
-    });
-    return logAndReturnApiError({
-      error,
-      message: "Failed to get attachment content",
-    });
   }
+
+  // For other file types, return as base64
+  const base64Content = buffer.toString("base64");
+  return new Ok({
+    content: base64Content,
+    contentType: mimeType,
+    size: buffer.length,
+  });
 }
