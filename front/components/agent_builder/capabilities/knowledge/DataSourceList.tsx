@@ -142,6 +142,80 @@ export function DataSourceList({
     [navigationHistory]
   );
 
+  const isItemDisabled = useCallback(
+    (item: DataSourceListItem): boolean => {
+      // Get the data source for the current item
+      const getItemDataSource = () => {
+        if (item.entry.type === "data_source") {
+          return item.entry.dataSourceView.dataSource;
+        }
+        if (item.entry.type === "node") {
+          const traversedNode =
+            getLatestNodeFromNavigationHistory(navigationHistory);
+          const dataSourceView =
+            findDataSourceViewFromNavigationHistory(navigationHistory);
+          return (
+            traversedNode?.dataSourceView?.dataSource ??
+            dataSourceView?.dataSource ??
+            null
+          );
+        }
+        return null;
+      };
+
+      const itemDataSource = getItemDataSource();
+      if (!itemDataSource) {
+        return false;
+      }
+
+      const isItemRemote = isRemoteDatabase(itemDataSource);
+      const itemProvider = itemDataSource.connectorProvider;
+
+      // Check all selected items in the tree
+      for (const selected of field.value.in) {
+        const getSelectedDataSource = () => {
+          if (selected.type === "data_source") {
+            return selected.dataSourceView.dataSource;
+          }
+          if (selected.type === "node") {
+            return selected.node.dataSourceView?.dataSource ?? null;
+          }
+          return null;
+        };
+
+        const selectedDataSource = getSelectedDataSource();
+        if (!selectedDataSource) {
+          continue;
+        }
+
+        const isSelectedRemote = isRemoteDatabase(selectedDataSource);
+        const selectedProvider = selectedDataSource.connectorProvider;
+
+        // If a remote table is selected, disable all local tables and other remote tables
+        if (isSelectedRemote && !isItemRemote) {
+          return true;
+        }
+
+        // If a local table is selected, disable all remote tables
+        if (!isSelectedRemote && isItemRemote) {
+          return true;
+        }
+
+        // If both are remote but different providers, disable
+        if (
+          isItemRemote &&
+          isSelectedRemote &&
+          itemProvider !== selectedProvider
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    },
+    [field.value.in, navigationHistory]
+  );
+
   // Calculate select all state
   const selectAllState = useMemo(() => {
     if (!showSelectAllHeader) {
@@ -150,7 +224,8 @@ export function DataSourceList({
 
     const selectableItems = items.filter((item) => {
       const hideCheckbox = shouldHideCheckbox(item);
-      return !hideCheckbox;
+      const disabled = isItemDisabled(item);
+      return !hideCheckbox && !disabled;
     });
 
     if (selectableItems.length === 0) {
@@ -179,6 +254,7 @@ export function DataSourceList({
     showSelectAllHeader,
     items,
     shouldHideCheckbox,
+    isItemDisabled,
     isRowSelected,
     isItemSelected,
   ]);
@@ -186,7 +262,8 @@ export function DataSourceList({
   const handleSelectAll = useCallback(async () => {
     const selectableItems = items.filter((item) => {
       const hideCheckbox = shouldHideCheckbox(item);
-      return !hideCheckbox;
+      const disabled = isItemDisabled(item);
+      return !hideCheckbox && !disabled;
     });
 
     // Batch all operations into a single field update
@@ -246,6 +323,7 @@ export function DataSourceList({
   }, [
     items,
     shouldHideCheckbox,
+    isItemDisabled,
     isRowSelected,
     selectAllState,
     field,
@@ -330,6 +408,7 @@ export function DataSourceList({
           ? isItemSelected(item)
           : isRowSelected(item.id);
         const hideCheckbox = shouldHideCheckbox(item);
+        const disabled = isItemDisabled(item);
 
         const shouldShowCheckbox = showCheckboxOnlyForPartialSelection
           ? selectionState === "partial"
@@ -345,10 +424,15 @@ export function DataSourceList({
                 {shouldShowCheckbox ? (
                   <Checkbox
                     checked={selectionState}
-                    disabled={hideCheckbox}
+                    disabled={hideCheckbox || disabled}
                     onClick={(e) => e.stopPropagation()}
                     onCheckedChange={(state) =>
                       handleSelectionChange(item, state)
+                    }
+                    tooltip={
+                      !disabled
+                        ? "Tables from different data sources cannot be queried together"
+                        : undefined
                     }
                   />
                 ) : (
