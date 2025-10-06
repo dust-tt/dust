@@ -333,7 +333,7 @@ export default function Subscription({
                             "subscription_manage",
                             "click"
                           );
-                          handleGoToStripePortal();
+                          void handleGoToStripePortal();
                         }}
                         variant="outline"
                       />
@@ -421,7 +421,7 @@ export default function Subscription({
                       "subscription_stripe_portal",
                       "click"
                     );
-                    handleGoToStripePortal();
+                    void handleGoToStripePortal();
                   }}
                 />
               </div>

@@ -117,7 +117,7 @@ export default function Welcome({
           size="sm"
           onClick={() => {
             trackEvent(TRACKING_AREAS.AUTH, "onboarding_complete", "click");
-            submit();
+            void submit();
           }}
         />
       }
@@ -204,7 +204,7 @@ export default function Welcome({
             size="md"
             onClick={() => {
               trackEvent(TRACKING_AREAS.AUTH, "onboarding_complete", "click");
-              submit();
+              void submit();
             }}
           />
         </div>
