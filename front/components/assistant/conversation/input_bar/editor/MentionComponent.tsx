@@ -5,6 +5,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EyeIcon,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
 } from "@dust-tt/sparkle";
 import { NodeViewWrapper } from "@tiptap/react";
 import { useRouter } from "next/router";
@@ -19,6 +23,7 @@ interface MentionComponentProps {
     attrs: {
       id: string;
       label: string;
+      description?: string;
     };
   };
   owner?: WorkspaceType;
@@ -29,7 +34,7 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("agentDetails");
 
-  const { id: agentSId, label: agentName } = node.attrs;
+  const { id: agentSId, label: agentName, description } = node.attrs;
 
   const handleStartConversation = async () => {
     if (!owner) {
@@ -45,25 +50,36 @@ export const MentionComponent = ({ node, owner }: MentionComponentProps) => {
 
   return (
     <NodeViewWrapper className="inline-flex">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <span className="inline-block cursor-pointer font-medium text-highlight-500">
-            @{agentName}
-          </span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="start">
-          <DropdownMenuItem
-            onClick={handleStartConversation}
-            icon={() => <ChatBubbleBottomCenterTextIcon />}
-            label={`New conversation with @${agentName}`}
-          />
-          <DropdownMenuItem
-            onClick={handleSeeDetails}
-            icon={() => <EyeIcon />}
-            label={`About @${agentName}`}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <TooltipProvider>
+        <DropdownMenu>
+          <TooltipRoot delayDuration={300}>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <span className="inline-block cursor-pointer font-medium text-highlight-500">
+                  @{agentName}
+                </span>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            {description && (
+              <TooltipContent side="top" sideOffset={8}>
+                {description}
+              </TooltipContent>
+            )}
+          </TooltipRoot>
+          <DropdownMenuContent side="top" align="start">
+            <DropdownMenuItem
+              onClick={handleStartConversation}
+              icon={() => <ChatBubbleBottomCenterTextIcon />}
+              label={`New conversation with @${agentName}`}
+            />
+            <DropdownMenuItem
+              onClick={handleSeeDetails}
+              icon={() => <EyeIcon />}
+              label={`About @${agentName}`}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TooltipProvider>
     </NodeViewWrapper>
   );
 };
