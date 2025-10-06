@@ -240,6 +240,7 @@ export default function AgentBuilder({
       }
 
       const result = await submitAgentBuilderForm({
+        user,
         formData,
         owner,
         isDraft: false,
@@ -250,7 +251,6 @@ export default function AgentBuilder({
         areSlackChannelsChanged: form.getFieldState(
           "agentSettings.slackChannels"
         ).isDirty,
-        currentUserId: user.id,
       });
 
       if (!result.isOk()) {

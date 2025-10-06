@@ -23,6 +23,7 @@ import type {
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -198,16 +199,16 @@ async function processTriggers({
   formData,
   owner,
   agentConfigurationId,
-  currentUserId,
+  userId,
 }: {
   formData: AgentBuilderFormData;
   owner: WorkspaceType;
   agentConfigurationId: string;
-  currentUserId: number | null;
+  userId: number | null;
 }): Promise<Result<void, Error>> {
   // Only submit triggers that belong to the current user to avoid updating other users' triggers
-  if (!currentUserId) {
-    return new Err(new Error("currentUserId is required for non-draft agents"));
+  if (!userId) {
+    return new Err(new Error("A user is required to update triggers"));
   }
 
   // Validate trigger names are unique
@@ -344,19 +345,19 @@ async function processTriggers({
 }
 
 export async function submitAgentBuilderForm({
+  user,
   formData,
   owner,
   agentConfigurationId = null,
   isDraft = false,
   areSlackChannelsChanged,
-  currentUserId,
 }: {
+  user: UserType;
   formData: AgentBuilderFormData;
   owner: WorkspaceType;
   agentConfigurationId?: string | null;
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
-  currentUserId?: number;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -589,7 +590,7 @@ export async function submitAgentBuilderForm({
       formData,
       owner,
       agentConfigurationId: agentConfiguration.sId,
-      currentUserId: currentUserId ?? null,
+      userId: user.id,
     });
     if (triggerResult.isErr()) {
       return triggerResult;

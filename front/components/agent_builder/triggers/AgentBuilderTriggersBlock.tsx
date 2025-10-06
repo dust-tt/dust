@@ -218,8 +218,7 @@ export function AgentBuilderTriggersBlock({
           <CardGrid>
             {allTriggers.map((item, displayIndex) => (
               <TriggerCard
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                key={item.trigger.sId || `${item.source}-${item.index}`}
+                key={item.trigger.sId ?? `${item.source}-${item.index}`}
                 trigger={item.trigger}
                 onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
                 onEdit={() => handleTriggerEdit(item.trigger, displayIndex)}

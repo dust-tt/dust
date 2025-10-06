@@ -24,7 +24,7 @@ import type {
 import { Err, Ok } from "@app/types";
 
 export function useDraftAgent() {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
@@ -54,6 +54,7 @@ export function useDraftAgent() {
       lastFormDataRef.current = structuredClone(formData);
 
       const aRes = await submitAgentBuilderForm({
+        user,
         formData: {
           ...formData,
           agentSettings: {
@@ -83,7 +84,7 @@ export function useDraftAgent() {
       setStickyMentions([{ configurationId: newDraft.sId }]);
       setIsSavingDraftAgent(false);
       return newDraft;
-    }, [owner, sendNotification, getValues]);
+    }, [owner, user, sendNotification, getValues]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
