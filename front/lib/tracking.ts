@@ -59,7 +59,6 @@ export function trackEvent(
   }
 
   const eventName = `${area}:${object}_${action}`;
-
   const properties: Record<string, string> = {
     area,
     object,

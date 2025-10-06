@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
@@ -47,6 +47,8 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     };
   }, [activeSubscription]);
 
+  const [hasOptedIn, setHasOptedIn] = useState(false);
+
   const excludedPaths = [
     "/subscribe",
     "/poke",
@@ -63,67 +65,84 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   });
   const isTrackablePage = !isExcludedPath;
 
-  useEffect(() => {
-    const shouldTrack = isTrackablePage && hasAcceptedCookies;
+  const lastIdentifiedUserId = useRef<string | null>(null);
+  const lastIdentifiedWorkspaceId = useRef<string | null>(null);
 
-    if (!shouldTrack) {
-      if (posthog.__loaded) {
-        posthog.opt_out_capturing();
-      }
+  // Initialize PostHog once
+  useEffect(() => {
+    if (!POSTHOG_KEY || posthog.__loaded) {
       return;
     }
 
-    if (!posthog.__loaded && POSTHOG_KEY) {
-      posthog.init(POSTHOG_KEY, {
-        api_host: "/ingest",
-        person_profiles: "identified_only",
-        defaults: "2025-05-24",
-        opt_out_capturing_by_default: true,
-        capture_pageview: true,
-        capture_pageleave: true,
-        autocapture: false,
-        property_denylist: ["$ip"],
-        sanitize_properties: (properties) => {
-          if (properties.$current_url) {
-            properties.$current_url = properties.$current_url.split("?")[0];
-          }
-          if (properties.$pathname) {
-            properties.$pathname = properties.$pathname.split("?")[0];
-          }
-          return properties;
-        },
-        session_recording: {
-          maskAllInputs: true,
-          maskTextSelector: "*",
-          recordCrossOriginIframes: false,
-        },
-        loaded: (posthog) => {
-          posthog.opt_in_capturing();
-        },
-      });
-    } else if (posthog.__loaded) {
-      posthog.opt_in_capturing();
+    posthog.init(POSTHOG_KEY, {
+      api_host: "/ingest",
+      person_profiles: "identified_only",
+      defaults: "2025-05-24",
+      opt_out_capturing_by_default: true,
+      capture_pageview: true,
+      capture_pageleave: true,
+      autocapture: false,
+      property_denylist: ["$ip"],
+      sanitize_properties: (properties) => {
+        if (properties.$current_url) {
+          properties.$current_url = properties.$current_url.split("?")[0];
+        }
+        if (properties.$pathname) {
+          properties.$pathname = properties.$pathname.split("?")[0];
+        }
+        return properties;
+      },
+      session_recording: {
+        maskAllInputs: true,
+        maskTextSelector: "*",
+        recordCrossOriginIframes: false,
+      },
+    });
+  }, []);
+
+  // Handle opt-in/opt-out based on cookies and page
+  useEffect(() => {
+    const shouldTrack = isTrackablePage && hasAcceptedCookies;
+
+    if (!posthog.__loaded) {
+      return;
     }
 
-    if (posthog.__loaded && user) {
+    if (shouldTrack && !hasOptedIn) {
+      posthog.opt_in_capturing();
+      setHasOptedIn(true);
+    } else if (!shouldTrack && hasOptedIn) {
+      posthog.opt_out_capturing();
+      setHasOptedIn(false);
+    }
+  }, [isTrackablePage, hasAcceptedCookies, hasOptedIn]);
+
+  // Handle user identification separately
+  useEffect(() => {
+    if (!posthog.__loaded || !user || !hasOptedIn) {
+      return;
+    }
+
+    // Only identify if user changed
+    if (lastIdentifiedUserId.current !== user.sId) {
       const userProperties: Record<string, string> = {
         ...(planProperties ?? {}),
         ...(workspaceId && { workspace_id: workspaceId }),
       };
       posthog.identify(user.sId, userProperties);
-
-      if (workspaceId && planProperties) {
-        posthog.group("workspace", workspaceId, planProperties);
-      }
+      lastIdentifiedUserId.current = user.sId;
     }
-  }, [
-    router.pathname,
-    hasAcceptedCookies,
-    isTrackablePage,
-    user,
-    workspaceId,
-    planProperties,
-  ]);
+
+    // Only group if workspace changed
+    if (
+      workspaceId &&
+      planProperties &&
+      lastIdentifiedWorkspaceId.current !== workspaceId
+    ) {
+      posthog.group("workspace", workspaceId, planProperties);
+      lastIdentifiedWorkspaceId.current = workspaceId;
+    }
+  }, [user, workspaceId, planProperties, hasOptedIn]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;

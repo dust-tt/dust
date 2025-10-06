@@ -205,7 +205,6 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    // Track message submission (critical activation event)
     trackEvent(TRACKING_AREAS.CONVERSATION, "message_send", "submit", {
       has_attachments: attachedNodes.length > 0 ? "true" : "false",
       has_tools: selectedMCPServerViews.length > 0 ? "true" : "false",
