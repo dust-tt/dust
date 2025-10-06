@@ -117,6 +117,7 @@ const API_ERROR_TYPES = [
   "trigger_not_found",
   "webhook_source_not_found",
   "webhook_source_view_auth_error",
+  "webhook_source_auth_error",
   "webhook_source_view_not_found",
   "webhook_source_misconfiguration",
   // MCP Server Connections:

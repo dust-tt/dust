@@ -291,11 +291,11 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     expect(res._getStatusCode()).toBe(401);
     const data = res._getJSONData();
     expect(data).toHaveProperty("error");
-    expect(data.error.type).toBe("not_authenticated");
-    expect(data.error.message).toBe("Invalid webhook URL secret.");
+    expect(data.error.type).toBe("webhook_source_auth_error");
+    expect(data.error.message).toBe("Invalid webhook path.");
   });
 
-  it("returns 401 when webhook URL secret is missing", async () => {
+  it("returns 400 when webhook URL secret is missing", async () => {
     const { req, res, workspace } = await createPublicApiMockRequest({
       method: "POST",
     });
@@ -329,11 +329,13 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(401);
+    expect(res._getStatusCode()).toBe(400);
     const data = res._getJSONData();
     expect(data).toHaveProperty("error");
-    expect(data.error.type).toBe("not_authenticated");
-    expect(data.error.message).toBe("Invalid webhook URL secret.");
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toBe(
+      "Invalid route parameters: expected string wId, webhookSourceId and webhookSourceUrlSecret."
+    );
   });
 
   it("returns 200 when webhook URL secret is valid", async () => {
@@ -374,5 +376,31 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
+  });
+
+  it("returns 400 when webhookSourceUrlSecret is undefined", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: "webhook_source/whatever",
+      webhookSourceUrlSecret: undefined,
+    };
+    req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "application/json",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("error");
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toBe(
+      "Invalid route parameters: expected string wId, webhookSourceId and webhookSourceUrlSecret."
+    );
   });
 });

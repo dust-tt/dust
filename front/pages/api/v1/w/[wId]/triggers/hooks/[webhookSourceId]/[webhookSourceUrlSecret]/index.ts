@@ -104,13 +104,17 @@ async function handler(
 
   const { wId, webhookSourceId, webhookSourceUrlSecret } = req.query;
 
-  if (typeof wId !== "string" || typeof webhookSourceId !== "string") {
+  if (
+    typeof wId !== "string" ||
+    typeof webhookSourceId !== "string" ||
+    typeof webhookSourceUrlSecret !== "string"
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Invalid route parameters: expected string wId and webhookSourceId.",
+          "Invalid route parameters: expected string wId, webhookSourceId and webhookSourceUrlSecret.",
       },
     });
   }
@@ -144,15 +148,12 @@ async function handler(
   }
 
   // Validate webhook url secret
-  if (
-    typeof webhookSourceUrlSecret !== "string" ||
-    webhookSourceUrlSecret !== webhookSource.urlSecret
-  ) {
+  if (webhookSourceUrlSecret !== webhookSource.urlSecret) {
     return apiError(req, res, {
       status_code: 401,
       api_error: {
-        type: "not_authenticated",
-        message: "Invalid webhook URL secret.",
+        type: "webhook_source_auth_error",
+        message: "Invalid webhook path.",
       },
     });
   }
