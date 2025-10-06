@@ -2,13 +2,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
 import { assertNever, Ok } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { patchWebhookSourceViewBodySchema } from "@app/types/triggers/webhooks";
+import { Err } from "@dust-tt/client";
 
 export type GetWebhookSourceViewResponseBody = {
   webhookSourceView: WebhookSourceViewType;
@@ -111,7 +113,7 @@ async function handler(
         }
       }
 
-      const updateResult = await propagateSystemViewNameChange(
+      const updateResult = await editWebhookSourceViewsName(
         auth,
         webhookSourceView,
         name
@@ -124,7 +126,7 @@ async function handler(
               api_error: {
                 type: "workspace_auth_error",
                 message:
-                  "You are not authorized to update the MCP server view.",
+                  "You are not authorized to update the webhook source view.",
               },
             });
           default:
@@ -149,7 +151,7 @@ async function handler(
   }
 }
 
-async function propagateSystemViewNameChange(
+async function editWebhookSourceViewsName(
   auth: Authenticator,
   webhookSourceView: WebhookSourcesViewResource,
   newName: string
@@ -162,24 +164,35 @@ async function propagateSystemViewNameChange(
     );
 
   const isSystemView = systemView?.sId === webhookSourceView.sId;
+  if (!systemView) {
+    // This should never happen as we already validated that the view is a system view
+    return new Err(new DustError("unauthorized", "Only system views allowed"));
+  }
 
-  if (isSystemView) {
-    // This is the system view, update all space views with the same webhook source
-    const allViews = await WebhookSourcesViewResource.listByWebhookSource(
-      auth,
-      webhookSourceView.webhookSourceId
-    );
+  // This is the system view, update all space views with the same webhook source
+  const allViews = await WebhookSourcesViewResource.listByWebhookSource(
+    auth,
+    webhookSourceView.webhookSourceId
+  );
 
+  // Use a single transaction to update all views atomically
+  const transaction = await frontSequelize.transaction();
+  try {
     for (const view of allViews) {
       if (view.sId !== webhookSourceView.sId) {
-        const viewUpdateResult = await view.updateName(auth, newName);
+        const viewUpdateResult = await view.updateName(auth, newName, transaction);
         if (viewUpdateResult.isErr()) {
+          await transaction.rollback();
           return viewUpdateResult;
         }
       }
     }
+    await transaction.commit();
+    return new Ok(undefined);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
   }
-  return new Ok(undefined);
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
