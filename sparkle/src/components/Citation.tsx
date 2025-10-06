@@ -229,7 +229,7 @@ const CitationLoading = React.forwardRef<
       )}
       {...props}
     >
-      <Spinner variant="dark" size="md" />
+      <Spinner size="md" />
     </div>
   );
 });
