@@ -17,6 +17,7 @@ import {
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
@@ -494,8 +495,15 @@ export async function upsertDocument({
     );
   }
 
+  // Fetch the feature flags for the owner of the run.
+  const keyWorkspaceFlags = await getFeatureFlags(
+    auth.getNonNullableWorkspace()
+  );
+
+  // Temporary flag to help test EU OpenAI in specific workspaces.
+  const useOpenAIEUKeyFlag = keyWorkspaceFlags.includes("use_openai_eu_key");
   // Data source operations are performed with our credentials.
-  const credentials = dustManagedCredentials();
+  const credentials = dustManagedCredentials({ useOpenAIEUKeyFlag });
 
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({

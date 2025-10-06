@@ -1200,38 +1200,45 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
-        match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
-            Ok(key) => {
-                self.api_key = Some(key);
-            }
-            Err(_) => match credentials.get("OPENAI_API_KEY") {
+        let use_eu_endpoint: bool = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
+            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+            None => false,
+        };
+
+        match use_eu_endpoint {
+            true => match credentials.get("OPENAI_API_KEY") {
                 Some(api_key) => {
                     self.api_key = Some(api_key.clone());
+                    self.host = Some("eu.api.openai.com".to_string());
                 }
-                None => match std::env::var("OPENAI_API_KEY") {
+                None => Err(anyhow!(
+                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                ))?,
+            },
+            false => {
+                // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
+                match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
                     Ok(key) => {
                         self.api_key = Some(key);
                     }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                    ))?,
-                },
-            },
+                    Err(_) => match credentials.get("OPENAI_API_KEY") {
+                        Some(api_key) => {
+                            self.api_key = Some(api_key.clone());
+                        }
+                        None => match std::env::var("OPENAI_API_KEY") {
+                            Ok(key) => {
+                                self.api_key = Some(key);
+                            }
+                            Err(_) => Err(anyhow!(
+                                "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                            ))?,
+                        },
+                    },
+                }
+                self.host = Some("api.openai.com".to_string());
+            }
         }
-        let use_eu_endpoint: bool = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
-            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_USE_EU_ENDPOINT"))
-                .await?
-            {
-                Ok(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
-                Err(_) => false,
-            },
-        };
-        self.host = match use_eu_endpoint {
-            false => Some("api.openai.com".to_string()),
-            true => Some("eu.api.openai.com".to_string()),
-        };
+
         info!(
             model = self.id,
             openai_host = self.host,
