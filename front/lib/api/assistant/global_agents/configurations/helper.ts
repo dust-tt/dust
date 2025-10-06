@@ -64,12 +64,14 @@ export function _getHelperGlobalAgent({
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
   searchMCPServerView,
+  contentCreationMCPServerView,
 }: {
   auth: Authenticator;
   helperPromptInstance: HelperAssistantPrompt;
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let prompt = "";
 
@@ -147,6 +149,27 @@ export function _getHelperGlobalAgent({
     )
   );
 
+  if (contentCreationMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.HELPER + "-content-creation",
+      type: "mcp_server_configuration",
+      name: "content_creation",
+      description: "Create & update Content Creation files.",
+      mcpServerViewId: contentCreationMCPServerView.sId,
+      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    });
+  }
+
   const sId = GLOBAL_AGENTS_SID.HELPER;
   const metadata = getGlobalAgentMetadata(sId);
 
@@ -166,7 +189,7 @@ export function _getHelperGlobalAgent({
     model: model,
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],

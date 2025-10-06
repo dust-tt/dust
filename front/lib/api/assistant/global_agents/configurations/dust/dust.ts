@@ -34,6 +34,7 @@ export function _getDustGlobalAgent(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     deepResearchMCPServerView,
+    contentCreationMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
@@ -41,6 +42,7 @@ export function _getDustGlobalAgent(
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
     deepResearchMCPServerView: MCPServerViewResource | null;
+    contentCreationMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -101,7 +103,7 @@ export function _getDustGlobalAgent(
     scope: "global" as const,
     userFavorite: false,
     model,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -236,6 +238,27 @@ export function _getDustGlobalAgent(
       description: "Deep research agent",
       mcpServerViewId: deepResearchMCPServerView.sId,
       internalMCPServerId: deepResearchMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    });
+  }
+
+  if (contentCreationMCPServerView) {
+    actions.push({
+      id: -1,
+      sId: GLOBAL_AGENTS_SID.DUST + "-content-creation",
+      type: "mcp_server_configuration",
+      name: "content_creation" satisfies InternalMCPServerNameType,
+      description: "Create & update Content Creation files.",
+      mcpServerViewId: contentCreationMCPServerView.sId,
+      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,

@@ -3,7 +3,10 @@ import {
   globalAgentGuidelines,
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
-import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
+import {
+  _getContentCreationToolConfiguration,
+  _getDefaultWebActionsForGlobalAgent,
+} from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -30,15 +33,18 @@ import {
 
 export function _getClaudeInstantGlobalAgent({
   settings,
+  contentCreationMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_INSTANT);
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_INSTANT;
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -54,9 +60,14 @@ export function _getClaudeInstantGlobalAgent({
       modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getContentCreationToolConfiguration({
+        agentId: sId,
+        contentCreationMCPServerView,
+      }),
+    ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -68,9 +79,11 @@ export function _getClaudeInstantGlobalAgent({
 export function _getClaude2GlobalAgent({
   auth,
   settings,
+  contentCreationMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
@@ -78,10 +91,11 @@ export function _getClaude2GlobalAgent({
   }
 
   const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_2);
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_2;
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_2,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -98,9 +112,14 @@ export function _getClaude2GlobalAgent({
       temperature: 0.7,
     },
 
-    actions: [],
+    actions: [
+      ..._getContentCreationToolConfiguration({
+        agentId: sId,
+        contentCreationMCPServerView,
+      }),
+    ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -112,9 +131,11 @@ export function _getClaude2GlobalAgent({
 export function _getClaude3HaikuGlobalAgent({
   settings,
   webSearchBrowseMCPServerView,
+  contentCreationMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
 
@@ -146,9 +167,13 @@ export function _getClaude3HaikuGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getContentCreationToolConfiguration({
+        agentId: sId,
+        contentCreationMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -161,10 +186,12 @@ export function _getClaude3OpusGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  contentCreationMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -199,9 +226,13 @@ export function _getClaude3OpusGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getContentCreationToolConfiguration({
+        agentId: sId,
+        contentCreationMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -214,10 +245,12 @@ export function _getClaude3GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  contentCreationMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -252,9 +285,13 @@ export function _getClaude3GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getContentCreationToolConfiguration({
+        agentId: sId,
+        contentCreationMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -267,10 +304,12 @@ export function _getClaude4SonnetGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  contentCreationMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -305,9 +344,13 @@ export function _getClaude4SonnetGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getContentCreationToolConfiguration({
+        agentId: sId,
+        contentCreationMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -320,10 +363,12 @@ export function _getClaude3_7GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  contentCreationMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -358,9 +403,13 @@ export function _getClaude3_7GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getContentCreationToolConfiguration({
+        agentId: sId,
+        contentCreationMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
