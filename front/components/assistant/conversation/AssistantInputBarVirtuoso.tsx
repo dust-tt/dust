@@ -3,7 +3,7 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
@@ -37,6 +37,14 @@ export const AssistantInputBarVirtuoso = ({
       ? emptyArray<AgentMention>()
       : lastUserMessage.mentions.filter(isAgentMention);
   }, [lastUserMessage]);
+
+  const scrollToBottom = useCallback(() => {
+    methods.scrollToItem({
+      index: "LAST",
+      align: "end",
+      behavior: "smooth",
+    });
+  }, [methods]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisibe = 100;
@@ -72,13 +80,7 @@ export const AssistantInputBarVirtuoso = ({
           size="xs"
           icon={ArrowDownDashIcon}
           variant="outline"
-          onClick={() => {
-            methods.scrollToItem({
-              index: "LAST",
-              align: "end",
-              behavior: "smooth",
-            });
-          }}
+          onClick={scrollToBottom}
         />
       </div>
       <AssistantInputBar
