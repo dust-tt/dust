@@ -45,7 +45,7 @@ export type AssistantBuilderMCPConfiguration = {
   configuration: AssistantBuilderMCPServerConfiguration;
   name: string;
   description: string;
-  configurable?: boolean;
+  canBeConfigured?: boolean;
 };
 
 export type AssistantBuilderMCPConfigurationWithId =
@@ -138,7 +138,7 @@ export function getDefaultMCPServerActionConfiguration(
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    configurable: toolsConfigurations.configurable !== "no",
+    canBeConfigured: toolsConfigurations.configurable !== "no",
   };
 }
 

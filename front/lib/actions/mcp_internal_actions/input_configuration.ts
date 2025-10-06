@@ -776,13 +776,6 @@ export function getMCPServerToolsConfigurations(
       isTimeFrame
     );
 
-  console.log(
-    "jsonSchemaConfigurable",
-    jsonSchemaConfigurable,
-    "jsonSchemaDefault",
-    jsonSchemaDefault
-  );
-
   const configurableStates = [
     dataSourceConfigurable,
     dataWarehouseConfigurable,
