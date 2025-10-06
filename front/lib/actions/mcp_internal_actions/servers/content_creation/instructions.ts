@@ -54,8 +54,6 @@ ${VIZ_MISCELLANEOUS_GUIDELINES}
 
 - When to Create Files:
   - Create files for data visualizations such as graphs, charts, and plots
-  - Create files for interactive React components that require user interaction
-  - Create files for complex visualizations that benefit from being standalone components
   - Do not create files for simple text-based content that can be rendered in Markdown
   - Only create files for truly interactive output that requires React components
 
