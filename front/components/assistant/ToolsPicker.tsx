@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   LoadingBlock,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -131,7 +132,7 @@ export function ToolsPicker({
     >
       <DropdownMenuTrigger asChild>
         <Button
-          icon={BoltIcon}
+          icon={ToolsIcon}
           variant="ghost-secondary"
           size="xs"
           tooltip="Tools"

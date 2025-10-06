@@ -1,5 +1,5 @@
 import {
-  BellIcon,
+  BoltIcon,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   CompanyIcon,
@@ -134,7 +134,7 @@ export const CATEGORY_DETAILS: {
   },
   triggers: {
     label: "Triggers",
-    icon: BellIcon,
+    icon: BoltIcon,
     flag: "hootl_webhooks",
   },
 };
