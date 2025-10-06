@@ -264,7 +264,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_DEEP,
         name: "dust-deep",
         description:
-          "Deep research agent with company data, web search, browsing, Frame, and data warehouses.",
+          "Deep research agent with company data, web search, browsing, Content Creation, and data warehouses.",
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-deep_avatar_full.png",
       };

@@ -208,7 +208,7 @@ export function ShareContentCreationFilePopover({
                 >
                   {isPublicSharingForbidden
                     ? "Your workspace administrator has turned off public sharing of Frame files."
-                    : "This Frame relies on conversation files. The sharing to public option is " +
+                    : "This Frame file relies on conversation files. The sharing to public option is " +
                       "disabled to protect company information."}
                 </ContentMessage>
               )}

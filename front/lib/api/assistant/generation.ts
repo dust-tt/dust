@@ -184,7 +184,7 @@ export async function constructPromptMultiActions(
       isMCPConfigurationForInternalContentCreation(action)
     );
 
-  // Only inject the visualization system prompt if the Frame server is not enabled.
+  // Only inject the visualization system prompt if the Content Creation server is not enabled.
   if (agentConfiguration.visualizationEnabled && !hasContentCreationServer) {
     guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }

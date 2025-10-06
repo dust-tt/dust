@@ -542,7 +542,7 @@ export function _getDustDeepGlobalAgent(
       sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-content-creation",
       type: "mcp_server_configuration",
       name: "content_creation" satisfies InternalMCPServerNameType,
-      description: "Create & update Frame files.",
+      description: "Create & update Content Creation files.",
       mcpServerViewId: contentCreationMCPServerView.sId,
       internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
       dataSources: null,
@@ -653,7 +653,7 @@ export function _getDustTaskGlobalAgent(
 
   const name = "dust-task";
   const description =
-    "Focused research sub-agent. Same data/web tools as dust-deep, without Frame or spawning sub-agents.";
+    "Focused research sub-agent. Same data/web tools as dust-deep, without Content Creation or spawning sub-agents.";
 
   const pictureUrl =
     "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";

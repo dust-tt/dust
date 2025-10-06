@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  CREATE_FRAME_FILE_TOOL_NAME,
-  EDIT_FRAME_FILE_TOOL_NAME,
-  REVERT_FRAME_FILE_TOOL_NAME,
+  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
+  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
+  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
 import {
   getEditAndRenameActionsToApply,
@@ -38,7 +38,7 @@ const createEditAction = (
     agentMessageId,
     createdAt,
     toolConfiguration: {
-      originalName: EDIT_FRAME_FILE_TOOL_NAME,
+      originalName: EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
     },
     augmentedInputs: {
       old_string: oldString,
@@ -58,7 +58,7 @@ const createRevertAction = (
     agentMessageId,
     createdAt,
     toolConfiguration: {
-      originalName: REVERT_FRAME_FILE_TOOL_NAME,
+      originalName: REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
     },
     augmentedInputs: {
       ...(fileId && { file_id: fileId }),
@@ -71,7 +71,7 @@ const createCreateFileAction = (content: string) =>
     agentMessageId: "msg1",
     createdAt: new Date(1000),
     toolConfiguration: {
-      originalName: CREATE_FRAME_FILE_TOOL_NAME,
+      originalName: CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
     },
     augmentedInputs: {
       content,

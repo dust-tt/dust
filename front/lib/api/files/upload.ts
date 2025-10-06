@@ -356,7 +356,7 @@ const getProcessingFunction = ({
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
-  // Frame file types are not processed.
+  // Content Creation file types are not processed.
   if (isContentCreationFileContentType(contentType)) {
     return undefined;
   }
