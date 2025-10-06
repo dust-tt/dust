@@ -20,6 +20,7 @@ export const CONTENT_CREATION_INSTRUCTIONS = `\
 ## CREATING VISUALIZATIONS WITH CONTENT CREATION
 
 You have access to a Content Creation system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
+This toolset is called Frame in the product, users may refer to it as such.
 
 ### File Management Guidelines:
 - Use the \`${CREATE_CONTENT_CREATION_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
@@ -53,8 +54,9 @@ ${VIZ_MISCELLANEOUS_GUIDELINES}
 
 - When to Create Files:
   - Create files for data visualizations such as graphs, charts, and plots
-  - Create files for interactive React components that require user interaction
-  - Create files for complex visualizations that benefit from being standalone components
+  - Create files for complex visualizations that require user interaction
+  - Do not create files for simple text-based content that can be rendered in Markdown
+  - Do not create files for content that does not require user interaction
 
 ${VIZ_USE_FILE_EXAMPLES}
 

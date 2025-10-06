@@ -143,7 +143,10 @@ export function registerCatTool(
         if (readResult.isErr()) {
           return new Err(
             new MCPError(
-              `Could not read node: ${nodeId} (error: ${readResult.error.message})`
+              `Could not read node: ${nodeId} (error: ${readResult.error.message})`,
+              {
+                tracked: readResult.error.code !== "invalid_regex",
+              }
             )
           );
         }

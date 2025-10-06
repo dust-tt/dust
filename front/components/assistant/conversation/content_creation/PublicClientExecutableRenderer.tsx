@@ -28,7 +28,7 @@ export function PublicClientExecutableRenderer({
     return (
       <CenteredState>
         <Spinner size="sm" />
-        <span>Loading Content Creation...</span>
+        <span>Loading Frame...</span>
       </CenteredState>
     );
   }
@@ -44,7 +44,7 @@ export function PublicClientExecutableRenderer({
   return (
     <div className="flex h-full flex-col">
       <PublicContentCreationHeader
-        title={formatFilenameForDisplay(fileName ?? "Content Creation")}
+        title={formatFilenameForDisplay(fileName ?? "Frame")}
       />
 
       {/* Content */}

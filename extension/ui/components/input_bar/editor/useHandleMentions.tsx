@@ -44,6 +44,7 @@ const useHandleMentions = (
           mentionsToInsert.push({
             id: agentConfiguration.sId,
             label: agentConfiguration.name,
+            description: agentConfiguration.description,
           });
         }
       }
@@ -69,6 +70,7 @@ const useHandleMentions = (
       const mention = {
         id: agentConfiguration.sId,
         label: agentConfiguration.name,
+        description: agentConfiguration.description,
       };
 
       if (!editorService.hasMention(mention)) {

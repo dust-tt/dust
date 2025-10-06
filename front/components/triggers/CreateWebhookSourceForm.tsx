@@ -1,6 +1,7 @@
 import {
   Button,
   ChevronDownIcon,
+  CollapsibleComponent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -77,96 +78,105 @@ export function CreateWebhookSourceFormContent({
       />
 
       <div>
-        <Label>Secret</Label>
-        <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-          <i>
-            Note: You will be able to see and copy this secret for the first 10
-            minutes after creating the webhook.
-          </i>
-        </p>
-        <div className="mb-3 flex items-center justify-between">
-          <Label>Auto-generate</Label>
-          <Controller
-            control={form.control}
-            name="autoGenerate"
-            render={({ field }) => (
-              <SliderToggle
-                selected={field.value}
-                onClick={() => {
-                  const next = !field.value;
-                  field.onChange(next);
-                  if (next) {
-                    form.setValue("secret", "");
-                  }
-                }}
-              />
-            )}
-          />
-        </div>
-
-        {!form.watch("autoGenerate") && (
-          <Controller
-            control={form.control}
-            name="secret"
-            render={({ field }) => (
-              <div className="mt-2">
-                <Input
-                  {...field}
-                  id="secret"
-                  type="password"
-                  placeholder="Secret for validation..."
-                  isError={form.formState.errors.secret !== undefined}
-                  message={form.formState.errors.secret?.message}
-                  messageStatus="error"
+        <CollapsibleComponent
+          rootProps={{ defaultOpen: false }}
+          triggerProps={{ label: "Advanced settings", variant: "secondary" }}
+          contentChildren={
+            <div className="flex flex-col space-y-2">
+              <Label>Secret</Label>
+              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <i>
+                  Note: You will be able to see and copy this secret for the
+                  first 10 minutes after creating the webhook.
+                </i>
+              </p>
+              <div className="mb-3 flex items-center justify-between">
+                <Label>Auto-generate</Label>
+                <Controller
+                  control={form.control}
+                  name="autoGenerate"
+                  render={({ field }) => (
+                    <SliderToggle
+                      selected={field.value}
+                      onClick={() => {
+                        const next = !field.value;
+                        field.onChange(next);
+                        if (next) {
+                          form.setValue("secret", "");
+                        }
+                      }}
+                    />
+                  )}
                 />
               </div>
-            )}
-          />
-        )}
-      </div>
-
-      <Controller
-        control={form.control}
-        name="signatureHeader"
-        render={({ field }) => (
-          <Input
-            {...field}
-            label="Signature Header"
-            placeholder="Signature header..."
-            isError={form.formState.errors.signatureHeader !== undefined}
-            message={form.formState.errors.signatureHeader?.message}
-            messageStatus="error"
-          />
-        )}
-      />
-
-      <div className="flex items-center justify-between space-y-2">
-        <Label>Signature Algorithm</Label>
-        <Controller
-          control={form.control}
-          name="signatureAlgorithm"
-          render={({ field }) => (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  label={field.value}
-                  variant="outline"
-                  className="!mt-0"
-                  icon={ChevronDownIcon}
+              {!form.watch("autoGenerate") && (
+                <Controller
+                  control={form.control}
+                  name="secret"
+                  render={({ field }) => (
+                    <div className="mt-2">
+                      <Input
+                        {...field}
+                        id="secret"
+                        type="password"
+                        placeholder="Secret for validation..."
+                        isError={form.formState.errors.secret !== undefined}
+                        message={form.formState.errors.secret?.message}
+                        messageStatus="error"
+                      />
+                    </div>
+                  )}
                 />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS.map((algorithm) => (
-                  <DropdownMenuItem
-                    key={algorithm}
-                    onClick={() => field.onChange(algorithm)}
-                  >
-                    {algorithm}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              )}
+              <Controller
+                control={form.control}
+                name="signatureHeader"
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    label="Signature Header"
+                    placeholder="Signature header..."
+                    isError={
+                      form.formState.errors.signatureHeader !== undefined
+                    }
+                    message={form.formState.errors.signatureHeader?.message}
+                    messageStatus="error"
+                  />
+                )}
+              />
+              <div className="flex items-center justify-between space-y-2">
+                <Label>Signature Algorithm</Label>
+                <Controller
+                  control={form.control}
+                  name="signatureAlgorithm"
+                  render={({ field }) => (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          label={field.value}
+                          variant="outline"
+                          className="!mt-0"
+                          icon={ChevronDownIcon}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS.map(
+                          (algorithm) => (
+                            <DropdownMenuItem
+                              key={algorithm}
+                              onClick={() => field.onChange(algorithm)}
+                            >
+                              {algorithm}
+                            </DropdownMenuItem>
+                          )
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                />
+              </div>
+            </div>
+          }
         />
       </div>
 
@@ -174,7 +184,7 @@ export function CreateWebhookSourceFormContent({
         control={form.control}
         name="customHeaders"
         render={({ field }) => (
-          <>
+          <div>
             <Label htmlFor="customHeaders">Custom Headers (optional)</Label>
             <TextArea
               {...field}
@@ -185,7 +195,7 @@ export function CreateWebhookSourceFormContent({
               showErrorLabel={true}
               rows={4}
             />
-          </>
+          </div>
         )}
       />
     </>

@@ -1,6 +1,6 @@
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
@@ -9,6 +9,7 @@ import type { ConversationLayoutProps } from "@app/components/assistant/conversa
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayoutVirtuoso from "@app/components/assistant/conversation/ConversationLayoutVirtuoso";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -73,10 +74,11 @@ export default function AgentConversation({
   useVirtualizedConversation,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
-  const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
   const router = useRouter();
 
   const { activeConversationId } = useConversationsNavigation();
+
+  const { setSelectedAssistant } = useContext(InputBarContext);
 
   const { agent } = router.query;
 
@@ -97,11 +99,17 @@ export default function AgentConversation({
 
     const agentId = agent ?? null;
     if (agentId && typeof agentId === "string") {
-      setAgentIdToMention(agentId);
+      setSelectedAssistant({ configurationId: agentId });
     } else {
-      setAgentIdToMention(null);
+      setSelectedAssistant(null);
     }
-  }, [agent, setConversationKey, initialConversationId, activeConversationId]);
+  }, [
+    agent,
+    setConversationKey,
+    initialConversationId,
+    activeConversationId,
+    setSelectedAssistant,
+  ]);
 
   if (useVirtualizedConversation) {
     return (
@@ -111,7 +119,6 @@ export default function AgentConversation({
         owner={owner}
         subscription={subscription}
         user={user}
-        agentIdToMention={agentIdToMention}
       />
     );
   } else {
@@ -122,7 +129,6 @@ export default function AgentConversation({
         owner={owner}
         subscription={subscription}
         user={user}
-        agentIdToMention={agentIdToMention}
       />
     );
   }

@@ -29,10 +29,7 @@ export function UnsupportedContentRenderer({
             variant="warning"
           >
             <div className="space-y-2">
-              <p>
-                This content type is not yet supported in the Content Creation
-                drawer.
-              </p>
+              <p>This content type is not yet supported in the Frame drawer.</p>
               <div className="text-xs opacity-75">
                 <p>
                   <strong>Content Type:</strong> {contentType}

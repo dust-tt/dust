@@ -1,9 +1,9 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
-  BellIcon,
   BoltIcon,
   Breadcrumbs,
   CloudArrowLeftRightIcon,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -88,14 +88,14 @@ export function SpaceBreadCrumbs({
         case "actions":
           return [
             {
-              icon: BoltIcon,
+              icon: ToolsIcon,
               label: "Tools",
             },
           ];
         case "triggers":
           return [
             {
-              icon: BellIcon,
+              icon: BoltIcon,
               label: "Triggers",
             },
           ];

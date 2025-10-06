@@ -29,16 +29,15 @@ export function useContentCreationSharingToggle({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update Content Creation sharing setting");
+        throw new Error("Failed to update Frame sharing setting");
       }
 
       window.location.reload();
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update Content Creation sharing setting",
-        description:
-          "Could not update the Content Creation file sharing setting.",
+        title: "Failed to update Frame sharing setting",
+        description: "Could not update the Frame file sharing setting.",
       });
       setIsChanging(false);
     }

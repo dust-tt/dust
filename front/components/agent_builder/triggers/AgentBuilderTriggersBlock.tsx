@@ -8,7 +8,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
-import { useFieldArray } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
   AgentBuilderFormData,
@@ -43,19 +43,44 @@ export function AgentBuilderTriggersBlock({
   owner,
   isTriggersLoading,
 }: AgentBuilderTriggersBlockProps) {
+  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+
   const {
-    fields: triggers,
-    remove,
-    append,
-    update,
-  } = useFieldArray<AgentBuilderFormData, "triggers">({
-    name: "triggers",
+    fields: triggersToCreate,
+    remove: removeFromCreate,
+    append: appendToCreate,
+    update: updateInCreate,
+  } = useFieldArray<AgentBuilderFormData, "triggersToCreate">({
+    name: "triggersToCreate",
+  });
+
+  const {
+    fields: triggersToUpdate,
+    remove: removeFromUpdate,
+    append: appendToUpdate,
+    update: updateInUpdate,
+  } = useFieldArray<AgentBuilderFormData, "triggersToUpdate">({
+    name: "triggersToUpdate",
   });
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const sendNotification = useSendNotification();
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+
+  // Combine triggers for display, excluding those marked for deletion
+  const allTriggers = [
+    ...triggersToCreate.map((t, index) => ({
+      trigger: t,
+      index,
+      source: "create" as const,
+    })),
+    ...triggersToUpdate.map((t, index) => ({
+      trigger: t,
+      index,
+      source: "update" as const,
+    })),
+  ];
 
   const handleCreateTrigger = (kind: TriggerKind) => {
     setDialogMode({
@@ -66,9 +91,9 @@ export function AgentBuilderTriggersBlock({
 
   const handleTriggerEdit = (
     trigger: AgentBuilderTriggerType,
-    index: number
+    displayIndex: number
   ) => {
-    setDialogMode({ type: "edit", trigger, index });
+    setDialogMode({ type: "edit", trigger, index: displayIndex });
   };
 
   const handleCloseModal = () => {
@@ -77,18 +102,42 @@ export function AgentBuilderTriggersBlock({
 
   const handleTriggerSave = (trigger: AgentBuilderTriggerType) => {
     if (dialogMode?.type === "edit") {
-      update(dialogMode.index, trigger);
+      // Find the trigger in either create or update arrays
+      const displayItem = allTriggers[dialogMode.index];
+      if (displayItem.source === "create") {
+        updateInCreate(displayItem.index, trigger);
+      } else {
+        updateInUpdate(displayItem.index, trigger);
+      }
     } else {
-      append(trigger);
+      // New trigger - determine if it should go to create or update
+      if (trigger.sId) {
+        appendToUpdate(trigger);
+      } else {
+        appendToCreate(trigger);
+      }
     }
     handleCloseModal();
   };
 
   const handleTriggerRemove = (
     trigger: AgentBuilderTriggerType,
-    index: number
+    displayIndex: number
   ) => {
-    remove(index);
+    const displayItem = allTriggers[displayIndex];
+
+    if (displayItem.source === "create") {
+      // Just remove from create array
+      removeFromCreate(displayItem.index);
+    } else {
+      // Has sId, so it exists on backend - mark for deletion
+      if (trigger.sId) {
+        const currentToDelete = getValues("triggersToDelete");
+        setValue("triggersToDelete", [...currentToDelete, trigger.sId]);
+      }
+      removeFromUpdate(displayItem.index);
+    }
+
     sendNotification({
       type: "success",
       title: `Successfully removed ${trigger.name}`,
@@ -113,7 +162,7 @@ export function AgentBuilderTriggersBlock({
         </>
       }
       headerActions={
-        triggers.length > 0 && (
+        allTriggers.length > 0 && (
           <>
             <Button
               label="Add Schedule"
@@ -141,7 +190,7 @@ export function AgentBuilderTriggersBlock({
           <div className="flex h-40 w-full items-center justify-center">
             <Spinner />
           </div>
-        ) : triggers.length === 0 ? (
+        ) : allTriggers.length === 0 ? (
           <EmptyCTA
             action={
               <div className="flex space-x-2">
@@ -167,13 +216,12 @@ export function AgentBuilderTriggersBlock({
           />
         ) : (
           <CardGrid>
-            {triggers.map((trigger, index) => (
+            {allTriggers.map((item, displayIndex) => (
               <TriggerCard
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                key={trigger.sId || index}
-                trigger={trigger}
-                onRemove={() => handleTriggerRemove(trigger, index)}
-                onEdit={() => handleTriggerEdit(trigger, index)}
+                key={item.trigger.sId ?? `${item.source}-${item.index}`}
+                trigger={item.trigger}
+                onRemove={() => handleTriggerRemove(item.trigger, displayIndex)}
+                onEdit={() => handleTriggerEdit(item.trigger, displayIndex)}
               />
             ))}
           </CardGrid>

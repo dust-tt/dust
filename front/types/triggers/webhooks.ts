@@ -17,6 +17,7 @@ export type WebhookSourceType = {
   id: ModelId;
   sId: string;
   name: string;
+  urlSecret: string;
   secret: string | null;
   signatureHeader: string | null;
   signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
@@ -59,7 +60,7 @@ export const PostWebhookSourcesSchema = z.object({
   name: z.string().min(1, "Name is required"),
   // Secret can be omitted or empty when auto-generated server-side.
   secret: z.string().nullable(),
-  signatureHeader: z.string().min(1, "Signature header is required"),
+  signatureHeader: z.string(),
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
   customHeaders: z.record(z.string(), z.string()).nullable(),
   includeGlobal: z.boolean().optional(),

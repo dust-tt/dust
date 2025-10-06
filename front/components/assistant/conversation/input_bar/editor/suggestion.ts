@@ -6,6 +6,7 @@ export interface EditorSuggestion {
   label: string;
   pictureUrl: string;
   userFavorite: boolean;
+  description: string;
 }
 
 export interface EditorSuggestions {

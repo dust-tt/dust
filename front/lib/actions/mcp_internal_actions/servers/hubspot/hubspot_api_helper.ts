@@ -1113,8 +1113,10 @@ export const getCompany = async (
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    const company =
-      await hubspotClient.crm.companies.basicApi.getById(companyId);
+    const company = await hubspotClient.crm.companies.basicApi.getById(
+      companyId,
+      ["createdate", "domain", "name", "hubspot_owner_id"]
+    );
     return company;
   } catch (error: any) {
     if (error.code === 404) {

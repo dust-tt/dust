@@ -35,7 +35,7 @@ export function MCPExtractActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+          <span className="heading-sm text-foreground dark:text-foreground-night">
             Query
           </span>
           <MCPExtractActionQuery
@@ -49,7 +49,7 @@ export function MCPExtractActionDetails({
             <CollapsibleComponent
               rootProps={{ defaultOpen: false }}
               triggerChildren={
-                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                <span className="heading-sm text-foreground dark:text-foreground-night">
                   Schema
                 </span>
               }
