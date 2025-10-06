@@ -329,7 +329,10 @@ export default function Subscription({
                         label="Manage my subscription"
                         onClick={handleGoToStripePortal}
                         variant="outline"
-                        {...trackClick(TRACKING_AREAS.AUTH, "subscription_manage")}
+                        {...trackClick(
+                          TRACKING_AREAS.AUTH,
+                          "subscription_manage"
+                        )}
                       />
                     )}
                 </Page.Horizontal>
@@ -342,13 +345,19 @@ export default function Subscription({
                 <Button
                   onClick={() => setShowSkipFreeTrialDialog(true)}
                   label="End trial & get full access"
-                  {...trackClick(TRACKING_AREAS.AUTH, "subscription_skip_trial")}
+                  {...trackClick(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_skip_trial"
+                  )}
                 />
                 <Button
                   label="Cancel subscription"
                   variant="ghost"
                   onClick={() => setShowCancelFreeTrialDialog(true)}
-                  {...trackClick(TRACKING_AREAS.AUTH, "subscription_cancel_trial")}
+                  {...trackClick(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_cancel_trial"
+                  )}
                 />
               </Page.Horizontal>
             </Page.Vertical>
@@ -398,7 +407,10 @@ export default function Subscription({
                   label="Your billing dashboard on Stripe"
                   variant="ghost"
                   onClick={handleGoToStripePortal}
-                  {...trackClick(TRACKING_AREAS.AUTH, "subscription_stripe_portal")}
+                  {...trackClick(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_stripe_portal"
+                  )}
                 />
               </div>
             </Page.Vertical>

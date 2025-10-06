@@ -202,7 +202,7 @@ export default function Subscribe({
                     "click",
                     {
                       billing_period: billingPeriod,
-                      is_trial: noPreviousSubscription ? "true" : "false"
+                      is_trial: noPreviousSubscription ? "true" : "false",
                     }
                   )}
                 />

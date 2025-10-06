@@ -27,7 +27,7 @@ export const TRACKING_AREAS = {
   LABS: "labs",
 } as const;
 
-export type TrackingArea = typeof TRACKING_AREAS[keyof typeof TRACKING_AREAS];
+export type TrackingArea = (typeof TRACKING_AREAS)[keyof typeof TRACKING_AREAS];
 
 /**
  * Common actions
@@ -43,17 +43,18 @@ export const TRACKING_ACTIONS = {
   CLOSE: "close",
 } as const;
 
-export type TrackingAction = typeof TRACKING_ACTIONS[keyof typeof TRACKING_ACTIONS];
+export type TrackingAction =
+  (typeof TRACKING_ACTIONS)[keyof typeof TRACKING_ACTIONS];
 
 /**
  * PostHog native attribute format
  * These attributes are automatically captured by PostHog
  */
 export interface TrackingAttributes {
-  'data-ph-capture-attribute-tracking'?: string;
-  'data-ph-capture-attribute-area'?: string;
-  'data-ph-capture-attribute-object'?: string;
-  'data-ph-capture-attribute-action'?: string;
+  "data-ph-capture-attribute-tracking"?: string;
+  "data-ph-capture-attribute-area"?: string;
+  "data-ph-capture-attribute-object"?: string;
+  "data-ph-capture-attribute-action"?: string;
   [key: `data-ph-capture-attribute-${string}`]: string | undefined;
 }
 
@@ -78,10 +79,10 @@ export function trackingProps(
   const trackingId = `${area}:${object}_${action}`;
 
   const attributes: TrackingAttributes = {
-    'data-ph-capture-attribute-tracking': trackingId,
-    'data-ph-capture-attribute-area': area,
-    'data-ph-capture-attribute-object': object,
-    'data-ph-capture-attribute-action': action,
+    "data-ph-capture-attribute-tracking": trackingId,
+    "data-ph-capture-attribute-area": area,
+    "data-ph-capture-attribute-object": object,
+    "data-ph-capture-attribute-action": action,
   };
 
   // Add any extra attributes
@@ -97,13 +98,19 @@ export function trackingProps(
 /**
  * Shorthand for click tracking (most common case)
  */
-export function trackClick(area: TrackingArea | string, object: string): TrackingAttributes {
+export function trackClick(
+  area: TrackingArea | string,
+  object: string
+): TrackingAttributes {
   return trackingProps(area, object, TRACKING_ACTIONS.CLICK);
 }
 
 /**
  * Shorthand for submit tracking
  */
-export function trackSubmit(area: TrackingArea | string, object: string): TrackingAttributes {
+export function trackSubmit(
+  area: TrackingArea | string,
+  object: string
+): TrackingAttributes {
   return trackingProps(area, object, TRACKING_ACTIONS.SUBMIT);
 }

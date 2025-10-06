@@ -563,8 +563,10 @@ const InputBarContainer = ({
                   "message_send",
                   "click",
                   {
-                    has_attachments: attachedNodes.length > 0 ? "true" : "false",
-                    has_tools: selectedMCPServerViews.length > 0 ? "true" : "false",
+                    has_attachments:
+                      attachedNodes.length > 0 ? "true" : "false",
+                    has_tools:
+                      selectedMCPServerViews.length > 0 ? "true" : "false",
                     has_assistant: selectedAssistant ? "true" : "false",
                   }
                 )}

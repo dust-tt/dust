@@ -34,13 +34,20 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
 
   // Get active subscription for the workspace (disabled if no workspace found)
   const { activeSubscription } = useWorkspaceActiveSubscription({
-    owner: currentWorkspace ?? { sId: "", name: "", role: "none" as const, segmentation: null, whiteListedProviders: null, defaultEmbeddingProvider: null, id: 0, metadata: {} },
+    owner: currentWorkspace ?? {
+      sId: "",
+      name: "",
+      role: "none" as const,
+      segmentation: null,
+      whiteListedProviders: null,
+      defaultEmbeddingProvider: null,
+      id: 0,
+      metadata: {},
+    },
     disabled: !currentWorkspace,
   });
 
   const excludedPaths = [
-    "/w",
-    "/w/",
     "/subscribe",
     "/poke",
     "/poke/",
@@ -102,7 +109,9 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       if (activeSubscription) {
         planProperties.plan_code = activeSubscription.plan.code;
         planProperties.plan_name = activeSubscription.plan.name;
-        planProperties.is_trial = activeSubscription.trialing ? "true" : "false";
+        planProperties.is_trial = activeSubscription.trialing
+          ? "true"
+          : "false";
       }
 
       // Set user properties (includes plan + workspace)
@@ -117,7 +126,14 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         posthog.group("workspace", workspaceId, planProperties);
       }
     }
-  }, [router.pathname, hasAcceptedCookies, isTrackablePage, user, workspaceId, activeSubscription]);
+  }, [
+    router.pathname,
+    hasAcceptedCookies,
+    isTrackablePage,
+    user,
+    workspaceId,
+    activeSubscription,
+  ]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;

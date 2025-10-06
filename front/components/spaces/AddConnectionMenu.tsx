@@ -484,7 +484,10 @@ export const AddConnectionMenu = ({
               variant="primary"
               icon={CloudArrowLeftRightIcon}
               size="sm"
-              {...trackClick(TRACKING_AREAS.DATA_SOURCES, "add_connection_menu")}
+              {...trackClick(
+                TRACKING_AREAS.DATA_SOURCES,
+                "add_connection_menu"
+              )}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
