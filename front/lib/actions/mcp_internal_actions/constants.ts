@@ -489,7 +489,7 @@ The directive should be used to display a clickable version of the agent name in
           "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
       },
       icon: "GmailLogo",
-      documentationUrl: "https://docs.dust.tt/docs/gmail-tool-setup",
+      documentationUrl: "https://docs.dust.tt/docs/gmail",
       instructions: null,
     },
   },
