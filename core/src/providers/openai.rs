@@ -31,7 +31,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::info;
+use tracing::{info, warn};
 
 use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
@@ -1205,10 +1205,19 @@ impl Embedder for OpenAIEmbedder {
             None => false,
         };
 
+        let open_ai_api_key: Option<String> = match credentials.get("OPENAI_API_KEY") {
+            Some(api_key) => Some(api_key.clone()),
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
+                Ok(key) => Some(key),
+                Err(_) => None,
+            },
+        };
+
+        // This is only for logging purposes.
         let mut key_source = "";
 
         match use_eu_endpoint {
-            true => match credentials.get("OPENAI_API_KEY") {
+            true => match open_ai_api_key {
                 // If use_eu_endpoint is set, we ignore CORE_DATA_SOURCES_OPENAI_API_KEY
                 Some(api_key) => {
                     self.api_key = Some(api_key.clone());
@@ -1225,21 +1234,30 @@ impl Embedder for OpenAIEmbedder {
                     Ok(key) => {
                         self.api_key = Some(key);
                         key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY";
+
+                        // This block is only for logging purposes, and can be removed when we stop using CORE_DATA_SOURCES_OPENAI_API_KEY
+                        match open_ai_api_key {
+                            Some(_) => {
+                                if open_ai_api_key.as_ref().unwrap()
+                                    != self.api_key.as_ref().unwrap()
+                                {
+                                    warn!("CORE_DATA_SOURCES_OPENAI_API_KEY and OPENAI_API_KEY differ; using CORE_DATA_SOURCES_OPENAI_API_KEY.");
+                                }
+                            }
+                            None => {
+                                // This tells us that bad things could happen if we were to unset CORE_DATA_SOURCES_OPENAI_API_KEY
+                                warn!("CORE_DATA_SOURCES_OPENAI_API_KEY is set, but OPENAI_API_KEY is not.")
+                            }
+                        }
                     }
-                    Err(_) => match credentials.get("OPENAI_API_KEY") {
+                    Err(_) => match open_ai_api_key {
                         Some(api_key) => {
                             self.api_key = Some(api_key.clone());
-                            key_source = "credentials";
+                            key_source = "open_ai_api_key";
                         }
-                        None => match std::env::var("OPENAI_API_KEY") {
-                            Ok(key) => {
-                                self.api_key = Some(key);
-                                key_source = "OPENAI_API_KEY";
-                            }
-                            Err(_) => Err(anyhow!(
-                                "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                            ))?,
-                        },
+                        None => Err(anyhow!(
+                            "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                        ))?,
                     },
                 }
                 self.host = Some("api.openai.com".to_string());
