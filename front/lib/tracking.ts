@@ -5,6 +5,8 @@
  * Maintains a clean topology: {area}:{object}_{action}
  */
 
+import posthog from "posthog-js";
+
 /**
  * Tracking areas - logical sections of the application
  */
@@ -46,71 +48,37 @@ export const TRACKING_ACTIONS = {
 export type TrackingAction =
   (typeof TRACKING_ACTIONS)[keyof typeof TRACKING_ACTIONS];
 
-/**
- * PostHog native attribute format
- * These attributes are automatically captured by PostHog
- */
-export interface TrackingAttributes {
-  "data-ph-capture-attribute-tracking"?: string;
-  "data-ph-capture-attribute-area"?: string;
-  "data-ph-capture-attribute-object"?: string;
-  "data-ph-capture-attribute-action"?: string;
-  [key: `data-ph-capture-attribute-${string}`]: string | undefined;
-}
-
-/**
- * Build PostHog tracking attributes
- *
- * @example
- * <Button {...trackingProps(TRACKING_AREAS.ASSISTANT, "card", TRACKING_ACTIONS.CLICK)} />
- *
- * Produces:
- * data-ph-capture-attribute-tracking="assistant:card_click"
- * data-ph-capture-attribute-area="assistant"
- * data-ph-capture-attribute-object="card"
- * data-ph-capture-attribute-action="click"
- */
-export function trackingProps(
+export function trackEvent(
   area: TrackingArea | string,
   object: string,
   action: TrackingAction | string = TRACKING_ACTIONS.CLICK,
   extra?: Record<string, string>
-): TrackingAttributes {
-  const trackingId = `${area}:${object}_${action}`;
-
-  const attributes: TrackingAttributes = {
-    "data-ph-capture-attribute-tracking": trackingId,
-    "data-ph-capture-attribute-area": area,
-    "data-ph-capture-attribute-object": object,
-    "data-ph-capture-attribute-action": action,
-  };
-
-  // Add any extra attributes
-  if (extra) {
-    for (const [key, value] of Object.entries(extra)) {
-      attributes[`data-ph-capture-attribute-${key}`] = value;
-    }
+): void {
+  if (typeof window === "undefined" || !posthog.__loaded) {
+    return;
   }
 
-  return attributes;
+  const eventName = `${area}:${object}_${action}`;
+
+  const properties: Record<string, string> = {
+    area,
+    object,
+    action,
+    ...extra,
+  };
+
+  posthog.capture(eventName, properties);
 }
 
-/**
- * Shorthand for click tracking (most common case)
- */
-export function trackClick(
+export function trackOnClick<T extends Element = HTMLElement>(
+  handler: (e: React.MouseEvent<T>) => void | Promise<void>,
   area: TrackingArea | string,
-  object: string
-): TrackingAttributes {
-  return trackingProps(area, object, TRACKING_ACTIONS.CLICK);
-}
-
-/**
- * Shorthand for submit tracking
- */
-export function trackSubmit(
-  area: TrackingArea | string,
-  object: string
-): TrackingAttributes {
-  return trackingProps(area, object, TRACKING_ACTIONS.SUBMIT);
+  object: string,
+  action: TrackingAction | string = TRACKING_ACTIONS.CLICK,
+  extra?: Record<string, string>
+) {
+  return (e: React.MouseEvent<T>) => {
+    trackEvent(area, object, action, extra);
+    return handler(e);
+  };
 }

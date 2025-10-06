@@ -2,7 +2,7 @@ import { RocketIcon } from "@dust-tt/sparkle";
 
 import { H3 } from "@app/components/home/ContentComponents";
 import UTMButton from "@app/components/UTMButton";
-import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 export function CallToActionSection() {
@@ -21,14 +21,18 @@ export function CallToActionSection() {
           label="Try Dust now"
           icon={RocketIcon}
           href="/home/pricing"
-          {...trackClick(TRACKING_AREAS.HOME, "cta_try_dust")}
+          onClick={() =>
+            trackEvent(TRACKING_AREAS.HOME, "cta_try_dust", "click")
+          }
         />
         <UTMButton
           variant="outline"
           size="md"
           label="Request demo now"
           href="/home/contact"
-          {...trackClick(TRACKING_AREAS.HOME, "cta_request_demo")}
+          onClick={() =>
+            trackEvent(TRACKING_AREAS.HOME, "cta_request_demo", "click")
+          }
         />
       </div>
     </div>

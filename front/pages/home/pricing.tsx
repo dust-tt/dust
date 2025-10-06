@@ -11,7 +11,7 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import { PricePlans } from "@app/components/plans/PlansTables";
-import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
 export async function getStaticProps() {
   return {
@@ -40,9 +40,9 @@ export default function Pricing() {
               label="Start with Pro, 15 Days free"
               icon={RocketIcon}
               onClick={() => {
+                trackEvent(TRACKING_AREAS.PRICING, "hero_start_trial", "click");
                 window.location.href = "/api/workos/login?screenHint=sign-up";
               }}
-              {...trackClick(TRACKING_AREAS.PRICING, "hero_start_trial")}
             />
           </>
         }

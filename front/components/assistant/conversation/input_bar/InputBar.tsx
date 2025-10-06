@@ -1,5 +1,4 @@
 import { Button, cn, StopIcon } from "@dust-tt/sparkle";
-import posthog from "posthog-js";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
@@ -20,7 +19,7 @@ import {
   useConversation,
   useConversationTools,
 } from "@app/lib/swr/conversations";
-import { TRACKING_AREAS } from "@app/lib/tracking";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -206,17 +205,12 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    // Track message submission
-    if (posthog.__loaded) {
-      posthog.capture(`${TRACKING_AREAS.CONVERSATION}:message_send_submit`, {
-        area: TRACKING_AREAS.CONVERSATION,
-        object: "message_send",
-        action: "submit",
-        has_attachments: attachedNodes.length > 0 ? "true" : "false",
-        has_tools: selectedMCPServerViews.length > 0 ? "true" : "false",
-        has_assistant: selectedAssistant ? "true" : "false",
-      });
-    }
+    // Track message submission (critical activation event)
+    trackEvent(TRACKING_AREAS.CONVERSATION, "message_send", "submit", {
+      has_attachments: attachedNodes.length > 0 ? "true" : "false",
+      has_tools: selectedMCPServerViews.length > 0 ? "true" : "false",
+      has_assistant: selectedAssistant ? "true" : "false",
+    });
 
     // When we are creating a new conversation, we will disable the input bar, show a loading
     // spinner and in case of error, re-enable the input bar
