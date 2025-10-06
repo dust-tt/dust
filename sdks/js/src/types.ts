@@ -328,7 +328,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   .or(z.null())
   .or(z.undefined());
 
-const VisibilitySchema = FlexibleEnumSchema<"visible" | "deleted">();
+const VisibilitySchema = FlexibleEnumSchema<"visible" | "deleted" | "hidden">();
 
 const RankSchema = z.object({
   rank: z.number(),
