@@ -259,7 +259,7 @@ const getTableColumns = ({
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
             <DataTable.BasicCellContent
-              className={classNames("font-mono")}
+              className="font-mono"
               disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
