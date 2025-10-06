@@ -48,6 +48,9 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   }, [activeSubscription]);
 
   const [hasOptedIn, setHasOptedIn] = useState(false);
+  const lastIdentifiedUserId = useRef<string | null>(null);
+  const lastIdentifiedWorkspaceId = useRef<string | null>(null);
+  const lastPlanPropertiesString = useRef<string | null>(null);
 
   const excludedPaths = [
     "/subscribe",
@@ -65,10 +68,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   });
   const isTrackablePage = !isExcludedPath;
 
-  const lastIdentifiedUserId = useRef<string | null>(null);
-  const lastIdentifiedWorkspaceId = useRef<string | null>(null);
-
-  // Initialize PostHog once
   useEffect(() => {
     if (!POSTHOG_KEY || posthog.__loaded) {
       return;
@@ -83,14 +82,18 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       capture_pageleave: true,
       autocapture: false,
       property_denylist: ["$ip"],
-      sanitize_properties: (properties) => {
-        if (properties.$current_url) {
-          properties.$current_url = properties.$current_url.split("?")[0];
+      before_send: (event) => {
+        if (!event) {
+          return null;
         }
-        if (properties.$pathname) {
-          properties.$pathname = properties.$pathname.split("?")[0];
+        if (event.properties.$current_url) {
+          event.properties.$current_url =
+            event.properties.$current_url.split("?")[0];
         }
-        return properties;
+        if (event.properties.$pathname) {
+          event.properties.$pathname = event.properties.$pathname.split("?")[0];
+        }
+        return event;
       },
       session_recording: {
         maskAllInputs: true,
@@ -100,7 +103,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     });
   }, []);
 
-  // Handle opt-in/opt-out based on cookies and page
   useEffect(() => {
     const shouldTrack = isTrackablePage && hasAcceptedCookies;
 
@@ -117,32 +119,38 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
   }, [isTrackablePage, hasAcceptedCookies, hasOptedIn]);
 
-  // Handle user identification separately
   useEffect(() => {
     if (!posthog.__loaded || !user || !hasOptedIn) {
       return;
     }
 
-    // Only identify if user changed
-    if (lastIdentifiedUserId.current !== user.sId) {
+    const planPropsString = planProperties
+      ? JSON.stringify(planProperties)
+      : null;
+    const userChanged = lastIdentifiedUserId.current !== user.sId;
+    const planChanged = lastPlanPropertiesString.current !== planPropsString;
+
+    if (userChanged || planChanged) {
       const userProperties: Record<string, string> = {
         ...(planProperties ?? {}),
         ...(workspaceId && { workspace_id: workspaceId }),
       };
       posthog.identify(user.sId, userProperties);
       lastIdentifiedUserId.current = user.sId;
+      lastPlanPropertiesString.current = planPropsString;
+    }
+  }, [user?.sId, planProperties, workspaceId, hasOptedIn, user]);
+
+  useEffect(() => {
+    if (!posthog.__loaded || !workspaceId || !planProperties || !hasOptedIn) {
+      return;
     }
 
-    // Only group if workspace changed
-    if (
-      workspaceId &&
-      planProperties &&
-      lastIdentifiedWorkspaceId.current !== workspaceId
-    ) {
+    if (lastIdentifiedWorkspaceId.current !== workspaceId) {
       posthog.group("workspace", workspaceId, planProperties);
       lastIdentifiedWorkspaceId.current = workspaceId;
     }
-  }, [user, workspaceId, planProperties, hasOptedIn]);
+  }, [workspaceId, planProperties, hasOptedIn]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
