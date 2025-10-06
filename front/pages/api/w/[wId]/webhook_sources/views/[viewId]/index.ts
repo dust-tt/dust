@@ -180,7 +180,11 @@ async function editWebhookSourceViewsName(
   try {
     for (const view of allViews) {
       if (view.sId !== webhookSourceView.sId) {
-        const viewUpdateResult = await view.updateName(auth, newName, transaction);
+        const viewUpdateResult = await view.updateName(
+          auth,
+          newName,
+          transaction
+        );
         if (viewUpdateResult.isErr()) {
           await transaction.rollback();
           return viewUpdateResult;
