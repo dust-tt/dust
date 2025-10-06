@@ -78,9 +78,14 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         api_host: "/ingest",
         person_profiles: "identified_only",
         defaults: "2025-05-24",
-        opt_out_capturing_by_default: true, // Start opted out
-        capture_pageview: true, // Automatic pageview tracking
-        capture_pageleave: true, // Track when users leave pages
+        opt_out_capturing_by_default: true, // Opt-in when user has accepted cookies
+        capture_pageview: true,
+        capture_pageleave: true,
+        autocapture: {
+          // This filters out: random div clicks, input changes, text typing to filter out noise
+          dom_event_allowlist: ["click", "submit"],
+          css_selector_allowlist: ["[data-ph-capture-attribute-tracking]"],
+        },
         property_denylist: ["$ip"],
         sanitize_properties: (properties) => {
           if (properties.$current_url) {
