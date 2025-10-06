@@ -119,13 +119,13 @@ export async function getConversation(
   }
 
   // Create compact array sorted by rank (no empty slots)
-  const content: (
+  const content = Array.from(messagesByRank.entries())
+    .sort(([rankA], [rankB]) => rankA - rankB)
+    .map(([, messages]) => messages) as (
     | UserMessageType[]
     | AgentMessageType[]
     | ContentFragmentType[]
-  )[] = Array.from(messagesByRank.entries())
-    .sort(([rankA], [rankB]) => rankA - rankB)
-    .map(([, messages]) => messages);
+  )[];
 
   const { actionRequired, unread } =
     await ConversationResource.getActionRequiredAndUnreadForUser(
