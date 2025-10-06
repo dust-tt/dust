@@ -18,6 +18,7 @@ import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { usePatchUser } from "@app/lib/swr/user";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getAgentRoute } from "@app/lib/utils/router";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
@@ -114,7 +115,13 @@ export default function Welcome({
           label={"Next"}
           disabled={!isFormValid || isSubmitting}
           size="sm"
-          onClick={submit}
+          onClick={withTracking(
+            TRACKING_AREAS.AUTH,
+            "onboarding_complete",
+            () => {
+              void submit();
+            }
+          )}
         />
       }
     >
@@ -198,7 +205,13 @@ export default function Welcome({
             label={"Next"}
             disabled={!isFormValid || isSubmitting}
             size="md"
-            onClick={submit}
+            onClick={withTracking(
+              TRACKING_AREAS.AUTH,
+              "onboarding_complete",
+              () => {
+                void submit();
+              }
+            )}
           />
         </div>
       </div>
