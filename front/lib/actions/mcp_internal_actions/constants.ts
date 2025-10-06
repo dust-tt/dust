@@ -212,7 +212,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   think: {
     id: 6,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("dev_mcp_actions");
