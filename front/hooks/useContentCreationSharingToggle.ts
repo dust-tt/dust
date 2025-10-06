@@ -37,8 +37,7 @@ export function useContentCreationSharingToggle({
       sendNotification({
         type: "error",
         title: "Failed to update Frame sharing setting",
-        description:
-          "Could not update the Frame file sharing setting.",
+        description: "Could not update the Frame file sharing setting.",
       });
       setIsChanging(false);
     }
