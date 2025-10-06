@@ -50,7 +50,7 @@ function FileSharingDropdown({
   }[] = [
     {
       icon: UserGroupIcon,
-      label: `Anyone in ${owner.name} workspace`,
+      label: `${owner.name} workspace members with the link`,
       value: "workspace",
     },
     {
