@@ -64,7 +64,7 @@ import {
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getAgentBuilderRoute, getAgentRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
@@ -397,7 +397,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                                 data-gtm-label="assistantCreationButton"
                                 data-gtm-location="sidebarMenu"
                                 onClick={() =>
-                                  trackEvent(TRACKING_AREAS.BUILDER, "create_from_scratch", "click")
+                                  trackEvent(
+                                    TRACKING_AREAS.BUILDER,
+                                    "create_from_scratch",
+                                    "click"
+                                  )
                                 }
                               />
                               <DropdownMenuItem
@@ -407,7 +411,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                                 data-gtm-label="assistantCreationButton"
                                 data-gtm-location="sidebarMenu"
                                 onClick={() =>
-                                  trackEvent(TRACKING_AREAS.BUILDER, "create_from_template", "click")
+                                  trackEvent(
+                                    TRACKING_AREAS.BUILDER,
+                                    "create_from_template",
+                                    "click"
+                                  )
                                 }
                               />
                               {hasFeature("agent_to_yaml") && (
