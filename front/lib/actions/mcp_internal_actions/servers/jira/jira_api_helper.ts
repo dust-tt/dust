@@ -49,7 +49,10 @@ import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-import { TextExtraction } from "@app/types/shared/text_extraction";
+import {
+  isTextExtractionSupportedContentType,
+  TextExtraction,
+} from "@app/types/shared/text_extraction";
 
 import { sanitizeFilename } from "../../utils/file_utils";
 
@@ -1255,6 +1258,10 @@ export async function extractTextFromAttachment({
   attachmentId: string;
   mimeType: string;
 }): Promise<Result<string, JiraErrorResult>> {
+  if (!isTextExtractionSupportedContentType(mimeType)) {
+    return new Err(`Text extraction not supported for file type: ${mimeType}.`);
+  }
+
   try {
     const downloadResult = await downloadAttachmentContent({
       baseUrl,
@@ -1274,10 +1281,7 @@ export async function extractTextFromAttachment({
     const buffer = downloadResult.value;
     const bufferStream = Readable.from(buffer);
 
-    const textStream = await textExtraction.fromStream(
-      bufferStream,
-      mimeType as any
-    );
+    const textStream = await textExtraction.fromStream(bufferStream, mimeType);
     const chunks: string[] = [];
     for await (const chunk of textStream) {
       chunks.push(chunk.toString());
