@@ -10,8 +10,8 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
-import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
 import { PricePlans } from "@app/components/plans/PlansTables";
+import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
 
 export async function getStaticProps() {
   return {

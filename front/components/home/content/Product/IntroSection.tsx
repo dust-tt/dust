@@ -11,9 +11,9 @@ import {
 } from "@app/components/home/ContentComponents";
 import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
-import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
+import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
 
 const HeroContent = () => {
   return (

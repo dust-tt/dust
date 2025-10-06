@@ -29,7 +29,7 @@ import {
 } from "@app/lib/connector_providers";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { trackClick, trackingProps, TRACKING_AREAS } from "@app/lib/tracking";
+import { trackClick, TRACKING_AREAS, trackingProps } from "@app/lib/tracking";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   ConnectorProvider,

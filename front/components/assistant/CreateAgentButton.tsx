@@ -15,7 +15,7 @@ import { useState } from "react";
 
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { trackClick, trackingProps, TRACKING_AREAS } from "@app/lib/tracking";
+import { trackClick, TRACKING_AREAS } from "@app/lib/tracking";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 

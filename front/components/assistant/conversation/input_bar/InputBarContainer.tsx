@@ -32,13 +32,13 @@ import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberServic
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { isNodeCandidate } from "@app/lib/connectors";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { trackingProps, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, trackingProps } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
