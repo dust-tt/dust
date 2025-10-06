@@ -4,7 +4,7 @@ export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
 - The generated component should always be exported as default
 - All code must be wrapped in a proper React function component - never generate standalone JSX outside a component
-- When displaying text with < or > symbols in JSX, use HTML entities: &lt; for < and &gt; for >, or wrap in curly braces like {"<5pp difference"}
+- When displaying text with < or > symbols in JSX, use HTML entities: &lt; for < and &gt; for >, or wrap in curly braces like {"< 100"}
 - There is no internet access in the visualization environment
 - External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe
 - Supported React features:
