@@ -3,14 +3,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
-import { assertNever, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { patchWebhookSourceViewBodySchema } from "@app/types/triggers/webhooks";
-import { Err } from "@dust-tt/client";
 
 export type GetWebhookSourceViewResponseBody = {
   webhookSourceView: WebhookSourceViewType;
@@ -156,47 +154,49 @@ async function editWebhookSourceViewsName(
   webhookSourceView: WebhookSourcesViewResource,
   newName: string
 ): Promise<Result<undefined, DustError<"unauthorized">>> {
-  // Propagate changes to system view and all space views
   const systemView =
     await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
       auth,
       webhookSourceView.webhookSourceSId
     );
 
-  const isSystemView = systemView?.sId === webhookSourceView.sId;
   if (!systemView) {
     // This should never happen as we already validated that the view is a system view
     return new Err(new DustError("unauthorized", "Only system views allowed"));
   }
 
-  // This is the system view, update all space views with the same webhook source
+  // Get all views with the same webhook source (excluding the system view already updated)
   const allViews = await WebhookSourcesViewResource.listByWebhookSource(
     auth,
     webhookSourceView.webhookSourceId
   );
 
-  // Use a single transaction to update all views atomically
-  const transaction = await frontSequelize.transaction();
-  try {
-    for (const view of allViews) {
-      if (view.sId !== webhookSourceView.sId) {
-        const viewUpdateResult = await view.updateName(
-          auth,
-          newName,
-          transaction
-        );
-        if (viewUpdateResult.isErr()) {
-          await transaction.rollback();
-          return viewUpdateResult;
-        }
-      }
+  // Check that the user can administrate all views
+  for (const view of allViews) {
+    if (view.sId !== webhookSourceView.sId && !view.canAdministrate(auth)) {
+      return new Err(
+        new DustError("unauthorized", "Not allowed to update all views.")
+      );
     }
-    await transaction.commit();
-    return new Ok(undefined);
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
   }
+
+  // Get IDs of views to update (excluding the system view)
+  const viewIdsToUpdate = allViews
+    .filter((view) => view.sId !== webhookSourceView.sId)
+    .map((view) => view.id);
+
+  if (viewIdsToUpdate.length === 0) {
+    return new Ok(undefined);
+  }
+
+  // Bulk update all views at once
+  await WebhookSourcesViewResource.bulkUpdateName(
+    auth,
+    viewIdsToUpdate,
+    newName
+  );
+
+  return new Ok(undefined);
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
