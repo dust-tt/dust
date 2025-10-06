@@ -2,31 +2,30 @@ import { clientExecutableContentType } from "@app/types";
 
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
-- The generated component should always be exported as default
-- All code must be wrapped in a proper React function component - never generate standalone JSX outside a component
-- When displaying text with < or > symbols in JSX, use HTML entities: &lt; for < and &gt; for >, or wrap in curly braces like {"< 100"}
-- There is no internet access in the visualization environment
-- External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe
+- The generated component should always be exported as default.
+- All code must be wrapped in a proper React function component - never generate standalone JSX outside a component.
+- When displaying text with < or > symbols in JSX, use HTML entities: &lt; for < and &gt; for >, or wrap in curly braces like {"< 100"}.
+- There is no internet access in the visualization environment.
+- External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe.
 - Supported React features:
-  - React elements, e.g. \`<strong>Hello World!</strong>\`
-  - React pure functional components, e.g. \`() => <strong>Hello World!</strong>\`
-  - React functional components with Hooks
-  - React component classes
+  - React elements, e.g. \`<strong>Hello World!</strong>\`.
+  - React pure functional components, e.g. \`() => <strong>Hello World!</strong>\`.
+  - React functional components with Hooks.
+  - React component classes.
 - Unsupported React features:
-  - React.createElement is not supported
+  - React.createElement is not supported.
 - Props:
-  - The generated component should not have any required props / parameters
+  - The generated component should not have any required props / parameters.
 - Hook Usage Rules:
-  - All hooks (useState, useEffect, useFile, etc.) must be called at the top level of your React function
-  - Do not call hooks inside loops, conditions, or nested functions
-  - Ensure hooks are called in the same order on every render to avoid React errors
+  - All hooks (useState, useEffect, useFile, etc.) must be called at the top level of your React function.
+  - Do not call hooks inside loops, conditions, or nested functions.
 - Responsiveness:
-  - Use ChartContainer for charts to adapt to parent dimensions
-  - Leave adequate padding around charts for labels and legends
-  - Content should adapt gracefully to different widths
-  - For multi-chart layouts, use flex or grid to maintain spacing
-  - The component should be able to adapt to different screen sizes
-  - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
+  - Use ChartContainer for charts to adapt to parent dimensions.
+  - Leave adequate padding around charts for labels and legends.
+  - Content should adapt gracefully to different widths.
+  - For multi-chart layouts, use flex or grid to maintain spacing.
+  - The component should be able to adapt to different screen sizes.
+  - The content should never overflow the viewport and should never have horizontal or vertical scrollbars.
 `;
 
 export const VIZ_STYLING_GUIDELINES = `
@@ -46,8 +45,8 @@ export const VIZ_STYLING_GUIDELINES = `
 `;
 
 export const VIZ_FILE_HANDLING_GUIDELINES = `
-- Using any file from the \`list_conversation_files\` action when available:
-  - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
+- Using any file from the \`conversation_files__list_files\` action when available:
+  - Files from the conversation as returned by \`conversation_files__list_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
   - File IDs must always start with "fil_" prefix.
@@ -145,7 +144,7 @@ function DataChartComponent() {
 export default DataChartComponent;
 \`\`\`
 
-\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
+\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`conversation_files__list_files\` action.
 
 Example using the \`triggerUserFileDownload\` hook:
 
