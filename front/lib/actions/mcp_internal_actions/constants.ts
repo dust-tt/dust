@@ -688,6 +688,7 @@ The directive should be used to display a clickable version of the agent name in
       get_issue_link_types: "never_ask",
       get_users: "never_ask",
       get_attachments: "never_ask",
+      read_attachment: "never_ask",
 
       // Update operations - low stakes
       create_comment: "low",

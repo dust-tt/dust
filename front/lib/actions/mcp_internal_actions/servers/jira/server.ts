@@ -6,6 +6,8 @@ import {
   createIssue,
   createIssueLink,
   deleteIssueLink,
+  extractTextFromAttachment,
+  getAttachmentContent,
   getConnectionInfo,
   getIssue,
   getIssueAttachments,
@@ -42,7 +44,11 @@ import {
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { normalizeError } from "@app/types";
+import logger from "@app/logger/logger";
+import {
+  isTextExtractionSupportedContentType,
+  normalizeError,
+} from "@app/types";
 
 const createServer = (
   auth?: Authenticator,
@@ -949,6 +955,105 @@ const createServer = (
               ),
             },
           });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "read_attachment",
+    "Read content from any attachment on a Jira issue. For text-based files (PDF, Word, Excel, CSV, plain text), extracts and returns the text content. For other file types, returns the content as base64. Supports text extraction with OCR for scanned documents.",
+    {
+      issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
+      attachmentId: z.string().describe("The ID of the attachment to read"),
+    },
+    async ({ issueKey, attachmentId }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          try {
+            const attachmentsResult = await getIssueAttachments({
+              baseUrl,
+              accessToken,
+              issueKey,
+            });
+
+            if (attachmentsResult.isErr()) {
+              return makeMCPToolTextError(attachmentsResult.error);
+            }
+
+            const attachments = attachmentsResult.value;
+            const targetAttachment = attachments.find(
+              (att) => att.id === attachmentId
+            );
+            if (!targetAttachment) {
+              return makeMCPToolTextError(
+                `Attachment with ID ${attachmentId} not found on issue ${issueKey}`
+              );
+            }
+            if (
+              isTextExtractionSupportedContentType(targetAttachment.mimeType)
+            ) {
+              const textResult = await extractTextFromAttachment({
+                baseUrl,
+                accessToken,
+                attachmentId,
+                mimeType: targetAttachment.mimeType,
+              });
+
+              if (textResult.isErr()) {
+                return makeMCPToolTextError(textResult.error);
+              }
+
+              return makeMCPToolJSONSuccess({
+                message: `Successfully extracted text from attachment: ${targetAttachment.filename}`,
+                result: {
+                  issueKey,
+                  attachmentId,
+                  filename: targetAttachment.filename,
+                  mimeType: targetAttachment.mimeType,
+                  size: targetAttachment.size,
+                  content: textResult.value,
+                  contentType: "text",
+                  contentLength: textResult.value.length,
+                },
+              });
+            } else {
+              const contentResult = await getAttachmentContent({
+                baseUrl,
+                accessToken,
+                attachmentId,
+                mimeType: targetAttachment.mimeType,
+              });
+
+              if (contentResult.isErr()) {
+                return makeMCPToolTextError(contentResult.error);
+              }
+
+              return makeMCPToolJSONSuccess({
+                message: `Successfully retrieved attachment content: ${targetAttachment.filename}`,
+                result: {
+                  issueKey,
+                  attachmentId,
+                  filename: targetAttachment.filename,
+                  mimeType: targetAttachment.mimeType,
+                  size: targetAttachment.size,
+                  content: contentResult.value.content,
+                  contentType: contentResult.value.contentType,
+                  contentLength: contentResult.value.content.length,
+                },
+              });
+            }
+          } catch (error) {
+            logger.error(`Error in read_attachment:`, {
+              error: error instanceof Error ? error.message : String(error),
+              issueKey,
+              attachmentId,
+            });
+            return makeMCPToolTextError(
+              `${error instanceof Error ? error.message : String(error)}`
+            );
+          }
         },
         authInfo,
       });
