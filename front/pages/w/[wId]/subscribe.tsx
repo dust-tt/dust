@@ -13,6 +13,7 @@ import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
@@ -192,9 +193,17 @@ export default function Subscribe({
                   }
                   icon={CreditCardIcon}
                   size="sm"
-                  onClick={() => {
-                    void handleSubscribePlan(billingPeriod);
-                  }}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_start",
+                    () => {
+                      void handleSubscribePlan(billingPeriod);
+                    },
+                    {
+                      billing_period: billingPeriod,
+                      is_trial: noPreviousSubscription ? "true" : "false",
+                    }
+                  )}
                 />
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
