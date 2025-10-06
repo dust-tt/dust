@@ -169,7 +169,6 @@ export function DataSourceList({
       }
 
       const isItemRemote = isRemoteDatabase(itemDataSource);
-      const itemProvider = itemDataSource.connectorProvider;
 
       // Check all selected items in the tree
       for (const selected of field.value.in) {
@@ -189,7 +188,6 @@ export function DataSourceList({
         }
 
         const isSelectedRemote = isRemoteDatabase(selectedDataSource);
-        const selectedProvider = selectedDataSource.connectorProvider;
 
         // If a remote table is selected, disable all local tables and other remote tables
         if (isSelectedRemote && !isItemRemote) {
@@ -201,11 +199,11 @@ export function DataSourceList({
           return true;
         }
 
-        // If both are remote but different providers, disable
+        // If both are remote but from different data sources, disable
         if (
           isItemRemote &&
           isSelectedRemote &&
-          itemProvider !== selectedProvider
+          itemDataSource.sId !== selectedDataSource.sId
         ) {
           return true;
         }
