@@ -55,7 +55,7 @@ function createServer(
   const commonInputsSchema = {
     timeFrame:
       ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
       ],
     dataSources:
       ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],

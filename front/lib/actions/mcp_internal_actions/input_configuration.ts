@@ -97,7 +97,6 @@ function generateConfiguredInput({
       );
       if (propSchema) {
         // Handle both object-level default {value, mimeType}
-        // Handle both object-level default {value, mimeType}
         if (
           propSchema.default &&
           typeof propSchema.default === "object" &&
@@ -176,11 +175,10 @@ function generateConfiguredInput({
       return { modelId, providerId, temperature, reasoningEffort, mimeType };
     }
 
-    case INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME: {
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
       const { timeFrame } = actionConfiguration;
-      if (!timeFrame) {
-        return null;
-      }
+
+      assert(timeFrame, "Unreachable: missing time frame configuration.");
 
       const { duration, unit } = timeFrame;
       return { duration, unit, mimeType };
@@ -188,15 +186,15 @@ function generateConfiguredInput({
 
     case INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA: {
       const { jsonSchema } = actionConfiguration;
-      if (!jsonSchema) {
-        return null;
-      }
+      
+      assert(jsonSchema, "Unreachable: missing JSON schema configuration.");
+
       const validationResult = validateConfiguredJsonSchema(jsonSchema);
       if (validationResult.isErr()) {
         throw validationResult.error;
       }
       return {
-        ...validationResult.value,
+        jsonSchema: validationResult.value,
         mimeType,
       };
     }
@@ -480,11 +478,7 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-/*
-The "mayRequire" properties are true in one of two cases:
-  1. There is a property with a missing value that must be inputted to validate the schema.
-  2. There is a property with a default value that may still be changed by the user.
-*/
+
 export interface MCPServerToolsConfigurations {
   dataSourceConfigurable: "no" | "optional" | "required";
   dataWarehouseConfigurable: "no" | "optional" | "required";
@@ -556,176 +550,23 @@ export function getMCPServerToolsConfigurations(
         numberConfigurations: {},
         booleanConfigurations: {},
         enumConfigurations: {},
-        listConfigurations: {},        
+        listConfigurations: {},  
       },
       configurable: "optional",
     };
   }
 
-  function getConfigurableStateForRecord(configurations: Record<string, unknown>, defaults: Record<string, unknown>): "no" | "optional" | "required" {
-    if (Object.keys(configurations).length === 0) {
-      return "no";
-    }
-    if (Object.keys(configurations).every((key) => key in defaults)) {
-      return "optional";
-    }
-    return "required";
-  }
 
-  function extractSchemaDefault<T>(
-    schema: JSONSchema,
-    typeGuard: (value: unknown) => value is T
-  ): T | undefined {
-    // Try object-level default first: { value: T, mimeType: "..." }
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      schema.default !== null &&
-      "value" in schema.default &&
-      typeGuard(schema.default.value)
-    ) {
-      return schema.default.value;
-    }
-
-    return undefined;
-  }
-
-  const dataSourceSchema = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-    })
-  ).at(0);
-
-  const dataSourceConfigurable = dataSourceSchema ? dataSourceSchema.required ? "required" : "optional" : "no";
-
-  const dataWarehouseSchema = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
-    })
-  ).at(0);
-
-  const dataWarehouseConfigurable = dataWarehouseSchema ? dataWarehouseSchema.required ? "required" : "optional" : "no";
-
-  const tableSchema = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-    })
-  ).at(0);
-
-  const tableConfigurable = tableSchema ? tableSchema.required ? "required" : "optional" : "no";
-
-  const childAgentSchema = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
-    })
-  ).at(0);
-
-  const childAgentConfigurable = childAgentSchema ? childAgentSchema.required ? "required" : "optional" : "no";
-
-  const reasoningSchema = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-    })
-  ).at(0);
-
-  const reasoningConfigurable = reasoningSchema ? reasoningSchema.required ? "required" : "optional" : "no";
-
-  const timeFrameSchema = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
-    })
-  ).at(0);
-
-  const defaultTimeFrame = timeFrameSchema ? extractSchemaDefault(timeFrameSchema.schema, isTimeFrame) : undefined;
-
-  const timeFrameConfigurable = timeFrameSchema ? timeFrameSchema.required ? defaultTimeFrame ? "optional" : "required" : "optional" : "no";
-
-  const jsonSchemaSchema = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
-    })
-  ).at(0);
-
-  const defaultJsonSchema = jsonSchemaSchema ? extractSchemaDefault(jsonSchemaSchema.schema, isJsonSchema) : undefined;
-
-  const jsonSchemaConfigurable = jsonSchemaSchema ? jsonSchemaSchema.required ? defaultJsonSchema ? "optional" : "required" : "optional" : "no";
-
-
-  const stringSchemas = Object.entries(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
-    })
+  const { schemas: stringSchemas, configurations: stringConfigurations, defaults: stringDefaults } = getSchemaConfigurationsAndDefaults(INTERNAL_MIME_TYPES.TOOL_INPUT.STRING, mcpServerView, isString);
+  const { schemas: numberSchemas, configurations: numberConfigurations, defaults: numberDefaults } = getSchemaConfigurationsAndDefaults(INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER, mcpServerView, (v: unknown): v is number => typeof v === "number");
+  const { schemas: booleanSchemas, configurations: booleanConfigurations, defaults: booleanDefaults } = getSchemaConfigurationsAndDefaults(INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN, mcpServerView, (v: unknown): v is boolean => typeof v === "boolean", 
+    (key) => key !== "useSummary" || featureFlags?.includes("web_summarization")
   );
 
-  const stringConfigurations = Object.fromEntries(stringSchemas.map(([key, entry]) => [key, {
-    description: entry.schema.description
-  }]));
 
-  const stringDefaults : Record<string, string> = Object.fromEntries(
-    stringSchemas.map(([key, entry]) => [key, extractSchemaDefault(entry.schema, isString)]).filter(
-      ([_, val]) => val !== undefined
-    )
-  );
+  const { schemas: enumSchemas, entries: enumEntries } = getSchemaAndEntries(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM, mcpServerView);
 
-  const numberSchemas = Object.entries(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
-    })
-  );
-
-  const numberConfigurations = Object.fromEntries(numberSchemas.map(([key, entry]) => [key, {
-    description: entry.schema.description
-  }]));
-
-  const numberDefaults : Record<string, number> = Object.fromEntries(
-    numberSchemas.map(
-      ([key, entry]) => [key, extractSchemaDefault(entry.schema, (v: unknown): v is number => typeof v === "number")]
-    ).filter(
-      ([_, val]) => val !== undefined
-    )
-  );
-
-  const booleanSchemas = Object.entries(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-    })
-  );
-
-  const booleanConfigurations = Object.fromEntries(booleanSchemas.map(([key, entry]) => [key, {
-    description: entry.schema.description
-  }])
-  // Exclude useSummary if user doesn't have web_summarization feature flag.
-  .filter(
-    ([key, _]) =>
-      key !== "useSummary" || featureFlags?.includes("web_summarization")
-  )
-)
-;
-
-  const booleanDefaults : Record<string, boolean> = Object.fromEntries(
-    booleanSchemas.map(([key, entry]) => [key, extractSchemaDefault(entry.schema, (v: unknown): v is boolean => typeof v === "boolean")]).filter(
-      ([_, val]) => val !== undefined
-    )
-  );
-
-  const enumSchemas = Object.entries(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-    })
-  );
-
-  const enumConfigurations = Object.fromEntries(enumSchemas.map(([key, entry]) => {
+  const enumConfigurations = Object.fromEntries(enumEntries.map(([key, entry]) => {
     const optionsProperty = entry.schema.properties?.options;
     if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
       return [key, { options: [], description: entry.schema.description }];
@@ -758,20 +599,10 @@ export function getMCPServerToolsConfigurations(
     }];
   }));
 
-  const enumDefaults : Record<string, string> = Object.fromEntries(
-    enumSchemas.map(([key, entry]) => [key, extractSchemaDefault(entry.schema, (v: unknown): v is string => typeof v === "string")]).filter(
-      ([_, val]) => val !== undefined
-    )
-  );
+  const enumDefaults = getDefaultsForEntries(enumEntries, (v: unknown): v is string => typeof v === "string");
+  const { schemas: listSchemas, entries: listEntries } = getSchemaAndEntries(INTERNAL_MIME_TYPES.TOOL_INPUT.LIST, mcpServerView);
 
-  const listSchemas = Object.entries(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.LIST,
-    })
-  );
-
-  const listConfigurations = Object.fromEntries(listSchemas.map(([key, entry]) => {
+  const listConfigurations = Object.fromEntries(listEntries.map(([key, entry]) => {
 
     const optionsProperty = entry.schema.properties?.options;
     if (!optionsProperty || !isJSONSchemaObject(optionsProperty)) {
@@ -814,19 +645,7 @@ export function getMCPServerToolsConfigurations(
       description: entry.schema.description
     }]}));
 
-  const listDefaults : Record<string, string[]> = Object.fromEntries(
-    listSchemas.map(([key, entry]) => [key, extractSchemaDefault(entry.schema, (v: unknown): v is string[] => Array.isArray(v) && v.every(isString))]).filter(
-      ([_, val]) => val !== undefined
-    )
-  );
-
-  const defaults = {
-    stringConfigurations: stringDefaults,
-    numberConfigurations: numberDefaults,
-    booleanConfigurations: booleanDefaults,
-    enumConfigurations: enumDefaults,
-    listConfigurations: listDefaults,
-  };
+  const listDefaults = getDefaultsForEntries(listEntries, (v: unknown): v is string[] => Array.isArray(v) && v.every(isString));
 
   const dustAppConfigurable =
     Object.keys(
@@ -839,6 +658,16 @@ export function getMCPServerToolsConfigurations(
   const secretConfigurable =
     mcpServerView.server.requiresSecret === true ? "required" : "no";
 
+
+  const dataSourceConfigurable = getConfigurableStateForMimeType(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE, mcpServerView);
+  const dataWarehouseConfigurable = getConfigurableStateForMimeType(INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE, mcpServerView);
+  const tableConfigurable = getConfigurableStateForMimeType(INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE, mcpServerView);
+  const childAgentConfigurable = getConfigurableStateForMimeType(INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT, mcpServerView);
+  const reasoningConfigurable = getConfigurableStateForMimeType(INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL, mcpServerView);
+
+  const { configurable: jsonSchemaConfigurable, default: jsonSchemaDefault } = getSchemaConfigurableAndDefault(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA, mcpServerView, isJsonSchema);
+  const { configurable: timeFrameConfigurable, default: timeFrameDefault } = getSchemaConfigurableAndDefault(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME, mcpServerView, isTimeFrame);
+
   const configurableStates = [
     dataSourceConfigurable,
     dataWarehouseConfigurable,
@@ -849,12 +678,22 @@ export function getMCPServerToolsConfigurations(
     jsonSchemaConfigurable,
     dustAppConfigurable,
     secretConfigurable,
-    getConfigurableStateForRecord(stringConfigurations, stringDefaults),
-    getConfigurableStateForRecord(numberConfigurations, numberDefaults),
-    getConfigurableStateForRecord(booleanConfigurations, booleanDefaults),
-    getConfigurableStateForRecord(enumConfigurations, enumDefaults),
-    getConfigurableStateForRecord(listConfigurations, listDefaults),
+    getConfigurableStateForRecord(stringSchemas, stringConfigurations, stringDefaults),
+    getConfigurableStateForRecord(numberSchemas, numberConfigurations, numberDefaults),
+    getConfigurableStateForRecord(booleanSchemas, booleanConfigurations, booleanDefaults),
+    getConfigurableStateForRecord(enumSchemas, enumConfigurations, enumDefaults),
+    getConfigurableStateForRecord(listSchemas, listConfigurations, listDefaults),
   ];
+
+  const defaults = {
+    stringConfigurations: stringDefaults,
+    numberConfigurations: numberDefaults,
+    booleanConfigurations: booleanDefaults,
+    enumConfigurations: enumDefaults,
+    listConfigurations: listDefaults,
+    timeFrameConfiguration: timeFrameDefault,
+    jsonSchemaConfiguration: jsonSchemaDefault,
+  };
 
   const configurable = configurableStates.every((c) => c === "no")
     ? "no"
@@ -951,6 +790,8 @@ export function findMatchingSubSchemas(
       if (isJSONSchemaObject(propSchema)) {
         // Check if this property's schema matches the target
         if (isSchemaConfigurable(propSchema, mimeType)) {
+
+          // When we set a type as .optional() in Zod, this removes the key from the required array.
           matches[key] = { schema: propSchema, required: inputSchema.required?.includes(key) ?? false };
         }
 
@@ -1107,4 +948,107 @@ function recursiveInlineAllRefs(
  */
 export function inlineAllRefs(schema: JSONSchema): JSONSchema {
   return recursiveInlineAllRefs(schema, schema);
+}
+
+
+function getConfigurableStateForRecord(schemas: Record<string, { schema: JSONSchema, required: boolean }>, configurations: Record<string, unknown>, defaults: Record<string, unknown>): "no" | "optional" | "required" {
+  if (Object.keys(configurations).length === 0) {
+    return "no";
+  }
+
+  const requiredKeys = Object.keys(configurations).filter((key) => schemas[key].required);
+
+  if (requiredKeys.every((key) => key in defaults) || requiredKeys.length === 0) {
+    return "optional";
+  }
+  return "required";
+}
+
+function extractSchemaDefault<T>(
+  schema: JSONSchema,
+  typeGuard: (value: unknown) => value is T
+): T | undefined {
+  // Try object-level default first: { value: T, mimeType: "..." }
+  if (
+    schema.default &&
+    typeof schema.default === "object" &&
+    schema.default !== null &&
+    "value" in schema.default &&
+    typeGuard(schema.default.value)
+  ) {
+    return schema.default.value;
+  }
+
+  return undefined;
+}
+
+function getConfigurableStateForMimeType(mimeType: InternalToolInputMimeType, mcpServerView: MCPServerViewType) : "no" | "optional" | "required" {
+  const schema = Object.values(findPathsToConfiguration({
+    mcpServerView,
+    mimeType,
+  })).at(0);
+
+  if (schema && schema.schema.default !== undefined) {
+    throw new Error("Defaults are not allowed for inputs");
+  }
+
+  return schema ? schema.required ? "required" : "optional" : "no";
+}
+
+function getSchemaConfigurationsAndDefaults<T>(mimeType: InternalToolInputMimeType, mcpServerView: MCPServerViewType, typeGuard: (value: unknown) => value is T, filter?: (key: string) => boolean | undefined) : {
+  schemas: Record<string, { schema: JSONSchema, required: boolean }>;
+  configurations: Record<string, { description?: string }>;
+  defaults: Record<string, T>;
+} {
+  const { schemas, entries } = getSchemaAndEntries(mimeType, mcpServerView);
+
+  const filteredEntries = filter ? entries.filter(([key, _]) => filter(key)) : entries;
+
+  const configurations = getConfigurationsForEntries(filteredEntries);
+  const defaults = getDefaultsForEntries(filteredEntries, typeGuard);
+
+  return { schemas, configurations, defaults };
+}
+
+function getSchemaAndEntries(mimeType: InternalToolInputMimeType, mcpServerView: MCPServerViewType) : {
+  schemas: Record<string, { schema: JSONSchema, required: boolean }>;
+  entries: [string, { schema: JSONSchema, required: boolean }][];
+} {
+  const schemas = findPathsToConfiguration({
+    mcpServerView,
+    mimeType,
+  });
+
+  const entries = Object.entries(schemas);
+
+  return { schemas, entries };
+}
+
+function getDefaultsForEntries<T>(entries: [string, { schema: JSONSchema, required: boolean }][], typeGuard: (value: unknown) => value is T) : Record<string, T> {
+  return Object.fromEntries(entries.map(([key, entry]) => [key, extractSchemaDefault(entry.schema, typeGuard)]).filter(
+    ([_, val]) => val !== undefined
+  ));
+}
+
+function getConfigurationsForEntries(entries: [string, { schema: JSONSchema, required: boolean }][]) : Record<string, { description?: string }> {
+  return Object.fromEntries(entries.map(([key, entry]) => [key, {
+    description: entry.schema.description
+  }]));
+}
+
+
+function getSchemaConfigurableAndDefault<T>(mimeType: InternalToolInputMimeType, mcpServerView: MCPServerViewType, typeGuard: (value: unknown) => value is T) : {
+  configurable: "no" | "optional" | "required";
+  default: T | undefined;
+} {
+  const schema = Object.values(findPathsToConfiguration({
+    mcpServerView,
+    mimeType,
+  })).at(0);
+
+  const defaultValue = schema ? extractSchemaDefault(schema.schema, typeGuard) : undefined;
+  
+  const configurable = schema ? schema.required ? defaultValue ? "optional" : "required" : "optional" : "no";
+
+  return { configurable, default: defaultValue };
 }

@@ -136,7 +136,7 @@ export function setValueAtPath(
         },
         "Invalid path in setValueAtPath."
       );
-      throw new Error("Invalid path in setValueAtPath.");
+      throw new Error("Invalid path in setValueAtPath:");
     }
   }
 

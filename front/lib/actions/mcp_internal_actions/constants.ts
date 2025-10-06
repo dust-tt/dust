@@ -97,6 +97,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "primitive_types_debugger",
   "jit_tool_string_setting_debugger",
   "jit_tool_datasource_setting_debugger",
+  "jit_testing",
   "reasoning",
   "run_agent",
   "run_dust_app",
@@ -1130,6 +1131,27 @@ The directive should be used to display a clickable version of the agent name in
       version: "1.0.0",
       description:
         "Demo server to test if can be added to JIT even with configurable settings.",
+      icon: "ActionEmotionLaughIcon",
+      authorization: null,
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
+  jit_testing: {
+    id: 1016,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("dev_mcp_actions");
+    },
+    tools_stakes: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "jit_testing",
+      version: "1.0.0",
+      description: "Demo server to test if can be added to JIT.",
       icon: "ActionEmotionLaughIcon",
       authorization: null,
       documentationUrl: null,

@@ -451,7 +451,7 @@ describe("augmentInputsWithConfiguration", () => {
     });
   });
 
-  describe("NULLABLE_TIME_FRAME mime type", () => {
+  describe("TIME_FRAME mime type", () => {
     it("should augment inputs with time frame configuration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
@@ -464,7 +464,7 @@ describe("augmentInputsWithConfiguration", () => {
           properties: {
             timeFrame:
               ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
               ],
           },
           required: ["timeFrame"],
@@ -481,55 +481,55 @@ describe("augmentInputsWithConfiguration", () => {
         timeFrame: {
           duration: 7,
           unit: "day",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
         },
       });
     });
-
-    it("should return null when timeFrame is not configured", () => {
-      const rawInputs = {};
-      const config = createBasicMCPConfiguration({
-        timeFrame: null,
-        inputSchema: {
-          type: "object",
-          properties: {
-            timeFrame: {
-              oneOf: [
-                { type: "null" },
-                {
-                  type: "object",
-                  properties: {
-                    duration: { type: "number" },
-                    unit: { type: "string" },
-                    mimeType: {
-                      type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
-                    },
-                  },
-                  required: ["duration", "unit", "mimeType"],
+    
+    it("timeFrame should work when nested in an object", () => {
+        const rawInputs = { nested: {} };
+        const config = createBasicMCPConfiguration({
+          timeFrame: {
+            duration: 7,
+            unit: "day",
+          },
+          inputSchema: {
+            type: "object",
+            properties: {
+              nested: {
+                type: "object",
+                properties: {
+                  timeFrame: ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                  ],
                 },
-              ],
+                required: ["timeFrame"],
+              }
+            },
+            required: ["nested"],
+          },
+        });
+
+        const result = augmentInputsWithConfiguration({
+          owner: mockWorkspace,
+          rawInputs,
+          actionConfiguration: config,
+        });
+
+        expect(result).toEqual({
+          nested: {
+            timeFrame: {
+              duration: 7,
+              unit: "day",
+              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
             },
           },
-          required: ["timeFrame"],
-        },
-      });
-
-      const result = augmentInputsWithConfiguration({
-        owner: mockWorkspace,
-        rawInputs,
-        actionConfiguration: config,
-      });
-
-      expect(result).toEqual({
-        timeFrame: null,
-      });
+        });
     });
   });
 
   describe("JSON_SCHEMA mime type", () => {
     it("should augment inputs with JSON schema configuration", () => {
-      // FAILS
       const rawInputs = {};
       const jsonSchema = {
         type: "object" as const,
@@ -560,37 +560,38 @@ describe("augmentInputsWithConfiguration", () => {
 
       expect(result).toEqual({
         schema: {
-          ...jsonSchema,
+          jsonSchema,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
         },
       });
     });
 
-    it("should return null when jsonSchema is not configured", () => {
-      const rawInputs = {};
+    
+    it("jsonSchema should work when nested in an object", () => {
+      const rawInputs = { nested: {} };
+      const jsonSchema = {
+        type: "object" as const,
+        properties: {
+          name: { type: "string" as const },
+        },
+        required: ["name"],
+      };
       const config = createBasicMCPConfiguration({
-        jsonSchema: null,
+        jsonSchema,
         inputSchema: {
           type: "object",
           properties: {
-            schema: {
-              oneOf: [
-                { type: "null" },
-                {
-                  type: "object",
-                  properties: {
-                    type: { type: "string" },
-                    mimeType: {
-                      type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
-                    },
-                  },
-                  required: ["type", "mimeType"],
-                },
-              ],
+            nested: {
+              type: "object",
+              properties: {
+                schema: ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                ],
+              },
+              required: ["schema"],
             },
           },
-          required: ["schema"],
+          required: ["nested"],
         },
       });
 
@@ -601,7 +602,12 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        schema: null,
+        nested: {
+          schema: {
+            jsonSchema,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
+          },
+        },
       });
     });
   });

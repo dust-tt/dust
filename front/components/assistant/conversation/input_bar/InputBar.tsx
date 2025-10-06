@@ -10,6 +10,7 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -175,6 +176,7 @@ export function AssistantInputBar({
   const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
     // Optimistic update
     setSelectedMCPServerViews((prev) => [...prev, serverView]);
+    console.log("selected:", getMCPServerToolsConfigurations(serverView));
     void addTool(serverView.sId);
   };
 
