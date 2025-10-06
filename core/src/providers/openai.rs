@@ -1205,11 +1205,15 @@ impl Embedder for OpenAIEmbedder {
             None => false,
         };
 
+        let mut key_source = "";
+
         match use_eu_endpoint {
             true => match credentials.get("OPENAI_API_KEY") {
+                // If use_eu_endpoint is set, we ignore CORE_DATA_SOURCES_OPENAI_API_KEY
                 Some(api_key) => {
                     self.api_key = Some(api_key.clone());
                     self.host = Some("eu.api.openai.com".to_string());
+                    key_source = "use_eu_endpoint";
                 }
                 None => Err(anyhow!(
                     "Credentials or environment variable `OPENAI_API_KEY` is not set."
@@ -1220,14 +1224,17 @@ impl Embedder for OpenAIEmbedder {
                 match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
                     Ok(key) => {
                         self.api_key = Some(key);
+                        key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY";
                     }
                     Err(_) => match credentials.get("OPENAI_API_KEY") {
                         Some(api_key) => {
                             self.api_key = Some(api_key.clone());
+                            key_source = "credentials";
                         }
                         None => match std::env::var("OPENAI_API_KEY") {
                             Ok(key) => {
                                 self.api_key = Some(key);
+                                key_source = "OPENAI_API_KEY";
                             }
                             Err(_) => Err(anyhow!(
                                 "Credentials or environment variable `OPENAI_API_KEY` is not set."
@@ -1242,6 +1249,7 @@ impl Embedder for OpenAIEmbedder {
         info!(
             model = self.id,
             openai_host = self.host,
+            key_source,
             "OpenAIEmbedder.initialize"
         );
         Ok(())
