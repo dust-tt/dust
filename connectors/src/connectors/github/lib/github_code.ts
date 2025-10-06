@@ -74,9 +74,8 @@ export function isRepoTooLarge(
         repoLogin: repoInfo.owner.login,
         repoName: repoInfo.name,
         size: repoInfo.size,
-        panic: true,
       },
-      `GitHub repository too large to sync (size: ${fileSizeToHumanReadable(repoInfo.size * 1024)}, max: 10 GB).`
+      `GitHub repository too large to sync`
     );
 
     return true;
