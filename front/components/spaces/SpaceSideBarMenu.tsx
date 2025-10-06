@@ -790,7 +790,7 @@ const SpaceActionsSubMenu = ({
 };
 
 const SpaceTriggerItem = ({ label }: { label: string }): ReactElement => {
-  return <Tree.Item type="leaf" label={label} visual={BellIcon} />;
+  return <Tree.Item type="leaf" label={label} visual={BoltIcon} />;
 };
 
 const TRIGGERS_CATEGORY: DataSourceViewCategory = "triggers";
