@@ -26,7 +26,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
 
-  // Find the current workspace from user's workspaces
   const currentWorkspace =
     user && workspaceId && "workspaces" in user
       ? user.workspaces.find((w) => w.sId === workspaceId)
@@ -69,11 +68,11 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         api_host: "/ingest",
         person_profiles: "identified_only",
         defaults: "2025-05-24",
-        opt_out_capturing_by_default: true, // Opt-in when user has accepted cookies
+        opt_out_capturing_by_default: true, // Opt-in only when user has accepted cookies.
         capture_pageview: true,
         capture_pageleave: true,
         autocapture: {
-          // This filters out: random div clicks, input changes, text typing to filter out noise
+          // This filters out: random div clicks, input changes, text typing to filter out noise.
           dom_event_allowlist: ["click", "submit"],
           css_selector_allowlist: ["[data-ph-capture-attribute-tracking]"],
         },
@@ -100,7 +99,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     if (posthog.__loaded && user) {
-      // Build plan properties (used for both user and workspace)
       const planProperties: Record<string, string> = {};
       if (activeSubscription) {
         planProperties.plan_code = activeSubscription.plan.code;
@@ -110,14 +108,12 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
           : "false";
       }
 
-      // Set user properties (includes plan + workspace)
       const userProperties: Record<string, string> = {
         ...planProperties,
         ...(workspaceId && { workspace_id: workspaceId }),
       };
       posthog.identify(user.sId, userProperties);
 
-      // Group by workspace with same plan properties
       if (workspaceId) {
         posthog.group("workspace", workspaceId, planProperties);
       }
