@@ -28,6 +28,13 @@ const MAX_OFFSET_PIXEL = 600;
 
 export const LAST_MESSAGE_GROUP_ID = "last-message-group";
 
+const isHandoverUserMessage = (message: MessageWithContentFragmentsType) => {
+  return (
+    message.type === "user_message" &&
+    message.context.origin === "agent_handover"
+  );
+};
+
 export default function MessageGroup({
   messages,
   isLastMessageGroup,
@@ -42,6 +49,9 @@ export default function MessageGroup({
 }: MessageGroupProps) {
   const lastMessageGroupRef = useRef<HTMLDivElement>(null);
 
+  console.log("SOUPINOU");
+  console.log(messages);
+
   const offset = Math.min(
     window.innerHeight * VIEWPORT_OFFSET_RATIO,
     MAX_OFFSET_PIXEL
@@ -54,10 +64,12 @@ export default function MessageGroup({
     }
   }, [isLastMessageGroup]);
 
+  const isHandoverGroup = messages.some((message) =>
+    isHandoverUserMessage(message)
+  );
+
   const filteredMessages = messages.filter(
-    (message) =>
-      message.type !== "user_message" ||
-      message.context.origin !== "agent_handover"
+    (message) => !isHandoverUserMessage(message)
   );
 
   return (
@@ -81,6 +93,7 @@ export default function MessageGroup({
           }
           user={user}
           isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+          isHandoverGroup={isHandoverGroup}
         />
       ))}
     </div>

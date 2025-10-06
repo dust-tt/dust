@@ -28,6 +28,7 @@ interface AgentMessageActionsProps {
   lastAgentStateClassification: AgentStateClassification;
   actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
+  isDustDeepHandoverGroup: boolean;
 }
 
 export function AgentMessageActions({
@@ -35,6 +36,7 @@ export function AgentMessageActions({
   lastAgentStateClassification,
   actionProgress,
   owner,
+  isDustDeepHandoverGroup = false,
 }: AgentMessageActionsProps) {
   const { openPanel, currentPanel, data } = useConversationSidePanelContext();
 
@@ -126,7 +128,9 @@ export function AgentMessageActions({
     <div className="flex flex-col items-start gap-y-4">
       <Button
         size="xs"
-        label="Message Breakdown"
+        label={
+          isDustDeepHandoverGroup ? "Deep Dive Breakdown" : "Message Breakdown"
+        }
         icon={CommandLineIcon}
         variant={data === agentMessage.sId ? "primary" : "outline"}
         onClick={onClick}

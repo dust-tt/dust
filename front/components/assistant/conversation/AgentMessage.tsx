@@ -1,10 +1,12 @@
 import {
   ArrowPathIcon,
+  AtomIcon,
   Button,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   DocumentIcon,
+  Icon,
   InteractiveImageGrid,
   Markdown,
   Separator,
@@ -73,6 +75,7 @@ import {
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
+  isHandoverGroup: boolean;
   message: LightAgentMessageType;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
@@ -88,6 +91,7 @@ interface AgentMessageProps {
 export function AgentMessage({
   conversationId,
   isLastMessage,
+  isHandoverGroup,
   message,
   messageFeedback,
   owner,
@@ -115,6 +119,10 @@ export function AgentMessage({
     messageId: message.sId,
     options: { disabled: true },
   });
+
+  const isDustDeepHandoverGroup =
+    isHandoverGroup &&
+    message.configuration.sId === GLOBAL_AGENTS_SID.DUST_DEEP;
 
   const { messageStreamState, dispatch, shouldStream } = useAgentMessageStream({
     message,
@@ -491,18 +499,25 @@ export function AgentMessage({
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
-      renderName={() => (
-        <AgentHandle
-          assistant={{
-            sId: agentConfiguration.sId,
-            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
-          }}
-          canMention={canMention}
-          isDisabled={isArchived}
-        />
-      )}
+      renderName={() =>
+        isDustDeepHandoverGroup ? (
+          <span className="inline-flex items-center text-faint dark:text-faint-night">
+            <Icon visual={AtomIcon} size="sm" />
+            <span className="ml-1">Deep Dive</span>
+          </span>
+        ) : (
+          <AgentHandle
+            assistant={{
+              sId: agentConfiguration.sId,
+              name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+            }}
+            canMention={canMention}
+            isDisabled={isArchived}
+          />
+        )
+      }
       timestamp={shouldDisplayTimestamp ? messageTimestamp : undefined}
-      type="agent"
+      type={isDustDeepHandoverGroup ? "agentAsTool" : "agent"}
       citations={citations}
     >
       <div>
@@ -512,6 +527,7 @@ export function AgentMessage({
           streaming: shouldStream,
           lastTokenClassification:
             messageStreamState.agentState === "thinking" ? "tokens" : null,
+          isDustDeepHandoverGroup,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -524,11 +540,13 @@ export function AgentMessage({
     references,
     streaming,
     lastTokenClassification,
+    isDustDeepHandoverGroup,
   }: {
     agentMessage: LightAgentMessageType;
     references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
+    isDustDeepHandoverGroup: boolean;
   }) {
     if (agentMessage.status === "failed") {
       const { error } = agentMessage;
@@ -540,6 +558,7 @@ export function AgentMessage({
               lastAgentStateClassification={messageStreamState.agentState}
               actionProgress={messageStreamState.actionProgress}
               owner={owner}
+              isDustDeepHandoverGroup={isDustDeepHandoverGroup}
             />
             <MCPServerPersonalAuthenticationRequired
               owner={owner}
@@ -575,6 +594,7 @@ export function AgentMessage({
             lastAgentStateClassification={messageStreamState.agentState}
             actionProgress={messageStreamState.actionProgress}
             owner={owner}
+            isDustDeepHandoverGroup={isDustDeepHandoverGroup}
           />
           <ErrorMessage
             error={
@@ -625,6 +645,7 @@ export function AgentMessage({
           lastAgentStateClassification={messageStreamState.agentState}
           actionProgress={messageStreamState.actionProgress}
           owner={owner}
+          isDustDeepHandoverGroup={isDustDeepHandoverGroup}
         />
         <AgentMessageContentCreationGeneratedFiles
           files={contentCreationFiles}

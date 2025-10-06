@@ -26,6 +26,7 @@ interface MessageItemProps {
   message: MessageWithContentFragmentsType;
   owner: WorkspaceType;
   user: UserType;
+  isHandoverGroup: boolean;
 }
 
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
@@ -34,6 +35,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       conversationId,
       messageFeedback,
       isLastMessage,
+      isHandoverGroup,
       message,
       owner,
       user,
@@ -141,6 +143,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <AgentMessage
               conversationId={conversationId}
               isLastMessage={isLastMessage}
+              isHandoverGroup={isHandoverGroup}
               message={message}
               messageFeedback={messageFeedbackWithSubmit}
               owner={owner}
