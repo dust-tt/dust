@@ -3,6 +3,7 @@ import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
+import { randomUUID } from "crypto";
 
 import { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -201,5 +202,5 @@ function makeAgentTriggerWorkflowId(
   workspaceId: string,
   trigger: TriggerType
 ): string {
-  return `agent-trigger-${trigger.kind}-${userId}-${workspaceId}-${trigger.id}`;
+  return `agent-trigger-${trigger.kind}-${userId}-${workspaceId}-${trigger.id}-${randomUUID()}`;
 }
