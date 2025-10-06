@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useCookies } from "react-cookie";
 
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
@@ -35,6 +35,18 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     owner: currentWorkspace,
     disabled: !currentWorkspace,
   });
+
+  // Memoize plan properties to avoid re-identifying on every render
+  const planProperties = useMemo(() => {
+    if (!activeSubscription) {
+      return null;
+    }
+    return {
+      plan_code: activeSubscription.plan.code,
+      plan_name: activeSubscription.plan.name,
+      is_trial: activeSubscription.trialing ? "true" : "false",
+    };
+  }, [activeSubscription]);
 
   const excludedPaths = [
     "/subscribe",
@@ -98,22 +110,13 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     if (posthog.__loaded && user) {
-      const planProperties: Record<string, string> = {};
-      if (activeSubscription) {
-        planProperties.plan_code = activeSubscription.plan.code;
-        planProperties.plan_name = activeSubscription.plan.name;
-        planProperties.is_trial = activeSubscription.trialing
-          ? "true"
-          : "false";
-      }
-
       const userProperties: Record<string, string> = {
-        ...planProperties,
+        ...(planProperties ?? {}),
         ...(workspaceId && { workspace_id: workspaceId }),
       };
       posthog.identify(user.sId, userProperties);
 
-      if (workspaceId) {
+      if (workspaceId && planProperties) {
         posthog.group("workspace", workspaceId, planProperties);
       }
     }
@@ -123,7 +126,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     isTrackablePage,
     user,
     workspaceId,
-    activeSubscription,
+    planProperties,
   ]);
 
   if (isTrackablePage && hasAcceptedCookies) {
