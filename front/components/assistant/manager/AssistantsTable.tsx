@@ -123,7 +123,7 @@ const getTableColumns = ({
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
-              <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
                 {`@${info.getValue()}`}
               </div>
               <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -227,7 +227,7 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
-          className={classNames("font-semibold")}
+          className={classNames("font-mono")}
           disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
@@ -259,7 +259,7 @@ const getTableColumns = ({
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
             <DataTable.BasicCellContent
-              className={classNames("font-semibold")}
+              className={classNames("font-mono")}
               disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
