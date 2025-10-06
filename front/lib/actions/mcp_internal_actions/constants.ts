@@ -3,8 +3,6 @@ import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-} from "@app/lib/actions/constants";
-import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
@@ -103,7 +101,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "salesforce",
   "slack",
   "slack_bot",
-  "think",
   "toolsets",
   "web_search_&_browse",
   SEARCH_SERVER_NAME,
@@ -205,27 +202,6 @@ export const INTERNAL_MCP_SERVERS = {
       version: "1.0.0",
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       icon: "ActionGlobeAltIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
-  think: {
-    id: 6,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
-    isPreview: true,
-    tools_stakes: undefined,
-    tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "think",
-      version: "1.0.0",
-      description: "Expand thinking and reasoning capabilities.",
-      icon: "ActionBrainIcon",
       authorization: null,
       documentationUrl: null,
       instructions: null,
