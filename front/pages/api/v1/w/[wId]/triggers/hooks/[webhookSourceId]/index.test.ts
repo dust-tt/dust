@@ -60,6 +60,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
+      secret: webhookSource.urlSecret ?? undefined,
     };
     req.body = { any: "payload" };
     req.headers = {
@@ -177,6 +178,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
+      secret: webhookSource.urlSecret ?? undefined,
     };
     req.body = payload;
     req.headers = {
@@ -226,6 +228,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
+      secret: webhookSource.urlSecret ?? undefined,
     };
     req.body = payload;
     req.headers = {
@@ -246,5 +249,127 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     expect(data).toHaveProperty("error");
     expect(data.error.type).toBe("not_authenticated");
     expect(data.error.message).toBe("Invalid webhook signature.");
+  });
+
+  it("returns 401 when webhook URL secret is invalid", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    // Create a webhook source
+    const webhookSourceFactory = new WebhookSourceFactory(workspace);
+    const webhookSourceResult = await webhookSourceFactory.create({
+      name: "Test Webhook Source",
+    });
+
+    if (webhookSourceResult.isErr()) {
+      throw new Error(
+        `Failed to create webhook source: ${webhookSourceResult.error.message}`
+      );
+    }
+
+    const webhookSource = webhookSourceResult.value;
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId(),
+      secret: "invalid-secret", // Using wrong secret
+    };
+    req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "application/json",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(401);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("error");
+    expect(data.error.type).toBe("not_authenticated");
+    expect(data.error.message).toBe("Invalid webhook URL secret.");
+  });
+
+  it("returns 401 when webhook URL secret is missing", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    // Create a webhook source
+    const webhookSourceFactory = new WebhookSourceFactory(workspace);
+    const webhookSourceResult = await webhookSourceFactory.create({
+      name: "Test Webhook Source",
+    });
+
+    if (webhookSourceResult.isErr()) {
+      throw new Error(
+        `Failed to create webhook source: ${webhookSourceResult.error.message}`
+      );
+    }
+
+    const webhookSource = webhookSourceResult.value;
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId(),
+      // Missing secret parameter
+    };
+    req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "application/json",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(401);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("error");
+    expect(data.error.type).toBe("not_authenticated");
+    expect(data.error.message).toBe("Invalid webhook URL secret.");
+  });
+
+  it("returns 200 when webhook URL secret is valid", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    // Create a webhook source with a custom URL secret
+    const customUrlSecret = "my-custom-url-secret-123";
+    const webhookSourceFactory = new WebhookSourceFactory(workspace);
+    const webhookSourceResult = await webhookSourceFactory.create({
+      name: "Test Webhook Source with URL Secret",
+      urlSecret: customUrlSecret,
+    });
+
+    if (webhookSourceResult.isErr()) {
+      throw new Error(
+        `Failed to create webhook source: ${webhookSourceResult.error.message}`
+      );
+    }
+
+    const webhookSource = webhookSourceResult.value;
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId(),
+      secret: customUrlSecret, // Using the correct secret
+    };
+    req.body = { any: "payload" };
+    req.headers = {
+      "content-type": "application/json",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
   });
 });
