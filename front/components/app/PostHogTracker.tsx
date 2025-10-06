@@ -41,9 +41,11 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       ? user.workspaces.find((w) => w.sId === workspaceId)
       : undefined;
 
+  const isAdmin = currentWorkspace?.role === "admin";
+
   const { activeSubscription } = useWorkspaceActiveSubscription({
     owner: currentWorkspace,
-    disabled: !currentWorkspace,
+    disabled: !currentWorkspace || !isAdmin,
   });
 
   const planProperties = useMemo(() => {
@@ -124,31 +126,33 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       return;
     }
 
-    const planPropsString = planProperties
-      ? JSON.stringify(planProperties)
-      : null;
     const userChanged = lastIdentifiedUserId.current !== user.sId;
-    const planChanged = lastPlanPropertiesString.current !== planPropsString;
 
-    if (userChanged || planChanged) {
+    if (userChanged) {
       const userProperties: Record<string, string> = {
-        ...(planProperties ?? {}),
         ...(workspaceId && { workspace_id: workspaceId }),
       };
       posthog.identify(user.sId, userProperties);
       lastIdentifiedUserId.current = user.sId;
-      lastPlanPropertiesString.current = planPropsString;
     }
-  }, [planProperties, workspaceId, hasOptedIn, user]);
+  }, [workspaceId, hasOptedIn, user]);
 
   useEffect(() => {
-    if (!posthog.__loaded || !workspaceId || !planProperties || !hasOptedIn) {
+    if (!posthog.__loaded || !workspaceId || !hasOptedIn) {
       return;
     }
 
-    if (lastIdentifiedWorkspaceId.current !== workspaceId) {
-      posthog.group("workspace", workspaceId, planProperties);
+    const planPropsString = planProperties
+      ? JSON.stringify(planProperties)
+      : null;
+    const workspaceChanged = lastIdentifiedWorkspaceId.current !== workspaceId;
+    const planChanged = lastPlanPropertiesString.current !== planPropsString;
+
+    // Set group properties when workspace changes or when plan properties are available/updated
+    if (workspaceChanged || (planProperties && planChanged)) {
+      posthog.group("workspace", workspaceId, planProperties ?? {});
       lastIdentifiedWorkspaceId.current = workspaceId;
+      lastPlanPropertiesString.current = planPropsString;
     }
   }, [workspaceId, planProperties, hasOptedIn]);
 
