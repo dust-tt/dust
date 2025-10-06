@@ -264,7 +264,7 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="assistant-input-header"
-            className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 px-4 py-4 md:px-8"
+            className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-4"
             ref={startConversationRef}
           >
             <Page.Header title={greeting} />
@@ -300,6 +300,6 @@ export function ConversationContainerVirtuoso({
   return activeConversationId ? (
     body
   ) : (
-    <div className="h-full overflow-auto">{body}</div>
+    <div className="h-full overflow-auto px-4 py-4 md:px-8">{body}</div>
   );
 }

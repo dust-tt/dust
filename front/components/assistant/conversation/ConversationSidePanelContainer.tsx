@@ -5,6 +5,7 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
@@ -23,6 +24,8 @@ export default function ConversationSidePanelContainer({
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
 
+  const isMobile = useIsMobile();
+
   useEffect(() => {
     setPanelRef(panelRef.current);
   }, [setPanelRef]);
@@ -37,8 +40,10 @@ export default function ConversationSidePanelContainer({
 
   return (
     <>
-      {/* Resizable Handle for Panels */}
-      {currentPanel && <ResizableHandle withHandle className="z-50" />}
+      {/* Resizable Handle for Panels - Only show on desktop */}
+      {currentPanel && !isMobile && (
+        <ResizableHandle withHandle className="z-50" />
+      )}
       {/* Panel Container - either Content Creation or Actions */}
       <ResizablePanel
         ref={panelRef}
