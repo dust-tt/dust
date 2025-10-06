@@ -54,7 +54,6 @@ export async function summarizeWithAgent({
         selectedMCPServerViewIds: null,
       },
     },
-    params: { execution: "async" },
   });
 
   if (convRes.isErr() || !convRes.value.message) {

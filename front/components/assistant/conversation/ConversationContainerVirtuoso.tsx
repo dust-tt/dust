@@ -24,7 +24,6 @@ import type { DustError } from "@app/lib/error";
 import {
   useConversationMessages,
   useConversations,
-  useExecutionMode,
 } from "@app/lib/swr/conversations";
 import { getAgentRoute } from "@app/lib/utils/router";
 import type {
@@ -64,8 +63,6 @@ export function ConversationContainerVirtuoso({
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
   const router = useRouter();
-
-  const executionMode = useExecutionMode();
 
   const sendNotification = useSendNotification();
 
@@ -133,7 +130,6 @@ export function ConversationContainerVirtuoso({
           clientSideMCPServerIds: removeNulls([serverId]),
           selectedMCPServerViewIds,
         },
-        executionMode,
       });
 
       setIsSubmitting(false);
@@ -171,7 +167,6 @@ export function ConversationContainerVirtuoso({
       }
     },
     [
-      executionMode,
       isSubmitting,
       mutateConversations,
       owner,
@@ -269,7 +264,7 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="assistant-input-header"
-            className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 py-4"
+            className="flex h-fit min-h-[20vh] w-full max-w-3xl flex-col justify-end gap-8 px-4 py-4 md:px-8"
             ref={startConversationRef}
           >
             <Page.Header title={greeting} />

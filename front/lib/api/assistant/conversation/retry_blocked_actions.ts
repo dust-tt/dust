@@ -1,15 +1,13 @@
 import { isBlockedActionEvent } from "@app/lib/actions/mcp";
-import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { Message } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import logger from "@app/logger/logger";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { ConversationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 async function findUserMessageForRetry(
   auth: Authenticator,
@@ -115,9 +113,9 @@ export async function retryBlockedActions(
     userMessageVersion,
   } = getUserMessageIdRes.value;
 
-  const runAgentDataRes = await getRunAgentData(auth.toJSON(), {
-    sync: false,
-    idArgs: {
+  return launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
       agentMessageId,
       agentMessageVersion,
       conversationId,
@@ -125,28 +123,6 @@ export async function retryBlockedActions(
       userMessageId,
       userMessageVersion,
     },
+    startStep: lastStep,
   });
-
-  if (runAgentDataRes.isErr()) {
-    logger.error(
-      {
-        error: runAgentDataRes.error,
-      },
-      "Error getting run agent data"
-    );
-
-    return runAgentDataRes;
-  }
-
-  return runAgentLoop(
-    auth,
-    {
-      sync: true,
-      inMemoryData: runAgentDataRes.value,
-    },
-    {
-      // Resume from the step where the action was created.
-      startStep: lastStep,
-    }
-  );
 }

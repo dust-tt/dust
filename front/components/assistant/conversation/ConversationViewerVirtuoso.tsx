@@ -50,7 +50,6 @@ import {
   useConversationMessages,
   useConversationParticipants,
   useConversations,
-  useExecutionMode,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -114,7 +113,6 @@ const ConversationViewerVirtuoso = ({
     >(null);
   const sendNotification = useSendNotification();
   const { serverId } = useCoEditionContext();
-  const executionMode = useExecutionMode();
 
   const { currentPanel } = useConversationSidePanelContext();
 
@@ -409,7 +407,6 @@ const ConversationViewerVirtuoso = ({
         user,
         conversationId,
         messageData,
-        executionMode,
       });
 
       if (result.isErr()) {
@@ -456,7 +453,6 @@ const ConversationViewerVirtuoso = ({
       user,
       owner,
       conversationId,
-      executionMode,
       mutateConversations,
       setPlanLimitReached,
       sendNotification,
@@ -516,7 +512,9 @@ const ConversationViewerVirtuoso = ({
         <ConversationErrorDisplay error={conversationError} />
       )}
       {initialListData.length > 0 ? (
-        <VirtuosoMessageListLicense licenseKey="86c08366d0095dd1904cbc9bbbb713bdTzoxMjg7RToxNzkxMDE3OTUzOTE1">
+        <VirtuosoMessageListLicense
+          licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
+        >
           <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
             initialData={initialListData}
             initialLocation={{

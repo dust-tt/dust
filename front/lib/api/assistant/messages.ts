@@ -653,13 +653,15 @@ export function canReadMessage(
 export async function fetchMessageInConversation(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
-  messageId: string
+  messageId: string,
+  version?: number
 ) {
   return Message.findOne({
     where: {
       conversationId: conversation.id,
       sId: messageId,
       workspaceId: auth.getNonNullableWorkspace()?.id,
+      ...(version ? { version } : {}),
     },
     include: [
       {

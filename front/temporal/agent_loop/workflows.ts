@@ -15,59 +15,57 @@ import {
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as commonActivities from "@app/temporal/agent_loop/activities/common";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
-import type * as logAgentLoopMetricsActivities from "@app/temporal/agent_loop/activities/instrumentation";
+import type * as instrumentationActivities from "@app/temporal/agent_loop/activities/instrumentation";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
-import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
-import { executeAgentLoop } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import type {
-  RunAgentArgs,
-  RunAgentAsynchronousArgs,
+  AgentLoopArgs,
+  AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
 
 const toolActivityStartToCloseTimeout = `${DEFAULT_MCP_REQUEST_TIMEOUT_MS / 1000 / 60 + 1} minutes`;
 
-const logMetricsActivities = proxyActivities<
-  typeof logAgentLoopMetricsActivities
+const { runModelAndCreateActionsActivity } = proxyActivities<
+  typeof runModelAndCreateWrapperActivities
 >({
-  startToCloseTimeout: "30 seconds",
+  startToCloseTimeout: "10 minutes",
 });
 
-const activities: AgentLoopActivities = {
-  runModelAndCreateActionsActivity: proxyActivities<
-    typeof runModelAndCreateWrapperActivities
-  >({
-    startToCloseTimeout: "10 minutes",
-  }).runModelAndCreateActionsActivity,
-  runToolActivity: proxyActivities<typeof runToolActivities>({
-    // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
-    startToCloseTimeout: toolActivityStartToCloseTimeout,
-    retry: {
-      // Do not retry tool activities. Those are not idempotent.
-      maximumAttempts: 1,
-    },
-  }).runToolActivity,
-  runRetryableToolActivity: proxyActivities<typeof runToolActivities>({
-    startToCloseTimeout: toolActivityStartToCloseTimeout,
-    retry: {
-      maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
-    },
-  }).runToolActivity,
-  publishDeferredEventsActivity: proxyActivities<
-    typeof publishDeferredEventsActivities
-  >({
-    startToCloseTimeout: "2 minutes",
-  }).publishDeferredEventsActivity,
-  logAgentLoopPhaseStartActivity:
-    logMetricsActivities.logAgentLoopPhaseStartActivity,
-  logAgentLoopPhaseCompletionActivity:
-    logMetricsActivities.logAgentLoopPhaseCompletionActivity,
-  logAgentLoopStepCompletionActivity:
-    logMetricsActivities.logAgentLoopStepCompletionActivity,
-};
+const { runToolActivity } = proxyActivities<typeof runToolActivities>({
+  // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
+  startToCloseTimeout: toolActivityStartToCloseTimeout,
+  retry: {
+    // Do not retry tool activities. Those are not idempotent.
+    maximumAttempts: 1,
+  },
+});
+
+const { runToolActivity: runRetryableToolActivity } = proxyActivities<
+  typeof runToolActivities
+>({
+  startToCloseTimeout: toolActivityStartToCloseTimeout,
+  retry: {
+    maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+  },
+});
+
+const { publishDeferredEventsActivity } = proxyActivities<
+  typeof publishDeferredEventsActivities
+>({
+  startToCloseTimeout: "2 minutes",
+});
+
+const {
+  logAgentLoopPhaseStartActivity,
+  logAgentLoopPhaseCompletionActivity,
+  logAgentLoopStepCompletionActivity,
+} = proxyActivities<typeof instrumentationActivities>({
+  startToCloseTimeout: "30 seconds",
+});
 
 const { ensureConversationTitleActivity } = proxyActivities<
   typeof ensureTitleActivities
@@ -91,38 +89,26 @@ const { notifyWorkflowError, finalizeCancellationActivity } = proxyActivities<
 
 export async function agentLoopConversationTitleWorkflow({
   authType,
-  runAsynchronousAgentArgs,
+  agentLoopArgs,
 }: {
   authType: AuthenticatorType;
-  runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
+  agentLoopArgs: AgentLoopArgs;
 }) {
-  const runAgentArgs: RunAgentArgs = {
-    sync: false,
-    idArgs: runAsynchronousAgentArgs,
-    initialStartTime: 0,
-  };
-
-  await ensureConversationTitleActivity(authType, runAgentArgs);
+  await ensureConversationTitleActivity(authType, agentLoopArgs);
 }
 
 export async function agentLoopWorkflow({
   authType,
   initialStartTime,
-  runAsynchronousAgentArgs,
+  agentLoopArgs,
   startStep,
 }: {
   authType: AuthenticatorType;
   initialStartTime: number;
-  runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
+  agentLoopArgs: AgentLoopArgs;
   startStep: number;
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
-
-  const runAgentArgs: RunAgentArgs = {
-    sync: false,
-    idArgs: runAsynchronousAgentArgs,
-    initialStartTime,
-  };
 
   let childWorkflowHandle: ChildWorkflowHandle<
     typeof agentLoopConversationTitleWorkflow
@@ -142,17 +128,17 @@ export async function agentLoopWorkflow({
     // the background. If a workflow with the same ID is already running, ignore the error and
     // continue. Do not wait for the child workflow to complete at this point.
     // This is to avoid blocking the main workflow.
-    if (!runAsynchronousAgentArgs.conversationTitle) {
+    if (!agentLoopArgs.conversationTitle) {
       try {
         childWorkflowHandle = await startChild(
           agentLoopConversationTitleWorkflow,
           {
             workflowId: makeAgentLoopConversationTitleWorkflowId(
               authType,
-              runAsynchronousAgentArgs
+              agentLoopArgs
             ),
             searchAttributes: parentSearchAttributes,
-            args: [{ authType, runAsynchronousAgentArgs }],
+            args: [{ authType, agentLoopArgs }],
             memo,
           }
         );
@@ -163,10 +149,66 @@ export async function agentLoopWorkflow({
       }
     }
 
-    // In Temporal workflows, we don't pass syncStartTime since async execution doesn't need timeout.
+    const { agentMessageId, conversationId } = agentLoopArgs;
+
     await executionScope.run(async () => {
-      await executeAgentLoop(authType, runAgentArgs, activities, {
-        startStep,
+      const runIds: string[] = [];
+      const syncStartTime = Date.now();
+      let currentStep = startStep;
+
+      await logAgentLoopPhaseStartActivity({
+        authType,
+        eventData: {
+          agentMessageId,
+          conversationId,
+          startStep,
+        },
+      });
+
+      for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
+        currentStep = i;
+
+        const stepStartTime = Date.now();
+
+        const { runId, shouldContinue } = await executeStepIteration({
+          authType,
+          agentLoopArgs: {
+            ...agentLoopArgs,
+            initialStartTime,
+          },
+          currentStep,
+          runIds,
+          startStep,
+        });
+
+        // Update state with results.
+        if (runId) {
+          runIds.push(runId);
+        }
+
+        await logAgentLoopStepCompletionActivity({
+          agentMessageId,
+          conversationId,
+          step: currentStep,
+          stepStartTime,
+        });
+
+        if (!shouldContinue) {
+          break;
+        }
+      }
+
+      const stepsCompleted = currentStep - startStep;
+
+      await logAgentLoopPhaseCompletionActivity({
+        authType,
+        eventData: {
+          agentMessageId,
+          conversationId,
+          initialStartTime,
+          stepsCompleted,
+          syncStartTime,
+        },
       });
     });
 
@@ -180,12 +222,12 @@ export async function agentLoopWorkflow({
     await CancellationScope.nonCancellable(async () => {
       if (cancelRequested) {
         // Run finalization tasks on cancellation (dummy for now).
-        await finalizeCancellationActivity(authType, runAsynchronousAgentArgs);
+        await finalizeCancellationActivity(authType, agentLoopArgs);
       } else {
         await notifyWorkflowError(authType, {
-          conversationId: runAsynchronousAgentArgs.conversationId,
-          agentMessageId: runAsynchronousAgentArgs.agentMessageId,
-          agentMessageVersion: runAsynchronousAgentArgs.agentMessageVersion,
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+          agentMessageVersion: agentLoopArgs.agentMessageVersion,
           error: workflowError,
         });
       }
@@ -198,4 +240,93 @@ export async function agentLoopWorkflow({
 
     throw err;
   }
+}
+
+async function executeStepIteration({
+  authType,
+  currentStep,
+  agentLoopArgs,
+  runIds,
+  startStep,
+}: {
+  authType: AuthenticatorType;
+  currentStep: number;
+  agentLoopArgs: AgentLoopArgsWithTiming;
+  runIds: string[];
+  startStep: number;
+}): Promise<{
+  runId: string | null;
+  shouldContinue: boolean;
+}> {
+  const result = await runModelAndCreateActionsActivity({
+    authType,
+    autoRetryCount: 0,
+    checkForResume: currentStep === startStep, // Only run resume the first time.
+    runAgentArgs: agentLoopArgs,
+    runIds,
+    step: currentStep,
+  });
+
+  if (!result) {
+    // Generation completed or error occurred.
+    return {
+      runId: null,
+      shouldContinue: false,
+    };
+  }
+
+  const { runId, actionBlobs } = result;
+
+  // If at least one action needs approval, we break out of the loop and will resume once all
+  // actions have been approved.
+  const needsApproval = actionBlobs.some((a) => a.needsApproval);
+  if (needsApproval) {
+    return {
+      runId,
+      shouldContinue: false,
+    };
+  }
+
+  // Execute tools and collect any deferred events.
+  const toolResults = await Promise.all(
+    actionBlobs.map(({ actionId, retryPolicy }) =>
+      retryPolicy === "no_retry"
+        ? runToolActivity(authType, {
+            actionId,
+            runAgentArgs: agentLoopArgs,
+            step: currentStep,
+            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+          })
+        : runRetryableToolActivity(authType, {
+            actionId,
+            runAgentArgs: agentLoopArgs,
+            step: currentStep,
+            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+          })
+    )
+  );
+
+  // Collect all deferred events from tool executions.
+  const allDeferredEvents = toolResults.flatMap(
+    (result) => result.deferredEvents
+  );
+
+  // If there are deferred events, publish them after all tools have completed.
+  if (allDeferredEvents.length > 0) {
+    const shouldPauseWorkflow =
+      await publishDeferredEventsActivity(allDeferredEvents);
+
+    if (shouldPauseWorkflow) {
+      // Break the loop - workflow will be restarted externally once required action is completed.
+      return {
+        runId,
+        shouldContinue: false,
+      };
+    }
+  }
+
+  return {
+    runId,
+    shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
+  };
 }
