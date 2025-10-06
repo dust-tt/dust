@@ -34,16 +34,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
 
   // Get active subscription for the workspace (disabled if no workspace found)
   const { activeSubscription } = useWorkspaceActiveSubscription({
-    owner: currentWorkspace ?? {
-      sId: "",
-      name: "",
-      role: "none" as const,
-      segmentation: null,
-      whiteListedProviders: null,
-      defaultEmbeddingProvider: null,
-      id: 0,
-      metadata: {},
-    },
+    owner: currentWorkspace,
     disabled: !currentWorkspace,
   });
 
