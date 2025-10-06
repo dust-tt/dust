@@ -23,7 +23,6 @@ import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type { BillingPeriod, PlanType, WorkspaceType } from "@app/types";
 
@@ -235,11 +234,7 @@ export function ProPriceTable({
               }
               icon={RocketIcon}
               disabled={isProcessing}
-              onClick={withTracking(
-                TRACKING_AREAS.PRICING,
-                "plan_pro_select",
-                onClick
-              )}
+              onClick={onClick}
             />
           </PriceTable.ActionContainer>
         )}
@@ -363,11 +358,7 @@ export function BusinessPriceTable({
               }
               icon={RocketIcon}
               disabled={isProcessing}
-              onClick={withTracking(
-                TRACKING_AREAS.PRICING,
-                "plan_pro_select",
-                onClick
-              )}
+              onClick={onClick}
             />
           </PriceTable.ActionContainer>
         )}
@@ -408,10 +399,6 @@ function EnterprisePriceTable({
           size={biggerButtonSize}
           disabled={isProcessing}
           label="Contact Sales"
-          onClick={withTracking(
-            TRACKING_AREAS.PRICING,
-            "plan_enterprise_contact"
-          )}
         />
       </PriceTable.ActionContainer>
       {ENTERPRISE_PLAN_ITEMS.map((item, index) => (

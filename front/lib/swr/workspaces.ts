@@ -80,14 +80,14 @@ export function useWorkspaceActiveSubscription({
   owner,
   disabled,
 }: {
-  owner: LightWorkspaceType | undefined;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    owner ? `/api/w/${owner.sId}/subscriptions` : null,
+    `/api/w/${owner.sId}/subscriptions`,
     workspaceSubscriptionsFetcher,
     {
       disabled,

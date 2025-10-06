@@ -13,7 +13,6 @@ import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { BorderBeam } from "@app/components/magicui/border-beam";
 import UTMButton from "@app/components/UTMButton";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 
 const HeroContent = () => {
   return (
@@ -38,14 +37,12 @@ const HeroContent = () => {
           label="Get started"
           icon={RocketIcon}
           href="/home/pricing"
-          onClick={withTracking(TRACKING_AREAS.HOME, "hero_get_started")}
         />
         <UTMButton
           variant="outline"
           size="md"
           label="Book a demo"
           href="/home/contact"
-          onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
         />
       </div>
     </div>
@@ -116,13 +113,7 @@ export const HeroVisual = ({
             size="md"
             label="Watch Dust in motion"
             icon={PlayIcon}
-            onClick={withTracking(
-              TRACKING_AREAS.HOME,
-              "hero_watch_video",
-              () => {
-                onWatch();
-              }
-            )}
+            onClick={() => onWatch()}
             className="shadow-[0_8px_16px_-2px_rgba(0,0,0,0.3),0_4px_8px_-2px_rgba(255,255,255,0.1)] transition-all duration-300 hover:shadow-[0_16px_40px_-2px_rgba(255,255,255,0.2),0_8px_20px_-4px_rgba(255,255,255,0.15)]"
           />
         </div>
