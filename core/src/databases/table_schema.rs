@@ -8,6 +8,7 @@ use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
+use tracing::warn;
 
 use crate::databases::{database::HasValue, table::Row};
 
@@ -178,14 +179,24 @@ impl TableSchema {
     }
 
     pub fn from_rows<T: HasValue>(rows: &Vec<T>) -> Result<Self> {
-        // We store the ordering and the column in an hashmap to avoid a quadratic complexity in
-        // column count.
+        // Track all column names in order and store columns in a hashmap to avoid quadratic complexity
         let mut schema_order: Vec<String> = Vec::new();
+        let mut seen_column_names: HashSet<String> = HashSet::new();
         let mut schema_map: HashMap<String, TableSchemaColumn> = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
             let (headers, values) = row.value();
             for (k, v) in headers.iter().zip(values.iter()) {
+                // Track column name if we haven't seen it yet
+                if !seen_column_names.contains(k.as_str()) {
+                    // Since all rows come from a csv, we should never see a new column after the first row
+                    if row_index > 0 {
+                        warn!(k, row_index, "Encountered new column past the first row");
+                    }
+                    schema_order.push(k.to_string());
+                    seen_column_names.insert(k.to_string());
+                }
+
                 if v.is_null() {
                     continue;
                 }
@@ -246,17 +257,26 @@ impl TableSchema {
                         };
                         Self::accumulate_value(&mut column, &v);
                         schema_map.insert(k.to_string(), column);
-                        schema_order.push(k.to_string());
                     }
                 }
             }
         }
 
-        // The unwrap below is guaranteed to work as we insert in both schema_map and schema_order
-        // at the same time.
+        // Build final schema using schema_order, adding Text type for columns with all null values
         let schema = schema_order
             .iter()
-            .map(|k| schema_map.get(k).unwrap().clone())
+            .map(|k| {
+                schema_map.get(k).cloned().unwrap_or_else(|| {
+                    // Column had all null values, use Text type (with accumulated values)
+                    TableSchemaColumn {
+                        name: k.to_string(),
+                        value_type: TableSchemaFieldType::Text,
+                        possible_values: Some(vec![]),
+                        non_filterable: None,
+                        description: None,
+                    }
+                })
+            })
             .collect();
 
         Ok(Self(schema))
@@ -492,6 +512,7 @@ mod tests {
                 "field5".to_string(),
                 Value::String("not null anymore".to_string()),
             ),
+            ("field6".to_string(), json!(null)),
         ]);
         let rows = &vec![
             Row::new_from_value("1".to_string(), row_1),
@@ -533,6 +554,13 @@ mod tests {
                 name: "field5".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: Some(vec!["\"not null anymore\"".to_string()]),
+                non_filterable: None,
+                description: None,
+            },
+            TableSchemaColumn {
+                name: "field6".to_string(),
+                value_type: TableSchemaFieldType::Text,
+                possible_values: Some(vec![]),
                 non_filterable: None,
                 description: None,
             },
