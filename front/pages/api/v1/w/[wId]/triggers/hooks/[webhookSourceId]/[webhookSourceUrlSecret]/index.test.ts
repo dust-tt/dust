@@ -34,7 +34,7 @@ vi.mock("@app/temporal/agent_schedule/client", () => ({
 
 import handler from ".";
 
-describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
+describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUrlSecret]", () => {
   it("returns 200 when workspace and webhook source exist", async () => {
     const { req, res, workspace } = await createPublicApiMockRequest({
       method: "POST",
@@ -60,7 +60,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      secret: webhookSource.urlSecret ?? undefined,
+      webhookSourceUrlSecret: webhookSource.urlSecret ?? undefined,
     };
     req.body = { any: "payload" };
     req.headers = {
@@ -87,6 +87,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: "webhook_source/nonexistent",
+      webhookSourceUrlSecret: "any-secret",
     };
     req.body = { any: "payload" };
     req.headers = {
@@ -109,6 +110,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: "webhook_source/whatever",
+      webhookSourceUrlSecret: "any-secret",
     };
 
     await handler(req, res);
@@ -124,6 +126,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: "webhook_source/whatever",
+      webhookSourceUrlSecret: "any-secret",
     };
     req.body = { any: "payload" };
     req.headers = {
@@ -178,7 +181,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      secret: webhookSource.urlSecret ?? undefined,
+      webhookSourceUrlSecret: webhookSource.urlSecret ?? undefined,
     };
     req.body = payload;
     req.headers = {
@@ -228,7 +231,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      secret: webhookSource.urlSecret ?? undefined,
+      webhookSourceUrlSecret: webhookSource.urlSecret ?? undefined,
     };
     req.body = payload;
     req.headers = {
@@ -276,7 +279,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      secret: "invalid-secret", // Using wrong secret
+      webhookSourceUrlSecret: "invalid-secret", // Using wrong secret
     };
     req.body = { any: "payload" };
     req.headers = {
@@ -317,7 +320,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      // Missing secret parameter
+      // Missing webhookSourceUrlSecret parameter (it will be undefined)
     };
     req.body = { any: "payload" };
     req.headers = {
@@ -360,7 +363,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]", () => {
     req.query = {
       wId: workspace.sId,
       webhookSourceId: webhookSource.sId(),
-      secret: customUrlSecret, // Using the correct secret
+      webhookSourceUrlSecret: customUrlSecret, // Using the correct secret
     };
     req.body = { any: "payload" };
     req.headers = {

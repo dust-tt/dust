@@ -79,7 +79,7 @@ async function handler(
   req: NextApiRequestWithContext,
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
-  const { method, body, query } = req;
+  const { method, body } = req;
 
   if (method !== "POST") {
     return apiError(req, res, {
@@ -102,7 +102,7 @@ async function handler(
     });
   }
 
-  const { wId, webhookSourceId } = req.query;
+  const { wId, webhookSourceId, webhookSourceUrlSecret } = req.query;
 
   if (typeof wId !== "string" || typeof webhookSourceId !== "string") {
     return apiError(req, res, {
@@ -145,8 +145,8 @@ async function handler(
 
   // Validate webhook url secret
   if (
-    typeof query.secret !== "string" ||
-    query.secret !== webhookSource.urlSecret
+    typeof webhookSourceUrlSecret !== "string" ||
+    webhookSourceUrlSecret !== webhookSource.urlSecret
   ) {
     return apiError(req, res, {
       status_code: 401,
