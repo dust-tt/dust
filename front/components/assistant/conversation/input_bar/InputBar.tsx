@@ -19,6 +19,7 @@ import {
   useConversation,
   useConversationTools,
 } from "@app/lib/swr/conversations";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -205,6 +206,17 @@ export function AssistantInputBar({
     const mentions: MentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
+
+    trackEvent({
+      area: TRACKING_AREAS.CONVERSATION,
+      object: "message_send",
+      action: "submit",
+      extra: {
+        has_attachments: attachedNodes.length > 0 ? "true" : "false",
+        has_tools: selectedMCPServerViews.length > 0 ? "true" : "false",
+        has_assistant: selectedAssistant ? "true" : "false",
+      },
+    });
 
     // When we are creating a new conversation, we will disable the input bar, show a loading
     // spinner and in case of error, re-enable the input bar
