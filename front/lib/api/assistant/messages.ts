@@ -119,6 +119,32 @@ export async function generateParsedContents(
   return parsedContents;
 }
 
+// Ensure at least one whitespace boundary between adjacent text fragments when
+// reconstructing content from step contents. If neither the previous fragment
+// ends with whitespace nor the next fragment starts with whitespace, insert a
+// single "\n" between them. This avoids words being concatenated across step
+// boundaries without altering content that already contains spacing.
+function interleaveConditionalNewlines(parts: string[]): string[] {
+  if (parts.length === 0) {
+    return [];
+  }
+  const out: string[] = [];
+  out.push(parts[0]);
+  for (let i = 1; i < parts.length; i++) {
+    const prev = parts[i - 1];
+    const curr = parts[i];
+    const prevLast = prev.length ? prev[prev.length - 1] : "";
+    const currFirst = curr.length ? curr[0] : "";
+    const prevEndsWs = /\s/.test(prevLast);
+    const currStartsWs = /\s/.test(currFirst);
+    if (!prevEndsWs && !currStartsWs) {
+      out.push("\n");
+    }
+    out.push(curr);
+  }
+  return out;
+}
+
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: Message[]
@@ -339,10 +365,13 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
 
       const { content, chainOfThought } = await (async () => {
+        const textFragments = interleaveConditionalNewlines(
+          textContents.map((c) => c.content.value)
+        );
+
         if (reasoningContents.length > 0) {
-          // don't use the content parser, we just use raw contents and native CoT
           return {
-            content: textContents.map((c) => c.content.value).join(""),
+            content: textFragments.join(""),
             chainOfThought: reasoningContents
               .map((sc) => sc.content.value.reasoning)
               .filter((r) => !!r)
@@ -354,9 +383,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             message.sId,
             getDelimitersConfiguration({ agentConfiguration })
           );
-          const parsedContent = await contentParser.parseContents(
-            textContents.map((r) => r.content.value)
-          );
+          const parsedContent =
+            await contentParser.parseContents(textFragments);
           return {
             content: parsedContent.content,
             chainOfThought: parsedContent.chainOfThought,
