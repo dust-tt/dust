@@ -14,20 +14,17 @@ export function ContentCreationHeader({
 }: ContentCreationHeaderProps) {
   return (
     <AppLayoutTitle className="bg-gray-50 @container dark:bg-gray-900">
-      <div className="flex h-full min-w-0 max-w-full items-center justify-end">
-        {/* Actions - always visible and right-aligned. */}
-        <div className="flex shrink-0 items-center gap-2">
-          {children}
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={onClose}
-              icon={XMarkIcon}
-              className="text-element-600 hover:text-element-900"
-            />
-          )}
-        </div>
+      <div className="flex h-full items-center">
+        {children}
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={onClose}
+            icon={XMarkIcon}
+            className="text-element-600 hover:text-element-900 ml-auto"
+          />
+        )}
       </div>
     </AppLayoutTitle>
   );

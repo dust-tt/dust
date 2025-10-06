@@ -174,12 +174,7 @@ export function ShareContentCreationFilePopover({
   return (
     <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <PopoverTrigger asChild>
-        <Button
-          icon={LinkIcon}
-          size="xs"
-          variant="ghost"
-          tooltip="Share public link"
-        />
+        <Button size="xs" variant="ghost" label="Share" />
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col" align="end">
         <div className="flex flex-col gap-4">

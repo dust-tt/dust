@@ -1,5 +1,6 @@
 import { datadogLogs } from "@datadog/browser-logs";
 import {
+  ArrowCircleIcon,
   ArrowDownOnSquareIcon,
   ArrowGoBackIcon,
   Button,
@@ -13,8 +14,9 @@ import {
   FullscreenExitIcon,
   FullscreenIcon,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
@@ -95,14 +97,16 @@ function ExportContentDropdown({
           icon={ArrowDownOnSquareIcon}
           isSelect
           size="xs"
-          tooltip="Export content"
+          label="Download"
           variant="ghost"
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem onClick={exportAsPng}>Export as PNG</DropdownMenuItem>
+        <DropdownMenuItem onClick={exportAsPng}>
+          Download as PNG
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={downloadAsCode}>
-          Export as template
+          Download as template
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -126,11 +130,12 @@ export function ClientExecutableRenderer({
 }: ClientExecutableRendererProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
+  const [isLoading, setIsLoading] = useState(false);
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
   const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
 
   const { closePanel, panelRef } = useConversationSidePanelContext();
-  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const panel = panelRef?.current;
 
@@ -139,11 +144,12 @@ export function ClientExecutableRenderer({
   );
   const isFullScreen = fullScreenHash === "true";
 
-  const { fileContent, isFileContentLoading, error } = useFileContent({
-    fileId,
-    owner,
-    cacheKey: contentHash,
-  });
+  const { fileContent, isFileContentLoading, error, mutateFileContent } =
+    useFileContent({
+      fileId,
+      owner,
+      cacheKey: contentHash,
+    });
 
   const { fileMetadata } = useFileMetadata({ fileId, owner });
 
@@ -172,7 +178,7 @@ export function ClientExecutableRenderer({
     setFullScreenHash(undefined);
   }, [setFullScreenHash]);
 
-  const goToFullScreen = () => {
+  const enterFullScreen = () => {
     isNavBarPrevOpenRef.current = isNavigationBarOpen;
 
     if (panel) {
@@ -189,6 +195,19 @@ export function ClientExecutableRenderer({
     }
 
     closePanel();
+  };
+
+  const reloadFile = async () => {
+    setIsLoading(true);
+    await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
+    setIsLoading(false);
+  };
+
+  const onRevert = () => {
+    void handleVisualizationRevert({
+      fileId,
+      agentConfigurationId: lastEditedByAgentConfigurationId ?? "",
+    });
   };
 
   useEffect(() => {
@@ -247,52 +266,34 @@ export function ClientExecutableRenderer({
   return (
     <div className="flex h-full flex-col">
       <ContentCreationHeader onClose={onClosePanel}>
-        {lastEditedByAgentConfigurationId && (
+        <div className="flex w-full items-center justify-between">
           <Button
-            variant="ghost"
+            icon={showCode ? EyeIcon : CommandLineIcon}
+            onClick={() => setShowCode(!showCode)}
             size="xs"
-            icon={ArrowGoBackIcon}
-            tooltip={"Revert the last change"}
-            onClick={() =>
-              handleVisualizationRevert({
-                fileId,
-                agentConfigurationId: lastEditedByAgentConfigurationId,
-              })
-            }
+            tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+            variant="ghost"
           />
-        )}
-
-        <Button
-          icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
-          variant="ghost"
-          size="xs"
-          onClick={isFullScreen ? exitFullScreen : goToFullScreen}
-          tooltip={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
-        />
-
-        <Button
-          icon={showCode ? EyeIcon : CommandLineIcon}
-          onClick={() => setShowCode(!showCode)}
-          size="xs"
-          tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
-          variant="ghost"
-        />
-        <ExportContentDropdown
-          iframeRef={iframeRef}
-          owner={owner}
-          fileId={fileId}
-          fileContent={fileContent ?? null}
-        />
-        <ShareContentCreationFilePopover
-          fileId={fileId}
-          owner={owner}
-          isUsingConversationFiles={isFileUsingConversationFiles}
-        />
+          <div className="flex items-center">
+            <ExportContentDropdown
+              iframeRef={iframeRef}
+              owner={owner}
+              fileId={fileId}
+              fileContent={fileContent ?? null}
+            />
+            <ShareContentCreationFilePopover
+              fileId={fileId}
+              owner={owner}
+              isUsingConversationFiles={isFileUsingConversationFiles}
+            />
+          </div>
+        </div>
       </ContentCreationHeader>
 
-      {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {showCode ? (
+        {isLoading ? (
+          <Spinner />
+        ) : showCode ? (
           <div className="h-full overflow-auto px-4">
             <CodeBlock wrapLongLines className="language-tsx">
               {fileContent}
@@ -316,9 +317,84 @@ export function ClientExecutableRenderer({
               isInDrawer={true}
               ref={iframeRef}
             />
+            <PreviewActionButtons
+              owner={owner}
+              conversation={conversation}
+              lastEditedByAgentConfigurationId={
+                lastEditedByAgentConfigurationId
+              }
+              onRevert={onRevert}
+              isFullScreen={isFullScreen}
+              exitFullScreen={exitFullScreen}
+              enterFullScreen={enterFullScreen}
+              reloadFile={reloadFile}
+            />
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface PreviewActionButtonsProps {
+  owner: LightWorkspaceType;
+  conversation: ConversationWithoutContentType;
+  lastEditedByAgentConfigurationId?: string;
+  onRevert: () => void;
+  isFullScreen: boolean;
+  enterFullScreen: () => void;
+  exitFullScreen: () => void;
+  reloadFile: () => void;
+}
+
+function PreviewActionButtons({
+  lastEditedByAgentConfigurationId,
+  onRevert,
+  isFullScreen,
+  enterFullScreen,
+  exitFullScreen,
+  reloadFile,
+}: PreviewActionButtonsProps) {
+  return (
+    <div className="fixed bottom-4 right-3 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
+      {lastEditedByAgentConfigurationId && (
+        <Tooltip
+          label="Revert the last change"
+          side="left"
+          trigger={
+            <Button
+              variant="ghost"
+              size="xs"
+              icon={ArrowGoBackIcon}
+              onClick={onRevert}
+            />
+          }
+        />
+      )}
+      <Tooltip
+        label={`${isFullScreen ? "Exit" : "Go to"} full screen model`}
+        side="left"
+        trigger={
+          <Button
+            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+            variant="ghost"
+            size="xs"
+            onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+          />
+        }
+      />
+      <Tooltip
+        label="Reload the file"
+        side="left"
+        trigger={
+          <Button
+            icon={ArrowCircleIcon}
+            variant="ghost"
+            size="xs"
+            onClick={reloadFile}
+          />
+        }
+      />
     </div>
   );
 }
