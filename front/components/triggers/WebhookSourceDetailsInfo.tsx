@@ -68,8 +68,12 @@ export function WebhookSourceDetailsInfo({
 
   const webhookUrl = useMemo(() => {
     const { url } = config.getDustAPIConfig();
-    return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}`;
-  }, [owner.sId, webhookSourceView.webhookSource.sId]);
+    return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}?secret=${webhookSourceView.webhookSource.urlSecret}`;
+  }, [
+    owner.sId,
+    webhookSourceView.webhookSource.sId,
+    webhookSourceView.webhookSource.urlSecret,
+  ]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -91,7 +95,9 @@ export function WebhookSourceDetailsInfo({
         <div>
           <Page.H variant="h6">Webhook URL</Page.H>
           <div className="flex items-center space-x-2">
-            <Page.P>{webhookUrl}</Page.P>
+            <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+              {webhookUrl}
+            </p>
             <IconButton
               icon={ClipboardIcon}
               onClick={() => copy(webhookUrl)}
