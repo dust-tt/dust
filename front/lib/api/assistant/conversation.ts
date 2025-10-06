@@ -2,7 +2,6 @@ import assert from "assert";
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 
-import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfiguration,
@@ -49,6 +48,7 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   AgentMessageType,
   APIErrorWithStatusCode,
@@ -74,7 +74,6 @@ import {
   ConversationError,
   Err,
   isAgentMention,
-  isAgentMessageType,
   isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
@@ -83,7 +82,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
@@ -370,14 +368,12 @@ export async function postUserMessage(
     mentions,
     context,
     skipToolsValidation,
-    executionMode,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
     skipToolsValidation: boolean;
-    executionMode?: ExecutionMode;
   }
 ): Promise<
   Result<
@@ -718,13 +714,6 @@ export async function postUserMessage(
   await concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const enrichedConversation = {
-        ...conversation,
-        content: [...conversation.content, [userMessage], [agentMessage]],
-      };
-
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
       const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
@@ -744,19 +733,18 @@ export async function postUserMessage(
         "Unreachable: could not find detailed configuration for agent"
       );
 
-      const inMemoryData = {
-        agentConfiguration,
-        conversation: enrichedConversation,
-        userMessage,
-        agentMessage,
-        agentMessageRow,
-      };
-
-      void runAgentLoop(
+      void launchAgentLoopWorkflow({
         auth,
-        { sync: true, inMemoryData },
-        { executionMode, startStep: 0 }
-      );
+        agentLoopArgs: {
+          agentMessageId: agentMessage.sId,
+          agentMessageVersion: agentMessage.version,
+          conversationId: conversation.sId,
+          conversationTitle: conversation.title,
+          userMessageId: userMessage.sId,
+          userMessageVersion: userMessage.version,
+        },
+        startStep: 0,
+      });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1182,13 +1170,6 @@ export async function editUserMessage(
   await concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      // We stitch the conversation to add the user message and only that agent message
-      // so that it can be used to prompt the agent.
-      const enrichedConversation = {
-        ...conversation,
-        content: [...conversation.content, [userMessage], [agentMessage]],
-      };
-
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
       const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
@@ -1208,15 +1189,18 @@ export async function editUserMessage(
         "Unreachable: could not find detailed configuration for agent"
       );
 
-      const inMemoryData = {
-        agentConfiguration,
-        conversation: enrichedConversation,
-        userMessage,
-        agentMessage,
-        agentMessageRow,
-      };
-
-      void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
+      void launchAgentLoopWorkflow({
+        auth,
+        agentLoopArgs: {
+          agentMessageId: agentMessage.sId,
+          agentMessageVersion: agentMessage.version,
+          conversationId: conversation.sId,
+          conversationTitle: conversation.title,
+          userMessageId: userMessage.sId,
+          userMessageVersion: userMessage.version,
+        },
+        startStep: 0,
+      });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1385,10 +1369,7 @@ export async function retryAgentMessage(
     });
   }
 
-  const { agentMessage, agentMessageRow } = agentMessageResult;
-
-  // We stitch the conversation to retry the agent message correctly: no other
-  // messages than this agent's past its parent message.
+  const { agentMessage } = agentMessageResult;
 
   // First, find the array of the parent message in conversation.content.
   const parentMessageIndex = conversation.content.findIndex((messages) => {
@@ -1400,18 +1381,6 @@ export async function retryAgentMessage(
     );
   }
 
-  // Then, find this agentmessage's array in conversation.content and add the
-  // new agent message to it.
-  const agentMessageArray = conversation.content.find((messages) => {
-    return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
-  }) as AgentMessageType[];
-
-  // Finally, stitch the conversation.
-  const newContent = [
-    ...conversation.content.slice(0, parentMessageIndex + 1),
-    [...agentMessageArray, agentMessage],
-  ];
-
   const userMessage =
     conversation.content[parentMessageIndex][
       conversation.content[parentMessageIndex].length - 1
@@ -1419,11 +1388,6 @@ export async function retryAgentMessage(
   if (!isUserMessageType(userMessage)) {
     throw new Error("Unreachable: parent message must be a user message");
   }
-
-  const enrichedConversation = {
-    ...conversation,
-    content: newContent,
-  };
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: agentMessage.configuration.sId,
@@ -1435,15 +1399,18 @@ export async function retryAgentMessage(
     "Unreachable: could not find detailed configuration for agent"
   );
 
-  const inMemoryData = {
-    agentConfiguration,
-    conversation: enrichedConversation,
-    userMessage,
-    agentMessage,
-    agentMessageRow,
-  };
-
-  void runAgentLoop(auth, { sync: true, inMemoryData }, { startStep: 0 });
+  void launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+    },
+    startStep: 0,
+  });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -

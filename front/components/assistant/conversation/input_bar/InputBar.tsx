@@ -415,7 +415,7 @@ export function FixedAssistantInputBar({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-20 flex max-h-screen w-full",
+        "max-h-dvh sticky bottom-0 z-20 flex w-full",
         "pb-2",
         "sm:w-full sm:max-w-3xl sm:pb-4"
       )}

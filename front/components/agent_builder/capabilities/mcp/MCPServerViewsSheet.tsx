@@ -79,6 +79,7 @@ import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { DEFAULT_REASONING_MODEL_ID } from "@app/types";
 
 const TOP_MCP_SERVER_VIEWS = [
@@ -154,6 +155,7 @@ export function MCPServerViewsSheet({
   const { owner } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { reasoningModels } = useModels({ owner });
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const {
     mcpServerViews: allMcpServerViews,
     mcpServerViewsWithKnowledge,
@@ -389,7 +391,10 @@ export function MCPServerViewsSheet({
 
   function onClickMCPServer(mcpServerView: MCPServerViewTypeWithLabel) {
     const tool = { type: "MCP", view: mcpServerView } satisfies SelectedTool;
-    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
+    const toolsConfigurations = getMCPServerToolsConfigurations(
+      mcpServerView,
+      featureFlags
+    );
 
     if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
@@ -539,8 +544,10 @@ export function MCPServerViewsSheet({
 
   const toolsConfigurations = useMemo(
     () =>
-      mcpServerView ? getMCPServerToolsConfigurations(mcpServerView) : null,
-    [mcpServerView]
+      mcpServerView
+        ? getMCPServerToolsConfigurations(mcpServerView, featureFlags)
+        : null,
+    [mcpServerView, featureFlags]
   );
 
   // Stable form reset handler - no form dependency to prevent re-renders
@@ -599,6 +606,7 @@ export function MCPServerViewsSheet({
                 handleToolInfoClick(tool.view);
               }
             }}
+            featureFlags={featureFlags}
           />
         </>
       ),

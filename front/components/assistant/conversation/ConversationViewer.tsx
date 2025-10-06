@@ -204,6 +204,7 @@ const ConversationViewer = React.forwardRef<
     return latestPage?.messages.findLast(
       (message) =>
         isUserMessageType(message) &&
+        message.context.origin !== "agent_handover" &&
         message.visibility !== "deleted" &&
         message.user?.id === user.id
     );

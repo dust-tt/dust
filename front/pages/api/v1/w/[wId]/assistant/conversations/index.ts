@@ -40,7 +40,6 @@ import {
   isContentFragmentInputWithInlinedContent,
   isEmptyString,
 } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 const MAX_CONVERSATION_DEPTH = 4;
 
@@ -139,13 +138,6 @@ async function handler(
         skipToolsValidation,
         blocking,
       } = r.data;
-
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
 
       const hasReachedLimits = await hasReachedPublicAPILimits(auth);
       if (hasReachedLimits) {
@@ -405,7 +397,6 @@ async function handler(
                 content: message.content,
                 context: ctx,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               })
@@ -413,7 +404,6 @@ async function handler(
                 content: message.content,
                 context: ctx,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               });

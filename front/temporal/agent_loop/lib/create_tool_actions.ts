@@ -23,7 +23,7 @@ import type {
   ConversationWithoutContentType,
   ModelId,
 } from "@app/types";
-import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 export interface ActionBlob {
   actionId: ModelId;
@@ -45,7 +45,7 @@ export async function createToolActionsActivity(
     functionCallStepContentIds,
     step,
   }: {
-    runAgentData: RunAgentExecutionData;
+    runAgentData: AgentLoopExecutionData;
     actions: AgentActionsEvent["actions"];
     stepContexts: StepContext[];
     functionCallStepContentIds: Record<string, ModelId>;

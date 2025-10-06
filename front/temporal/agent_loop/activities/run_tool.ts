@@ -11,8 +11,8 @@ import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
-import type { RunAgentArgs } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 export async function runToolActivity(
   authType: AuthenticatorType,
@@ -23,7 +23,7 @@ export async function runToolActivity(
     runIds,
   }: {
     actionId: ModelId;
-    runAgentArgs: RunAgentArgs;
+    runAgentArgs: AgentLoopArgsWithTiming;
     step: number;
     runIds?: string[];
   }
@@ -31,7 +31,7 @@ export async function runToolActivity(
   const auth = await Authenticator.fromJSON(authType);
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
   }

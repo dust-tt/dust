@@ -52,6 +52,7 @@ const TabsTrigger = React.forwardRef<
       >
     > & {
       isLoading?: boolean;
+      dataAnalytics?: string;
     } & Omit<LinkWrapperProps, "children" | "className">
 >(
   (
@@ -69,6 +70,7 @@ const TabsTrigger = React.forwardRef<
       variant = "ghost",
       isCounter = false,
       counterValue,
+      dataAnalytics,
       ...props
     },
     ref
@@ -95,6 +97,7 @@ const TabsTrigger = React.forwardRef<
           shallow={shallow}
           isCounter={isCounter}
           counterValue={counterValue}
+          dataAnalytics={dataAnalytics}
           className={cn(
             "s-relative",
             "after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2",

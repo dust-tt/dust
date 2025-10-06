@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
@@ -61,24 +62,28 @@ export function AccountSettings({
     useCase: "avatar",
   });
 
-  const { register, handleSubmit, reset, formState, setValue } =
-    useForm<AccountSettingsType>({
-      resolver: zodResolver(AccountSettingsSchema),
-      defaultValues: {
-        firstName: user?.firstName ?? "",
-        lastName: user?.lastName ?? "",
-        profilePictureUrl: user?.image ?? null,
-        theme: currentTheme ?? "system",
-        submitMessageKey: "enter",
-      },
-    });
+  const form = useForm<AccountSettingsType>({
+    resolver: zodResolver(AccountSettingsSchema),
+    defaultValues: {
+      firstName: user?.firstName ?? "",
+      lastName: user?.lastName ?? "",
+      profilePictureUrl: user?.image ?? null,
+      theme: currentTheme ?? "system",
+      submitMessageKey: "enter",
+    },
+  });
 
   const { field: profilePictureField } = useController({
     name: "profilePictureUrl",
+    control: form.control,
   });
-  const { field: themeField } = useController({ name: "theme" });
+  const { field: themeField } = useController({
+    name: "theme",
+    control: form.control,
+  });
   const { field: submitKeyField } = useController({
     name: "submitMessageKey",
+    control: form.control,
   });
   const currentImageUrl = profilePictureField.value ?? ANONYMOUS_USER_IMAGE_URL;
 
@@ -89,7 +94,7 @@ export function AccountSettings({
       null;
 
     if (user) {
-      reset({
+      form.reset({
         firstName: user.firstName,
         lastName: user.lastName ?? "",
         profilePictureUrl: user.image ?? null,
@@ -99,14 +104,14 @@ export function AccountSettings({
       });
     } else {
       // Ensure preferences fields are initialized even without user
-      setValue("theme", currentTheme ?? "system", { shouldDirty: false });
-      setValue(
+      form.setValue("theme", currentTheme ?? "system", { shouldDirty: false });
+      form.setValue(
         "submitMessageKey",
         storedKey && isSubmitMessageKey(storedKey) ? storedKey : "enter",
         { shouldDirty: false }
       );
     }
-  }, [user, reset, currentTheme, setValue]);
+  }, [user, form, currentTheme]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -145,7 +150,7 @@ export function AccountSettings({
         localStorage.getItem("submitMessageKey")) ??
       null;
 
-    reset({
+    form.reset({
       firstName: user?.firstName ?? "",
       lastName: user?.lastName ?? "",
       profilePictureUrl: user?.image ?? null,
@@ -173,12 +178,12 @@ export function AccountSettings({
     const input = (
       <Input
         label={label}
-        {...register(fieldName)}
+        {...form.register(fieldName)}
         placeholder={label}
         disabled={isProvisioned}
-        isError={!!formState.errors[fieldName]}
-        message={formState.errors[fieldName]?.message}
-        messageStatus={formState.errors[fieldName] ? "error" : undefined}
+        isError={!!form.formState.errors[fieldName]}
+        message={form.formState.errors[fieldName]?.message}
+        messageStatus={form.formState.errors[fieldName] ? "error" : undefined}
       />
     );
 
@@ -196,7 +201,7 @@ export function AccountSettings({
   };
 
   return (
-    <>
+    <FormProvider form={form} onSubmit={updateUserProfile}>
       <input
         type="file"
         ref={fileInputRef}
@@ -220,128 +225,122 @@ export function AccountSettings({
         </div>
       </div>
 
-      <form
-        id="account-settings-form"
-        onSubmit={handleSubmit(updateUserProfile)}
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              {renderNameInput({ label: "First Name", fieldName: "firstName" })}
-            </div>
-            <div className="flex-1">
-              {renderNameInput({ label: "Last Name", fieldName: "lastName" })}
-            </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-4">
+          <div className="flex-1">
+            {renderNameInput({ label: "First Name", fieldName: "firstName" })}
           </div>
-
-          <div className="flex items-center gap-2 py-2">
-            <Label>Email</Label>
-            <span className="text-muted-foreground dark:text-muted-foreground-night">
-              {user?.email}
-            </span>
+          <div className="flex-1">
+            {renderNameInput({ label: "Last Name", fieldName: "lastName" })}
           </div>
+        </div>
 
-          <div className="flex w-full flex-row justify-between gap-4">
-            <div className="flex-1">
-              <div>
-                <Label>Theme</Label>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+        <div className="flex items-center gap-2 py-2">
+          <Label>Email</Label>
+          <span className="text-muted-foreground dark:text-muted-foreground-night">
+            {user?.email}
+          </span>
+        </div>
+
+        <div className="flex w-full flex-row justify-between gap-4">
+          <div className="flex-1">
+            <div>
+              <Label>Theme</Label>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  icon={
+                    themeField.value === "light"
+                      ? SunIcon
+                      : themeField.value === "dark"
+                        ? MoonIcon
+                        : LightModeIcon
+                  }
+                  label={
+                    themeField.value === "light"
+                      ? "Light"
+                      : themeField.value === "dark"
+                        ? "Dark"
+                        : "System"
+                  }
+                  isSelect
+                  className="w-fit"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  icon={SunIcon}
+                  onClick={() => themeField.onChange("light")}
+                  label="Light"
+                />
+                <DropdownMenuItem
+                  icon={MoonIcon}
+                  onClick={() => themeField.onChange("dark")}
+                  label="Dark"
+                />
+                <DropdownMenuItem
+                  icon={LightModeIcon}
+                  onClick={() => themeField.onChange("system")}
+                  label="System"
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="flex-1">
+            <Label>Keyboard Shortcuts</Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="copy-sm flex items-center gap-2 text-foreground dark:text-foreground-night">
+                  Send message:
                   <Button
                     variant="outline"
-                    icon={
-                      themeField.value === "light"
-                        ? SunIcon
-                        : themeField.value === "dark"
-                          ? MoonIcon
-                          : LightModeIcon
-                    }
                     label={
-                      themeField.value === "light"
-                        ? "Light"
-                        : themeField.value === "dark"
-                          ? "Dark"
-                          : "System"
+                      submitKeyField.value === "enter"
+                        ? "Enter (↵)"
+                        : "Cmd + Enter (⌘ + ↵)"
                     }
                     isSelect
                     className="w-fit"
                   />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    icon={SunIcon}
-                    onClick={() => themeField.onChange("light")}
-                    label="Light"
-                  />
-                  <DropdownMenuItem
-                    icon={MoonIcon}
-                    onClick={() => themeField.onChange("dark")}
-                    label="Dark"
-                  />
-                  <DropdownMenuItem
-                    icon={LightModeIcon}
-                    onClick={() => themeField.onChange("system")}
-                    label="System"
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <div className="flex-1">
-              <Label>Keyboard Shortcuts</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <div className="copy-sm flex items-center gap-2 text-foreground dark:text-foreground-night">
-                    Send message:
-                    <Button
-                      variant="outline"
-                      label={
-                        submitKeyField.value === "enter"
-                          ? "Enter (↵)"
-                          : "Cmd + Enter (⌘ + ↵)"
-                      }
-                      isSelect
-                      className="w-fit"
-                    />
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    onClick={() => submitKeyField.onChange("enter")}
-                  >
-                    Enter
-                    <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => submitKeyField.onChange("cmd+enter")}
-                  >
-                    Cmd + Enter
-                    <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() => submitKeyField.onChange("enter")}
+                >
+                  Enter
+                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => submitKeyField.onChange("cmd+enter")}
+                >
+                  Cmd + Enter
+                  <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </form>
 
-      <div className="flex justify-end gap-2">
-        <Button
-          label="Cancel"
-          variant="ghost"
-          onClick={handleCancel}
-          type="button"
-          disabled={!formState.isDirty || formState.isSubmitting}
-        />
-        <Button
-          label="Save"
-          variant="primary"
-          type="submit"
-          form="account-settings-form"
-          disabled={!formState.isDirty || formState.isSubmitting}
-          loading={formState.isSubmitting}
-        />
+        <div className="flex justify-end gap-2">
+          <Button
+            label="Cancel"
+            variant="ghost"
+            onClick={handleCancel}
+            type="button"
+            disabled={!form.formState.isDirty || form.formState.isSubmitting}
+          />
+          <Button
+            label="Save"
+            variant="primary"
+            type="submit"
+            disabled={!form.formState.isDirty || form.formState.isSubmitting}
+            loading={form.formState.isSubmitting}
+          />
+        </div>
       </div>
-    </>
+    </FormProvider>
   );
 }

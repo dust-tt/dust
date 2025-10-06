@@ -1,4 +1,3 @@
-import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -780,11 +779,4 @@ export const useJoinConversation = ({
   ]);
 
   return joinConversation;
-};
-
-export const useExecutionMode = () => {
-  const router = useRouter();
-  const { execution } = router.query;
-  const executionMode = typeof execution === "string" ? execution : "auto";
-  return executionMode;
 };

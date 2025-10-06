@@ -1,6 +1,5 @@
 import { TextArea } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 
 import { BaseFormFieldSection } from "@app/components/agent_builder/capabilities/shared/BaseFormFieldSection";
 
@@ -23,15 +22,7 @@ export function DescriptionSection({
   maxLength,
   triggerValidationOnChange = false,
 }: DescriptionSectionProps) {
-  const descriptionValue = useWatch({ name: DESCRIPTION_FIELD_NAME });
-  const { trigger } = useFormContext();
-
-  // Force the validation on empty field so it is validated initially.
-  useEffect(() => {
-    if (!descriptionValue || `${descriptionValue}`.trim().length === 0) {
-      void trigger(DESCRIPTION_FIELD_NAME);
-    }
-  }, [descriptionValue, trigger]);
+  const { formState } = useFormContext();
 
   return (
     <BaseFormFieldSection
@@ -48,8 +39,12 @@ export function DescriptionSection({
             placeholder={placeholder}
             rows={4}
             maxLength={maxLength}
-            showErrorLabel
-            error={errorMessage}
+            showErrorLabel={formState.isSubmitted || formState.isDirty}
+            error={
+              formState.isSubmitted || formState.isDirty
+                ? errorMessage
+                : undefined
+            }
             onChange={onChange}
             {...registerProps}
           />

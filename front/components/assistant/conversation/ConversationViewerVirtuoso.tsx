@@ -9,6 +9,7 @@ import {
 } from "@virtuoso.dev/message-list";
 import _ from "lodash";
 import debounce from "lodash/debounce";
+import { useSearchParams } from "next/navigation";
 import React, {
   useCallback,
   useEffect,
@@ -20,7 +21,6 @@ import React, {
 import { AssistantInputBarVirtuoso } from "@app/components/assistant/conversation/AssistantInputBarVirtuoso";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   createPlaceholderUserMessage,
   submitMessage,
@@ -49,7 +49,6 @@ import {
   useConversationMessages,
   useConversationParticipants,
   useConversations,
-  useExecutionMode,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -113,9 +112,6 @@ const ConversationViewerVirtuoso = ({
     >(null);
   const sendNotification = useSendNotification();
   const { serverId } = useCoEditionContext();
-  const executionMode = useExecutionMode();
-
-  const { currentPanel } = useConversationSidePanelContext();
 
   const {
     conversation,
@@ -153,6 +149,8 @@ const ConversationViewerVirtuoso = ({
     limit: DEFAULT_PAGE_LIMIT,
   });
 
+  const justCreated = useSearchParams().get("justCreated") === "true";
+
   const { mutateConversationParticipants } = useConversationParticipants({
     conversationId,
     workspaceId: owner.sId,
@@ -179,12 +177,9 @@ const ConversationViewerVirtuoso = ({
       return;
     }
 
+    // We use the messages ranks to know what is older and what is newer.
+
     const minRank = Math.min(
-      ...ref.current.data
-        .get()
-        .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
-    );
-    const maxRank = Math.max(
       ...ref.current.data
         .get()
         .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
@@ -201,6 +196,12 @@ const ConversationViewerVirtuoso = ({
         convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
       );
     }
+
+    const maxRank = Math.max(
+      ...ref.current.data
+        .get()
+        .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
+    );
 
     const recentMessagesFromBackend = messagesFromBackend.filter(
       (m) => m.rank > maxRank
@@ -406,7 +407,6 @@ const ConversationViewerVirtuoso = ({
         user,
         conversationId,
         messageData,
-        executionMode,
       });
 
       if (result.isErr()) {
@@ -434,6 +434,7 @@ const ConversationViewerVirtuoso = ({
         contentFragments: contentFragmentsFromBackend,
       } = result.value;
 
+      // map() is how we update the state of virtuoso messages.
       ref.current.data.map((m) =>
         isUserMessage(m) &&
         (m.sId === placeholderMessage.sId || m.sId === messageFromBackend.sId)
@@ -453,7 +454,6 @@ const ConversationViewerVirtuoso = ({
       user,
       owner,
       conversationId,
-      executionMode,
       mutateConversations,
       setPlanLimitReached,
       sendNotification,
@@ -513,12 +513,14 @@ const ConversationViewerVirtuoso = ({
         <ConversationErrorDisplay error={conversationError} />
       )}
       {initialListData.length > 0 ? (
-        <VirtuosoMessageListLicense licenseKey="86c08366d0095dd1904cbc9bbbb713bdTzoxMjg7RToxNzkxMDE3OTUzOTE1">
+        <VirtuosoMessageListLicense
+          licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
+        >
           <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
             initialData={initialListData}
             initialLocation={{
-              index: "LAST",
-              align: "end",
+              index: justCreated ? 0 : "LAST",
+              align: justCreated ? "start" : "end",
               behavior: "instant",
             }}
             ref={ref}
@@ -528,9 +530,7 @@ const ConversationViewerVirtuoso = ({
               "dd-privacy-mask",
               "s-@container/conversation",
               "h-full w-full",
-              isInModal ? "" : "px-4 md:px-8",
-              // Hide conversation on mobile when any panel is opened.
-              currentPanel ? "hidden md:block" : ""
+              isInModal ? "" : "px-4 md:px-8"
             )}
             shortSizeAlign="bottom"
             StickyHeader={StickyHeaderVirtuoso}

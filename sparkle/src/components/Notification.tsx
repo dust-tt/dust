@@ -71,7 +71,7 @@ function NotificationContent({
       <div className="s-flex s-min-w-0 s-flex-grow s-flex-col">
         <div
           className={cn(
-            "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
+            "s-heading-md s-line-clamp-1 s-h-6 s-grow",
             variantClassName({ type })
           )}
         >

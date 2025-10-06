@@ -1,9 +1,9 @@
-import { Button } from "@dust-tt/sparkle";
+import { ArrowDownDashIcon, Button } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import { ArrowBigDownDashIcon } from "lucide-react";
+import { useCallback, useMemo } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
@@ -32,10 +32,19 @@ export const AssistantInputBarVirtuoso = ({
         m.visibility !== "deleted"
     );
 
-  const agentMentions =
-    !lastUserMessage || !isUserMessage(lastUserMessage)
+  const agentMentions = useMemo(() => {
+    return !lastUserMessage || !isUserMessage(lastUserMessage)
       ? emptyArray<AgentMention>()
       : lastUserMessage.mentions.filter(isAgentMention);
+  }, [lastUserMessage]);
+
+  const scrollToBottom = useCallback(() => {
+    methods.scrollToItem({
+      index: "LAST",
+      align: "end",
+      behavior: "smooth",
+    });
+  }, [methods]);
 
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisibe = 100;
@@ -53,7 +62,7 @@ export const AssistantInputBarVirtuoso = ({
   return (
     <div
       className={
-        "z-20 mx-auto flex max-h-screen w-full py-2 sm:w-full sm:max-w-3xl sm:py-4"
+        "max-h-dvh z-20 mx-auto flex w-full py-2 sm:w-full sm:max-w-3xl sm:py-4"
       }
     >
       <div
@@ -69,15 +78,9 @@ export const AssistantInputBarVirtuoso = ({
       >
         <Button
           size="xs"
-          icon={ArrowBigDownDashIcon}
+          icon={ArrowDownDashIcon}
           variant="outline"
-          onClick={() => {
-            methods.scrollToItem({
-              index: "LAST",
-              align: "end",
-              behavior: "smooth",
-            });
-          }}
+          onClick={scrollToBottom}
         />
       </div>
       <AssistantInputBar

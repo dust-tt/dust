@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -68,6 +68,7 @@ import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
+  LightWorkspaceType,
   PersonalAuthenticationRequiredErrorContent,
   UserType,
   WorkspaceType,
@@ -156,39 +157,38 @@ export function AgentMessageVirtuoso({
     useFullChainOfThought: false,
   });
 
-  const methods = useVirtuosoMethods<
-    VirtuosoMessage,
-    VirtuosoMessageListContext
-  >();
-
   const agentMessageToRender = getAgentMessageToRender({
     message: messageStreamState.message,
     messageStreamState: messageStreamState,
   });
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
-  const references = Object.entries(
-    agentMessageToRender.citations ?? {}
-  ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
-    if (citation) {
-      const IconComponent = getCitationIcon(
-        citation.provider,
-        isDark,
-        citation.faviconUrl,
-        citation.href
-      );
-      return {
-        ...acc,
-        [key]: {
-          href: citation.href,
-          title: citation.title,
-          description: citation.description,
-          icon: <IconComponent />,
-        },
-      };
-    }
-    return acc;
-  }, {});
+  const references = useMemo(
+    () =>
+      Object.entries(agentMessageToRender.citations ?? {}).reduce<
+        Record<string, MarkdownCitation>
+      >((acc, [key, citation]) => {
+        if (citation) {
+          const IconComponent = getCitationIcon(
+            citation.provider,
+            isDark,
+            citation.faviconUrl,
+            citation.href
+          );
+          return {
+            ...acc,
+            [key]: {
+              href: citation.href,
+              title: citation.title,
+              description: citation.description,
+              icon: <IconComponent />,
+            },
+          };
+        }
+        return acc;
+      }, {}),
+    [agentMessageToRender.citations, isDark]
+  );
 
   // GenerationContext: to know if we are generating or not.
   const generationContext = React.useContext(GenerationContext);
@@ -212,13 +212,6 @@ export function AgentMessageVirtuoso({
       );
     }
   }, [agentMessageToRender.status, generationContext, sId, conversationId]);
-
-  // Auto-open content creation drawer when content creation files are available.
-  const { contentCreationFiles } = useAutoOpenContentCreation({
-    messageStreamState,
-    agentMessageToRender,
-    isLastMessage,
-  });
 
   const PopoverContent = useCallback(
     () => (
@@ -402,6 +395,101 @@ export function AgentMessageVirtuoso({
     [owner.sId]
   );
 
+  const { configuration: agentConfiguration } = agentMessageToRender;
+
+  const citations = React.useMemo(
+    () => getCitations({ activeReferences }),
+    [activeReferences]
+  );
+
+  const canMention = agentConfiguration.canRead;
+  const isArchived = agentConfiguration.status === "archived";
+
+  const renderName = useCallback(
+    () => (
+      <AgentHandle
+        assistant={{
+          sId: agentConfiguration.sId,
+          name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+        }}
+        canMention={canMention}
+        isDisabled={isArchived}
+      />
+    ),
+    [agentConfiguration.name, agentConfiguration.sId, canMention, isArchived]
+  );
+
+  return (
+    <ConversationMessage
+      pictureUrl={agentConfiguration.pictureUrl}
+      name={agentConfiguration.name}
+      buttons={buttons.length > 0 ? buttons : undefined}
+      avatarBusy={agentMessageToRender.status === "created"}
+      isDisabled={isArchived}
+      renderName={renderName}
+      timestamp={formatTimestring(agentMessageToRender.created)}
+      type="agent"
+      citations={citations}
+    >
+      <div>
+        <AgentMessageContent
+          owner={owner}
+          conversationId={conversationId}
+          retryHandler={retryHandler}
+          isLastMessage={isLastMessage}
+          messageStreamState={messageStreamState}
+          references={references}
+          streaming={shouldStream}
+          lastTokenClassification={
+            messageStreamState.agentState === "thinking" ? "tokens" : null
+          }
+          activeReferences={activeReferences}
+          setActiveReferences={setActiveReferences}
+        />
+      </div>
+    </ConversationMessage>
+  );
+}
+
+function AgentMessageContent({
+  isLastMessage,
+  messageStreamState,
+  references,
+  streaming,
+  lastTokenClassification,
+  owner,
+  conversationId,
+  activeReferences,
+  setActiveReferences,
+  retryHandler,
+}: {
+  isLastMessage: boolean;
+  owner: LightWorkspaceType;
+  conversationId: string;
+  retryHandler: (params: {
+    conversationId: string;
+    messageId: string;
+    blockedOnly?: boolean;
+  }) => Promise<void>;
+  messageStreamState: MessageTemporaryState;
+  references: { [key: string]: MarkdownCitation };
+  streaming: boolean;
+  lastTokenClassification: null | "tokens" | "chain_of_thought";
+  activeReferences: { index: number; document: MarkdownCitation }[];
+  setActiveReferences: (
+    references: {
+      index: number;
+      document: MarkdownCitation;
+    }[]
+  ) => void;
+}) {
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+  const agentMessage = messageStreamState.message;
+  const { sId, configuration: agentConfiguration } = agentMessage;
+
   const retryHandlerWithResetState = useCallback(
     async (error: PersonalAuthenticationRequiredErrorContent) => {
       methods.data.map((m) =>
@@ -445,8 +533,6 @@ export function AgentMessageVirtuoso({
     }
   }
 
-  const { configuration: agentConfiguration } = agentMessageToRender;
-
   const additionalMarkdownComponents: Components = React.useMemo(
     () => ({
       visualization: getVisualizationPlugin(
@@ -472,196 +558,146 @@ export function AgentMessageVirtuoso({
     []
   );
 
-  const citations = React.useMemo(
-    () => getCitations({ activeReferences }),
-    [activeReferences]
-  );
+  // Auto-open content creation drawer when content creation files are available.
+  const { contentCreationFiles } = useAutoOpenContentCreation({
+    messageStreamState,
+    agentMessageToRender: agentMessage,
+    isLastMessage,
+  });
 
-  const canMention = agentConfiguration.canRead;
-  const isArchived = agentConfiguration.status === "archived";
-
-  return (
-    <ConversationMessage
-      pictureUrl={agentConfiguration.pictureUrl}
-      name={agentConfiguration.name}
-      buttons={buttons}
-      avatarBusy={agentMessageToRender.status === "created"}
-      isDisabled={isArchived}
-      renderName={() => (
-        <AgentHandle
-          assistant={{
-            sId: agentConfiguration.sId,
-            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
-          }}
-          canMention={canMention}
-          isDisabled={isArchived}
-        />
-      )}
-      timestamp={formatTimestring(agentMessageToRender.created)}
-      type="agent"
-      citations={citations}
-    >
-      <div>
-        {renderAgentMessage({
-          agentMessage: agentMessageToRender,
-          references: references,
-          streaming: shouldStream,
-          lastTokenClassification:
-            messageStreamState.agentState === "thinking" ? "tokens" : null,
-        })}
-      </div>
-    </ConversationMessage>
-  );
-
-  function renderAgentMessage({
-    agentMessage,
-    references,
-    streaming,
-    lastTokenClassification,
-  }: {
-    agentMessage: LightAgentMessageType;
-    references: { [key: string]: MarkdownCitation };
-    streaming: boolean;
-    lastTokenClassification: null | "tokens" | "chain_of_thought";
-  }) {
-    if (agentMessage.status === "failed") {
-      const { error } = agentMessage;
-      if (isPersonalAuthenticationRequiredErrorContent(error)) {
-        return (
-          <MCPServerPersonalAuthenticationRequired
-            owner={owner}
-            mcpServerId={error.metadata.mcp_server_id}
-            provider={error.metadata.provider}
-            scope={error.metadata.scope}
-            retryHandler={() => retryHandlerWithResetState(error)}
-          />
-        );
-      }
+  if (agentMessage.status === "failed") {
+    const { error } = agentMessage;
+    if (isPersonalAuthenticationRequiredErrorContent(error)) {
       return (
-        <ErrorMessage
-          error={
-            agentMessage.error ?? {
-              message: "Unexpected Error",
-              code: "unexpected_error",
-              metadata: {},
-            }
-          }
-          retryHandler={async () =>
-            retryHandler({ conversationId, messageId: agentMessage.sId })
-          }
+        <MCPServerPersonalAuthenticationRequired
+          owner={owner}
+          mcpServerId={error.metadata.mcp_server_id}
+          provider={error.metadata.provider}
+          scope={error.metadata.scope}
+          retryHandler={() => retryHandlerWithResetState(error)}
         />
       );
     }
-
-    // Get in-progress images.
-    const inProgressImages = Array.from(
-      messageStreamState.actionProgress.entries()
-    )
-      .filter(([, progress]) =>
-        isImageProgressOutput(progress.progress?.data.output)
-      )
-      .map(([actionId, progress]) => ({
-        id: actionId,
-        isLoading: true,
-        progress: progress.progress?.progress,
-      }));
-
-    // Get completed images.
-    const completedImages = messageStreamState.message.generatedFiles.filter(
-      (file) => isSupportedImageContentType(file.contentType)
-    );
-
-    const generatedFiles = agentMessage.generatedFiles
-      .filter((file) => !file.hidden)
-      .filter(
-        (file) =>
-          !isSupportedImageContentType(file.contentType) &&
-          !isContentCreationFileContentType(file.contentType)
-      );
-
     return (
-      <div className="flex flex-col gap-y-4">
-        <AgentMessageActions
-          agentMessage={agentMessage}
-          lastAgentStateClassification={messageStreamState.agentState}
-          actionProgress={messageStreamState.actionProgress}
-          owner={owner}
-        />
-        <AgentMessageContentCreationGeneratedFiles
-          files={contentCreationFiles}
-        />
-        {(inProgressImages.length > 0 || completedImages.length > 0) && (
-          <InteractiveImageGrid
-            images={[
-              ...completedImages.map((image) => ({
-                imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
-                downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-                alt: `${image.title}`,
-                title: `${image.title}`,
-                isLoading: false,
-              })),
-              ...inProgressImages.map(() => ({
-                alt: "",
-                title: "",
-                isLoading: true,
-              })),
-            ]}
-          />
-        )}
-
-        {agentMessage.content !== null && (
-          <div>
-            {lastTokenClassification !== "chain_of_thought" &&
-            agentMessage.content === "" ? (
-              <div className="blinking-cursor">
-                <span></span>
-              </div>
-            ) : (
-              <CitationsContext.Provider
-                value={{
-                  references,
-                  updateActiveReferences,
-                }}
-              >
-                <Markdown
-                  content={sanitizeVisualizationContent(agentMessage.content)}
-                  isStreaming={
-                    streaming && lastTokenClassification === "tokens"
-                  }
-                  isLastMessage={isLastMessage}
-                  additionalMarkdownComponents={additionalMarkdownComponents}
-                  additionalMarkdownPlugins={additionalMarkdownPlugins}
-                />
-              </CitationsContext.Provider>
-            )}
-          </div>
-        )}
-        {generatedFiles.length > 0 && (
-          <div className="mt-2 grid grid-cols-5 gap-1">
-            {getCitations({
-              activeReferences: generatedFiles.map((file) => ({
-                index: -1,
-                document: {
-                  href: `/api/w/${owner.sId}/files/${file.fileId}`,
-                  icon: <DocumentIcon />,
-                  title: file.title,
-                },
-              })),
-            })}
-          </div>
-        )}
-        {agentMessage.status === "cancelled" && (
-          <div>
-            <Chip
-              label="The message generation was interrupted"
-              size="xs"
-              className="mt-4"
-            />
-          </div>
-        )}
-      </div>
+      <ErrorMessage
+        error={
+          agentMessage.error ?? {
+            message: "Unexpected Error",
+            code: "unexpected_error",
+            metadata: {},
+          }
+        }
+        retryHandler={async () =>
+          retryHandler({ conversationId, messageId: agentMessage.sId })
+        }
+      />
     );
   }
+
+  // Get in-progress images.
+  const inProgressImages = Array.from(
+    messageStreamState.actionProgress.entries()
+  )
+    .filter(([, progress]) =>
+      isImageProgressOutput(progress.progress?.data.output)
+    )
+    .map(([actionId, progress]) => ({
+      id: actionId,
+      isLoading: true,
+      progress: progress.progress?.progress,
+    }));
+
+  // Get completed images.
+  const completedImages = agentMessage.generatedFiles.filter((file) =>
+    isSupportedImageContentType(file.contentType)
+  );
+
+  const generatedFiles = agentMessage.generatedFiles
+    .filter((file) => !file.hidden)
+    .filter(
+      (file) =>
+        !isSupportedImageContentType(file.contentType) &&
+        !isContentCreationFileContentType(file.contentType)
+    );
+
+  return (
+    <div className="flex flex-col gap-y-4">
+      <AgentMessageActions
+        agentMessage={agentMessage}
+        lastAgentStateClassification={messageStreamState.agentState}
+        actionProgress={messageStreamState.actionProgress}
+        owner={owner}
+      />
+      <AgentMessageContentCreationGeneratedFiles files={contentCreationFiles} />
+      {(inProgressImages.length > 0 || completedImages.length > 0) && (
+        <InteractiveImageGrid
+          images={[
+            ...completedImages.map((image) => ({
+              imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
+              downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+              alt: `${image.title}`,
+              title: `${image.title}`,
+              isLoading: false,
+            })),
+            ...inProgressImages.map(() => ({
+              alt: "",
+              title: "",
+              isLoading: true,
+            })),
+          ]}
+        />
+      )}
+
+      {agentMessage.content !== null && (
+        <div>
+          {lastTokenClassification !== "chain_of_thought" &&
+          agentMessage.content === "" ? (
+            <div className="blinking-cursor">
+              <span></span>
+            </div>
+          ) : (
+            <CitationsContext.Provider
+              value={{
+                references,
+                updateActiveReferences,
+              }}
+            >
+              <Markdown
+                content={sanitizeVisualizationContent(agentMessage.content)}
+                isStreaming={streaming && lastTokenClassification === "tokens"}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            </CitationsContext.Provider>
+          )}
+        </div>
+      )}
+      {generatedFiles.length > 0 && (
+        <div className="mt-2 grid grid-cols-5 gap-1">
+          {getCitations({
+            activeReferences: generatedFiles.map((file) => ({
+              index: -1,
+              document: {
+                href: `/api/w/${owner.sId}/files/${file.fileId}`,
+                icon: <DocumentIcon />,
+                title: file.title,
+              },
+            })),
+          })}
+        </div>
+      )}
+      {agentMessage.status === "cancelled" && (
+        <div>
+          <Chip
+            label="The message generation was interrupted"
+            size="xs"
+            className="mt-4"
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**

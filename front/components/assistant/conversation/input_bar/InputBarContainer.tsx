@@ -456,7 +456,7 @@ const InputBarContainer = ({
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        <div className="flex w-full flex-col px-1 px-2 py-1.5 sm:pb-2 sm:pr-3">
+        <div className="flex w-full flex-col px-2 py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center">
             {selectedMCPServerViews.map((msv) => (
               <>
@@ -566,6 +566,7 @@ const InputBarContainer = ({
                     if (isMobile) {
                       editorService.setLoading(true);
                       await new Promise((resolve) => setTimeout(resolve, 500));
+                      editorService.setLoading(false);
                     }
                   }
                   onEnterKeyDown(

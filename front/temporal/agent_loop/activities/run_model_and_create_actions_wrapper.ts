@@ -14,10 +14,10 @@ import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
-  RunAgentArgs,
-  RunAgentExecutionData,
+  AgentLoopArgsWithTiming,
+  AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -41,11 +41,11 @@ export async function runModelAndCreateActionsActivity({
   authType: AuthenticatorType;
   autoRetryCount?: number;
   checkForResume?: boolean;
-  runAgentArgs: RunAgentArgs;
+  runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     return null;
   }
@@ -56,7 +56,6 @@ export async function runModelAndCreateActionsActivity({
   logAgentLoopStepStart({
     agentMessageId: runAgentData.agentMessage.sId,
     conversationId: runAgentData.conversation.sId,
-    executionMode: runAgentArgs.sync ? "sync" : "async",
     step,
   });
 
@@ -129,7 +128,7 @@ export async function runModelAndCreateActionsActivity({
  */
 async function getExistingActionsAndBlobs(
   auth: Authenticator,
-  runAgentArgs: RunAgentExecutionData,
+  runAgentArgs: AgentLoopExecutionData,
   step: number
 ): Promise<{
   actionBlobs: ActionBlob[];

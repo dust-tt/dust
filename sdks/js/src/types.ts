@@ -681,6 +681,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "usage_data_api"
   | "use_openai_eu_key"
+  | "web_summarization"
   | "xai_feature"
   | "simple_audio_transcription"
   | "virtualized_conversations"

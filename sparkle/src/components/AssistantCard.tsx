@@ -19,6 +19,7 @@ interface BaseAssistantCardProps {
   onClick?: () => void;
   onContextMenu?: (event: React.MouseEvent) => void;
   variant?: CardVariantType;
+  dataAnalytics?: string;
 }
 
 type AssistantCardMore = Omit<MiniButtonProps, "icon" | "size">;
@@ -50,6 +51,7 @@ export const AssistantCard = React.forwardRef<
       subtitle,
       action,
       variant = "primary",
+      dataAnalytics,
     },
     ref
   ) => {
@@ -62,6 +64,7 @@ export const AssistantCard = React.forwardRef<
         onContextMenu={onContextMenu}
         action={action}
         variant={variant}
+        dataAnalytics={dataAnalytics}
       >
         <div className="s-flex s-gap-3">
           <Avatar visual={pictureUrl} size="md" />
@@ -102,35 +105,41 @@ interface LargeAssistantCardProps extends BaseAssistantCardProps {}
 export const LargeAssistantCard = React.forwardRef<
   HTMLDivElement,
   LargeAssistantCardProps
->(({ className, onClick, title, description, pictureUrl }, ref) => {
-  return (
-    <Card
-      ref={ref}
-      size="lg"
-      className={className}
-      onClick={onClick}
-      variant="tertiary"
-    >
-      <div className="s-flex s-gap-3">
-        <Avatar visual={pictureUrl} size="lg" />
-        <div
-          className={cn(
-            "s-flex s-flex-col s-gap-2 s-text-base",
-            "s-text-foreground dark:s-text-foreground-night"
-          )}
-        >
-          <h3 className="s-font-semibold">{title}</h3>
-          <p
+>(
+  (
+    { className, onClick, title, description, pictureUrl, dataAnalytics },
+    ref
+  ) => {
+    return (
+      <Card
+        ref={ref}
+        size="lg"
+        className={className}
+        onClick={onClick}
+        variant="tertiary"
+        dataAnalytics={dataAnalytics}
+      >
+        <div className="s-flex s-gap-3">
+          <Avatar visual={pictureUrl} size="lg" />
+          <div
             className={cn(
-              "s-line-clamp-5 s-overflow-hidden s-text-ellipsis",
-              "s-text-muted-foreground dark:s-text-muted-foreground-night"
+              "s-flex s-flex-col s-gap-2 s-text-base",
+              "s-text-foreground dark:s-text-foreground-night"
             )}
           >
-            {description}
-          </p>
+            <h3 className="s-heading-base">{title}</h3>
+            <p
+              className={cn(
+                "s-line-clamp-5 s-overflow-hidden s-text-ellipsis",
+                "s-text-muted-foreground dark:s-text-muted-foreground-night"
+              )}
+            >
+              {description}
+            </p>
+          </div>
         </div>
-      </div>
-    </Card>
-  );
-});
+      </Card>
+    );
+  }
+);
 LargeAssistantCard.displayName = "LargeAssistantCard";

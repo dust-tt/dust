@@ -62,10 +62,16 @@ export default function Space({
   isAdmin,
   owner,
   space,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   if (space.kind === "system") {
     return (
-      <SystemSpaceTriggersList isAdmin={isAdmin} owner={owner} space={space} />
+      <SystemSpaceTriggersList
+        isAdmin={isAdmin}
+        owner={owner}
+        space={space}
+        user={user}
+      />
     );
   }
 
