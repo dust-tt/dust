@@ -187,12 +187,11 @@ impl TableSchema {
         for (row_index, row) in rows.iter().enumerate() {
             let (headers, values) = row.value();
             for (k, v) in headers.iter().zip(values.iter()) {
-                // Track column name if we haven't seen it yet
+                // Track column name if we haven't seen it yet. When the data comes from a csv,
+                // we should get all the columns names from the first row.
+                // But in it comes from the /rows API, we might get rows with different columns.
+                // This still works out because we end up storing a csv that matches the schema we infer here.
                 if !seen_column_names.contains(k.as_str()) {
-                    // Since all rows come from a csv, we should never see a new column after the first row
-                    if row_index > 0 {
-                        warn!(k, row_index, "Encountered new column past the first row");
-                    }
                     schema_order.push(k.to_string());
                     seen_column_names.insert(k.to_string());
                 }
