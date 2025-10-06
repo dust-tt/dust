@@ -1,8 +1,13 @@
 /**
- * Minimal PostHog tracking utilities
+ * Tracking conventions:
+ * - Event name: {area}:{object}_{action}
+ * - Always include area from TRACKING_AREAS
+ * - Use snake_case for object names
+ * - Common actions: click, submit, create, delete, connect
  *
- * Uses PostHog's native data-ph-capture-attribute-* format
- * Maintains a clean topology: {area}:{object}_{action}
+ * @example
+ * trackEvent(TRACKING_AREAS.BUILDER, "create_from_template", "click")
+ * // Creates event: "builder:create_from_template_click"
  */
 
 import posthog from "posthog-js";
