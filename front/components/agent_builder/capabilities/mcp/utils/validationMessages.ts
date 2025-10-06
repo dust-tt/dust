@@ -18,7 +18,7 @@ export const VALIDATION_MESSAGES = {
   name: {
     empty: "The name cannot be empty.",
     format:
-      "The name can only contain lowercase letters, numbers, and underscores (no spaces).",
+      "The name can only contain lowercase letters, numbers, underscores and & (no spaces).",
   },
   description: {
     required: "Description is required",

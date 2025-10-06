@@ -23,7 +23,7 @@ export function createBaseFormSchema() {
     name: z
       .string()
       .min(1, VALIDATION_MESSAGES.name.empty)
-      .regex(/^[a-z0-9_]+$/, VALIDATION_MESSAGES.name.format)
+      .regex(/^[a-z0-9_&]+$/, VALIDATION_MESSAGES.name.format)
       .default(""),
     description: z
       .string()
