@@ -23,7 +23,6 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
-
   const isMobile = useIsMobile();
 
   useEffect(() => {
