@@ -381,13 +381,14 @@ export const VisualizationActionIframe = forwardRef<
               {isErrored && !retryClicked && !isPublic && (
                 <div className="flex h-full w-full items-center justify-center p-6">
                   <ContentMessage
-                    title="Visualization Error"
+                    title="Visualization failed"
                     variant="warning"
                     icon={ExclamationCircleIcon}
-                    className="max-w-md text-center"
+                    className="max-w-md"
                   >
                     <div className="mb-4 text-sm">
-                      An error occurred while rendering the visualization.
+                      The visualization failed due to an error in the generated
+                      code.
                     </div>
 
                     {errorMessage && (
@@ -397,15 +398,13 @@ export const VisualizationActionIframe = forwardRef<
                     )}
 
                     {canRetry && (
-                      <div className="flex justify-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          label="Ask agent to fix"
-                          onClick={handleRetryClick}
-                          disabled={retryClicked}
-                        />
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        label="Ask agent to fix"
+                        onClick={handleRetryClick}
+                        disabled={retryClicked}
+                      />
                     )}
                   </ContentMessage>
                 </div>
