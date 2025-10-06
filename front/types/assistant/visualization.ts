@@ -34,6 +34,7 @@ type DownloadFileRequestParams = z.infer<
 const SetErrorMessageParamsSchema = z.object({
   errorMessage: z.string(),
   fileId: z.string(),
+  isContentCreation: z.boolean(),
 });
 
 type SetErrorMessageParams = z.infer<typeof SetErrorMessageParamsSchema>;

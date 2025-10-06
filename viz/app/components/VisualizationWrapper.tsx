@@ -268,6 +268,8 @@ export function VisualizationWrapperWithErrorBoundary({
       onErrored={(e) => {
         sendCrossDocumentMessage("setErrorMessage", {
           errorMessage: e instanceof Error ? e.message : `${e}`,
+          fileId: identifier,
+          isContentCreation: isFullHeight,
         });
       }}
     >

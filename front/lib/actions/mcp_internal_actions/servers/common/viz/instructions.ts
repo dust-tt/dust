@@ -3,6 +3,8 @@ import { clientExecutableContentType } from "@app/types";
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
 - The generated component should always be exported as default
+- All code must be wrapped in a proper React function component - never generate standalone JSX outside a component
+- When displaying text with < or > symbols in JSX, use HTML entities: &lt; for < and &gt; for >, or wrap in curly braces like {"<5pp difference"}
 - There is no internet access in the visualization environment
 - External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe
 - Supported React features:
@@ -14,6 +16,10 @@ export const VIZ_REACT_COMPONENT_GUIDELINES = `
   - React.createElement is not supported
 - Props:
   - The generated component should not have any required props / parameters
+- Hook Usage Rules:
+  - All hooks (useState, useEffect, useFile, etc.) must be called at the top level of your React function
+  - Do not call hooks inside loops, conditions, or nested functions
+  - Ensure hooks are called in the same order on every render to avoid React errors
 - Responsiveness:
   - Use ChartContainer for charts to adapt to parent dimensions
   - Leave adequate padding around charts for labels and legends
@@ -41,8 +47,10 @@ export const VIZ_STYLING_GUIDELINES = `
 
 export const VIZ_FILE_HANDLING_GUIDELINES = `
 - Using any file from the \`list_conversation_files\` action when available:
-  - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
+  - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
+  - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
+  - File IDs must always start with "fil_" prefix.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
@@ -102,8 +110,8 @@ import React, { useState, useEffect } from "react";
 import { useFile } from "@dust/react-hooks";
 import Papa from "papaparse";
 
-function DataChart() {
-  const file = useFile("fil_abc123"); 
+function DataChartComponent() {
+  const file = useFile("fil_abc123");
   const [data, setData] = useState([]);
   const [fileContent, setFileContent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -134,7 +142,7 @@ function DataChart() {
     </div>
   );
 }
-export default DataChart;
+export default DataChartComponent;
 \`\`\`
 
 \`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
