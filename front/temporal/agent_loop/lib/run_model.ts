@@ -709,6 +709,30 @@ export async function runModelActivity(
     "[ASSISTANT_TRACE] Action inputs generation"
   );
 
+  // Inject a single newline boundary if we streamed visible content in this iteration
+  // before yielding actions. This prevents the next iteration's streamed tokens from
+  // being appended without whitespace. Only do this if generation tokens are non-empty
+  // and the last character is not already whitespace.
+  const streamedContentSoFar = contentParser.getContent() ?? "";
+  if (
+    streamedContentSoFar.length > 0 &&
+    !/\s/.test(streamedContentSoFar[streamedContentSoFar.length - 1])
+  ) {
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: "\n",
+        classification: "tokens",
+      },
+      agentMessageRow,
+      conversation,
+      step,
+    });
+  }
+
   // If we have actions and we are on the last step, we error since returning actions would require
   // doing one more step.
   if (isLastStep) {
