@@ -430,7 +430,7 @@ export function DataSourceList({
                       handleSelectionChange(item, state)
                     }
                     tooltip={
-                      !disabled
+                      disabled
                         ? "Tables from different data sources cannot be queried together"
                         : undefined
                     }
