@@ -40,7 +40,11 @@ export async function setupOAuthConnection({
         const { error, connection } = event.data;
         if (error) {
           resolve(new Err(new Error(error)));
-        } else if (connection && isOAuthConnectionType(connection)) {
+        } else if (
+          connection &&
+          isOAuthConnectionType(connection) &&
+          connection.provider === provider
+        ) {
           resolve(new Ok(connection));
         } else {
           resolve(
