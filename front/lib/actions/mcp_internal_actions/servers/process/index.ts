@@ -16,10 +16,7 @@ import {
   PROCESS_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import {
-  ConfigurableToolInputSchemas,
-  JsonSchemaSchema,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getDataSourceConfiguration } from "@app/lib/actions/mcp_internal_actions/tools/utils";
@@ -90,15 +87,15 @@ function makeExtractInformationFromDocumentsTool(
     async ({
       dataSources,
       objective,
-      jsonSchema,
+      schema,
       timeFrame,
       tagsIn,
       tagsNot,
     }: {
       dataSources: DataSourcesToolConfigurationType[number][];
       objective: string;
-      jsonSchema: JSONSchema;
-      timeFrame: TimeFrame | null;
+      schema: { jsonSchema: JSONSchema };
+      timeFrame?: TimeFrame;
       tagsIn?: string[];
       tagsNot?: string[];
     }) => {
@@ -114,8 +111,8 @@ function makeExtractInformationFromDocumentsTool(
       // tool, then it has an additional mimeType property, as is convention.
       // We remove it here before passing the jsonSchema to the dust app.
       // Thus the any cast.
-      if ("mimeType" in jsonSchema) {
-        delete (jsonSchema as any).mimeType;
+      if ("mimeType" in schema) {
+        delete (schema as any).mimeType;
       }
 
       // Similarly, if timeFrame was pre-configured by the user, it has an additional mimeType property.
@@ -134,7 +131,7 @@ function makeExtractInformationFromDocumentsTool(
         auth,
         model,
         dataSources,
-        timeFrame,
+        timeFrame: timeFrame ?? null,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tagsIn: tagsIn || undefined,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -150,7 +147,7 @@ function makeExtractInformationFromDocumentsTool(
           {
             context_size: getSupportedModelConfig(model).contextSize,
             prompt,
-            schema: jsonSchema,
+            schema: schema.jsonSchema,
             objective,
           },
         ],
@@ -199,8 +196,8 @@ function makeExtractInformationFromDocumentsTool(
         auth,
         conversation,
         outputs,
-        jsonSchema,
-        timeFrame,
+        jsonSchema: schema.jsonSchema,
+        timeFrame: timeFrame ?? null,
         objective,
       });
       // Upload the file to the conversation data source.
@@ -235,19 +232,20 @@ function createServer(
       ) &&
       agentLoopContext.runContext.toolConfiguration.jsonSchema !== null);
 
-  const isTimeFrameConfigured =
-    (agentLoopContext?.listToolsContext &&
-      isServerSideMCPServerConfiguration(
-        agentLoopContext.listToolsContext.agentActionConfiguration
-      ) &&
-      agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        null) ||
-    (agentLoopContext?.runContext &&
-      isLightServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.toolConfiguration
-      ) &&
-      agentLoopContext.runContext.toolConfiguration.timeFrame !== null);
+  // Not sure what this is for, but it's not used.
+  // const isTimeFrameConfigured =
+  //   (agentLoopContext?.listToolsContext &&
+  //     isServerSideMCPServerConfiguration(
+  //       agentLoopContext.listToolsContext.agentActionConfiguration
+  //     ) &&
+  //     agentLoopContext.listToolsContext.agentActionConfiguration.timeFrame !==
+  //       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  //       null) ||
+  //   (agentLoopContext?.runContext &&
+  //     isLightServerSideMCPToolConfiguration(
+  //       agentLoopContext.runContext.toolConfiguration
+  //     ) &&
+  //     agentLoopContext.runContext.toolConfiguration.timeFrame !== null);
 
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
@@ -281,25 +279,13 @@ function createServer(
           " This is used to guide the tool to extract the right data based on the user request."
       ),
 
-    jsonSchema: isJsonSchemaConfigured
-      ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]
-      : JsonSchemaSchema.describe(
-          EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
-        ),
-    timeFrame: isTimeFrameConfigured
-      ? ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
-        ]
-      : z
-          .object({
-            duration: z.number(),
-            unit: z.enum(["hour", "day", "week", "month", "year"]),
-          })
-          .describe(
-            "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
-          )
-          .nullable()
-          .default(null),
+    schema: ConfigurableToolInputSchemas[
+      INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+    ].describe(EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION),
+    timeFrame:
+      ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+      ].optional(),
   };
 
   const toolDescription =

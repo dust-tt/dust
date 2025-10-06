@@ -485,46 +485,47 @@ describe("augmentInputsWithConfiguration", () => {
         },
       });
     });
-    
+
     it("timeFrame should work when nested in an object", () => {
-        const rawInputs = { nested: {} };
-        const config = createBasicMCPConfiguration({
+      const rawInputs = { nested: {} };
+      const config = createBasicMCPConfiguration({
+        timeFrame: {
+          duration: 7,
+          unit: "day",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            nested: {
+              type: "object",
+              properties: {
+                timeFrame:
+                  ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                  ],
+              },
+              required: ["timeFrame"],
+            },
+          },
+          required: ["nested"],
+        },
+      });
+
+      const result = augmentInputsWithConfiguration({
+        owner: mockWorkspace,
+        rawInputs,
+        actionConfiguration: config,
+      });
+
+      expect(result).toEqual({
+        nested: {
           timeFrame: {
             duration: 7,
             unit: "day",
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
           },
-          inputSchema: {
-            type: "object",
-            properties: {
-              nested: {
-                type: "object",
-                properties: {
-                  timeFrame: ConfigurableToolInputJSONSchemas[
-                    INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
-                  ],
-                },
-                required: ["timeFrame"],
-              }
-            },
-            required: ["nested"],
-          },
-        });
-
-        const result = augmentInputsWithConfiguration({
-          owner: mockWorkspace,
-          rawInputs,
-          actionConfiguration: config,
-        });
-
-        expect(result).toEqual({
-          nested: {
-            timeFrame: {
-              duration: 7,
-              unit: "day",
-              mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
-            },
-          },
-        });
+        },
+      });
     });
   });
 
@@ -566,7 +567,6 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
-    
     it("jsonSchema should work when nested in an object", () => {
       const rawInputs = { nested: {} };
       const jsonSchema = {
@@ -584,9 +584,10 @@ describe("augmentInputsWithConfiguration", () => {
             nested: {
               type: "object",
               properties: {
-                schema: ConfigurableToolInputJSONSchemas[
-                  INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
-                ],
+                schema:
+                  ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                  ],
               },
               required: ["schema"],
             },
@@ -2349,11 +2350,247 @@ describe("findPathsToConfiguration", () => {
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
     });
 
+    expect(stringConfigurations["tupleArray.items.0.first"].required).toBe(
+      true
+    );
+    expect(stringConfigurations["tupleArray.items.1.second"].required).toBe(
+      false
+    );
+  });
+
+  it("should find JSON_SCHEMA configurations at multiple hierarchy levels", () => {
+    const mcpServerView: MCPServerViewType = {
+      id: 1,
+      sId: "json-schema-depths",
+      name: "JSON Schema Depths",
+      description: "Test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "json-schema-depths",
+        name: "json_schema_depths",
+        version: "1.0.0",
+        description: "Desc",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          {
+            name: "tool",
+            description: "",
+            inputSchema: {
+              type: "object",
+              properties: {
+                schemaTop:
+                  ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                  ],
+                container: {
+                  type: "object",
+                  properties: {
+                    schemaNested:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                      ],
+                  },
+                  required: ["schemaNested"],
+                },
+                arr: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      schemaItem:
+                        ConfigurableToolInputJSONSchemas[
+                          INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                        ],
+                    },
+                    required: ["schemaItem"],
+                  },
+                },
+                tupleArr: {
+                  type: "array",
+                  items: [
+                    {
+                      type: "object",
+                      properties: {
+                        firstSchema:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                          ],
+                      },
+                      required: ["firstSchema"],
+                    },
+                    {
+                      type: "object",
+                      properties: {
+                        secondSchema:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
+                          ],
+                      },
+                    },
+                  ],
+                },
+              },
+              required: ["schemaTop", "container", "arr", "tupleArr"],
+            } as JSONSchema,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null,
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
+    };
+
+    const jsonSchemaConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
+    });
+
+    const keys = Object.keys(jsonSchemaConfigurations);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        "schemaTop",
+        "container.schemaNested",
+        "arr.items.schemaItem",
+        "tupleArr.items.0.firstSchema",
+        "tupleArr.items.1.secondSchema",
+      ])
+    );
+
+    expect(jsonSchemaConfigurations["schemaTop"].required).toBe(true);
+    expect(jsonSchemaConfigurations["container.schemaNested"].required).toBe(
+      true
+    );
+    expect(jsonSchemaConfigurations["arr.items.schemaItem"].required).toBe(
+      true
+    );
     expect(
-      stringConfigurations["tupleArray.items.0.first"].required
+      jsonSchemaConfigurations["tupleArr.items.0.firstSchema"].required
     ).toBe(true);
     expect(
-      stringConfigurations["tupleArray.items.1.second"].required
+      jsonSchemaConfigurations["tupleArr.items.1.secondSchema"].required
+    ).toBe(false);
+  });
+
+  it("should find TIME_FRAME configurations at multiple hierarchy levels", () => {
+    const mcpServerView: MCPServerViewType = {
+      id: 1,
+      sId: "timeframe-depths",
+      name: "TimeFrame Depths",
+      description: "Test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "timeframe-depths",
+        name: "timeframe_depths",
+        version: "1.0.0",
+        description: "Desc",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          {
+            name: "tool",
+            description: "",
+            inputSchema: {
+              type: "object",
+              properties: {
+                timeTop:
+                  ConfigurableToolInputJSONSchemas[
+                    INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                  ],
+                container: {
+                  type: "object",
+                  properties: {
+                    timeNested:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                      ],
+                  },
+                  required: ["timeNested"],
+                },
+                arr: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      timeItem:
+                        ConfigurableToolInputJSONSchemas[
+                          INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                        ],
+                    },
+                    required: ["timeItem"],
+                  },
+                },
+                tupleArr: {
+                  type: "array",
+                  items: [
+                    {
+                      type: "object",
+                      properties: {
+                        firstTime:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                          ],
+                      },
+                      required: ["firstTime"],
+                    },
+                    {
+                      type: "object",
+                      properties: {
+                        secondTime:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                          ],
+                      },
+                    },
+                  ],
+                },
+              },
+              required: ["timeTop", "container", "arr", "tupleArr"],
+            } as JSONSchema,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null,
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
+    };
+
+    const timeFrameConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+    });
+
+    const keys = Object.keys(timeFrameConfigurations);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        "timeTop",
+        "container.timeNested",
+        "arr.items.timeItem",
+        "tupleArr.items.0.firstTime",
+        "tupleArr.items.1.secondTime",
+      ])
+    );
+
+    expect(timeFrameConfigurations["timeTop"].required).toBe(true);
+    expect(timeFrameConfigurations["container.timeNested"].required).toBe(true);
+    expect(timeFrameConfigurations["arr.items.timeItem"].required).toBe(true);
+    expect(timeFrameConfigurations["tupleArr.items.0.firstTime"].required).toBe(
+      true
+    );
+    expect(
+      timeFrameConfigurations["tupleArr.items.1.secondTime"].required
     ).toBe(false);
   });
 });

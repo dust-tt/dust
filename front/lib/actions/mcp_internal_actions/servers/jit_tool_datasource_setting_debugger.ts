@@ -17,7 +17,7 @@ function createServer(): McpServer {
         INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE
       ]
         .describe("Optional list of datasources to use.")
-        .optional()
+        .optional(),
     },
     async ({ message, datasources }) => {
       return {
@@ -25,7 +25,9 @@ function createServer(): McpServer {
           {
             type: "text",
             text: `Echo: ${message} | Setting: ${
-              typeof datasources === "string" ? datasources : datasources?.values
+              typeof datasources === "string"
+                ? datasources
+                : datasources?.values
             } | Datasources: ${Array.isArray(datasources) ? datasources.length : 0}`,
           },
         ],

@@ -37,7 +37,6 @@ import {
 const CANCELLATION_CHECK_INTERVAL = 500;
 const REASONING_GENERATION_TOKENS = 20480;
 
-
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -48,9 +47,10 @@ function createServer(
     "advanced_reasoning",
     "Offload a reasoning-heavy task to a powerful reasoning model. The reasoning model does not have access to any tools.",
     {
-      model: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
-      ],
+      model:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
+        ],
     },
     async (
       { model: { modelId, providerId, temperature, reasoningEffort } },
