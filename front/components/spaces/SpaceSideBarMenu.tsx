@@ -1,5 +1,4 @@
 import {
-  BellIcon,
   BoltIcon,
   Button,
   CloudArrowLeftRightIcon,
@@ -8,6 +7,7 @@ import {
   NavigationListItem,
   NavigationListLabel,
   PlusIcon,
+  ToolsIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReturnTypeOf } from "@octokit/core/types";
@@ -247,13 +247,13 @@ const SYSTEM_SPACE_ITEMS: {
   },
   {
     label: "Tools",
-    visual: BoltIcon,
+    visual: ToolsIcon,
     category: "actions",
     flag: null,
   },
   {
     label: "Triggers",
-    visual: BellIcon,
+    visual: BoltIcon,
     category: "triggers",
     flag: "hootl_webhooks",
   },
