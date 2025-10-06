@@ -3,7 +3,9 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import { runScrubFreeEndedWorkspacesSignal } from "@app/temporal/scrub_workspace/signals";
 import {
+  downgradeFreeEndedWorkspacesWorkflow,
   immediateWorkspaceScrubWorkflow,
   scheduleWorkspaceScrubWorkflowV2,
 } from "@app/temporal/scrub_workspace/workflows";
@@ -119,4 +121,37 @@ export async function terminateScheduleWorkspaceScrubWorkflow({
 
 function getWorkflowId(workspaceId: string) {
   return `schedule-workspace-scrub-${workspaceId}`;
+}
+
+export async function launchDowngradeFreeEndedWorkspacesWorkflow(): Promise<
+  Result<undefined, Error>
+> {
+  const client = await getTemporalClientForFrontNamespace();
+  await client.workflow.signalWithStart(downgradeFreeEndedWorkspacesWorkflow, {
+    args: [],
+    taskQueue: QUEUE_NAME,
+    workflowId: "downgrade-and-scrub-free-ended-workflows",
+    signal: runScrubFreeEndedWorkspacesSignal,
+    signalArgs: undefined,
+    cronSchedule: "0 18 * * 1-5", // Every weekday at 6pm.
+  });
+
+  return new Ok(undefined);
+}
+
+export async function stopDowngradeFreeEndedWorkspacesWorkflow() {
+  const client = await getTemporalClientForFrontNamespace();
+
+  try {
+    const handle: WorkflowHandle<typeof downgradeFreeEndedWorkspacesWorkflow> =
+      client.workflow.getHandle("downgrade-and-scrub-free-ended-workflows");
+    await handle.terminate();
+  } catch (e) {
+    logger.error(
+      {
+        error: e,
+      },
+      "[Downgrade and Scrub Free Ended Workspaces] Failed stopping workflow."
+    );
+  }
 }

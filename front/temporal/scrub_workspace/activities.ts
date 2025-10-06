@@ -1,4 +1,5 @@
 import _ from "lodash";
+import { Op } from "sequelize";
 
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -16,6 +17,7 @@ import {
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { Subscription } from "@app/lib/models/plan";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
@@ -25,6 +27,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
@@ -356,4 +359,43 @@ async function cleanupCustomerio(auth: Authenticator) {
       "Failed to delete workspace on Customer.io"
     );
   });
+}
+
+export async function endSubscriptionFreeEndedWorkspacesActivity(): Promise<{
+  subscriptionsModelIds: number[];
+  workspaceModelIds: number[];
+  workspaceIds: string[];
+  nbEndedSubscriptions: number;
+}> {
+  const freeEndedSubscriptions = await Subscription.findAll({
+    where: {
+      status: "active",
+      stripeSubscriptionId: null,
+      endDate: {
+        [Op.lt]: new Date(),
+      },
+    },
+    include: [WorkspaceModel],
+  });
+
+  const workspaceModelIds = freeEndedSubscriptions.map((s) => s.workspace.id);
+  const workspaceIds = freeEndedSubscriptions.map((s) => s.workspace.sId);
+  const subscriptionsModelIds = freeEndedSubscriptions.map((s) => s.id);
+
+  const endedQuery = await Subscription.update(
+    {
+      status: "ended",
+    },
+    {
+      where: {
+        id: subscriptionsModelIds,
+      },
+    }
+  );
+  return {
+    subscriptionsModelIds,
+    workspaceModelIds,
+    workspaceIds,
+    nbEndedSubscriptions: endedQuery[0],
+  };
 }
