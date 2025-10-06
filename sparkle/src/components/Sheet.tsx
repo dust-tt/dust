@@ -89,6 +89,7 @@ interface SheetContentProps
   side?: SheetSideType;
   preventAutoFocusOnClose?: boolean;
   preventAutoFocusOnOpen?: boolean;
+  dataAnalytics?: string;
 }
 
 const SheetContent = React.forwardRef<
@@ -106,6 +107,7 @@ const SheetContent = React.forwardRef<
       preventAutoFocusOnOpen = true,
       onCloseAutoFocus,
       onOpenAutoFocus,
+      dataAnalytics,
       ...props
     },
     ref
@@ -160,6 +162,7 @@ const SheetContent = React.forwardRef<
             onCloseAutoFocus={handleCloseAutoFocus}
             onOpenAutoFocus={handleOpenAutoFocus}
             onKeyDownCapture={onKeyDownCapture}
+            data-analytics={dataAnalytics}
             {...props}
           >
             {children}
