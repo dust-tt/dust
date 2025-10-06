@@ -1,7 +1,7 @@
 import { updateAgentPermissions } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { searchMembers } from "@app/lib/api/workspace";
+import { getMembers } from "@app/lib/api/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { UserType } from "@app/types";
@@ -32,16 +32,9 @@ export const updateEditorsPlugin = createPlugin({
       return new Ok({ members: [] });
     }
 
-    const { members: allMembers } = await searchMembers(
-      auth,
-      { searchTerm: "" },
-      {
-        offset: 0,
-        limit: 50,
-        orderColumn: "name",
-        orderDirection: "asc",
-      }
-    );
+    const { members: allMembers } = await getMembers(auth, {
+      activeOnly: true,
+    });
 
     const editors = await getEditors(auth, resource);
     const editorIds = new Set(editors.map((editor) => editor.sId));
