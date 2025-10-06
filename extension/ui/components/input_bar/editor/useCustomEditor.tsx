@@ -61,6 +61,7 @@ export const ParagraphExtension = Paragraph.extend({
 export interface EditorMention {
   id: string;
   label: string;
+  description?: string;
 }
 
 function getTextAndMentionsFromNode(node?: JSONContent) {
@@ -122,7 +123,15 @@ const useEditorService = (editor: Editor | null) => {
     // Return the service object with utility functions.
     return {
       // Insert mention helper function.
-      insertMention: ({ id, label }: { id: string; label: string }) => {
+      insertMention: ({
+        id,
+        label,
+        description,
+      }: {
+        id: string;
+        label: string;
+        description?: string;
+      }) => {
         const shouldAddSpaceBeforeMention =
           !editor?.isEmpty &&
           editor?.getText()[editor?.getText().length - 1] !== " ";
@@ -132,7 +141,7 @@ const useEditorService = (editor: Editor | null) => {
           .insertContent(shouldAddSpaceBeforeMention ? " " : "") // Add an extra space before the mention.
           .insertContent({
             type: "mention",
-            attrs: { id, label },
+            attrs: { id, label, description },
           })
           .insertContent(" ") // Add an extra space after the mention.
           .run();
