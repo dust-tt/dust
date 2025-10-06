@@ -38,7 +38,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { useHashParam } from "@app/hooks/useHashParams";
 import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -479,13 +479,7 @@ export function AssistantBrowser({
               data-gtm-label="assistantManagementButton"
               data-gtm-location="homepage"
               size="sm"
-              onClick={() =>
-                trackEvent({
-                  area: TRACKING_AREAS.BUILDER,
-                  object: "manage_agents",
-                  action: "click",
-                })
-              }
+              onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents")}
             />
           </div>
         </div>

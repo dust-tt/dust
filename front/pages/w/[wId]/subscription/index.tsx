@@ -31,7 +31,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
   SubscriptionPerSeatPricing,
@@ -327,14 +327,13 @@ export default function Subscription({
                     subscription.stripeSubscriptionId && (
                       <Button
                         label="Manage my subscription"
-                        onClick={() => {
-                          trackEvent({
-                            area: TRACKING_AREAS.AUTH,
-                            object: "subscription_manage",
-                            action: "click",
-                          });
-                          void handleGoToStripePortal();
-                        }}
+                        onClick={withTracking(
+                          TRACKING_AREAS.AUTH,
+                          "subscription_manage",
+                          () => {
+                            void handleGoToStripePortal();
+                          }
+                        )}
                         variant="outline"
                       />
                     )}
@@ -346,27 +345,25 @@ export default function Subscription({
             <Page.Vertical>
               <Page.Horizontal gap="sm">
                 <Button
-                  onClick={() => {
-                    trackEvent({
-                      area: TRACKING_AREAS.AUTH,
-                      object: "subscription_skip_trial",
-                      action: "click",
-                    });
-                    setShowSkipFreeTrialDialog(true);
-                  }}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_skip_trial",
+                    () => {
+                      setShowSkipFreeTrialDialog(true);
+                    }
+                  )}
                   label="End trial & get full access"
                 />
                 <Button
                   label="Cancel subscription"
                   variant="ghost"
-                  onClick={() => {
-                    trackEvent({
-                      area: TRACKING_AREAS.AUTH,
-                      object: "subscription_cancel_trial",
-                      action: "click",
-                    });
-                    setShowCancelFreeTrialDialog(true);
-                  }}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_cancel_trial",
+                    () => {
+                      setShowCancelFreeTrialDialog(true);
+                    }
+                  )}
                 />
               </Page.Horizontal>
             </Page.Vertical>
@@ -415,14 +412,13 @@ export default function Subscription({
                   icon={CardIcon}
                   label="Your billing dashboard on Stripe"
                   variant="ghost"
-                  onClick={() => {
-                    trackEvent({
-                      area: TRACKING_AREAS.AUTH,
-                      object: "subscription_stripe_portal",
-                      action: "click",
-                    });
-                    void handleGoToStripePortal();
-                  }}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_stripe_portal",
+                    () => {
+                      void handleGoToStripePortal();
+                    }
+                  )}
                 />
               </div>
             </Page.Vertical>

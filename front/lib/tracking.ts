@@ -6,12 +6,17 @@
  * - Common actions: click, submit, create, delete, connect
  *
  * @example
+ * // For simple click tracking:
+ * <Button onClick={withTracking(TRACKING_AREAS.BUILDER, "create_agent")} />
+ *
+ * @example
+ * // For tracking with extra params or non-click actions:
  * trackEvent({
  *   area: TRACKING_AREAS.BUILDER,
  *   object: "create_from_template",
- *   action: "click"
+ *   action: "submit",
+ *   extra: { template_id: "123" }
  * })
- * // Creates event: "builder:create_from_template_click"
  */
 
 import posthog from "posthog-js";
@@ -85,12 +90,32 @@ export function trackEvent({
   posthog.capture(eventName, properties);
 }
 
-export function trackOnClick<T extends Element = HTMLElement>(
-  handler: (e: React.MouseEvent<T>) => void | Promise<void>,
-  params: TrackEventParams
+/**
+ * Wrapper for onClick handlers that includes tracking.
+ * For click tracking with optional extra params.
+ *
+ * @example
+ * // Without handler (just tracking)
+ * <Button onClick={withTracking(TRACKING_AREAS.BUILDER, "create_agent")} />
+ *
+ * @example
+ * // With handler
+ * <Button onClick={withTracking(TRACKING_AREAS.BUILDER, "create_agent", handleCreate)} />
+ *
+ * @example
+ * // With handler and extra params
+ * <Button onClick={withTracking(TRACKING_AREAS.DATA, "select", handleClick, { id: "123" })} />
+ */
+export function withTracking<T extends Element = HTMLElement>(
+  area: TrackingArea | string,
+  object: string,
+  handler?: (e: React.MouseEvent<T>) => void | Promise<void>,
+  extra?: Record<string, string>
 ) {
   return (e: React.MouseEvent<T>) => {
-    trackEvent(params);
-    return handler(e);
+    trackEvent({ area, object, action: TRACKING_ACTIONS.CLICK, extra });
+    if (handler) {
+      void handler(e);
+    }
   };
 }

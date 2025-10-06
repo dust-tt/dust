@@ -64,7 +64,7 @@ import {
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getAgentBuilderRoute, getAgentRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
@@ -396,13 +396,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                                 label="From scratch"
                                 data-gtm-label="assistantCreationButton"
                                 data-gtm-location="sidebarMenu"
-                                onClick={() =>
-                                  trackEvent({
-                                    area: TRACKING_AREAS.BUILDER,
-                                    object: "create_from_scratch",
-                                    action: "click",
-                                  })
-                                }
+                                onClick={withTracking(
+                                  TRACKING_AREAS.BUILDER,
+                                  "create_from_scratch"
+                                )}
                               />
                               <DropdownMenuItem
                                 href={getAgentBuilderRoute(owner.sId, "create")}
@@ -410,13 +407,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                                 label="From template"
                                 data-gtm-label="assistantCreationButton"
                                 data-gtm-location="sidebarMenu"
-                                onClick={() =>
-                                  trackEvent({
-                                    area: TRACKING_AREAS.BUILDER,
-                                    object: "create_from_template",
-                                    action: "click",
-                                  })
-                                }
+                                onClick={withTracking(
+                                  TRACKING_AREAS.BUILDER,
+                                  "create_from_template"
+                                )}
                               />
                               {hasFeature("agent_to_yaml") && (
                                 <DropdownMenuItem
@@ -486,13 +480,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                         label="Manage agents"
                         data-gtm-label="assistantManagementButton"
                         data-gtm-location="sidebarMenu"
-                        onClick={() =>
-                          trackEvent({
-                            area: TRACKING_AREAS.BUILDER,
-                            object: "manage_agents",
-                            action: "click",
-                          })
-                        }
+                        onClick={withTracking(
+                          TRACKING_AREAS.BUILDER,
+                          "manage_agents"
+                        )}
                       />
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>
