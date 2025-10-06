@@ -21,7 +21,6 @@ import React, {
 import { AssistantInputBarVirtuoso } from "@app/components/assistant/conversation/AssistantInputBarVirtuoso";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   createPlaceholderUserMessage,
   submitMessage,
@@ -114,8 +113,6 @@ const ConversationViewerVirtuoso = ({
   const sendNotification = useSendNotification();
   const { serverId } = useCoEditionContext();
 
-  const { currentPanel } = useConversationSidePanelContext();
-
   const {
     conversation,
     conversationError,
@@ -180,12 +177,9 @@ const ConversationViewerVirtuoso = ({
       return;
     }
 
+    // We use the messages ranks to know what is older and what is newer.
+
     const minRank = Math.min(
-      ...ref.current.data
-        .get()
-        .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
-    );
-    const maxRank = Math.max(
       ...ref.current.data
         .get()
         .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
@@ -202,6 +196,12 @@ const ConversationViewerVirtuoso = ({
         convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
       );
     }
+
+    const maxRank = Math.max(
+      ...ref.current.data
+        .get()
+        .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
+    );
 
     const recentMessagesFromBackend = messagesFromBackend.filter(
       (m) => m.rank > maxRank
@@ -434,6 +434,7 @@ const ConversationViewerVirtuoso = ({
         contentFragments: contentFragmentsFromBackend,
       } = result.value;
 
+      // map() is how we update the state of virtuoso messages.
       ref.current.data.map((m) =>
         isUserMessage(m) &&
         (m.sId === placeholderMessage.sId || m.sId === messageFromBackend.sId)
@@ -529,9 +530,7 @@ const ConversationViewerVirtuoso = ({
               "dd-privacy-mask",
               "s-@container/conversation",
               "h-full w-full",
-              isInModal ? "" : "px-4 md:px-8",
-              // Hide conversation on mobile when any panel is opened.
-              currentPanel ? "hidden md:block" : ""
+              isInModal ? "" : "px-4 md:px-8"
             )}
             shortSizeAlign="bottom"
             StickyHeader={StickyHeaderVirtuoso}

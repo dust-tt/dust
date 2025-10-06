@@ -31,7 +31,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     // Get auth
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    // Mock the INTERNAL_MCP_SERVERS to override the "think" server config
+    // Mock the INTERNAL_MCP_SERVERS to override the "primitive_types_debugger" server config
     // so that the test passes even if we edit the server config.
     const originalPrimitiveTypesDebuggerConfig =
       INTERNAL_MCP_SERVERS["primitive_types_debugger"];

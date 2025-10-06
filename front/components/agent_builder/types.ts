@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { mcpServerConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { nameToStorageFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
@@ -173,12 +174,15 @@ export function getDefaultMCPAction(
 ): AgentBuilderAction {
   const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
   const configuration = getDefaultConfiguration(mcpServerView);
+  const rawName = mcpServerView?.name ?? mcpServerView?.server.name ?? "";
+  const sanitizedName = rawName ? nameToStorageFormat(rawName) : "";
 
   return {
     id: uniqueId(),
     type: "MCP",
     configuration,
-    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
+    // Ensure default name always matches validation regex (^[a-z0-9_]+$)
+    name: sanitizedName,
     description:
       toolsConfigurations.dataSourceConfigurable !== "no" ||
       toolsConfigurations.dataWarehouseConfigurable !== "no" ||

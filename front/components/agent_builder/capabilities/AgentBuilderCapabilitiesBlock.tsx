@@ -1,6 +1,5 @@
 import {
   Avatar,
-  BoltIcon,
   BookOpenIcon,
   Button,
   Card,
@@ -10,6 +9,7 @@ import {
   EmptyCTA,
   Hoverable,
   Spinner,
+  ToolsIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
@@ -257,7 +257,7 @@ export function AgentBuilderCapabilitiesBlock({
         type="button"
         onClick={() => setDialogMode({ type: "add" })}
         label="Add tools"
-        icon={BoltIcon}
+        icon={ToolsIcon}
         variant="outline"
       />
     </div>
@@ -302,7 +302,7 @@ export function AgentBuilderCapabilitiesBlock({
                   type="button"
                   onClick={() => setDialogMode({ type: "add" })}
                   label="Add tools"
-                  icon={BoltIcon}
+                  icon={ToolsIcon}
                   variant="outline"
                 />
               </div>

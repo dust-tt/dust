@@ -102,15 +102,19 @@ async function handler(
     });
   }
 
-  const { wId, webhookSourceId } = req.query;
+  const { wId, webhookSourceId, webhookSourceUrlSecret } = req.query;
 
-  if (typeof wId !== "string" || typeof webhookSourceId !== "string") {
+  if (
+    typeof wId !== "string" ||
+    typeof webhookSourceId !== "string" ||
+    typeof webhookSourceUrlSecret !== "string"
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Invalid route parameters: expected string wId and webhookSourceId.",
+          "Invalid route parameters: expected string wId, webhookSourceId and webhookSourceUrlSecret.",
       },
     });
   }
@@ -139,6 +143,17 @@ async function handler(
       api_error: {
         type: "webhook_source_not_found",
         message: `Webhook source ${webhookSourceId} not found in workspace ${wId}.`,
+      },
+    });
+  }
+
+  // Validate webhook url secret
+  if (webhookSourceUrlSecret !== webhookSource.urlSecret) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "webhook_source_auth_error",
+        message: "Invalid webhook path.",
       },
     });
   }

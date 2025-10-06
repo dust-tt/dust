@@ -2,8 +2,8 @@ import {
   ActionIncludeIcon,
   ActionScanIcon,
   BarChartIcon,
-  BoltIcon,
   MagnifyingGlassIcon,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
@@ -34,8 +34,8 @@ export const RUN_AGENT_ACTION_NUM_RESULTS = 64;
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",
   description: "Add additional sets of tools",
-  cardIcon: BoltIcon,
-  dropDownIcon: BoltIcon,
+  cardIcon: ToolsIcon,
+  dropDownIcon: ToolsIcon,
   flag: null,
 };
 

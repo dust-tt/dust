@@ -160,7 +160,7 @@ function AgentActionsPanelContent({
 
   const streamActionProgress = messageStreamState?.actionProgress ?? new Map();
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-background dark:bg-background-night">
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
         onClose={closePanel}

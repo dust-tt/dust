@@ -40,7 +40,9 @@ export function transformAgentConfigurationToFormData(
       responseFormat: agentConfiguration.model.responseFormat,
     },
     actions: [], // Will be populated reactively from useAgentConfigurationActions hook
-    triggers: [], // Will be populated reactively from the hook
+    triggersToCreate: [],
+    triggersToUpdate: [], // Will be populated reactively from the hook
+    triggersToDelete: [],
     maxStepsPerRun: agentConfiguration.maxStepsPerRun || 8,
   };
 }
@@ -69,7 +71,9 @@ export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
       responseFormat: undefined,
     },
     actions: [],
-    triggers: [],
+    triggersToCreate: [],
+    triggersToUpdate: [],
+    triggersToDelete: [],
     maxStepsPerRun: 8,
   };
 }
@@ -110,7 +114,9 @@ export function transformTemplateToFormData(
         : defaultFormData.generationSettings.temperature,
     },
     actions: [],
-    triggers: [],
+    triggersToCreate: [],
+    triggersToUpdate: [],
+    triggersToDelete: [],
   };
 }
 

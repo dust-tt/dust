@@ -32,7 +32,12 @@ export function VoicePicker({
   };
 
   // ----- Event handlers -------------------------------------------------------
-  const handlePointerDown = async () => {
+  const handlePointerDown = async (
+    e: React.PointerEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (disabled) {
       return;
     }
@@ -45,14 +50,17 @@ export function VoicePicker({
       // If still pressed, enter hold mode and start recording.
       if (pressStartRef.current !== null) {
         setMode("hold");
-        if (!voiceTranscriberService.isRecording) {
+        if (voiceTranscriberService.status === "idle") {
           await voiceTranscriberService.startRecording();
         }
       }
     }, 150);
   };
 
-  const handlePointerUp = async () => {
+  const handlePointerUp = async (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (disabled) {
       return;
     }
@@ -68,7 +76,7 @@ export function VoicePicker({
     if (duration < 150) {
       // Click mode: toggle start/stop on click.
       setMode("click");
-      if (!voiceTranscriberService.isRecording) {
+      if (voiceTranscriberService.status === "idle") {
         await voiceTranscriberService.startRecording();
         return;
       }
@@ -77,25 +85,35 @@ export function VoicePicker({
     }
 
     // Hold mode: release stops the recording if active.
-    if (voiceTranscriberService.isRecording) {
+    if (voiceTranscriberService.status === "recording") {
       await voiceTranscriberService.stopRecording("transcribe");
     }
   };
 
-  const handlePointerLeave = async () => {
+  const handlePointerLeave = async (
+    e: React.PointerEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (disabled || mode !== "hold") {
       return;
     }
-    if (voiceTranscriberService.isRecording) {
+    if (voiceTranscriberService.status === "recording") {
       await voiceTranscriberService.stopRecording("transcribe");
     }
   };
 
-  const handlePointerClick = async () => {
+  const handlePointerClick = async (
+    e: React.PointerEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (disabled || mode !== "click") {
       return;
     }
-    if (voiceTranscriberService.isRecording) {
+    if (voiceTranscriberService.status === "recording") {
       await voiceTranscriberService.stopRecording("attachment");
     }
   };
@@ -105,7 +123,7 @@ export function VoicePicker({
       <div
         className={cn(
           "duration-600 flex items-center justify-end gap-2 overflow-hidden px-2 transition-all ease-in-out",
-          voiceTranscriberService.isRecording
+          voiceTranscriberService.status === "recording"
             ? "w-32 opacity-100"
             : "w-8 opacity-0"
         )}
@@ -118,23 +136,26 @@ export function VoicePicker({
       <Button
         size="xs"
         icon={
-          voiceTranscriberService.isRecording && mode === "click"
+          voiceTranscriberService.status === "recording" && mode === "click"
             ? SquareIcon
             : MicIcon
         }
-        isLoading={voiceTranscriberService.isTranscribing}
+        isLoading={
+          voiceTranscriberService.status === "transcribing" ||
+          voiceTranscriberService.status === "authorizing_microphone"
+        }
         variant={
-          voiceTranscriberService.isRecording && mode === "click"
+          voiceTranscriberService.status === "recording" && mode === "click"
             ? "highlight"
             : "ghost-secondary"
         }
         tooltip={computeTooltip(
           mode,
-          voiceTranscriberService.isRecording,
-          voiceTranscriberService.isTranscribing
+          voiceTranscriberService.status === "recording",
+          voiceTranscriberService.status === "transcribing"
         )}
         label={
-          voiceTranscriberService.isRecording && mode === "click"
+          voiceTranscriberService.status === "recording" && mode === "click"
             ? "Stop"
             : undefined
         }
@@ -191,7 +212,7 @@ const VoiceLevelDisplay = ({ level }: VoiceLevelIconProps) => {
         <div
           // Only the height varies according to the level; the rest matches the template.
           key={i}
-          className="min-h-1 w-0.5 rounded-full bg-muted-foreground"
+          className="min-h-1 w-0.5 rounded-full bg-muted-foreground transition-all duration-150 ease-out"
           style={{ height: `${h}%` }}
         />
       ))}

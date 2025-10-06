@@ -38,7 +38,6 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "image_generation", id: 2 },
       { name: "file_generation", id: 3 },
       { name: "web_search_&_browse", id: 5 },
-      { name: "think", id: 6 },
       { name: "agent_router", id: 8 },
       { name: "include_data", id: 9 },
       { name: "run_dust_app", id: 10 },

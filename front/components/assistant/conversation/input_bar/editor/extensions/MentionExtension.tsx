@@ -23,10 +23,34 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
     };
   },
 
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      description: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-description"),
+        renderHTML: (attributes) => {
+          if (!attributes.description) {
+            return {};
+          }
+          return {
+            "data-description": attributes.description,
+          };
+        },
+      },
+    };
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer((props: NodeViewProps) => (
       <MentionComponent
-        node={{ attrs: props.node.attrs as { id: string; label: string } }}
+        node={{
+          attrs: props.node.attrs as {
+            id: string;
+            label: string;
+            description?: string;
+          },
+        }}
         owner={this.options.owner}
       />
     ));
@@ -55,7 +79,11 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
                 index: match.index,
                 text: match[1],
                 replaceWith: suggestion.label,
-                data: { id: suggestion.id, label: suggestion.label },
+                data: {
+                  id: suggestion.id,
+                  label: suggestion.label,
+                  description: suggestion.description,
+                },
               };
             });
           }
@@ -63,8 +91,14 @@ export const MentionExtension = Mention.extend<MentionExtensionOptions>({
         return results;
       },
       type: this.type,
-      getAttributes: (match: { data: { label: string; id: string } }) => {
-        return { label: match.data.label, id: match.data.id };
+      getAttributes: (match: {
+        data: { label: string; id: string; description: string };
+      }) => {
+        return {
+          label: match.data.label,
+          id: match.data.id,
+          description: match.data.description,
+        };
       },
     });
 

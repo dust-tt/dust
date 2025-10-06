@@ -310,7 +310,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
   public async updateName(
     auth: Authenticator,
-    name?: string
+    name?: string,
+    transaction?: Transaction
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -318,12 +319,41 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       );
     }
 
-    const [affectedCount] = await this.update({
-      customName: name ?? null,
-      editedAt: new Date(),
-      editedByUserId: auth.getNonNullableUser().id,
-    });
+    const [affectedCount] = await this.update(
+      {
+        customName: name ?? null,
+        editedAt: new Date(),
+        editedByUserId: auth.getNonNullableUser().id,
+      },
+      transaction
+    );
     return new Ok(affectedCount);
+  }
+
+  public static async bulkUpdateName(
+    auth: Authenticator,
+    viewIds: ModelId[],
+    name?: string
+  ): Promise<void> {
+    if (viewIds.length === 0) {
+      return;
+    }
+
+    await this.model.update(
+      {
+        customName: name ?? null,
+        editedAt: new Date(),
+        editedByUserId: auth.getNonNullableUser().id,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: {
+            [Op.in]: viewIds,
+          },
+        },
+      }
+    );
   }
 
   // Deletion.

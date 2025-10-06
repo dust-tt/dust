@@ -70,7 +70,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only Content Creation files can be shared publicly.",
+        message: "Only Frame files can be shared publicly.",
       },
     });
   }

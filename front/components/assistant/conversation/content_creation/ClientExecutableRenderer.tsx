@@ -231,7 +231,7 @@ export function ClientExecutableRenderer({
     return (
       <CenteredState>
         <Spinner size="sm" />
-        <span>Loading Content Creation...</span>
+        <span>Loading Frame...</span>
       </CenteredState>
     );
   }

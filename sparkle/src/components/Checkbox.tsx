@@ -58,7 +58,7 @@ interface CheckboxProps
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, checked, id, ...props }, ref) => {
+>(({ className, size, checked, id, tooltip, ...props }, ref) => {
   const checkbox = (
     <CheckboxPrimitive.Root
       ref={ref}
@@ -79,7 +79,11 @@ const Checkbox = React.forwardRef<
     </CheckboxPrimitive.Root>
   );
 
-  return checkbox;
+  return tooltip ? (
+    <Tooltip label={tooltip} trigger={checkbox} tooltipTriggerAsChild />
+  ) : (
+    checkbox
+  );
 });
 
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;

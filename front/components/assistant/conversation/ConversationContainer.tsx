@@ -47,22 +47,19 @@ interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
-  agentIdToMention: string | null;
 }
 
 export function ConversationContainer({
   owner,
   subscription,
   user,
-  agentIdToMention,
 }: ConversationContainerProps) {
   const { activeConversationId } = useConversationsNavigation();
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
-  const { animate, setAnimate, setSelectedAssistant } =
-    useContext(InputBarContext);
+  const { setSelectedAssistant } = useContext(InputBarContext);
 
   const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
     useActionValidationContext();
@@ -84,26 +81,6 @@ export function ConversationContainer({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
     limit: 50,
-  });
-
-  const setInputBarMention = useCallback(
-    (agentId: string) => {
-      setSelectedAssistant({ configurationId: agentId });
-      setAnimate(true);
-    },
-    [setAnimate, setSelectedAssistant]
-  );
-
-  useEffect(() => {
-    if (agentIdToMention) {
-      setInputBarMention(agentIdToMention);
-    }
-  }, [agentIdToMention, setInputBarMention]);
-
-  useEffect(() => {
-    if (animate) {
-      setTimeout(() => setAnimate(false), 500);
-    }
   });
 
   const { serverId } = useCoEditionContext();
@@ -277,32 +254,6 @@ export function ConversationContainer({
     ]
   );
 
-  useEffect(() => {
-    const scrollContainerElement = document.getElementById(
-      "assistant-input-header"
-    );
-
-    if (scrollContainerElement) {
-      const observer = new IntersectionObserver(
-        () => {
-          if (assistantToMention.current) {
-            setInputBarMention(assistantToMention.current.sId);
-            assistantToMention.current = null;
-          }
-        },
-        { threshold: 0.8 }
-      );
-      observer.observe(scrollContainerElement);
-    }
-    const handleRouteChange = (url: string) => {
-      if (url.endsWith("/new")) {
-        setSelectedAssistant(null);
-        assistantToMention.current = null;
-      }
-    };
-    router.events.on("routeChangeComplete", handleRouteChange);
-  }, [setAnimate, setInputBarMention, router, setSelectedAssistant]);
-
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
@@ -389,7 +340,9 @@ export function ConversationContainer({
 
       {!activeConversationId && (
         <AgentBrowserContainer
-          onAgentConfigurationClick={setInputBarMention}
+          onAgentConfigurationClick={(agentId) => {
+            setSelectedAssistant({ configurationId: agentId });
+          }}
           setAssistantToMention={(assistant) => {
             assistantToMention.current = assistant;
           }}

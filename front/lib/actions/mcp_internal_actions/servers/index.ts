@@ -45,7 +45,6 @@ import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
-import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -111,8 +110,6 @@ export async function getInternalMCPServer(
       return jitToolDatasourceSettingDebuggerServer();
     case "jit_testing":
       return jitTestingServer();
-    case "think":
-      return thinkServer();
     case "web_search_&_browse":
       return webtoolsServer(auth, agentLoopContext);
     case "search":

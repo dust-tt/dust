@@ -22,8 +22,9 @@ export function useVoiceTranscriberService({
   onTranscribeComplete,
   fileUploaderService,
 }: UseVoiceTranscriberServiceParams) {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [status, setStatus] = useState<
+    "idle" | "authorizing_microphone" | "recording" | "transcribing"
+  >("idle");
   const [level, setLevel] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -32,18 +33,19 @@ export function useVoiceTranscriberService({
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const rafRef = useRef<number | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sendNotification = useSendNotification();
 
   const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
 
   const stopLevelMetering = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
+
     try {
       analyserRef.current = null;
       sourceNodeRef.current?.disconnect();
@@ -57,8 +59,15 @@ export function useVoiceTranscriberService({
     } finally {
       audioContextRef.current = null;
       setLevel(0);
+      setStatus("idle");
     }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      stopLevelMetering();
+    };
+  }, [stopLevelMetering]);
 
   const startLevelMetering = useCallback(
     (stream: MediaStream) => {
@@ -83,6 +92,7 @@ export function useVoiceTranscriberService({
           if (!a) {
             return;
           }
+
           a.getByteTimeDomainData(buffer);
           // Compute RMS level from time-domain data. Normalize to [0, 1].
           let sumSquares = 0;
@@ -93,10 +103,10 @@ export function useVoiceTranscriberService({
           const rms = Math.sqrt(sumSquares / buffer.length); // ~0..1
           // Map RMS to a smoother visual level with light bias to show activity.
           const visual = Math.max(0, Math.min(1, (rms - 0.02) / 0.3));
+
           setLevel(visual);
-          rafRef.current = requestAnimationFrame(tick);
         };
-        rafRef.current = requestAnimationFrame(tick);
+        intervalRef.current = setInterval(tick, 250);
       } catch {
         // If metering fails (unsupported), we silently ignore.
         audioContextRef.current = null;
@@ -118,7 +128,7 @@ export function useVoiceTranscriberService({
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
-    if (isRecording) {
+    if (status === "recording") {
       interval = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
       }, 1000);
@@ -132,13 +142,14 @@ export function useVoiceTranscriberService({
         clearInterval(interval);
       }
     };
-  }, [isRecording]);
+  }, [status]);
 
   const startRecording = useCallback(async () => {
-    if (isRecording) {
+    if (status === "recording" || status === "authorizing_microphone") {
       return;
     }
     try {
+      setStatus("authorizing_microphone");
       const stream = await requestMicrophone();
       streamRef.current = stream;
 
@@ -149,7 +160,8 @@ export function useVoiceTranscriberService({
       startLevelMetering(stream);
 
       recorder.start();
-      setIsRecording(true);
+
+      setStatus("recording");
     } catch {
       sendNotification({
         type: "error",
@@ -157,7 +169,7 @@ export function useVoiceTranscriberService({
         description: "Please allow microphone access and try again.",
       });
     }
-  }, [isRecording, sendNotification, startLevelMetering]);
+  }, [sendNotification, startLevelMetering, status]);
 
   const finalizeRecordingHold = useCallback(
     async (file: File) => {
@@ -219,8 +231,7 @@ export function useVoiceTranscriberService({
 
   const stopAndFinalize = useCallback(
     async (mode: Mode) => {
-      setIsRecording(false);
-      setIsTranscribing(true);
+      setStatus("transcribing");
 
       try {
         const file = buildAudioFile(chunksRef.current);
@@ -239,7 +250,6 @@ export function useVoiceTranscriberService({
             e instanceof Error ? e.message : "An unknown error occurred.",
         });
       } finally {
-        setIsTranscribing(false);
         stopLevelMetering();
         stopTracks(streamRef.current);
         streamRef.current = null;
@@ -273,8 +283,7 @@ export function useVoiceTranscriberService({
 
   return featureFlags.hasFeature("simple_audio_transcription")
     ? {
-        isRecording,
-        isTranscribing,
+        status,
         level,
         elapsedSeconds,
         startRecording,
@@ -290,8 +299,7 @@ export type VoiceTranscriberService = ReturnType<
 // Helpers ---------------------------------------------------------------------
 
 const quackingVoiceTranscriptService = {
-  isRecording: false,
-  isTranscribing: false,
+  status: "idle",
   level: 0,
   elapsedSeconds: 0,
   startRecording: () => Promise.resolve(),
