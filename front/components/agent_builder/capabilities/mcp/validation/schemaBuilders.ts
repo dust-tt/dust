@@ -55,26 +55,30 @@ export function createDynamicConfigurationFields(
   toolsConfigurations: MCPServerToolsConfigurations
 ) {
   return {
-    childAgentId: toolsConfigurations.childAgentConfiguration
-      ? childAgentIdSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.childAgent.required,
-        })
-      : z.null(),
-    reasoningModel: toolsConfigurations.reasoningConfiguration
-      ? reasoningModelSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.reasoningModel.required,
-        })
-      : z.null(),
-    dustAppConfiguration: toolsConfigurations.mayRequireDustAppConfiguration
-      ? dustAppConfigurationSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.dustApp.required,
-        })
-      : z.null(),
-    secretName: toolsConfigurations.mayRequireSecretConfiguration
-      ? secretNameSchema.refine((val) => val !== null, {
-          message: VALIDATION_MESSAGES.secret.required,
-        })
-      : z.null(),
+    childAgentId:
+      toolsConfigurations.childAgentConfigurable !== "no"
+        ? childAgentIdSchema.refine((val) => val !== null, {
+            message: VALIDATION_MESSAGES.childAgent.required,
+          })
+        : z.null(),
+    reasoningModel:
+      toolsConfigurations.reasoningConfigurable !== "no"
+        ? reasoningModelSchema.refine((val) => val !== null, {
+            message: VALIDATION_MESSAGES.reasoningModel.required,
+          })
+        : z.null(),
+    dustAppConfiguration:
+      toolsConfigurations.dustAppConfigurable !== "no"
+        ? dustAppConfigurationSchema.refine((val) => val !== null, {
+            message: VALIDATION_MESSAGES.dustApp.required,
+          })
+        : z.null(),
+    secretName:
+      toolsConfigurations.secretConfigurable !== "no"
+        ? secretNameSchema.refine((val) => val !== null, {
+            message: VALIDATION_MESSAGES.secret.required,
+          })
+        : z.null(),
     additionalConfiguration:
       createAdditionalConfigurationSchema(toolsConfigurations),
   };
@@ -88,9 +92,9 @@ function createAdditionalConfigurationSchema(
   toolsConfigurations: MCPServerToolsConfigurations
 ) {
   const hasRequiredFields =
-    toolsConfigurations.stringConfigurations.length > 0 ||
-    toolsConfigurations.numberConfigurations.length > 0 ||
-    toolsConfigurations.booleanConfigurations.length > 0 ||
+    Object.keys(toolsConfigurations.stringConfigurations).length > 0 ||
+    Object.keys(toolsConfigurations.numberConfigurations).length > 0 ||
+    Object.keys(toolsConfigurations.booleanConfigurations).length > 0 ||
     Object.keys(toolsConfigurations.enumConfigurations).length > 0 ||
     Object.keys(toolsConfigurations.listConfigurations).length > 0;
 
@@ -131,20 +135,20 @@ function createAdditionalConfigurationSchema(
       } else {
         // This is a leaf value - determine type based on requirements
         if (
-          toolsConfigurations.stringConfigurations.some(
-            (item) => item.key === path
+          Object.keys(toolsConfigurations.stringConfigurations).some(
+            (key) => key === path
           )
         ) {
           nestedStructure[rootKey] = z.string().min(1);
         } else if (
-          toolsConfigurations.numberConfigurations.some(
-            (item) => item.key === path
+          Object.keys(toolsConfigurations.numberConfigurations).some(
+            (key) => key === path
           )
         ) {
           nestedStructure[rootKey] = z.coerce.number();
         } else if (
-          toolsConfigurations.booleanConfigurations.some(
-            (item) => item.key === path
+          Object.keys(toolsConfigurations.booleanConfigurations).some(
+            (key) => key === path
           )
         ) {
           nestedStructure[rootKey] = z.coerce.boolean();
@@ -168,9 +172,9 @@ function createAdditionalConfigurationSchema(
   };
 
   return buildNestedSchema([
-    ...toolsConfigurations.stringConfigurations.map((item) => item.key),
-    ...toolsConfigurations.numberConfigurations.map((item) => item.key),
-    ...toolsConfigurations.booleanConfigurations.map((item) => item.key),
+    ...Object.keys(toolsConfigurations.stringConfigurations),
+    ...Object.keys(toolsConfigurations.numberConfigurations),
+    ...Object.keys(toolsConfigurations.booleanConfigurations),
     ...Object.keys(toolsConfigurations.enumConfigurations),
     ...Object.keys(toolsConfigurations.listConfigurations),
   ]);

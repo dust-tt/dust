@@ -133,7 +133,7 @@ export const capabilityFormSchema = z
       return true;
     }
 
-    if (toolsConfigurations.mayRequireTimeFrameConfiguration) {
+    if (toolsConfigurations.timeFrameConfigurable !== "no") {
       if (
         configuration.timeFrame !== null &&
         (configuration.timeFrame.duration === null ||
@@ -149,7 +149,7 @@ export const capabilityFormSchema = z
     }
 
     if (
-      toolsConfigurations.mayRequireJsonSchemaConfiguration &&
+      toolsConfigurations.jsonSchemaConfigurable !== "no" &&
       configuration._jsonSchemaString !== null
     ) {
       const parsedSchema = validateConfiguredJsonSchema(
@@ -180,10 +180,9 @@ export function getDefaultMCPAction(
     configuration,
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      toolsConfigurations.tableConfiguration ??
-      false
+      toolsConfigurations.dataSourceConfigurable !== "no" ||
+      toolsConfigurations.dataWarehouseConfigurable !== "no" ||
+      toolsConfigurations.tableConfigurable !== "no"
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)

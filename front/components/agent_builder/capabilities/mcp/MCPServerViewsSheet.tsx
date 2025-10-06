@@ -230,7 +230,8 @@ export function MCPServerViewsSheet({
     }
 
     return filteredList.filter(
-      (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
+      (view) =>
+        getMCPServerToolsConfigurations(view).reasoningConfigurable === "no"
     );
   }, [
     topMCPServerViews,
@@ -398,9 +399,8 @@ export function MCPServerViewsSheet({
 
     if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = toolsConfigurations.reasoningConfiguration
-        ? true
-        : false;
+      const isReasoning =
+        toolsConfigurations.reasoningConfigurable !== "no" ? true : false;
 
       let configuredAction = action;
       if (action.type === "MCP" && isReasoning) {
@@ -416,14 +416,8 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) =>
-              model.modelId ===
-              toolsConfigurations.reasoningConfiguration?.default?.modelId
-          ) ??
-          reasoningModels.find(
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ??
-          reasoningModels[0];
+          ) ?? reasoningModels[0];
 
         configuredAction = {
           ...action,
@@ -642,27 +636,27 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {toolsConfigurations.reasoningConfiguration && (
+                {toolsConfigurations.reasoningConfigurable !== "no" && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.childAgentConfiguration && (
+                {toolsConfigurations.childAgentConfigurable !== "no" && (
                   <ChildAgentSection />
                 )}
 
-                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+                {toolsConfigurations.timeFrameConfigurable !== "no" && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.mayRequireDustAppConfiguration && (
+                {toolsConfigurations.dustAppConfigurable !== "no" && (
                   <DustAppSection />
                 )}
 
-                {toolsConfigurations.mayRequireSecretConfiguration && (
+                {toolsConfigurations.secretConfigurable !== "no" && (
                   <SecretSection />
                 )}
 
-                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+                {toolsConfigurations.jsonSchemaConfigurable !== "no" && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />

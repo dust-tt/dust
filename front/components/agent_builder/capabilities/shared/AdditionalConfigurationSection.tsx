@@ -523,9 +523,9 @@ function GroupedConfigurationSection({
 }
 
 interface AdditionalConfigurationSectionProps {
-  stringConfigurations: OptionalDescribedKey[];
-  numberConfigurations: OptionalDescribedKey[];
-  booleanConfigurations: OptionalDescribedKey[];
+  stringConfigurations: Record<string, { description?: string }>;
+  numberConfigurations: Record<string, { description?: string }>;
+  booleanConfigurations: Record<string, { description?: string }>;
   enumConfigurations: Record<
     string,
     {
@@ -555,26 +555,51 @@ export function AdditionalConfigurationSection({
   });
   const hasWebSummarizationFlag = featureFlags.includes("web_summarization");
 
+  const stringConfigurationsArray = useMemo(
+    () =>
+      Object.entries(stringConfigurations).map(([key, value]) => ({
+        key,
+        description: value.description,
+      })),
+    [stringConfigurations]
+  );
+  const numberConfigurationsArray = useMemo(
+    () =>
+      Object.entries(numberConfigurations).map(([key, value]) => ({
+        key,
+        description: value.description,
+      })),
+    [numberConfigurations]
+  );
+  const booleanConfigurationsArray = useMemo(
+    () =>
+      Object.entries(booleanConfigurations).map(([key, value]) => ({
+        key,
+        description: value.description,
+      })),
+    [booleanConfigurations]
+  );
+
   const filteredBooleanConfigurations = useMemo(
     () =>
-      booleanConfigurations.filter(
+      booleanConfigurationsArray.filter(
         ({ key }) => !(key === "useSummary" && !hasWebSummarizationFlag)
       ),
-    [booleanConfigurations, hasWebSummarizationFlag]
+    [booleanConfigurationsArray, hasWebSummarizationFlag]
   );
 
   // Group configuration fields by prefix.
   const groupedStrings = useMemo(
-    () => groupKeysByPrefix(stringConfigurations),
-    [stringConfigurations]
+    () => groupKeysByPrefix(stringConfigurationsArray),
+    [stringConfigurationsArray]
   );
   const groupedNumbers = useMemo(
-    () => groupKeysByPrefix(numberConfigurations),
-    [numberConfigurations]
+    () => groupKeysByPrefix(numberConfigurationsArray),
+    [numberConfigurationsArray]
   );
   const groupedBooleans = useMemo(
-    () => groupKeysByPrefix(filteredBooleanConfigurations),
-    [filteredBooleanConfigurations]
+    () => groupKeysByPrefix(booleanConfigurationsArray),
+    [booleanConfigurationsArray]
   );
   const groupedEnums = useMemo(() => {
     const groups: Record<
@@ -646,8 +671,8 @@ export function AdditionalConfigurationSection({
   ]);
 
   const hasConfiguration =
-    stringConfigurations.length > 0 ||
-    numberConfigurations.length > 0 ||
+    stringConfigurationsArray.length > 0 ||
+    numberConfigurationsArray.length > 0 ||
     filteredBooleanConfigurations.length > 0 ||
     Object.keys(enumConfigurations).length > 0 ||
     Object.keys(listConfigurations).length > 0;

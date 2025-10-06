@@ -9,6 +9,7 @@ export function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
+
 export function isEmptyString(str: string | null | undefined): boolean {
   if (str === null || str === undefined) {
     return true;

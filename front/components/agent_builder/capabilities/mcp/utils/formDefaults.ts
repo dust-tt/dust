@@ -6,66 +6,6 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-  ReasoningEffortIdType,
-} from "@app/types/assistant/assistant";
-import {
-  MODEL_IDS,
-  MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
-} from "@app/types/assistant/assistant";
-
-/**
- * Type guard to validate reasoning model default values against schema constraints
- * Returns a properly typed reasoning model object that matches the schema requirements
- */
-function getValidatedReasoningModel(value: unknown): {
-  modelId: ModelIdType;
-  providerId: ModelProviderIdType;
-  temperature: number | null;
-  reasoningEffort: ReasoningEffortIdType | null;
-} | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const obj = value as Record<string, unknown>;
-
-  // Validate required fields
-  if (
-    typeof obj.modelId !== "string" ||
-    !MODEL_IDS.includes(obj.modelId as ModelIdType) ||
-    typeof obj.providerId !== "string" ||
-    !MODEL_PROVIDER_IDS.includes(obj.providerId as ModelProviderIdType)
-  ) {
-    return null;
-  }
-
-  // Validate optional temperature
-  const temperature =
-    typeof obj.temperature === "number" &&
-    obj.temperature >= 0 &&
-    obj.temperature <= 1
-      ? obj.temperature
-      : null;
-
-  // Validate optional reasoningEffort
-  const reasoningEffort =
-    typeof obj.reasoningEffort === "string" &&
-    REASONING_EFFORT_IDS.includes(obj.reasoningEffort as ReasoningEffortIdType)
-      ? (obj.reasoningEffort as ReasoningEffortIdType)
-      : null;
-
-  return {
-    modelId: obj.modelId as ModelIdType,
-    providerId: obj.providerId as ModelProviderIdType,
-    temperature,
-    reasoningEffort,
-  };
-}
-
 /**
  * Creates default configuration values for MCP server based on requirements
  * @param mcpServerView - The MCP server view to create defaults for
@@ -98,18 +38,14 @@ export function getDefaultConfiguration(
 
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
 
-  const reasoningDefault = toolsConfigurations?.reasoningConfiguration?.default;
-  defaults.reasoningModel = getValidatedReasoningModel(reasoningDefault);
-
   // Set default values for all configuration types when available
   // This provides better UX by pre-filling known defaults while still allowing
   // validation to catch truly missing required fields
 
   // Boolean configurations: use explicit default or fallback to false
-  for (const {
-    key,
-    default: defaultValue,
-  } of toolsConfigurations.booleanConfigurations) {
+  for (const key of Object.keys(toolsConfigurations.booleanConfigurations)) {
+    const defaultValue =
+      toolsConfigurations.defaults.booleanConfigurations[key];
     set(
       additionalConfig,
       key,
@@ -119,43 +55,36 @@ export function getDefaultConfiguration(
   }
 
   // Enum configurations: use explicit default or fallback to first option
-  for (const [
-    key,
-    { options: enumOptions, default: defaultValue },
-  ] of Object.entries(toolsConfigurations.enumConfigurations)) {
+  for (const [key, { options }] of Object.entries(
+    toolsConfigurations.enumConfigurations
+  )) {
+    const defaultValue = toolsConfigurations.defaults.enumConfigurations[key];
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
-    } else if (enumOptions.length > 0) {
-      set(additionalConfig, key, enumOptions[0].value);
+    } else if (options.length > 0) {
+      set(additionalConfig, key, options[0].value);
     }
   }
 
   // List configurations: use explicit default or fallback to empty array
-  for (const [key, { default: defaultValue }] of Object.entries(
-    toolsConfigurations.listConfigurations
-  )) {
-    set(
-      additionalConfig,
-      key,
-      defaultValue !== undefined ? [defaultValue] : []
-    );
+  for (const key of Object.keys(toolsConfigurations.listConfigurations)) {
+    const defaultValue = toolsConfigurations.defaults.listConfigurations[key];
+    set(additionalConfig, key, defaultValue ?? []);
   }
 
   // String configurations: set defaults when available
-  for (const {
-    key,
-    default: defaultValue,
-  } of toolsConfigurations.stringConfigurations) {
+  for (const [key, defaultValue] of Object.entries(
+    toolsConfigurations.defaults.stringConfigurations
+  )) {
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
     }
   }
 
   // Number configurations: set defaults when available
-  for (const {
-    key,
-    default: defaultValue,
-  } of toolsConfigurations.numberConfigurations) {
+  for (const [key, defaultValue] of Object.entries(
+    toolsConfigurations.defaults.numberConfigurations
+  )) {
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
     }

@@ -1890,7 +1890,7 @@ describe("findPathsToConfiguration", () => {
     expect(paths).toContain("user.location");
 
     // Verify both configurations have the correct core structure
-    expect(stringConfigurations["user.name"]).toMatchObject({
+    expect(stringConfigurations["user.name"].schema).toMatchObject({
       type: "object",
       properties: {
         value: { type: "string" },
@@ -1901,7 +1901,7 @@ describe("findPathsToConfiguration", () => {
       },
     });
 
-    expect(stringConfigurations["user.location"]).toMatchObject({
+    expect(stringConfigurations["user.location"].schema).toMatchObject({
       type: "object",
       properties: {
         value: { type: "string" },
@@ -1929,7 +1929,7 @@ describe("findPathsToConfiguration", () => {
 
     // Verify both configurations have the correct core structure
     for (const path of paths) {
-      expect(booleanConfigurations[path]).toMatchObject({
+      expect(booleanConfigurations[path].schema).toMatchObject({
         type: "object",
         properties: {
           value: { type: "boolean" },
@@ -1955,7 +1955,7 @@ describe("findPathsToConfiguration", () => {
     expect(paths).toHaveLength(1);
     expect(paths).toContain("user.age");
 
-    expect(numberConfigurations["user.age"]).toMatchObject({
+    expect(numberConfigurations["user.age"].schema).toMatchObject({
       type: "object",
       properties: {
         value: { type: "number" },
@@ -1980,7 +1980,7 @@ describe("findPathsToConfiguration", () => {
     expect(paths).toHaveLength(1);
     expect(paths).toContain("user.category");
 
-    expect(enumConfigurations["user.category"]).toMatchObject({
+    expect(enumConfigurations["user.category"].schema).toMatchObject({
       type: "object",
       properties: {
         options: {
@@ -2034,7 +2034,7 @@ describe("findPathsToConfiguration", () => {
     expect(choicesKey).toBeDefined();
 
     // Verify the core structure (Zod adds additionalProperties, description, etc.)
-    expect(listConfigurations[choicesKey!]).toMatchObject({
+    expect(listConfigurations[choicesKey!].schema).toMatchObject({
       type: "object",
       properties: {
         options: {
@@ -2142,5 +2142,212 @@ describe("findPathsToConfiguration", () => {
     expect(paths).toHaveLength(2);
     expect(paths).toContain("user.name");
     expect(paths).toContain("user.location");
+  });
+
+  it("should mark required correctly for object schemas", () => {
+    const mcpServerView: MCPServerViewType = {
+      id: 1,
+      sId: "req-object",
+      name: "Req Object",
+      description: "Test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "req-object",
+        name: "req_object",
+        version: "1.0.0",
+        description: "Desc",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          {
+            name: "tool",
+            description: "",
+            inputSchema: {
+              type: "object",
+              properties: {
+                container: {
+                  type: "object",
+                  properties: {
+                    requiredConfig:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                      ],
+                    optionalConfig:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                      ],
+                  },
+                  required: ["requiredConfig"],
+                },
+              },
+              required: ["container"],
+            } as JSONSchema,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null,
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
+    };
+
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+    });
+
+    expect(stringConfigurations["container.requiredConfig"].required).toBe(
+      true
+    );
+    expect(stringConfigurations["container.optionalConfig"].required).toBe(
+      false
+    );
+  });
+
+  it("should mark required correctly for array items with single schema", () => {
+    const mcpServerView: MCPServerViewType = {
+      id: 1,
+      sId: "req-array-single",
+      name: "Req Array Single",
+      description: "Test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "req-array-single",
+        name: "req_array_single",
+        version: "1.0.0",
+        description: "Desc",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          {
+            name: "tool",
+            description: "",
+            inputSchema: {
+              type: "object",
+              properties: {
+                itemsArray: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      requiredConfig:
+                        ConfigurableToolInputJSONSchemas[
+                          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                        ],
+                      optionalConfig:
+                        ConfigurableToolInputJSONSchemas[
+                          INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                        ],
+                    },
+                    required: ["requiredConfig"],
+                  },
+                },
+              },
+            } as JSONSchema,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null,
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
+    };
+
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+    });
+
+    expect(
+      stringConfigurations["itemsArray.items.requiredConfig"].required
+    ).toBe(true);
+    expect(
+      stringConfigurations["itemsArray.items.optionalConfig"].required
+    ).toBe(false);
+  });
+
+  it("should mark required correctly for array items with tuple schemas", () => {
+    const mcpServerView: MCPServerViewType = {
+      id: 1,
+      sId: "req-array-tuple",
+      name: "Req Array Tuple",
+      description: "Test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      spaceId: "space-id",
+      serverType: "internal",
+      server: {
+        sId: "req-array-tuple",
+        name: "req_array_tuple",
+        version: "1.0.0",
+        description: "Desc",
+        icon: "ActionBrainIcon",
+        authorization: null,
+        tools: [
+          {
+            name: "tool",
+            description: "",
+            inputSchema: {
+              type: "object",
+              properties: {
+                tupleArray: {
+                  type: "array",
+                  items: [
+                    {
+                      type: "object",
+                      properties: {
+                        first:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                          ],
+                      },
+                      required: ["first"],
+                    },
+                    {
+                      type: "object",
+                      properties: {
+                        second:
+                          ConfigurableToolInputJSONSchemas[
+                            INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                          ],
+                      },
+                      // not required
+                    },
+                  ],
+                },
+              },
+            } as JSONSchema,
+          },
+        ],
+        availability: "manual",
+        allowMultipleInstances: false,
+        documentationUrl: null,
+      },
+      oAuthUseCase: null,
+      editedByUser: null,
+      toolsMetadata: [{ toolName: "tool", permission: "high", enabled: true }],
+    };
+
+    const stringConfigurations = findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+    });
+
+    expect(
+      stringConfigurations["tupleArray.items.0.first"].required
+    ).toBe(true);
+    expect(
+      stringConfigurations["tupleArray.items.1.second"].required
+    ).toBe(false);
   });
 });

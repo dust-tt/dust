@@ -57,10 +57,9 @@ function getGroupedMCPServerViews({
       const toolsConfigurations = getMCPServerToolsConfigurations(view);
 
       const isWithKnowledge =
-        toolsConfigurations.dataSourceConfiguration ??
-        toolsConfigurations.dataWarehouseConfiguration ??
-        toolsConfigurations.tableConfiguration ??
-        false;
+        toolsConfigurations.dataSourceConfigurable !== "no" ||
+        toolsConfigurations.dataWarehouseConfigurable !== "no" ||
+        toolsConfigurations.tableConfigurable !== "no";
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"
