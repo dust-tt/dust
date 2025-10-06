@@ -33,7 +33,7 @@ interface FileGroup {
 
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
-  [clientExecutableContentType]: "Content Creation",
+  [clientExecutableContentType]: "Frame",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
@@ -155,8 +155,7 @@ function EmptyFilesState() {
         Nothing generated yet
       </div>
       <div className="text-sm text-muted-foreground">
-        Files and Content Creations generated in this conversation will appear
-        here.
+        Files generated in this conversation will appear here.
       </div>
     </div>
   );

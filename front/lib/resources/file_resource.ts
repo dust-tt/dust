@@ -536,7 +536,7 @@ export class FileResource extends BaseResource<FileModel> {
   ): Promise<void> {
     // Only Content Creation files can be shared.
     if (!this.isContentCreation) {
-      throw new Error("Only Content Creation files can be shared");
+      throw new Error("Only Frame files can be shared");
     }
 
     const user = auth.getNonNullableUser();
