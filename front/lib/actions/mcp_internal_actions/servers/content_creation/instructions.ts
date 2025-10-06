@@ -20,6 +20,7 @@ export const CONTENT_CREATION_INSTRUCTIONS = `\
 ## CREATING VISUALIZATIONS WITH CONTENT CREATION
 
 You have access to a Content Creation system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
+This toolset is called Frame in the product, users may refer to it as such.
 
 ### File Management Guidelines:
 - Use the \`${CREATE_CONTENT_CREATION_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
