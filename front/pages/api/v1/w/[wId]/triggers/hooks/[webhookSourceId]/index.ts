@@ -79,7 +79,7 @@ async function handler(
   req: NextApiRequestWithContext,
   res: NextApiResponse<WithAPIErrorResponse<PostWebhookTriggerResponseType>>
 ): Promise<void> {
-  const { method, body } = req;
+  const { method, body, query } = req;
 
   if (method !== "POST") {
     return apiError(req, res, {
@@ -139,6 +139,20 @@ async function handler(
       api_error: {
         type: "webhook_source_not_found",
         message: `Webhook source ${webhookSourceId} not found in workspace ${wId}.`,
+      },
+    });
+  }
+
+  // Validate webhook url secret
+  if (
+    typeof query.secret !== "string" ||
+    query.secret !== webhookSource.urlSecret
+  ) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "not_authenticated",
+        message: "Invalid webhook URL secret.",
       },
     });
   }
