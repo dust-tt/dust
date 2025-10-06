@@ -122,11 +122,13 @@ export function AssistantInputBar({
   }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, selectedAssistant } = useContext(InputBarContext);
+  const { animate, setAnimate, selectedAssistant } =
+    useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (animate && !isAnimating) {
+      setAnimate(false);
       setIsAnimating(true);
 
       // Clear any existing timeout to ensure animations do not overlap.
@@ -141,7 +143,7 @@ export function AssistantInputBar({
         animationTimeoutRef.current = null;
       }, 700);
     }
-  }, [animate, isAnimating]);
+  }, [animate, isAnimating, setAnimate]);
 
   // Cleanup timeout on component unmount.
   useEffect(() => {

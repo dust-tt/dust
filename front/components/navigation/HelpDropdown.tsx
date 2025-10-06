@@ -38,14 +38,13 @@ export function HelpDropdown({
   const router = useRouter();
   const sendNotification = useSendNotification();
 
-  const { setSelectedAssistant, setAnimate } = useContext(InputBarContext);
+  const { setSelectedAssistant } = useContext(InputBarContext);
 
   const handleAskHelp = () => {
     if (router.pathname === "/w/[wId]/agent/[cId]") {
       // If we're on /agent/new page, we just set the selected agent on top of what's already there in the input bar if any.
       // This allows to not lose your potential input when you click on the help button.
       setSelectedAssistant({ configurationId: GLOBAL_AGENTS_SID.HELPER });
-      setAnimate(true);
     } else {
       // Otherwise we just push the route and prefill the input bar with the @help mention.
       void router.push(
