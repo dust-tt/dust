@@ -1,6 +1,4 @@
 import _ from "lodash";
-import type { LoggerOptions } from "pino";
-import type pino from "pino";
 import { makeScript } from "scripts/helpers";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
@@ -17,6 +15,7 @@ import {
   GoogleDriveFolders,
   GoogleDriveSheet,
 } from "@connectors/lib/models/google_drive";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types";
@@ -29,7 +28,7 @@ import {
 async function migrateConnector(
   connector: ConnectorResource,
   execute: boolean,
-  parentLogger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>
+  parentLogger: Logger
 ) {
   const logger = parentLogger.child({ connectorId: connector.id });
   logger.info("Starting migration");

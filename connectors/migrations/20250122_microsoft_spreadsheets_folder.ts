@@ -1,12 +1,11 @@
 import _ from "lodash";
-import type { LoggerOptions } from "pino";
-import type pino from "pino";
 import { makeScript } from "scripts/helpers";
 
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -14,7 +13,7 @@ import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
 async function migrateConnector(
   connector: ConnectorResource,
   execute: boolean,
-  parentLogger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>
+  parentLogger: Logger
 ) {
   const startSyncTs = Date.now();
   const logger = parentLogger.child({
