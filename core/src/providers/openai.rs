@@ -31,7 +31,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::{info, warn};
+use tracing::info;
 
 use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
@@ -1200,74 +1200,41 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        let use_eu_endpoint: bool = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
-            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
-            None => false,
-        };
-
-        let open_ai_api_key: Option<String> = match credentials.get("OPENAI_API_KEY") {
-            Some(api_key) => Some(api_key.clone()),
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
-                Ok(key) => Some(key),
-                Err(_) => None,
-            },
-        };
-
-        // This is only for logging purposes.
-        let mut key_source = "";
-
-        match use_eu_endpoint {
-            true => match open_ai_api_key {
-                // If use_eu_endpoint is set, we ignore CORE_DATA_SOURCES_OPENAI_API_KEY
+        // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
+        match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
+            Ok(key) => {
+                self.api_key = Some(key);
+            }
+            Err(_) => match credentials.get("OPENAI_API_KEY") {
                 Some(api_key) => {
                     self.api_key = Some(api_key.clone());
-                    self.host = Some("eu.api.openai.com".to_string());
-                    key_source = "use_eu_endpoint";
                 }
-                None => Err(anyhow!(
-                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                ))?,
-            },
-            false => {
-                // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
-                match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
+                None => match std::env::var("OPENAI_API_KEY") {
                     Ok(key) => {
                         self.api_key = Some(key);
-                        key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY";
-
-                        // This block is only for logging purposes, and can be removed when we stop using CORE_DATA_SOURCES_OPENAI_API_KEY
-                        match open_ai_api_key.as_ref() {
-                            Some(open_key) => {
-                                if let Some(current_key) = self.api_key.as_ref() {
-                                    if open_key != current_key {
-                                        warn!("CORE_DATA_SOURCES_OPENAI_API_KEY and OPENAI_API_KEY differ; using CORE_DATA_SOURCES_OPENAI_API_KEY.");
-                                    }
-                                }
-                            }
-                            None => {
-                                // This tells us that bad things could happen if we were to unset CORE_DATA_SOURCES_OPENAI_API_KEY
-                                warn!("CORE_DATA_SOURCES_OPENAI_API_KEY is set, but OPENAI_API_KEY is not.")
-                            }
-                        }
                     }
-                    Err(_) => match open_ai_api_key {
-                        Some(api_key) => {
-                            self.api_key = Some(api_key.clone());
-                            key_source = "open_ai_api_key";
-                        }
-                        None => Err(anyhow!(
-                            "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                        ))?,
-                    },
-                }
-                self.host = Some("api.openai.com".to_string());
-            }
+                    Err(_) => Err(anyhow!(
+                        "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                    ))?,
+                },
+            },
         }
-
+        let use_eu_endpoint: bool = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
+            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_USE_EU_ENDPOINT"))
+                .await?
+            {
+                Ok(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
+                Err(_) => false,
+            },
+        };
+        self.host = match use_eu_endpoint {
+            false => Some("api.openai.com".to_string()),
+            true => Some("eu.api.openai.com".to_string()),
+        };
         info!(
             model = self.id,
             openai_host = self.host,
-            key_source,
             "OpenAIEmbedder.initialize"
         );
         Ok(())
