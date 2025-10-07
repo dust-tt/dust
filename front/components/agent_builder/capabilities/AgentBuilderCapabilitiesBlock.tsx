@@ -100,10 +100,10 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
 
   const mcpServerView =
     action.type === "MCP" && !isMCPServerViewsLoading
-      ? (mcpServerViews.find(
+      ? mcpServerViews.find(
           (mcpServerView) =>
             mcpServerView.sId === action.configuration.mcpServerViewId
-        ) ?? null)
+        ) ?? null
       : null;
 
   const displayName = actionDisplayName(action, mcpServerView);
