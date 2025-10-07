@@ -201,5 +201,5 @@ function makeAgentTriggerWorkflowId(
   workspaceId: string,
   trigger: TriggerType
 ): string {
-  return `agent-trigger-${trigger.kind}-${userId}-${workspaceId}-${trigger.id}`;
+  return `agent-trigger-${trigger.kind}-${userId}-${workspaceId}-${trigger.sId}-${Date.now()}`;
 }
