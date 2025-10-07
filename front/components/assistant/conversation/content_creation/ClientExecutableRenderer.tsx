@@ -357,6 +357,18 @@ function PreviewActionButtons({
 }: PreviewActionButtonsProps) {
   return (
     <div className="fixed bottom-4 right-3 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
+      <Tooltip
+        label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
+        side="left"
+        trigger={
+          <Button
+            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+            variant="ghost"
+            size="xs"
+            onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+          />
+        }
+      />
       {lastEditedByAgentConfigurationId && (
         <Tooltip
           label="Revert the last change"
@@ -371,18 +383,6 @@ function PreviewActionButtons({
           }
         />
       )}
-      <Tooltip
-        label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
-        side="left"
-        trigger={
-          <Button
-            icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
-            variant="ghost"
-            size="xs"
-            onClick={isFullScreen ? exitFullScreen : enterFullScreen}
-          />
-        }
-      />
       <Tooltip
         label="Reload the file"
         side="left"
