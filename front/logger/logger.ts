@@ -2,7 +2,7 @@ import type { LoggerOptions } from "pino";
 import pino from "pino";
 
 const NODE_ENV = process.env.NODE_ENV;
-const LOG_LEVEL = process.env.LOG_LEVEL || "info";
+const LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
 
 const defaultPinoOptions: LoggerOptions = {
   serializers: {
