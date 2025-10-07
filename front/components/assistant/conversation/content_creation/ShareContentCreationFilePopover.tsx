@@ -24,22 +24,19 @@ import type { FileShareScope, LightWorkspaceType } from "@app/types";
 
 const WORKSPACE_LABEL = "Internal - Workspace members with the link";
 
-const scopeOptions: {
-  icon: React.ComponentType;
-  label: string;
-  value: FileShareScope;
-}[] = [
+const scopeOptions = [
   {
     icon: UserGroupIcon,
     label: WORKSPACE_LABEL,
-    value: "workspace",
+    value: "workspace" as const,
   },
   {
     icon: GlobeAltIcon,
     label: "Public - Anyone with the link",
-    value: "public",
+    value: "public" as const,
   },
 ];
+
 interface FileSharingDropdownProps {
   selectedScope: FileShareScope;
   onScopeChange: (scope: FileShareScope) => void;
