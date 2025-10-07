@@ -253,22 +253,6 @@ export function WebhookSourceDetails({
     setSelectedTab(next);
   };
 
-  const header = useMemo(() => {
-    return (
-      <div className="flex items-center gap-3">
-        <Avatar icon={ActionGlobeAltIcon} size="md" />
-        <div>
-          <SheetTitle>
-            {systemView.customName ?? systemView.webhookSource.name}
-          </SheetTitle>
-          <SheetDescription>
-            Webhook source for triggering assistants.
-          </SheetDescription>
-        </div>
-      </div>
-    );
-  }, [systemView]);
-
   const handleOpenChange = async (open: boolean) => {
     if (open) {
       return;
@@ -298,7 +282,17 @@ export function WebhookSourceDetails({
       <Sheet open={isOpen} onOpenChange={(open) => void handleOpenChange(open)}>
         <SheetContent size="lg">
           <SheetHeader className="flex flex-col gap-5 text-foreground dark:text-foreground-night">
-            {header}
+            <div className="flex items-center gap-3">
+              <Avatar icon={ActionGlobeAltIcon} size="md" />
+              <div>
+                <SheetTitle>
+                  {systemView.customName ?? systemView.webhookSource.name}
+                </SheetTitle>
+                <SheetDescription>
+                  Webhook source for triggering assistants.
+                </SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
           <SheetContainer>
             <Tabs
