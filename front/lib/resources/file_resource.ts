@@ -190,6 +190,25 @@ export class FileResource extends BaseResource<FileModel> {
     };
   }
 
+  static async fetchByIdInWorkspaceWithContentUnsafe(
+    workspace: LightWorkspaceType,
+    id: string
+  ): Promise<FileResource | null> {
+    const fileModelId = getResourceIdFromSId(id);
+    if (!fileModelId) {
+      return null;
+    }
+
+    const file = await this.model.findOne({
+      where: {
+        workspaceId: workspace.id,
+        id: fileModelId,
+      },
+    });
+
+    return file ? new this(this.model, file.get()) : null;
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     // Delete all shareable file records.
     await ShareableFileModel.destroy({
@@ -462,10 +481,10 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * Get read stream for shared access without authentication.
    */
-  private async getSharedReadStream(
+  getSharedReadStream(
     owner: LightWorkspaceType,
     version: FileVersion
-  ): Promise<Readable> {
+  ): Readable {
     const cloudPath = FileResource.getCloudStoragePathForId({
       fileId: this.sId,
       workspaceId: owner.sId,
@@ -483,7 +502,7 @@ export class FileResource extends BaseResource<FileModel> {
     version: FileVersion = "original"
   ): Promise<string | null> {
     try {
-      const readStream = await this.getSharedReadStream(owner, version);
+      const readStream = this.getSharedReadStream(owner, version);
 
       // Convert stream to string.
       const chunks: Buffer[] = [];

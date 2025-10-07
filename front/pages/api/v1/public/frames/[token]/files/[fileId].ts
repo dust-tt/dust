@@ -1,20 +1,21 @@
-import type { PublicFileResponseBodyType } from "@dust-tt/client";
+import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 /**
  * @ignoreswagger
  *
- * Undocumented API endpoint to get a file by its public share token.
+ * Undocumented API endpoint to get files used in a frame.
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PublicFileResponseBodyType>>
+  res: NextApiResponse<WithAPIErrorResponse<PublicFrameResponseBodyType>>
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
@@ -26,13 +27,13 @@ async function handler(
     });
   }
 
-  const { token } = req.query;
-  if (typeof token !== "string") {
+  const { token, fileId } = req.query;
+  if (typeof token !== "string" || typeof fileId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Missing token parameter.",
+        message: "Missing token or fileId parameter.",
       },
     });
   }
@@ -62,10 +63,10 @@ async function handler(
     });
   }
 
-  const { file, content: fileContent, shareScope } = result;
+  const { file: frameFile, shareScope } = result;
 
   // Only allow conversation Content Creation files.
-  if (!file.isContentCreation) {
+  if (!frameFile.isContentCreation) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -76,7 +77,7 @@ async function handler(
   }
 
   // Check if file is safe to display.
-  if (!file.isSafeToDisplay()) {
+  if (!frameFile.isSafeToDisplay()) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -116,10 +117,59 @@ async function handler(
     }
   }
 
-  res.status(200).json({
-    content: fileContent,
-    file: file.toJSON(),
+  // Frame must have a conversation context.
+  const frameConversationId = frameFile.useCaseMetadata?.conversationId;
+  if (!frameConversationId) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Frame missing conversation context.",
+      },
+    });
+  }
+
+  // Load the requested file within the same workspace context
+  // We need a LightWorkspaceType to access storage streams consistently.
+  const owner = renderLightWorkspaceType({ workspace });
+
+  const targetFile = await FileResource.fetchByIdInWorkspaceWithContentUnsafe(
+    owner,
+    fileId
+  );
+  if (!targetFile) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+
+  // Verify the file belongs to the same conversation.
+  const sameConversation =
+    targetFile.useCase === "conversation" &&
+    targetFile.useCaseMetadata?.conversationId === frameConversationId;
+
+  if (!sameConversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+
+  const readStream = targetFile.getSharedReadStream(owner, "original");
+  readStream.on("error", () => {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
   });
+  res.setHeader("Content-Type", targetFile.contentType);
+  readStream.pipe(res);
+
+  return;
 }
 
 export default handler;

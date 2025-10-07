@@ -3,7 +3,7 @@ import { Spinner } from "@dust-tt/sparkle";
 import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
 import { PublicClientExecutableRenderer } from "@app/components/assistant/conversation/content_creation/PublicClientExecutableRenderer";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/content_creation/UnsupportedContentRenderer";
-import { usePublicFile } from "@app/lib/swr/files";
+import { usePublicFrame } from "@app/lib/swr/frames";
 import Custom404 from "@app/pages/404";
 import { clientExecutableContentType } from "@app/types";
 
@@ -20,30 +20,30 @@ export function PublicContentCreationContainer({
   shareToken,
   workspaceId,
 }: PublicContentCreationContainerProps) {
-  const { fileMetadata, isFileLoading, isFileError } = usePublicFile({
+  const { frameMetadata, isFrameLoading, isFrameError } = usePublicFrame({
     shareToken,
   });
 
   const renderContent = () => {
-    if (isFileLoading) {
+    if (isFrameLoading) {
       return (
         <CenteredState>
           <Spinner size="sm" />
-          <span>Loading file...</span>
+          <span>Loading frame...</span>
         </CenteredState>
       );
     }
 
-    if (isFileError || !fileMetadata) {
+    if (isFrameError || !frameMetadata) {
       return <Custom404 />;
     }
 
-    switch (fileMetadata.contentType) {
+    switch (frameMetadata.contentType) {
       case clientExecutableContentType:
         return (
           <PublicClientExecutableRenderer
-            fileId={fileMetadata.sId}
-            fileName={fileMetadata.fileName}
+            fileId={frameMetadata.sId}
+            fileName={frameMetadata.fileName}
             shareToken={shareToken}
             workspaceId={workspaceId}
           />
@@ -52,8 +52,8 @@ export function PublicContentCreationContainer({
       default:
         return (
           <UnsupportedContentRenderer
-            fileName={fileMetadata.fileName}
-            contentType={fileMetadata.contentType}
+            fileName={frameMetadata.fileName}
+            contentType={frameMetadata.contentType}
           />
         );
     }
