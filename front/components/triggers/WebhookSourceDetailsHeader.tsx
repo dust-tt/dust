@@ -1,4 +1,4 @@
-import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 interface WebhookSourceDetailsHeaderProps {

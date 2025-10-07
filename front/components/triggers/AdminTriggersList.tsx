@@ -10,11 +10,11 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
-import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhookSource";

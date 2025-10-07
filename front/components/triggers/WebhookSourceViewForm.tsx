@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
-import { getIcon } from "@app/lib/actions/mcp_icons";
+import { getIcon } from "@app/components/resources/resources_icons";
 import {
   useUpdateWebhookSourceView,
   useWebhookSourcesWithViews,

@@ -2,8 +2,8 @@ import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
-import { getAvatarFromIcon } from "@app/lib/actions/mcp_icons";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
