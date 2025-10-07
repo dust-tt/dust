@@ -5,7 +5,7 @@ type EventFieldBase = {
 
 export type EventField =
   | (EventFieldBase & {
-      type: "string" | "number" | "boolean" | "array" | "null" | "unknown-object";
+      type: "string" | "number" | "boolean" | "array" | "null";
     })
   | (EventFieldBase & {
       type: "enum";

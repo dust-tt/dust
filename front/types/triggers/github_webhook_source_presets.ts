@@ -1,4 +1,126 @@
-import type { WebhookEvent, PresetWebhook } from "./webhooks_source_preset";
+import type {
+  EventField,
+  WebhookEvent,
+  PresetWebhook,
+} from "./webhooks_source_preset";
+
+const USER_CHILDREN_FIELDS: EventField[] = [
+  {
+    name: "login",
+    description: "The username of the user.",
+    type: "string",
+  },
+  {
+    name: "id",
+    description: "The unique identifier of the user.",
+    type: "number",
+  },
+  {
+    name: "html_url",
+    description: "The GitHub profile URL of the user.",
+    type: "string",
+  },
+  {
+    name: "type",
+    description: "The type of the user account.",
+    type: "enum",
+    enumValues: ["User", "Organization"],
+  },
+  {
+    name: "site_admin",
+    description: "Whether the user is a GitHub site administrator.",
+    type: "boolean",
+  },
+];
+
+const LABEL_CHILDREN_FIELDS: EventField[] = [
+  {
+    name: "id",
+    description: "The unique identifier of the label.",
+    type: "number",
+  },
+  {
+    name: "url",
+    description: "The API URL of the label.",
+    type: "string",
+  },
+  {
+    name: "name",
+    description: "The name of the label.",
+    type: "string",
+  },
+];
+
+const MILESTONE_CHILDREN_FIELDS: EventField[] = [
+  {
+    name: "html_url",
+    description: "The GitHub web URL of the milestone.",
+    type: "string",
+  },
+  {
+    name: "id",
+    description: "The unique identifier of the milestone.",
+    type: "number",
+  },
+  {
+    name: "number",
+    description: "The milestone number.",
+    type: "number",
+  },
+  {
+    name: "title",
+    description: "The title of the milestone.",
+    type: "string",
+  },
+  {
+    name: "description",
+    description: "The description of the milestone.",
+    type: "string",
+  },
+  {
+    name: "creator",
+    description: "The user who created the milestone.",
+    type: "object",
+    isArray: false,
+    childrenFields: USER_CHILDREN_FIELDS,
+  },
+  {
+    name: "open_issues",
+    description: "The number of open issues in the milestone.",
+    type: "number",
+  },
+  {
+    name: "closed_issues",
+    description: "The number of closed issues in the milestone.",
+    type: "number",
+  },
+  {
+    name: "state",
+    description: "The state of the milestone.",
+    type: "enum",
+    enumValues: ["open", "closed"],
+  },
+  {
+    name: "created_at",
+    description: "The timestamp when the milestone was created.",
+    type: "string",
+  },
+  {
+    name: "updated_at",
+    description: "The timestamp when the milestone was last updated.",
+    type: "string",
+  },
+  {
+    name: "due_on",
+    description: "The due date for the milestone.",
+    type: "string",
+  },
+  {
+    name: "closed_at",
+    description: "The timestamp when the milestone was closed.",
+    type: "string",
+  },
+];
 
 const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
   name: "pull_request",
@@ -80,34 +202,7 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
           description: "The user who created the pull request.",
           type: "object",
           isArray: false,
-          childrenFields: [
-            {
-              name: "login",
-              description: "The username of the user.",
-              type: "string",
-            },
-            {
-              name: "id",
-              description: "The unique identifier of the user.",
-              type: "number",
-            },
-            {
-              name: "html_url",
-              description: "The GitHub profile URL of the user.",
-              type: "string",
-            },
-            {
-              name: "type",
-              description: "The type of the user account.",
-              type: "enum",
-              enumValues: ["User", "Organization"],
-            },
-            {
-              name: "site_admin",
-              description: "Whether the user is a GitHub site administrator.",
-              type: "boolean",
-            },
-          ],
+          childrenFields: USER_CHILDREN_FIELDS,
         },
         {
           name: "body",
@@ -134,135 +229,35 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
           description: "The user assigned to the pull request.",
           type: "object",
           isArray: false,
-          childrenFields: [
-            {
-              name: "login",
-              description: "The username of the user.",
-              type: "string",
-            },
-            {
-              name: "id",
-              description: "The unique identifier of the user.",
-              type: "number",
-            },
-            {
-              name: "html_url",
-              description: "The GitHub profile URL of the user.",
-              type: "string",
-            },
-            {
-              name: "type",
-              description: "The type of the user account.",
-              type: "enum",
-              enumValues: ["User", "Organization"],
-            },
-            {
-              name: "site_admin",
-              description: "Whether the user is a GitHub site administrator.",
-              type: "boolean",
-            },
-          ],
+          childrenFields: USER_CHILDREN_FIELDS,
         },
         {
           name: "assignees",
           description: "The users assigned to the pull request.",
           type: "object",
           isArray: true,
-          childrenFields: [
-            {
-              name: "login",
-              description: "The username of the user.",
-              type: "string",
-            },
-            {
-              name: "id",
-              description: "The unique identifier of the user.",
-              type: "number",
-            },
-            {
-              name: "html_url",
-              description: "The GitHub profile URL of the user.",
-              type: "string",
-            },
-            {
-              name: "type",
-              description: "The type of the user account.",
-              type: "enum",
-              enumValues: ["User", "Organization"],
-            },
-            {
-              name: "site_admin",
-              description: "Whether the user is a GitHub site administrator.",
-              type: "boolean",
-            },
-          ],
+          childrenFields: USER_CHILDREN_FIELDS,
         },
         {
           name: "requested_reviewers",
           description: "The users requested to review the pull request.",
           type: "object",
           isArray: true,
-          childrenFields: [
-            {
-              name: "login",
-              description: "The username of the user.",
-              type: "string",
-            },
-            {
-              name: "id",
-              description: "The unique identifier of the user.",
-              type: "number",
-            },
-            {
-              name: "html_url",
-              description: "The GitHub profile URL of the user.",
-              type: "string",
-            },
-            {
-              name: "type",
-              description: "The type of the user account.",
-              type: "enum",
-              enumValues: ["User", "Organization"],
-            },
-            {
-              name: "site_admin",
-              description: "Whether the user is a GitHub site administrator.",
-              type: "boolean",
-            },
-          ],
+          childrenFields: USER_CHILDREN_FIELDS,
         },
         {
           name: "labels",
           description: "The labels applied to the pull request.",
           type: "object",
           isArray: true,
-          childrenFields: [
-            {
-              name: "id",
-              description: "The unique identifier of the label.",
-              type: "number",
-            },
-            {
-              name: "url",
-              description: "The API URL of the label.",
-              type: "string",
-            },
-            {
-              name: "name",
-              description: "The name of the label.",
-              type: "string",
-            },
-            {
-              name: "default",
-              description: "Whether this is a default label.",
-              type: "boolean",
-            },
-          ],
+          childrenFields: LABEL_CHILDREN_FIELDS,
         },
         {
           name: "milestone",
           description: "The milestone associated with the pull request.",
-          type: "unknown-object",
+          type: "object",
+          isArray: false,
+          childrenFields: MILESTONE_CHILDREN_FIELDS,
         },
         {
           name: "head",
@@ -444,62 +439,14 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
           description: "The user who created the issue.",
           type: "object",
           isArray: false,
-          childrenFields: [
-            {
-              name: "login",
-              description: "The username of the user.",
-              type: "string",
-            },
-            {
-              name: "id",
-              description: "The unique identifier of the user.",
-              type: "number",
-            },
-            {
-              name: "html_url",
-              description: "The GitHub profile URL of the user.",
-              type: "string",
-            },
-            {
-              name: "type",
-              description: "The type of the user account.",
-              type: "enum",
-              enumValues: ["User", "Organization"],
-            },
-            {
-              name: "site_admin",
-              description: "Whether the user is a GitHub site administrator.",
-              type: "boolean",
-            },
-          ],
+          childrenFields: USER_CHILDREN_FIELDS,
         },
         {
           name: "labels",
           description: "The labels applied to the issue.",
           type: "object",
           isArray: true,
-          childrenFields: [
-            {
-              name: "id",
-              description: "The unique identifier of the label.",
-              type: "number",
-            },
-            {
-              name: "url",
-              description: "The API URL of the label.",
-              type: "string",
-            },
-            {
-              name: "name",
-              description: "The name of the label.",
-              type: "string",
-            },
-            {
-              name: "default",
-              description: "Whether this is a default label.",
-              type: "boolean",
-            },
-          ],
+          childrenFields: LABEL_CHILDREN_FIELDS,
         },
         {
           name: "state",
@@ -517,68 +464,21 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
           description: "The user assigned to the issue.",
           type: "object",
           isArray: false,
-          childrenFields: [
-            {
-              name: "login",
-              description: "The username of the user.",
-              type: "string",
-            },
-            {
-              name: "id",
-              description: "The unique identifier of the user.",
-              type: "number",
-            },
-            {
-              name: "html_url",
-              description: "The GitHub profile URL of the user.",
-              type: "string",
-            },
-            {
-              name: "type",
-              description: "The type of the user account.",
-              type: "enum",
-              enumValues: ["User", "Organization"],
-            },
-          ],
+          childrenFields: USER_CHILDREN_FIELDS,
         },
         {
           name: "assignees",
           description: "The users assigned to the issue.",
           type: "object",
           isArray: true,
-          childrenFields: [
-            {
-              name: "login",
-              description: "The username of the user.",
-              type: "string",
-            },
-            {
-              name: "id",
-              description: "The unique identifier of the user.",
-              type: "number",
-            },
-            {
-              name: "html_url",
-              description: "The GitHub profile URL of the user.",
-              type: "string",
-            },
-            {
-              name: "type",
-              description: "The type of the user account.",
-              type: "enum",
-              enumValues: ["User", "Organization"],
-            },
-            {
-              name: "site_admin",
-              description: "Whether the user is a GitHub site administrator.",
-              type: "boolean",
-            },
-          ],
+          childrenFields: USER_CHILDREN_FIELDS,
         },
         {
           name: "milestone",
           description: "The milestone associated with the issue.",
-          type: "unknown-object",
+          type: "object",
+          isArray: false,
+          childrenFields: MILESTONE_CHILDREN_FIELDS,
         },
         {
           name: "comments",
@@ -618,34 +518,7 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
         "The optional user who was assigned or unassigned from the issue.",
       type: "object",
       isArray: false,
-      childrenFields: [
-        {
-          name: "login",
-          description: "The username of the user.",
-          type: "string",
-        },
-        {
-          name: "id",
-          description: "The unique identifier of the user.",
-          type: "number",
-        },
-        {
-          name: "html_url",
-          description: "The GitHub profile URL of the user.",
-          type: "string",
-        },
-        {
-          name: "type",
-          description: "The type of the user account.",
-          type: "enum",
-          enumValues: ["User", "Organization"],
-        },
-        {
-          name: "site_admin",
-          description: "Whether the user is a GitHub site administrator.",
-          type: "boolean",
-        },
-      ],
+      childrenFields: USER_CHILDREN_FIELDS,
     },
     {
       name: "label",
@@ -653,57 +526,14 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
         "The optional label that was added or removed from the issue.",
       type: "object",
       isArray: false,
-      childrenFields: [
-        {
-          name: "id",
-          description: "The unique identifier of the label.",
-          type: "number",
-        },
-        {
-          name: "url",
-          description: "The API URL of the label.",
-          type: "string",
-        },
-        {
-          name: "name",
-          description: "The name of the label.",
-          type: "string",
-        },
-      ],
+      childrenFields: LABEL_CHILDREN_FIELDS,
     },
     {
       name: "sender",
       description: "The user that triggered the event.",
       type: "object",
       isArray: false,
-      childrenFields: [
-        {
-          name: "login",
-          description: "The username of the user.",
-          type: "string",
-        },
-        {
-          name: "id",
-          description: "The unique identifier of the user.",
-          type: "number",
-        },
-        {
-          name: "html_url",
-          description: "The GitHub profile URL of the user.",
-          type: "string",
-        },
-        {
-          name: "type",
-          description: "The type of the user account.",
-          type: "enum",
-          enumValues: ["User", "Organization"],
-        },
-        {
-          name: "site_admin",
-          description: "Whether the user is a GitHub site administrator.",
-          type: "boolean",
-        },
-      ],
+      childrenFields: USER_CHILDREN_FIELDS,
     },
   ],
 };
