@@ -141,19 +141,16 @@ export const ConfigurableToolInputSchemas = {
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
   }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z
     .object({
       duration: z.number(),
       unit: z.enum(["hour", "day", "week", "month", "year"]),
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
     })
     .describe("An optional time frame to use for the tool."),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z
-    .object({
-      schema: JsonSchemaSchema,
-      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
-    }),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.object({
+    schema: JsonSchemaSchema,
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
+  }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET]: z.object({
     secretName: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET),
