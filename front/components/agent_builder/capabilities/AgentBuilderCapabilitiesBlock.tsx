@@ -100,10 +100,10 @@ function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
 
   const mcpServerView =
     action.type === "MCP" && !isMCPServerViewsLoading
-      ? mcpServerViews.find(
+      ? (mcpServerViews.find(
           (mcpServerView) =>
             mcpServerView.sId === action.configuration.mcpServerViewId
-        ) ?? null
+        ) ?? null)
       : null;
 
   const displayName = actionDisplayName(action, mcpServerView);
@@ -204,7 +204,7 @@ export function AgentBuilderCapabilitiesBlock({
       setKnowledgeAction({ action, index });
     } else {
       setDialogMode(
-        action.configurable
+        action.canBeConfigured
           ? { type: "edit", action, index }
           : { type: "info", action, source: "addedTool" }
       );
@@ -227,7 +227,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction({
       action: {
         ...action,
-        configurable: true, // it's always required for knowledge
+        canBeConfigured: true, // it's always required for knowledge
       },
       index: null,
     });
