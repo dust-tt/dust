@@ -8,7 +8,6 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import {
   _getAgentRouterToolsConfiguration,
-  _getContentCreationToolConfiguration,
   _getDefaultWebActionsForGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
@@ -65,14 +64,12 @@ export function _getHelperGlobalAgent({
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
   searchMCPServerView,
-  contentCreationMCPServerView,
 }: {
   auth: Authenticator;
   helperPromptInstance: HelperAssistantPrompt;
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let prompt = "";
 
@@ -153,13 +150,6 @@ export function _getHelperGlobalAgent({
   const sId = GLOBAL_AGENTS_SID.HELPER;
   const metadata = getGlobalAgentMetadata(sId);
 
-  actions.push(
-    ..._getContentCreationToolConfiguration({
-      agentId: sId,
-      contentCreationMCPServerView,
-    })
-  );
-
   return {
     id: -1,
     sId,
@@ -176,7 +166,7 @@ export function _getHelperGlobalAgent({
     model: model,
     actions,
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
+    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
