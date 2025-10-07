@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import type {
-  CustomServerIconType,
+  CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
@@ -39,7 +39,7 @@ export type WebhookSourceViewType = {
   sId: string;
   customName: string | null;
   description: string;
-  icon: InternalAllowedIconType | CustomServerIconType;
+  icon: InternalAllowedIconType | CustomResourceIconType;
   createdAt: number;
   updatedAt: number;
   spaceId: string;

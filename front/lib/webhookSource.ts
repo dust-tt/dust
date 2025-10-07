@@ -1,13 +1,13 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 import type {
-  CustomServerIconType,
+  CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 import {
-  isCustomServerIconType,
+  isCustomResourceIconType,
   isInternalAllowedIcon,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 import type {
   WebhookSourceSignatureAlgorithm,
   WebhookSourceWithViews,
@@ -18,12 +18,12 @@ export const DEFAULT_WEBHOOK_ICON: InternalAllowedIconType =
 
 export const normalizeWebhookIcon = (
   icon: string | null | undefined
-): InternalAllowedIconType | CustomServerIconType => {
+): InternalAllowedIconType | CustomResourceIconType => {
   if (!icon) {
     return DEFAULT_WEBHOOK_ICON;
   }
 
-  if (isInternalAllowedIcon(icon) || isCustomServerIconType(icon)) {
+  if (isInternalAllowedIcon(icon) || isCustomResourceIconType(icon)) {
     return icon;
   }
 

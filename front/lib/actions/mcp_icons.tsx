@@ -6,6 +6,7 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 
 export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 
+// MCP-specific function
 export const getAvatar = (
   mcpServer: MCPServerType,
   size: ComponentProps<typeof Avatar>["size"] = "sm"

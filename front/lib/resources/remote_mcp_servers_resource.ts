@@ -7,12 +7,12 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -274,7 +274,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt,
       clearError,
     }: {
-      icon?: CustomServerIconType | InternalAllowedIconType;
+      icon?: CustomResourceIconType | InternalAllowedIconType;
       sharedSecret?: string;
       customHeaders?: Record<string, string>;
       cachedName?: string;

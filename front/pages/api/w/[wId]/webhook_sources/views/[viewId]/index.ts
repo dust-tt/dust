@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type {
-  CustomServerIconType,
+  CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -265,7 +265,7 @@ async function editWebhookSourceDescriptionAndIcon(
   auth: Authenticator,
   webhookSourceView: WebhookSourcesViewResource,
   description?: string,
-  icon?: InternalAllowedIconType | CustomServerIconType
+  icon?: InternalAllowedIconType | CustomResourceIconType
 ): Promise<Result<undefined, DustError<"unauthorized">>> {
   const systemView =
     await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
