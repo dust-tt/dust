@@ -491,6 +491,15 @@ export interface MCPServerToolsConfigurations {
     description?: string;
     default?: { uri: string };
   };
+  reasoningConfiguration?: {
+    description?: string;
+    default?: {
+      modelId: string;
+      providerId: string;
+      temperature: number;
+      reasoningEffort: string;
+    };
+  };
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
   stringConfigurations: {
@@ -693,6 +702,34 @@ export function getMCPServerToolsConfigurations(
         schema,
         (v: unknown): v is { uri: string } =>
           v !== null && typeof v === "object" && "uri" in v
+      ),
+    }))
+    .at(0);
+
+  const reasoningConfiguration = Object.values(
+    findPathsToConfiguration({
+      mcpServerView,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+    })
+  )
+    .map((schema) => ({
+      description: schema.description,
+      default: extractSchemaDefault(
+        schema,
+        (
+          v: unknown
+        ): v is {
+          modelId: string;
+          providerId: string;
+          temperature: number;
+          reasoningEffort: string;
+        } =>
+          v !== null &&
+          typeof v === "object" &&
+          "modelId" in v &&
+          "providerId" in v &&
+          "temperature" in v &&
+          "reasoningEffort" in v
       ),
     }))
     .at(0);
@@ -904,6 +941,7 @@ export function getMCPServerToolsConfigurations(
     getConfigurableStateForOptional(dataWarehouseConfiguration),
     getConfigurableStateForOptional(tableConfiguration),
     getConfigurableStateForOptional(childAgentConfiguration),
+    getConfigurableStateForOptional(reasoningConfiguration),
     getConfigurableStateForArray(stringConfigurations),
     getConfigurableStateForArray(numberConfigurations),
     getConfigurableStateForArray(booleanConfigurations),
@@ -930,6 +968,7 @@ export function getMCPServerToolsConfigurations(
     dataWarehouseConfiguration,
     tableConfiguration,
     childAgentConfiguration,
+    reasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
     stringConfigurations,
