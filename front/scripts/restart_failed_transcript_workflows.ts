@@ -92,7 +92,7 @@ async function restartFailedWorkflows(
       );
 
       if (!config) {
-        console.log(
+        logger.info(
           `  ❌ ${status.workspaceName} (${status.provider}): Configuration not found`
         );
         failed++;
@@ -101,7 +101,7 @@ async function restartFailedWorkflows(
 
       // Only restart if still active
       if (!config.isActive && !config.dataSourceViewId) {
-        console.log(
+        logger.info(
           `  ⏭️  ${status.workspaceName} (${status.provider}): No longer active, skipping`
         );
         continue;
@@ -110,7 +110,7 @@ async function restartFailedWorkflows(
       const result = await launchRetrieveTranscriptsWorkflow(config);
 
       if (result.isErr()) {
-        console.log(
+        logger.info(
           `  ❌ ${status.workspaceName} (${status.provider}): Failed - ${result.error.message}`
         );
         logger.error(
@@ -122,13 +122,13 @@ async function restartFailedWorkflows(
         );
         failed++;
       } else {
-        console.log(
+        logger.info(
           `  ✅ ${status.workspaceName} (${status.provider}): Restarted successfully`
         );
         restarted++;
       }
     } catch (e) {
-      console.log(
+      logger.info(
         `  ❌ ${status.workspaceName} (${status.provider}): Exception - ${e}`
       );
       logger.error(
@@ -159,7 +159,7 @@ makeScript(
     },
   },
   async ({ execute, workspaceId, provider }, logger) => {
-    console.log("\n🔍 Scanning for failed transcript workflows...\n");
+    logger.info("\n🔍 Scanning for failed transcript workflows...\n");
 
     // Get all workspaces or filter by specific workspace
     let workspaces: { id: number; name: string }[];
@@ -170,15 +170,15 @@ makeScript(
         return;
       }
       workspaces = [{ id: ws.id, name: ws.name }];
-      console.log(`📍 Filtering by workspace: ${ws.name} (ID: ${ws.id})`);
+      logger.info(`📍 Filtering by workspace: ${ws.name} (ID: ${ws.id})`);
     } else {
       const allWorkspaces = await WorkspaceResource.listAll();
       workspaces = allWorkspaces.map((ws) => ({ id: ws.id, name: ws.name }));
-      console.log(`📍 Checking all workspaces (${workspaces.length} total)`);
+      logger.info(`📍 Checking all workspaces (${workspaces.length} total)`);
     }
 
     if (provider) {
-      console.log(`📍 Filtering by provider: ${provider}`);
+      logger.info(`📍 Filtering by provider: ${provider}`);
     }
 
     // Collect all active configurations
@@ -205,17 +205,17 @@ makeScript(
       }
     }
 
-    console.log(
+    logger.info(
       `\n✅ Found ${activeConfigs.length} active transcript configuration(s)\n`
     );
 
     if (activeConfigs.length === 0) {
-      console.log("No active transcript configurations found. Nothing to do.");
+      logger.info("No active transcript configurations found. Nothing to do.");
       return;
     }
 
     // Check workflow status for each config
-    console.log("⏳ Checking workflow statuses...\n");
+    logger.info("⏳ Checking workflow statuses...\n");
     const statuses: WorkflowStatus[] = [];
 
     for (const { config, workspace } of activeConfigs) {
@@ -238,60 +238,60 @@ makeScript(
     const needsRestart = statuses.filter((s) => s.status !== "running");
 
     // Print summary
-    console.log("📊 WORKFLOW STATUS SUMMARY");
-    console.log("═".repeat(80));
-    console.log(`Total configurations checked:  ${statuses.length}`);
-    console.log(
+    logger.info("📊 WORKFLOW STATUS SUMMARY");
+    logger.info("═".repeat(80));
+    logger.info(`Total configurations checked:  ${statuses.length}`);
+    logger.info(
       `✅ Running:                      ${runningCount} ${runningCount === statuses.length ? "🎉" : ""}`
     );
     if (notFoundCount > 0) {
-      console.log(`❌ Not found (never started):    ${notFoundCount}`);
+      logger.info(`❌ Not found (never started):    ${notFoundCount}`);
     }
     if (terminatedCount > 0) {
-      console.log(`🛑 Terminated:                   ${terminatedCount}`);
+      logger.info(`🛑 Terminated:                   ${terminatedCount}`);
     }
     if (failedCount > 0) {
-      console.log(`💥 Failed:                       ${failedCount}`);
+      logger.info(`💥 Failed:                       ${failedCount}`);
     }
     if (unknownCount > 0) {
-      console.log(`❓ Unknown status:               ${unknownCount}`);
+      logger.info(`❓ Unknown status:               ${unknownCount}`);
     }
-    console.log("═".repeat(80));
+    logger.info("═".repeat(80));
 
     if (needsRestart.length === 0) {
-      console.log("\n✨ All workflows are already running. Nothing to do!\n");
+      logger.info("\n✨ All workflows are already running. Nothing to do!\n");
       return;
     }
 
-    console.log(
+    logger.info(
       `\n⚠️  ${needsRestart.length} workflow(s) need to be restarted\n`
     );
 
     // Show details of workflows to restart
-    console.log("📋 WORKFLOWS TO RESTART:");
-    console.log("─".repeat(80));
+    logger.info("📋 WORKFLOWS TO RESTART:");
+    logger.info("─".repeat(80));
     for (const status of needsRestart) {
       const processing = status.isActive ? "✓" : "✗";
       const storing = status.hasDataSource ? "✓" : "✗";
-      console.log(
+      logger.info(
         `  • ${status.workspaceName} | ${status.provider} | Status: ${status.status}`
       );
-      console.log(
+      logger.info(
         `    Processing: ${processing} | Storing: ${storing} | Config: ${status.configSId}`
       );
     }
-    console.log("─".repeat(80));
+    logger.info("─".repeat(80));
 
     if (!execute) {
-      console.log("\n🔸 DRY RUN MODE - No changes will be made");
-      console.log(
+      logger.info("\n🔸 DRY RUN MODE - No changes will be made");
+      logger.info(
         "   Run with --execute to actually restart these workflows\n"
       );
       // Exit without triggering the default "Script was not executed" warning
       process.exit(0);
     }
 
-    console.log("\n🚀 Restarting workflows...\n");
+    logger.info("\n🚀 Restarting workflows...\n");
 
     const { restarted, failed } = await restartFailedWorkflows(
       needsRestart,
@@ -300,22 +300,22 @@ makeScript(
     );
 
     // Final summary
-    console.log("\n" + "═".repeat(80));
-    console.log("📊 RESTART SUMMARY");
-    console.log("═".repeat(80));
-    console.log(`Total workflows to restart:  ${needsRestart.length}`);
-    console.log(`✅ Successfully restarted:    ${restarted}`);
+    logger.info("\n" + "═".repeat(80));
+    logger.info("📊 RESTART SUMMARY");
+    logger.info("═".repeat(80));
+    logger.info(`Total workflows to restart:  ${needsRestart.length}`);
+    logger.info(`✅ Successfully restarted:    ${restarted}`);
     if (failed > 0) {
-      console.log(`❌ Failed to restart:         ${failed}`);
+      logger.info(`❌ Failed to restart:         ${failed}`);
     }
-    console.log("═".repeat(80) + "\n");
+    logger.info("═".repeat(80) + "\n");
 
     if (failed > 0) {
-      console.log(
+      logger.info(
         "⚠️  Some workflows failed to restart. Check logs above for details.\n"
       );
     } else {
-      console.log("✨ All workflows restarted successfully!\n");
+      logger.info("✨ All workflows restarted successfully!\n");
     }
   }
 );
