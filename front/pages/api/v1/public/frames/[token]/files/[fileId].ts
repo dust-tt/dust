@@ -52,7 +52,6 @@ async function handler(
   const workspace = await WorkspaceResource.fetchByModelId(
     result.file.workspaceId
   );
-
   if (!workspace) {
     return apiError(req, res, {
       status_code: 404,
@@ -87,18 +86,6 @@ async function handler(
     });
   }
 
-  // This endpoint does not support conversation participants sharing. It goes through the private
-  // API endpoint instead.
-  if (shareScope === "conversation_participants") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
-  }
-
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
     const isWorkspaceUser = await isSessionWithUserFromWorkspace(
@@ -129,8 +116,7 @@ async function handler(
     });
   }
 
-  // Load the requested file within the same workspace context
-  // We need a LightWorkspaceType to access storage streams consistently.
+  // Load the requested file within the same workspace context.
   const owner = renderLightWorkspaceType({ workspace });
 
   const targetFile = await FileResource.fetchByIdInWorkspaceWithContentUnsafe(
@@ -144,11 +130,10 @@ async function handler(
     });
   }
 
-  // Verify the file belongs to the same conversation.
+  // Verify the file belongs to the same conversation as the frame.
   const sameConversation =
     targetFile.useCase === "conversation" &&
     targetFile.useCaseMetadata?.conversationId === frameConversationId;
-
   if (!sameConversation) {
     return apiError(req, res, {
       status_code: 404,
