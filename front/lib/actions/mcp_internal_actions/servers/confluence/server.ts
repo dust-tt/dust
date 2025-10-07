@@ -1,7 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 
 import {
   getCurrentUser,
+  listPages,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
 import {
@@ -25,6 +27,47 @@ const createServer = (): McpServer => {
           }
           return makeMCPToolJSONSuccess({
             message: "Current user information retrieved successfully",
+            result: result.value,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_pages",
+    "Search for Confluence pages using CQL (Confluence Query Language). Only returns page objects. Examples: 'type=page AND space=DEV', 'type=page AND title~\"meeting\"', 'type=page AND creator=currentUser()'",
+    {
+      cql: z
+        .string()
+        .describe(
+          "CQL query string. Must include 'type=page' to filter for pages only."
+        ),
+      cursor: z
+        .string()
+        .optional()
+        .describe("Pagination cursor from previous response for next page"),
+      limit: z
+        .number()
+        .min(1)
+        .max(250)
+        .optional()
+        .default(25)
+        .describe("Number of results per page (max 250, default 25)"),
+    },
+    async (params, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await listPages(baseUrl, accessToken, params);
+          if (result.isErr()) {
+            throw new Error(`Error listing pages: ${result.error}`);
+          }
+          return makeMCPToolJSONSuccess({
+            message:
+              result.value.results.length === 0
+                ? "No pages found"
+                : `Found ${result.value.results.length} page(s)`,
             result: result.value,
           });
         },

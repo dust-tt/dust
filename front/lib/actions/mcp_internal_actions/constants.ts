@@ -1009,7 +1009,7 @@ The directive should be used to display a clickable version of the agent name in
     tools_stakes: {
       // Read operations - never ask
       get_current_user: "never_ask",
-      get_page: "never_ask",
+      get_pages: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,

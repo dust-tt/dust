@@ -4,11 +4,14 @@ import type { z } from "zod";
 import type {
   ConfluenceCurrentUser,
   ConfluenceErrorResult,
+  ConfluenceListPagesResult,
+  ConfluenceSearchRequest,
   WithAuthParams,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import {
   AtlassianResourceSchema,
   ConfluenceCurrentUserSchema,
+  ConfluenceListPagesResultSchema,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
@@ -178,4 +181,41 @@ function logAndReturnApiError<T>({
 }): Result<T, string> {
   logger.error(`[Confluence MCP Server] ${message}`);
   return new Err(normalizeError(error).message);
+}
+
+export async function listPages(
+  baseUrl: string,
+  accessToken: string,
+  params: ConfluenceSearchRequest
+): Promise<Result<ConfluenceListPagesResult, string>> {
+  const searchParams = new URLSearchParams();
+
+  if (params.cql) {
+    searchParams.append("body-format", "storage");
+  }
+  if (params.cursor) {
+    searchParams.append("cursor", params.cursor);
+  }
+  if (params.limit) {
+    searchParams.append("limit", params.limit.toString());
+  }
+
+  const endpoint = `/wiki/api/v2/pages?${searchParams.toString()}`;
+
+  const result = await confluenceApiCall(
+    {
+      endpoint,
+      accessToken,
+    },
+    ConfluenceListPagesResultSchema,
+    {
+      baseUrl,
+    }
+  );
+
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+
+  return new Ok(result.value);
 }
