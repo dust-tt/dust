@@ -148,10 +148,11 @@ export const ConfigurableToolInputSchemas = {
     })
     .describe("An optional time frame to use for the tool."),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.intersection(
-  z.object({
-    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
-  }),
-  JsonSchemaSchema),
+    z.object({
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
+    }),
+    JsonSchemaSchema
+  ),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET]: z.object({
     secretName: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET),

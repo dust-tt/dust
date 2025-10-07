@@ -34,13 +34,11 @@ function createServer(): McpServer {
       ]
         .describe("JSON_SCHEMA with default value")
         .default({
-          schema: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-            },
-            required: ["name"],
+          type: "object",
+          properties: {
+            name: { type: "string" },
           },
+          required: ["name"],
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
         }),
       jsonSchemaOptional: ConfigurableToolInputSchemas[
