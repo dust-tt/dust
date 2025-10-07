@@ -41,7 +41,8 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
     {
       name: "pull_request",
       description: "The pull request itself.",
-      type: "parent-field",
+      type: "object",
+      isArray: false,
       childrenFields: [
         {
           name: "html_url",
@@ -77,7 +78,8 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
         {
           name: "user",
           description: "The user who created the pull request.",
-          type: "parent-field",
+          type: "object",
+          isArray: false,
           childrenFields: [
             {
               name: "login",
@@ -130,7 +132,8 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
         {
           name: "assignee",
           description: "The user assigned to the pull request.",
-          type: "parent-field",
+          type: "object",
+          isArray: false,
           childrenFields: [
             {
               name: "login",
@@ -163,7 +166,8 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
         {
           name: "assignees",
           description: "The users assigned to the pull request.",
-          type: "parent-of-array",
+          type: "object",
+          isArray: true,
           childrenFields: [
             {
               name: "login",
@@ -196,7 +200,8 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
         {
           name: "requested_reviewers",
           description: "The users requested to review the pull request.",
-          type: "parent-of-array",
+          type: "object",
+          isArray: true,
           childrenFields: [
             {
               name: "login",
@@ -227,14 +232,10 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
           ],
         },
         {
-          name: "requested_teams",
-          description: "The teams requested to review the pull request.",
-          type: "unknown-object",
-        },
-        {
           name: "labels",
           description: "The labels applied to the pull request.",
-          type: "parent-of-array",
+          type: "object",
+          isArray: true,
           childrenFields: [
             {
               name: "id",
@@ -266,7 +267,8 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
         {
           name: "head",
           description: "The head branch of the pull request.",
-          type: "parent-field",
+          type: "object",
+          isArray: false,
           childrenFields: [
             {
               name: "label",
@@ -283,7 +285,8 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
         {
           name: "base",
           description: "The base branch of the pull request.",
-          type: "parent-field",
+          type: "object",
+          isArray: false,
           childrenFields: [
             {
               name: "label",
@@ -340,14 +343,10 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
       ],
     },
     {
-      name: "repository",
-      description: "The repository where the event occurred.",
-      type: "unknown-object",
-    },
-    {
       name: "sender",
       description: "The user that triggered the event.",
-      type: "parent-field",
+      type: "object",
+      isArray: false,
       childrenFields: [
         {
           name: "login",
@@ -417,7 +416,8 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
     {
       name: "issue",
       description: "The issue itself.",
-      type: "parent-field",
+      type: "object",
+      isArray: false,
       childrenFields: [
         {
           name: "url",
@@ -442,7 +442,8 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
         {
           name: "user",
           description: "The user who created the issue.",
-          type: "parent-field",
+          type: "object",
+          isArray: false,
           childrenFields: [
             {
               name: "login",
@@ -475,7 +476,8 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
         {
           name: "labels",
           description: "The labels applied to the issue.",
-          type: "parent-of-array",
+          type: "object",
+          isArray: true,
           childrenFields: [
             {
               name: "id",
@@ -513,7 +515,8 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
         {
           name: "assignee",
           description: "The user assigned to the issue.",
-          type: "parent-field",
+          type: "object",
+          isArray: false,
           childrenFields: [
             {
               name: "login",
@@ -541,7 +544,8 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
         {
           name: "assignees",
           description: "The users assigned to the issue.",
-          type: "parent-of-array",
+          type: "object",
+          isArray: true,
           childrenFields: [
             {
               name: "login",
@@ -612,7 +616,8 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
       name: "assignee",
       description:
         "The optional user who was assigned or unassigned from the issue.",
-      type: "parent-field",
+      type: "object",
+      isArray: false,
       childrenFields: [
         {
           name: "login",
@@ -646,7 +651,8 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
       name: "label",
       description:
         "The optional label that was added or removed from the issue.",
-      type: "parent-field",
+      type: "object",
+      isArray: false,
       childrenFields: [
         {
           name: "id",
@@ -668,7 +674,8 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
     {
       name: "sender",
       description: "The user that triggered the event.",
-      type: "parent-field",
+      type: "object",
+      isArray: false,
       childrenFields: [
         {
           name: "login",

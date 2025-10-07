@@ -5,20 +5,15 @@ type EventFieldBase = {
 
 export type EventField =
   | (EventFieldBase & {
-      type:
-        | "string"
-        | "number"
-        | "boolean"
-        | "array"
-        | "null"
-        | "unknown-object";
+      type: "string" | "number" | "boolean" | "array" | "null" | "unknown-object";
     })
   | (EventFieldBase & {
       type: "enum";
       enumValues: string[];
     })
   | (EventFieldBase & {
-      type: "parent-field" | "parent-of-array";
+      type: "object";
+      isArray: boolean;
       childrenFields: EventField[];
     });
 
