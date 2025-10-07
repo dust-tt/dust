@@ -710,6 +710,7 @@ export async function runModelActivity(
     }
     agentMessage.content = (agentMessage.content ?? "") + processedContent;
     agentMessage.status = "succeeded";
+    agentMessage.completedTs = Date.now();
 
     await updateResourceAndPublishEvent(auth, {
       event: {
