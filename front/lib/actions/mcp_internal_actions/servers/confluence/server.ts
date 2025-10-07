@@ -50,11 +50,8 @@ const createServer = (): McpServer => {
         .describe("Pagination cursor from previous response for next page"),
       limit: z
         .number()
-        .min(1)
-        .max(250)
         .optional()
-        .default(25)
-        .describe("Number of results per page (max 250, default 25)"),
+        .describe("Number of results per page (default 25)"),
     },
     async (params, { authInfo }) => {
       return withAuth({

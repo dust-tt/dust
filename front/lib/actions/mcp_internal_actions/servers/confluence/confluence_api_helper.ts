@@ -188,6 +188,15 @@ export async function listPages(
   accessToken: string,
   params: ConfluenceSearchRequest
 ): Promise<Result<ConfluenceListPagesResult, string>> {
+  // Validate limit with clear error messages
+  const limit = params.limit ?? 25;
+  if (limit < 1) {
+    return new Err("Limit must be at least 1");
+  }
+  if (limit > 250) {
+    return new Err("Limit cannot exceed 250 (Confluence API limitation)");
+  }
+
   const searchParams = new URLSearchParams();
 
   if (params.cql) {
@@ -196,9 +205,7 @@ export async function listPages(
   if (params.cursor) {
     searchParams.append("cursor", params.cursor);
   }
-  if (params.limit) {
-    searchParams.append("limit", params.limit.toString());
-  }
+  searchParams.append("limit", limit.toString());
 
   const endpoint = `/wiki/api/v2/pages?${searchParams.toString()}`;
 

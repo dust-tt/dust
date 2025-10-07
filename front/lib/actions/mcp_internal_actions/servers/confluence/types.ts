@@ -33,11 +33,8 @@ export const ConfluenceSearchRequestSchema = z.object({
   cursor: z.string().optional().describe("Pagination cursor for next page"),
   limit: z
     .number()
-    .min(1)
-    .max(250)
     .optional()
-    .default(25)
-    .describe("Number of results per page (max 250)"),
+    .describe("Number of results per page (default 25)"),
 });
 
 export type ConfluenceSearchRequest = z.infer<
