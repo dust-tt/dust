@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -87,6 +88,12 @@ makeScript(
     });
 
     const dsAgents: any = {};
+    const dsEditors = await getAgentsEditors(
+      auth,
+      dsConfigs.map(
+        (cfg: any) => cfg.agent_mcp_server_configuration.agent_configuration
+      )
+    );
     dsConfigs.forEach((cfg: any) => {
       const agentId =
         cfg.agent_mcp_server_configuration.agent_configuration.sId;
@@ -94,6 +101,7 @@ makeScript(
         dsAgents[agentId] = {
           sId: cfg.agent_mcp_server_configuration.agent_configuration.sId,
           name: cfg.agent_mcp_server_configuration.agent_configuration.name,
+          editors: (dsEditors[agentId] || []).map((e) => e.email),
           depths: cfg.parentsIn
             .map((p: any) => {
               return tableRes.value.table.parents.indexOf(p);
@@ -110,13 +118,14 @@ makeScript(
           agent: {
             sId: agent.sId,
             name: agent.name,
+            editors: agent.editors,
             depths: agent.depths,
           },
         },
         "SEARCH"
       );
       console.log(
-        `${tableId},search,${agent.sId},${agent.name},${agent.depths.join("|")}`
+        `${tableId},search,${agent.sId},${agent.name},${agent.editors.join("|")},${agent.depths.join("|")}`
       );
     });
 
@@ -148,6 +157,12 @@ makeScript(
     });
 
     const tableAgents: any = {};
+    const tableEditors = await getAgentsEditors(
+      auth,
+      dsConfigs.map(
+        (cfg: any) => cfg.agent_mcp_server_configuration.agent_configuration
+      )
+    );
     tableConfigs.forEach((cfg: any) => {
       const agentId =
         cfg.agent_mcp_server_configuration.agent_configuration.sId;
@@ -155,6 +170,7 @@ makeScript(
         tableAgents[agentId] = {
           sId: cfg.agent_mcp_server_configuration.agent_configuration.sId,
           name: cfg.agent_mcp_server_configuration.agent_configuration.name,
+          editors: (tableEditors[agentId] || []).map((e) => e.email),
         };
       }
     });
@@ -167,11 +183,14 @@ makeScript(
           agent: {
             sId: agent.sId,
             name: agent.name,
+            editors: agent.editors,
           },
         },
         "TABLE"
       );
-      console.log(`${tableId},table,${agent.sId},${agent.name}`);
+      console.log(
+        `${tableId},table,${agent.sId},${agent.name},${agent.editors.join("|")}`
+      );
     });
   }
 );
