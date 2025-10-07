@@ -1236,12 +1236,12 @@ impl Embedder for OpenAIEmbedder {
                         key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY";
 
                         // This block is only for logging purposes, and can be removed when we stop using CORE_DATA_SOURCES_OPENAI_API_KEY
-                        match open_ai_api_key {
-                            Some(_) => {
-                                if open_ai_api_key.as_ref().unwrap()
-                                    != self.api_key.as_ref().unwrap()
-                                {
-                                    warn!("CORE_DATA_SOURCES_OPENAI_API_KEY and OPENAI_API_KEY differ; using CORE_DATA_SOURCES_OPENAI_API_KEY.");
+                        match open_ai_api_key.as_ref() {
+                            Some(open_key) => {
+                                if let Some(current_key) = self.api_key.as_ref() {
+                                    if open_key != current_key {
+                                        warn!("CORE_DATA_SOURCES_OPENAI_API_KEY and OPENAI_API_KEY differ; using CORE_DATA_SOURCES_OPENAI_API_KEY.");
+                                    }
                                 }
                             }
                             None => {
