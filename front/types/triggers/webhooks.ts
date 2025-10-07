@@ -82,6 +82,9 @@ export type PatchWebhookSourceViewBody = z.infer<
 
 export const patchWebhookSourceViewBodySchema = z.object({
   name: z.string().min(1, "Name is required."),
-  description: z.string().optional(),
+  description: z
+    .string()
+    .max(4000, "Description must be at most 4000 characters.")
+    .optional(),
   icon: z.string().optional(),
 });
