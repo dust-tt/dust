@@ -29,7 +29,8 @@ export const AssistantInputBarVirtuoso = ({
       (m) =>
         isUserMessage(m) &&
         m.user?.id === context.user.id &&
-        m.visibility !== "deleted"
+        m.visibility !== "deleted" &&
+        m.context.origin !== "agent_handover"
     );
 
   const agentMentions = useMemo(() => {
