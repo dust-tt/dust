@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
@@ -59,19 +59,21 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     };
   }, [activeSubscription]);
 
-  const [hasOptedIn, setHasOptedIn] = useState(false);
-  const lastIdentifiedUserId = useRef<string | null>(null);
-  const lastIdentifiedWorkspaceId = useRef<string | null>(null);
-  const lastPlanPropertiesString = useRef<string | null>(null);
-
-  const isExcludedPath = EXCLUDED_PATHS.some((path) => {
+  const isTrackablePage = !EXCLUDED_PATHS.some((path) => {
     const pathname = router.pathname;
     return pathname.startsWith(path) || pathname.endsWith(path);
   });
-  const isTrackablePage = !isExcludedPath;
 
+  const shouldTrack = isTrackablePage && hasAcceptedCookies;
+
+  const lastIdentifiedUserId = useRef<string | null>(null);
+  const lastIdentifiedWorkspaceId = useRef<string | null>(null);
+  const lastPlanPropertiesString = useRef<string | null>(null);
+  const hasInitialized = useRef(false);
+
+  // Initialize PostHog once with correct default state
   useEffect(() => {
-    if (!POSTHOG_KEY || posthog.__loaded) {
+    if (!POSTHOG_KEY || posthog.__loaded || hasInitialized.current) {
       return;
     }
 
@@ -79,7 +81,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       api_host: "/ingest",
       person_profiles: "identified_only",
       defaults: "2025-05-24",
-      opt_out_capturing_by_default: true,
+      opt_out_capturing_by_default: !shouldTrack,
       capture_pageview: true,
       capture_pageleave: true,
       autocapture: false,
@@ -103,26 +105,30 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         recordCrossOriginIframes: false,
       },
     });
-  }, []);
 
+    hasInitialized.current = true;
+  }, [shouldTrack]);
+
+  // Handle tracking state changes only when user logs in or cookie acceptance changes
+  const prevShouldTrack = useRef(shouldTrack);
   useEffect(() => {
-    const shouldTrack = isTrackablePage && hasAcceptedCookies;
-
-    if (!posthog.__loaded) {
+    if (!posthog.__loaded || !hasInitialized.current) {
       return;
     }
 
-    if (shouldTrack && !hasOptedIn) {
-      posthog.opt_in_capturing();
-      setHasOptedIn(true);
-    } else if (!shouldTrack && hasOptedIn) {
-      posthog.opt_out_capturing();
-      setHasOptedIn(false);
+    if (prevShouldTrack.current !== shouldTrack) {
+      if (shouldTrack) {
+        posthog.opt_in_capturing();
+      } else {
+        posthog.opt_out_capturing();
+      }
+      prevShouldTrack.current = shouldTrack;
     }
-  }, [isTrackablePage, hasAcceptedCookies, hasOptedIn]);
+  }, [shouldTrack]);
 
+  // Identify user when they log in or workspace changes
   useEffect(() => {
-    if (!posthog.__loaded || !user || !hasOptedIn) {
+    if (!posthog.__loaded || !user || !shouldTrack) {
       return;
     }
 
@@ -135,26 +141,46 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       posthog.identify(user.sId, userProperties);
       lastIdentifiedUserId.current = user.sId;
     }
-  }, [workspaceId, hasOptedIn, user]);
+  }, [user, workspaceId, shouldTrack]);
 
+  // Group users by workspace (all users) and set workspace properties (admin only).
   useEffect(() => {
-    if (!posthog.__loaded || !workspaceId || !hasOptedIn) {
+    if (!posthog.__loaded || !workspaceId || !shouldTrack) {
       return;
     }
 
-    const planPropsString = planProperties
-      ? JSON.stringify(planProperties)
-      : null;
     const workspaceChanged = lastIdentifiedWorkspaceId.current !== workspaceId;
+    const planPropsString = JSON.stringify(planProperties);
     const planChanged = lastPlanPropertiesString.current !== planPropsString;
 
-    // Set group properties when workspace changes or when plan properties are available/updated
-    if (workspaceChanged || (planProperties && planChanged)) {
-      posthog.group("workspace", workspaceId, planProperties ?? {});
+    if (workspaceChanged || (isAdmin && planChanged)) {
+      posthog.group(
+        "workspace",
+        workspaceId,
+        isAdmin && planProperties ? planProperties : undefined
+      );
       lastIdentifiedWorkspaceId.current = workspaceId;
-      lastPlanPropertiesString.current = planPropsString;
+      if (isAdmin) {
+        lastPlanPropertiesString.current = planPropsString;
+      }
     }
-  }, [workspaceId, planProperties, hasOptedIn]);
+  }, [workspaceId, planProperties, shouldTrack, isAdmin]);
+
+  // Track pageviews on route changes (Next.js client-side navigation)
+  useEffect(() => {
+    if (!posthog.__loaded || !shouldTrack) {
+      return;
+    }
+
+    const handleRouteChange = () => {
+      posthog.capture("$pageview");
+    };
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.events, shouldTrack]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;

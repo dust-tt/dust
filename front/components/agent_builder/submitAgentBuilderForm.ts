@@ -10,6 +10,11 @@ import {
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
@@ -506,6 +511,19 @@ export async function submitAgentBuilderForm({
     } = await response.json();
 
     const agentConfiguration = result.agentConfiguration;
+
+    // Track agent creation (only for new agents, not updates)
+    if (!agentConfigurationId && !isDraft) {
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "create_agent",
+        action: TRACKING_ACTIONS.SUBMIT,
+        extra: {
+          scope: formData.agentSettings.scope,
+          has_actions: processedActions.length > 0 ? "true" : "false",
+        },
+      });
+    }
 
     // We don't update Slack channels nor triggers when saving a draft agent.
     if (isDraft) {
