@@ -235,7 +235,7 @@ const TOOL_MIME_TYPES = {
       "LIST",
       "REASONING_MODEL",
       "DUST_APP",
-      "NULLABLE_TIME_FRAME",
+      "TIME_FRAME",
       "JSON_SCHEMA",
       "SECRET",
     ],
