@@ -2465,7 +2465,17 @@ async function renderPageSection({
   // Change block parents so that H1/H2/H3 blocks are treated as nesting
   // for that we need to traverse with a topological sort, leafs treated first
   const orderedParentIds: string[] = [];
+  const visitedNodes = new Set<string>();
   const addNode = (nodeId: string) => {
+    // Prevent infinite recursion on circular references
+    if (visitedNodes.has(nodeId)) {
+      localLogger.warn(
+        `Circular reference detected in block hierarchy at node: ${nodeId}`
+      );
+      return;
+    }
+    visitedNodes.add(nodeId);
+
     const children = blocksByParentId[nodeId];
     if (!children) {
       return;
@@ -2535,11 +2545,26 @@ async function renderPageSection({
     }
   }
 
+  const renderingStack = new Set<string>();
+
   const renderBlockSection = async (
     b: NotionConnectorBlockCacheEntry,
     depth: number,
     indent = ""
   ): Promise<CoreAPIDataSourceDocumentSection> => {
+    // Prevent infinite recursion on circular references
+    if (renderingStack.has(b.notionBlockId)) {
+      localLogger.warn(
+        `Circular reference detected while rendering block: ${b.notionBlockId} at depth ${depth}`
+      );
+      return {
+        prefix: null,
+        content: `[Circular reference detected for block ${b.notionBlockId}]\n`,
+        sections: [],
+      };
+    }
+    renderingStack.add(b.notionBlockId);
+
     const startTime = Date.now();
     // Initial rendering (remove base64 images from rendered block)
     let renderedBlock = b.blockText ? `${indent}${b.blockText}` : "";
@@ -2583,6 +2608,9 @@ async function renderPageSection({
         await renderBlockSection(child, depth + 1, indent)
       );
     }
+
+    // Remove from rendering stack after processing
+    renderingStack.delete(b.notionBlockId);
     const elapsedTime = Date.now() - startTime;
     if (elapsedTime > LONG_RENDER_BLOCK_SECTION_TIME_MS) {
       localLogger.info(
