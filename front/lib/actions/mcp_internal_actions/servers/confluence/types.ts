@@ -85,6 +85,8 @@ export const ConfluencePageSchema = z
     body: data.body,
   }));
 
+export type ConfluencePage = z.infer<typeof ConfluencePageSchema>;
+
 export const ConfluenceListPagesResultSchema = z.object({
   results: z.array(ConfluencePageSchema),
   _links: z
@@ -94,3 +96,71 @@ export const ConfluenceListPagesResultSchema = z.object({
     })
     .optional(),
 });
+
+export const ConfluenceCreatePageRequestSchema = z.object({
+  spaceId: z
+    .string()
+    .describe("The ID of the space where the page will be created"),
+  status: z
+    .enum(["current", "draft"])
+    .optional()
+    .default("current")
+    .describe("Page status (default: current)"),
+  title: z.string().describe("Page title"),
+  parentId: z.string().optional().describe("Parent page ID (for child pages)"),
+  body: z
+    .object({
+      representation: z.enum(["storage", "atlas_doc_format"]),
+      value: z.string(),
+    })
+    .optional()
+    .describe("Page body content"),
+});
+
+export type ConfluenceCreatePageRequest = z.infer<
+  typeof ConfluenceCreatePageRequestSchema
+>;
+
+// Schema for page creation payload
+export const CreatePagePayloadSchema = z.object({
+  spaceId: z.string(),
+  title: z.string(),
+  status: z.string().optional().default("current"),
+  parentId: z.string().optional(),
+  body: z
+    .object({
+      value: z.string(),
+      representation: z.string(),
+    })
+    .optional(),
+});
+
+export type CreatePagePayload = z.infer<typeof CreatePagePayloadSchema>;
+
+export const ConfluenceUpdatePageRequestSchema = z.object({
+  id: z.string().describe("The page ID"),
+  status: z
+    .enum(["current", "trashed", "draft", "archived"])
+    .optional()
+    .describe("Page status"),
+  title: z.string().optional().describe("Page title"),
+  spaceId: z.string().optional().describe("Space ID"),
+  parentId: z.string().optional().describe("Parent page ID"),
+  body: z
+    .object({
+      representation: z.enum(["storage", "atlas_doc_format"]),
+      value: z.string(),
+    })
+    .optional()
+    .describe("Page body content"),
+  version: z
+    .object({
+      number: z.number().describe("Version number (must be incremented)"),
+      message: z.string().optional().describe("Version comment"),
+    })
+    .describe("Version information"),
+});
+
+export type ConfluenceUpdatePageRequest = z.infer<
+  typeof ConfluenceUpdatePageRequestSchema
+>;
