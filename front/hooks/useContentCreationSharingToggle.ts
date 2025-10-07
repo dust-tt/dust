@@ -11,11 +11,10 @@ export function useContentCreationSharingToggle({
   owner,
 }: UseContentCreationSharingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
-
   const [isEnabled, setIsEnabled] = useState(
     owner.metadata?.allowContentCreationFileSharing !== false
   );
+  const sendNotification = useSendNotification();
 
   const doToggleContentCreationSharing = async () => {
     setIsChanging(true);
