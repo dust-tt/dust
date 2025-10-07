@@ -7,6 +7,16 @@ import { extractTextFromBuffer } from "../../utils/attachment_processing";
 
 const SF_API_VERSION = "57.0";
 
+function isValidSalesforceId(id: string): boolean {
+  if (!id || typeof id !== "string") {
+    return false;
+  }
+
+  // Salesforce IDs are 15-18 alphanumeric characters
+  const salesforceIdPattern = /^[a-zA-Z0-9]{15,18}$/;
+  return salesforceIdPattern.test(id);
+}
+
 export interface AttachmentMetadata {
   id: string;
   filename: string;
@@ -30,6 +40,11 @@ async function getSalesforceAttachments(
   parentId: string
 ): Promise<Result<AttachmentMetadata[], string>> {
   try {
+    // Validate input to prevent SQL injection
+    if (!isValidSalesforceId(parentId)) {
+      return new Err("Invalid Salesforce ID format");
+    }
+
     const result = await conn.query<SalesforceAttachment>(`
       SELECT Id, Name, ContentType, BodyLength, CreatedDate, CreatedBy.Name
       FROM Attachment
@@ -171,6 +186,10 @@ export async function getAllSalesforceAttachments(
   conn: Connection,
   recordId: string
 ): Promise<Result<AttachmentMetadata[], string>> {
+  if (!isValidSalesforceId(recordId)) {
+    return new Err("Invalid Salesforce ID format");
+  }
+
   const [attachmentsResult, filesResult] = await Promise.all([
     getSalesforceAttachments(conn, recordId),
     getSalesforceFiles(conn, recordId),
@@ -191,6 +210,10 @@ export async function downloadSalesforceContent(
   conn: Connection,
   attachmentId: string
 ): Promise<Result<Buffer, string>> {
+  if (!isValidSalesforceId(attachmentId)) {
+    return new Err("Invalid Salesforce ID format");
+  }
+
   // Salesforce ID prefixes:
   // "068" = ContentVersion (modern files)
   // "00P" = Attachment (legacy attachments)
@@ -208,6 +231,10 @@ export async function extractTextFromSalesforceAttachment(
   attachmentId: string,
   mimeType: string
 ): Promise<Result<string, string>> {
+  if (!isValidSalesforceId(attachmentId)) {
+    return new Err("Invalid Salesforce ID format");
+  }
+
   const downloadResult = await downloadSalesforceContent(conn, attachmentId);
 
   if (downloadResult.isErr()) {

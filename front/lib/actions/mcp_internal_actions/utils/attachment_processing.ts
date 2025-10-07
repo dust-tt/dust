@@ -30,6 +30,10 @@ export async function extractTextFromBuffer(
   buffer: Buffer,
   mimeType: string
 ): Promise<Result<string, string>> {
+  if (!isTextExtractionSupportedContentType(mimeType)) {
+    return new Err(`Text extraction not supported for file type: ${mimeType}.`);
+  }
+
   try {
     const textExtraction = new TextExtraction(config.getTextExtractionUrl(), {
       enableOcr: true,
