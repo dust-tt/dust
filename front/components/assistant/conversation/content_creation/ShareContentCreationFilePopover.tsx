@@ -176,7 +176,7 @@ export function ShareContentCreationFilePopover({
         <Button size="xs" variant="ghost" label="Share" />
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col" align="end">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           <div>
             <h2 className="text-base font-semibold text-primary dark:text-primary-night">
               Share this content
