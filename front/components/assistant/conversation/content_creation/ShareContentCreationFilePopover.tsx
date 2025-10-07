@@ -22,7 +22,7 @@ import React from "react";
 import { useShareContentCreationFile } from "@app/lib/swr/files";
 import type { FileShareScope, LightWorkspaceType } from "@app/types";
 
-const USER_LABEL = "Internal - Workspace members with the link";
+const WORKSPACE_LABEL = "Internal - Workspace members with the link";
 
 const scopeOptions: {
   icon: React.ComponentType;
@@ -31,7 +31,7 @@ const scopeOptions: {
 }[] = [
   {
     icon: UserGroupIcon,
-    label: USER_LABEL,
+    label: WORKSPACE_LABEL,
     value: "workspace",
   },
   {
@@ -192,7 +192,7 @@ export function ShareContentCreationFilePopover({
                 {isPublicSharingForbidden ? (
                   <div className="flex items-center gap-2">
                     <UserGroupIcon />
-                    <p className="copy-sm">{USER_LABEL}</p>
+                    <p className="copy-sm">{WORKSPACE_LABEL}</p>
                   </div>
                 ) : (
                   <FileSharingDropdown
