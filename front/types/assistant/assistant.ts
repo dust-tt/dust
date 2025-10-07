@@ -20,6 +20,7 @@ export const MODEL_PROVIDER_IDS = [
   "deepseek",
   "fireworks",
   "xai",
+  "noop",
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
@@ -43,6 +44,8 @@ export function getProviderDisplayName(
       return "Fireworks";
     case "xai":
       return "xAI";
+    case "noop":
+      return "noop";
     default:
       return providerId;
   }
@@ -239,6 +242,8 @@ export const GROK_3_FAST_MODEL_ID = "grok-3-fast-latest" as const;
 export const GROK_3_MINI_FAST_MODEL_ID = "grok-3-mini-fast-latest" as const;
 export const GROK_4_MODEL_ID = "grok-4-latest" as const;
 
+export const NOOP_MODEL_ID = "noop" as const;
+
 export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
@@ -297,6 +302,7 @@ export const MODEL_IDS = [
   GROK_3_FAST_MODEL_ID,
   GROK_3_MINI_FAST_MODEL_ID,
   GROK_4_MODEL_ID,
+  NOOP_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -1586,6 +1592,27 @@ export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "xai_feature",
 };
 
+export const NOOP_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "noop",
+  modelId: NOOP_MODEL_ID,
+  displayName: "Noop",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "Noop model that does nothing.",
+  shortDescription: "Noop model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+  supportsResponseFormat: false,
+  featureFlag: "noop_model_feature",
+};
+
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
@@ -1643,6 +1670,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_3_FAST_MODEL_CONFIG,
   GROK_3_MINI_FAST_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
+  NOOP_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
@@ -1719,6 +1747,8 @@ export enum GLOBAL_AGENTS_SID {
   MISTRAL_SMALL = "mistral",
   GEMINI_PRO = "gemini-pro",
   DEEPSEEK_R1 = "deepseek-r1",
+
+  NOOP = "noop",
 }
 
 export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
@@ -1754,6 +1784,8 @@ export function getGlobalAgentAuthorName(agentId: string): string {
       return "Google";
     case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
       return "DeepSeek";
+    case GLOBAL_AGENTS_SID.NOOP:
+      return "Noop";
     default:
       return "Dust";
   }
@@ -1782,6 +1814,7 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.MISTRAL_SMALL,
   GLOBAL_AGENTS_SID.GEMINI_PRO,
   GLOBAL_AGENTS_SID.HELPER,
+  GLOBAL_AGENTS_SID.NOOP,
 ];
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,
