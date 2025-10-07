@@ -1,6 +1,6 @@
-import type { EventType, PresetWebhookType } from "./webhooks_source_preset";
+import type { WebhookEvent, PresetWebhook } from "./webhooks_source_preset";
 
-const GITHUB_PULL_REQUEST_EVENT: EventType = {
+const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
   name: "pull_request",
   value: "pull_request",
   description:
@@ -42,7 +42,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
       name: "pull_request",
       description: "The pull request itself.",
       type: "parent-field",
-      childrentFields: [
+      childrenFields: [
         {
           name: "html_url",
           description: "The GitHub web URL of the pull request.",
@@ -78,7 +78,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
           name: "user",
           description: "The user who created the pull request.",
           type: "parent-field",
-          childrentFields: [
+          childrenFields: [
             {
               name: "login",
               description: "The username of the user.",
@@ -131,7 +131,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
           name: "assignee",
           description: "The user assigned to the pull request.",
           type: "parent-field",
-          childrentFields: [
+          childrenFields: [
             {
               name: "login",
               description: "The username of the user.",
@@ -164,7 +164,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
           name: "assignees",
           description: "The users assigned to the pull request.",
           type: "parent-of-array",
-          childrentFields: [
+          childrenFields: [
             {
               name: "login",
               description: "The username of the user.",
@@ -197,7 +197,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
           name: "requested_reviewers",
           description: "The users requested to review the pull request.",
           type: "parent-of-array",
-          childrentFields: [
+          childrenFields: [
             {
               name: "login",
               description: "The username of the user.",
@@ -235,7 +235,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
           name: "labels",
           description: "The labels applied to the pull request.",
           type: "parent-of-array",
-          childrentFields: [
+          childrenFields: [
             {
               name: "id",
               description: "The unique identifier of the label.",
@@ -267,7 +267,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
           name: "head",
           description: "The head branch of the pull request.",
           type: "parent-field",
-          childrentFields: [
+          childrenFields: [
             {
               name: "label",
               description: "The label of the head branch.",
@@ -284,7 +284,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
           name: "base",
           description: "The base branch of the pull request.",
           type: "parent-field",
-          childrentFields: [
+          childrenFields: [
             {
               name: "label",
               description: "The label of the base branch.",
@@ -348,7 +348,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
       name: "sender",
       description: "The user that triggered the event.",
       type: "parent-field",
-      childrentFields: [
+      childrenFields: [
         {
           name: "login",
           description: "The username of the user.",
@@ -385,7 +385,7 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
   ],
 };
 
-const GITHUB_ISSUES_EVENT: EventType = {
+const GITHUB_ISSUES_EVENT: WebhookEvent = {
   name: "issues",
   value: "issues",
   description:
@@ -418,7 +418,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
       name: "issue",
       description: "The issue itself.",
       type: "parent-field",
-      childrentFields: [
+      childrenFields: [
         {
           name: "url",
           description: "The API URL of the issue.",
@@ -443,7 +443,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
           name: "user",
           description: "The user who created the issue.",
           type: "parent-field",
-          childrentFields: [
+          childrenFields: [
             {
               name: "login",
               description: "The username of the user.",
@@ -476,7 +476,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
           name: "labels",
           description: "The labels applied to the issue.",
           type: "parent-of-array",
-          childrentFields: [
+          childrenFields: [
             {
               name: "id",
               description: "The unique identifier of the label.",
@@ -514,7 +514,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
           name: "assignee",
           description: "The user assigned to the issue.",
           type: "parent-field",
-          childrentFields: [
+          childrenFields: [
             {
               name: "login",
               description: "The username of the user.",
@@ -542,7 +542,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
           name: "assignees",
           description: "The users assigned to the issue.",
           type: "parent-of-array",
-          childrentFields: [
+          childrenFields: [
             {
               name: "login",
               description: "The username of the user.",
@@ -613,7 +613,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
       description:
         "The optional user who was assigned or unassigned from the issue.",
       type: "parent-field",
-      childrentFields: [
+      childrenFields: [
         {
           name: "login",
           description: "The username of the user.",
@@ -647,7 +647,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
       description:
         "The optional label that was added or removed from the issue.",
       type: "parent-field",
-      childrentFields: [
+      childrenFields: [
         {
           name: "id",
           description: "The unique identifier of the label.",
@@ -669,7 +669,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
       name: "sender",
       description: "The user that triggered the event.",
       type: "parent-field",
-      childrentFields: [
+      childrenFields: [
         {
           name: "login",
           description: "The username of the user.",
@@ -701,7 +701,7 @@ const GITHUB_ISSUES_EVENT: EventType = {
   ],
 };
 
-export const GITHUB_WEBHOOK_PRESET: PresetWebhookType = {
+export const GITHUB_WEBHOOK_PRESET: PresetWebhook = {
   name: "GitHub",
   eventCheck: {
     type: "header",

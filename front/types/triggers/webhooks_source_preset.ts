@@ -3,7 +3,7 @@ type EventFieldBase = {
   description: string;
 };
 
-export type EventFieldType =
+export type EventField =
   | (EventFieldBase & {
       type:
         | "string"
@@ -19,23 +19,23 @@ export type EventFieldType =
     })
   | (EventFieldBase & {
       type: "parent-field" | "parent-of-array";
-      childrentFields: EventFieldType[];
+      childrenFields: EventField[];
     });
 
-export type EventCheckType = {
+export type EventCheck = {
   type: "header" | "payload";
   field: string;
 };
 
-export type EventType = {
+export type WebhookEvent = {
   name: string;
   value: string;
   description: string;
-  fields: EventFieldType[];
+  fields: EventField[];
 };
 
-export type PresetWebhookType = {
+export type PresetWebhook = {
   name: string;
-  eventCheck: EventCheckType | null;
-  events: EventType[];
+  eventCheck: EventCheck | null;
+  events: WebhookEvent[];
 };
