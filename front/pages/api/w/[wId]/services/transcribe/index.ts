@@ -79,7 +79,7 @@ async function handler(
       controller.abort();
     });
 
-    const stream = await transcribeStream(file, "elevenlabs");
+    const stream = await transcribeStream(file);
     for await (const chunk of stream) {
       let stop = false;
       switch (chunk.type) {
