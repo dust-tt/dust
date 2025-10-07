@@ -8,6 +8,7 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import {
   _getAgentRouterToolsConfiguration,
+  _getContentCreationToolConfiguration,
   _getDefaultWebActionsForGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
@@ -149,29 +150,15 @@ export function _getHelperGlobalAgent({
     )
   );
 
-  if (contentCreationMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.HELPER + "-content-creation",
-      type: "mcp_server_configuration",
-      name: "content_creation",
-      description: "Create & update Content Creation files.",
-      mcpServerViewId: contentCreationMCPServerView.sId,
-      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-    });
-  }
-
   const sId = GLOBAL_AGENTS_SID.HELPER;
   const metadata = getGlobalAgentMetadata(sId);
+
+  actions.push(
+    ..._getContentCreationToolConfiguration({
+      agentId: sId,
+      contentCreationMCPServerView,
+    })
+  );
 
   return {
     id: -1,

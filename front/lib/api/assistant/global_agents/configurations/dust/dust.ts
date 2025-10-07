@@ -8,6 +8,7 @@ import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guid
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getAgentRouterToolsConfiguration,
+  _getContentCreationToolConfiguration,
   _getDefaultWebActionsForGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
@@ -250,26 +251,12 @@ export function _getDustGlobalAgent(
     });
   }
 
-  if (contentCreationMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-content-creation",
-      type: "mcp_server_configuration",
-      name: "content_creation" satisfies InternalMCPServerNameType,
-      description: "Create & update Content Creation files.",
-      mcpServerViewId: contentCreationMCPServerView.sId,
-      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-    });
-  }
+  actions.push(
+    ..._getContentCreationToolConfiguration({
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      contentCreationMCPServerView,
+    })
+  );
 
   // Fix the action ids.
   actions.forEach((action, i) => {
