@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
 import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
