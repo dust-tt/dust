@@ -150,32 +150,28 @@ async function handler(
       // Batch delete triggers
       for (const triggerId of triggerIds) {
         const triggerToDelete = userTriggers.find((t) => t.sId() === triggerId);
-        if (triggerToDelete) {
-          const deleteResult = await triggerToDelete.delete(auth);
-          if (deleteResult.isErr()) {
-            logger.error(
-              {
-                workspaceId: workspace.sId,
-                agentConfigurationId,
-                triggerId,
-                error: deleteResult.error,
-              },
-              "Failed to delete trigger"
-            );
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: `Failed to delete trigger ${triggerId}.`,
-              },
-            });
-          }
-        } else {
+
+        if (!triggerToDelete) {
+          // Skip triggers that the user cannot delete
+          continue;
+        }
+
+        const deleteResult = await triggerToDelete.delete(auth);
+        if (deleteResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              agentConfigurationId,
+              triggerId,
+              error: deleteResult.error,
+            },
+            "Failed to delete trigger"
+          );
           return apiError(req, res, {
-            status_code: 404,
+            status_code: 500,
             api_error: {
-              type: "trigger_not_found",
-              message: `Trigger ${triggerId} not found or you do not have permission to delete it.`,
+              type: "internal_server_error",
+              message: `Failed to delete trigger ${triggerId}.`,
             },
           });
         }
@@ -213,6 +209,14 @@ async function handler(
 
       // Batch update triggers
       for (const triggerData of triggers) {
+        const triggerToUpdate = userTriggers.find(
+          (t) => t.sId() === triggerData.sId
+        );
+
+        if (!triggerToUpdate) {
+          continue; // Skip triggers that the user cannot edit
+        }
+
         const triggerValidation = TriggerSchema.decode({
           ...triggerData,
           editor: auth.getNonNullableUser().id,
