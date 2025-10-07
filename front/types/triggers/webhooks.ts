@@ -7,6 +7,9 @@ import type {
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
+import type { PresetWebhookType } from "@app/types/triggers/webhooks_source_preset";
+
+import { GITHUB_WEBHOOK_PRESET } from "./github_webhook_source_presets";
 
 export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
   "sha1",
@@ -17,7 +20,14 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_SOURCE_KIND = ["custom"] as const;
+export const WEBHOOK_SOURCE_PRESETS_MAP: Record<string, PresetWebhookType> = {
+  github: GITHUB_WEBHOOK_PRESET,
+} as const;
+
+export const WEBHOOK_SOURCE_KIND = [
+  "custom",
+  ...Object.keys(WEBHOOK_SOURCE_PRESETS_MAP),
+] as const;
 
 export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
 
