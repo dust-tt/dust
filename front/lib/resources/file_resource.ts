@@ -582,7 +582,7 @@ export class FileResource extends BaseResource<FileModel> {
     return null;
   }
 
-  static async updatePublicShareScopeToWorkspace(auth: Authenticator) {
+  static async revokePublicSharingInWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
     return ShareableFileModel.update(
       {

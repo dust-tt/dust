@@ -158,7 +158,7 @@ async function handler(
 
         // if public sharing is disabled, downgrade share scope of all public files to workspace
         if (!body.allowContentCreationFileSharing) {
-          await FileResource.updatePublicShareScopeToWorkspace(auth);
+          await FileResource.revokePublicSharingInWorkspace(auth);
         }
       } else {
         const { domain, domainAutoJoinEnabled } = body;
