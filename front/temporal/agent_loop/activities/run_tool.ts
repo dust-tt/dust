@@ -1,5 +1,5 @@
-import assert from "assert";
 import { Context } from "@temporalio/activity";
+import assert from "assert";
 
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";

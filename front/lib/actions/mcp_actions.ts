@@ -441,21 +441,17 @@ export async function* tryCallMCPTool(
       toolCallResult = await toolPromise;
     } catch (toolError) {
       if (abortSignal?.aborted) {
-        return new Err(
-          new MCPError("Tool execution cancelled", {
-            tracked: false,
-            cause: toolError instanceof Error ? toolError : undefined,
-          })
-        );
+        throw new MCPError("Tool execution cancelled", {
+          tracked: false,
+          cause: toolError instanceof Error ? toolError : undefined,
+        });
       }
 
       throw toolError;
     }
 
     if (wasAborted) {
-      return new Err(
-        new MCPError("Tool execution cancelled", { tracked: false })
-      );
+      throw new MCPError("Tool execution cancelled", { tracked: false });
     }
 
     // Before returning the content to the caller, we make sure the notifications are fully flushed.
