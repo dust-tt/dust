@@ -3,7 +3,7 @@
  * - Event name: {area}:{object}_{action}
  * - Always include area from TRACKING_AREAS
  * - Use snake_case for object names
- * - Common actions: click, submit, create, delete, connect
+ * - Common actions: click, submit, create, delete, connect.
  *
  * @example
  * // For simple click tracking:
