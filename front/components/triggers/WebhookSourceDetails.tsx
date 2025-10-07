@@ -94,7 +94,7 @@ export function WebhookSourceDetails({
 
   useEffect(() => {
     form.reset(defaults);
-  }, [systemView.sId]);
+  }, [defaults, form]);
 
   useEffect(() => {
     if (isOpen && !prevIsOpen) {
@@ -211,11 +211,6 @@ export function WebhookSourceDetails({
       },
       async (errors) => {
         const keys = Object.keys(errors);
-        const firstErrorKey = keys[0] as keyof typeof errors | undefined;
-        if (firstErrorKey) {
-          form.setFocus(firstErrorKey as any);
-        }
-
         const errorDetails = keys
           .map((key) => {
             const error = errors[key as keyof typeof errors];
