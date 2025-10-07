@@ -40,7 +40,7 @@ export function getProPlanStripeProductId(owner: WorkspaceType) {
 
 export const getStripeClient = () => {
   return new Stripe(config.getStripeSecretKey(), {
-    apiVersion: "2023-10-16",
+    apiVersion: "2025-09-30.clover",
     typescript: true,
   });
 };

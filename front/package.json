@@ -143,7 +143,7 @@
     "slackify-markdown": "^4.4.0",
     "sqids": "^0.3.0",
     "sqlite3": "^5.1.6",
-    "stripe": "^14.2.0",
+    "stripe": "^19.1.0",
     "swr": "^2.2.4",
     "tailwind-merge": "^2.2.1",
     "tailwind-scrollbar-hide": "^1.1.7",

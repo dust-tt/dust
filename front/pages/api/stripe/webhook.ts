@@ -106,7 +106,7 @@ async function handler(
       const now = new Date();
 
       switch (event.type) {
-        case "checkout.session.completed":
+        case "checkout.session.completed": {
           // Payment is successful and the stripe subscription is created.
           // We can create the new subscription and end the active one if any.
           const session = event.data.object as Stripe.Checkout.Session;
@@ -295,14 +295,27 @@ async function handler(
               },
             });
           }
-        case "invoice.paid":
+        }
+
+        case "invoice.paid": {
           // This is what confirms the subscription is active and payments are being made.
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.invoice.paid event."
           );
           invoice = event.data.object as Stripe.Invoice;
-          if (typeof invoice.subscription !== "string") {
+
+          let stripeSubscriptionId: string | null = null;
+          if (
+            invoice.parent?.type === "subscription_details" &&
+            typeof invoice.parent.subscription_details?.subscription ===
+              "string"
+          ) {
+            stripeSubscriptionId =
+              invoice.parent.subscription_details?.subscription;
+          }
+
+          if (typeof stripeSubscriptionId !== "string") {
             return _returnStripeApiError(
               req,
               res,
@@ -312,24 +325,26 @@ async function handler(
           }
           // Setting subscription payment status to succeeded
           subscription = await Subscription.findOne({
-            where: { stripeSubscriptionId: invoice.subscription },
+            where: { stripeSubscriptionId },
             include: [WorkspaceModel],
           });
           if (!subscription) {
             logger.warn(
               {
                 event,
-                stripeSubscriptionId: invoice.subscription,
+                stripeSubscriptionId,
               },
               "[Stripe Webhook] Subscription not found."
             );
-            // We return a 200 here to handle multiple regions, DD will watch
-            // the warnings and create an alert if this log appears in all regions
+            // We return a 200 here to handle multiple regions, DD will watch the warnings and
+            // create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
           await subscription.update({ paymentFailingSince: null });
           break;
-        case "invoice.payment_failed":
+        }
+
+        case "invoice.payment_failed": {
           // Occurs when payment failed or the user does not have a valid payment method.
           // The stripe subscription becomes "past_due".
           // We log it on the Subscription to display a banner and email the admins.
@@ -344,7 +359,17 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          if (typeof invoice.subscription !== "string") {
+          let stripeSubscriptionId: string | null = null;
+          if (
+            invoice.parent?.type === "subscription_details" &&
+            typeof invoice.parent.subscription_details?.subscription ===
+              "string"
+          ) {
+            stripeSubscriptionId =
+              invoice.parent.subscription_details?.subscription;
+          }
+
+          if (typeof stripeSubscriptionId !== "string") {
             return _returnStripeApiError(
               req,
               res,
@@ -355,14 +380,14 @@ async function handler(
 
           // Logging that we have a failed payment
           subscription = await Subscription.findOne({
-            where: { stripeSubscriptionId: invoice.subscription },
+            where: { stripeSubscriptionId },
             include: [WorkspaceModel],
           });
           if (!subscription) {
             logger.warn(
               {
                 event,
-                stripeSubscriptionId: invoice.subscription,
+                stripeSubscriptionId,
               },
               "[Stripe Webhook] Subscription not found."
             );
@@ -371,9 +396,10 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          // TODO(2024-01-16 by flav) This line should be removed after all Stripe webhooks have been retried.
-          // Previously, there was an error in how we handled the cancellation of subscriptions.
-          // This change ensures that we return a success status if the subscription is already marked as "ended".
+          // TODO(2024-01-16 by flav) This line should be removed after all Stripe webhooks have
+          // been retried. Previously, there was an error in how we handled the cancellation of
+          // subscriptions. This change ensures that we return a success status if the subscription
+          // is already marked as "ended".
           if (subscription.status === "ended") {
             return res.status(200).json({ success: true });
           }
@@ -416,14 +442,15 @@ async function handler(
             );
           }
           break;
-        case "charge.dispute.created":
+        }
+        case "charge.dispute.created": {
           const dispute = event.data.object as Stripe.Dispute;
           logger.warn(
             { dispute, stripeError: true },
             "[Stripe Webhook] Received charge.dispute.created event. Please make sure the subscription is now marked as 'ended' in our database and canceled on Stripe."
           );
           break;
-
+        }
         case "customer.subscription.created": {
           const stripeSubscription = event.data.object as Stripe.Subscription;
           // on the odd chance the change is not compatible with our logic, we panic
@@ -443,11 +470,13 @@ async function handler(
           break;
         }
 
-        case "customer.subscription.updated":
+        case "customer.subscription.updated": {
           // Occurs when the subscription is updated:
           // - when the number of seats changes for a metered billing.
-          // - when the subscription is canceled by the user: it is ended at the of the billing period, and we will receive a "customer.subscription.deleted" event.
-          // - when the subscription is activated again after being canceled but before the end of the billing period.
+          // - when the subscription is canceled by the user: it is ended at the of the billing
+          //   period, and we will receive a "customer.subscription.deleted" event.
+          // - when the subscription is activated again after being canceled but before the end of
+          //   the billing period.
           // - when trial expires, and the subscription transitions to a paid plan.
           logger.info(
             { event },
@@ -529,7 +558,8 @@ async function handler(
               subscription.workspace.sId
             );
             if (!endDate) {
-              // Subscription is re-activated, so we need to unpause the connectors and re-enable triggers.
+              // Subscription is re-activated, so we need to unpause the connectors and re-enable
+              // triggers.
               await onCancelScrub(auth);
 
               ServerSideTracking.trackSubscriptionReactivated({
@@ -628,6 +658,7 @@ async function handler(
             );
           }
           break;
+        }
 
         // Occurs when the subscription is canceled by the user or by us.
         case "customer.subscription.deleted":
@@ -660,23 +691,25 @@ async function handler(
               },
               "Stripe Webhook: Error handling customer.subscription.deleted. Matching subscription not found on db."
             );
-            // We return a 200 here to handle multiple regions, DD will watch
-            // the warnings and create an alert if this log appears in all regions
+            // We return a 200 here to handle multiple regions, DD will watch the warnings and
+            // create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
 
           switch (matchingSubscription.status) {
             case "ended":
-              // That means the webhook was already received and processed as only Stripe should set the status to ended on a subscription with a stripeSubscriptionId.
+              // That means the webhook was already received and processed as only Stripe should set
+              // the status to ended on a subscription with a stripeSubscriptionId.
               logger.info(
                 { event },
                 "[Stripe Webhook] Received customer.subscription.deleted event but the subscription was already with status = ended. Doing nothing."
               );
               break;
             case "ended_backend_only":
-              // This status is set by the backend after a Poké workspace migration from one plan to another.
-              // We don't want to delete any data in this case as the workspace is still active.
-              // We just want to mark the subscription as ended (so that we know it's been processed by Stripe).
+              // This status is set by the backend after a Poké workspace migration from one plan to
+              // another. We don't want to delete any data in this case as the workspace is still
+              // active. We just want to mark the subscription as ended (so that we know it's been
+              // processed by Stripe).
               logger.info(
                 { event },
                 "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = ended_backend_only. Ending the subscription without deleting any data"
@@ -740,8 +773,8 @@ async function handler(
               },
               "[Stripe Webhook] Subscription not found."
             );
-            // We return a 200 here to handle multiple regions, DD will watch
-            // the warnings and create an alert if this log appears in all regions
+            // We return a 200 here to handle multiple regions, DD will watch the warnings and
+            // create an alert if this log appears in all regions
             return res.status(200).json({ success: true });
           }
 
