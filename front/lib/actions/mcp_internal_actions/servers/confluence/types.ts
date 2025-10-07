@@ -27,3 +27,70 @@ export const ConfluenceCurrentUserSchema = z.object({
   nickname: z.string().optional(),
 });
 export type ConfluenceCurrentUser = z.infer<typeof ConfluenceCurrentUserSchema>;
+
+export const ConfluenceSearchRequestSchema = z.object({
+  cql: z.string().describe("CQL query string"),
+  cursor: z.string().optional().describe("Pagination cursor for next page"),
+  limit: z
+    .number()
+    .optional()
+    .describe("Number of results per page (default 25)"),
+});
+
+export type ConfluenceSearchRequest = z.infer<
+  typeof ConfluenceSearchRequestSchema
+>;
+
+export type ConfluenceListPagesResult = z.infer<
+  typeof ConfluenceListPagesResultSchema
+>;
+
+export const ConfluencePageBodySchema = z.object({
+  storage: z
+    .object({
+      value: z.string(),
+      representation: z.literal("storage"),
+    })
+    .optional(),
+  view: z
+    .object({
+      value: z.string(),
+      representation: z.literal("view"),
+    })
+    .optional(),
+  atlas_doc_format: z
+    .object({
+      value: z.string(),
+      representation: z.literal("atlas_doc_format"),
+    })
+    .optional(),
+});
+
+export const ConfluencePageSchema = z
+  .object({
+    id: z.string(),
+    status: z.string(),
+    title: z.string(),
+    parentId: z.string().optional(),
+    spaceId: z.string().optional(),
+    body: ConfluencePageBodySchema.optional(),
+  })
+  .passthrough()
+  .transform((data) => ({
+    id: data.id,
+    status: data.status,
+    title: data.title,
+    parentId: data.parentId,
+    spaceId: data.spaceId,
+    body: data.body,
+  }));
+
+export const ConfluenceListPagesResultSchema = z.object({
+  results: z.array(ConfluencePageSchema),
+  _links: z
+    .object({
+      next: z.string().optional(),
+      base: z.string(),
+    })
+    .optional(),
+});
