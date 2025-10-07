@@ -185,7 +185,7 @@ function generateConfiguredInput({
         throw validationResult.error;
       }
       return {
-        schema: validationResult.value,
+        ...validationResult.value,
         mimeType,
       };
     }

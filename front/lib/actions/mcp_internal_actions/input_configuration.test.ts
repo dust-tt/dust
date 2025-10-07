@@ -554,13 +554,7 @@ describe("augmentInputsWithConfiguration", () => {
 
       expect(result).toEqual({
         jsonSchema: {
-          schema: {
-            type: "object",
-            properties: {
-              ...jsonSchema.properties,
-            },
-            required: jsonSchema.required,
-          },
+          ...jsonSchema,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
         },
       });
@@ -576,7 +570,9 @@ describe("augmentInputsWithConfiguration", () => {
             schema: {
               type: "object",
               properties: {
-                schema: { type: "object" },
+                type: { type: "string" },
+                required: { type: "array", items: { type: "string" } },
+                properties: { type: "object" },
                 mimeType: {
                   type: "string",
                   const: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
@@ -595,7 +591,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        schema: undefined,
+        undefined,
       });
     });
   });
