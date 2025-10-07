@@ -486,7 +486,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
-    it("should return undefined when timeFrame is not configured on optional field", () => {
+    it("should return undefined when timeFrame is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         timeFrame: null,
@@ -566,7 +566,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
-    it("should return undefined when jsonSchema is not configured on optional field", () => {
+    it("should return undefined when jsonSchema is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         jsonSchema: undefined,
