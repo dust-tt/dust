@@ -202,6 +202,7 @@ export const ConversationHandoffExample = () => {
           <ConversationMessage
             type="agent"
             name="@soupinou"
+            timestamp="17:10"
             pictureUrl="https://avatars.githubusercontent.com/u/138893015?&v=4"
             buttons={[
               <Button
@@ -228,11 +229,12 @@ export const ConversationHandoffExample = () => {
             type="agentAsTool"
             name="Deep Dive"
             renderName={(name) => (
-              <span className="s-inline-flex s-items-center s-text-faint dark:s-text-faint-night">
+              <span className="s-inline-flex s-items-center s-text-muted-foreground dark:s-text-muted-foreground-night">
                 <Icon visual={AtomIcon} size="sm" />
                 <span className="s-ml-1">{name}</span>
               </span>
             )}
+            completionStatus="Completed in 9 min 30 sec"
             citations={[
               <Citation href="https://www.google.com">
                 <CitationIcons>
