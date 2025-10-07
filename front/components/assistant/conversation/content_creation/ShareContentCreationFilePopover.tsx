@@ -169,7 +169,6 @@ export function ShareContentCreationFilePopover({
                 <Spinner size="sm" />
               </div>
             )}
-            {/* Warning if sharing is disabled. */}
             {!isFileShareLoading &&
               (isPublicSharingForbidden || isUsingConversationFiles) && (
                 <ContentMessage
