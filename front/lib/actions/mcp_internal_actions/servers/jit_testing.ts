@@ -14,16 +14,16 @@ function createServer(): McpServer {
     {
       // TIME_FRAME: default and optional variants
       timeFrameDefault: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+        INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
       ]
         .describe("TIME_FRAME with default value")
         .default({
           duration: 7,
           unit: "day",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
         }),
       timeFrameOptional: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+        INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
       ]
         .describe("Optional TIME_FRAME")
         .optional(),
@@ -34,13 +34,11 @@ function createServer(): McpServer {
       ]
         .describe("JSON_SCHEMA with default value")
         .default({
-          jsonSchema: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-            },
-            required: ["name"],
+          type: "object",
+          properties: {
+            name: { type: "string" },
           },
+          required: ["name"],
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
         }),
       jsonSchemaOptional: ConfigurableToolInputSchemas[
