@@ -134,9 +134,13 @@ export default function LandingLayout({
               size="sm"
               label="Sign in"
               icon={LoginIcon}
-              onClick={withTracking(TRACKING_AREAS.NAVIGATION, "sign_in", () => {
-                window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
-              })}
+              onClick={withTracking(
+                TRACKING_AREAS.NAVIGATION,
+                "sign_in",
+                () => {
+                  window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
+                }
+              )}
             />
           </div>
         </div>
