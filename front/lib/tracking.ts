@@ -69,7 +69,7 @@ interface TrackEventParams {
   area: TrackingArea | string;
   object: string;
   action?: TrackingAction | string;
-  extra?: Record<string, string>;
+  extra?: Record<string, any>;
 }
 
 export function trackEvent({
@@ -83,11 +83,11 @@ export function trackEvent({
   }
 
   const eventName = `${area}:${object}:${action}`;
-  const properties: Record<string, string> = {
+  const properties: Record<string, any> = {
     area,
     object,
     action,
-    ...extra,
+    ...(extra && { extra }),
   };
 
   posthog.capture(eventName, properties);
@@ -113,7 +113,7 @@ export function withTracking<T extends Element = HTMLElement>(
   area: TrackingArea | string,
   object: string,
   handler?: (e: React.MouseEvent<T>) => void | Promise<void>,
-  extra?: Record<string, string>
+  extra?: Record<string, any>
 ) {
   return (e: React.MouseEvent<T>) => {
     trackEvent({ area, object, action: TRACKING_ACTIONS.CLICK, extra });
