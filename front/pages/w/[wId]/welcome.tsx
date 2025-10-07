@@ -18,7 +18,12 @@ import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { usePatchUser } from "@app/lib/swr/user";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  withTracking,
+} from "@app/lib/tracking";
 import { getAgentRoute } from "@app/lib/utils/router";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { JobType } from "@app/types/job_type";
@@ -73,6 +78,15 @@ export default function Welcome({
   const [isFormValid, setIsFormValid] = useState<boolean>(false);
 
   const jobTypes = JOB_TYPE_OPTIONS;
+
+  // Track onboarding page view
+  useEffect(() => {
+    trackEvent({
+      area: TRACKING_AREAS.AUTH,
+      object: "onboarding_start",
+      action: "view",
+    });
+  }, []);
 
   const { patchUser } = usePatchUser();
 
