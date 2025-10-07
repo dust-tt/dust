@@ -245,7 +245,7 @@ describe("JSON Schema Utilities", () => {
           },
           optionalTimeFrame:
             ConfigurableToolInputJSONSchemas[
-              INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+              INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
             ],
         },
         required: ["optionalString"],
@@ -253,7 +253,7 @@ describe("JSON Schema Utilities", () => {
 
       const r = findMatchingSubSchemas(
         mainSchema,
-        INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
       );
       expect(Object.keys(r)).toStrictEqual(["optionalTimeFrame"]);
     });

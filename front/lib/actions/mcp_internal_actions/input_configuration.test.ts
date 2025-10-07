@@ -451,7 +451,7 @@ describe("augmentInputsWithConfiguration", () => {
     });
   });
 
-  describe("NULLABLE_TIME_FRAME mime type", () => {
+  describe("TIME_FRAME mime type", () => {
     it("should augment inputs with time frame configuration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
@@ -464,7 +464,7 @@ describe("augmentInputsWithConfiguration", () => {
           properties: {
             timeFrame:
               ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
               ],
           },
           required: ["timeFrame"],
@@ -481,7 +481,7 @@ describe("augmentInputsWithConfiguration", () => {
         timeFrame: {
           duration: 7,
           unit: "day",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
         },
       });
     });
@@ -503,7 +503,7 @@ describe("augmentInputsWithConfiguration", () => {
                     unit: { type: "string" },
                     mimeType: {
                       type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
+                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
                     },
                   },
                   required: ["duration", "unit", "mimeType"],

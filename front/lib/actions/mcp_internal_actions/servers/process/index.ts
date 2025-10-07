@@ -287,9 +287,7 @@ function createServer(
           EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
         ),
     timeFrame: isTimeFrameConfigured
-      ? ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
-        ]
+      ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]
       : z
           .object({
             duration: z.number(),
