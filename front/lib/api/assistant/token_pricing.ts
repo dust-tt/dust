@@ -240,6 +240,10 @@ const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
     input: 2.0,
     output: 10.0,
   },
+  noop: {
+    input: 0,
+    output: 0,
+  },
 };
 
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.

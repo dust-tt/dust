@@ -6,6 +6,8 @@ import {
   createIssue,
   createIssueLink,
   deleteIssueLink,
+  extractTextFromAttachment,
+  getAttachmentContent,
   getConnectionInfo,
   getIssue,
   getIssueAttachments,
@@ -42,7 +44,11 @@ import {
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { normalizeError } from "@app/types";
+import logger from "@app/logger/logger";
+import {
+  isTextExtractionSupportedContentType,
+  normalizeError,
+} from "@app/types";
 
 const createServer = (
   auth?: Authenticator,
@@ -949,6 +955,101 @@ const createServer = (
               ),
             },
           });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "read_attachment",
+    "Read content from any attachment on a Jira issue. For text-based files (PDF, Word, Excel, CSV, plain text), extracts and returns the text content. For other files (images, documents), returns the file for upload. Supports text extraction with OCR for scanned documents.",
+    {
+      issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
+      attachmentId: z.string().describe("The ID of the attachment to read"),
+    },
+    async ({ issueKey, attachmentId }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          try {
+            const attachmentsResult = await getIssueAttachments({
+              baseUrl,
+              accessToken,
+              issueKey,
+            });
+
+            if (attachmentsResult.isErr()) {
+              return makeMCPToolTextError(attachmentsResult.error);
+            }
+
+            const attachments = attachmentsResult.value;
+            const targetAttachment = attachments.find(
+              (att) => att.id === attachmentId
+            );
+            if (!targetAttachment) {
+              return makeMCPToolTextError(
+                `Attachment with ID ${attachmentId} not found on issue ${issueKey}`
+              );
+            }
+            if (
+              isTextExtractionSupportedContentType(targetAttachment.mimeType)
+            ) {
+              const textResult = await extractTextFromAttachment({
+                baseUrl,
+                accessToken,
+                attachmentId,
+                mimeType: targetAttachment.mimeType,
+              });
+
+              if (textResult.isOk()) {
+                return makeMCPToolJSONSuccess({
+                  result: textResult.value,
+                });
+              }
+            }
+
+            const contentResult = await getAttachmentContent({
+              baseUrl,
+              accessToken,
+              attachmentId,
+              mimeType: targetAttachment.mimeType,
+            });
+
+            if (contentResult.isErr()) {
+              return makeMCPToolTextError(contentResult.error);
+            }
+
+            if (targetAttachment.mimeType.startsWith("text/")) {
+              return makeMCPToolJSONSuccess({
+                result: contentResult.value.content,
+              });
+            }
+
+            return {
+              isError: false,
+              content: [
+                {
+                  type: "resource" as const,
+                  resource: {
+                    name: targetAttachment.filename,
+                    blob: contentResult.value.content,
+                    text: `File from Jira issue ${issueKey}: ${targetAttachment.filename}`,
+                    mimeType: targetAttachment.mimeType,
+                    uri: "",
+                  },
+                },
+              ],
+            };
+          } catch (error) {
+            logger.error(`Error in read_attachment:`, {
+              error: error,
+              issueKey,
+              attachmentId,
+            });
+            return makeMCPToolTextError(
+              `Error in read_attachment: ${normalizeError(error).message}`
+            );
+          }
         },
         authInfo,
       });

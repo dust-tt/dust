@@ -28,9 +28,9 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getIcon } from "@app/lib/actions/mcp_icons";
 import {
   isAgentPauseOutputResourceType,
   isRunAgentChainOfThoughtProgressOutput,

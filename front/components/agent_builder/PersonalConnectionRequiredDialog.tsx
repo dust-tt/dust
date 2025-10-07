@@ -16,8 +16,8 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
+import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useCreatePersonalConnection,

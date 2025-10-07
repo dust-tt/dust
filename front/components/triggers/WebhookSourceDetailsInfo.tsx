@@ -4,14 +4,16 @@ import {
   EyeIcon,
   EyeSlashIcon,
   IconButton,
+  Input,
   Page,
   Separator,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
+import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
-import { WebhookSourceViewForm } from "@app/components/triggers/WebhookSourceViewForm";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import type { LightWorkspaceType } from "@app/types";
@@ -49,6 +51,7 @@ export function WebhookSourceDetailsInfo({
 }: WebhookSourceDetailsInfoProps) {
   const [isSecretVisible, setIsSecretVisible] = useState(false);
   const sendNotification = useSendNotification();
+  const form = useFormContext<WebhookSourceFormValues>();
 
   const editedLabel = useMemo(
     () => getEditedLabel(webhookSourceView),
@@ -83,10 +86,15 @@ export function WebhookSourceDetailsInfo({
         </div>
       )}
 
-      <WebhookSourceViewForm
-        webhookSourceView={webhookSourceView}
-        owner={owner}
-      />
+      <div className="space-y-5 text-foreground dark:text-foreground-night">
+        <Input
+          {...form.register("name")}
+          label="Custom Name"
+          isError={!!form.formState.errors.name}
+          message={form.formState.errors.name?.message}
+          placeholder={webhookSourceView.webhookSource.name}
+        />
+      </div>
 
       <Separator className="mb-4 mt-4" />
       <Page.H variant="h4">Webhook Source Details</Page.H>

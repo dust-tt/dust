@@ -43,6 +43,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   deepseek: "Deepseek",
   fireworks: "Fireworks",
   xai: "xAI",
+  noop: "noop",
 };
 
 interface ProviderManagementModalProps {

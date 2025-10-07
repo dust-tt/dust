@@ -126,6 +126,7 @@ async function handler(
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           customHeaders,
+          subscribedEvents: [],
         });
 
         if (webhookSourceRes.isErr()) {
