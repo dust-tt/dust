@@ -1,15 +1,7 @@
-// Transcribe service using OpenAI Whisper.
-// This module exposes two methods:
-// 1) transcribeFile: Takes an audio file/blob/buffer/stream and returns the full transcript.
-// 2) transcribeStream: Takes a Node.js FsReadStream and returns a readable stream of transcript events from OpenAI.
-//
-// Notes:
-// - This implementation targets Node.js environment where we can pass Readable streams to the
-//   OpenAI SDK.
-// - Streaming transcription uses the OpenAI SDK native streaming (no manual chunking) for models
-//   that support server-side streaming (e.g., gpt-4o-transcribe). We do not implement client-side
-//   chunking.
+import type { ReadStream } from "node:fs";
 
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import type { SpeechToTextChunkResponseModel } from "@elevenlabs/elevenlabs-js/api/types/SpeechToTextChunkResponseModel";
 import type formidable from "formidable";
 import fs from "fs";
 import OpenAI from "openai";
@@ -18,6 +10,7 @@ import { toFile } from "openai/uploads";
 
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
+import { assertNever } from "@app/types";
 import { dustManagedCredentials, Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -27,7 +20,15 @@ async function getOpenAI() {
   return new OpenAI({ apiKey: credentials.OPENAI_API_KEY });
 }
 
-const _TRANSCRIBE_MODEL = "gpt-4o-transcribe";
+async function getElevenLabs() {
+  const credentials = dustManagedCredentials();
+  return new ElevenLabsClient({ apiKey: credentials.ELEVENLABS_API_KEY });
+}
+
+const _OPENAI_TRANSCRIBE_MODEL = "gpt-4o-transcribe";
+const _ELEVENLABS_TRANSCRIBE_MODEL = "scribe_v1";
+
+export type TranscriptionProvider = "openai" | "elevenlabs";
 
 type FormidableFileLike = Pick<
   formidable.File,
@@ -44,24 +45,46 @@ async function toFileLike(
   return toFile(stream, name);
 }
 
+async function toReadable(input: FormidableFileLike): Promise<ReadStream> {
+  return fs.createReadStream(input.filepath);
+}
+
 export async function transcribeFile(
-  input: FormidableFileLike
+  input: FormidableFileLike,
+  provider: TranscriptionProvider = "openai"
 ): Promise<Result<string, Error>> {
   try {
-    const openai = await getOpenAI();
-    const file = await toFileLike(input);
+    switch (provider) {
+      case "openai": {
+        const openai = await getOpenAI();
+        const file = await toFileLike(input);
+        const text = await openai.audio.transcriptions.create({
+          file,
+          model: _OPENAI_TRANSCRIBE_MODEL,
+          response_format: "text",
+        });
+        return new Ok(text);
+      }
+      case "elevenlabs": {
+        const el = await getElevenLabs();
+        const file = await toReadable(input);
+        const response = (await el.speechToText.convert({
+          modelId: _ELEVENLABS_TRANSCRIBE_MODEL,
+          file,
+          // we can safely cast here because we know the response is a SpeechToTextChunkResponseModel
+        })) as SpeechToTextChunkResponseModel;
 
-    const text = await openai.audio.transcriptions.create({
-      file,
-      model: _TRANSCRIBE_MODEL,
-      response_format: "text",
-    });
-    return new Ok(text);
+        return new Ok(response.text);
+      }
+      default: {
+        assertNever(provider);
+      }
+    }
   } catch (err) {
     const e = normalizeError(err);
     logger.error(
-      { err: e },
-      `Failed to transcribe file with ${_TRANSCRIBE_MODEL}`
+      { err: e, provider },
+      `Failed to transcribe file with provider ${provider}`
     );
     return new Err(e);
   }
@@ -82,41 +105,60 @@ export type TranscriptionStreamEvent =
   | TranscriptionFullTranscriptEvent;
 
 export async function transcribeStream(
-  input: formidable.File
+  input: formidable.File,
+  provider: TranscriptionProvider = "openai"
 ): Promise<AsyncIterable<TranscriptionStreamEvent>> {
-  const openai = await getOpenAI();
   const file = await toFileLike(input);
   try {
-    const evtStream = await openai.audio.transcriptions.create({
-      file,
-      model: _TRANSCRIBE_MODEL,
-      // When true, OpenAI returns a Stream<TranscriptionStreamEvent> (SSE over HTTP).
-      stream: true,
-      // For streaming with gpt-4o-transcribe, response_format must be json (SDK default).
-    });
+    switch (provider) {
+      case "openai": {
+        const openai = await getOpenAI();
+        const evtStream = await openai.audio.transcriptions.create({
+          file,
+          model: _OPENAI_TRANSCRIBE_MODEL,
+          // When true, OpenAI returns a Stream<TranscriptionStreamEvent> (SSE over HTTP).
+          stream: true,
+          // For streaming with gpt-4o-transcribe, response_format must be json (SDK default).
+        });
 
-    // Map OpenAI events to a simple async iterable of text deltas.
-    return (async function* () {
-      for await (const ev of evtStream) {
-        // Two possible event types: transcript.text.delta and transcript.text.done
-        switch (ev.type) {
-          case "transcript.text.delta":
-            yield { delta: ev.delta, type: "delta" };
-            break;
-          case "transcript.text.done":
-            yield {
-              fullTranscript: ev.text,
-              type: "fullTranscript",
-            };
-            return;
-        }
+        // Map OpenAI events to a simple async iterable of text deltas.
+        return (async function* () {
+          for await (const ev of evtStream) {
+            // Two possible event types: transcript.text.delta and transcript.text.done
+            switch (ev.type) {
+              case "transcript.text.delta":
+                yield { delta: ev.delta, type: "delta" };
+                break;
+              case "transcript.text.done":
+                yield {
+                  fullTranscript: ev.text,
+                  type: "fullTranscript",
+                };
+                return;
+            }
+          }
+        })();
       }
-    })();
+      case "elevenlabs": {
+        // Minimal implementation: ElevenLabs streaming is not wired; fall back to a single full transcript.
+        const r = await transcribeFile(input, "elevenlabs");
+        if (r.isErr()) {
+          throw r.error;
+        }
+        const full = r.value;
+        return (async function* () {
+          yield { fullTranscript: full, type: "fullTranscript" };
+        })();
+      }
+      default: {
+        assertNever(provider);
+      }
+    }
   } catch (err) {
     const e = normalizeError(err);
     logger.error(
-      { err: e },
-      `Failed to start streaming transcription with ${_TRANSCRIBE_MODEL}`
+      { err: e, provider },
+      `Failed to start streaming transcription with provider ${provider}`
     );
     throw e;
   }
