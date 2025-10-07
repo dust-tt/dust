@@ -1007,8 +1007,14 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      // Read operations - never ask (no side effects)
-      get_page: "never_ask",
+      // Read operations - never ask
+      get_pages: "never_ask",
+      get_current_user: "never_ask",
+      get_spaces: "never_ask",
+
+      // Write operations - ask
+      create_page: "low",
+      update_page: "low",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
