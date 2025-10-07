@@ -37,6 +37,7 @@ export class WebhookSourceFactory {
       signatureHeader: options.signatureHeader ?? null,
       signatureAlgorithm: options.signatureAlgorithm ?? null,
       customHeaders: options.customHeaders ?? null,
+      kind: "custom",
     });
 
     return result;
