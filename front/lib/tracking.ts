@@ -29,6 +29,7 @@ export const TRACKING_AREAS = {
   HOME: "home",
   PRICING: "pricing",
   AUTH: "auth",
+  NAVIGATION: "navigation",
 
   // Product
   ASSISTANT: "assistant",

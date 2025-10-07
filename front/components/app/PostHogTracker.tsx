@@ -143,28 +143,44 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
   }, [user, workspaceId, shouldTrack]);
 
-  // Set workspace group properties (admin only)
+  // Group users by workspace (all users) and set workspace properties (admin only).
   useEffect(() => {
-    if (
-      !posthog.__loaded ||
-      !workspaceId ||
-      !shouldTrack ||
-      !planProperties ||
-      !isAdmin
-    ) {
+    if (!posthog.__loaded || !workspaceId || !shouldTrack) {
       return;
     }
 
-    const planPropsString = JSON.stringify(planProperties);
     const workspaceChanged = lastIdentifiedWorkspaceId.current !== workspaceId;
+    const planPropsString = JSON.stringify(planProperties);
     const planChanged = lastPlanPropertiesString.current !== planPropsString;
 
-    if (workspaceChanged || planChanged) {
-      posthog.group("workspace", workspaceId, planProperties);
+    if (workspaceChanged || (isAdmin && planChanged)) {
+      posthog.group(
+        "workspace",
+        workspaceId,
+        isAdmin && planProperties ? planProperties : undefined
+      );
       lastIdentifiedWorkspaceId.current = workspaceId;
-      lastPlanPropertiesString.current = planPropsString;
+      if (isAdmin) {
+        lastPlanPropertiesString.current = planPropsString;
+      }
     }
   }, [workspaceId, planProperties, shouldTrack, isAdmin]);
+
+  // Track pageviews on route changes (Next.js client-side navigation)
+  useEffect(() => {
+    if (!posthog.__loaded || !shouldTrack) {
+      return;
+    }
+
+    const handleRouteChange = () => {
+      posthog.capture("$pageview");
+    };
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.events, shouldTrack]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
