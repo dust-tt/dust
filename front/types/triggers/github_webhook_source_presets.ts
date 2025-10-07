@@ -41,7 +41,303 @@ const GITHUB_PULL_REQUEST_EVENT: EventType = {
     {
       name: "pull_request",
       description: "The pull request itself.",
-      type: "unknown-object",
+      type: "parent-field",
+      childrentFields: [
+        {
+          name: "html_url",
+          description: "The GitHub web URL of the pull request.",
+          type: "string",
+        },
+        {
+          name: "id",
+          description: "The unique identifier of the pull request.",
+          type: "number",
+        },
+        {
+          name: "number",
+          description: "The pull request number.",
+          type: "number",
+        },
+        {
+          name: "state",
+          description: "The state of the pull request.",
+          type: "enum",
+          enumValues: ["open", "closed"],
+        },
+        {
+          name: "locked",
+          description: "Whether the pull request is locked.",
+          type: "boolean",
+        },
+        {
+          name: "title",
+          description: "The title of the pull request.",
+          type: "string",
+        },
+        {
+          name: "user",
+          description: "The user who created the pull request.",
+          type: "parent-field",
+          childrentFields: [
+            {
+              name: "login",
+              description: "The username of the user.",
+              type: "string",
+            },
+            {
+              name: "id",
+              description: "The unique identifier of the user.",
+              type: "number",
+            },
+            {
+              name: "html_url",
+              description: "The GitHub profile URL of the user.",
+              type: "string",
+            },
+            {
+              name: "type",
+              description: "The type of the user account.",
+              type: "enum",
+              enumValues: ["User", "Organization"],
+            },
+            {
+              name: "site_admin",
+              description: "Whether the user is a GitHub site administrator.",
+              type: "boolean",
+            },
+          ],
+        },
+        {
+          name: "body",
+          description: "The body content of the pull request.",
+          type: "string",
+        },
+        {
+          name: "created_at",
+          description: "The timestamp when the pull request was created.",
+          type: "string",
+        },
+        {
+          name: "updated_at",
+          description: "The timestamp when the pull request was last updated.",
+          type: "string",
+        },
+        {
+          name: "merged_at",
+          description: "The timestamp when the pull request was merged.",
+          type: "string",
+        },
+        {
+          name: "assignee",
+          description: "The user assigned to the pull request.",
+          type: "parent-field",
+          childrentFields: [
+            {
+              name: "login",
+              description: "The username of the user.",
+              type: "string",
+            },
+            {
+              name: "id",
+              description: "The unique identifier of the user.",
+              type: "number",
+            },
+            {
+              name: "html_url",
+              description: "The GitHub profile URL of the user.",
+              type: "string",
+            },
+            {
+              name: "type",
+              description: "The type of the user account.",
+              type: "enum",
+              enumValues: ["User", "Organization"],
+            },
+            {
+              name: "site_admin",
+              description: "Whether the user is a GitHub site administrator.",
+              type: "boolean",
+            },
+          ],
+        },
+        {
+          name: "assignees",
+          description: "The users assigned to the pull request.",
+          type: "parent-of-array",
+          childrentFields: [
+            {
+              name: "login",
+              description: "The username of the user.",
+              type: "string",
+            },
+            {
+              name: "id",
+              description: "The unique identifier of the user.",
+              type: "number",
+            },
+            {
+              name: "html_url",
+              description: "The GitHub profile URL of the user.",
+              type: "string",
+            },
+            {
+              name: "type",
+              description: "The type of the user account.",
+              type: "enum",
+              enumValues: ["User", "Organization"],
+            },
+            {
+              name: "site_admin",
+              description: "Whether the user is a GitHub site administrator.",
+              type: "boolean",
+            },
+          ],
+        },
+        {
+          name: "requested_reviewers",
+          description: "The users requested to review the pull request.",
+          type: "parent-of-array",
+          childrentFields: [
+            {
+              name: "login",
+              description: "The username of the user.",
+              type: "string",
+            },
+            {
+              name: "id",
+              description: "The unique identifier of the user.",
+              type: "number",
+            },
+            {
+              name: "html_url",
+              description: "The GitHub profile URL of the user.",
+              type: "string",
+            },
+            {
+              name: "type",
+              description: "The type of the user account.",
+              type: "enum",
+              enumValues: ["User", "Organization"],
+            },
+            {
+              name: "site_admin",
+              description: "Whether the user is a GitHub site administrator.",
+              type: "boolean",
+            },
+          ],
+        },
+        {
+          name: "requested_teams",
+          description: "The teams requested to review the pull request.",
+          type: "unknown-object",
+        },
+        {
+          name: "labels",
+          description: "The labels applied to the pull request.",
+          type: "parent-of-array",
+          childrentFields: [
+            {
+              name: "id",
+              description: "The unique identifier of the label.",
+              type: "number",
+            },
+            {
+              name: "url",
+              description: "The API URL of the label.",
+              type: "string",
+            },
+            {
+              name: "name",
+              description: "The name of the label.",
+              type: "string",
+            },
+            {
+              name: "default",
+              description: "Whether this is a default label.",
+              type: "boolean",
+            },
+          ],
+        },
+        {
+          name: "milestone",
+          description: "The milestone associated with the pull request.",
+          type: "unknown-object",
+        },
+        {
+          name: "head",
+          description: "The head branch of the pull request.",
+          type: "parent-field",
+          childrentFields: [
+            {
+              name: "label",
+              description: "The label of the head branch.",
+              type: "string",
+            },
+            {
+              name: "ref",
+              description: "The ref of the head branch.",
+              type: "string",
+            },
+          ],
+        },
+        {
+          name: "base",
+          description: "The base branch of the pull request.",
+          type: "parent-field",
+          childrentFields: [
+            {
+              name: "label",
+              description: "The label of the base branch.",
+              type: "string",
+            },
+            {
+              name: "ref",
+              description: "The ref of the base branch.",
+              type: "string",
+            },
+          ],
+        },
+        {
+          name: "draft",
+          description: "Whether the pull request is a draft.",
+          type: "boolean",
+        },
+        {
+          name: "merged",
+          description: "Whether the pull request has been merged.",
+          type: "boolean",
+        },
+        {
+          name: "mergeable",
+          description: "Whether the pull request is mergeable.",
+          type: "boolean",
+        },
+        {
+          name: "comments",
+          description: "The number of comments on the pull request.",
+          type: "number",
+        },
+        {
+          name: "commits",
+          description: "The number of commits in the pull request.",
+          type: "number",
+        },
+        {
+          name: "additions",
+          description: "The number of additions in the pull request.",
+          type: "number",
+        },
+        {
+          name: "deletions",
+          description: "The number of deletions in the pull request.",
+          type: "number",
+        },
+        {
+          name: "changed_files",
+          description: "The number of changed files in the pull request.",
+          type: "number",
+        },
+      ],
     },
     {
       name: "repository",
