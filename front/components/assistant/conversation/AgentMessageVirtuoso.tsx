@@ -369,6 +369,11 @@ export function AgentMessageVirtuoso({
     );
   }
 
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+
   const retryHandler = useCallback(
     async ({
       conversationId,
@@ -380,6 +385,23 @@ export function AgentMessageVirtuoso({
       blockedOnly?: boolean;
     }) => {
       setIsRetryHandlerProcessing(true);
+
+      const currentMessages = methods.data.get();
+      let messageIndex = currentMessages.findIndex(
+        (m) => getMessageSId(m) === messageId
+      );
+      let msg;
+      do {
+        msg = currentMessages.at(++messageIndex);
+      } while (
+        msg &&
+        isMessageTemporayState(msg) &&
+        msg.message.type === "agent_message"
+      );
+      if (messageIndex !== -1 && messageIndex < currentMessages.length) {
+        methods.data.deleteRange(messageIndex, currentMessages.length - 1);
+      }
+
       await fetch(
         `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=${blockedOnly}`,
         {
@@ -392,7 +414,7 @@ export function AgentMessageVirtuoso({
 
       setIsRetryHandlerProcessing(false);
     },
-    [owner.sId]
+    [owner.sId, methods.data]
   );
 
   const { configuration: agentConfiguration } = agentMessageToRender;
