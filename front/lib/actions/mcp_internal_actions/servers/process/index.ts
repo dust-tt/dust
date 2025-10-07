@@ -98,7 +98,7 @@ function makeExtractInformationFromDocumentsTool(
       dataSources: DataSourcesToolConfigurationType[number][];
       objective: string;
       jsonSchema: JSONSchema;
-      timeFrame: TimeFrame | null;
+      timeFrame?: TimeFrame;
       tagsIn?: string[];
       tagsNot?: string[];
     }) => {
@@ -134,7 +134,7 @@ function makeExtractInformationFromDocumentsTool(
         auth,
         model,
         dataSources,
-        timeFrame,
+        timeFrame: timeFrame ?? null,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tagsIn: tagsIn || undefined,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -200,7 +200,7 @@ function makeExtractInformationFromDocumentsTool(
         conversation,
         outputs,
         jsonSchema,
-        timeFrame,
+        timeFrame: timeFrame ?? null,
         objective,
       });
       // Upload the file to the conversation data source.
@@ -287,7 +287,9 @@ function createServer(
           EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
         ),
     timeFrame: isTimeFrameConfigured
-      ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]
+      ? ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+        ].optional()
       : z
           .object({
             duration: z.number(),
@@ -296,8 +298,7 @@ function createServer(
           .describe(
             "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
           )
-          .nullable()
-          .default(null),
+          .optional(),
   };
 
   const toolDescription =

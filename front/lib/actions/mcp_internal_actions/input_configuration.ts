@@ -168,7 +168,7 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME: {
       const { timeFrame } = actionConfiguration;
       if (!timeFrame) {
-        return null;
+        return undefined;
       }
 
       const { duration, unit } = timeFrame;
@@ -178,7 +178,7 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA: {
       const { jsonSchema } = actionConfiguration;
       if (!jsonSchema) {
-        return null;
+        return undefined;
       }
       const validationResult = validateConfiguredJsonSchema(jsonSchema);
       if (validationResult.isErr()) {

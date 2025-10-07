@@ -54,7 +54,9 @@ function createServer(
 
   const commonInputsSchema = {
     timeFrame:
-      ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME],
+      ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+      ].optional(),
     dataSources:
       ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
   };
@@ -86,7 +88,7 @@ function createServer(
     tagsIn,
     tagsNot,
   }: {
-    timeFrame: TimeFrame | null;
+    timeFrame?: TimeFrame;
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];

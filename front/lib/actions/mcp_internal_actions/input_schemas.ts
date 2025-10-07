@@ -187,7 +187,7 @@ export type ConfigurableToolInputType =
       (typeof ConfigurableToolInputSchemas)[keyof typeof ConfigurableToolInputSchemas]
     >
   | FlexibleConfigurableToolInput[keyof FlexibleConfigurableToolInput]
-  | null;
+  | undefined;
 
 export type DataSourcesToolConfigurationType = z.infer<
   (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]

@@ -486,7 +486,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
-    it("should return null when timeFrame is not configured", () => {
+    it("should return undefined when timeFrame is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         timeFrame: null,
@@ -522,7 +522,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        timeFrame: null,
+        timeFrame: undefined,
       });
     });
   });
@@ -569,7 +569,7 @@ describe("augmentInputsWithConfiguration", () => {
     it("should return null when jsonSchema is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        jsonSchema: null,
+        jsonSchema: undefined,
         inputSchema: {
           type: "object",
           properties: {
@@ -601,7 +601,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        schema: null,
+        schema: undefined,
       });
     });
   });
