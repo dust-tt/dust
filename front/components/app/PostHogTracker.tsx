@@ -52,9 +52,23 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     if (!activeSubscription) {
       return null;
     }
+
+    const planCode = activeSubscription.plan.code;
+    const planCodeUpper = planCode.toUpperCase();
+    let planType = "OTHER";
+
+    if (planCodeUpper.includes("ENT")) {
+      planType = "ENTERPRISE";
+    } else if (planCodeUpper.includes("PRO")) {
+      planType = "PRO";
+    } else if (planCodeUpper.includes("FREE")) {
+      planType = "FREE";
+    }
+
     return {
-      plan_code: activeSubscription.plan.code,
+      plan_code: planCode,
       plan_name: activeSubscription.plan.name,
+      plan_type: planType,
       is_trial: activeSubscription.trialing ? "true" : "false",
     };
   }, [activeSubscription]);
