@@ -97,7 +97,7 @@ function makeExtractInformationFromDocumentsTool(
     }: {
       dataSources: DataSourcesToolConfigurationType[number][];
       objective: string;
-      jsonSchema: JSONSchema;
+      jsonSchema: { schema: JSONSchema };
       timeFrame?: TimeFrame;
       tagsIn?: string[];
       tagsNot?: string[];
@@ -199,7 +199,7 @@ function makeExtractInformationFromDocumentsTool(
         auth,
         conversation,
         outputs,
-        jsonSchema,
+        jsonSchema: jsonSchema,
         timeFrame: timeFrame ?? null,
         objective,
       });
@@ -283,9 +283,11 @@ function createServer(
 
     jsonSchema: isJsonSchemaConfigured
       ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]
-      : JsonSchemaSchema.describe(
-          EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION
-        ),
+      : z
+          .object({
+            schema: JsonSchemaSchema,
+          })
+          .describe(EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION),
     timeFrame: isTimeFrameConfigured
       ? ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
@@ -490,12 +492,12 @@ async function generateProcessToolOutput({
   auth: Authenticator;
   conversation: ConversationType;
   outputs: ProcessActionOutputsType | null;
-  jsonSchema: JSONSchema;
+  jsonSchema: { schema: JSONSchema };
   timeFrame: TimeFrame | null;
   objective: string;
 }) {
   const fileTitle = getExtractFileTitle({
-    schema: jsonSchema,
+    schema: jsonSchema.schema,
   });
   const { jsonFile, jsonSnippet } = await generateJSONFileAndSnippet(auth, {
     title: fileTitle,

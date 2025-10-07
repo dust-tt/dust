@@ -185,7 +185,7 @@ function generateConfiguredInput({
         throw validationResult.error;
       }
       return {
-        ...validationResult.value,
+        schema: validationResult.value,
         mimeType,
       };
     }
@@ -1013,6 +1013,21 @@ function isSchemaConfigurable(
     if (
       schema.properties?.options &&
       schema.properties?.values &&
+      mimeTypeProperty &&
+      isJSONSchemaObject(mimeTypeProperty)
+    ) {
+      return (
+        mimeTypeProperty.type === "string" &&
+        mimeTypeProperty.const === mimeType
+      );
+    }
+    return false;
+  }
+
+  if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA) {
+    const mimeTypeProperty = schema.properties?.mimeType;
+    if (
+      schema.properties?.schema &&
       mimeTypeProperty &&
       isJSONSchemaObject(mimeTypeProperty)
     ) {

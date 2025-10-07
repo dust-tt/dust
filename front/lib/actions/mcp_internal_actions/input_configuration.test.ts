@@ -542,7 +542,7 @@ describe("augmentInputsWithConfiguration", () => {
                 INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
               ],
           },
-          required: ["schema"],
+          required: ["jsonSchema"],
         },
       });
 
@@ -554,7 +554,13 @@ describe("augmentInputsWithConfiguration", () => {
 
       expect(result).toEqual({
         jsonSchema: {
-          schema: jsonSchema,
+          schema: {
+            type: "object",
+            properties: {
+              ...jsonSchema.properties,
+            },
+            required: jsonSchema.required,
+          },
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
         },
       });
