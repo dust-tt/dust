@@ -14,6 +14,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
@@ -146,7 +147,15 @@ export default function DustPlatform() {
       >
         <div className="mt-4 flex justify-center gap-4">
           <Link href="/home/contact" shallow={true}>
-            <Button variant="outline" size="md" label="Request a demo" />
+            <Button
+              variant="outline"
+              size="md"
+              label="Request a demo"
+              onClick={withTracking(
+                TRACKING_AREAS.SOLUTIONS,
+                "platform_footer_cta_secondary"
+              )}
+            />
           </Link>
 
           <Link href="/home/pricing" shallow={true}>
@@ -155,6 +164,10 @@ export default function DustPlatform() {
               size="md"
               label="Try Dust now"
               icon={RocketIcon}
+              onClick={withTracking(
+                TRACKING_AREAS.SOLUTIONS,
+                "platform_footer_cta_primary"
+              )}
             />
           </Link>
         </div>
