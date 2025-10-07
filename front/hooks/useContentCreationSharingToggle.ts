@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
@@ -15,6 +15,10 @@ export function useContentCreationSharingToggle({
     owner.metadata?.allowContentCreationFileSharing !== false
   );
   const sendNotification = useSendNotification();
+
+  useEffect(() => {
+    setIsEnabled(owner.metadata?.allowContentCreationFileSharing !== false);
+  }, [owner.metadata?.allowContentCreationFileSharing]);
 
   const doToggleContentCreationSharing = async () => {
     setIsChanging(true);
