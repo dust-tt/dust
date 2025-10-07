@@ -185,7 +185,15 @@ You can use \`list\` to list the nodes that are direct children of a given node.
 You can use \`locate_in_tree\` to view the whole path leading to a given node (you will see the whole subtree that contains the node, from the root up to the node)
 You can search for a node by title using the \`find\` tool on a given node (will explore all children of this node recursively)
 You can search by running a semantic search (recursively) against the content of all children of a node
-You can read the actual content in a document node using the \`cat\` tool
+You can read the actual content in a document node using the \`cat\` tool.
+
+<cat_tool_guidelines>
+NEVER use the \`cat\` tool without specifying a limit. The maximum limit you should specify is 10,000 characters.
+You may use the \`cat\` tool several times on the same document using different \`offset\` parameters to read more content from the document.
+You may also use the \`grep\` parameter to filter the content of the document.
+Additionally, you can use the search tool filtered on a document's nodeId to search information within the document (useful when the document is too large to read all at once).
+</cat_tool_guidelines>
+
 </company_data_guidelines>
 
 <data_warehouses_guidelines>
@@ -227,6 +235,8 @@ Balance and depth:
 const outputPrompt = `<output_guidelines>
 NEVER address the user before you have run all necessary tools and are ready to provide your final answer. DO NOT open with phrases like "Here is..." or "Summary:" or "I'll conduct.." or "I'll start by...".
 Only output internal reasoning and tool calls until you are ready to provide your answer.
+DO NOT comment on your research or reasoning process. DO NOT tell the user about your plan or tools you are using.
+The user's UI already lets them inspect the output of the planning agent and your own reasoning process.
 
 Exception for clarifications (very complex tasks only):
 - If critical information is missing and you cannot proceed without it, and the task is very complex/deep research, you may send one brief clarifying message before using tools.
@@ -248,10 +258,13 @@ Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
+
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}
 <output_format>
-Your output will be read by another AI agent. As a result, do not focus on formatting, avoid making verbose sentences and focus on producing concise but information-dense output.
+Your output will be consumed by another AI agent, not a human. As a result, do not focus on formatting, avoid making verbose sentences and focus on producing concise but information-dense output.
+Make sure to include all information and details that are relevant to the request, without any noise or redundancy.
 </output_format>`;
+
 const browserSummaryAgentInstructions = `<primary_goal>
 You are a web page summary agent. Your primary role is to summarize web page content.
 You are provided with a web page content and you must produce a high quality comprehensive summary of the content.
@@ -276,6 +289,11 @@ It is important that the plan you propose is clear about tasks that should be de
 Any task that requires gathering substantial amounts of context, such as browsing web pages or reading company data files must be done by sub-agents and not by the research agent itself.
 
 Ensure that the final plan has no more than ${MAX_SUB_AGENT_BATCHES} batches of ${MAX_CONCURRENT_SUB_AGENT_TASKS} concurrent sub-agent tasks.
+This is a hard maximum, but:
+- there may be less than ${MAX_CONCURRENT_SUB_AGENT_TASKS} tasks in a batch
+- there may be less than ${MAX_SUB_AGENT_BATCHES} batches in the plan
+- some tasks may be sequentially executed if required
+- some tasks that are not context-heavy may be executed by the research agent directly
 </delegation_rules>
 
 <additional_context>
