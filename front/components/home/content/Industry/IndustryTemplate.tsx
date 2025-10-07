@@ -64,7 +64,7 @@ const HeroSection = ({
               className="w-full sm:w-auto"
               onClick={withTracking(
                 TRACKING_AREAS.INDUSTRY,
-                `${trackingPrefix || "default"}_hero_cta_primary`
+                `${trackingPrefix ?? "default"}_hero_cta_primary`
               )}
             />
           </Link>
@@ -76,7 +76,7 @@ const HeroSection = ({
             className="w-full sm:w-auto"
             onClick={withTracking(
               TRACKING_AREAS.INDUSTRY,
-              `${trackingPrefix || "default"}_hero_cta_secondary`
+              `${trackingPrefix ?? "default"}_hero_cta_secondary`
             )}
           />
         </div>
@@ -473,7 +473,7 @@ const JustUseDustSection = ({
               className="w-full sm:w-auto"
               onClick={withTracking(
                 TRACKING_AREAS.INDUSTRY,
-                `${trackingPrefix || "default"}_footer_cta_primary`
+                `${trackingPrefix ?? "default"}_footer_cta_primary`
               )}
             />
           </Link>
@@ -485,7 +485,7 @@ const JustUseDustSection = ({
               className="w-full sm:w-auto"
               onClick={withTracking(
                 TRACKING_AREAS.INDUSTRY,
-                `${trackingPrefix || "default"}_footer_cta_secondary`
+                `${trackingPrefix ?? "default"}_footer_cta_secondary`
               )}
             />
           </Link>
