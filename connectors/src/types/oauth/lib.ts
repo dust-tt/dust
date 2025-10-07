@@ -14,6 +14,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 
 export const OAUTH_PROVIDERS = [
   "confluence",
+  "discord",
   "github",
   "google_drive",
   "intercom",
