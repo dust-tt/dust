@@ -13,7 +13,7 @@ export async function getStaticProps() {
 }
 
 export default function EnergyUtilities() {
-  return <IndustryTemplate config={energyConfig} />;
+  return <IndustryTemplate config={energyConfig} trackingPrefix="energy" />;
 }
 
 EnergyUtilities.getLayout = (

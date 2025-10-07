@@ -79,6 +79,11 @@ export function AssistantDetailsButtonBar({
               ? StarIcon
               : StarStrokeIcon
           }
+          tooltip={
+            agentConfiguration.userFavorite || isFavoriteDisabled
+              ? "Remove from favorites"
+              : "Add to favorites"
+          }
           size="sm"
           className="group-hover:hidden"
           variant="outline"
@@ -88,6 +93,11 @@ export function AssistantDetailsButtonBar({
 
         <Button
           icon={StarIcon}
+          tooltip={
+            agentConfiguration.userFavorite || isFavoriteDisabled
+              ? "Remove from favorites"
+              : "Add to favorites"
+          }
           size="sm"
           className="hidden group-hover:block"
           variant="outline"
@@ -100,6 +110,7 @@ export function AssistantDetailsButtonBar({
         icon={ChatBubbleBottomCenterTextIcon}
         size="sm"
         variant="outline"
+        tooltip="New conversation"
         href={getAgentRoute(
           owner.sId,
           "new",
@@ -111,6 +122,7 @@ export function AssistantDetailsButtonBar({
         !isRestrictedFromAgentCreation && (
           <Button
             size="sm"
+            tooltip="Edit agent"
             href={
               canEditAssistant
                 ? getAgentBuilderRoute(owner.sId, agentConfiguration.sId)

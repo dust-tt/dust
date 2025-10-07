@@ -13,7 +13,9 @@ export async function getStaticProps() {
 }
 
 export default function Marketplace() {
-  return <IndustryTemplate config={marketplaceConfig} />;
+  return (
+    <IndustryTemplate config={marketplaceConfig} trackingPrefix="marketplace" />
+  );
 }
 
 Marketplace.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {

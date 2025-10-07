@@ -13,7 +13,12 @@ export async function getStaticProps() {
 }
 
 export default function FinancialServices() {
-  return <IndustryTemplate config={financialServicesConfig} />;
+  return (
+    <IndustryTemplate
+      config={financialServicesConfig}
+      trackingPrefix="financial"
+    />
+  );
 }
 
 FinancialServices.getLayout = (

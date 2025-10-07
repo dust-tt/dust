@@ -13,7 +13,9 @@ export async function getStaticProps() {
 }
 
 export default function RetailEcommerce() {
-  return <IndustryTemplate config={retailEcommerceConfig} />;
+  return (
+    <IndustryTemplate config={retailEcommerceConfig} trackingPrefix="retail" />
+  );
 }
 
 RetailEcommerce.getLayout = (
