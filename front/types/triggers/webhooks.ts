@@ -26,12 +26,14 @@ export type WebhookSourceType = {
   sId: string;
   name: string;
   urlSecret: string;
+  kind: WebhookSourceKind;
   secret: string | null;
   signatureHeader: string | null;
   signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
   customHeaders: Record<string, string> | null;
   createdAt: number;
   updatedAt: number;
+  subscribedEvents: string[];
 };
 
 export type WebhookSourceViewType = {
