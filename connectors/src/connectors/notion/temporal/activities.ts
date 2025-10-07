@@ -2485,8 +2485,14 @@ async function renderPageSection({
       addNode(child.notionBlockId);
     }
   };
+
   addNode("root");
   orderedParentIds.reverse();
+
+  localLogger.info(
+    { pagesCount: visitedNodes.size },
+    "Rendered page sections."
+  );
 
   const adaptedBlocksByParentId: Record<
     string,
@@ -2633,6 +2639,12 @@ async function renderPageSection({
   for (const block of topLevelBlocks) {
     renderedPageSection.sections.push(await renderBlockSection(block, 0));
   }
+
+  localLogger.info(
+    { blocksCount: topLevelBlocks.length },
+    "Rendered block sections."
+  );
+
   return renderedPageSection;
 }
 
