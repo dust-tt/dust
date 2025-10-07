@@ -486,7 +486,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
     });
 
-    it("should return undefined when timeFrame is not configured", () => {
+    it("should return undefined when timeFrame is not configured on optional field", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         timeFrame: null,
@@ -494,24 +494,18 @@ describe("augmentInputsWithConfiguration", () => {
           type: "object",
           properties: {
             timeFrame: {
-              oneOf: [
-                { type: "null" },
-                {
-                  type: "object",
-                  properties: {
-                    duration: { type: "number" },
-                    unit: { type: "string" },
-                    mimeType: {
-                      type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
-                    },
-                  },
-                  required: ["duration", "unit", "mimeType"],
+              type: "object",
+              properties: {
+                duration: { type: "number" },
+                unit: { type: "string" },
+                mimeType: {
+                  type: "string",
+                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
                 },
-              ],
+              },
+              required: ["duration", "unit", "mimeType"],
             },
           },
-          required: ["timeFrame"],
         },
       });
 
@@ -543,7 +537,7 @@ describe("augmentInputsWithConfiguration", () => {
         inputSchema: {
           type: "object",
           properties: {
-            schema:
+            jsonSchema:
               ConfigurableToolInputJSONSchemas[
                 INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA
               ],
@@ -559,14 +553,14 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        schema: {
-          ...jsonSchema,
+        jsonSchema: {
+          schema: jsonSchema,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
         },
       });
     });
 
-    it("should return null when jsonSchema is not configured", () => {
+    it("should return undefined when jsonSchema is not configured on optional field", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         jsonSchema: undefined,
@@ -574,23 +568,17 @@ describe("augmentInputsWithConfiguration", () => {
           type: "object",
           properties: {
             schema: {
-              oneOf: [
-                { type: "null" },
-                {
-                  type: "object",
-                  properties: {
-                    type: { type: "string" },
-                    mimeType: {
-                      type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
-                    },
-                  },
-                  required: ["type", "mimeType"],
+              type: "object",
+              properties: {
+                schema: { type: "object" },
+                mimeType: {
+                  type: "string",
+                  const: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
                 },
-              ],
+              },
+              required: ["schema", "mimeType"],
             },
           },
-          required: ["schema"],
         },
       });
 
