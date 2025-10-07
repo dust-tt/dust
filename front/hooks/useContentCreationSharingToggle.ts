@@ -13,7 +13,9 @@ export function useContentCreationSharingToggle({
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
 
-  const isEnabled = owner.metadata?.allowContentCreationFileSharing !== false;
+  const [isEnabled, setIsEnabled] = useState(
+    owner.metadata?.allowContentCreationFileSharing !== false
+  );
 
   const doToggleContentCreationSharing = async () => {
     setIsChanging(true);
@@ -32,7 +34,8 @@ export function useContentCreationSharingToggle({
         throw new Error("Failed to update Frame sharing setting");
       }
 
-      window.location.reload();
+      setIsChanging(false);
+      setIsEnabled((prev) => !prev);
     } catch (error) {
       sendNotification({
         type: "error",
