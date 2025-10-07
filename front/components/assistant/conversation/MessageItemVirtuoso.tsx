@@ -15,6 +15,7 @@ import type {
 import {
   getMessageDate,
   getMessageSId,
+  isHandoverUserMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -22,6 +23,7 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
+import type { MessageWithContentFragmentsType } from "@app/types";
 
 interface MessageItemProps {
   data: VirtuosoMessage;
@@ -117,6 +119,13 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
+    const shouldHideUserMessage = isHandoverUserMessage(data);
+    const isAgentMessageHandover =
+      prevData &&
+      isHandoverUserMessage(prevData) &&
+      isMessageTemporayState(data) &&
+      data.message.parentMessageId === prevData.sId;
+
     return (
       <>
         {!areSameDate && <MessageDateIndicator message={data} />}
@@ -129,7 +138,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
             context.isInModal ? "max-w-full" : "max-w-3xl"
           )}
         >
-          {isUserMessage(data) && (
+          {isUserMessage(data) && !shouldHideUserMessage && (
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
@@ -143,6 +152,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={context.user}
               conversationId={context.conversationId}
               isLastMessage={!nextData}
+              isAgentMessageHandover={isAgentMessageHandover}
               messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}

@@ -70,6 +70,13 @@ export const isUserMessage = (
 ): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
   "type" in msg && msg.type === "user_message" && "contentFragments" in msg;
 
+export const isHandoverUserMessage = (
+  msg: VirtuosoMessage
+): msg is UserMessageType & { contentFragments: ContentFragmentType[] } =>
+  "type" in msg &&
+  msg.type === "user_message" &&
+  msg.context.origin === "agent_handover";
+
 export const isMessageTemporayState = (
   msg: VirtuosoMessage
 ): msg is MessageTemporaryState => "agentState" in msg;
