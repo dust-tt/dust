@@ -227,7 +227,7 @@ export async function processToolResults(
             if (isBlobResource(block)) {
               const fileName = isResourceWithName(block)
                 ? block.name
-                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0] || ""}`;
 
               return handleBase64Upload(auth, {
                 base64Data: block.resource.blob,

@@ -7,14 +7,18 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AugmentedMessage } from "@app/lib/utils/find_agents_in_message";
 import type { LightWorkspaceType } from "@app/types";
 
+// We are using webm with Opus codec
+// In general browsers are using a 48 kbps bitrate
+// A 1-minute recording will be around 400kB
+// 60 seconds * 48000bps / 8 => 360 000 bit, round up to 400kB
+const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 400 * 1024;
+
 interface UseVoiceTranscriberServiceParams {
   owner: LightWorkspaceType;
   onTranscribeDelta?: (delta: string) => void;
   onTranscribeComplete?: (transcript: AugmentedMessage[]) => void;
   fileUploaderService: FileUploaderService;
 }
-
-export type Mode = "transcribe" | "attachment";
 
 export function useVoiceTranscriberService({
   owner,
@@ -171,15 +175,15 @@ export function useVoiceTranscriberService({
     }
   }, [sendNotification, startLevelMetering, status]);
 
-  const finalizeRecordingHold = useCallback(
+  const finalizeRecordingTranscribeToInputBar = useCallback(
     async (file: File) => {
       const form = new FormData();
       form.append("file", file);
 
-      const resp = await fetch(
-        `/api/w/${owner.sId}/services/transcribe?stream=true`,
-        { method: "POST", body: form }
-      );
+      const resp = await fetch(`/api/w/${owner.sId}/services/transcribe`, {
+        method: "POST",
+        body: form,
+      });
 
       if (!resp.ok) {
         const msg = await resp.text();
@@ -217,7 +221,7 @@ export function useVoiceTranscriberService({
     [onTranscribeDelta, onTranscribeComplete, owner.sId, sendNotification]
   );
 
-  const finalizeRecordingClick = useCallback(
+  const finalizeRecordingAddAsAttachment = useCallback(
     async (file: File) => {
       await fileUploaderService.handleFilesUpload([file]);
       sendNotification({
@@ -229,57 +233,51 @@ export function useVoiceTranscriberService({
     [fileUploaderService, sendNotification]
   );
 
-  const stopAndFinalize = useCallback(
-    async (mode: Mode) => {
-      setStatus("transcribing");
+  const stopAndFinalize = useCallback(async () => {
+    setStatus("transcribing");
 
-      try {
-        const file = buildAudioFile(chunksRef.current);
-        chunksRef.current = [];
+    try {
+      const file = buildAudioFile(chunksRef.current);
+      chunksRef.current = [];
 
-        if (mode === "transcribe") {
-          await finalizeRecordingHold(file);
-        } else {
-          await finalizeRecordingClick(file);
-        }
-      } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Recording error.",
-          description:
-            e instanceof Error ? e.message : "An unknown error occurred.",
-        });
-      } finally {
-        stopLevelMetering();
-        stopTracks(streamRef.current);
-        streamRef.current = null;
+      if (file.size <= MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES) {
+        await finalizeRecordingTranscribeToInputBar(file);
+      } else {
+        await finalizeRecordingAddAsAttachment(file);
       }
-    },
-    [
-      finalizeRecordingHold,
-      finalizeRecordingClick,
-      sendNotification,
-      stopLevelMetering,
-    ]
-  );
-
-  const stopRecording = useCallback(
-    async (mode: Mode) => {
-      const recorder = mediaRecorderRef.current;
-      if (!recorder || recorder.state === "inactive") {
-        return;
-      }
-
-      const stopped = new Promise<void>((resolve) => {
-        recorder.onstop = () => resolve();
+    } catch (e) {
+      sendNotification({
+        type: "error",
+        title: "Recording error.",
+        description:
+          e instanceof Error ? e.message : "An unknown error occurred.",
       });
+    } finally {
+      stopLevelMetering();
+      stopTracks(streamRef.current);
+      streamRef.current = null;
+    }
+  }, [
+    finalizeRecordingTranscribeToInputBar,
+    finalizeRecordingAddAsAttachment,
+    sendNotification,
+    stopLevelMetering,
+  ]);
 
-      recorder.stop();
-      await stopped;
-      await stopAndFinalize(mode);
-    },
-    [stopAndFinalize]
-  );
+  const stopRecording = useCallback(async () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") {
+      return;
+    }
+
+    const stopped = new Promise<void>((resolve) => {
+      recorder.onstop = () => resolve();
+    });
+
+    recorder.stop();
+    await stopped;
+    await stopAndFinalize();
+  }, [stopAndFinalize]);
 
   return featureFlags.hasFeature("simple_audio_transcription")
     ? {

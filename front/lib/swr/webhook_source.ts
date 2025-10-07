@@ -131,7 +131,7 @@ export function useUpdateWebhookSourceView({
   const updateWebhookSourceView = useCallback(
     async (
       webhookSourceViewId: string,
-      updates: { name: string }
+      updates: { name: string; description?: string; icon?: string }
     ): Promise<boolean> => {
       try {
         const response = await fetch(
@@ -361,13 +361,24 @@ export function useRemoveWebhookSourceViewFromSpace({
           await mutateWebhookSourcesWithViews();
         } else {
           const res = await response.json();
-          sendNotification({
-            type: "error",
-            title: "Failed to remove webhook source",
-            description:
-              res.error?.message ||
-              `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
-          });
+
+          // Check for foreign key constraint error specifically
+          if (res.error?.type === "webhook_source_view_triggering_agent") {
+            sendNotification({
+              type: "error",
+              title: "Webhook source in use by agents",
+              description:
+                "This webhook source is currently being used by existing agents. Please remove or update those agents first.",
+            });
+          } else {
+            sendNotification({
+              type: "error",
+              title: "Failed to remove webhook source",
+              description:
+                res.error?.message ||
+                `Could not remove ${webhookSourceView.webhookSource.name} from the ${space.name} space. Please try again.`,
+            });
+          }
         }
       } catch (error) {
         sendNotification({

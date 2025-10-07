@@ -441,6 +441,14 @@ export class UserResource extends BaseResource<UserModel> {
       [Op.in]: memberships.map((m) => m.userId),
     };
 
+    // Create a map of userId to membership for consistent lookup.
+    const membershipsByUserId = new Map<number, MembershipModel>();
+    memberships.forEach((membership) => {
+      if (!membershipsByUserId.has(membership.userId)) {
+        membershipsByUserId.set(membership.userId, membership);
+      }
+    });
+
     const { count, rows: users } = await UserModel.findAndCountAll({
       where: userWhereClause,
       include: [
@@ -455,7 +463,16 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     return {
-      users: users.map((u) => new UserResource(UserModel, u.get())),
+      users: users.map((u) => {
+        const userBlob = u.get();
+        const membership = membershipsByUserId.get(u.id);
+
+        // Augment user with their membership in the workspace.
+        return new UserResource(UserModel, {
+          ...userBlob,
+          ...(membership && { memberships: [membership] }),
+        });
+      }),
       total: count,
     };
   }

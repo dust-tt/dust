@@ -140,19 +140,18 @@ export const ConfigurableToolInputSchemas = {
     appId: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
   }),
-  [INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME]: z
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z
     .object({
       duration: z.number(),
       unit: z.enum(["hour", "day", "week", "month", "year"]),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
     })
-    .describe("An optional time frame to use for the tool.")
-    .nullable(),
+    .describe("An optional time frame to use for the tool."),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]: z.intersection(
-    JsonSchemaSchema,
     z.object({
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA),
-    })
+    }),
+    JsonSchemaSchema
   ),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET]: z.object({
     secretName: z.string(),
@@ -187,7 +186,8 @@ export type ConfigurableToolInputType =
   | z.infer<
       (typeof ConfigurableToolInputSchemas)[keyof typeof ConfigurableToolInputSchemas]
     >
-  | FlexibleConfigurableToolInput[keyof FlexibleConfigurableToolInput];
+  | FlexibleConfigurableToolInput[keyof FlexibleConfigurableToolInput]
+  | undefined;
 
 export type DataSourcesToolConfigurationType = z.infer<
   (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]

@@ -25,8 +25,7 @@ import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/
 import { default as imageGenerationDallEServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira/server";
-import { default as jitToolDatasourceSettingDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_tool_datasource_setting_debugger";
-import { default as jitToolStringSettingDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_tool_string_setting_debugger";
+import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday/server";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
@@ -103,10 +102,8 @@ export async function getInternalMCPServer(
       return tablesQueryServerV2(auth, agentLoopContext);
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
-    case "jit_tool_string_setting_debugger":
-      return jitToolStringSettingDebuggerServer();
-    case "jit_tool_datasource_setting_debugger":
-      return jitToolDatasourceSettingDebuggerServer();
+    case "jit_testing":
+      return jitTestingServer();
     case "web_search_&_browse":
       return webtoolsServer(auth, agentLoopContext);
     case "search":

@@ -27,6 +27,7 @@ import {
   shouldCheckGeolocation,
 } from "@app/lib/cookies";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
@@ -126,15 +127,20 @@ export default function LandingLayout({
               variant="outline"
               size="sm"
               label="Request a demo"
+              onClick={withTracking(TRACKING_AREAS.NAVIGATION, "request_demo")}
             />
             <Button
               variant="highlight"
               size="sm"
               label="Sign in"
               icon={LoginIcon}
-              onClick={() => {
-                window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
-              }}
+              onClick={withTracking(
+                TRACKING_AREAS.NAVIGATION,
+                "sign_in",
+                () => {
+                  window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
+                }
+              )}
             />
           </div>
         </div>

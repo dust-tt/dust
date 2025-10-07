@@ -23,6 +23,7 @@ export const SystemSpaceTriggersList = ({
   const [selectedWebhookSourceId, setSelectedWebhookSourceId] = useState<
     string | null
   >(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [agentSId, setAgentSId] = useState<string | null>(null);
 
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
@@ -55,10 +56,23 @@ export const SystemSpaceTriggersList = ({
     return webhookSource;
   }, [webhookSourcesWithSystemView, selectedWebhookSourceId]);
 
-  const selectedSystemView = selectedWebhookSource?.systemView ?? null;
-
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value ?? "";
+
+  const handleClose = () => {
+    setIsDetailsOpen(false);
+  };
+
+  const handleSetSelectedWebhookSourceId = (
+    action: string | null | ((prev: string | null) => string | null)
+  ) => {
+    const newId =
+      typeof action === "function" ? action(selectedWebhookSourceId) : action;
+    setSelectedWebhookSourceId(newId);
+    if (newId !== null) {
+      setIsDetailsOpen(true);
+    }
+  };
 
   if (!isAdmin) {
     return null;
@@ -76,14 +90,14 @@ export const SystemSpaceTriggersList = ({
         <WebhookSourceDetails
           owner={owner}
           webhookSource={selectedWebhookSource}
-          onClose={() => setSelectedWebhookSourceId(null)}
-          isOpen={selectedSystemView !== null}
+          onClose={handleClose}
+          isOpen={isDetailsOpen}
         />
       )}
       <AdminTriggersList
         owner={owner}
         filter={searchTerm}
-        setSelectedWebhookSourceId={setSelectedWebhookSourceId}
+        setSelectedWebhookSourceId={handleSetSelectedWebhookSourceId}
         webhookSourcesWithSystemView={webhookSourcesWithSystemView}
         isWebhookSourcesWithViewsLoading={isWebhookSourcesWithViewsLoading}
         setAgentSId={setAgentSId}

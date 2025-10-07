@@ -1,3 +1,4 @@
+import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
@@ -6,7 +7,6 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { InternalAllowedIconType } from "@app/lib/actions/mcp_icons";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
@@ -93,8 +93,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "outlook_calendar",
   "outlook",
   "primitive_types_debugger",
-  "jit_tool_string_setting_debugger",
-  "jit_tool_datasource_setting_debugger",
+  "jit_testing",
   "reasoning",
   "run_agent",
   "run_dust_app",
@@ -424,6 +423,8 @@ The directive should be used to display a clickable version of the agent name in
       execute_read_query: "never_ask",
       list_objects: "never_ask",
       describe_object: "never_ask",
+      list_attachments: "never_ask",
+      read_attachment: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -688,6 +689,7 @@ The directive should be used to display a clickable version of the agent name in
       get_issue_link_types: "never_ask",
       get_users: "never_ask",
       get_attachments: "never_ask",
+      read_attachment: "never_ask",
 
       // Update operations - low stakes
       create_comment: "low",
@@ -1007,8 +1009,9 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      // Read operations - never ask (no side effects)
-      get_page: "never_ask",
+      // Read operations - never ask
+      get_current_user: "never_ask",
+      get_pages: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1085,8 +1088,8 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  jit_tool_string_setting_debugger: {
-    id: 1014,
+  jit_testing: {
+    id: 1016,
     availability: "manual",
     allowMultipleInstances: false,
     isPreview: false,
@@ -1097,32 +1100,9 @@ The directive should be used to display a clickable version of the agent name in
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "jit_tool_string_setting_debugger",
+      name: "jit_testing",
       version: "1.0.0",
-      description:
-        "Demo server to test if can be added to JIT even with configurable settings.",
-      icon: "ActionEmotionLaughIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
-  },
-  jit_tool_datasource_setting_debugger: {
-    id: 1015,
-    availability: "manual",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
-    tools_stakes: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "jit_tool_datasource_setting_debugger",
-      version: "1.0.0",
-      description:
-        "Demo server to test if can be added to JIT even with configurable settings.",
+      description: "Demo server to test if can be added to JIT.",
       icon: "ActionEmotionLaughIcon",
       authorization: null,
       documentationUrl: null,

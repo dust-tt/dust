@@ -1598,15 +1598,25 @@ async function isMessagesLimitReached({
   }
 
   // Checking plan limit
-  if (mentions.length === 0) {
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  if (plan.limits.assistant.maxMessages === -1) {
     return {
       isLimitReached: false,
       limitType: null,
     };
   }
-  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
-  if (plan.limits.assistant.maxMessages === -1) {
+  // If no mentions, check general message limit against the plan
+  if (mentions.length === 0) {
+    // Block messages if maxMessages is 0 (no plan or very restrictive plan)
+    if (maxMessages === 0) {
+      return {
+        isLimitReached: true,
+        limitType: "plan_message_limit_exceeded",
+      };
+    }
+    // Otherwise allow non-mention messages for users with a valid plan
     return {
       isLimitReached: false,
       limitType: null,

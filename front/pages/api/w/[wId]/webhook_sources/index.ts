@@ -121,10 +121,12 @@ async function handler(
                 ? secret
                 : generateSecureSecret(64),
           urlSecret: generateSecureSecret(64),
+          kind: "custom",
           signatureHeader:
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           customHeaders,
+          subscribedEvents: [],
         });
 
         if (webhookSourceRes.isErr()) {
