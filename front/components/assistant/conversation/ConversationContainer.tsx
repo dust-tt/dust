@@ -28,8 +28,11 @@ import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import {
   useConversationMessages,
+  useConversationParticipationOption,
   useConversations,
+  useJoinConversation,
 } from "@app/lib/swr/conversations";
+import { useUser } from "@app/lib/swr/user";
 import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
@@ -55,6 +58,7 @@ export function ConversationContainer({
   user,
 }: ConversationContainerProps) {
   const { activeConversationId } = useConversationsNavigation();
+  const { user: currentUser } = useUser();
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
@@ -69,6 +73,18 @@ export function ConversationContainer({
 
   const router = useRouter();
   const sendNotification = useSendNotification();
+
+  const conversationParticipationOption = useConversationParticipationOption({
+    ownerId: owner.sId,
+    conversationId: activeConversationId,
+    userId: currentUser?.sId ?? null,
+    disabled: !activeConversationId || !currentUser?.sId,
+  });
+
+  const joinConversation = useJoinConversation({
+    ownerId: owner.sId,
+    conversationId: activeConversationId,
+  });
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -307,6 +323,24 @@ export function ConversationContainer({
           <Page.Header title={greeting} />
         </div>
       )}
+
+      {activeConversationId &&
+        conversationParticipationOption === "join" &&
+        !isMessagesError && (
+          <ContentMessageInline
+            variant="primary"
+            title="You're not a member of this conversation"
+            className="mb-5 flex w-full sm:w-full sm:max-w-3xl"
+          >
+            Want to save that convo for later? Join it!
+            <ContentMessageAction
+              label="Join"
+              variant="primary"
+              size="xs"
+              onClick={joinConversation}
+            />
+          </ContentMessageInline>
+        )}
 
       {activeConversationId && hasBlockedActions && (
         <ContentMessageInline
