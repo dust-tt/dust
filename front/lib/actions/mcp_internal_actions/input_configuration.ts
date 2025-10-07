@@ -985,21 +985,6 @@ function isSchemaConfigurable(
     return false;
   }
 
-  // if (mimeType === INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA) {
-  //   const mimeTypeProperty = schema.properties?.mimeType;
-  //   if (
-  //     schema.properties?.schema &&
-  //     mimeTypeProperty &&
-  //     isJSONSchemaObject(mimeTypeProperty)
-  //   ) {
-  //     return (
-  //       mimeTypeProperty.type === "string" &&
-  //       mimeTypeProperty.const === mimeType
-  //     );
-  //   }
-  //   return false;
-  // }
-
   // If the mime type has a static configuration schema, we check that the schema matches it.
   return areSchemasEqual(schema, ConfigurableToolInputJSONSchemas[mimeType]);
 }
