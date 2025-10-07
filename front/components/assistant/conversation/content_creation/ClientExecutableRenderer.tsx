@@ -372,7 +372,7 @@ function PreviewActionButtons({
         />
       )}
       <Tooltip
-        label={`${isFullScreen ? "Exit" : "Go to"} full screen model`}
+        label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
         side="left"
         trigger={
           <Button
