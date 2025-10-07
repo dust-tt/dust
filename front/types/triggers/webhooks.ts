@@ -32,6 +32,7 @@ export type WebhookSourceType = {
   customHeaders: Record<string, string> | null;
   createdAt: number;
   updatedAt: number;
+  subscribedEvents: string[];
 };
 
 export type WebhookSourceViewType = {
