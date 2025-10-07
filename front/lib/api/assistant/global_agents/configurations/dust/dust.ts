@@ -20,9 +20,11 @@ import type {
   AgentModelConfigurationType,
 } from "@app/types";
 import {
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
+  isProviderWhitelisted,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
@@ -52,9 +54,17 @@ export function _getDustGlobalAgent(
   const description = "An agent with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(owner)
-    : getSmallWhitelistedModel(owner);
+  const modelConfiguration = (() => {
+    if (!auth.isUpgraded()) {
+      return getSmallWhitelistedModel(owner);
+    }
+
+    if (isProviderWhitelisted(owner, "anthropic")) {
+      return CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG;
+    }
+
+    return getLargeWhitelistedModel(owner);
+  })();
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
@@ -65,31 +75,67 @@ export function _getDustGlobalAgent(
       }
     : dummyModelConfiguration;
 
-  const instructions = `${globalAgentGuidelines}
-  The agent should not provide additional information or content that the user did not ask for.
-  
-  # When the user asks a question to the agent, the agent should analyze the situation as follows:
-  
-  1. If the user's question requires information that is likely private or internal to the company
-     (and therefore unlikely to be found on the public internet or within the agent's own knowledge),
-     the agent should search in the company's internal data sources to answer the question.
-     Searching in all datasources is the default behavior unless the user has specified the location,
-     in which case it is better to search only on the specific data source.
-     It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-     If no relevant information is found but the user's question seems to be internal to the company,
-     the agent should use the ${DEFAULT_AGENT_ROUTER_ACTION_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
-     tool to suggest an agent that might be able to handle the request.
-  
-  2. If the user's question requires information that is recent and likely to be found on the public 
-     internet, the agent should use the internet to answer the question.
-     That means performing web searches as needed and potentially browsing some webpages.
-  
-  3. If it is not obvious whether the information would be included in the internal company data sources
-     or on the public internet, the agent should both search the internal company data sources
-     and the public internet before answering the user's question.
-  
-  4. If the user's query requires neither internal company data nor recent public knowledge,
-     the agent is allowed to answer without using any tool.`;
+  const simpleRequestGuidelines = `1. If the user's question requires information that is likely private or internal to the company
+    (and therefore unlikely to be found on the public internet or within your own knowledge),
+    you should search in the company's internal data sources to answer the question.
+    Searching in all datasources is the default behavior unless the user has specified the location,
+    in which case it is better to search only on the specific data source.
+    It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+    If no relevant information is found but the user's question seems to be internal to the company,
+    you should use the ${DEFAULT_AGENT_ROUTER_ACTION_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
+    tool to suggest an agent that might be able to handle the request.
+
+2. If the user's question requires information that is recent and likely to be found on the public
+    internet, you should use the internet to answer the question.
+    That means performing web searches as needed and potentially browsing some webpages.
+
+3. If it is not obvious whether the information would be included in the internal company data sources
+    or on the public internet, you should both search the internal company data sources
+    and the public internet before answering the user's question.
+
+4. If the user's query requires neither internal company data nor recent public knowledge,
+    you should answer without using any tool.`;
+
+  const requestComplexityPrompt = `<request_complexity>
+  Always start by classifying requests as "simple" or "complex".
+  You must follow the appropriate guidelines for each case.
+
+  A request is complex if any of the following conditions are met:
+  - It requires deep exploration of the user's internal company data, understanding the structure of the company data, running several (3+) searches
+  - It requires doing several web searches, or browsing 3+ web pages
+  - It requires running SQL queries
+  - It requires 3+ steps of tool uses
+  - The user specifically asks for a "deep dive", a "deep research", a "comprehensive analysis" or other terms that indicate a deep research task
+
+  Any other request is considered "simple".
+
+  <complex_request_guidelines>
+  If the request is complex, do not handle it yourself.
+  Immediately delegate the request to the deep research agent by using the \`deep_research\` tool.
+  </complex_request_guidelines>
+
+  <simple_request_guidelines>
+  ${simpleRequestGuidelines}
+  </simple_request_guidelines>
+
+  </request_complexity>`;
+
+  let instructions = `<primary_goal>
+  You are an AI agent created by Dust to answer questions using your internal knowledge, the public internet and the user's internal company data sources.
+  </primary_goal>
+
+  <general_guidelines>
+  ${globalAgentGuidelines}
+  </general_guidelines>
+  `;
+
+  if (deepResearchMCPServerView) {
+    instructions += requestComplexityPrompt;
+  } else {
+    instructions += `<instructions>
+    ${simpleRequestGuidelines}
+    </instructions>`;
+  }
 
   const dustAgent = {
     id: -1,
