@@ -177,8 +177,13 @@ export function ShareContentCreationFilePopover({
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col" align="end">
         <div className="flex flex-col gap-4">
-          <div className="text-base font-semibold text-primary dark:text-primary-night">
-            Share this Frame
+          <div>
+            <h2 className="text-base font-semibold text-primary dark:text-primary-night">
+              Share this content
+            </h2>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Share with your workspace or make it public
+            </p>
           </div>
 
           <div className="flex flex-col">
@@ -219,25 +224,12 @@ export function ShareContentCreationFilePopover({
                   isLoading={isUpdatingShare}
                 />
 
-                <Separator />
-
-                {/* Content area with loading state */}
-                <div className="flex items-center gap-2">
-                  <div className="grow">
-                    <Input
-                      disabled
-                      onClick={(e) => e.currentTarget.select()}
-                      readOnly
-                      value={shareURL}
-                    />
-                  </div>
-                  <IconButton
-                    className="flex-none"
-                    icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                    tooltip={isCopied ? "Copied!" : "Copy link"}
-                    onClick={handleCopyLink}
-                  />
-                </div>
+                <Button
+                  className="ml-auto grid grid-cols-[1rem_4rem]"
+                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                  onClick={handleCopyLink}
+                  label={isCopied ? "Copied!" : "Copy link"}
+                />
               </div>
             )}
           </div>
