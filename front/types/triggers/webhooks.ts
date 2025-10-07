@@ -9,7 +9,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 
-import { GITHUB_WEBHOOK_PRESET } from "./github_webhook_source_presets";
+import { GITHUB_WEBHOOK_PRESET } from "@app/types/triggers/github_webhook_source_presets";
 
 export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
   "sha1",

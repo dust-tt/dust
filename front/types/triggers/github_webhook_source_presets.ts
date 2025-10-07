@@ -1,8 +1,9 @@
+import { GithubLogo } from "@dust-tt/sparkle";
 import type {
   EventField,
   WebhookEvent,
   PresetWebhook,
-} from "./webhooks_source_preset";
+} from "@app/types/triggers/webhooks_source_preset";
 
 const USER_CHILDREN_FIELDS: EventField[] = [
   {
@@ -342,39 +343,7 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
       description: "The user that triggered the event.",
       type: "object",
       isArray: false,
-      childrenFields: [
-        {
-          name: "login",
-          description: "The username of the user.",
-          type: "string",
-        },
-        {
-          name: "id",
-          description: "The unique identifier of the user.",
-          type: "number",
-        },
-        {
-          name: "url",
-          description: "The API URL of the user.",
-          type: "string",
-        },
-        {
-          name: "html_url",
-          description: "The GitHub profile URL of the user.",
-          type: "string",
-        },
-        {
-          name: "type",
-          description: "The type of the user account.",
-          type: "enum",
-          enumValues: ["User", "Organization"],
-        },
-        {
-          name: "site_admin",
-          description: "Whether the user is a GitHub site administrator.",
-          type: "boolean",
-        },
-      ],
+      childrenFields: USER_CHILDREN_FIELDS,
     },
   ],
 };
@@ -545,4 +514,7 @@ export const GITHUB_WEBHOOK_PRESET: PresetWebhook = {
     field: "X-GitHub-Event",
   },
   events: [GITHUB_PULL_REQUEST_EVENT, GITHUB_ISSUES_EVENT],
+  icon: GithubLogo,
+  description:
+    "Receive events from GitHub such as creation or edition of issues or pull requests.",
 };
