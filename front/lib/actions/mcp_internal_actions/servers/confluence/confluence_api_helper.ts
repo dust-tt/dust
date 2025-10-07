@@ -58,14 +58,11 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
-      logger.warn(
-        `[Confluence MCP Server] Schema validation failed for ${endpoint}, returning raw data`,
-        {
-          error: parseResult.error,
-          endpoint,
-        }
-      );
-      return new Ok(rawData);
+      const msg = `Invalid Confluence response format: ${parseResult.error.message}`;
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "Confluence attachment upload response format invalid",
+      });
     }
 
     return new Ok(parseResult.data);
@@ -170,4 +167,15 @@ export async function getCurrentUser(
   }
 
   return new Ok(result.value);
+}
+
+function logAndReturnApiError<T>({
+  error,
+  message,
+}: {
+  error: unknown;
+  message: string;
+}): Result<T, string> {
+  logger.error(`[Confluence MCP Server] ${message}`);
+  return new Err(normalizeError(error).message);
 }
