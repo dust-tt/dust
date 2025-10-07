@@ -4,7 +4,6 @@ import { z } from "zod";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { isUsingConversationFiles } from "@app/lib/files";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -93,31 +92,6 @@ async function handler(
       }
 
       const { shareScope } = parseResult.data;
-
-      // For public sharing, check if file uses conversation files.
-      if (shareScope === "public") {
-        const fileContent = await getFileContent(auth, file, "original");
-        if (!fileContent) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "file_not_found",
-              message: "File not found.",
-            },
-          });
-        }
-
-        if (isUsingConversationFiles(fileContent)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "Frame files that use files from the conversation cannot be shared publicly.",
-            },
-          });
-        }
-      }
 
       await file.setShareScope(auth, shareScope);
 
