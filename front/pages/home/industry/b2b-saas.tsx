@@ -13,7 +13,7 @@ export async function getStaticProps() {
 }
 
 export default function B2BSaaS() {
-  return <IndustryTemplate config={b2bSaasConfig} />;
+  return <IndustryTemplate config={b2bSaasConfig} trackingPrefix="b2b" />;
 }
 
 B2BSaaS.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {

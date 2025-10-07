@@ -1,3 +1,4 @@
+import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
@@ -6,7 +7,6 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { InternalAllowedIconType } from "@app/lib/actions/mcp_icons";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
@@ -687,6 +687,7 @@ The directive should be used to display a clickable version of the agent name in
       get_issue_link_types: "never_ask",
       get_users: "never_ask",
       get_attachments: "never_ask",
+      read_attachment: "never_ask",
 
       // Update operations - low stakes
       create_comment: "low",
@@ -1006,8 +1007,9 @@ The directive should be used to display a clickable version of the agent name in
     },
     isPreview: false,
     tools_stakes: {
-      // Read operations - never ask (no side effects)
-      get_page: "never_ask",
+      // Read operations - never ask
+      get_current_user: "never_ask",
+      get_pages: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,

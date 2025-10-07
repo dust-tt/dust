@@ -9,11 +9,11 @@ import React, { useMemo } from "react";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
-import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import {
   InternalActionIcons,
-  isCustomServerIconType,
-} from "@app/lib/actions/mcp_icons";
+  isCustomResourceIconType,
+} from "@app/components/resources/resources_icons";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { WhitelistableFeature } from "@app/types";
 
@@ -59,7 +59,7 @@ function MCPServerCard({
   const requirement = getMCPServerToolsConfigurations(view, featureFlags);
   const canAdd = requirement.configurable !== "no" ? true : !isSelected;
 
-  const icon = isCustomServerIconType(view.server.icon)
+  const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
     : InternalActionIcons[view.server.icon] || BookOpenIcon;
 

@@ -1,7 +1,7 @@
 import type {
-  CustomServerIconType,
+  CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
@@ -74,5 +74,5 @@ export type MCPValidationMetadataType = {
   mcpServerName: string;
   agentName: string;
   pubsubMessageId?: string;
-  icon?: InternalAllowedIconType | CustomServerIconType;
+  icon?: InternalAllowedIconType | CustomResourceIconType;
 };

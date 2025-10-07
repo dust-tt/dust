@@ -1,6 +1,7 @@
 import {
   AnthropicLogo,
   DeepseekLogo,
+  DustLogo,
   FireworksLogo,
   GeminiLogo,
   GrokLogo,
@@ -74,6 +75,9 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   },
   xai: {
     light: GrokLogo,
+  },
+  noop: {
+    light: DustLogo,
   },
 };
 

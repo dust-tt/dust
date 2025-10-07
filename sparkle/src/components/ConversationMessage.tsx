@@ -36,7 +36,7 @@ interface ConversationMessageProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
-  completionStatus?: string;
+  completionStatus?: React.ReactNode;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
   infoChip?: React.ReactNode;
@@ -174,7 +174,7 @@ interface ConversationMessageHeaderProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
-  completionStatus?: string;
+  completionStatus?: React.ReactNode;
   infoChip?: React.ReactNode;
   renderName: (name: string | null) => React.ReactNode;
   type: ConversationMessageType;
@@ -243,11 +243,7 @@ export const ConversationMessageHeader = React.forwardRef<
               {timestamp}
             </span>
           </div>
-          {completionStatus && (
-            <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {completionStatus}
-            </div>
-          )}
+          {completionStatus ?? null}
         </div>
       </div>
     );

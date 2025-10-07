@@ -9,6 +9,7 @@ import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { ProxyAgent } from "undici";
 
+import { isInternalAllowedIcon } from "@app/components/resources/resources_icons";
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_NAME,
@@ -20,10 +21,7 @@ import {
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  isInternalAllowedIcon,
-} from "@app/lib/actions/mcp_icons";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
