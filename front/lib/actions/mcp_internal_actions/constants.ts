@@ -1131,7 +1131,7 @@ The directive should be used to display a clickable version of the agent name in
   },
   reasoning: {
     id: 1007,
-    availability: "auto_hidden_builder",
+    availability: "auto",
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
