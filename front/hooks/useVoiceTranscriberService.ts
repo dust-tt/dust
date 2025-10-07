@@ -279,7 +279,8 @@ export function useVoiceTranscriberService({
     await stopAndFinalize();
   }, [stopAndFinalize]);
 
-  return featureFlags.hasFeature("simple_audio_transcription")
+  return featureFlags.hasFeature("simple_audio_transcription") &&
+    owner.metadata?.allowVoiceTranscription !== false
     ? {
         status,
         level,
