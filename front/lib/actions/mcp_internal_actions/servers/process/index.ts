@@ -199,7 +199,7 @@ function makeExtractInformationFromDocumentsTool(
         auth,
         conversation,
         outputs,
-        jsonSchema: jsonSchema,
+        jsonSchema,
         timeFrame: timeFrame ?? null,
         objective,
       });

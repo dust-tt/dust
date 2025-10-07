@@ -360,6 +360,7 @@ function PreviewActionButtons({
       <Tooltip
         label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
         side="left"
+        tooltipTriggerAsChild
         trigger={
           <Button
             icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
@@ -373,6 +374,7 @@ function PreviewActionButtons({
         <Tooltip
           label="Revert the last change"
           side="left"
+          tooltipTriggerAsChild
           trigger={
             <Button
               variant="ghost"
@@ -386,6 +388,7 @@ function PreviewActionButtons({
       <Tooltip
         label="Reload the file"
         side="left"
+        tooltipTriggerAsChild
         trigger={
           <Button
             icon={ArrowCircleIcon}

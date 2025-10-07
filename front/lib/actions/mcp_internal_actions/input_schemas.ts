@@ -141,9 +141,11 @@ export const ConfigurableToolInputSchemas = {
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP),
   }),
   [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]: z
     .object({
       duration: z.number(),
       unit: z.enum(["hour", "day", "week", "month", "year"]),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
       mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME),
     })
     .describe("An optional time frame to use for the tool."),

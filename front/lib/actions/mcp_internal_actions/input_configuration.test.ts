@@ -465,6 +465,7 @@ describe("augmentInputsWithConfiguration", () => {
             timeFrame:
               ConfigurableToolInputJSONSchemas[
                 INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
               ],
           },
           required: ["timeFrame"],
@@ -481,6 +482,7 @@ describe("augmentInputsWithConfiguration", () => {
         timeFrame: {
           duration: 7,
           unit: "day",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
         },
       });
@@ -516,6 +518,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
+        timeFrame: undefined,
         timeFrame: undefined,
       });
     });
@@ -570,6 +573,7 @@ describe("augmentInputsWithConfiguration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         jsonSchema: undefined,
+        jsonSchema: undefined,
         inputSchema: {
           type: "object",
           properties: {
@@ -595,6 +599,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
+        schema: undefined,
         schema: undefined,
       });
     });
