@@ -114,7 +114,7 @@ async function getConfluenceBaseUrl(
   return null;
 }
 
-//Get Confluence resource information using the access token
+// Get Confluence resource information using the access token
 async function getConfluenceResourceInfo(
   accessToken: string
 ): Promise<{ id: string; name: string; url: string } | null> {

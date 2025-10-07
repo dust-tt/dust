@@ -19,19 +19,11 @@ export const AtlassianResourceSchema = z.array(
   })
 );
 
-export const ConfluenceCurrentUserSchema = z
-  .object({
-    account_id: z.string(),
-    account_type: z.string().optional().default("atlassian"),
-    email: z.string().optional(),
-    name: z.string(),
-    nickname: z.string().optional(),
-  })
-  .transform((data) => ({
-    accountId: data.account_id,
-    accountType: data.account_type,
-    email: data.email,
-    displayName: data.name,
-    publicName: data.name,
-  }));
+export const ConfluenceCurrentUserSchema = z.object({
+  account_id: z.string(),
+  account_type: z.string().optional().default("atlassian"),
+  email: z.string().optional(),
+  name: z.string(),
+  nickname: z.string().optional(),
+});
 export type ConfluenceCurrentUser = z.infer<typeof ConfluenceCurrentUserSchema>;
