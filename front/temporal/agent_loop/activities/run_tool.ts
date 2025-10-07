@@ -131,7 +131,10 @@ export async function runToolActivity(
                 created: event.created,
                 configurationId: agentConfiguration.sId,
                 messageId: agentMessage.sId,
-                message: { ...agentMessage, content: event.text },
+                message: {
+                  ...agentMessage,
+                  content: agentMessage.content + event.text,
+                },
                 runIds: runIds ?? [],
               },
 
