@@ -248,7 +248,10 @@ Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
 const dustDeepInstructions = `${dustDeepPrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
-const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}`;
+const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}
+<output_format>
+Your output will be read by another AI agent. As a result, do not focus on formatting, avoid making verbose sentences and focus on producing concise but information-dense output.
+</output_format>`;
 const browserSummaryAgentInstructions = `<primary_goal>
 You are a web page summary agent. Your primary role is to summarize web page content.
 You are provided with a web page content and you must produce a high quality comprehensive summary of the content.
