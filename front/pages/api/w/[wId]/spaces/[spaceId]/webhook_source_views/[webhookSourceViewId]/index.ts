@@ -84,10 +84,6 @@ async function handler(
 
       try {
         await webhookSourceView.delete(auth, { hardDelete: true });
-
-        return res.status(200).json({
-          deleted: true,
-        });
       } catch (error: any) {
         // Check if it's a Sequelize foreign key constraint error
         if (error?.name === "SequelizeForeignKeyConstraintError") {
@@ -103,6 +99,9 @@ async function handler(
         // Re-throw other errors
         throw error;
       }
+      return res.status(200).json({
+        deleted: true,
+      });
     }
     default:
       return apiError(req, res, {
