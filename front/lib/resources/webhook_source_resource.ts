@@ -222,6 +222,7 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       name: this.name,
       secret,
       urlSecret: this.urlSecret,
+      kind: this.kind,
       subscribedEvents: this.subscribedEvents,
       signatureHeader: this.signatureHeader,
       signatureAlgorithm: this.signatureAlgorithm,

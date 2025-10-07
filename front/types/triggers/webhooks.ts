@@ -26,6 +26,7 @@ export type WebhookSourceType = {
   sId: string;
   name: string;
   urlSecret: string;
+  kind: WebhookSourceKind;
   secret: string | null;
   signatureHeader: string | null;
   signatureAlgorithm: WebhookSourceSignatureAlgorithm | null;
