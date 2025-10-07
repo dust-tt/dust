@@ -8,6 +8,7 @@ use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
+use tracing::warn;
 
 use crate::databases::{database::HasValue, table::Row};
 
