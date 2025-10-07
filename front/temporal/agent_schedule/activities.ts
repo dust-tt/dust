@@ -130,7 +130,7 @@ async function createConversationForAgentConfiguration({
   const messageRes = await postUserMessage(auth, {
     conversation: newConversation,
     content:
-      `:mention[${agentConfiguration.name}]{${agentConfiguration.sId}}` +
+      `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}}` +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: baseContext,
