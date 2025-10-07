@@ -1,5 +1,4 @@
 import assert from "assert";
-
 import { Context } from "@temporalio/activity";
 
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
