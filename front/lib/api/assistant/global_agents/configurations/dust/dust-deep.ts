@@ -517,7 +517,7 @@ export function _getDustDeepGlobalAgent(
     scope: "global" as const,
     userFavorite: false,
     model: dummyModelConfiguration,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],

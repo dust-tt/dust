@@ -130,3 +130,36 @@ export function _getAgentRouterToolsConfiguration(
     },
   ];
 }
+
+export function _getContentCreationToolConfiguration({
+  agentId,
+  contentCreationMCPServerView,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  contentCreationMCPServerView: MCPServerViewResource | null;
+}): ServerSideMCPServerConfigurationType[] {
+  if (!contentCreationMCPServerView) {
+    return [];
+  }
+
+  return [
+    {
+      id: -1,
+      sId: agentId + "-content-creation",
+      type: "mcp_server_configuration",
+      name: "content_creation",
+      description: "Create & update Content Creation files.",
+      mcpServerViewId: contentCreationMCPServerView.sId,
+      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    },
+  ];
+}
