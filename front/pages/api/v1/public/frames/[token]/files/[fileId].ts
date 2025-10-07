@@ -119,7 +119,7 @@ async function handler(
   // Load the requested file within the same workspace context.
   const owner = renderLightWorkspaceType({ workspace });
 
-  const targetFile = await FileResource.fetchByIdInWorkspaceWithContentUnsafe(
+  const targetFile = await FileResource.fetchByIdInWorkspaceUnsafe(
     owner,
     fileId
   );
