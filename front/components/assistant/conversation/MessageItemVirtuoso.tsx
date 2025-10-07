@@ -23,7 +23,6 @@ import { UserMessage } from "@app/components/assistant/conversation/UserMessage"
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
-import type { MessageWithContentFragmentsType } from "@app/types";
 
 interface MessageItemProps {
   data: VirtuosoMessage;
@@ -152,7 +151,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={context.user}
               conversationId={context.conversationId}
               isLastMessage={!nextData}
-              isAgentMessageHandover={isAgentMessageHandover}
+              isAgentMessageHandover={isAgentMessageHandover ?? false}
               messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
