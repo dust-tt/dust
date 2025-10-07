@@ -29,6 +29,7 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
@@ -52,7 +53,11 @@ export default function Engineering() {
   return (
     <>
       <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
-        <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
+        <HeroSection
+          {...Hero}
+          accentColor={pageSettings.accentColor}
+          trackingPrefix="engineering_hero"
+        />
         <Grid>
           <div className={GRID_SECTION_CLASSES}>
             <BenefitsSection benefits={Benefits} />
@@ -86,6 +91,10 @@ export default function Engineering() {
                       size="md"
                       label={Hero.ctaButtons.primary.label}
                       icon={Hero.ctaButtons.primary.icon}
+                      onClick={withTracking(
+                        TRACKING_AREAS.SOLUTIONS,
+                        "engineering_footer_cta_primary"
+                      )}
                     />
                   </Link>
                 )}
@@ -95,6 +104,10 @@ export default function Engineering() {
                     size="md"
                     label={Hero.ctaButtons.secondary.label}
                     href={Hero.ctaButtons.secondary.href}
+                    onClick={withTracking(
+                      TRACKING_AREAS.SOLUTIONS,
+                      "engineering_footer_cta_secondary"
+                    )}
                   />
                 )}
               </div>

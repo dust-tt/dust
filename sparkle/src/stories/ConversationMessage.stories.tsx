@@ -11,6 +11,7 @@ import {
   CitationTitle,
   ClipboardIcon,
   ClockIcon,
+  CommandLineIcon,
   ConversationContainer,
   ConversationMessage,
   GithubIcon,
@@ -234,7 +235,17 @@ export const ConversationHandoffExample = () => {
                 <span className="s-ml-1">{name}</span>
               </span>
             )}
-            completionStatus="Completed in 9 min 30 sec"
+            completionStatus={
+              <Button
+                icon={CommandLineIcon}
+                onClick={() => {
+                  console.log("soupinou");
+                }}
+                label="Completed in 9 min 30 sec"
+                size="xs"
+                variant={"outline"}
+              />
+            }
             citations={[
               <Citation href="https://www.google.com">
                 <CitationIcons>
