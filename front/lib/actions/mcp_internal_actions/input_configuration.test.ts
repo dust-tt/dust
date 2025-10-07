@@ -451,7 +451,7 @@ describe("augmentInputsWithConfiguration", () => {
     });
   });
 
-  describe("NULLABLE_TIME_FRAME mime type", () => {
+  describe("TIME_FRAME mime type", () => {
     it("should augment inputs with time frame configuration", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
@@ -464,7 +464,7 @@ describe("augmentInputsWithConfiguration", () => {
           properties: {
             timeFrame:
               ConfigurableToolInputJSONSchemas[
-                INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME
+                INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
               ],
           },
           required: ["timeFrame"],
@@ -481,12 +481,12 @@ describe("augmentInputsWithConfiguration", () => {
         timeFrame: {
           duration: 7,
           unit: "day",
-          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
         },
       });
     });
 
-    it("should return null when timeFrame is not configured", () => {
+    it("should return undefined when timeFrame is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
         timeFrame: null,
@@ -503,7 +503,7 @@ describe("augmentInputsWithConfiguration", () => {
                     unit: { type: "string" },
                     mimeType: {
                       type: "string",
-                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.NULLABLE_TIME_FRAME,
+                      const: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
                     },
                   },
                   required: ["duration", "unit", "mimeType"],
@@ -522,7 +522,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        timeFrame: null,
+        timeFrame: undefined,
       });
     });
   });
@@ -569,7 +569,7 @@ describe("augmentInputsWithConfiguration", () => {
     it("should return null when jsonSchema is not configured", () => {
       const rawInputs = {};
       const config = createBasicMCPConfiguration({
-        jsonSchema: null,
+        jsonSchema: undefined,
         inputSchema: {
           type: "object",
           properties: {
@@ -601,7 +601,7 @@ describe("augmentInputsWithConfiguration", () => {
       });
 
       expect(result).toEqual({
-        schema: null,
+        schema: undefined,
       });
     });
   });
