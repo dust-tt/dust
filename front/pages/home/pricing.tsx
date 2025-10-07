@@ -11,7 +11,12 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import { PricePlans } from "@app/components/plans/PlansTables";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  withTracking,
+} from "@app/lib/tracking";
 
 export async function getStaticProps() {
   return {
@@ -54,13 +59,14 @@ export default function Pricing() {
         <div className="dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">
           <PricePlans
             display="landing"
-            onClickProPlan={withTracking(
-              TRACKING_AREAS.PRICING,
-              "plan_card_start_trial",
-              () => {
-                window.location.href = "/api/workos/login?screenHint=sign-up";
-              }
-            )}
+            onClickProPlan={() => {
+              trackEvent({
+                area: TRACKING_AREAS.PRICING,
+                object: "plan_card_start_trial",
+                action: TRACKING_ACTIONS.CLICK,
+              });
+              window.location.href = "/api/workos/login?screenHint=sign-up";
+            }}
           />
         </div>
       </Grid>
