@@ -98,7 +98,11 @@ export const AdminTriggersList = ({
         const onClick = !webhookSource.systemView
           ? undefined
           : () => {
-              setSheetMode({ type: "edit", webhookSource });
+              setSheetMode({
+                type: "edit",
+                webhookSource,
+                kind: webhookSource.kind,
+              });
             };
 
         return {

@@ -1,5 +1,5 @@
 import type { Icon } from "@dust-tt/sparkle";
-import { ActionPencilSquareIcon } from "@dust-tt/sparkle";
+import { ActionGlobeAltIcon } from "@dust-tt/sparkle";
 import { z } from "zod";
 
 import type {
@@ -33,7 +33,7 @@ export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
   };
 } = {
   github: GITHUB_WEBHOOK_PRESET,
-  custom: { name: "Custom", icon: ActionPencilSquareIcon },
+  custom: { name: "Custom", icon: ActionGlobeAltIcon },
 } as const;
 
 export const WEBHOOK_SOURCE_KIND = ["custom", "github"] as const;
