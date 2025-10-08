@@ -17,6 +17,7 @@ import type {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
+  ensurePathExists,
   findSchemaAtPath,
   followInternalRef,
   getValueAtPath,
@@ -458,6 +459,8 @@ export function augmentInputsWithConfiguration({
           keyPath: fullPath.join("."),
         });
 
+        // Ensure intermediate path exists
+        ensurePathExists(inputs, fullPath);
         // We found a matching mimeType, augment the inputs
         setValueAtPath(inputs, fullPath, value);
         return false;
