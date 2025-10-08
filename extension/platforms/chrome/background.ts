@@ -217,7 +217,10 @@ chrome.runtime.onMessage.addListener(
       | GetActiveTabBackgroundMessage
       | CaptureMesssage
       | InputBarStatusMessage
-      | { type: "LOG"; data: Record<string, unknown> },
+      | {
+          type: "LOG";
+          data: { level: "info" | "warn" | "error"; [key: string]: unknown };
+        },
     sender,
     sendResponse: (
       response:
@@ -230,9 +233,15 @@ chrome.runtime.onMessage.addListener(
   ) => {
     switch (message.type) {
       case "LOG":
-        switch (message.data.type) {
+        switch (message.data.level) {
           case "info":
             console.log("[DEBUG] Info:", JSON.stringify(message.data, null, 2));
+            break;
+          case "warn":
+            console.warn(
+              "[DEBUG] Warn:",
+              JSON.stringify(message.data, null, 2)
+            );
             break;
           case "error":
             console.error(
