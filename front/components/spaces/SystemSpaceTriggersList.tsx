@@ -19,9 +19,6 @@ export const SystemSpaceTriggersList = ({
   space,
   user,
 }: SpaceActionsListProps) => {
-  const [selectedWebhookSourceId, setSelectedWebhookSourceId] = useState<
-    string | null
-  >(null);
   const [agentSId, setAgentSId] = useState<string | null>(null);
 
   const { webhookSourcesWithViews, isWebhookSourcesWithViewsLoading } =
@@ -59,7 +56,6 @@ export const SystemSpaceTriggersList = ({
       <AdminTriggersList
         owner={owner}
         filter={searchTerm}
-        setSelectedWebhookSourceId={setSelectedWebhookSourceId}
         webhookSourcesWithSystemView={webhookSourcesWithSystemView}
         isWebhookSourcesWithViewsLoading={isWebhookSourcesWithViewsLoading}
         setAgentSId={setAgentSId}

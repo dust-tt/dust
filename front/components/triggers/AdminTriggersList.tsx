@@ -7,7 +7,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
@@ -57,7 +56,6 @@ const NameCell = ({ row }: { row: RowData }) => {
 
 interface AdminTriggersListProps {
   owner: LightWorkspaceType;
-  setSelectedWebhookSourceId: Dispatch<SetStateAction<string | null>>;
   isWebhookSourcesWithViewsLoading: boolean;
   webhookSourcesWithSystemView: WebhookSourceWithSystemViewAndUsage[];
   filter: string;
@@ -66,7 +64,6 @@ interface AdminTriggersListProps {
 
 export const AdminTriggersList = ({
   owner,
-  setSelectedWebhookSourceId,
   isWebhookSourcesWithViewsLoading,
   webhookSourcesWithSystemView,
   filter,
@@ -97,7 +94,6 @@ export const AdminTriggersList = ({
           ? undefined
           : () => {
               setSheetMode({ type: "edit", webhookSource });
-              setSelectedWebhookSourceId(webhookSource.sId);
             };
 
         return {
@@ -106,7 +102,7 @@ export const AdminTriggersList = ({
           onClick,
         };
       }),
-    [spaces, setSelectedWebhookSourceId, webhookSourcesWithSystemView]
+    [spaces, webhookSourcesWithSystemView]
   );
   const columns = useMemo((): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -239,7 +235,6 @@ export const AdminTriggersList = ({
         mode={sheetMode}
         onClose={() => {
           setSheetMode(null);
-          setSelectedWebhookSourceId(null);
         }}
         owner={owner}
       />
