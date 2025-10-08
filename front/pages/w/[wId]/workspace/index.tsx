@@ -414,8 +414,8 @@ function ContentCreationSharingToggle({ owner }: { owner: WorkspaceType }) {
     <ContextItem.List>
       <div className="h-full border-b border-border dark:border-border-night" />
       <ContextItem
-        title="Frame file sharing"
-        subElement="Allow public sharing of Frame files"
+        title="Public Frame sharing"
+        subElement="Allow Frames to be shared publicly via links"
         visual={<DocumentTextIcon className="h-6 w-6" />}
         hasSeparatorIfLast={true}
         action={

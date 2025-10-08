@@ -103,11 +103,12 @@ export default function SharedFilePage({
           content={`${humanFriendlyTitle} - ${workspaceName}`}
         />
         <meta property="og:description" content={description} />
-        <meta property="og:url" content={shareUrl} />
-        <meta property="og:site_name" content="Dust" />
-        <meta property="og:image" content="https://dust.tt/static/og/ic.png" />
-        <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image" content="https://dust.tt/static/og/ic.png" />
+        <meta property="og:site_name" content="Dust" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={shareUrl} />
         <meta
           property="og:image:alt"
           content={`Preview of ${humanFriendlyTitle} created by ${workspaceName}`}
