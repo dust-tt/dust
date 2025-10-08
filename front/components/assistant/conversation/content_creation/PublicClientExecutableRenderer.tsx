@@ -1,10 +1,11 @@
 import { Spinner } from "@dust-tt/sparkle";
+import React from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
 import { PublicContentCreationHeader } from "@app/components/assistant/conversation/content_creation/PublicContentCreationHeader";
 import { formatFilenameForDisplay } from "@app/lib/files";
-import { usePublicFile } from "@app/lib/swr/files";
+import { usePublicFrame } from "@app/lib/swr/frames";
 
 interface PublicClientExecutableRendererProps {
   fileId: string;
@@ -19,24 +20,40 @@ export function PublicClientExecutableRenderer({
   shareToken,
   workspaceId,
 }: PublicClientExecutableRendererProps) {
-  const { fileContent, isFileLoading, isFileError } = usePublicFile({
+  const { frameContent, isFrameLoading, error } = usePublicFrame({
     shareToken,
-    includeContent: true,
   });
 
-  if (isFileLoading) {
+  const getFileBlob = React.useCallback(
+    async (fileId: string): Promise<Blob | null> => {
+      const response = await fetch(
+        `/api/v1/public/frames/${shareToken}/files/${fileId}`
+      );
+      if (!response.ok) {
+        return null;
+      }
+
+      const resBuffer = await response.arrayBuffer();
+      return new Blob([resBuffer], {
+        type: response.headers.get("Content-Type") ?? undefined,
+      });
+    },
+    [shareToken]
+  );
+
+  if (isFrameLoading) {
     return (
       <CenteredState>
         <Spinner size="sm" />
-        <span>Loading Frame...</span>
+        <span>Loading the frame...</span>
       </CenteredState>
     );
   }
 
-  if (isFileError) {
+  if (error) {
     return (
       <CenteredState>
-        <p className="text-warning-500">Error loading file: {isFileError}</p>
+        <p className="text-warning-500">Error loading the frame: {error}</p>
       </CenteredState>
     );
   }
@@ -55,13 +72,14 @@ export function PublicClientExecutableRenderer({
             conversationId={null}
             workspaceId={workspaceId}
             visualization={{
-              code: fileContent ?? "",
+              code: frameContent ?? "",
               complete: true,
               identifier: `viz-${fileId}`,
             }}
             key={`viz-${fileId}`}
             isInDrawer
             isPublic
+            getFileBlob={getFileBlob}
           />
         </div>
       </div>

@@ -1,6 +1,3 @@
-// This hook uses a public API endpoint, so it's fine to use the client types.
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import type { PublicFileResponseBodyType } from "@dust-tt/client";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -237,36 +234,5 @@ export function useShareContentCreationFile({
     isFileShareLoading: !error && !data,
     isFileShareError: error,
     mutateFileShare: mutate,
-  };
-}
-
-/**
- * Public file access hook (no authentication required). We exceptionaly use the v1 API here.
- */
-
-export function usePublicFile({
-  includeContent,
-  shareToken,
-}: {
-  includeContent?: boolean;
-  shareToken: string | null;
-}) {
-  const fileMetadataFetcher: Fetcher<PublicFileResponseBodyType> = fetcher;
-
-  const swrKey = shareToken
-    ? `/api/v1/public/files/${shareToken}?includeContent=${includeContent}`
-    : null;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    swrKey,
-    fileMetadataFetcher
-  );
-
-  return {
-    fileMetadata: data?.file,
-    fileContent: data?.content,
-    isFileLoading: !error && !data,
-    isFileError: error,
-    mutateFile: mutate,
   };
 }

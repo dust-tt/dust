@@ -2607,13 +2607,13 @@ export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
 >;
 
-export const PublicFileResponseBodySchema = z.object({
+export const PublicFrameResponseBodySchema = z.object({
   content: z.string().optional(),
   file: FileTypeSchema,
 });
 
-export type PublicFileResponseBodyType = z.infer<
-  typeof PublicFileResponseBodySchema
+export type PublicFrameResponseBodyType = z.infer<
+  typeof PublicFrameResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<

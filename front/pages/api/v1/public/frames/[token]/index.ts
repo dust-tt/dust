@@ -1,4 +1,4 @@
-import type { PublicFileResponseBodyType } from "@dust-tt/client";
+import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
@@ -10,11 +10,11 @@ import type { WithAPIErrorResponse } from "@app/types";
 /**
  * @ignoreswagger
  *
- * Undocumented API endpoint to get a file by its public share token.
+ * Undocumented API endpoint to get a frame by its public share token.
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PublicFileResponseBodyType>>
+  res: NextApiResponse<WithAPIErrorResponse<PublicFrameResponseBodyType>>
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
