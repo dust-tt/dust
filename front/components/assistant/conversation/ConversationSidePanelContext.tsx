@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -66,49 +66,55 @@ export function ConversationSidePanelProvider({
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
 
-  const setPanelRef = (ref: ImperativePanelHandle | null) => {
-    panelRef.current = ref;
-  };
+  const setPanelRef = useCallback(
+    (ref: ImperativePanelHandle | null) => {
+      panelRef.current = ref;
+    },
+    [panelRef]
+  );
 
-  const openPanel = (params: OpenPanelParams) => {
-    setCurrentPanel(params.type);
-
-    switch (params.type) {
-      case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
-        /**
-         * If the panel is already open for the same messageId,
-         * we close it.
-         */
-        if (params.messageId === data) {
-          closePanel();
-          return;
-        }
-
-        setData(params.messageId);
-        break;
-      }
-
-      case CONTENT_CREATION_SIDE_PANEL_TYPE:
-        params.timestamp
-          ? setData(`${params.fileId}@${params.timestamp}`)
-          : setData(params.fileId);
-        break;
-
-      default:
-        assertNever(params);
-    }
-  };
-
-  const closePanel = () => {
+  const closePanel = useCallback(() => {
     if (panelRef && panelRef.current) {
       panelRef.current.collapse();
     }
-  };
+  }, [panelRef]);
 
-  const onPanelClosed = () => {
+  const openPanel = useCallback(
+    (params: OpenPanelParams) => {
+      setCurrentPanel(params.type);
+
+      switch (params.type) {
+        case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
+          /**
+           * If the panel is already open for the same messageId,
+           * we close it.
+           */
+          if (params.messageId === data) {
+            closePanel();
+            return;
+          }
+
+          setData(params.messageId);
+          break;
+        }
+
+        case CONTENT_CREATION_SIDE_PANEL_TYPE:
+          params.timestamp
+            ? setData(`${params.fileId}@${params.timestamp}`)
+            : setData(params.fileId);
+          break;
+
+        default:
+          assertNever(params);
+      }
+    },
+    [setCurrentPanel, setData, data, closePanel]
+  );
+
+  const onPanelClosed = useCallback(() => {
     setData(undefined);
     setCurrentPanel(undefined);
-  };
+  }, [setData, setCurrentPanel]);
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
@@ -117,7 +123,7 @@ export function ConversationSidePanelProvider({
     } else if (!data) {
       closePanel();
     }
-  }, [data, currentPanel, setCurrentPanel]);
+  }, [data, currentPanel, setCurrentPanel, closePanel]);
 
   return (
     <ConversationSidePanelContext.Provider
