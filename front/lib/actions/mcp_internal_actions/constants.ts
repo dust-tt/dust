@@ -719,9 +719,7 @@ The directive should be used to display a clickable version of the agent name in
     id: 23,
     availability: "auto",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("interactive_content_server");
-    },
+    isRestricted: undefined,
     isPreview: true,
     tools_stakes: undefined,
     tools_retry_policies: undefined,

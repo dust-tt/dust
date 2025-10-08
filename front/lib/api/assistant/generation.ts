@@ -177,12 +177,9 @@ export async function constructPromptMultiActions(
     guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasContentCreationServer =
-    featureFlags.includes("interactive_content_server") &&
-    agentConfiguration.actions.some((action) =>
-      isMCPConfigurationForInternalContentCreation(action)
-    );
+  const hasContentCreationServer = agentConfiguration.actions.some((action) =>
+    isMCPConfigurationForInternalContentCreation(action)
+  );
 
   // Only inject the visualization system prompt if the Content Creation server is not enabled.
   if (agentConfiguration.visualizationEnabled && !hasContentCreationServer) {
