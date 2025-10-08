@@ -383,7 +383,6 @@ export const VisualizationActionIframe = forwardRef<
                     {canRetry && (
                       <Button
                         variant="outline"
-                        size="sm"
                         label="Ask agent to fix"
                         onClick={handleRetryClick}
                         disabled={retryClicked}

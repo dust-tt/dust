@@ -96,7 +96,6 @@ function ExportContentDropdown({
         <Button
           icon={ArrowDownOnSquareIcon}
           isSelect
-          size="xs"
           label="Download"
           variant="ghost"
         />
@@ -144,12 +143,11 @@ export function ClientExecutableRenderer({
   );
   const isFullScreen = fullScreenHash === "true";
 
-  const { fileContent, isFileContentLoading, error, mutateFileContent } =
-    useFileContent({
-      fileId,
-      owner,
-      cacheKey: contentHash,
-    });
+  const { fileContent, error, mutateFileContent } = useFileContent({
+    fileId,
+    owner,
+    cacheKey: contentHash,
+  });
 
   const { fileMetadata } = useFileMetadata({ fileId, owner });
 
@@ -264,15 +262,6 @@ export function ClientExecutableRenderer({
     [owner.sId]
   );
 
-  if (isFileContentLoading) {
-    return (
-      <CenteredState>
-        <Spinner size="sm" />
-        <span>Loading Frame...</span>
-      </CenteredState>
-    );
-  }
-
   if (error) {
     return (
       <CenteredState>
@@ -288,7 +277,6 @@ export function ClientExecutableRenderer({
           <Button
             icon={showCode ? EyeIcon : CommandLineIcon}
             onClick={() => setShowCode(!showCode)}
-            size="xs"
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
             variant="ghost"
           />
