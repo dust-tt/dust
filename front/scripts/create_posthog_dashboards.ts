@@ -27,6 +27,12 @@ type Insight = {
   dashboards?: number[];
 };
 
+// PostHog Action shape (kept for future full Actions migration)
+type _Action = {
+  id: number;
+  name: string;
+};
+
 class PostHogDashboardCreator {
   private apiKey: string;
   private projectId: string;
@@ -93,17 +99,28 @@ class PostHogDashboardCreator {
 
     // Get all dashboards
     const dashboards = await this.listDashboards();
+    const isEmojiStart = (name: string) => {
+      if (!name || name.length === 0) {
+        return false;
+      }
+      const cp = name.codePointAt(0) ?? 0;
+      // Common emoji ranges (not exhaustive but good heuristic)
+      return (
+        (cp >= 0x1f300 && cp <= 0x1f5ff) || // Misc Symbols and Pictographs
+        (cp >= 0x1f600 && cp <= 0x1f64f) || // Emoticons
+        (cp >= 0x1f680 && cp <= 0x1f6ff) || // Transport and Map
+        (cp >= 0x1f700 && cp <= 0x1f77f) || // Alchemical Symbols
+        (cp >= 0x1f780 && cp <= 0x1f7ff) || // Geometric Shapes Extended
+        (cp >= 0x1f800 && cp <= 0x1f8ff) || // Supplemental Arrows-C
+        (cp >= 0x1f900 && cp <= 0x1f9ff) || // Supplemental Symbols and Pictographs
+        (cp >= 0x1fa00 && cp <= 0x1fa6f) || // Chess, Symbols
+        (cp >= 0x2600 && cp <= 0x27bf) || // Misc symbols, Dingbats
+        (cp >= 0x2300 && cp <= 0x23ff) // Misc technical incl. clocks
+      );
+    };
+
     const dustDashboards = dashboards.results.filter(
-      (d) =>
-        d.name.includes("📊 Executive Overview") ||
-        d.name.includes("🎯 Conversion Overview") ||
-        d.name.includes("📉 Drop-off Analysis") ||
-        d.name.includes("⏱️ Time to Value") ||
-        d.name.includes("🎯 Marketing Performance") ||
-        d.name.includes("📊 Data Source Adoption") ||
-        d.name.includes("🔨 Builder Engagement") ||
-        d.name.includes("💬 Conversation Engagement") ||
-        d.name.includes("🎯 Trial Analysis")
+      (d) => isEmojiStart(d.name) || d.name.startsWith("[auto]")
     );
 
     if (dustDashboards.length === 0) {
@@ -135,6 +152,34 @@ class PostHogDashboardCreator {
     logger.info("✅ Cleanup complete");
   }
 
+  async listActions(): Promise<{ results: _Action[] }> {
+    return this.request<{ results: _Action[] }>("/actions/", "GET");
+  }
+
+  async ensureAction(
+    actionName: string,
+    event: string,
+    properties?: unknown[]
+  ): Promise<number> {
+    const existing = await this.listActions();
+    const found = existing.results.find((a) => a.name === actionName);
+    if (found) {
+      return found.id;
+    }
+
+    const created = await this.request<_Action>("/actions/", "POST", {
+      name: actionName,
+      steps: [
+        {
+          event,
+          properties: properties ?? [],
+        },
+      ],
+      is_calculating: false,
+    });
+    return created.id;
+  }
+
   async createDashboard(name: string, description = ""): Promise<Dashboard> {
     const dashboard = await this.request<Dashboard>("/dashboards/", "POST", {
       name,
@@ -149,12 +194,35 @@ class PostHogDashboardCreator {
     dashboardId: number,
     name: string,
     events: InsightEvent[],
-    breakdown?: { breakdown: string; breakdown_type: string },
+    breakdown?: {
+      breakdown: string;
+      breakdown_type: string;
+      breakdown_group_type_index?: number;
+    },
     description?: string
   ): Promise<Insight> {
+    const series: Record<string, unknown>[] = [];
+    for (const ev of events) {
+      // Create or find an action encapsulating this event+properties
+      const actionId = await this.ensureAction(
+        `[auto] ${name} – ${ev.name}`,
+        ev.event,
+        ev.properties
+      );
+      const s: Record<string, unknown> = {
+        kind: "ActionsNode",
+        id: actionId,
+        name: ev.name,
+      };
+      if (ev.math) {
+        s.math = ev.math;
+      }
+      series.push(s);
+    }
+
     const trendsQuery: Record<string, unknown> = {
       kind: "TrendsQuery",
-      series: events,
+      series,
       dateRange: {
         date_from: "-30d",
       },
@@ -168,7 +236,7 @@ class PostHogDashboardCreator {
 
     const insight = await this.request<Insight>("/insights/", "POST", {
       name,
-      description: description || "",
+      description: description ?? "",
       query: {
         kind: "InsightVizNode",
         source: trendsQuery,
@@ -184,12 +252,34 @@ class PostHogDashboardCreator {
     dashboardId: number,
     name: string,
     steps: InsightEvent[],
-    breakdown?: { breakdown: string; breakdown_type: string },
+    breakdown?: {
+      breakdown: string;
+      breakdown_type: string;
+      breakdown_group_type_index?: number;
+    },
     description?: string
   ): Promise<Insight> {
+    const series: Record<string, unknown>[] = [];
+    for (const step of steps) {
+      const actionId = await this.ensureAction(
+        `[auto] ${name} – ${step.name}`,
+        step.event,
+        step.properties
+      );
+      const s: Record<string, unknown> = {
+        kind: "ActionsNode",
+        id: actionId,
+        name: step.name,
+      };
+      if (step.math) {
+        s.math = step.math;
+      }
+      series.push(s);
+    }
+
     const funnelsQuery: Record<string, unknown> = {
       kind: "FunnelsQuery",
-      series: steps,
+      series,
       dateRange: {
         date_from: "-30d",
       },
@@ -206,7 +296,7 @@ class PostHogDashboardCreator {
 
     const insight = await this.request<Insight>("/insights/", "POST", {
       name,
-      description: description || "",
+      description: description ?? "",
       query: {
         kind: "InsightVizNode",
         source: funnelsQuery,
@@ -222,7 +312,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Executive Overview Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "📊 Executive Overview",
+      "[auto] Executive Overview",
       "High-level metrics for tracking overall product performance and user growth"
     );
 
@@ -233,7 +323,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "Active Users",
           math: "dau",
         },
@@ -244,26 +334,34 @@ class PostHogDashboardCreator {
 
     await this.createInsight(
       dashboard.id,
-      "New Signups (Last 30 Days)",
+      "Onboarding Pageviews (Welcome)",
       [
         {
           kind: "EventsNode",
-          event: "auth:onboarding_start_view",
-          name: "New Signups",
+          event: "$pageview",
+          name: "Welcome Pageviews",
           math: "total",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/welcome",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
         },
       ],
       undefined,
-      "Total number of users who started onboarding"
+      "Pageviews of the onboarding welcome page"
     );
 
     await this.createInsight(
       dashboard.id,
-      "Activated Users (Attachments + MCP)",
+      "Activated Users (Attachments + Tools)",
       [
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "With Attachments",
           math: "dau",
           properties: [
@@ -277,12 +375,12 @@ class PostHogDashboardCreator {
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
-          name: "With MCP",
+          event: "conversation:message_send:submit",
+          name: "With Tools",
           math: "dau",
           properties: [
             {
-              key: "has_mcp",
+              key: "has_tools",
               value: ["true"],
               operator: "exact",
               type: "event",
@@ -300,12 +398,16 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "Active Users",
           math: "dau",
         },
       ],
-      { breakdown: "$group_0", breakdown_type: "group" },
+      {
+        breakdown: "plan_name",
+        breakdown_type: "group",
+        breakdown_group_type_index: 0,
+      },
       "Daily active users broken down by workspace plan (Pro vs Enterprise)"
     );
 
@@ -315,27 +417,271 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "auth:onboarding_start_view",
+          event: "$pageview",
           name: "Started Onboarding",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/welcome",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
         },
         {
           kind: "EventsNode",
-          event: "auth:onboarding_complete_click",
+          event: "auth:onboarding_complete:click",
           name: "Completed Onboarding",
         },
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Created Agent",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "Sent Message",
         },
       ],
       undefined,
       "Overall conversion funnel from signup to first message"
+    );
+
+    // Conversion KPIs: stage-wise unique users
+    await this.createInsight(dashboard.id, "Onboarding Completed (DAU)", [
+      {
+        kind: "EventsNode",
+        event: "auth:onboarding_complete:click",
+        name: "Onboarding Completed",
+        math: "dau",
+      },
+    ]);
+
+    await this.createInsight(dashboard.id, "Subscription Started (DAU)", [
+      {
+        kind: "EventsNode",
+        event: "auth:subscription_start:click",
+        name: "Subscription Started",
+        math: "dau",
+      },
+    ]);
+
+    await this.createInsight(dashboard.id, "Payment Success (DAU)", [
+      {
+        kind: "EventsNode",
+        event: "$pageview",
+        name: "Payment Success",
+        math: "dau",
+        properties: [
+          {
+            key: "$pathname",
+            value: "/subscription/payment_processing",
+            operator: "icontains",
+            type: "event",
+          },
+        ],
+      },
+    ]);
+
+    await this.createInsight(dashboard.id, "Agents Created (DAU)", [
+      {
+        kind: "EventsNode",
+        event: "builder:create_agent:submit",
+        name: "Agents Created",
+        math: "dau",
+      },
+    ]);
+
+    await this.createInsight(dashboard.id, "First Messages (DAU)", [
+      {
+        kind: "EventsNode",
+        event: "conversation:message_send:submit",
+        name: "First Messages",
+        math: "dau",
+      },
+    ]);
+
+    await this.createInsight(
+      dashboard.id,
+      "Activated (Attachments OR Tools) (DAU)",
+      [
+        {
+          kind: "EventsNode",
+          event: "conversation:message_send:submit",
+          name: "Activated – Attachments",
+          math: "dau",
+          properties: [
+            {
+              key: "has_attachments",
+              value: ["true"],
+              operator: "exact",
+              type: "event",
+            },
+          ],
+        },
+        {
+          kind: "EventsNode",
+          event: "conversation:message_send:submit",
+          name: "Activated – Tools",
+          math: "dau",
+          properties: [
+            {
+              key: "has_tools",
+              value: ["true"],
+              operator: "exact",
+              type: "event",
+            },
+          ],
+        },
+      ]
+    );
+
+    // Rates (paired trends)
+    await this.createInsight(
+      dashboard.id,
+      "Onboarding Completion Rate (proxy)",
+      [
+        {
+          kind: "EventsNode",
+          event: "auth:onboarding_complete:click",
+          name: "Onboarding Complete",
+          math: "dau",
+        },
+        {
+          kind: "EventsNode",
+          event: "$pageview",
+          name: "Welcome Pageviews",
+          math: "dau",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/welcome",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
+        },
+      ]
+    );
+
+    await this.createInsight(dashboard.id, "Trial Conversion (proxy)", [
+      {
+        kind: "EventsNode",
+        event: "$pageview",
+        name: "Payment Success",
+        math: "dau",
+        properties: [
+          {
+            key: "$pathname",
+            value: "/subscription/payment_processing",
+            operator: "icontains",
+            type: "event",
+          },
+        ],
+      },
+      {
+        kind: "EventsNode",
+        event: "auth:subscription_start:click",
+        name: "Trial Starts",
+        math: "dau",
+        properties: [
+          {
+            key: "is_trial",
+            value: ["true"],
+            operator: "exact",
+            type: "event",
+          },
+        ],
+      },
+    ]);
+
+    await this.createInsight(dashboard.id, "Agent Creation Rate (proxy)", [
+      {
+        kind: "EventsNode",
+        event: "builder:create_agent:submit",
+        name: "Agents Created",
+        math: "dau",
+      },
+      {
+        kind: "EventsNode",
+        event: "auth:subscription_start:click",
+        name: "Subscribed",
+        math: "dau",
+      },
+    ]);
+
+    await this.createInsight(dashboard.id, "Activation Rate (proxy)", [
+      {
+        kind: "EventsNode",
+        event: "conversation:message_send:submit",
+        name: "Activated – Attachments",
+        math: "dau",
+        properties: [
+          {
+            key: "has_attachments",
+            value: ["true"],
+            operator: "exact",
+            type: "event",
+          },
+        ],
+      },
+      {
+        kind: "EventsNode",
+        event: "conversation:message_send:submit",
+        name: "Activated – Tools",
+        math: "dau",
+        properties: [
+          {
+            key: "has_tools",
+            value: ["true"],
+            operator: "exact",
+            type: "event",
+          },
+        ],
+      },
+      {
+        kind: "EventsNode",
+        event: "auth:onboarding_complete:click",
+        name: "Onboarding Complete",
+        math: "dau",
+      },
+    ]);
+
+    // Setup adoption summary
+    await this.createInsight(
+      dashboard.id,
+      "Top Data Source Providers (30d)",
+      [
+        {
+          kind: "EventsNode",
+          event: "datasources:provider_select:click",
+          name: "Provider Selections",
+          math: "total",
+        },
+      ],
+      { breakdown: "provider", breakdown_type: "event" }
+    );
+
+    await this.createInsight(
+      dashboard.id,
+      "Tools Adoption (Messages with Tools)",
+      [
+        {
+          kind: "EventsNode",
+          event: "conversation:message_send:submit",
+          name: "Messages with Tools",
+          math: "total",
+          properties: [
+            {
+              key: "has_tools",
+              value: ["true"],
+              operator: "exact",
+              type: "event",
+            },
+          ],
+        },
+      ]
     );
 
     logger.info(
@@ -348,7 +694,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Conversion Overview Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "🎯 Conversion Overview",
+      "[auto] Conversion Overview",
       "Detailed breakdown of user journey steps from onboarding to activation"
     );
 
@@ -356,9 +702,17 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "1️⃣ Onboarding Starts", [
       {
         kind: "EventsNode",
-        event: "auth:onboarding_start_view",
-        name: "auth:onboarding_start_view",
+        event: "$pageview",
+        name: "onboarding_welcome_pageview",
         math: "dau",
+        properties: [
+          {
+            key: "$pathname",
+            value: "/welcome",
+            operator: "icontains",
+            type: "event",
+          },
+        ],
       },
     ]);
 
@@ -366,8 +720,8 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "2️⃣ Onboarding Completions", [
       {
         kind: "EventsNode",
-        event: "auth:onboarding_complete_click",
-        name: "auth:onboarding_complete_click",
+        event: "auth:onboarding_complete:click",
+        name: "auth:onboarding_complete:click",
         math: "dau",
       },
     ]);
@@ -376,8 +730,8 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "3️⃣ Paywall Passed", [
       {
         kind: "EventsNode",
-        event: "auth:subscription_start_click",
-        name: "auth:subscription_start_click",
+        event: "auth:subscription_start:click",
+        name: "auth:subscription_start:click",
         math: "dau",
       },
     ]);
@@ -391,8 +745,8 @@ class PostHogDashboardCreator {
         math: "dau",
         properties: [
           {
-            key: "$current_url",
-            value: "type=succeeded",
+            key: "$pathname",
+            value: "/subscription/payment_processing",
             operator: "icontains",
             type: "event",
           },
@@ -404,8 +758,8 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "5️⃣ Agents Created", [
       {
         kind: "EventsNode",
-        event: "builder:agent_create_submit",
-        name: "builder:agent_create_submit",
+        event: "builder:create_agent:submit",
+        name: "builder:create_agent:submit",
         math: "dau",
       },
     ]);
@@ -414,8 +768,8 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "6️⃣ First Messages Sent", [
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
-        name: "conversation:message_send_submit",
+        event: "conversation:message_send:submit",
+        name: "conversation:message_send:submit",
         math: "dau",
       },
     ]);
@@ -427,7 +781,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "With Attachments",
           math: "dau",
           properties: [
@@ -443,15 +797,15 @@ class PostHogDashboardCreator {
     );
 
     // 8. Activated users - with MCP
-    await this.createInsight(dashboard.id, "8️⃣ ⭐ Activated Users (MCP)", [
+    await this.createInsight(dashboard.id, "8️⃣ ⭐ Activated Users (Tools)", [
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
-        name: "With MCP",
+        event: "conversation:message_send:submit",
+        name: "With Tools",
         math: "dau",
         properties: [
           {
-            key: "has_mcp",
+            key: "has_tools",
             value: ["true"],
             operator: "exact",
             type: "event",
@@ -470,7 +824,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Drop-off Analysis Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "📉 Drop-off Analysis",
+      "[auto] Drop-off Analysis",
       "Funnel analysis showing where users drop off in the journey"
     );
 
@@ -481,17 +835,25 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "auth:onboarding_start_view",
+          event: "$pageview",
           name: "Onboarding Start",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/welcome",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
         },
         {
           kind: "EventsNode",
-          event: "auth:onboarding_complete_click",
+          event: "auth:onboarding_complete:click",
           name: "Onboarding Complete",
         },
         {
           kind: "EventsNode",
-          event: "auth:subscription_start_click",
+          event: "auth:subscription_start:click",
           name: "Paywall Passed",
         },
         {
@@ -500,8 +862,8 @@ class PostHogDashboardCreator {
           name: "Payment Success",
           properties: [
             {
-              key: "$current_url",
-              value: "type=succeeded",
+              key: "$pathname",
+              value: "/subscription/payment_processing",
               operator: "icontains",
               type: "event",
             },
@@ -509,17 +871,17 @@ class PostHogDashboardCreator {
         },
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Agent Created",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "First Message",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "⭐ Activated (Attachments)",
           properties: [
             {
@@ -540,27 +902,35 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "auth:onboarding_start_view",
+          event: "$pageview",
           name: "Onboarding Start",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/welcome",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
         },
         {
           kind: "EventsNode",
-          event: "auth:onboarding_complete_click",
+          event: "auth:onboarding_complete:click",
           name: "Onboarding Complete",
         },
         {
           kind: "EventsNode",
-          event: "auth:subscription_start_click",
+          event: "auth:subscription_start:click",
           name: "Paywall Passed",
         },
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Agent Created",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "Activated (Attachments)",
           properties: [
             {
@@ -579,12 +949,20 @@ class PostHogDashboardCreator {
     await this.createFunnelInsight(dashboard.id, "🚪 Early Drop-off: Paywall", [
       {
         kind: "EventsNode",
-        event: "auth:onboarding_start_view",
+        event: "$pageview",
         name: "Onboarding Start",
+        properties: [
+          {
+            key: "$pathname",
+            value: "/welcome",
+            operator: "icontains",
+            type: "event",
+          },
+        ],
       },
       {
         kind: "EventsNode",
-        event: "auth:subscription_start_click",
+        event: "auth:subscription_start:click",
         name: "Paywall Passed",
       },
     ]);
@@ -596,12 +974,12 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "auth:subscription_start_click",
+          event: "auth:subscription_start:click",
           name: "Subscribed",
         },
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Agent Created",
         },
       ]
@@ -614,17 +992,17 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Agent Created",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "Message Sent",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "⭐ Activated (Attachments)",
           properties: [
             {
@@ -648,7 +1026,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Time to Value Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "⏱️ Time to Value",
+      "[auto] Time to Value",
       "How quickly users reach activation and key milestones"
     );
 
@@ -659,7 +1037,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "Activated Users",
           math: "dau",
           properties: [
@@ -682,7 +1060,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "datasources:provider_select_click",
+          event: "datasources:provider_select:click",
           name: "Data Source Connections",
           math: "total",
         },
@@ -712,7 +1090,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Marketing Performance Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "🎯 Marketing Performance",
+      "[auto] Marketing Performance",
       "Track landing page performance: Homepage, Solutions, Industry pages"
     );
 
@@ -720,22 +1098,22 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "🏠 Homepage CTA Clicks", [
       {
         kind: "EventsNode",
-        event: "home:hero_get_started_click",
+        event: "home:hero_get_started:click",
         name: "Get Started",
       },
       {
         kind: "EventsNode",
-        event: "home:hero_book_demo_click",
+        event: "home:hero_book_demo:click",
         name: "Book Demo",
       },
       {
         kind: "EventsNode",
-        event: "home:cta_try_dust_click",
+        event: "home:cta_try_dust:click",
         name: "Try Dust",
       },
       {
         kind: "EventsNode",
-        event: "home:cta_request_demo_click",
+        event: "home:cta_request_demo:click",
         name: "Request Demo",
       },
     ]);
@@ -744,17 +1122,17 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "💰 Pricing Page Actions", [
       {
         kind: "EventsNode",
-        event: "pricing:hero_start_trial_click",
+        event: "pricing:hero_start_trial:click",
         name: "Start Trial",
       },
       {
         kind: "EventsNode",
-        event: "pricing:plan_pro_select_click",
+        event: "pricing:plan_pro_select:click",
         name: "Select Pro",
       },
       {
         kind: "EventsNode",
-        event: "pricing:plan_enterprise_contact_click",
+        event: "pricing:plan_enterprise_contact:click",
         name: "Contact Enterprise",
       },
     ]);
@@ -763,52 +1141,52 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "🎯 Solutions Pages - All CTAs", [
       {
         kind: "EventsNode",
-        event: "solutions:sales_hero_cta_primary_click",
+        event: "solutions:sales_hero_cta_primary:click",
         name: "Sales",
       },
       {
         kind: "EventsNode",
-        event: "solutions:support_hero_cta_primary_click",
+        event: "solutions:support_hero_cta_primary:click",
         name: "Support",
       },
       {
         kind: "EventsNode",
-        event: "solutions:marketing_hero_cta_primary_click",
+        event: "solutions:marketing_hero_cta_primary:click",
         name: "Marketing",
       },
       {
         kind: "EventsNode",
-        event: "solutions:data_hero_cta_primary_click",
+        event: "solutions:data_hero_cta_primary:click",
         name: "Data",
       },
       {
         kind: "EventsNode",
-        event: "solutions:engineering_hero_cta_primary_click",
+        event: "solutions:engineering_hero_cta_primary:click",
         name: "Engineering",
       },
       {
         kind: "EventsNode",
-        event: "solutions:productivity_hero_cta_primary_click",
+        event: "solutions:productivity_hero_cta_primary:click",
         name: "Productivity",
       },
       {
         kind: "EventsNode",
-        event: "solutions:knowledge_hero_cta_primary_click",
+        event: "solutions:knowledge_hero_cta_primary:click",
         name: "Knowledge",
       },
       {
         kind: "EventsNode",
-        event: "solutions:it_hero_cta_primary_click",
+        event: "solutions:it_hero_cta_primary:click",
         name: "IT",
       },
       {
         kind: "EventsNode",
-        event: "solutions:legal_hero_cta_primary_click",
+        event: "solutions:legal_hero_cta_primary:click",
         name: "Legal",
       },
       {
         kind: "EventsNode",
-        event: "solutions:people_hero_cta_primary_click",
+        event: "solutions:people_hero_cta_primary:click",
         name: "People",
       },
     ]);
@@ -817,52 +1195,52 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "🏭 Industry Pages - All CTAs", [
       {
         kind: "EventsNode",
-        event: "industry:b2b_hero_cta_primary_click",
+        event: "industry:b2b_hero_cta_primary:click",
         name: "B2B SaaS",
       },
       {
         kind: "EventsNode",
-        event: "industry:financial_hero_cta_primary_click",
+        event: "industry:financial_hero_cta_primary:click",
         name: "Financial",
       },
       {
         kind: "EventsNode",
-        event: "industry:insurance_hero_cta_primary_click",
+        event: "industry:insurance_hero_cta_primary:click",
         name: "Insurance",
       },
       {
         kind: "EventsNode",
-        event: "industry:marketplace_hero_cta_primary_click",
+        event: "industry:marketplace_hero_cta_primary:click",
         name: "Marketplace",
       },
       {
         kind: "EventsNode",
-        event: "industry:retail_hero_cta_primary_click",
+        event: "industry:retail_hero_cta_primary:click",
         name: "Retail",
       },
       {
         kind: "EventsNode",
-        event: "industry:consulting_hero_cta_primary_click",
+        event: "industry:consulting_hero_cta_primary:click",
         name: "Consulting",
       },
       {
         kind: "EventsNode",
-        event: "industry:media_hero_cta_primary_click",
+        event: "industry:media_hero_cta_primary:click",
         name: "Media",
       },
       {
         kind: "EventsNode",
-        event: "industry:energy_hero_cta_primary_click",
+        event: "industry:energy_hero_cta_primary:click",
         name: "Energy",
       },
       {
         kind: "EventsNode",
-        event: "industry:investment_hero_cta_primary_click",
+        event: "industry:investment_hero_cta_primary:click",
         name: "Investment",
       },
       {
         kind: "EventsNode",
-        event: "industry:manufacturing_hero_cta_primary_click",
+        event: "industry:manufacturing_hero_cta_primary:click",
         name: "Manufacturing",
       },
     ]);
@@ -874,23 +1252,181 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "home:hero_get_started_click",
+          event: "home:hero_get_started:click",
           name: "Landing Page CTA",
         },
         {
           kind: "EventsNode",
-          event: "auth:onboarding_start_view",
+          event: "$pageview",
           name: "Onboarding Started",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/welcome",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
         },
         {
           kind: "EventsNode",
-          event: "auth:onboarding_complete_click",
+          event: "auth:onboarding_complete:click",
           name: "Onboarding Complete",
         },
         {
           kind: "EventsNode",
-          event: "auth:subscription_start_click",
+          event: "auth:subscription_start:click",
           name: "Subscription Started",
+        },
+      ]
+    );
+
+    // Discovery CTA → Activation funnel (marketing → signup → activation)
+    await this.createFunnelInsight(
+      dashboard.id,
+      "🎯 Discovery CTA → Activation",
+      [
+        {
+          kind: "EventsNode",
+          event: "home:hero_get_started:click",
+          name: "Landing CTA",
+        },
+        {
+          kind: "EventsNode",
+          event: "$pageview",
+          name: "Welcome pageview",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/welcome",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
+        },
+        {
+          kind: "EventsNode",
+          event: "auth:onboarding_complete:click",
+          name: "Onboarding complete",
+        },
+        {
+          kind: "EventsNode",
+          event: "builder:create_agent:submit",
+          name: "Agent created",
+        },
+        {
+          kind: "EventsNode",
+          event: "conversation:message_send:submit",
+          name: "Activated (attachments)",
+          properties: [
+            {
+              key: "has_attachments",
+              value: ["true"],
+              operator: "exact",
+              type: "event",
+            },
+          ],
+        },
+      ]
+    );
+
+    // Contact form insights & conversion
+    await this.createInsight(dashboard.id, "📨 Contact Form Lifecycle", [
+      {
+        kind: "EventsNode",
+        event: "contact:hubspot_form:ready",
+        name: "Ready",
+      },
+      {
+        kind: "EventsNode",
+        event: "contact:hubspot_form:next_step",
+        name: "Next",
+      },
+      {
+        kind: "EventsNode",
+        event: "contact:hubspot_form:previous_step",
+        name: "Back",
+      },
+      {
+        kind: "EventsNode",
+        event: "contact:hubspot_form:submit",
+        name: "Submit",
+      },
+      {
+        kind: "EventsNode",
+        event: "contact:hubspot_form:script_load_error",
+        name: "Script Error",
+      },
+    ]);
+
+    await this.createFunnelInsight(
+      dashboard.id,
+      "🌐 Website visited → HubSpot Contact Form submitted",
+      [
+        { kind: "EventsNode", event: "$pageview", name: "First page view" },
+        {
+          kind: "EventsNode",
+          event: "contact:hubspot_form:ready",
+          name: "Form ready",
+        },
+        {
+          kind: "EventsNode",
+          event: "contact:hubspot_form:submit",
+          name: "Form submitted",
+        },
+      ]
+    );
+
+    // Website visited → Signup started
+    await this.createFunnelInsight(
+      dashboard.id,
+      "🌐 Website visited → Signup started",
+      [
+        { kind: "EventsNode", event: "$pageview", name: "First page view" },
+        {
+          kind: "EventsNode",
+          event: "$pageview",
+          name: "Welcome pageview",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/welcome",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
+        },
+      ]
+    );
+
+    // Website visited → Pricing conversion
+    await this.createFunnelInsight(
+      dashboard.id,
+      "🌐 Website visited → Pricing conversion",
+      [
+        { kind: "EventsNode", event: "$pageview", name: "First page view" },
+        {
+          kind: "EventsNode",
+          event: "pricing:plan_pro_select:click",
+          name: "Select Pro",
+        },
+        {
+          kind: "EventsNode",
+          event: "auth:subscription_start:click",
+          name: "Subscription started",
+        },
+        {
+          kind: "EventsNode",
+          event: "$pageview",
+          name: "Payment success",
+          properties: [
+            {
+              key: "$pathname",
+              value: "/subscription/payment_processing",
+              operator: "icontains",
+              type: "event",
+            },
+          ],
         },
       ]
     );
@@ -905,7 +1441,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Data Source Adoption Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "📊 Data Source Adoption",
+      "[auto] Data Source Adoption",
       "Track which data sources users connect and adoption patterns"
     );
 
@@ -913,7 +1449,7 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "🔌 Connection Menu Opens", [
       {
         kind: "EventsNode",
-        event: "datasources:add_connection_menu_click",
+        event: "datasources:add_connection_menu:click",
         name: "Menu Opens",
         math: "total",
       },
@@ -926,7 +1462,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "datasources:provider_select_click",
+          event: "datasources:provider_select:click",
           name: "Provider Selections",
           math: "total",
         },
@@ -941,26 +1477,53 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "auth:subscription_start_click",
+          event: "auth:subscription_start:click",
           name: "Subscribed",
         },
         {
           kind: "EventsNode",
-          event: "datasources:add_connection_menu_click",
+          event: "datasources:add_connection_menu:click",
           name: "Opened Connection Menu",
         },
         {
           kind: "EventsNode",
-          event: "datasources:provider_select_click",
+          event: "datasources:provider_select:click",
           name: "Selected Provider",
         },
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Created Agent",
         },
       ]
     );
+
+    // Tools adoption funnel (menu → select tool → message with tools)
+    await this.createFunnelInsight(dashboard.id, "⚙️ Tools adoption funnel", [
+      {
+        kind: "EventsNode",
+        event: "tools:add_tools_menu:click",
+        name: "Open add tools",
+      },
+      {
+        kind: "EventsNode",
+        event: "tools:tool_select:click",
+        name: "Select tool",
+      },
+      {
+        kind: "EventsNode",
+        event: "conversation:message_send:submit",
+        name: "Message with tools",
+        properties: [
+          {
+            key: "has_tools",
+            value: ["true"],
+            operator: "exact",
+            type: "event",
+          },
+        ],
+      },
+    ]);
 
     // Provider selection by plan
     await this.createInsight(
@@ -969,7 +1532,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "datasources:provider_select_click",
+          event: "datasources:provider_select:click",
           name: "Provider Selections",
           math: "total",
         },
@@ -987,7 +1550,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Builder Engagement Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "🔨 Builder Engagement",
+      "[auto] Builder Engagement",
       "Track assistant creation patterns and builder usage"
     );
 
@@ -995,22 +1558,22 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "➕ Builder Actions", [
       {
         kind: "EventsNode",
-        event: "builder:create_menu_click",
+        event: "builder:create_menu:click",
         name: "Opened Create Menu",
       },
       {
         kind: "EventsNode",
-        event: "builder:create_from_scratch_click",
+        event: "builder:create_from_scratch:click",
         name: "From Scratch",
       },
       {
         kind: "EventsNode",
-        event: "builder:create_from_template_click",
+        event: "builder:create_from_template:click",
         name: "From Template",
       },
       {
         kind: "EventsNode",
-        event: "builder:agent_create_submit",
+        event: "builder:create_agent:submit",
         name: "Agent Created",
       },
     ]);
@@ -1022,7 +1585,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Agents Created",
           math: "total",
         },
@@ -1034,7 +1597,7 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "⚡ Agents with MCP Actions", [
       {
         kind: "EventsNode",
-        event: "builder:agent_create_submit",
+        event: "builder:create_agent:submit",
         name: "With Actions",
         math: "total",
         properties: [
@@ -1048,7 +1611,7 @@ class PostHogDashboardCreator {
       },
       {
         kind: "EventsNode",
-        event: "builder:agent_create_submit",
+        event: "builder:create_agent:submit",
         name: "Without Actions",
         math: "total",
         properties: [
@@ -1069,17 +1632,17 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "builder:create_menu_click",
+          event: "builder:create_menu:click",
           name: "Opened Menu",
         },
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Created Agent",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "First Message",
         },
       ]
@@ -1092,7 +1655,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Agents Created",
           math: "total",
         },
@@ -1110,7 +1673,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Conversation Engagement Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "💬 Conversation Engagement",
+      "[auto] Conversation Engagement",
       "Track conversation patterns and activation signals"
     );
 
@@ -1118,13 +1681,13 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "📨 Message Types", [
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
+        event: "conversation:message_send:submit",
         name: "All Messages",
         math: "total",
       },
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
+        event: "conversation:message_send:submit",
         name: "⭐ With Attachments",
         math: "total",
         properties: [
@@ -1138,12 +1701,12 @@ class PostHogDashboardCreator {
       },
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
-        name: "⭐ With MCP",
+        event: "conversation:message_send:submit",
+        name: "⭐ With Tools",
         math: "total",
         properties: [
           {
-            key: "has_mcp",
+            key: "has_tools",
             value: ["true"],
             operator: "exact",
             type: "event",
@@ -1156,7 +1719,7 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "🎯 Message Features Used", [
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
+        event: "conversation:message_send:submit",
         name: "With Attachments",
         math: "total",
         properties: [
@@ -1170,12 +1733,12 @@ class PostHogDashboardCreator {
       },
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
-        name: "With MCP Tools",
+        event: "conversation:message_send:submit",
+        name: "With Tools",
         math: "total",
         properties: [
           {
-            key: "has_mcp",
+            key: "has_tools",
             value: ["true"],
             operator: "exact",
             type: "event",
@@ -1184,12 +1747,12 @@ class PostHogDashboardCreator {
       },
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
-        name: "With Mentions",
+        event: "conversation:message_send:submit",
+        name: "With Agents",
         math: "total",
         properties: [
           {
-            key: "has_mentions",
+            key: "has_agents",
             value: ["true"],
             operator: "exact",
             type: "event",
@@ -1202,7 +1765,7 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "🆕 New Conversations Started", [
       {
         kind: "EventsNode",
-        event: "conversation:message_send_submit",
+        event: "conversation:message_send:submit",
         name: "New Conversations",
         math: "total",
         properties: [
@@ -1223,7 +1786,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "Messages with Attachments",
           math: "dau",
           properties: [
@@ -1242,16 +1805,16 @@ class PostHogDashboardCreator {
     // Activation rate by plan (MCP)
     await this.createInsight(
       dashboard.id,
-      "⭐ Activation by Plan (MCP)",
+      "⭐ Activation by Plan (Tools)",
       [
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
-          name: "Messages with MCP",
+          event: "conversation:message_send:submit",
+          name: "Messages with Tools",
           math: "dau",
           properties: [
             {
-              key: "has_mcp",
+              key: "has_tools",
               value: ["true"],
               operator: "exact",
               type: "event",
@@ -1272,7 +1835,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Trial Analysis Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "🎯 Trial Analysis",
+      "[auto] Trial Analysis",
       "Track trial user behavior and conversion patterns"
     );
 
@@ -1280,7 +1843,7 @@ class PostHogDashboardCreator {
     await this.createInsight(dashboard.id, "🚀 Trial Events", [
       {
         kind: "EventsNode",
-        event: "auth:subscription_start_click",
+        event: "auth:subscription_start:click",
         name: "Trial Started",
         math: "total",
         properties: [
@@ -1294,13 +1857,13 @@ class PostHogDashboardCreator {
       },
       {
         kind: "EventsNode",
-        event: "auth:subscription_skip_trial_click",
+        event: "auth:subscription_skip_trial:click",
         name: "Trial Skipped (Paid Now)",
         math: "total",
       },
       {
         kind: "EventsNode",
-        event: "auth:subscription_cancel_trial_click",
+        event: "auth:subscription_cancel_trial:click",
         name: "Trial Cancelled",
         math: "total",
       },
@@ -1310,7 +1873,7 @@ class PostHogDashboardCreator {
     await this.createFunnelInsight(dashboard.id, "💳 Trial → Paid Conversion", [
       {
         kind: "EventsNode",
-        event: "auth:subscription_start_click",
+        event: "auth:subscription_start:click",
         name: "Trial Started",
         properties: [
           {
@@ -1327,8 +1890,8 @@ class PostHogDashboardCreator {
         name: "Payment Success",
         properties: [
           {
-            key: "$current_url",
-            value: "type=succeeded",
+            key: "$pathname",
+            value: "/subscription/payment_processing",
             operator: "icontains",
             type: "event",
           },
@@ -1343,7 +1906,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "auth:subscription_start_click",
+          event: "auth:subscription_start:click",
           name: "Trial Started",
           properties: [
             {
@@ -1356,12 +1919,12 @@ class PostHogDashboardCreator {
         },
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Created Agent",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
+          event: "conversation:message_send:submit",
           name: "Activated (Attachments)",
           properties: [
             {
@@ -1378,11 +1941,11 @@ class PostHogDashboardCreator {
     // Trial activation funnel (MCP)
     await this.createFunnelInsight(
       dashboard.id,
-      "⭐ Trial → Activation (MCP)",
+      "⭐ Trial → Activation (Tools)",
       [
         {
           kind: "EventsNode",
-          event: "auth:subscription_start_click",
+          event: "auth:subscription_start:click",
           name: "Trial Started",
           properties: [
             {
@@ -1395,16 +1958,16 @@ class PostHogDashboardCreator {
         },
         {
           kind: "EventsNode",
-          event: "builder:agent_create_submit",
+          event: "builder:create_agent:submit",
           name: "Created Agent",
         },
         {
           kind: "EventsNode",
-          event: "conversation:message_send_submit",
-          name: "Activated (MCP)",
+          event: "conversation:message_send:submit",
+          name: "Activated (Tools)",
           properties: [
             {
-              key: "has_mcp",
+              key: "has_tools",
               value: ["true"],
               operator: "exact",
               type: "event",
@@ -1421,7 +1984,7 @@ class PostHogDashboardCreator {
       [
         {
           kind: "EventsNode",
-          event: "auth:subscription_start_click",
+          event: "auth:subscription_start:click",
           name: "Subscriptions",
           math: "total",
         },
