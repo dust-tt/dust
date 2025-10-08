@@ -1,4 +1,4 @@
-import { Button, CommandLineIcon } from "@dust-tt/sparkle";
+import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -25,7 +25,7 @@ export const AgentMessageCompletionStatus = ({
   if (agentMessage.completedTs === null) {
     return (
       <Button
-        icon={CommandLineIcon}
+        icon={data === agentMessage.sId ? ChevronLeftIcon : ChevronRightIcon}
         onClick={onClick}
         size="xs"
         variant={data === agentMessage.sId ? "ghost-secondary" : "ghost"}
@@ -46,11 +46,14 @@ export const AgentMessageCompletionStatus = ({
 
   return (
     <div className="flex items-center gap-1">
-      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+      <span
+        className="cursor-pointer text-xs text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+        onClick={onClick}
+      >
         {statusText} {timeString}
       </span>
       <Button
-        icon={CommandLineIcon}
+        icon={data === agentMessage.sId ? ChevronLeftIcon : ChevronRightIcon}
         onClick={onClick}
         size="xs"
         variant={data === agentMessage.sId ? "ghost-secondary" : "ghost"}
