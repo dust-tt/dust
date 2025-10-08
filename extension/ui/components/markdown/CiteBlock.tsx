@@ -25,6 +25,7 @@ function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
 export function CiteBlock(props: ReactMarkdownProps) {
   const { references, updateActiveReferences } =
     React.useContext(CitationsContext);
+
   const refs =
     isCiteProps(props) && props.references
       ? (

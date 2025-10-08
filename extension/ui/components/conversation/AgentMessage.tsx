@@ -40,6 +40,7 @@ import {
   isWebsearchResultResourceType,
   removeNulls,
 } from "@dust-tt/client";
+import type { ActionGeneratedFileType } from "@dust-tt/client/src/types";
 import {
   ArrowPathIcon,
   Button,
@@ -698,6 +699,81 @@ export function AgentMessage({
       );
     }
 
+    const generatedFiles = agentMessage.actions
+      .flatMap((action) => action.generatedFiles ?? [])
+      .filter((file) => !file.hidden);
+
+    const downloadGeneratedFile = async (file: ActionGeneratedFileType) => {
+      try {
+        const token = await platform.auth.getAccessToken();
+        if (!token) {
+          sendNotification({
+            type: "error",
+            title: "Download failed",
+            description: "Authentication token is missing.",
+          });
+          return;
+        }
+
+        const response = await fetch(
+          `${user.dustDomain}/api/v1/w/${owner.sId}/files/${file.fileId}?action=view`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          sendNotification({
+            type: "error",
+            title: "Download failed",
+            description: "We could not retrieve the generated file.",
+          });
+          return;
+        }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const filename = file.title || file.fileId;
+
+        const revokeObjectUrl = () => {
+          setTimeout(() => {
+            URL.revokeObjectURL(objectUrl);
+          }, 30000);
+        };
+
+        chrome.downloads.download(
+          {
+            url: objectUrl,
+            filename,
+            saveAs: false,
+          },
+          () => {
+            if (chrome.runtime.lastError) {
+              const anchor = document.createElement("a");
+              anchor.href = objectUrl;
+              anchor.download = filename;
+              anchor.rel = "noopener";
+              document.body.appendChild(anchor);
+              anchor.click();
+              document.body.removeChild(anchor);
+              revokeObjectUrl();
+            } else {
+              revokeObjectUrl();
+            }
+          }
+        );
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Download failed",
+          description:
+            "An unexpected error occurred while downloading the file.",
+        });
+      }
+    };
+
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions
@@ -731,6 +807,27 @@ export function AgentMessage({
                 />
               </CitationsContext.Provider>
             )}
+          </div>
+        )}
+        {generatedFiles.length > 0 && (
+          <div className="mt-2 grid grid-cols-1 gap-2">
+            {generatedFiles.map((file) => {
+              return (
+                <Citation
+                  key={file.fileId}
+                  tooltip={file.title}
+                  onClick={async (event) => {
+                    event.preventDefault();
+                    await downloadGeneratedFile(file);
+                  }}
+                >
+                  <CitationIcons>
+                    <DocumentPileIcon className="h-4 w-4" />
+                  </CitationIcons>
+                  <CitationTitle>{file.title}</CitationTitle>
+                </Citation>
+              );
+            })}
           </div>
         )}
         {agentMessage.status === "cancelled" && (

@@ -32,7 +32,8 @@
     "storage",
     "tabs",
     "scripting",
-    "contextMenus"
+    "contextMenus",
+    "downloads"
   ],
   "host_permissions": ["<all_urls>"],
   "externally_connectable": {
