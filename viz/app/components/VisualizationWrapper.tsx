@@ -1,7 +1,8 @@
 "use client";
 
-import {
-  CommandResultMap, isDevelopment,
+import { isDevelopment } from "@viz/app/types";
+import type {
+  CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@viz/app/types";
