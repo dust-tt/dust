@@ -24,7 +24,12 @@ export type WebhookSourceSignatureAlgorithm =
 export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
   Exclude<WebhookSourceKind, "custom">,
   PresetWebhook
-> & { custom: { name: string; icon: typeof Icon } } = {
+> & {
+  custom: {
+    name: string;
+    icon: typeof Icon;
+  };
+} = {
   github: GITHUB_WEBHOOK_PRESET,
   custom: { name: "Custom", icon: ActionPencilSquareIcon },
 } as const;

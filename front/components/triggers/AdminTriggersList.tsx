@@ -231,7 +231,7 @@ export const AdminTriggersList = ({
             key={kind}
             label={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].name}
             icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
-            onClick={() => setSheetMode({ type: "create" })}
+            onClick={() => setSheetMode({ type: "create", kind })}
           />
         ))}
       </DropdownMenuContent>

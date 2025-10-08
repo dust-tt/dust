@@ -41,10 +41,13 @@ import {
 } from "@app/lib/swr/webhook_source";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
-import type { WebhookSourceWithSystemView } from "@app/types/triggers/webhooks";
+import type {
+  WebhookSourceKind,
+  WebhookSourceWithSystemView,
+} from "@app/types/triggers/webhooks";
 
 export type WebhookSourceSheetMode =
-  | { type: "create" }
+  | { type: "create"; kind: WebhookSourceKind }
   | {
       type: "edit";
       webhookSource: RequireAtLeastOne<
