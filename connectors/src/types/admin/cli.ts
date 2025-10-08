@@ -281,6 +281,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
     t.literal("set-conversations-sliding-window"),
+    t.literal("search-conversations"),
   ]),
   args: t.type({
     force: t.union([t.literal("true"), t.undefined]),
@@ -289,8 +290,11 @@ export const IntercomCommandSchema = t.type({
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
     conversationsSlidingWindow: t.union([t.number, t.undefined]),
+    teamId: t.union([t.string, t.undefined]),
+    closedAt: t.union([t.number, t.undefined]),
   }),
 });
+
 export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
 
 export const IntercomCheckConversationResponseSchema = t.type({
@@ -350,6 +354,23 @@ export const IntercomForceResyncArticlesResponseSchema = t.type({
 export type IntercomForceResyncArticlesResponseType = t.TypeOf<
   typeof IntercomForceResyncArticlesResponseSchema
 >;
+
+export const IntercomSearchConversationsResponseSchema = t.type({
+  conversations: t.array(
+    t.type({
+      id: t.string,
+      team_assignee_id: t.union([t.number, t.null]),
+      open: t.boolean,
+      created_at: t.number,
+      last_closed_at: t.union([t.number, t.null]),
+    })
+  ),
+  totalCount: t.number,
+});
+export type IntercomSearchConversationsResponseType = t.TypeOf<
+  typeof IntercomSearchConversationsResponseSchema
+>;
+
 /**
  * </ Intercom>
  */
@@ -818,6 +839,7 @@ export const AdminResponseSchema = t.union([
   IntercomFetchArticlesResponseSchema,
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
+  IntercomSearchConversationsResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,

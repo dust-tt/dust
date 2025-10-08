@@ -4,6 +4,7 @@ import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/inte
 import {
   fetchIntercomArticles,
   fetchIntercomConversation,
+  fetchIntercomConversations,
   fetchIntercomConversationsForDay,
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
@@ -24,6 +25,7 @@ import type {
   IntercomFetchArticlesResponseType,
   IntercomFetchConversationResponseType,
   IntercomForceResyncArticlesResponseType,
+  IntercomSearchConversationsResponseType,
 } from "@connectors/types";
 
 type IntercomResponse =
@@ -32,7 +34,8 @@ type IntercomResponse =
   | IntercomCheckTeamsResponseType
   | IntercomCheckMissingConversationsResponseType
   | IntercomForceResyncArticlesResponseType
-  | IntercomFetchArticlesResponseType;
+  | IntercomFetchArticlesResponseType
+  | IntercomSearchConversationsResponseType;
 
 export const intercom = async ({
   command,
@@ -65,6 +68,7 @@ export const intercom = async ({
         affectedCount: updated[0],
       };
     }
+
     case "check-conversation": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -100,6 +104,7 @@ export const intercom = async ({
         conversationTeamIdOnDB: conversationOnDB?.teamId,
       };
     }
+
     case "fetch-conversation": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -121,6 +126,7 @@ export const intercom = async ({
         conversation: conversationOnIntercom,
       };
     }
+
     case "fetch-articles": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -209,6 +215,7 @@ export const intercom = async ({
         })),
       };
     }
+
     case "check-teams": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -230,6 +237,74 @@ export const intercom = async ({
         })),
       };
     }
+
+    case "search-conversations": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+
+      const closedAt =
+        args.closedAt ??
+        Math.floor(new Date(Date.now() - 60 * 60 * 1000).getTime() / 1000);
+
+      if (!args.closedAt) {
+        console.warn(
+          "[Admin] closedAt not provided, will search conversations closed the last hour"
+        );
+      }
+
+      logger.info("[Admin] Searching conversations", {
+        closedAt,
+      });
+
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
+
+      const workspace = await IntercomWorkspaceModel.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+
+      if (!workspace) {
+        throw new Error(`No workspace found for connector ${connector.id}`);
+      }
+
+      const conversations = [];
+      let cursor = null;
+      let hasMore = true;
+      let totalCount = 0;
+
+      while (hasMore) {
+        const response = await fetchIntercomConversations({
+          accessToken,
+          slidingWindow: workspace.conversationsSlidingWindow,
+          cursor,
+          pageSize: 50,
+          closedAtWindow: closedAt,
+        });
+
+        conversations.push(...response.conversations);
+        totalCount += response.conversations.length;
+
+        if (response.pages.next) {
+          cursor = response.pages.next.starting_after;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return {
+        conversations: conversations.map((conv) => ({
+          id: conv.id.toString(),
+          team_assignee_id: conv.team_assignee_id,
+          open: conv.open,
+          created_at: conv.created_at,
+          last_closed_at: conv.statistics?.last_close_at || null,
+        })),
+        totalCount,
+      };
+    }
+
     case "set-conversations-sliding-window": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);

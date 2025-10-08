@@ -70,6 +70,24 @@ export type IntercomConversationType = {
     body: string;
     author: IntercomAuthor;
   };
+  statistics?: {
+    last_close_at?: number;
+  };
+  conversation_parts?: {
+    type: "conversation_part.list";
+    conversation_parts: ConversationPartType[];
+    total_count: number;
+  };
+};
+
+export type IntercomFetchConversationsResponseType = {
+  conversations: IntercomConversationType[];
+  pages: {
+    next?: {
+      page: number;
+      starting_after: string;
+    };
+  };
 };
 
 export type IntercomConversationWithPartsType = IntercomConversationType & {

@@ -3,6 +3,7 @@ import type {
   IntercomCollectionType,
   IntercomConversationType,
   IntercomConversationWithPartsType,
+  IntercomFetchConversationsResponseType,
   IntercomHelpCenterType,
   IntercomTeamType,
 } from "@connectors/connectors/intercom/lib/types";
@@ -45,7 +46,7 @@ async function queryIntercomAPI({
   const rawResponse = await fetch(`https://api.intercom.io/${path}`, {
     method,
     headers: {
-      "Intercom-Version": "2.10",
+      "Intercom-Version": "2.14",
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
@@ -314,21 +315,15 @@ export async function fetchIntercomConversations({
   slidingWindow,
   cursor = null,
   pageSize = 20,
+  closedAtWindow,
 }: {
   accessToken: string;
   teamId?: string;
   slidingWindow: number;
   cursor: string | null;
   pageSize?: number;
-}): Promise<{
-  conversations: IntercomConversationType[];
-  pages: {
-    next?: {
-      page: number;
-      starting_after: string;
-    };
-  };
-}> {
+  closedAtWindow?: number;
+}): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(
     Date.now() - slidingWindow * 24 * 60 * 60 * 1000
   );
@@ -359,21 +354,59 @@ export async function fetchIntercomConversations({
     });
   }
 
-  const response = await queryIntercomAPI({
-    accessToken,
-    path: `conversations/search`,
-    method: "POST",
-    body: {
-      query: {
-        operator: "AND",
-        value: queryFilters,
+  const response: IntercomFetchConversationsResponseType =
+    await queryIntercomAPI({
+      accessToken,
+      path: `conversations/search`,
+      method: "POST",
+      body: {
+        query: {
+          operator: "AND",
+          value: queryFilters,
+        },
+        pagination: {
+          per_page: pageSize,
+          starting_after: cursor,
+        },
       },
-      pagination: {
-        per_page: pageSize,
-        starting_after: cursor,
-      },
-    },
-  });
+    });
+
+  console.log("response", JSON.stringify(response, null, 2));
+
+  // if (closedAtWindow) {
+  //   response.conversations = response.conversations.filter((conversation) => {
+  //     console.log("conversation", {
+  //       id: conversation.id,
+  //       title: conversation.title,
+  //       conversation_parts: conversation,
+  //     });
+  //
+  //     const lastPart =
+  //       conversation.conversation_parts?.conversation_parts?.[
+  //         conversation.conversation_parts?.conversation_parts?.length - 1
+  //       ];
+  //
+  //     console.log("lastPart", lastPart);
+  //     console.log("closedAtWindow", closedAtWindow);
+  //     console.log("lastPart.created_at", lastPart?.created_at);
+  //     console.log(
+  //       "lastPart.created_at.getTime() / 1000",
+  //       lastPart?.created_at.getTime() ?? 0 / 1000
+  //     );
+  //     console.log("closedAtWindow", closedAtWindow);
+  //     console.log("closedAtWindow", closedAtWindow);
+  //
+  //     if (
+  //       lastPart &&
+  //       lastPart.part_type === "close" &&
+  //       lastPart.created_at.getTime() / 1000 < closedAtWindow
+  //     ) {
+  //       return true;
+  //     }
+  //
+  //     return false;
+  //   });
+  // }
 
   return response;
 }
