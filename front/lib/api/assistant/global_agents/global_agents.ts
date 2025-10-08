@@ -16,6 +16,7 @@ import {
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
+import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
   _getHelperGlobalAgent,
@@ -57,6 +58,7 @@ import type {
   AgentFetchVariant,
   GlobalAgentStatus,
 } from "@app/types";
+import { isDevelopment } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
@@ -343,6 +345,13 @@ function getGlobalAgent({
         settings,
       });
       break;
+    case GLOBAL_AGENTS_SID.NOOP:
+      // we want only to have it in development
+      if (isDevelopment()) {
+        agentConfiguration = _getNoopAgent();
+        break;
+      }
+      return null;
     default:
       return null;
   }

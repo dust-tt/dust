@@ -3,10 +3,17 @@ import jsforce from "jsforce";
 import { z } from "zod";
 
 import {
+  downloadSalesforceContent,
+  extractTextFromSalesforceAttachment,
+  getAllSalesforceAttachments,
+} from "@app/lib/actions/mcp_internal_actions/servers/salesforce/salesforce_api_helper";
+import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
+  makeMCPToolTextError,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 
 const SF_API_VERSION = "57.0";
 
@@ -176,6 +183,108 @@ const createServer = (): McpServer => {
       return makeMCPToolTextSuccess({
         message: "Object described successfully. Summary provided.",
         result: summary,
+      });
+    }
+  );
+
+  server.tool(
+    "list_attachments",
+    "List all attachments and files for a Salesforce record.",
+    {
+      recordId: z.string().describe("The Salesforce record ID"),
+    },
+    async ({ recordId }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
+
+      const conn = new jsforce.Connection({
+        instanceUrl,
+        accessToken,
+        version: SF_API_VERSION,
+      });
+      await conn.identity();
+
+      const attachmentsResult = await getAllSalesforceAttachments(
+        conn,
+        recordId
+      );
+
+      if (attachmentsResult.isErr()) {
+        return makeMCPToolTextError(attachmentsResult.error);
+      }
+
+      const attachments = attachmentsResult.value;
+      const attachmentSummary = attachments.map((att) => ({
+        id: att.id,
+        filename: att.filename,
+        mimeType: att.mimeType,
+        size: att.size,
+        created: att.created,
+        author: att.author,
+      }));
+
+      return makeMCPToolJSONSuccess({
+        message: `Found ${attachments.length} attachment(s) for record ${recordId}`,
+        result: {
+          attachments: attachmentSummary,
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "read_attachment",
+    "Read content from any attachment or file on a Salesforce record.",
+    {
+      recordId: z.string().describe("The Salesforce record ID"),
+      attachmentId: z
+        .string()
+        .describe("The ID of the attachment or file to read"),
+    },
+    async ({ recordId, attachmentId }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
+
+      const conn = new jsforce.Connection({
+        instanceUrl,
+        accessToken,
+        version: SF_API_VERSION,
+      });
+      await conn.identity();
+
+      const attachmentsResult = await getAllSalesforceAttachments(
+        conn,
+        recordId
+      );
+
+      if (attachmentsResult.isErr()) {
+        return makeMCPToolTextError(
+          `Failed to get attachments: ${attachmentsResult.error}`
+        );
+      }
+
+      const attachments = attachmentsResult.value;
+      const targetAttachment = attachments.find(
+        (att) => att.id === attachmentId
+      );
+
+      if (!targetAttachment) {
+        return makeMCPToolTextError(
+          `Attachment with ID ${attachmentId} not found on record ${recordId}.`
+        );
+      }
+
+      return processAttachment({
+        mimeType: targetAttachment.mimeType,
+        filename: targetAttachment.filename || `attachment-${attachmentId}`,
+        extractText: async () =>
+          extractTextFromSalesforceAttachment(
+            conn,
+            attachmentId,
+            targetAttachment.mimeType
+          ),
+        downloadContent: async () =>
+          downloadSalesforceContent(conn, attachmentId),
       });
     }
   );

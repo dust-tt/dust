@@ -178,12 +178,14 @@ export default function AgentBuilder({
     return {
       ...baseValues,
       actions: processedActions,
-      triggersToCreate: [],
-      triggersToUpdate: duplicateAgentId
+      triggersToCreate: duplicateAgentId
         ? triggers.map((trigger) => ({
             ...trigger,
             editor: user.id,
           }))
+        : emptyArray(),
+      triggersToUpdate: duplicateAgentId
+        ? emptyArray()
         : triggers ?? emptyArray(),
       triggersToDelete: [],
 

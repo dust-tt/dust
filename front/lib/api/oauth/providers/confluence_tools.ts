@@ -17,6 +17,7 @@ export class ConfluenceToolsOAuthProvider implements BaseOAuthStrategyProvider {
       "read:confluence-content.all",
       "search:confluence",
       "read:confluence-user",
+      "read:me",
 
       // Write permissions
       "write:confluence-content",

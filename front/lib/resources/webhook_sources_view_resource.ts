@@ -18,6 +18,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { ModelId, Result } from "@app/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -128,6 +129,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       {
         webhookSourceId: systemView.webhookSourceId,
         customName: systemView.customName,
+        description: systemView.description,
+        icon: normalizeWebhookIcon(systemView.icon),
       },
       space,
       auth.user() ?? undefined
@@ -310,8 +313,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
   public async updateName(
     auth: Authenticator,
-    name?: string,
-    transaction?: Transaction
+    name?: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -319,14 +321,11 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       );
     }
 
-    const [affectedCount] = await this.update(
-      {
-        customName: name ?? null,
-        editedAt: new Date(),
-        editedByUserId: auth.getNonNullableUser().id,
-      },
-      transaction
-    );
+    const [affectedCount] = await this.update({
+      customName: name ?? null,
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    });
     return new Ok(affectedCount);
   }
 
@@ -354,6 +353,68 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
         },
       }
     );
+  }
+
+  public static async bulkUpdateDescriptionAndIcon(
+    auth: Authenticator,
+    viewIds: ModelId[],
+    description?: string,
+    icon?: string
+  ): Promise<void> {
+    if (viewIds.length === 0) {
+      return;
+    }
+
+    const updateData: Partial<Attributes<WebhookSourcesViewModel>> = {
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    };
+
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (icon !== undefined) {
+      updateData.icon = normalizeWebhookIcon(icon);
+    }
+
+    await this.model.update(updateData, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: {
+          [Op.in]: viewIds,
+        },
+      },
+    });
+  }
+
+  public async updateDescriptionAndIcon(
+    auth: Authenticator,
+    description?: string,
+    icon?: string
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Not allowed to update description and icon."
+        )
+      );
+    }
+
+    const updateData: Partial<Attributes<WebhookSourcesViewModel>> = {
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    };
+
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (icon !== undefined) {
+      updateData.icon = normalizeWebhookIcon(icon);
+    }
+
+    const [affectedCount] = await this.update(updateData);
+    return new Ok(affectedCount);
   }
 
   // Deletion.
@@ -462,6 +523,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       id: this.id,
       sId: this.sId,
       customName: this.customName,
+      description: this.description,
+      icon: normalizeWebhookIcon(this.icon),
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,

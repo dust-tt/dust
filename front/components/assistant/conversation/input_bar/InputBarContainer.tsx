@@ -26,11 +26,11 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import { VoicePicker } from "@app/components/assistant/VoicePicker";
+import { getIcon } from "@app/components/resources/resources_icons";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
