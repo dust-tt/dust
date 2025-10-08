@@ -16,9 +16,11 @@ async function transcribeAudioFile(
   {
     file,
     stream,
+    provider,
   }: {
     file: string;
     stream?: boolean;
+    provider: string;
   },
   execute: boolean,
   logger: Logger
@@ -36,6 +38,7 @@ async function transcribeAudioFile(
 
   const data = await readFile(file);
   const filename = basename(file);
+  const _provider = provider as "openai" | "elevenlabs";
 
   logger.info(
     { file: filename, size: data.length },
@@ -52,7 +55,10 @@ async function transcribeAudioFile(
     logger.info({ file }, "Streaming transcription started.");
     let totalLength = 0;
     try {
-      for await (const event of await transcribeStream(formidableFile)) {
+      for await (const event of await transcribeStream(
+        formidableFile,
+        _provider
+      )) {
         switch (event.type) {
           case "delta":
             totalLength += event.delta.length;
@@ -81,7 +87,7 @@ async function transcribeAudioFile(
   }
 
   // Non-streaming path
-  const transcribeResult = await transcribeFile(formidableFile);
+  const transcribeResult = await transcribeFile(formidableFile, _provider);
   if (transcribeResult.isErr()) {
     logger.error(
       { err: transcribeResult.error, file },
@@ -120,8 +126,14 @@ makeScript(
       description:
         "Use streaming transcription (transcribeStream) and log chunks as they arrive.",
     },
+    provider: {
+      type: "string",
+      choices: ["openai", "elevenlabs"],
+      default: "openai",
+      description: "The provider to use for transcription",
+    },
   },
-  async ({ file, execute, stream }, logger) => {
-    await transcribeAudioFile({ file, stream }, execute, logger);
+  async ({ file, execute, stream, provider }, logger) => {
+    await transcribeAudioFile({ file, stream, provider }, execute, logger);
   }
 );
