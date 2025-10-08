@@ -83,7 +83,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
       defaults: "2025-05-24",
       opt_out_capturing_by_default: !shouldTrack,
       capture_pageview: true,
-      capture_pageleave: true,
+      capture_pageleave: false,
       autocapture: false,
       property_denylist: ["$ip"],
       before_send: (event) => {
