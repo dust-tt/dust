@@ -17,6 +17,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getAgentRoute } from "@app/lib/utils/router";
 import mainLogger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import {
@@ -40,7 +41,6 @@ import {
 } from "@app/types";
 import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
-import { getAgentRoute } from "@app/lib/utils/router";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string
@@ -61,7 +61,7 @@ export async function retrieveNewTranscriptsActivity(
   }
 
   const localLogger = mainLogger.child({
-    transcriptsConfigurationId,
+    transcriptsConfigurationId: transcriptsConfiguration.id,
     transcriptsConfigurationSid: transcriptsConfiguration.sId,
   });
 
