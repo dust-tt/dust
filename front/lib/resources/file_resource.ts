@@ -316,11 +316,11 @@ export class FileResource extends BaseResource<FileModel> {
     const updateResult = await this.update({ status: "ready" });
 
     // For Content Creation conversation files, automatically create a ShareableFileModel with
-    // default conversation_participants scope.
+    // default workspace scope.
     if (this.isContentCreation) {
       await ShareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "conversation_participants",
+        shareScope: "workspace",
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),
