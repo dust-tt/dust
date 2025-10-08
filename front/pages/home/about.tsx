@@ -397,6 +397,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/leandre-lebizec/",
     github: "https://github.com/LeandreLeBizec",
   },
+  fabien: {
+    name: "Fabien Celier",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/17087544?v=4",
+    linkedIn: "https://www.linkedin.com/in/fabiencelier/",
+    github: "https://github.com/fabiencelier",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
