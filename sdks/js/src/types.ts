@@ -936,7 +936,7 @@ const UserMessageContextSchema = z.object({
   originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
-  lastTriggerRunAt: z.date().optional().nullable(),
+  lastTriggerRunAt: z.number().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
