@@ -3,6 +3,7 @@
  */
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { augmentGlobalAgent } from "@app/lib/api/assistant/global_agents/augment_global_agent";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
@@ -136,8 +137,18 @@ export async function getAgentLoopData(
     return new Err(new Error("Agent configuration not found"));
   }
 
-  return new Ok({
+  const enhanceResult = await augmentGlobalAgent(
+    auth,
     agentConfiguration,
+    agentMessage,
+    userMessage
+  );
+  if (enhanceResult.isErr()) {
+    return enhanceResult;
+  }
+
+  return new Ok({
+    agentConfiguration: enhanceResult.value,
     agentMessage,
     agentMessageRow: agentMessageRow.agentMessage,
     auth,
