@@ -23,6 +23,7 @@ interface MessageItemProps {
   messageFeedback: AgentMessageFeedbackType | undefined;
   isInModal: boolean;
   isLastMessage: boolean;
+  isHandoverGroup: boolean;
   message: MessageWithContentFragmentsType;
   owner: WorkspaceType;
   user: UserType;
@@ -34,6 +35,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       conversationId,
       messageFeedback,
       isLastMessage,
+      isHandoverGroup,
       message,
       owner,
       user,
@@ -99,6 +101,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
+    if (isHandoverGroup && type === "user_message") {
+      // We do not display the user message in a handover group.
+      return null;
+    }
+
     switch (type) {
       case "user_message":
         const citations = message.contentFragments
@@ -141,6 +148,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <AgentMessage
               conversationId={conversationId}
               isLastMessage={isLastMessage}
+              isHandoverGroup={isHandoverGroup}
               message={message}
               messageFeedback={messageFeedbackWithSubmit}
               owner={owner}

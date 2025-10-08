@@ -1,11 +1,13 @@
 import {
   ArrowPathIcon,
+  AtomIcon,
   Button,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   ConversationMessage,
   DocumentIcon,
+  Icon,
   InteractiveImageGrid,
   Markdown,
   Separator,
@@ -19,6 +21,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
+import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import {
   AgentMessageContentCreationGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
@@ -73,6 +76,7 @@ import {
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
+  isHandoverGroup: boolean;
   message: LightAgentMessageType;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
@@ -88,6 +92,7 @@ interface AgentMessageProps {
 export function AgentMessage({
   conversationId,
   isLastMessage,
+  isHandoverGroup,
   message,
   messageFeedback,
   owner,
@@ -448,10 +453,9 @@ export function AgentMessage({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
-  const messageTimestamp = agentMessageToRender.completedTs
-    ? formatTimestring(agentMessageToRender.completedTs)
-    : formatTimestring(agentMessageToRender.created);
-  const shouldDisplayTimestamp = agentMessageToRender.status !== "created";
+  // Determine if this should be displayed as "agentAsTool" type.
+  const isDustDeep = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_DEEP;
+  const isDeepDive = isHandoverGroup && isDustDeep;
 
   return (
     <ConversationMessage
@@ -460,18 +464,32 @@ export function AgentMessage({
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
-      renderName={() => (
-        <AgentHandle
-          assistant={{
-            sId: agentConfiguration.sId,
-            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
-          }}
-          canMention={canMention}
-          isDisabled={isArchived}
-        />
-      )}
-      timestamp={shouldDisplayTimestamp ? messageTimestamp : undefined}
-      type="agent"
+      renderName={() => {
+        return isDeepDive ? (
+          <span className="inline-flex items-center text-muted-foreground dark:text-muted-foreground-night">
+            <Icon visual={AtomIcon} size="sm" />
+            <span className="ml-1">Deep Dive</span>
+          </span>
+        ) : (
+          <AgentHandle
+            assistant={{
+              sId: agentConfiguration.sId,
+              name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+            }}
+            canMention={canMention}
+            isDisabled={isArchived}
+          />
+        );
+      }}
+      timestamp={
+        agentMessageToRender.completedTs && !isDeepDive
+          ? formatTimestring(agentMessageToRender.completedTs)
+          : undefined
+      }
+      completionStatus={
+        <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+      }
+      type={isDeepDive ? "agentAsTool" : "agent"}
       citations={citations}
     >
       <div>

@@ -266,7 +266,10 @@ const ConversationViewerVirtuoso = ({
           case "user_message_new":
             if (ref.current) {
               // Skip our own messages, otherwise they get duplicated because the event is fired before we get the message from the backend.
-              if (event.message.user?.id === user.id) {
+              if (
+                event.message.user?.id === user.id &&
+                event.message.context.origin !== "agent_handover"
+              ) {
                 return;
               }
               const predicate = (m: VirtuosoMessage) =>
