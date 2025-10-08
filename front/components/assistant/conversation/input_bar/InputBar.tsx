@@ -207,14 +207,20 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
+    const uploadedFiles = fileUploaderService.getFileBlobs();
+
     trackEvent({
       area: TRACKING_AREAS.CONVERSATION,
       object: "message_send",
       action: "submit",
       extra: {
-        has_attachments: attachedNodes.length > 0,
+        has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
         has_tools: selectedMCPServerViews.length > 0,
-        has_assistant: !!selectedAssistant,
+        has_agents: mentions.length > 0,
+        is_new_conversation: !conversationId,
+        agent_count: mentions.length,
+        attachment_count: attachedNodes.length + uploadedFiles.length,
+        tool_count: selectedMCPServerViews.length,
       },
     });
 
