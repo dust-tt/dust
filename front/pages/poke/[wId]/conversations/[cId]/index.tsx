@@ -1,17 +1,27 @@
 import {
   Button,
   CheckIcon,
+  Chip,
+  ClipboardCheckIcon,
+  ClipboardIcon,
   CodeBlock,
   ConversationMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
   Markdown,
   Page,
   Popover,
+  Spinner,
+  useCopyToClipboard,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
@@ -21,6 +31,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
+import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import type {
   ContentFragmentType,
   PokeAgentMessageType,
@@ -279,6 +290,83 @@ const ConversationPage = ({
 }: ConversationPageProps) => {
   const { conversation } = usePokeConversation({ workspaceId, conversationId });
   const [useMarkdown, setUseMarkdown] = useState(false);
+  const { data: agents } = usePokeAgentConfigurations({
+    owner: workspace,
+    agentsGetView: "admin_internal",
+  });
+
+  const defaultAgentId = (() => {
+    const lastAgentMessage = conversation?.content
+      .map((versions) => versions[versions.length - 1])
+      .reverse()
+      .find((m) => m.type === "agent_message") as
+      | PokeAgentMessageType
+      | undefined;
+    return lastAgentMessage?.configuration.sId ?? agents[0]?.sId ?? "";
+  })();
+
+  const [selectedAgentId, setSelectedAgentId] =
+    useState<string>(defaultAgentId);
+  const [contextSizeOverride, setContextSizeOverride] = useState<string>("");
+  const [isRendering, setIsRendering] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [renderResult, setRenderResult] = useState<null | {
+    tokensUsed: number;
+    modelContextSizeUsed: number;
+    modelConversation: unknown;
+    promptTokenCountApprox: number;
+    toolsTokenCountApprox: number;
+  }>(null);
+  const [showRenderControls, setShowRenderControls] = useState(false);
+  const [isCopiedJSON, copyJSON] = useCopyToClipboard();
+
+  useEffect(() => {
+    if (!selectedAgentId) {
+      if (defaultAgentId) {
+        setSelectedAgentId(defaultAgentId);
+      }
+    }
+  }, [defaultAgentId, selectedAgentId]);
+
+  async function handleRenderConversation() {
+    if (!selectedAgentId) {
+      setRenderError("Select an agent sId first.");
+      return;
+    }
+    setIsRendering(true);
+    setRenderError(null);
+    setRenderResult(null);
+    try {
+      const response = await fetch(
+        `/api/poke/workspaces/${workspaceId}/conversations/${conversationId}/render`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: selectedAgentId,
+            contextSizeOverride: contextSizeOverride
+              ? Number(contextSizeOverride)
+              : null,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Failed to render conversation");
+      }
+      setRenderResult({
+        tokensUsed: data.tokensUsed,
+        modelContextSizeUsed: data.modelContextSizeUsed,
+        modelConversation: data.modelConversation,
+        promptTokenCountApprox: data.promptTokenCountApprox,
+        toolsTokenCountApprox: data.toolsTokenCountApprox,
+      });
+    } catch (e) {
+      setRenderError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setIsRendering(false);
+    }
+  }
 
   return (
     <>
@@ -314,7 +402,120 @@ const ConversationPage = ({
                 icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
                 onClick={() => setUseMarkdown(!useMarkdown)}
               />
+              <Button
+                label="Render Conversation"
+                variant="primary"
+                size="xs"
+                onClick={() => {
+                  if (!showRenderControls) {
+                    setShowRenderControls(true);
+                    return;
+                  }
+                  void handleRenderConversation();
+                }}
+                enabled={!isRendering}
+              />
+              {isRendering && <Spinner size="xs" />}
+              {showRenderControls && (
+                <div className="ml-2 flex items-center space-x-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        label={
+                          selectedAgentId
+                            ? `Agent: ${
+                                agents.find((a) => a.sId === selectedAgentId)
+                                  ?.name ?? selectedAgentId
+                              }`
+                            : "Select Agent"
+                        }
+                        variant="secondary"
+                        size="xs"
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {agents.map((a) => (
+                        <DropdownMenuItem
+                          key={a.sId}
+                          onClick={() => setSelectedAgentId(a.sId)}
+                        >
+                          {a.name} ({a.sId})
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Input
+                    placeholder="Context size override"
+                    value={contextSizeOverride}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setContextSizeOverride(e.target.value)
+                    }
+                    className="h-7 w-44"
+                  />
+                </div>
+              )}
             </div>
+            {(renderError !== null || renderResult !== null) && (
+              <div className="mt-2 rounded-md border p-2">
+                {renderError && (
+                  <div className="text-warning">{renderError}</div>
+                )}
+                {renderResult && (
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Chip
+                        color="blue"
+                        label={`Tokens used: ${renderResult.tokensUsed}`}
+                        size="xs"
+                      />
+                      <Chip
+                        color="info"
+                        label={`Context size: ${renderResult.modelContextSizeUsed}`}
+                        size="xs"
+                      />
+                      <Chip
+                        color="highlight"
+                        label={`Prompt tokens: ${renderResult.promptTokenCountApprox}`}
+                        size="xs"
+                      />
+                      <Chip
+                        color="green"
+                        label={`Tools tokens: ${renderResult.toolsTokenCountApprox}`}
+                        size="xs"
+                      />
+                      <Button
+                        label={isCopiedJSON ? "Copied" : "Copy JSON"}
+                        variant="secondary"
+                        size="xs"
+                        icon={isCopiedJSON ? ClipboardCheckIcon : ClipboardIcon}
+                        onClick={() =>
+                          copyJSON(
+                            JSON.stringify(
+                              renderResult.modelConversation,
+                              null,
+                              2
+                            )
+                          )
+                        }
+                      />
+                      <Button
+                        label="Close"
+                        variant="secondary"
+                        size="xs"
+                        icon={XMarkIcon}
+                        onClick={() => {
+                          setRenderError(null);
+                          setRenderResult(null);
+                        }}
+                      />
+                    </div>
+                    <CodeBlock wrapLongLines className="language-json">
+                      {JSON.stringify(renderResult.modelConversation, null, 2)}
+                    </CodeBlock>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex w-full flex-1 flex-col justify-start gap-8 py-4">
               {conversation.content.map((messages, i) => {
                 return (

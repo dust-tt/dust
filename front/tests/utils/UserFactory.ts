@@ -36,6 +36,7 @@ export class UserFactory {
   static async superUser() {
     return UserResource.makeNew(this.defaultParams(true));
   }
+
   static async withCreatedAt(createdAt: Date) {
     return UserResource.makeNew(this.defaultParams(false, createdAt));
   }

@@ -13,7 +13,12 @@ export async function getStaticProps() {
 }
 
 export default function IndustrialFirms() {
-  return <IndustryTemplate config={industrialFirmsConfig} />;
+  return (
+    <IndustryTemplate
+      config={industrialFirmsConfig}
+      trackingPrefix="manufacturing"
+    />
+  );
 }
 
 IndustrialFirms.getLayout = (

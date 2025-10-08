@@ -36,7 +36,7 @@ interface ConversationMessageProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
-  completionStatus?: string;
+  completionStatus?: React.ReactNode;
   pictureUrl?: string | React.ReactNode | null;
   renderName?: (name: string | null) => React.ReactNode;
   infoChip?: React.ReactNode;
@@ -139,7 +139,7 @@ interface ConversationMessageContentProps
 export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
->(({ children, citations, className, type, ...props }, ref) => {
+>(({ children, citations, className, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -152,8 +152,7 @@ export const ConversationMessageContent = React.forwardRef<
       <div
         className={cn(
           "s-text-sm @sm:s-text-base",
-          "s-text-foreground dark:s-text-foreground-night",
-          type !== "agentAsTool" && "@md:s-px-4"
+          "s-text-foreground dark:s-text-foreground-night"
         )}
       >
         {children}
@@ -174,7 +173,7 @@ interface ConversationMessageHeaderProps
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
-  completionStatus?: string;
+  completionStatus?: React.ReactNode;
   infoChip?: React.ReactNode;
   renderName: (name: string | null) => React.ReactNode;
   type: ConversationMessageType;
@@ -243,11 +242,7 @@ export const ConversationMessageHeader = React.forwardRef<
               {timestamp}
             </span>
           </div>
-          {completionStatus && (
-            <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {completionStatus}
-            </div>
-          )}
+          {completionStatus ?? null}
         </div>
       </div>
     );

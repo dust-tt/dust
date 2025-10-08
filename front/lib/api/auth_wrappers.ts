@@ -340,7 +340,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             return apiError(req, res, {
               status_code: 503,
               api_error: {
-                type: "not_authenticated",
+                type: "service_unavailable",
                 message: `Service is currently unavailable. [${maintenance}]`,
               },
             });

@@ -6,15 +6,15 @@ import type {
 import { NotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type {
-  CustomServerIconType,
+  CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 import {
-  CUSTOM_SERVER_ALLOWED,
+  CUSTOM_RESOURCE_ALLOWED,
   INTERNAL_ALLOWED_ICONS,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { AllSupportedFileContentType } from "@app/types";
 import { ALL_FILE_FORMATS, CONNECTOR_PROVIDERS } from "@app/types";
 
@@ -841,8 +841,11 @@ const InternalAllowedIconSchema = z.enum(
   ]
 );
 
-const CustomServerIconSchema = z.enum(
-  CUSTOM_SERVER_ALLOWED as [CustomServerIconType, ...CustomServerIconType[]]
+const CustomResourceIconSchema = z.enum(
+  CUSTOM_RESOURCE_ALLOWED as [
+    CustomResourceIconType,
+    ...CustomResourceIconType[],
+  ]
 );
 
 // Schema for the resource of a notification where the tool is asking for tool approval.
@@ -861,7 +864,7 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
     toolName: z.string(),
     agentName: z.string(),
     icon: z
-      .union([InternalAllowedIconSchema, CustomServerIconSchema])
+      .union([InternalAllowedIconSchema, CustomResourceIconSchema])
       .optional(),
   }),
 });

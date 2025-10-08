@@ -6,6 +6,8 @@ import {
   createIssue,
   createIssueLink,
   deleteIssueLink,
+  extractTextFromAttachment,
+  getAttachmentContent,
   getConnectionInfo,
   getIssue,
   getIssueAttachments,
@@ -39,10 +41,12 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { normalizeError } from "@app/types";
+import logger from "@app/logger/logger";
+import { normalizeError, Ok } from "@app/types";
 
 const createServer = (
   auth?: Authenticator,
@@ -949,6 +953,75 @@ const createServer = (
               ),
             },
           });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "read_attachment",
+    "Read content from any attachment on a Jira issue. For text-based files (PDF, Word, Excel, CSV, plain text), extracts and returns the text content. For other files (images, documents), returns the file for upload. Supports text extraction with OCR for scanned documents.",
+    {
+      issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
+      attachmentId: z.string().describe("The ID of the attachment to read"),
+    },
+    async ({ issueKey, attachmentId }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          try {
+            const attachmentsResult = await getIssueAttachments({
+              baseUrl,
+              accessToken,
+              issueKey,
+            });
+
+            if (attachmentsResult.isErr()) {
+              return makeMCPToolTextError(attachmentsResult.error);
+            }
+
+            const attachments = attachmentsResult.value;
+            const targetAttachment = attachments.find(
+              (att) => att.id === attachmentId
+            );
+            if (!targetAttachment) {
+              return makeMCPToolTextError(
+                `Attachment with ID ${attachmentId} not found on issue ${issueKey}`
+              );
+            }
+            return await processAttachment({
+              mimeType: targetAttachment.mimeType,
+              filename: targetAttachment.filename,
+              extractText: async () =>
+                extractTextFromAttachment({
+                  baseUrl,
+                  accessToken,
+                  attachmentId,
+                  mimeType: targetAttachment.mimeType,
+                }),
+              downloadContent: async () => {
+                const result = await getAttachmentContent({
+                  baseUrl,
+                  accessToken,
+                  attachmentId,
+                  mimeType: targetAttachment.mimeType,
+                });
+                if (result.isErr()) {
+                  return result;
+                }
+                return new Ok(Buffer.from(result.value.content, "base64"));
+              },
+            });
+          } catch (error) {
+            logger.error(`Error in read_attachment:`, {
+              error: error,
+              issueKey,
+              attachmentId,
+            });
+            return makeMCPToolTextError(
+              `Error in read_attachment: ${normalizeError(error).message}`
+            );
+          }
         },
         authInfo,
       });

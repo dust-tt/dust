@@ -44,9 +44,11 @@ import {
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 
 import { sanitizeFilename } from "../../utils/file_utils";
 
@@ -1194,4 +1196,141 @@ export async function getIssueAttachments({
 
   const attachments = result.value.fields?.attachment ?? [];
   return new Ok(attachments);
+}
+
+async function downloadAttachmentContent({
+  baseUrl,
+  accessToken,
+  attachmentId,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+}): Promise<Result<Buffer, JiraErrorResult>> {
+  try {
+    const url = `${baseUrl}/rest/api/3/attachment/content/${attachmentId}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "*/*",
+      },
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+      logger.warn(`${msg}`);
+      return logAndReturnApiError({
+        error: new Error(msg),
+        message: "JIRA attachment download failed",
+      });
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return new Ok(buffer);
+  } catch (error) {
+    logger.warn(`Attachment download failed:`, {
+      error: error instanceof Error ? error.message : String(error),
+      attachmentId,
+    });
+    return logAndReturnApiError({
+      error,
+      message: `JIRA attachment download failed: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+export async function extractTextFromAttachment({
+  baseUrl,
+  accessToken,
+  attachmentId,
+  mimeType,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+  mimeType: string;
+}): Promise<Result<string, JiraErrorResult>> {
+  if (!isTextExtractionSupportedContentType(mimeType)) {
+    return new Err(`Text extraction not supported for file type: ${mimeType}.`);
+  }
+
+  const downloadResult = await downloadAttachmentContent({
+    baseUrl,
+    accessToken,
+    attachmentId,
+  });
+
+  if (downloadResult.isErr()) {
+    return downloadResult;
+  }
+
+  const textResult = await extractTextFromBuffer(
+    downloadResult.value,
+    mimeType
+  );
+
+  if (textResult.isErr()) {
+    logger.error(`Text extraction failed:`, {
+      error: textResult.error,
+      attachmentId,
+      mimeType,
+    });
+    return logAndReturnApiError({
+      error: new Error(textResult.error),
+      message: "Failed to extract text from attachment",
+    });
+  }
+
+  return textResult;
+}
+
+export async function getAttachmentContent({
+  baseUrl,
+  accessToken,
+  attachmentId,
+  mimeType,
+}: {
+  baseUrl: string;
+  accessToken: string;
+  attachmentId: string;
+  mimeType: string;
+}): Promise<
+  Result<
+    { content: string; contentType: string; size: number },
+    JiraErrorResult
+  >
+> {
+  const downloadResult = await downloadAttachmentContent({
+    baseUrl,
+    accessToken,
+    attachmentId,
+  });
+
+  if (downloadResult.isErr()) {
+    return downloadResult;
+  }
+
+  const buffer = downloadResult.value;
+
+  // For text files, return the content directly
+  if (mimeType.startsWith("text/")) {
+    const content = buffer.toString("utf-8");
+    return new Ok({
+      content,
+      contentType: mimeType,
+      size: buffer.length,
+    });
+  }
+
+  // For other file types, return as base64
+  const base64Content = buffer.toString("base64");
+  return new Ok({
+    content: base64Content,
+    contentType: mimeType,
+    size: buffer.length,
+  });
 }

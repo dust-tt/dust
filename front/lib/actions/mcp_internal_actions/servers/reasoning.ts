@@ -28,7 +28,6 @@ import type {
   ReasoningModelConfigurationType,
 } from "@app/types";
 import {
-  DEFAULT_REASONING_MODEL_ID,
   isModelId,
   isModelProviderId,
   isProviderWhitelisted,
@@ -36,15 +35,7 @@ import {
 } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
-const DEFAULT_REASONING_MODEL_PROVIDER_ID = "openai";
 const REASONING_GENERATION_TOKENS = 20480;
-
-export const DEFAULT_REASONING_CONFIGURATION = {
-  modelId: DEFAULT_REASONING_MODEL_ID,
-  providerId: DEFAULT_REASONING_MODEL_PROVIDER_ID,
-  temperature: null,
-  reasoningEffort: null,
-};
 
 function createServer(
   auth: Authenticator,
@@ -56,12 +47,10 @@ function createServer(
     "advanced_reasoning",
     "Offload a reasoning-heavy task to a powerful reasoning model. The reasoning model does not have access to any tools.",
     {
-      model: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
-      ].default({
-        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-        ...DEFAULT_REASONING_CONFIGURATION,
-      }),
+      model:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL
+        ],
     },
     async (
       { model: { modelId, providerId, temperature, reasoningEffort } },

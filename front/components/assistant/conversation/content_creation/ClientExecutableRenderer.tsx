@@ -246,6 +246,24 @@ export function ClientExecutableRenderer({
     };
   }, [isFullScreen, exitFullScreen]);
 
+  const getFileBlob = useCallback(
+    async (fileId: string): Promise<Blob | null> => {
+      const response = await fetch(
+        `/api/w/${owner.sId}/files/${fileId}?action=view`
+      );
+      if (!response.ok) {
+        return null;
+      }
+
+      const resBuffer = await response.arrayBuffer();
+
+      return new Blob([resBuffer], {
+        type: response.headers.get("Content-Type") ?? undefined,
+      });
+    },
+    [owner.sId]
+  );
+
   if (isFileContentLoading) {
     return (
       <CenteredState>
@@ -316,6 +334,7 @@ export function ClientExecutableRenderer({
               conversationId={conversation.sId}
               isInDrawer={true}
               ref={iframeRef}
+              getFileBlob={getFileBlob}
             />
             <PreviewActionButtons
               owner={owner}

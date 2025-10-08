@@ -131,6 +131,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
   },
+  noop_model_feature: {
+    description: "Access to noop model in the agent builder",
+    stage: "dust_only",
+  },
   monday_tool: {
     description: "Monday MCP tool",
     stage: "rolling_out",
@@ -153,6 +157,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
+    stage: "dust_only",
+  },
+  hootl_dev_webhooks: {
+    description: "GitHub webhooks for Human Out Of The Loop (aka Triggers)",
     stage: "dust_only",
   },
   slack_enhanced_default_agent: {

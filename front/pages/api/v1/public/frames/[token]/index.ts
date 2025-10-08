@@ -1,4 +1,4 @@
-import type { PublicFileResponseBodyType } from "@dust-tt/client";
+import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
@@ -10,11 +10,11 @@ import type { WithAPIErrorResponse } from "@app/types";
 /**
  * @ignoreswagger
  *
- * Undocumented API endpoint to get a file by its public share token.
+ * Undocumented API endpoint to get a frame by its public share token.
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PublicFileResponseBodyType>>
+  res: NextApiResponse<WithAPIErrorResponse<PublicFrameResponseBodyType>>
 ): Promise<void> {
   if (req.method !== "GET") {
     return apiError(req, res, {
@@ -82,18 +82,6 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "File is not safe for public display.",
-      },
-    });
-  }
-
-  // This endpoint does not support conversation participants sharing. It goes through the private
-  // API endpoint instead.
-  if (shareScope === "conversation_participants") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
       },
     });
   }

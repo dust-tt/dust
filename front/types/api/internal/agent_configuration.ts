@@ -92,14 +92,6 @@ const TablesConfigurationsCodec = t.array(
   })
 );
 
-// Reasoning
-
-const ReasoningModelConfigurationSchema = t.type({
-  modelId: ModelIdCodec,
-  providerId: ModelProviderIdCodec,
-  reasoningEffort: t.union([t.null, ReasoningEffortCodec]),
-});
-
 // Actions
 
 const DustAppRunActionConfigurationSchema = t.type({
@@ -136,7 +128,6 @@ const MCPServerActionConfigurationSchema = t.type({
   dataSources: t.union([t.null, DataSourcesConfigurationsCodec]),
   tables: t.union([t.null, TablesConfigurationsCodec]),
   childAgentId: t.union([t.null, t.string]),
-  reasoningModel: t.union([t.null, ReasoningModelConfigurationSchema]),
   timeFrame: t.union([
     t.null,
     t.type({

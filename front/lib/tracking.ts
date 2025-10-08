@@ -30,6 +30,9 @@ export const TRACKING_AREAS = {
   PRICING: "pricing",
   AUTH: "auth",
   NAVIGATION: "navigation",
+  SOLUTIONS: "solutions",
+  INDUSTRY: "industry",
+  CONTACT: "contact",
 
   // Product
   ASSISTANT: "assistant",
@@ -42,6 +45,7 @@ export const TRACKING_AREAS = {
   BUILDER: "builder",
   SPACES: "spaces",
   LABS: "labs",
+  TOOLS: "tools",
 } as const;
 
 export type TrackingArea = (typeof TRACKING_AREAS)[keyof typeof TRACKING_AREAS];
@@ -63,11 +67,13 @@ export const TRACKING_ACTIONS = {
 export type TrackingAction =
   (typeof TRACKING_ACTIONS)[keyof typeof TRACKING_ACTIONS];
 
+export type TrackingExtra = Record<string, string | number | boolean>;
+
 interface TrackEventParams {
   area: TrackingArea | string;
   object: string;
   action?: TrackingAction | string;
-  extra?: Record<string, string>;
+  extra?: TrackingExtra;
 }
 
 export function trackEvent({
@@ -80,8 +86,8 @@ export function trackEvent({
     return;
   }
 
-  const eventName = `${area}:${object}_${action}`;
-  const properties: Record<string, string> = {
+  const eventName = `${area}:${object}:${action}`;
+  const properties = {
     area,
     object,
     action,
@@ -111,7 +117,7 @@ export function withTracking<T extends Element = HTMLElement>(
   area: TrackingArea | string,
   object: string,
   handler?: (e: React.MouseEvent<T>) => void | Promise<void>,
-  extra?: Record<string, string>
+  extra?: TrackingExtra
 ) {
   return (e: React.MouseEvent<T>) => {
     trackEvent({ area, object, action: TRACKING_ACTIONS.CLICK, extra });
