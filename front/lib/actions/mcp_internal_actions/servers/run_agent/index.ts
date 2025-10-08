@@ -267,15 +267,10 @@ export default async function createServer(
         );
 
         const abortSignal = signal ?? null;
-        let cleanupAbortListener: (() => void) | undefined;
         let childCancellationPromise: Promise<void> | null = null;
         const finalizeAndReturn = async <T>(
           result: Result<T, MCPError>
         ): Promise<Result<T, MCPError>> => {
-          if (cleanupAbortListener) {
-            cleanupAbortListener();
-            cleanupAbortListener = undefined;
-          }
           await (childCancellationPromise ?? Promise.resolve());
           return result;
         };
@@ -432,9 +427,6 @@ ${query}`
           }
 
           abortSignal.addEventListener("abort", onAbort, { once: true });
-          cleanupAbortListener = () => {
-            abortSignal.removeEventListener("abort", onAbort);
-          };
         }
 
         if (isNewConversation) {
@@ -612,13 +604,6 @@ ${query}`
         let files: ActionGeneratedFileType[] = [];
         try {
           for await (const event of streamRes.value.eventStream) {
-            if (abortSignal?.aborted) {
-              requestChildCancellation();
-              return await finalizeAndReturn(
-                new Err(new MCPError("Agent run cancelled", { tracked: false }))
-              );
-            }
-
             if (event.type === "generation_tokens") {
               // Separate content based on classification.
               if (event.classification === "chain_of_thought") {
@@ -808,13 +793,6 @@ ${query}`
             }
           }
 
-          if (abortSignal?.aborted) {
-            requestChildCancellation();
-            return await finalizeAndReturn(
-              new Err(new MCPError("Agent run cancelled", { tracked: false }))
-            );
-          }
-
           const normalizedError = normalizeError(streamError);
           const isNotConnected = normalizedError.message === "Not connected";
           const errorMessage = `Error processing agent stream: ${normalizedError.message}`;
@@ -828,12 +806,6 @@ ${query}`
           );
         }
 
-        if (abortSignal?.aborted) {
-          requestChildCancellation();
-          return finalizeAndReturn(
-            new Err(new MCPError("Agent run cancelled", { tracked: false }))
-          );
-        }
         finalContent = finalContent.trim();
         chainOfThought = chainOfThought.trim();
 
