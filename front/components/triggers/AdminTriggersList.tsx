@@ -13,7 +13,7 @@ import { useMemo, useState } from "react";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
+import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -72,7 +72,14 @@ export const AdminTriggersList = ({
   filter,
   setAgentSId,
 }: AdminTriggersListProps) => {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<
+    | { type: "create" }
+    | {
+        type: "edit";
+        webhookSource: WebhookSourceWithSystemViewAndUsage;
+      }
+    | null
+  >(null);
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
@@ -88,7 +95,10 @@ export const AdminTriggersList = ({
 
         const onClick = !webhookSource.systemView
           ? undefined
-          : () => setSelectedWebhookSourceId(webhookSource.sId);
+          : () => {
+              setSheetMode({ type: "edit", webhookSource });
+              setSelectedWebhookSourceId(webhookSource.sId);
+            };
 
         return {
           webhookSource,
@@ -211,7 +221,7 @@ export const AdminTriggersList = ({
       variant="outline"
       icon={PlusIcon}
       size="sm"
-      onClick={() => setIsCreateOpen(true)}
+      onClick={() => setSheetMode({ type: "create" })}
     />
   );
 
@@ -225,9 +235,12 @@ export const AdminTriggersList = ({
 
   return (
     <>
-      <CreateWebhookSourceDialog
-        isOpen={isCreateOpen}
-        setIsOpen={setIsCreateOpen}
+      <WebhookSourceSheet
+        mode={sheetMode}
+        onClose={() => {
+          setSheetMode(null);
+          setSelectedWebhookSourceId(null);
+        }}
         owner={owner}
       />
       {rows.length === 0 ? (
