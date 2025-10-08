@@ -52,6 +52,7 @@ export type IntercomConversationType = {
   created_at: number;
   updated_at: number;
   title: string | null;
+  state: string;
   admin_assignee_id: number | null;
   team_assignee_id: number | null; // it says string in the API doc but it's actually a number
   open: boolean;

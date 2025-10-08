@@ -8,6 +8,7 @@ import {
   fetchIntercomConversationsForDay,
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
+import type { IntercomConversationType } from "@connectors/connectors/intercom/lib/types";
 import {
   IntercomArticleModel,
   IntercomConversationModel,
@@ -265,8 +266,8 @@ export const intercom = async ({
         throw new Error(`No workspace found for connector ${connector.id}`);
       }
 
-      const conversations = [];
-      let cursor = null;
+      const conversations: IntercomConversationType[] = [];
+      let cursor: string | null = null;
       let hasMore = true;
       let totalCount = 0;
 
@@ -292,8 +293,9 @@ export const intercom = async ({
       return {
         conversations: conversations.map((conv) => ({
           id: conv.id.toString(),
-          team_assignee_id: conv.team_assignee_id,
+          title: conv.title,
           open: conv.open,
+          state: conv.state,
           created_at: conv.created_at,
           last_closed_at: conv.statistics?.last_close_at || null,
         })),

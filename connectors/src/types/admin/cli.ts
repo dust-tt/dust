@@ -359,8 +359,9 @@ export const IntercomSearchConversationsResponseSchema = t.type({
   conversations: t.array(
     t.type({
       id: t.string,
-      team_assignee_id: t.union([t.number, t.null]),
+      title: t.union([t.string, t.null]),
       open: t.boolean,
+      state: t.string,
       created_at: t.number,
       last_closed_at: t.union([t.number, t.null]),
     })
