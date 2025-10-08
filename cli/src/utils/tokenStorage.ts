@@ -1,5 +1,9 @@
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
 import keytar from "keytar";
+
+import { normalizeError } from "./errors.js";
 
 // Constants for storage
 const SERVICE_NAME = "dust-cli";
@@ -42,26 +46,26 @@ export const TokenStorage = {
   /**
    * Checks if an access token exists and is not expired
    */
-  async hasValidAccessToken(): Promise<boolean> {
+  async hasValidAccessToken(): Promise<Result<boolean, Error>> {
     const accessToken = await this.getAccessToken();
     if (!accessToken) {
-      return false;
+      return new Err(new Error("No access token found"));
     }
 
     // API keys don't expire
     if (accessToken.startsWith("sk-")) {
-      return true;
+      return new Ok(true);
     }
 
+    let decoded: JWTPayload;
     try {
-      const decoded = jwtDecode<JWTPayload>(accessToken);
-      const currentTime = Math.floor(Date.now() / 1000);
-
-      return decoded.exp > currentTime;
-    } catch (_) {
-      // If we can't decode the token, it's invalid
-      return false;
+      decoded = jwtDecode<JWTPayload>(accessToken);
+    } catch (error) {
+      return new Err(normalizeError(error));
     }
+
+    const currentTime = Math.floor(Date.now() / 1000);
+    return new Ok(decoded.exp > currentTime);
   },
 
   /**
