@@ -459,8 +459,8 @@ export function augmentInputsWithConfiguration({
           keyPath: fullPath.join("."),
         });
 
-        // Ensure intermediate path exists based on schema
-        ensurePathExists(inputs, fullPath, inputSchema);
+        // Ensure intermediate path exists
+        ensurePathExists(inputs, fullPath);
         // We found a matching mimeType, augment the inputs
         setValueAtPath(inputs, fullPath, value);
         return false;
