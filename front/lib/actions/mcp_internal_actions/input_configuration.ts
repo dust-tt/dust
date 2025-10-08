@@ -17,6 +17,7 @@ import type {
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   areSchemasEqual,
+  ensurePathExists,
   findSchemaAtPath,
   followInternalRef,
   getValueAtPath,
@@ -458,6 +459,8 @@ export function augmentInputsWithConfiguration({
           keyPath: fullPath.join("."),
         });
 
+        // Ensure intermediate path exists
+        ensurePathExists(inputs, fullPath);
         // We found a matching mimeType, augment the inputs
         setValueAtPath(inputs, fullPath, value);
         return false;
@@ -490,15 +493,6 @@ export interface MCPServerToolsConfigurations {
   childAgentConfiguration?: {
     description?: string;
     default?: { uri: string };
-  };
-  reasoningConfiguration?: {
-    description?: string;
-    default?: {
-      modelId: string;
-      providerId: string;
-      temperature: number;
-      reasoningEffort: string;
-    };
   };
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
@@ -702,34 +696,6 @@ export function getMCPServerToolsConfigurations(
         schema,
         (v: unknown): v is { uri: string } =>
           v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
-
-  const reasoningConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefault(
-        schema,
-        (
-          v: unknown
-        ): v is {
-          modelId: string;
-          providerId: string;
-          temperature: number;
-          reasoningEffort: string;
-        } =>
-          v !== null &&
-          typeof v === "object" &&
-          "modelId" in v &&
-          "providerId" in v &&
-          "temperature" in v &&
-          "reasoningEffort" in v
       ),
     }))
     .at(0);
@@ -941,7 +907,6 @@ export function getMCPServerToolsConfigurations(
     getConfigurableStateForOptional(dataWarehouseConfiguration),
     getConfigurableStateForOptional(tableConfiguration),
     getConfigurableStateForOptional(childAgentConfiguration),
-    getConfigurableStateForOptional(reasoningConfiguration),
     getConfigurableStateForArray(stringConfigurations),
     getConfigurableStateForArray(numberConfigurations),
     getConfigurableStateForArray(booleanConfigurations),
@@ -968,7 +933,6 @@ export function getMCPServerToolsConfigurations(
     dataWarehouseConfiguration,
     tableConfiguration,
     childAgentConfiguration,
-    reasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
     stringConfigurations,

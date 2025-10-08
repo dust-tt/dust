@@ -7,13 +7,13 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
+import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSourceSheet";
+import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -57,7 +57,6 @@ const NameCell = ({ row }: { row: RowData }) => {
 
 interface AdminTriggersListProps {
   owner: LightWorkspaceType;
-  setSelectedWebhookSourceId: Dispatch<SetStateAction<string | null>>;
   isWebhookSourcesWithViewsLoading: boolean;
   webhookSourcesWithSystemView: WebhookSourceWithSystemViewAndUsage[];
   filter: string;
@@ -66,13 +65,14 @@ interface AdminTriggersListProps {
 
 export const AdminTriggersList = ({
   owner,
-  setSelectedWebhookSourceId,
   isWebhookSourcesWithViewsLoading,
   webhookSourcesWithSystemView,
   filter,
   setAgentSId,
 }: AdminTriggersListProps) => {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<WebhookSourceSheetMode | null>(
+    null
+  );
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
@@ -88,7 +88,9 @@ export const AdminTriggersList = ({
 
         const onClick = !webhookSource.systemView
           ? undefined
-          : () => setSelectedWebhookSourceId(webhookSource.sId);
+          : () => {
+              setSheetMode({ type: "edit", webhookSource });
+            };
 
         return {
           webhookSource,
@@ -96,7 +98,7 @@ export const AdminTriggersList = ({
           onClick,
         };
       }),
-    [spaces, setSelectedWebhookSourceId, webhookSourcesWithSystemView]
+    [spaces, webhookSourcesWithSystemView]
   );
   const columns = useMemo((): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -211,7 +213,7 @@ export const AdminTriggersList = ({
       variant="outline"
       icon={PlusIcon}
       size="sm"
-      onClick={() => setIsCreateOpen(true)}
+      onClick={() => setSheetMode({ type: "create" })}
     />
   );
 
@@ -225,9 +227,11 @@ export const AdminTriggersList = ({
 
   return (
     <>
-      <CreateWebhookSourceDialog
-        isOpen={isCreateOpen}
-        setIsOpen={setIsCreateOpen}
+      <WebhookSourceSheet
+        mode={sheetMode}
+        onClose={() => {
+          setSheetMode(null);
+        }}
         owner={owner}
       />
       {rows.length === 0 ? (

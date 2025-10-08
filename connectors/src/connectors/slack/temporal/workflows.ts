@@ -398,6 +398,15 @@ export async function joinChannelWorkflow(
   }
 
   try {
+    if (useCase === "auto-read") {
+      await getSlackActivities().autoReadChannelActivity(
+        connectorId,
+        channelId
+      );
+
+      return { success: true };
+    }
+
     const joinSuccess = await getSlackActivities().attemptChannelJoinActivity(
       connectorId,
       channelId
@@ -408,13 +417,6 @@ export async function joinChannelWorkflow(
         success: false,
         error: "Channel is archived or could not be joined",
       };
-    }
-
-    if (useCase === "auto-read") {
-      await getSlackActivities().autoReadChannelActivity(
-        connectorId,
-        channelId
-      );
     }
 
     return { success: true };

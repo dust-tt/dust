@@ -390,6 +390,27 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/iliasbet/",
     github: "https://github.com/iliasbet",
   },
+  fabien: {
+    name: "Fabien Celier",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/17087544?v=4",
+    linkedIn: "https://www.linkedin.com/in/fabiencelier/",
+    github: "https://github.com/fabiencelier",
+  },
+  chris: {
+    name: "Christophe Jow",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/16521527?v=4",
+    linkedIn: "https://www.linkedin.com/in/christophe-jow/",
+    github: "https://github.com/Chrisjow",
+  },
+  gianna: {
+    name: "Gianna Gard",
+    title: "AI Deployment Strategist",
+    image: "https://avatars.githubusercontent.com/u/235716301?v=4",
+    linkedIn: "https://www.linkedin.com/in/gianna-gard/",
+    github: "https://github.com/giga-dust",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {

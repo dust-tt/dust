@@ -196,7 +196,8 @@ export async function sendNonInteractiveMessage(
         // Handle generation cancellation
         const output: NonInteractiveOutput = {
           agentId: selectedAgent.sId,
-          agentAnswer: fullResponse.trim() || "[Message generation was cancelled]",
+          agentAnswer:
+            fullResponse.trim() || "[Message generation was cancelled]",
           conversationId: conversation.sId,
           messageId: event.messageId,
           cancelled: true,
@@ -224,7 +225,7 @@ export async function sendNonInteractiveMessage(
           output.agentMessage = event.message;
         }
 
-        // console.log(JSON.stringify(output));
+        console.log(JSON.stringify(output));
         process.exit(0);
       }
     }
