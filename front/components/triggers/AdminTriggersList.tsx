@@ -236,14 +236,20 @@ export const AdminTriggersList = ({
             return (
               preset.featureFlag === undefined || hasFeature(preset.featureFlag)
             );
-          }).map((kind) => (
-            <DropdownMenuItem
-              key={kind}
-              label={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].name}
-              icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
-              onClick={() => setSheetMode({ type: "create", kind })}
-            />
-          ))}
+          })
+            .sort((kindA, kindB) =>
+              WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindA].name.localeCompare(
+                WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindB].name
+              )
+            )
+            .map((kind) => (
+              <DropdownMenuItem
+                key={kind}
+                label={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].name}
+                icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
+                onClick={() => setSheetMode({ type: "create", kind })}
+              />
+            ))}
         </DropdownMenuContent>
       </DropdownMenu>
     );
