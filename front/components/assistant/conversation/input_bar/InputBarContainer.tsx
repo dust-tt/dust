@@ -150,11 +150,13 @@ const InputBarContainer = ({
       title,
       from,
       to,
+      textContent,
     }: {
       fileId: string;
       title: string;
       from: number;
       to: number;
+      textContent: string;
     }) => {
       const editorInstance = editorRef.current;
       if (!editorInstance) {
@@ -174,7 +176,7 @@ const InputBarContainer = ({
         ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),
         {
           type: "pastedAttachment",
-          attrs: { fileId, title },
+          attrs: { fileId, title, textContent },
           text: `:pasted_attachment[${title}]{fileId=${fileId}}`,
         },
         { type: "text", text: " " },
@@ -208,6 +210,57 @@ const InputBarContainer = ({
     setNodeOrUrlCandidate(null);
   };
 
+  const sendNotification = useSendNotification();
+
+  const handleInlineText = useCallback(
+    async (fileId: string, textContent: string) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance) {
+        return;
+      }
+
+      try {
+        // Find the pasted attachment node to get its position
+        let nodePos: number | null = null;
+        editorInstance.state.doc.descendants((node, pos) => {
+          if (
+            node.type.name === "pastedAttachment" &&
+            node.attrs?.fileId === fileId
+          ) {
+            nodePos = pos;
+            return false;
+          }
+          return true;
+        });
+
+        if (nodePos === null) {
+          return;
+        }
+
+        // Replace the chip with the text content
+        const node = editorInstance.state.doc.nodeAt(nodePos);
+        if (node) {
+          editorInstance
+            .chain()
+            .focus()
+            .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
+            .insertContentAt(nodePos, textContent)
+            .run();
+        }
+
+        // Remove the file from the uploader service
+        fileUploaderService.removeFile(fileId);
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to inline text",
+          description: normalizeError(e).message,
+        });
+      }
+    },
+    [editorRef, fileUploaderService, sendNotification]
+  );
+
   // Pass the editor ref to the mention dropdown hook
   const mentionDropdown = useMentionDropdown(suggestions, editorRef);
 
@@ -218,6 +271,7 @@ const InputBarContainer = ({
     onUrlDetected: handleUrlDetected,
     suggestionHandler: mentionDropdown.getSuggestionHandler(),
     owner,
+    onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -232,6 +286,7 @@ const InputBarContainer = ({
           title: displayName,
           from,
           to,
+          textContent: text,
         });
 
         const file = new File([text], filename, {
@@ -327,8 +382,6 @@ const InputBarContainer = ({
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
     [spaces]
   );
-
-  const sendNotification = useSendNotification();
 
   const { searchResultNodes, isSearchLoading } = useSpacesSearch(
     isNodeCandidate(nodeOrUrlCandidate)

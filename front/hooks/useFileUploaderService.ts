@@ -322,26 +322,32 @@ export function useFileUploaderService({
   };
 
   const removeFile = (fileId: string) => {
-    const fileBlob = fileBlobs.find((f) => f.id === fileId);
+    setFileBlobs((prevFiles) => {
+      const fileBlob = prevFiles.find((f) => f.id === fileId);
 
-    if (fileBlob) {
-      setFileBlobs((prevFiles) =>
-        prevFiles.filter((f) => f.fileId !== fileBlob?.fileId)
-      );
+      if (!fileBlob) {
+        return prevFiles;
+      }
 
-      // Intentionally not awaiting the fetch call to allow it to run asynchronously.
-      void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      // Delete from server if file has been uploaded
+      if (fileBlob.fileId) {
+        void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      }
 
-      const allFilesReady = fileBlobs.every((f) => !f.isUploading);
+      const filtered = prevFiles.filter((f) => f.id !== fileBlob.id);
+
+      const allFilesReady = filtered.every((f) => !f.isUploading);
       if (allFilesReady && isProcessingFiles) {
         setNumFilesProcessing(0);
       }
-    }
+
+      return filtered;
+    });
   };
 
   const resetUpload = () => {

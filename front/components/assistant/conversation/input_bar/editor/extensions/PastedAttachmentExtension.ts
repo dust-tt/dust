@@ -3,16 +3,27 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { PastedAttachmentComponent } from "../PastedAttachmentComponent";
 
-export const PastedAttachmentExtension = Node.create({
+export interface PastedAttachmentOptions {
+  onInlineText?: (fileId: string, textContent: string) => void;
+}
+
+export const PastedAttachmentExtension = Node.create<PastedAttachmentOptions>({
   name: "pastedAttachment",
   group: "inline",
   inline: true,
   atom: true,
 
+  addOptions() {
+    return {
+      onInlineText: undefined,
+    };
+  },
+
   addAttributes() {
     return {
       fileId: { default: null },
       title: { default: null },
+      textContent: { default: null },
     };
   },
 
