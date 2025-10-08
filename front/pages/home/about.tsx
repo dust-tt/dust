@@ -397,6 +397,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/christophe-jow/",
     github: "https://github.com/Chrisjow",
   },
+  gianna: {
+    name: "Gianna Gard",
+    title: "AI Deployment Strategist",
+    image: "https://avatars.githubusercontent.com/u/235716301?v=4",
+    linkedIn: "https://www.linkedin.com/in/gianna-gard/",
+    github: "https://github.com/giga-dust",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
