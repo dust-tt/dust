@@ -706,14 +706,6 @@ export function AgentMessage({
     const downloadGeneratedFile = async (file: ActionGeneratedFileType) => {
       try {
         const token = await platform.auth.getAccessToken();
-        if (!token) {
-          sendNotification({
-            type: "error",
-            title: "Download failed",
-            description: "Authentication token is missing.",
-          });
-          return;
-        }
 
         const response = await fetch(
           `${user.dustDomain}/api/v1/w/${owner.sId}/files/${file.fileId}?action=view`,
