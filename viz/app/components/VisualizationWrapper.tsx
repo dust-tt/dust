@@ -1,7 +1,7 @@
 "use client";
 
-import type {
-  CommandResultMap,
+import {
+  CommandResultMap, isDevelopment,
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@viz/app/types";
@@ -166,7 +166,9 @@ export function useVisualizationAPI(
         // Validate message structure using zod.
         const validatedMessage = validateMessage(event.data);
         if (!validatedMessage) {
-          console.log("Invalid message format received:", event.data);
+          if (isDevelopment()) {
+            console.log("Invalid message format received:", event.data);
+          }
           return;
         }
 
