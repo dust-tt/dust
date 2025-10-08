@@ -264,22 +264,6 @@ function ContentNodeTreeChildren({
                     variant="outline"
                   />
                 )}
-                {n.lastUpdatedAt ? (
-                  <Tooltip
-                    label={
-                      <span>{new Date(n.lastUpdatedAt).toLocaleString()}</span>
-                    }
-                    side={i === 0 ? "bottom" : "top"}
-                    trigger={
-                      <div className="flex flex-row gap-1 text-gray-600">
-                        <Icon visual={HistoryIcon} size="xs" />
-                        <span className="text-xs">
-                          {timeAgoFrom(n.lastUpdatedAt)} ago
-                        </span>
-                      </div>
-                    }
-                  />
-                ) : null}
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
