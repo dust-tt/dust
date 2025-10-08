@@ -18,24 +18,26 @@ export function PastedAttachmentComponent({
   const { title, fileId, textContent } = node.attrs;
   const { onInlineText } = extension.options;
 
+  const handleClick = () => {
+    if (fileId && onInlineText && textContent) {
+      onInlineText(fileId, textContent);
+    }
+  };
+
+  const displayTitle = (title ?? "Pasted Attachment") + " (click to inline)";
   return (
     <NodeViewWrapper
       className="inline-flex align-middle"
       style={{ maxWidth: "none" }}
     >
-      <AttachmentChip
-        label={title ?? "Attachment"}
-        icon={DoubleQuotesIcon}
-        actionButton={
-          fileId && onInlineText && textContent
-            ? {
-                label: "Inline",
-                onClick: () => onInlineText(fileId, textContent),
-                tooltip: "Insert the content of this attachment as text",
-              }
-            : undefined
+      <div
+        onClick={handleClick}
+        className={
+          fileId && onInlineText && textContent ? "cursor-pointer" : undefined
         }
-      />
+      >
+        <AttachmentChip label={displayTitle} icon={DoubleQuotesIcon} />
+      </div>
     </NodeViewWrapper>
   );
 }
