@@ -12,7 +12,6 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SliderToggle,
@@ -316,7 +315,6 @@ export function CreateMCPServerSheet({
                 ? `Add ${defaultServerConfig.name}`
                 : "Add MCP Server"}
           </SheetTitle>
-          <SheetDescription></SheetDescription>
         </SheetHeader>
         <SheetContainer className="space-y-4">
           {!internalMCPServer &&
