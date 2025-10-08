@@ -7,6 +7,7 @@ import type {
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { GITHUB_WEBHOOK_PRESET } from "@app/types/triggers/github_webhook_source_presets";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
@@ -28,6 +29,7 @@ export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
   custom: {
     name: string;
     icon: typeof Icon;
+    featureFlag?: WhitelistableFeature;
   };
 } = {
   github: GITHUB_WEBHOOK_PRESET,
