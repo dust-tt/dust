@@ -755,6 +755,8 @@ const ActionGeneratedFileSchema = z.object({
   hidden: z.boolean().optional(),
 });
 
+export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
+
 const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
   sId: z.string(),
