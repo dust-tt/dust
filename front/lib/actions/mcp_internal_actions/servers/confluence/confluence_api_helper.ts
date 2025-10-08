@@ -315,7 +315,8 @@ export async function updatePage(
       payload.spaceId = updateData.spaceId ?? currentPage.spaceId;
     }
     if (updateData.parentId ?? currentPage.parentId) {
-      payload.parentId = updateData.parentId ?? currentPage.parentId;
+      payload.parentId =
+        updateData.parentId ?? currentPage.parentId ?? undefined;
     }
 
     if (updateData.body) {

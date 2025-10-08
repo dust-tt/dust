@@ -71,7 +71,7 @@ export const ConfluencePageSchema = z
     id: z.string(),
     status: z.string(),
     title: z.string(),
-    parentId: z.string().optional(),
+    parentId: z.string().nullable().optional(),
     spaceId: z.string().optional(),
     body: ConfluencePageBodySchema.optional(),
   })
