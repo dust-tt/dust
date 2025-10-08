@@ -91,7 +91,7 @@ export function trackEvent({
     area,
     object,
     action,
-    ...extra,
+    extras: extra,
   };
 
   posthog.capture(eventName, properties);
