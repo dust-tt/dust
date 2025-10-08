@@ -30,7 +30,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { compareAgentsForSort, isEqualNode } from "@app/types";
+import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -208,6 +208,9 @@ export function AssistantInputBar({
     ].map((id) => ({ configurationId: id }));
 
     const uploadedFiles = fileUploaderService.getFileBlobs();
+    const mentionedAgents = agentConfigurations.filter((a) =>
+      mentions.some((m) => m.configurationId === a.sId)
+    );
 
     trackEvent({
       area: TRACKING_AREAS.CONVERSATION,
@@ -216,7 +219,9 @@ export function AssistantInputBar({
       extra: {
         has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
         has_tools: selectedMCPServerViews.length > 0,
-        has_agents: mentions.length > 0,
+        has_agents: mentionedAgents.length > 0,
+        has_default_agent: mentionedAgents.some((a) => isGlobalAgentId(a.sId)),
+        has_custom_agent: mentionedAgents.some((a) => !isGlobalAgentId(a.sId)),
         is_new_conversation: !conversationId,
         agent_count: mentions.length,
         attachment_count: attachedNodes.length + uploadedFiles.length,
