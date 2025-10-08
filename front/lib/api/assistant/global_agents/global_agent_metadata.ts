@@ -293,6 +293,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };
+    case GLOBAL_AGENTS_SID.NOOP:
+      return {
+        sId: GLOBAL_AGENTS_SID.NOOP,
+        name: "noop",
+        description: "A no-op agent that does nothing.",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
     default:
       assertNever(sId);
   }

@@ -10,6 +10,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { CreateWebhookSourceDialog } from "@app/components/triggers/CreateWebhookSourceDialog";
@@ -29,7 +30,7 @@ type RowData = {
 
 const NameCell = ({ row }: { row: RowData }) => {
   const { webhookSource } = row;
-
+  const systemView = webhookSource.systemView;
   return (
     <DataTable.CellContent grow>
       <div
@@ -38,10 +39,16 @@ const NameCell = ({ row }: { row: RowData }) => {
           webhookSource.systemView ? "" : "opacity-50"
         )}
       >
+        {systemView && <div>{getAvatarFromIcon(systemView.icon, "sm")}</div>}
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-            {webhookSource.systemView?.customName ?? webhookSource.name}
+            {systemView?.customName ?? webhookSource.name}
           </div>
+          {systemView?.description && (
+            <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {systemView.description}
+            </div>
+          )}
         </div>
       </div>
     </DataTable.CellContent>

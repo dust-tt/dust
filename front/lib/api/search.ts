@@ -20,7 +20,7 @@ import type {
   Result,
   SearchWarningCode,
 } from "@app/types";
-import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
+import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -255,7 +255,8 @@ export async function handleSearch(
       const matchingViews = allDatasourceViews.filter(
         (dsv) =>
           dsv.dataSource.dustAPIDataSourceId === node.data_source_id &&
-          (!dsv.parentsIn ||
+          (node.node_id === DATA_SOURCE_NODE_ID ||
+            !dsv.parentsIn ||
             node.parents?.some(
               (p) => !dsv.parentsIn || dsv.parentsIn.includes(p)
             ))

@@ -30,6 +30,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "deepseek"
   | "fireworks"
   | "xai"
+  | "noop"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -90,6 +91,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-3-fast-latest" // xAI
   | "grok-3-mini-fast-latest" // xAI
   | "grok-4-latest" // xAI
+  | "noop" // Noop
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -685,6 +687,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "xai_feature"
   | "simple_audio_transcription"
   | "virtualized_conversations"
+  | "noop_model_feature"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2604,13 +2607,13 @@ export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
 >;
 
-export const PublicFileResponseBodySchema = z.object({
+export const PublicFrameResponseBodySchema = z.object({
   content: z.string().optional(),
   file: FileTypeSchema,
 });
 
-export type PublicFileResponseBodyType = z.infer<
-  typeof PublicFileResponseBodySchema
+export type PublicFrameResponseBodyType = z.infer<
+  typeof PublicFrameResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<

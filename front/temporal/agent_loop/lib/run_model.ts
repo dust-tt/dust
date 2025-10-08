@@ -1,4 +1,4 @@
-import { heartbeat } from "@temporalio/activity";
+import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
 import assert from "assert";
 
 import { buildToolSpecification } from "@app/lib/actions/mcp";
@@ -51,6 +51,7 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 
 const MAX_AUTO_RETRY = 3;
 
@@ -472,8 +473,21 @@ export async function runModelActivity(
       return handlePossiblyRetryableError(event.content.message);
     }
 
-    // Heartbeat allows the activity to be cancelled, e.g. on a "Stop agent" request.
+    // Heartbeat & sleep allow the activity to be cancelled, e.g. on a "Stop
+    // agent" request. Upon experimentation, both are needed to ensure the
+    // activity receives the cancellation signal. The delay until which is the
+    // signal is received is governed by heartbeat
+    // [throttling](https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling).
     heartbeat();
+    try {
+      await sleep(1);
+    } catch (err) {
+      if (err instanceof CancelledFailure) {
+        logger.info("Activity cancelled, stopping");
+        return null;
+      }
+      throw err;
+    }
 
     if (event.type === "tokens" && isGeneration) {
       for await (const tokenEvent of contentParser.emitTokens(
@@ -628,6 +642,20 @@ export async function runModelActivity(
 
   if (!output) {
     return handlePossiblyRetryableError("Agent execution didn't complete.");
+  }
+
+  // It is possible that temporal requested activity cancellation but the
+  // activity has not yet received the signal. In that case, the agent message
+  // row would have status to cancelled (done via finalizeCancellationActivity).
+  const message = await fetchMessageInConversation(
+    auth,
+    conversation,
+    agentMessage.sId,
+    agentMessage.version
+  );
+  if (message?.agentMessage?.status === "cancelled") {
+    logger.info("Agent message cancelled, stopping");
+    return null;
   }
 
   // Create AgentStepContent for each content item (reasoning, text, function calls)

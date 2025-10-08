@@ -1,7 +1,6 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { markdownToAdf } from "marklassian";
-import { Readable } from "stream";
 import { z } from "zod";
 
 import {
@@ -45,14 +44,11 @@ import {
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import config from "@app/lib/api/config";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-import {
-  isTextExtractionSupportedContentType,
-  TextExtraction,
-} from "@app/types/shared/text_extraction";
+import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 
 import { sanitizeFilename } from "../../utils/file_utils";
 
@@ -1262,43 +1258,34 @@ export async function extractTextFromAttachment({
     return new Err(`Text extraction not supported for file type: ${mimeType}.`);
   }
 
-  try {
-    const downloadResult = await downloadAttachmentContent({
-      baseUrl,
-      accessToken,
-      attachmentId,
-    });
+  const downloadResult = await downloadAttachmentContent({
+    baseUrl,
+    accessToken,
+    attachmentId,
+  });
 
-    if (downloadResult.isErr()) {
-      return downloadResult;
-    }
+  if (downloadResult.isErr()) {
+    return downloadResult;
+  }
 
-    const textExtraction = new TextExtraction(config.getTextExtractionUrl(), {
-      enableOcr: true,
-      logger,
-    });
+  const textResult = await extractTextFromBuffer(
+    downloadResult.value,
+    mimeType
+  );
 
-    const buffer = downloadResult.value;
-    const bufferStream = Readable.from(buffer);
-
-    const textStream = await textExtraction.fromStream(bufferStream, mimeType);
-    const chunks: string[] = [];
-    for await (const chunk of textStream) {
-      chunks.push(chunk.toString());
-    }
-    const fullText = chunks.join("");
-    return new Ok(fullText);
-  } catch (error) {
+  if (textResult.isErr()) {
     logger.error(`Text extraction failed:`, {
-      error: error,
+      error: textResult.error,
       attachmentId,
       mimeType,
     });
     return logAndReturnApiError({
-      error,
+      error: new Error(textResult.error),
       message: "Failed to extract text from attachment",
     });
   }
+
+  return textResult;
 }
 
 export async function getAttachmentContent({

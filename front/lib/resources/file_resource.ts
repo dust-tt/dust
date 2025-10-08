@@ -13,7 +13,6 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
-import { isUsingConversationFiles } from "@app/lib/files";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import {
   FileModel,
@@ -172,22 +171,30 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    if (
-      isUsingConversationFiles(content) &&
-      shareableFile.shareScope === "public"
-    ) {
-      // We don't make it accessible to public if it's using a conversation file.
-      // We have several other check points:
-      // - You cannot set it to public if isUsingConversationFiles is true
-      // - When you fetch a file in files/[token] page, we check authentication if it's for workspace sharing.
-      return null;
-    }
-
     return {
       file: fileRes,
       content,
       shareScope: shareableFile.shareScope,
     };
+  }
+
+  static async unsafeFetchByIdInWorkspace(
+    workspace: LightWorkspaceType,
+    id: string
+  ): Promise<FileResource | null> {
+    const fileModelId = getResourceIdFromSId(id);
+    if (!fileModelId) {
+      return null;
+    }
+
+    const file = await this.model.findOne({
+      where: {
+        workspaceId: workspace.id,
+        id: fileModelId,
+      },
+    });
+
+    return file ? new this(this.model, file.get()) : null;
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
@@ -309,11 +316,11 @@ export class FileResource extends BaseResource<FileModel> {
     const updateResult = await this.update({ status: "ready" });
 
     // For Content Creation conversation files, automatically create a ShareableFileModel with
-    // default conversation_participants scope.
+    // default workspace scope.
     if (this.isContentCreation) {
       await ShareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "conversation_participants",
+        shareScope: "workspace",
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),
@@ -462,10 +469,10 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * Get read stream for shared access without authentication.
    */
-  private async getSharedReadStream(
+  getSharedReadStream(
     owner: LightWorkspaceType,
     version: FileVersion
-  ): Promise<Readable> {
+  ): Readable {
     const cloudPath = FileResource.getCloudStoragePathForId({
       fileId: this.sId,
       workspaceId: owner.sId,
@@ -483,7 +490,7 @@ export class FileResource extends BaseResource<FileModel> {
     version: FileVersion = "original"
   ): Promise<string | null> {
     try {
-      const readStream = await this.getSharedReadStream(owner, version);
+      const readStream = this.getSharedReadStream(owner, version);
 
       // Convert stream to string.
       const chunks: Buffer[] = [];
@@ -580,6 +587,21 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     return null;
+  }
+
+  static async revokePublicSharingInWorkspace(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    return ShareableFileModel.update(
+      {
+        shareScope: "workspace",
+      },
+      {
+        where: {
+          workspaceId,
+          shareScope: "public",
+        },
+      }
+    );
   }
 
   // Serialization logic.

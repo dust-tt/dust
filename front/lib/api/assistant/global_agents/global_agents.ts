@@ -16,6 +16,7 @@ import {
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust-deep";
+import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import {
   _getHelperGlobalAgent,
@@ -57,6 +58,7 @@ import type {
   AgentFetchVariant,
   GlobalAgentStatus,
 } from "@app/types";
+import { isDevelopment } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
@@ -122,14 +124,12 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
       agentConfiguration = _getGPT35TurboGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
@@ -137,7 +137,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5:
@@ -145,7 +144,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_NANO:
@@ -153,7 +151,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_MINI:
@@ -161,7 +158,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_THINKING:
@@ -169,7 +165,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O1:
@@ -177,7 +172,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O1_MINI:
@@ -188,7 +182,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O3_MINI:
@@ -196,7 +189,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O3:
@@ -204,20 +196,16 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      agentConfiguration = _getClaudeInstantGlobalAgent({
-        settings,
-      });
+      agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
       agentConfiguration = _getClaude4SonnetGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
@@ -225,7 +213,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
@@ -233,14 +220,12 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       agentConfiguration = _getClaude3HaikuGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
@@ -248,21 +233,16 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_2:
-      agentConfiguration = _getClaude2GlobalAgent({
-        auth,
-        settings,
-      });
+      agentConfiguration = _getClaude2GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
       agentConfiguration = _getMistralLargeGlobalAgent({
         settings,
         auth,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
@@ -270,14 +250,12 @@ function getGlobalAgent({
         settings,
         auth,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
       agentConfiguration = _getMistralSmallGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
@@ -285,7 +263,6 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
@@ -334,7 +311,6 @@ function getGlobalAgent({
         webSearchBrowseMCPServerView,
         searchMCPServerView,
         deepResearchMCPServerView,
-        contentCreationMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_DEEP:
@@ -369,6 +345,13 @@ function getGlobalAgent({
         settings,
       });
       break;
+    case GLOBAL_AGENTS_SID.NOOP:
+      // we want only to have it in development
+      if (isDevelopment()) {
+        agentConfiguration = _getNoopAgent();
+        break;
+      }
+      return null;
     default:
       return null;
   }

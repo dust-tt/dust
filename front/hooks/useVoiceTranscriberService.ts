@@ -175,15 +175,15 @@ export function useVoiceTranscriberService({
     }
   }, [sendNotification, startLevelMetering, status]);
 
-  const finalizeRecordingHold = useCallback(
+  const finalizeRecordingTranscribeToInputBar = useCallback(
     async (file: File) => {
       const form = new FormData();
       form.append("file", file);
 
-      const resp = await fetch(
-        `/api/w/${owner.sId}/services/transcribe?stream=true`,
-        { method: "POST", body: form }
-      );
+      const resp = await fetch(`/api/w/${owner.sId}/services/transcribe`, {
+        method: "POST",
+        body: form,
+      });
 
       if (!resp.ok) {
         const msg = await resp.text();
@@ -221,7 +221,7 @@ export function useVoiceTranscriberService({
     [onTranscribeDelta, onTranscribeComplete, owner.sId, sendNotification]
   );
 
-  const finalizeRecordingClick = useCallback(
+  const finalizeRecordingAddAsAttachment = useCallback(
     async (file: File) => {
       await fileUploaderService.handleFilesUpload([file]);
       sendNotification({
@@ -241,9 +241,9 @@ export function useVoiceTranscriberService({
       chunksRef.current = [];
 
       if (file.size <= MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES) {
-        await finalizeRecordingHold(file);
+        await finalizeRecordingTranscribeToInputBar(file);
       } else {
-        await finalizeRecordingClick(file);
+        await finalizeRecordingAddAsAttachment(file);
       }
     } catch (e) {
       sendNotification({
@@ -258,8 +258,8 @@ export function useVoiceTranscriberService({
       streamRef.current = null;
     }
   }, [
-    finalizeRecordingHold,
-    finalizeRecordingClick,
+    finalizeRecordingTranscribeToInputBar,
+    finalizeRecordingAddAsAttachment,
     sendNotification,
     stopLevelMetering,
   ]);

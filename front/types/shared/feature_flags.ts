@@ -131,6 +131,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
   },
+  noop_model_feature: {
+    description: "Access to noop model in the agent builder",
+    stage: "dust_only",
+  },
   monday_tool: {
     description: "Monday MCP tool",
     stage: "rolling_out",

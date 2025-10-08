@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { ShareableFileResource } from "@app/lib/resources/shareable_file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { apiError } from "@app/logger/withlogging";
@@ -158,7 +158,7 @@ async function handler(
 
         // if public sharing is disabled, downgrade share scope of all public files to workspace
         if (!body.allowContentCreationFileSharing) {
-          await ShareableFileResource.updatePublicShareScopeToWorkspace(auth);
+          await FileResource.revokePublicSharingInWorkspace(auth);
         }
       } else {
         const { domain, domainAutoJoinEnabled } = body;

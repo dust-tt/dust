@@ -1,11 +1,11 @@
 import { ActionIcons } from "@dust-tt/sparkle";
 
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   InternalActionIcons,
-  isCustomServerIconType,
-} from "@app/lib/actions/mcp_icons";
+  isCustomResourceIconType,
+} from "@app/components/resources/resources_icons";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
@@ -44,7 +44,7 @@ export function getInfoPageIcon(
   infoAction: AgentBuilderAction | null
 ) {
   if (infoMCPServerView) {
-    return isCustomServerIconType(infoMCPServerView.server.icon)
+    return isCustomResourceIconType(infoMCPServerView.server.icon)
       ? ActionIcons[infoMCPServerView.server.icon]
       : InternalActionIcons[infoMCPServerView.server.icon];
   }

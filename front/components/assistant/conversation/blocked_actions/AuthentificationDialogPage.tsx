@@ -1,8 +1,8 @@
 import { Button, CloudArrowLeftRightIcon, cn, Icon } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
+import { getIcon } from "@app/components/resources/resources_icons";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { getIcon } from "@app/lib/actions/mcp_icons";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
 

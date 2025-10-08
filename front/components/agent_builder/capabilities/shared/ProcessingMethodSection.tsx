@@ -17,14 +17,14 @@ import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServe
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
 import {
+  InternalActionIcons,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icons";
+import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
-import {
-  getAvatar,
-  InternalActionIcons,
-  isInternalAllowedIcon,
-} from "@app/lib/actions/mcp_icons";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
   isInternalMCPServerOfName,

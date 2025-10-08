@@ -184,10 +184,10 @@ export function getDefaultMCPAction(
     // Ensure default name always matches validation regex (^[a-z0-9_]+$)
     name: sanitizedName,
     description:
-      (toolsConfigurations.dataSourceConfiguration ??
+      toolsConfigurations.dataSourceConfiguration ??
       toolsConfigurations.dataWarehouseConfiguration ??
       toolsConfigurations.tableConfiguration ??
-      false)
+      false
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
