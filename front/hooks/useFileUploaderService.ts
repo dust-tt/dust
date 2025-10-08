@@ -355,7 +355,10 @@ export function useFileUploaderService({
     return fileBlobs.filter(fileBlobHasFileId);
   };
 
-  const getFileBlob = (blobId: string) => {
+  const getFileBlob = (blobId: string | null | undefined) => {
+    if (!blobId) {
+      return undefined;
+    }
     return getFileBlobs().find((blob) => blob.id === blobId);
   };
 
