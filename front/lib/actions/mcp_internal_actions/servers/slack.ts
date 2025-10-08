@@ -735,8 +735,14 @@ const createServer = async (
         .describe(
           "The thread ts of the message to reply to. If you need to find the thread ts, you can use the `search_messages` tool, the thread ts is the id of the message you want to reply to. If you don't provide a thread ts, the message will be posted as a top-level message."
         ),
+      fileId: z
+        .string()
+        .optional()
+        .describe(
+          "The file id of the file to attach to the message."
+        ),
     },
-    async ({ to, message, threadTs }, { authInfo }) => {
+    async ({ to, message, threadTs, fileId }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         throw new Error("Access token not found");
@@ -751,6 +757,7 @@ const createServer = async (
           to,
           message,
           threadTs,
+          fileId,
           accessToken,
           agentLoopContext,
           auth

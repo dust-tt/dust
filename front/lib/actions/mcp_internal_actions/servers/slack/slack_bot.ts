@@ -44,8 +44,14 @@ const createServer = async (
         .describe(
           "The thread ts of the message to reply to. If you don't provide a thread ts, the message will be posted as a top-level message."
         ),
+      fileId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional file id (sId) of a file in Dust to attach to the Slack message."
+        ),
     },
-    async ({ to, message, threadTs }, { authInfo }) => {
+    async ({ to, message, threadTs, fileId }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         throw new Error("Access token not found");
@@ -60,6 +66,7 @@ const createServer = async (
           to,
           message,
           threadTs,
+          fileId,
           accessToken,
           agentLoopContext,
           auth

@@ -7,6 +7,7 @@ import { makeMCPToolJSONSuccess } from "@app/lib/actions/mcp_internal_actions/ut
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getAgentRoute } from "@app/lib/utils/router";
@@ -87,6 +88,7 @@ export async function executePostMessage(
   to: string,
   message: string,
   threadTs: string | undefined,
+  fileId: string | undefined,
   accessToken: string,
   agentLoopContext: AgentLoopContextType,
   auth: Authenticator
@@ -102,6 +104,57 @@ export async function executePostMessage(
   );
   message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
+  // If a file is provided, upload it as attachment of the original message
+  if (fileId) {
+    const file = await FileResource.fetchById(auth, fileId);
+    if (!file) {
+      throw new Error("File not found");
+    }
+
+    // Resolve channel id
+    const conversationsList = await slackClient.conversations.list({
+      exclude_archived: true,
+    })
+    if (!conversationsList.ok) {
+      throw new Error(conversationsList.error ?? "Failed to list conversations");
+    }
+    const searchString = to.trim().replace(/^#/, "").toLowerCase();
+    const channel = conversationsList.channels?.find(c => c.name?.toLowerCase() === searchString || c.id?.toLowerCase() === searchString);
+    if (!channel) {
+      throw new Error(`Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`);
+    }
+    const channelId = channel.id;
+
+    const signedUrl = await file.getSignedUrlForDownload(auth, "original");
+    const fileResp = await fetch(signedUrl);
+    if (!fileResp.ok) {
+      throw new Error(`Failed to fetch file (HTTP ${fileResp.status})`);
+    }
+    const arrayBuf = await fileResp.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuf);
+
+    const filename = file.fileName ?? `upload_${file.sId}`;
+
+    const uploadResp = await slackClient.filesUploadV2({
+      channel_id: channelId,
+      file: fileBuffer,
+      filename,
+      filetype: file.contentType,
+      initial_comment: message,
+      thread_ts: threadTs,
+    });
+
+    if (!uploadResp.ok) {
+      throw new Error(uploadResp.error);
+    }
+
+    return makeMCPToolJSONSuccess({
+      message: `Message with file uploaded to ${channelId}`,
+      result: uploadResp,
+    });
+  }
+
+  // No file provided: regular message
   const response = await slackClient.chat.postMessage({
     channel: to,
     text: message,
