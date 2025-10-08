@@ -11,8 +11,6 @@ import {
   GlobeAltIcon,
   InformationCircleIcon,
   Label,
-  LinkIcon,
-  LockIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
