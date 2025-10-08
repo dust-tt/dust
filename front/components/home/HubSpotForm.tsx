@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
 
+import { trackEvent, TRACKING_ACTIONS, TRACKING_AREAS } from "@app/lib/tracking";
+
 declare global {
   interface Window {
     hbspt?: {
@@ -9,6 +11,8 @@ declare global {
           portalId: string;
           formId: string;
           target: string;
+          onFormReady?: ($form: unknown) => void;
+          onFormSubmitted?: () => void;
         }) => void;
       };
     };
@@ -29,6 +33,47 @@ export default function HubSpotForm() {
           portalId,
           formId,
           target: "#hubspotForm",
+          onFormReady: ($form) => {
+            trackEvent({
+              area: TRACKING_AREAS.CONTACT,
+              object: "hubspot_form",
+              action: "ready",
+            });
+
+            // Track step navigation
+            if ($form && typeof $form === "object" && "on" in $form) {
+              const form = $form as {
+                on: (event: string, handler: () => void) => void;
+                find: (selector: string) => {
+                  on: (event: string, handler: () => void) => void;
+                };
+              };
+
+              // Track next/previous button clicks for multi-step form
+              form.find(".hs-button.next-button").on("click", () => {
+                trackEvent({
+                  area: TRACKING_AREAS.CONTACT,
+                  object: "hubspot_form",
+                  action: "next_step",
+                });
+              });
+
+              form.find(".hs-button.previous-button").on("click", () => {
+                trackEvent({
+                  area: TRACKING_AREAS.CONTACT,
+                  object: "hubspot_form",
+                  action: "previous_step",
+                });
+              });
+            }
+          },
+          onFormSubmitted: () => {
+            trackEvent({
+              area: TRACKING_AREAS.CONTACT,
+              object: "hubspot_form",
+              action: TRACKING_ACTIONS.SUBMIT,
+            });
+          },
         });
       }
     };
