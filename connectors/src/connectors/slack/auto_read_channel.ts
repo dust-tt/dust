@@ -71,6 +71,7 @@ export async function autoReadChannel(
       {
         connectorId: connector.id,
         teamId,
+        workspaceId: dataSourceConfig.workspaceId,
         error: spacesRes.error.message,
       },
       "Skipping auto-read channel: workspace API call failed (likely in maintenance)"
