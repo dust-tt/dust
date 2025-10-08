@@ -231,7 +231,7 @@ export async function fetchDatabaseChildPages({
     returnUpToDatePageIdsForExistingDatabase ||
     // If the database is new (either we never seen it before, or the first time we saw it was
     // during this run), we return all the pages.
-    isExistingDatabase
+    !isExistingDatabase
   ) {
     return {
       pageIds: pages.map((p) => p.id),
@@ -1956,6 +1956,8 @@ export async function renderAndUpsertPageFromCache({
     });
 
     if (parentDb) {
+      // parentDb.upsertRequestedRunTs = noz5-
+
       // Only do structured data incremental sync if the DB has already been synced as structured data.
       if (parentDb.structuredDataUpsertedTs) {
         localLogger.info(
