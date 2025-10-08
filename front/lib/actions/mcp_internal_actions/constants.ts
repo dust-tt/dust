@@ -931,11 +931,11 @@ The directive should be used to display a clickable version of the agent name in
     serverInfo: {
       name: "deep_research",
       version: "0.1.0",
-      description: "Handoff the query to the deep research agent.",
+      description: "Handoff the query to the Deep Dive agent.",
       authorization: null,
       icon: "ActionAtomIcon",
       documentationUrl: null,
-      instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
+      instructions: `This tool performs a complete handoff to the Deep Dive agent: ${DUST_DEEP_DESCRIPTION}`,
     },
   },
   slack_bot: {

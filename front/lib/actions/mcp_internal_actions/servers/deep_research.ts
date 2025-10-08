@@ -78,7 +78,7 @@ const createServer = (
         }
 
         const response = makeMCPToolExit({
-          message: `Forwarding this request to @${DUST_DEEP_NAME} for Deep Research.`,
+          message: `Using Deep Dive to explore this comprehensively. This may take a while.`,
           isError: false,
         });
 

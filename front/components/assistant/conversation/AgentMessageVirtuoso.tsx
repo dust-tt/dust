@@ -88,6 +88,7 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   isAgentMessageHandover: boolean;
+  isAgentMessageHandingOver: boolean;
   messageStreamState: MessageTemporaryState;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
@@ -98,6 +99,7 @@ export function AgentMessageVirtuoso({
   conversationId,
   isLastMessage,
   isAgentMessageHandover,
+  isAgentMessageHandingOver,
   messageStreamState,
   messageFeedback,
   owner,
@@ -321,7 +323,8 @@ export function AgentMessageVirtuoso({
   // Show copy & feedback buttons only when streaming is done and it didn't fail
   if (
     agentMessageToRender.status !== "created" &&
-    agentMessageToRender.status !== "failed"
+    agentMessageToRender.status !== "failed" &&
+    !isAgentMessageHandingOver
   ) {
     buttons.push(
       <Button
@@ -337,7 +340,7 @@ export function AgentMessageVirtuoso({
   }
 
   // Show retry button as long as it's not streaming
-  if (agentMessageToRender.status !== "created") {
+  if (agentMessageToRender.status !== "created" && !isAgentMessageHandingOver) {
     buttons.push(
       <Button
         key="retry-msg-button"
