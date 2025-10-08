@@ -1,7 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  ActionGlobeAltIcon,
-  Avatar,
   Button,
   InformationCircleIcon,
   LockIcon,
@@ -524,7 +522,7 @@ function WebhookSourceSheetContent({
         title:
           systemView?.customName ?? webhookSource?.name ?? "Webhook Source",
         description: "Webhook source for triggering assistants.",
-        icon: () => <Avatar icon={ActionGlobeAltIcon} size="md" />,
+        icon: WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>
