@@ -3,6 +3,7 @@ import React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
+import { Button } from "./Button";
 import { Icon } from "./Icon";
 import { LinkWrapper, LinkWrapperProps } from "./LinkWrapper";
 
@@ -20,6 +21,11 @@ interface AttachmentChipBaseProps {
   label: string;
   icon?: React.ComponentType;
   className?: string;
+  actionButton?: {
+    label: string;
+    onClick: () => void;
+    tooltip?: string;
+  };
 }
 
 type AttachmentChipButtonProps = AttachmentChipBaseProps & {
@@ -37,12 +43,32 @@ export function AttachmentChip({
   label,
   icon,
   className,
+  actionButton,
   ...props
 }: AttachmentChipProps) {
   const chipContent = (
-    <div className={cn(attachmentChipVariants({}), className)}>
+    <div
+      className={cn(
+        attachmentChipVariants({}),
+        className,
+        actionButton && "s-max-w-fit"
+      )}
+    >
       <Icon visual={icon} size="xs" className="s-shrink-0" />
       <span className="s-pointer s-grow s-truncate">{label}</span>
+      {actionButton && (
+        <Button
+          variant="primary"
+          size="xs"
+          label={actionButton.label}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            actionButton.onClick();
+          }}
+          tooltip={actionButton.tooltip}
+        />
+      )}
     </div>
   );
 

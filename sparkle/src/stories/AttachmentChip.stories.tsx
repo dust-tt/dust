@@ -81,3 +81,22 @@ export const LongLabel: Story = {
     ),
   ],
 };
+
+export const ChipWithInnerButton: Story = {
+  args: {
+    label: "Click this ->",
+    icon: DocumentIcon,
+    actionButton: {
+      label: "Action",
+      onClick: () => alert("Action clicked!"),
+      tooltip: "This is an action button",
+    },
+  },
+  decorators: [
+    (Story) => (
+      <ParagraphWrapper>
+        <Story />
+      </ParagraphWrapper>
+    ),
+  ],
+};
