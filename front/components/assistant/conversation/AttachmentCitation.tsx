@@ -26,7 +26,11 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { useFileContent, useFileProcessedContent } from "@app/lib/swr/files";
+import {
+  getFileViewUrl,
+  useFileContent,
+  useFileProcessedContent,
+} from "@app/lib/swr/files";
 import type {
   ContentFragmentType,
   LightWorkspaceType,
@@ -464,6 +468,17 @@ const FileViewer = ({
     processedContent,
   ]);
 
+  const audioPlayer = isAudio && (
+    <>
+      <audio
+        controls
+        className="mt-4 w-full"
+        src={getFileViewUrl(owner, fileId)}
+      />
+      <div className="mb-4" />
+    </>
+  );
+
   return (
     <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
       <DialogContent size="xl" height="lg">
@@ -471,11 +486,13 @@ const FileViewer = ({
           <DialogTitle>{attachmentCitation.title}</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          {isLoading ? (
+          {isLoading && (
             <div className="flex h-48 w-full items-center justify-center">
               <Spinner />
             </div>
-          ) : (
+          )}
+          {!isLoading && audioPlayer}
+          {!isLoading && (
             <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
               {text}
             </pre>
