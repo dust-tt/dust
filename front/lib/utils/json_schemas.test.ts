@@ -6,8 +6,180 @@ import { describe, expect, it } from "vitest";
 
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ensurePathExists, setValueAtPath } from "@app/lib/utils/json_schemas";
 
 describe("JSON Schema Utilities", () => {
+  describe("ensurePathExists and setValueAtPath", () => {
+    it("should initialize intermediate objects based on schema", () => {
+      const obj: Record<string, unknown> = {};
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          filter: {
+            type: "object",
+            properties: {
+              stringParam: {
+                type: "string",
+              },
+            },
+          },
+        },
+      };
+
+      ensurePathExists(obj, ["filter", "stringParam"], schema);
+      setValueAtPath(obj, ["filter", "stringParam"], "test-value");
+
+      expect(obj).toEqual({
+        filter: {
+          stringParam: "test-value",
+        },
+      });
+    });
+
+    it("should initialize intermediate arrays based on schema", () => {
+      const obj: Record<string, unknown> = {};
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          filter: {
+            type: "object",
+            properties: {
+              items: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    field: {
+                      type: "string",
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+
+      ensurePathExists(obj, ["filter", "items"], schema);
+
+      expect(obj).toEqual({
+        filter: {
+          items: [],
+        },
+      });
+    });
+
+    it("should initialize nested objects and arrays for complex paths", () => {
+      const obj: Record<string, unknown> = {};
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          filter: {
+            type: "object",
+            properties: {
+              items: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    field: {
+                      type: "string",
+                    },
+                    operator: {
+                      type: "string",
+                    },
+                  },
+                },
+              },
+              logicOperator: {
+                type: "string",
+              },
+            },
+          },
+        },
+      };
+
+      // Ensure path exists and set a value
+      ensurePathExists(obj, ["filter", "items", 0, "field"], schema);
+      setValueAtPath(obj, ["filter", "items", 0, "field"], "indicator-id");
+
+      expect(obj).toEqual({
+        filter: {
+          items: [
+            {
+              field: "indicator-id",
+            },
+          ],
+        },
+      });
+    });
+
+    it("should handle multiple array indices", () => {
+      const obj: Record<string, unknown> = {};
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                },
+              },
+            },
+          },
+        },
+      };
+
+      // Set multiple items in the array
+      ensurePathExists(obj, ["items", 0, "name"], schema);
+      setValueAtPath(obj, ["items", 0, "name"], "first");
+
+      ensurePathExists(obj, ["items", 1, "name"], schema);
+      setValueAtPath(obj, ["items", 1, "name"], "second");
+
+      expect(obj).toEqual({
+        items: [{ name: "first" }, { name: "second" }],
+      });
+    });
+
+    it("should not overwrite existing values", () => {
+      const obj: Record<string, unknown> = {
+        filter: {
+          existingKey: "existing-value",
+        },
+      };
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          filter: {
+            type: "object",
+            properties: {
+              existingKey: {
+                type: "string",
+              },
+              newKey: {
+                type: "string",
+              },
+            },
+          },
+        },
+      };
+
+      ensurePathExists(obj, ["filter", "newKey"], schema);
+      setValueAtPath(obj, ["filter", "newKey"], "new-value");
+
+      expect(obj).toEqual({
+        filter: {
+          existingKey: "existing-value",
+          newKey: "new-value",
+        },
+      });
+    });
+  });
+
   describe("findMatchingSchemaKeys", () => {
     it("should return property keys when properties match the target schema", () => {
       // Create a complex schema with nested properties

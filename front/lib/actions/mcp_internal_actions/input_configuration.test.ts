@@ -1188,6 +1188,106 @@ describe("nested objects and complex schemas", () => {
     });
   });
 
+  it("should initialize intermediate objects when parent is missing", () => {
+    // Test case where the parent object doesn't exist in rawInputs
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "filter.stringParam": "filter-value",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          filter: {
+            type: "object",
+            properties: {
+              stringParam:
+                ConfigurableToolInputJSONSchemas[
+                  INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                ],
+            },
+            required: ["stringParam"],
+          },
+        },
+        required: ["filter"],
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      filter: {
+        stringParam: {
+          value: "filter-value",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      },
+    });
+  });
+
+  it("should initialize intermediate arrays and objects for deeply nested paths", () => {
+    // Test case similar to the user's schema with filter.items[].field
+    const rawInputs = {};
+    const config = createBasicMCPConfiguration({
+      additionalConfiguration: {
+        "filter.items.field": "field-value",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          filter: {
+            type: "object",
+            properties: {
+              items: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    field:
+                      ConfigurableToolInputJSONSchemas[
+                        INTERNAL_MIME_TYPES.TOOL_INPUT.STRING
+                      ],
+                    operator: {
+                      type: "string",
+                      enum: ["=", "!=", ">", ">=", "<", "<="],
+                    },
+                  },
+                  required: ["field", "operator"],
+                },
+              },
+              logicOperator: {
+                type: "string",
+                enum: ["and", "or"],
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs,
+      actionConfiguration: config,
+    });
+
+    // The function should create filter as an object, then items as an array
+    expect(result).toHaveProperty("filter");
+    expect(result.filter).toHaveProperty("items");
+    expect(result.filter).toMatchObject({
+      items: {
+        field: {
+          value: "field-value",
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+        },
+      },
+    });
+  });
+
   it("should handle multiple missing properties", () => {
     const rawInputs = {};
     const config = createBasicMCPConfiguration({

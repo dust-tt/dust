@@ -112,8 +112,84 @@ export function findSchemaAtPath(
 }
 
 /**
+ * Ensures that intermediate objects/arrays exist in the path based on the schema.
+ * Uses the schema to determine whether to create objects or arrays.
+ */
+export function ensurePathExists(
+  obj: Record<string, unknown>,
+  path: (string | number)[],
+  schema: JSONSchema
+): void {
+  if (path.length === 0) {
+    return;
+  }
+
+  let current: Record<string, unknown> = obj;
+  let currentSchema: JSONSchema | null = schema;
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const key = path[i];
+
+    if (!currentSchema) {
+      return; // Can't determine structure without schema
+    }
+
+    // Navigate schema
+    if (typeof key === "string") {
+      // We're navigating through an object property
+      if (currentSchema.properties && key in currentSchema.properties) {
+        const propSchema: JSONSchemaDefinition = currentSchema.properties[key];
+        if (isJSONSchemaObject(propSchema)) {
+          currentSchema = propSchema;
+        } else {
+          return;
+        }
+      } else {
+        return;
+      }
+
+      // Initialize the key if it doesn't exist
+      if (!current[key] || typeof current[key] !== "object") {
+        // Determine if next level should be array or object
+        if (currentSchema.type === "array") {
+          current[key] = [];
+        } else {
+          current[key] = {};
+        }
+      }
+
+      current = current[key] as Record<string, unknown>;
+    } else {
+      // We're navigating through an array index
+      // The current schema should be an array schema
+      if (currentSchema.type === "array" && currentSchema.items) {
+        if (isJSONSchemaObject(currentSchema.items)) {
+          currentSchema = currentSchema.items;
+        } else {
+          return;
+        }
+      } else {
+        return;
+      }
+
+      // Ensure array has enough elements
+      if (!Array.isArray(current)) {
+        return;
+      }
+
+      while (current.length <= key) {
+        current.push({});
+      }
+
+      current = current[key] as Record<string, unknown>;
+    }
+  }
+}
+
+/**
  * Sets a value at a specific path in a nested object structure.
  * Assumes that intermediate objects already exist.
+ * Use ensurePathExists() first to initialize the path based on schema.
  */
 export function setValueAtPath(
   obj: Record<string, unknown>,
