@@ -1,4 +1,5 @@
 import {
+  ArrowUpOnSquareIcon,
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -146,7 +147,7 @@ export function ShareContentCreationFilePopover({
   return (
     <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" label="Share" />
+        <Button variant="ghost" label="Share" icon={ArrowUpOnSquareIcon} />
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col" align="end">
         <div className="flex flex-col gap-3">
