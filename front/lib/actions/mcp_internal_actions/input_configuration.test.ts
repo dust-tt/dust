@@ -8,6 +8,7 @@ import type { ServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   augmentInputsWithConfiguration,
   findPathsToConfiguration,
+  inlineAllRefs,
 } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
   ConfigurableToolInputJSONSchemas,
@@ -2601,5 +2602,525 @@ describe("findPathsToConfiguration", () => {
         "tupleArr.items.1.secondTime",
       ])
     );
+  });
+});
+
+describe("inlineAllRefs", () => {
+  describe("simple reference inlining", () => {
+    it("should inline a simple $ref to a definition", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          user: {
+            $ref: "#/definitions/User",
+          },
+        },
+        definitions: {
+          User: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              age: { type: "number" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result.properties?.user).toEqual({
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          age: { type: "number" },
+        },
+      });
+    });
+
+    it("should return schema unchanged when there are no $refs", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          age: { type: "number" },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result).toEqual(schema);
+    });
+  });
+
+  describe("nested reference inlining", () => {
+    it("should inline nested references in properties", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          user: {
+            $ref: "#/definitions/User",
+          },
+          address: {
+            type: "object",
+            properties: {
+              location: {
+                $ref: "#/definitions/Location",
+              },
+            },
+          },
+        },
+        definitions: {
+          User: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+            },
+          },
+          Location: {
+            type: "object",
+            properties: {
+              city: { type: "string" },
+              country: { type: "string" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result.properties?.user).toEqual({
+        type: "object",
+        properties: {
+          name: { type: "string" },
+        },
+      });
+
+      expect(result.properties?.address).toEqual({
+        type: "object",
+        properties: {
+          location: {
+            type: "object",
+            properties: {
+              city: { type: "string" },
+              country: { type: "string" },
+            },
+          },
+        },
+      });
+    });
+
+    it("should handle deeply nested references", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          company: {
+            type: "object",
+            properties: {
+              department: {
+                type: "object",
+                properties: {
+                  manager: {
+                    $ref: "#/definitions/Person",
+                  },
+                },
+              },
+            },
+          },
+        },
+        definitions: {
+          Person: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              email: { type: "string" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      const company = result.properties?.company;
+      const department =
+        company && typeof company === "object" && "properties" in company
+          ? company.properties?.department
+          : undefined;
+      const manager =
+        department &&
+        typeof department === "object" &&
+        "properties" in department
+          ? department.properties?.manager
+          : undefined;
+
+      expect(manager).toEqual({
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          email: { type: "string" },
+        },
+      });
+    });
+  });
+
+  describe("array references", () => {
+    it("should inline references in array items", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          users: {
+            type: "array",
+            items: {
+              $ref: "#/definitions/User",
+            },
+          },
+        },
+        definitions: {
+          User: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              id: { type: "number" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      const users = result.properties?.users;
+      const items =
+        users && typeof users === "object" && "items" in users
+          ? users.items
+          : undefined;
+
+      expect(items).toEqual({
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          id: { type: "number" },
+        },
+      });
+    });
+
+    it("should inline references in tuple items", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          coordinates: {
+            type: "array",
+            items: [
+              {
+                $ref: "#/definitions/Point",
+              },
+              {
+                $ref: "#/definitions/Point",
+              },
+            ],
+          },
+        },
+        definitions: {
+          Point: {
+            type: "object",
+            properties: {
+              x: { type: "number" },
+              y: { type: "number" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      const coordinates = result.properties?.coordinates;
+      const items =
+        coordinates && typeof coordinates === "object" && "items" in coordinates
+          ? coordinates.items
+          : undefined;
+
+      expect(items).toEqual([
+        {
+          type: "object",
+          properties: {
+            x: { type: "number" },
+            y: { type: "number" },
+          },
+        },
+        {
+          type: "object",
+          properties: {
+            x: { type: "number" },
+            y: { type: "number" },
+          },
+        },
+      ]);
+    });
+  });
+
+  describe("chained references", () => {
+    it("should inline references that point to other references", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          data: {
+            $ref: "#/definitions/DataWrapper",
+          },
+        },
+        definitions: {
+          DataWrapper: {
+            $ref: "#/definitions/ActualData",
+          },
+          ActualData: {
+            type: "object",
+            properties: {
+              value: { type: "string" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result.properties?.data).toEqual({
+        type: "object",
+        properties: {
+          value: { type: "string" },
+        },
+      });
+    });
+  });
+
+  describe("complex schemas", () => {
+    it("should handle schemas with mixed references and inline definitions", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          user: {
+            $ref: "#/definitions/User",
+          },
+          metadata: {
+            type: "object",
+            properties: {
+              created: { type: "string" },
+              tags: {
+                type: "array",
+                items: {
+                  $ref: "#/definitions/Tag",
+                },
+              },
+            },
+          },
+          settings: {
+            type: "object",
+            properties: {
+              theme: { type: "string" },
+            },
+          },
+        },
+        definitions: {
+          User: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+            },
+          },
+          Tag: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              color: { type: "string" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result.properties?.user).toEqual({
+        type: "object",
+        properties: {
+          name: { type: "string" },
+        },
+      });
+
+      const metadata = result.properties?.metadata;
+      const tags =
+        metadata && typeof metadata === "object" && "properties" in metadata
+          ? metadata.properties?.tags
+          : undefined;
+      const tagsItems =
+        tags && typeof tags === "object" && "items" in tags
+          ? tags.items
+          : undefined;
+
+      expect(tagsItems).toEqual({
+        type: "object",
+        properties: {
+          label: { type: "string" },
+          color: { type: "string" },
+        },
+      });
+
+      expect(result.properties?.settings).toEqual({
+        type: "object",
+        properties: {
+          theme: { type: "string" },
+        },
+      });
+    });
+
+    it("should preserve schema properties like required, description, etc.", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        required: ["user", "email"],
+        properties: {
+          user: {
+            $ref: "#/definitions/User",
+          },
+          email: {
+            type: "string",
+            description: "User email address",
+          },
+        },
+        definitions: {
+          User: {
+            type: "object",
+            required: ["name"],
+            properties: {
+              name: { type: "string" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result.required).toEqual(["user", "email"]);
+      expect(result.properties?.email).toEqual({
+        type: "string",
+        description: "User email address",
+      });
+      expect(result.properties?.user).toEqual({
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string" },
+        },
+      });
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should handle empty schema", () => {
+      const schema: JSONSchema = {
+        type: "object",
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result).toEqual(schema);
+    });
+
+    it("should handle schemas with only definitions and no properties", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        definitions: {
+          User: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      // Definitions should be preserved
+      expect(result.definitions).toEqual(schema.definitions);
+    });
+
+    it("should handle non-existent reference gracefully", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          user: {
+            $ref: "#/definitions/NonExistent",
+          },
+        },
+        definitions: {},
+      };
+
+      const result = inlineAllRefs(schema);
+
+      // Should return the original $ref if it can't be resolved
+      expect(result.properties?.user).toEqual({
+        $ref: "#/definitions/NonExistent",
+      });
+    });
+
+    it("should handle arrays with no items", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result.properties?.items).toEqual({
+        type: "array",
+      });
+    });
+  });
+
+  describe("references in other schema keys", () => {
+    it("should inline references in additionalProperties", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        additionalProperties: {
+          $ref: "#/definitions/Value",
+        },
+        definitions: {
+          Value: {
+            type: "object",
+            properties: {
+              data: { type: "string" },
+            },
+          },
+        },
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result.additionalProperties).toEqual({
+        type: "object",
+        properties: {
+          data: { type: "string" },
+        },
+      });
+    });
+
+    it("should preserve non-object values in schema keys", () => {
+      const schema: JSONSchema = {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+        },
+        required: ["name"],
+        additionalProperties: false,
+        minProperties: 1,
+        maxProperties: 10,
+      };
+
+      const result = inlineAllRefs(schema);
+
+      expect(result.required).toEqual(["name"]);
+      expect(result.additionalProperties).toBe(false);
+      expect(result.minProperties).toBe(1);
+      expect(result.maxProperties).toBe(10);
+    });
   });
 });

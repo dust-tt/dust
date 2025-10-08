@@ -71,7 +71,7 @@ export function followInternalRef(
     ref
       .replace("#/", "")
       .split("/")
-      .filter((key) => key !== "properties")
+      .filter((segment) => segment !== "properties")
   );
 }
 
@@ -89,22 +89,62 @@ export function findSchemaAtPath(
 
   let currentSchema: JSONSchema | null = schema;
 
-  for (const segment of path) {
+  let i = 0;
+  while (i < path.length) {
+    let segment = path[i];
     if (!currentSchema) {
       return null;
     }
 
-    // Navigate through object properties
-    if (currentSchema.properties && segment in currentSchema.properties) {
-      const propSchema: JSONSchemaDefinition =
-        currentSchema.properties[segment];
-      if (isJSONSchemaObject(propSchema)) {
-        currentSchema = propSchema;
+    if (segment === "definitions") {
+      i++;
+      segment = path[i];
+      if (currentSchema.definitions && segment in currentSchema.definitions) {
+        const defSchema: JSONSchemaDefinition =
+          currentSchema.definitions[segment];
+        if (isJSONSchemaObject(defSchema)) {
+          currentSchema = defSchema;
+          i++;
+        } else {
+          return null; // Not a valid schema
+        }
+      } else {
+        return null; // Path doesn't exist in the schema
+      }
+    } else if (segment === "items") {
+      i++;
+      segment = path[i];
+      if (currentSchema.items && Array.isArray(currentSchema.items)) {
+        const idx = parseInt(segment);
+        if (isNaN(idx) || idx < 0 || idx >= currentSchema.items.length) {
+          return null; // Not a valid index
+        }
+        const itemSchema: JSONSchemaDefinition = currentSchema.items[idx];
+        if (isJSONSchemaObject(itemSchema)) {
+          currentSchema = itemSchema;
+          i++;
+        } else {
+          return null; // Not a valid schema
+        }
+      } else if (isJSONSchemaObject(currentSchema.items)) {
+        currentSchema = currentSchema.items;
+        i++;
       } else {
         return null; // Not a valid schema
       }
     } else {
-      return null; // Path doesn't exist in the schema
+      if (currentSchema.properties && segment in currentSchema.properties) {
+        const propSchema: JSONSchemaDefinition =
+          currentSchema.properties[segment];
+        if (isJSONSchemaObject(propSchema)) {
+          currentSchema = propSchema;
+          i++;
+        } else {
+          return null; // Not a valid schema
+        }
+      } else {
+        return null; // Path doesn't exist in the schema
+      }
     }
   }
 
@@ -271,13 +311,7 @@ export function iterateOverSchemaPropertiesRecursive(
 
   // Check items in array schemas
   if (inputSchema.type === "array" && inputSchema.items) {
-    if (isJSONSchemaObject(inputSchema.items)) {
-      // Single schema for all items
-      iterateOverSchemaPropertiesRecursive(inputSchema.items, callback, [
-        ...path,
-        "items",
-      ]);
-    } else if (Array.isArray(inputSchema.items)) {
+    if (Array.isArray(inputSchema.items)) {
       // Array of schemas for tuple validation
       for (let i = 0; i < inputSchema.items.length; i++) {
         const item = inputSchema.items[i];
@@ -289,6 +323,12 @@ export function iterateOverSchemaPropertiesRecursive(
           ]);
         }
       }
+    } else if (isJSONSchemaObject(inputSchema.items)) {
+      // Single schema for all items
+      iterateOverSchemaPropertiesRecursive(inputSchema.items, callback, [
+        ...path,
+        "items",
+      ]);
     }
   }
 }

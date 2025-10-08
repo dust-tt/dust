@@ -1127,14 +1127,17 @@ function recursiveInlineAllRefs(
   }
 
   if (schema.type == "array" && schema.items) {
-    if (isJSONSchemaObject(schema.items)) {
+    if (Array.isArray(schema.items)) {
+      outputSchema.items = [];
+      for (const item of schema.items) {
+        if (isJSONSchemaObject(item)) {
+          outputSchema.items.push(recursiveInlineAllRefs(item, rootSchema));
+        } else {
+          outputSchema.items.push(item);
+        }
+      }
+    } else if (isJSONSchemaObject(schema.items)) {
       outputSchema.items = recursiveInlineAllRefs(schema.items, rootSchema);
-    } else if (Array.isArray(schema.items)) {
-      outputSchema.items = schema.items.map((item) =>
-        isJSONSchemaObject(item)
-          ? recursiveInlineAllRefs(item, rootSchema)
-          : item
-      );
     }
   }
 
