@@ -14,6 +14,7 @@ import type {
 import assert from "assert";
 import { Op, Sequelize } from "sequelize";
 
+import { findMatchingChannelPatterns } from "@connectors/connectors/slack/auto_read_channel";
 import {
   getBotUserIdMemoized,
   shouldIndexSlackMessage,
@@ -1306,10 +1307,10 @@ export async function autoReadChannelActivity(
   }
 
   const { autoReadChannelPatterns } = slackConfiguration;
-  const matchingPatterns = autoReadChannelPatterns.filter((pattern) => {
-    const regex = new RegExp(`^${pattern.pattern}$`);
-    return regex.test(channelName);
-  });
+  const matchingPatterns = findMatchingChannelPatterns(
+    channelName,
+    autoReadChannelPatterns
+  );
 
   if (matchingPatterns.length === 0) {
     return;
