@@ -368,6 +368,7 @@ export const IntercomSearchConversationsResponseSchema = t.type({
   ),
   totalCount: t.number,
 });
+
 export type IntercomSearchConversationsResponseType = t.TypeOf<
   typeof IntercomSearchConversationsResponseSchema
 >;

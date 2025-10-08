@@ -46,7 +46,7 @@ async function queryIntercomAPI({
   const rawResponse = await fetch(`https://api.intercom.io/${path}`, {
     method,
     headers: {
-      "Intercom-Version": "2.14",
+      "Intercom-Version": "2.10",
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
