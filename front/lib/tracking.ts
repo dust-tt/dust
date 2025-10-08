@@ -90,8 +90,6 @@ export function trackEvent({
     ...extra,
   };
 
-  // Note: workspace context is automatically included via posthog.group()
-  // which is set in PostHogTracker.tsx when the workspace changes
   posthog.capture(eventName, properties);
 }
 
