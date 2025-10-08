@@ -192,7 +192,7 @@ export function getDefaultMCPAction(
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    canBeConfigured: toolsConfigurations.configurable !== "no",
+    configurable: toolsConfigurations.configurable !== "no",
   };
 }
 

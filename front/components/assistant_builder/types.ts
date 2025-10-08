@@ -58,7 +58,7 @@ export interface AssistantBuilderDataVisualizationConfiguration {
   configuration: null;
   name: string;
   description: string;
-  canBeConfigured: false;
+  configurable: false;
 }
 
 // DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
@@ -105,7 +105,7 @@ export function getDataVisualizationConfiguration(): AssistantBuilderDataVisuali
     configuration: null,
     name: DEFAULT_DATA_VISUALIZATION_NAME,
     description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-    canBeConfigured: false,
+    configurable: false,
   } satisfies AssistantBuilderDataVisualizationConfiguration;
 }
 
