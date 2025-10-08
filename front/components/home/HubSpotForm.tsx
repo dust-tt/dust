@@ -62,23 +62,20 @@ export default function HubSpotForm() {
             (e) => {
               const target = e.target as HTMLElement;
 
-              // Find if this is a button
-              const button =
-                target.tagName === "BUTTON" ||
-                target.tagName === "INPUT" ||
-                target.closest("button") ||
-                target.closest("input[type='submit']") ||
-                target.closest("input[type='button']");
+              const isButtonTag =
+                target.tagName === "BUTTON" || target.tagName === "INPUT";
+              const buttonElement = isButtonTag
+                ? target
+                : target.closest("button") ??
+                  target.closest("input[type='submit']") ??
+                  target.closest("input[type='button']");
 
-              if (button) {
-                const buttonElement =
-                  button === true ? target : (button as HTMLElement);
-
-                const text = buttonElement.textContent?.toLowerCase() || "";
+              if (buttonElement) {
+                const text = buttonElement.textContent?.toLowerCase() ?? "";
                 const value =
-                  (buttonElement as HTMLInputElement).value?.toLowerCase() ||
+                  (buttonElement as HTMLInputElement).value?.toLowerCase() ??
                   "";
-                const className = buttonElement.className?.toLowerCase() || "";
+                const className = buttonElement.className?.toLowerCase() ?? "";
                 const buttonType = (
                   buttonElement as HTMLInputElement | HTMLButtonElement
                 ).type;
