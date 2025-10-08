@@ -1202,7 +1202,7 @@ impl Embedder for OpenAIEmbedder {
 
         // CORE_DATA_SOURCES_OPENAI_API_KEY can take two forms:
         // - just the API key (e.g. sk-xxxx)
-        // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.openai.com)
+        // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.api.openai.com)
 
         let raw_openai_key_env =
             std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY").map_err(|_| {
