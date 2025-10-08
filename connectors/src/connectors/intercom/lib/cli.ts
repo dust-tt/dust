@@ -243,19 +243,15 @@ export const intercom = async ({
         throw new Error(`Connector ${connectorId} not found`);
       }
 
-      const closedAt =
-        args.closedAt ??
+      const closedAfter =
+        args.closedAfter ??
         Math.floor(new Date(Date.now() - 60 * 60 * 1000).getTime() / 1000);
 
-      if (!args.closedAt) {
+      if (!args.closedAfter) {
         console.warn(
-          "[Admin] closedAt not provided, will search conversations closed the last hour"
+          "[Admin] closedAfter not provided, will search conversations closed the last hour only"
         );
       }
-
-      logger.info("[Admin] Searching conversations", {
-        closedAt,
-      });
 
       const accessToken = await getIntercomAccessToken(connector.connectionId);
 
@@ -280,7 +276,7 @@ export const intercom = async ({
           slidingWindow: workspace.conversationsSlidingWindow,
           cursor,
           pageSize: 50,
-          closedAtWindow: closedAt,
+          closedAfter,
         });
 
         conversations.push(...response.conversations);

@@ -291,7 +291,7 @@ export const IntercomCommandSchema = t.type({
     helpCenterId: t.union([t.number, t.undefined]),
     conversationsSlidingWindow: t.union([t.number, t.undefined]),
     teamId: t.union([t.string, t.undefined]),
-    closedAt: t.union([t.number, t.undefined]),
+    closedAfter: t.union([t.number, t.undefined]),
   }),
 });
 

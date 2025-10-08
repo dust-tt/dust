@@ -315,14 +315,14 @@ export async function fetchIntercomConversations({
   slidingWindow,
   cursor = null,
   pageSize = 20,
-  closedAtWindow,
+  closedAfter,
 }: {
   accessToken: string;
   teamId?: string;
   slidingWindow: number;
   cursor: string | null;
   pageSize?: number;
-  closedAtWindow?: number;
+  closedAfter?: number;
 }): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(
     Date.now() - slidingWindow * 24 * 60 * 60 * 1000
@@ -354,6 +354,14 @@ export async function fetchIntercomConversations({
     });
   }
 
+  if (closedAfter) {
+    queryFilters.push({
+      field: "statistics.last_close_at",
+      operator: ">",
+      value: closedAfter,
+    });
+  }
+
   const response: IntercomFetchConversationsResponseType =
     await queryIntercomAPI({
       accessToken,
@@ -370,43 +378,6 @@ export async function fetchIntercomConversations({
         },
       },
     });
-
-  console.log("response", JSON.stringify(response, null, 2));
-
-  // if (closedAtWindow) {
-  //   response.conversations = response.conversations.filter((conversation) => {
-  //     console.log("conversation", {
-  //       id: conversation.id,
-  //       title: conversation.title,
-  //       conversation_parts: conversation,
-  //     });
-  //
-  //     const lastPart =
-  //       conversation.conversation_parts?.conversation_parts?.[
-  //         conversation.conversation_parts?.conversation_parts?.length - 1
-  //       ];
-  //
-  //     console.log("lastPart", lastPart);
-  //     console.log("closedAtWindow", closedAtWindow);
-  //     console.log("lastPart.created_at", lastPart?.created_at);
-  //     console.log(
-  //       "lastPart.created_at.getTime() / 1000",
-  //       lastPart?.created_at.getTime() ?? 0 / 1000
-  //     );
-  //     console.log("closedAtWindow", closedAtWindow);
-  //     console.log("closedAtWindow", closedAtWindow);
-  //
-  //     if (
-  //       lastPart &&
-  //       lastPart.part_type === "close" &&
-  //       lastPart.created_at.getTime() / 1000 < closedAtWindow
-  //     ) {
-  //       return true;
-  //     }
-  //
-  //     return false;
-  //   });
-  // }
 
   return response;
 }
