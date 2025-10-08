@@ -637,7 +637,7 @@ export function AgentMessage({
           sendNotification({
             type: "error",
             title: "Download failed",
-            description: "We could not retrieve the generated file.",
+            description: `We could not retrieve the generated file: ${response.statusText}.`,
           });
           return;
         }
@@ -673,12 +673,11 @@ export function AgentMessage({
             }
           }
         );
-      } catch {
+      } catch (error) {
         sendNotification({
           type: "error",
           title: "Download failed",
-          description:
-            "An unexpected error occurred while downloading the file.",
+          description: `An unexpected error occurred while downloading the file: ${error instanceof Error ? error.message : "Try again later."}.`,
         });
       }
     };
