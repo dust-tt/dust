@@ -738,9 +738,7 @@ const createServer = async (
       fileId: z
         .string()
         .optional()
-        .describe(
-          "The file id of the file to attach to the message."
-        ),
+        .describe("The file id of the file to attach to the message."),
     },
     async ({ to, message, threadTs, fileId }, { authInfo }) => {
       const accessToken = authInfo?.token;

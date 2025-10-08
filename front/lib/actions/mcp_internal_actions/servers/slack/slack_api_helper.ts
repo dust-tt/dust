@@ -114,14 +114,22 @@ export async function executePostMessage(
     // Resolve channel id
     const conversationsList = await slackClient.conversations.list({
       exclude_archived: true,
-    })
+    });
     if (!conversationsList.ok) {
-      throw new Error(conversationsList.error ?? "Failed to list conversations");
+      throw new Error(
+        conversationsList.error ?? "Failed to list conversations"
+      );
     }
     const searchString = to.trim().replace(/^#/, "").toLowerCase();
-    const channel = conversationsList.channels?.find(c => c.name?.toLowerCase() === searchString || c.id?.toLowerCase() === searchString);
+    const channel = conversationsList.channels?.find(
+      (c) =>
+        c.name?.toLowerCase() === searchString ||
+        c.id?.toLowerCase() === searchString
+    );
     if (!channel) {
-      throw new Error(`Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`);
+      throw new Error(
+        `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`
+      );
     }
     const channelId = channel.id;
 
