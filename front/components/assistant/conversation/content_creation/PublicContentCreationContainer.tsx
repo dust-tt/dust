@@ -20,7 +20,7 @@ export function PublicContentCreationContainer({
   shareToken,
   workspaceId,
 }: PublicContentCreationContainerProps) {
-  const { frameMetadata, isFrameLoading, isFrameError } = usePublicFrame({
+  const { frameMetadata, isFrameLoading, error } = usePublicFrame({
     shareToken,
   });
 
@@ -34,7 +34,7 @@ export function PublicContentCreationContainer({
       );
     }
 
-    if (isFrameError || !frameMetadata) {
+    if (error || !frameMetadata) {
       return <Custom404 />;
     }
 

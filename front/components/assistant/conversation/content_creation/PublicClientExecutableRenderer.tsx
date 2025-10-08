@@ -1,4 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
+import React from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
@@ -19,40 +20,43 @@ export function PublicClientExecutableRenderer({
   shareToken,
   workspaceId,
 }: PublicClientExecutableRendererProps) {
-  const { frameContent, isFrameLoading, isFrameError } = usePublicFrame({
+  const { frameContent, isFrameLoading, error } = usePublicFrame({
     shareToken,
   });
+
+  const getFileBlob = React.useCallback(
+    async (fileId: string): Promise<Blob | null> => {
+      const response = await fetch(
+        `/api/v1/public/frames/${shareToken}/files/${fileId}`
+      );
+      if (!response.ok) {
+        return null;
+      }
+
+      const resBuffer = await response.arrayBuffer();
+      return new Blob([resBuffer], {
+        type: response.headers.get("Content-Type") ?? undefined,
+      });
+    },
+    [shareToken]
+  );
 
   if (isFrameLoading) {
     return (
       <CenteredState>
         <Spinner size="sm" />
-        <span>Loading Frame...</span>
+        <span>Loading the frame...</span>
       </CenteredState>
     );
   }
 
-  if (isFrameError) {
+  if (error) {
     return (
       <CenteredState>
-        <p className="text-warning-500">Error loading frame: {isFrameError}</p>
+        <p className="text-warning-500">Error loading the frame: {error}</p>
       </CenteredState>
     );
   }
-
-  const getFileBlob = async (fileId: string): Promise<Blob | null> => {
-    const response = await fetch(
-      `/api/v1/public/frames/${shareToken}/files/${fileId}`
-    );
-    if (!response.ok) {
-      return null;
-    }
-
-    const resBuffer = await response.arrayBuffer();
-    return new Blob([resBuffer], {
-      type: response.headers.get("Content-Type") ?? undefined,
-    });
-  };
 
   return (
     <div className="flex h-full flex-col">

@@ -178,7 +178,7 @@ export class FileResource extends BaseResource<FileModel> {
     };
   }
 
-  static async fetchByIdInWorkspaceUnsafe(
+  static async unsafeFetchByIdInWorkspace(
     workspace: LightWorkspaceType,
     id: string
   ): Promise<FileResource | null> {

@@ -7,6 +7,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -28,7 +29,7 @@ async function handler(
   }
 
   const { token, fileId } = req.query;
-  if (typeof token !== "string" || typeof fileId !== "string") {
+  if (!isString(token) || !isString(fileId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -119,7 +120,7 @@ async function handler(
   // Load the requested file within the same workspace context.
   const owner = renderLightWorkspaceType({ workspace });
 
-  const targetFile = await FileResource.fetchByIdInWorkspaceUnsafe(
+  const targetFile = await FileResource.unsafeFetchByIdInWorkspace(
     owner,
     fileId
   );

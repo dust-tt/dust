@@ -246,20 +246,23 @@ export function ClientExecutableRenderer({
     };
   }, [isFullScreen, exitFullScreen]);
 
-  const getFileBlob = async (fileId: string): Promise<Blob | null> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/files/${fileId}?action=view`
-    );
-    if (!response.ok) {
-      return null;
-    }
+  const getFileBlob = useCallback(
+    async (fileId: string): Promise<Blob | null> => {
+      const response = await fetch(
+        `/api/w/${owner.sId}/files/${fileId}?action=view`
+      );
+      if (!response.ok) {
+        return null;
+      }
 
-    const resBuffer = await response.arrayBuffer();
+      const resBuffer = await response.arrayBuffer();
 
-    return new Blob([resBuffer], {
-      type: response.headers.get("Content-Type") ?? undefined,
-    });
-  };
+      return new Blob([resBuffer], {
+        type: response.headers.get("Content-Type") ?? undefined,
+      });
+    },
+    [owner.sId]
+  );
 
   if (isFileContentLoading) {
     return (

@@ -13,14 +13,15 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
 
   const { data, error, mutate } = useSWRWithDefaults(
     swrKey,
-    frameMetadataFetcher
+    frameMetadataFetcher,
+    { disabled: !shareToken }
   );
 
   return {
     frameMetadata: data?.file,
     frameContent: data?.content,
     isFrameLoading: !error && !data,
-    isFrameError: error,
+    error,
     mutateFrame: mutate,
   };
 }
