@@ -1,3 +1,5 @@
+import type { Icon } from "@dust-tt/sparkle";
+import { ActionPencilSquareIcon } from "@dust-tt/sparkle";
 import { z } from "zod";
 
 import type {
@@ -22,8 +24,9 @@ export type WebhookSourceSignatureAlgorithm =
 export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
   Exclude<WebhookSourceKind, "custom">,
   PresetWebhook
-> = {
+> & { custom: { name: string; icon: typeof Icon } } = {
   github: GITHUB_WEBHOOK_PRESET,
+  custom: { name: "Custom", icon: ActionPencilSquareIcon },
 } as const;
 
 export const WEBHOOK_SOURCE_KIND = ["custom", "github"] as const;

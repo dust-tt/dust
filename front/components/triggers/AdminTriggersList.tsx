@@ -2,6 +2,10 @@ import {
   Button,
   classNames,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   PlusIcon,
   Spinner,
@@ -21,6 +25,10 @@ import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
 import type { WebhookSourceWithSystemViewAndUsage } from "@app/types/triggers/webhooks";
+import {
+  WEBHOOK_SOURCE_KIND,
+  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+} from "@app/types/triggers/webhooks";
 
 type RowData = {
   webhookSource: WebhookSourceWithSystemViewAndUsage;
@@ -208,13 +216,26 @@ export const AdminTriggersList = ({
   }, [setAgentSId]);
 
   const CreateWebhookCTA = () => (
-    <Button
-      label="Create webhook source"
-      variant="outline"
-      icon={PlusIcon}
-      size="sm"
-      onClick={() => setSheetMode({ type: "create" })}
-    />
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          label="Create webhook source"
+          variant="outline"
+          icon={PlusIcon}
+          size="sm"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {WEBHOOK_SOURCE_KIND.map((kind) => (
+          <DropdownMenuItem
+            key={kind}
+            label={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].name}
+            icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
+            onClick={() => setSheetMode({ type: "create" })}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   if (isWebhookSourcesWithViewsLoading) {
