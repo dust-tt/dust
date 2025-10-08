@@ -101,19 +101,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
-    const isHandoverUserMessage = (
-      message: MessageWithContentFragmentsType
-    ) => {
-      return (
-        message.type === "user_message" &&
-        message.context.origin === "agent_handover"
-      );
-    };
-
-    if (isHandoverUserMessage(message)) {
-      return null;
-    }
-
     if (isHandoverGroup && type === "user_message") {
       // We do not display the user message in a handover group.
       return null;

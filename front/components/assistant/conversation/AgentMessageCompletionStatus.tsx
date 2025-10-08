@@ -1,4 +1,4 @@
-import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import { ChevronRightIcon, cn } from "@dust-tt/sparkle";
 import React from "react";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -22,42 +22,40 @@ export const AgentMessageCompletionStatus = ({
     });
   };
 
-  if (agentMessage.completedTs === null) {
-    return (
-      <Button
-        icon={data === agentMessage.sId ? ChevronLeftIcon : ChevronRightIcon}
-        onClick={onClick}
-        size="xs"
-        variant={data === agentMessage.sId ? "ghost-secondary" : "ghost"}
-      />
-    );
+  if (agentMessage.status === "created") {
+    // This message is not completed yet, so we don't need to show the completion status since we have the activity chip.
+    return null;
   }
 
-  const completedInMs = agentMessage.completedTs - agentMessage.created;
+  let displayText = "Message breakdown";
 
-  let statusText = "Completed in";
-  if (agentMessage.status === "failed") {
-    statusText = "Errored after";
-  } else if (agentMessage.status === "cancelled") {
-    statusText = "Cancelled after";
+  // If we have a completed timestamp, we can show the duration.
+  if (agentMessage.completedTs !== null) {
+    let statusText = "Completed in";
+    if (agentMessage.status === "failed") {
+      statusText = "Errored after";
+    } else if (agentMessage.status === "cancelled") {
+      statusText = "Cancelled after";
+    }
+    const completedInMs = agentMessage.completedTs - agentMessage.created;
+    const timeString = formatDurationString(completedInMs);
+    displayText = `${statusText} ${timeString}`;
   }
 
-  const timeString = formatDurationString(completedInMs);
+  const isOpened = data === agentMessage.sId;
 
   return (
-    <div className="flex items-center gap-1">
-      <span
-        className="cursor-pointer text-xs text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
-        onClick={onClick}
-      >
-        {statusText} {timeString}
-      </span>
-      <Button
-        icon={data === agentMessage.sId ? ChevronLeftIcon : ChevronRightIcon}
-        onClick={onClick}
-        size="xs"
-        variant={data === agentMessage.sId ? "ghost-secondary" : "ghost"}
-      />
+    <div
+      className={cn(
+        "flex cursor-pointer items-center gap-1 text-xs",
+        "text-muted-foreground dark:text-muted-foreground-night",
+        "hover:text-foreground dark:hover:text-foreground-night",
+        isOpened && "text-foreground dark:text-foreground-night"
+      )}
+      onClick={onClick}
+    >
+      <span>{displayText}</span>
+      <ChevronRightIcon className="h-3 w-3" />
     </div>
   );
 };

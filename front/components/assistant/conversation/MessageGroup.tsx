@@ -28,7 +28,9 @@ const MAX_OFFSET_PIXEL = 600;
 
 export const LAST_MESSAGE_GROUP_ID = "last-message-group";
 
-const isHandoverUserMessage = (message: MessageWithContentFragmentsType) => {
+export const isHandoverUserMessage = (
+  message: MessageWithContentFragmentsType
+) => {
   return (
     message.type === "user_message" &&
     message.context.origin === "agent_handover"
