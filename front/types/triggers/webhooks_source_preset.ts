@@ -1,5 +1,5 @@
+import type { Icon } from "@dust-tt/sparkle";
 import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
-import { type Icon } from "@dust-tt/sparkle/dist/esm/components/Icon";
 
 type EventFieldBase = {
   name: string;
