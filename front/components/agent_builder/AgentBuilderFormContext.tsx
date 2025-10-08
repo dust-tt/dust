@@ -196,6 +196,8 @@ const scheduleConfigSchema = z.object({
 
 const webhookConfigSchema = z.object({
   includePayload: z.boolean(),
+  event: z.string().nullable(),
+  filter: z.string().nullable().optional(),
 });
 
 const webhookTriggerSchema = z.object({
