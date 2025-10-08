@@ -93,6 +93,7 @@ const MAX_OUTPUT_ITEMS = 128;
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
+const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
   properties: {},
@@ -387,11 +388,16 @@ export async function* tryCallMCPTool(
     while (!toolDone) {
       const notificationOrDone = await Promise.race([
         notificationStream.next(), // Next notification.
-        toolPromise.then(() => MCP_TOOL_DONE_EVENT_NAME), // Or tool fully completes.
+        toolPromise
+          .then(() => MCP_TOOL_DONE_EVENT_NAME)
+          .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
       ]);
 
-      // If the tool completed, break from the loop and stop reading notifications.
-      if (notificationOrDone === MCP_TOOL_DONE_EVENT_NAME) {
+      // If the tool completed or errored, break from the loop and stop reading notifications.
+      if (
+        notificationOrDone === MCP_TOOL_DONE_EVENT_NAME ||
+        notificationOrDone === MCP_TOOL_ERROR_EVENT_NAME
+      ) {
         toolDone = true;
       } else {
         const iteratorResult = notificationOrDone;
