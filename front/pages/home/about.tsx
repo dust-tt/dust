@@ -390,6 +390,13 @@ const PEOPLE: Record<
     linkedIn: "https://www.linkedin.com/in/fabiencelier/",
     github: "https://github.com/fabiencelier",
   },
+  chris: {
+    name: "Christophe Jow",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/16521527?v=4",
+    linkedIn: "https://www.linkedin.com/in/christophe-jow/",
+    github: "https://github.com/Chrisjow",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
