@@ -40,6 +40,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -171,6 +172,13 @@ function makeExtractInformationFromDocumentsTool(
       let outputs: ProcessActionOutputsType | null = null;
       for await (const event of res.value.eventStream) {
         if (event.type === "error") {
+          logger.error(
+            {
+              error: event.content.message,
+              dustRunId: res.value.dustRunId,
+            },
+            "[Extract MCP Server] Received an error while streaming dust app"
+          );
           return new Err(
             new MCPError(
               `"Error running extract data action": ${event.content.message ?? "Unknown error from event stream."}`
@@ -181,6 +189,15 @@ function makeExtractInformationFromDocumentsTool(
         if (event.type === "block_execution") {
           const e = event.content.execution[0][0];
           if (e.error) {
+            logger.error(
+              {
+                error: e.error,
+                blockName: event.content.block_name,
+                dustRunId: res.value.dustRunId,
+              },
+              "[Extract MCP Server] Get a block execution error while streaming dust app"
+            );
+
             return new Err(
               new MCPError(
                 `"Error running extract data action": ${e.error ?? "An unknown error occurred during block execution."}`
