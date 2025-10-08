@@ -20,14 +20,14 @@ export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
 export type WebhookSourceSignatureAlgorithm =
   (typeof WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS)[number];
 
-export const WEBHOOK_SOURCE_PRESETS_MAP: Record<string, PresetWebhook> = {
+export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
+  Exclude<WebhookSourceKind, "custom">,
+  PresetWebhook
+> = {
   github: GITHUB_WEBHOOK_PRESET,
 } as const;
 
-export const WEBHOOK_SOURCE_KIND = [
-  "custom",
-  ...Object.keys(WEBHOOK_SOURCE_PRESETS_MAP),
-] as const;
+export const WEBHOOK_SOURCE_KIND = ["custom", "github"] as const;
 
 export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
 

@@ -123,6 +123,277 @@ const MILESTONE_CHILDREN_FIELDS: EventField[] = [
   },
 ];
 
+const PULL_REQUEST_OBJECT_CHILDREN_FIELDS: EventField[] = [
+  {
+    name: "html_url",
+    description: "The GitHub web URL of the pull request.",
+    type: "string",
+  },
+  {
+    name: "id",
+    description: "The unique identifier of the pull request.",
+    type: "number",
+  },
+  {
+    name: "number",
+    description: "The pull request number.",
+    type: "number",
+  },
+  {
+    name: "state",
+    description: "The state of the pull request.",
+    type: "enum",
+    enumValues: ["open", "closed"],
+  },
+  {
+    name: "locked",
+    description: "Whether the pull request is locked.",
+    type: "boolean",
+  },
+  {
+    name: "title",
+    description: "The title of the pull request.",
+    type: "string",
+  },
+  {
+    name: "user",
+    description: "The user who created the pull request.",
+    type: "object",
+    isArray: false,
+    childrenFields: USER_CHILDREN_FIELDS,
+  },
+  {
+    name: "body",
+    description: "The body content of the pull request.",
+    type: "string",
+  },
+  {
+    name: "created_at",
+    description: "The timestamp when the pull request was created.",
+    type: "string",
+  },
+  {
+    name: "updated_at",
+    description: "The timestamp when the pull request was last updated.",
+    type: "string",
+  },
+  {
+    name: "merged_at",
+    description: "The timestamp when the pull request was merged.",
+    type: "string",
+  },
+  {
+    name: "assignee",
+    description: "The user assigned to the pull request.",
+    type: "object",
+    isArray: false,
+    childrenFields: USER_CHILDREN_FIELDS,
+  },
+  {
+    name: "assignees",
+    description: "The users assigned to the pull request.",
+    type: "object",
+    isArray: true,
+    childrenFields: USER_CHILDREN_FIELDS,
+  },
+  {
+    name: "requested_reviewers",
+    description: "The users requested to review the pull request.",
+    type: "object",
+    isArray: true,
+    childrenFields: USER_CHILDREN_FIELDS,
+  },
+  {
+    name: "labels",
+    description: "The labels applied to the pull request.",
+    type: "object",
+    isArray: true,
+    childrenFields: LABEL_CHILDREN_FIELDS,
+  },
+  {
+    name: "milestone",
+    description: "The milestone associated with the pull request.",
+    type: "object",
+    isArray: false,
+    childrenFields: MILESTONE_CHILDREN_FIELDS,
+  },
+  {
+    name: "head",
+    description: "The head branch of the pull request.",
+    type: "object",
+    isArray: false,
+    childrenFields: [
+      {
+        name: "label",
+        description: "The label of the head branch.",
+        type: "string",
+      },
+      {
+        name: "ref",
+        description: "The ref of the head branch.",
+        type: "string",
+      },
+    ],
+  },
+  {
+    name: "base",
+    description: "The base branch of the pull request.",
+    type: "object",
+    isArray: false,
+    childrenFields: [
+      {
+        name: "label",
+        description: "The label of the base branch.",
+        type: "string",
+      },
+      {
+        name: "ref",
+        description: "The ref of the base branch.",
+        type: "string",
+      },
+    ],
+  },
+  {
+    name: "draft",
+    description: "Whether the pull request is a draft.",
+    type: "boolean",
+  },
+  {
+    name: "merged",
+    description: "Whether the pull request has been merged.",
+    type: "boolean",
+  },
+  {
+    name: "mergeable",
+    description: "Whether the pull request is mergeable.",
+    type: "boolean",
+  },
+  {
+    name: "comments",
+    description: "The number of comments on the pull request.",
+    type: "number",
+  },
+  {
+    name: "commits",
+    description: "The number of commits in the pull request.",
+    type: "number",
+  },
+  {
+    name: "additions",
+    description: "The number of additions in the pull request.",
+    type: "number",
+  },
+  {
+    name: "deletions",
+    description: "The number of deletions in the pull request.",
+    type: "number",
+  },
+  {
+    name: "changed_files",
+    description: "The number of changed files in the pull request.",
+    type: "number",
+  },
+];
+
+const ISSUE_OBJECT_CHILDREN_FIELDS: EventField[] = [
+  {
+    name: "url",
+    description: "The API URL of the issue.",
+    type: "string",
+  },
+  {
+    name: "id",
+    description: "The unique identifier of the issue.",
+    type: "number",
+  },
+  {
+    name: "number",
+    description: "The issue number.",
+    type: "number",
+  },
+  {
+    name: "title",
+    description: "The title of the issue.",
+    type: "string",
+  },
+  {
+    name: "user",
+    description: "The user who created the issue.",
+    type: "object",
+    isArray: false,
+    childrenFields: USER_CHILDREN_FIELDS,
+  },
+  {
+    name: "labels",
+    description: "The labels applied to the issue.",
+    type: "object",
+    isArray: true,
+    childrenFields: LABEL_CHILDREN_FIELDS,
+  },
+  {
+    name: "state",
+    description: "The state of the issue.",
+    type: "enum",
+    enumValues: ["open", "closed", "all"],
+  },
+  {
+    name: "locked",
+    description: "Whether the issue is locked.",
+    type: "boolean",
+  },
+  {
+    name: "assignee",
+    description: "The user assigned to the issue.",
+    type: "object",
+    isArray: false,
+    childrenFields: USER_CHILDREN_FIELDS,
+  },
+  {
+    name: "assignees",
+    description: "The users assigned to the issue.",
+    type: "object",
+    isArray: true,
+    childrenFields: USER_CHILDREN_FIELDS,
+  },
+  {
+    name: "milestone",
+    description: "The milestone associated with the issue.",
+    type: "object",
+    isArray: false,
+    childrenFields: MILESTONE_CHILDREN_FIELDS,
+  },
+  {
+    name: "comments",
+    description: "The number of comments on the issue.",
+    type: "number",
+  },
+  {
+    name: "created_at",
+    description: "The timestamp when the issue was created.",
+    type: "string",
+  },
+  {
+    name: "updated_at",
+    description: "The timestamp when the issue was last updated.",
+    type: "string",
+  },
+  {
+    name: "closed_at",
+    description: "The timestamp when the issue was closed.",
+    type: "string",
+  },
+  {
+    name: "author_association",
+    description: "The association of the author with the repository.",
+    type: "string",
+  },
+  {
+    name: "body",
+    description: "The body content of the issue.",
+    type: "string",
+  },
+];
+
 const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
   name: "pull_request",
   value: "pull_request",
@@ -166,177 +437,7 @@ const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
       description: "The pull request itself.",
       type: "object",
       isArray: false,
-      childrenFields: [
-        {
-          name: "html_url",
-          description: "The GitHub web URL of the pull request.",
-          type: "string",
-        },
-        {
-          name: "id",
-          description: "The unique identifier of the pull request.",
-          type: "number",
-        },
-        {
-          name: "number",
-          description: "The pull request number.",
-          type: "number",
-        },
-        {
-          name: "state",
-          description: "The state of the pull request.",
-          type: "enum",
-          enumValues: ["open", "closed"],
-        },
-        {
-          name: "locked",
-          description: "Whether the pull request is locked.",
-          type: "boolean",
-        },
-        {
-          name: "title",
-          description: "The title of the pull request.",
-          type: "string",
-        },
-        {
-          name: "user",
-          description: "The user who created the pull request.",
-          type: "object",
-          isArray: false,
-          childrenFields: USER_CHILDREN_FIELDS,
-        },
-        {
-          name: "body",
-          description: "The body content of the pull request.",
-          type: "string",
-        },
-        {
-          name: "created_at",
-          description: "The timestamp when the pull request was created.",
-          type: "string",
-        },
-        {
-          name: "updated_at",
-          description: "The timestamp when the pull request was last updated.",
-          type: "string",
-        },
-        {
-          name: "merged_at",
-          description: "The timestamp when the pull request was merged.",
-          type: "string",
-        },
-        {
-          name: "assignee",
-          description: "The user assigned to the pull request.",
-          type: "object",
-          isArray: false,
-          childrenFields: USER_CHILDREN_FIELDS,
-        },
-        {
-          name: "assignees",
-          description: "The users assigned to the pull request.",
-          type: "object",
-          isArray: true,
-          childrenFields: USER_CHILDREN_FIELDS,
-        },
-        {
-          name: "requested_reviewers",
-          description: "The users requested to review the pull request.",
-          type: "object",
-          isArray: true,
-          childrenFields: USER_CHILDREN_FIELDS,
-        },
-        {
-          name: "labels",
-          description: "The labels applied to the pull request.",
-          type: "object",
-          isArray: true,
-          childrenFields: LABEL_CHILDREN_FIELDS,
-        },
-        {
-          name: "milestone",
-          description: "The milestone associated with the pull request.",
-          type: "object",
-          isArray: false,
-          childrenFields: MILESTONE_CHILDREN_FIELDS,
-        },
-        {
-          name: "head",
-          description: "The head branch of the pull request.",
-          type: "object",
-          isArray: false,
-          childrenFields: [
-            {
-              name: "label",
-              description: "The label of the head branch.",
-              type: "string",
-            },
-            {
-              name: "ref",
-              description: "The ref of the head branch.",
-              type: "string",
-            },
-          ],
-        },
-        {
-          name: "base",
-          description: "The base branch of the pull request.",
-          type: "object",
-          isArray: false,
-          childrenFields: [
-            {
-              name: "label",
-              description: "The label of the base branch.",
-              type: "string",
-            },
-            {
-              name: "ref",
-              description: "The ref of the base branch.",
-              type: "string",
-            },
-          ],
-        },
-        {
-          name: "draft",
-          description: "Whether the pull request is a draft.",
-          type: "boolean",
-        },
-        {
-          name: "merged",
-          description: "Whether the pull request has been merged.",
-          type: "boolean",
-        },
-        {
-          name: "mergeable",
-          description: "Whether the pull request is mergeable.",
-          type: "boolean",
-        },
-        {
-          name: "comments",
-          description: "The number of comments on the pull request.",
-          type: "number",
-        },
-        {
-          name: "commits",
-          description: "The number of commits in the pull request.",
-          type: "number",
-        },
-        {
-          name: "additions",
-          description: "The number of additions in the pull request.",
-          type: "number",
-        },
-        {
-          name: "deletions",
-          description: "The number of deletions in the pull request.",
-          type: "number",
-        },
-        {
-          name: "changed_files",
-          description: "The number of changed files in the pull request.",
-          type: "number",
-        },
-      ],
+      childrenFields: PULL_REQUEST_OBJECT_CHILDREN_FIELDS,
     },
     {
       name: "sender",
@@ -382,104 +483,7 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
       description: "The issue itself.",
       type: "object",
       isArray: false,
-      childrenFields: [
-        {
-          name: "url",
-          description: "The API URL of the issue.",
-          type: "string",
-        },
-        {
-          name: "id",
-          description: "The unique identifier of the issue.",
-          type: "number",
-        },
-        {
-          name: "number",
-          description: "The issue number.",
-          type: "number",
-        },
-        {
-          name: "title",
-          description: "The title of the issue.",
-          type: "string",
-        },
-        {
-          name: "user",
-          description: "The user who created the issue.",
-          type: "object",
-          isArray: false,
-          childrenFields: USER_CHILDREN_FIELDS,
-        },
-        {
-          name: "labels",
-          description: "The labels applied to the issue.",
-          type: "object",
-          isArray: true,
-          childrenFields: LABEL_CHILDREN_FIELDS,
-        },
-        {
-          name: "state",
-          description: "The state of the issue.",
-          type: "enum",
-          enumValues: ["open", "closed", "all"],
-        },
-        {
-          name: "locked",
-          description: "Whether the issue is locked.",
-          type: "boolean",
-        },
-        {
-          name: "assignee",
-          description: "The user assigned to the issue.",
-          type: "object",
-          isArray: false,
-          childrenFields: USER_CHILDREN_FIELDS,
-        },
-        {
-          name: "assignees",
-          description: "The users assigned to the issue.",
-          type: "object",
-          isArray: true,
-          childrenFields: USER_CHILDREN_FIELDS,
-        },
-        {
-          name: "milestone",
-          description: "The milestone associated with the issue.",
-          type: "object",
-          isArray: false,
-          childrenFields: MILESTONE_CHILDREN_FIELDS,
-        },
-        {
-          name: "comments",
-          description: "The number of comments on the issue.",
-          type: "number",
-        },
-        {
-          name: "created_at",
-          description: "The timestamp when the issue was created.",
-          type: "string",
-        },
-        {
-          name: "updated_at",
-          description: "The timestamp when the issue was last updated.",
-          type: "string",
-        },
-        {
-          name: "closed_at",
-          description: "The timestamp when the issue was closed.",
-          type: "string",
-        },
-        {
-          name: "author_association",
-          description: "The association of the author with the repository.",
-          type: "string",
-        },
-        {
-          name: "body",
-          description: "The body content of the issue.",
-          type: "string",
-        },
-      ],
+      childrenFields: ISSUE_OBJECT_CHILDREN_FIELDS,
     },
     {
       name: "assignee",
