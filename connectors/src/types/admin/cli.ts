@@ -292,6 +292,10 @@ export const IntercomCommandSchema = t.type({
     conversationsSlidingWindow: t.union([t.number, t.undefined]),
     teamId: t.union([t.string, t.undefined]),
     closedAfter: t.union([t.number, t.undefined]),
+    state: t.union([
+      t.union([t.literal("open"), t.literal("closed")]),
+      t.undefined,
+    ]),
   }),
 });
 

@@ -316,6 +316,7 @@ export async function fetchIntercomConversations({
   cursor = null,
   pageSize = 20,
   closedAfter,
+  state,
 }: {
   accessToken: string;
   teamId?: string;
@@ -323,6 +324,7 @@ export async function fetchIntercomConversations({
   cursor: string | null;
   pageSize?: number;
   closedAfter?: number;
+  state?: string;
 }): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(
     Date.now() - slidingWindow * 24 * 60 * 60 * 1000
@@ -359,6 +361,14 @@ export async function fetchIntercomConversations({
       field: "statistics.last_close_at",
       operator: ">",
       value: closedAfter,
+    });
+  }
+
+  if (state) {
+    queryFilters.push({
+      field: "state",
+      operator: "=",
+      value: state,
     });
   }
 
