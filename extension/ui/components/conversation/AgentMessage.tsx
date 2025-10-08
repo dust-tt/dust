@@ -1,6 +1,5 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { retryMessage } from "@app/shared/lib/conversation";
-import { useSWRWithDefaults } from "@app/shared/lib/swr";
 import { formatTimestring } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
 import type {
@@ -708,24 +707,25 @@ export function AgentMessage({
       try {
         const token = await platform.auth.getAccessToken();
 
-        const { data, error } = useSWRWithDefaults(
-          `/api/v1/w/${owner.sId}/files/${file.fileId}?action=view`,
-          fetch,
+        const response = await fetch(
+          `${user.dustDomain}/api/v1/w/${owner.sId}/files/${file.fileId}?action=view`,
           {
-            disabled: !token,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           }
         );
 
-        if (error || !data) {
+        if (!response.ok) {
           sendNotification({
             type: "error",
             title: "Download failed",
-            description: `We could not retrieve the generated file: ${error?.message ?? "Try again later."}.`,
+            description: `We could not retrieve the generated file: ${response.statusText}.`,
           });
           return;
         }
 
-        const blob = await data.blob();
+        const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
         const filename = file.title || file.fileId;
 
