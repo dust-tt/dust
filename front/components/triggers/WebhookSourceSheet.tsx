@@ -187,8 +187,14 @@ function WebhookSourceSheetContent({
       signatureHeader: "",
       signatureAlgorithm: "sha256",
       customHeaders: null,
+      subscribedEvents:
+        mode.kind === "custom"
+          ? []
+          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].events.map(
+              (e) => e.value
+            ),
     }),
-    []
+    [mode.kind]
   );
 
   const createForm = useForm<CreateWebhookSourceFormData>({
@@ -504,7 +510,10 @@ function WebhookSourceSheetContent({
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
-              <CreateWebhookSourceFormContent form={createForm} />
+              <CreateWebhookSourceFormContent
+                form={createForm}
+                kind={mode.kind}
+              />
             </div>
           </FormProvider>
         ),
