@@ -146,7 +146,6 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         : !initializedUserId;
 
       if (needsInitialization) {
-        // First time for this user, or user switched accounts
         posthog.opt_in_capturing();
 
         if (user) {
@@ -156,7 +155,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         if (typeof window !== "undefined") {
           localStorage.setItem(
             POSTHOG_INITIALIZED_KEY,
-            user?.sId || "anonymous"
+            user?.sId ?? "anonymous"
           );
         }
       }
