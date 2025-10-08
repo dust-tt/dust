@@ -216,7 +216,8 @@ chrome.runtime.onMessage.addListener(
       | AuthBackgroundMessage
       | GetActiveTabBackgroundMessage
       | CaptureMesssage
-      | InputBarStatusMessage,
+      | InputBarStatusMessage
+      | { type: "LOG"; data: Record<string, unknown> },
     sender,
     sendResponse: (
       response:
@@ -228,6 +229,22 @@ chrome.runtime.onMessage.addListener(
     ) => void
   ) => {
     switch (message.type) {
+      case "LOG":
+        switch (message.data.type) {
+          case "info":
+            console.log("[DEBUG] Info:", JSON.stringify(message.data, null, 2));
+            break;
+          case "error":
+            console.error(
+              "[DEBUG] Error:",
+              JSON.stringify(message.data, null, 2)
+            );
+            break;
+          default:
+            console.log("[DEBUG]:", JSON.stringify(message.data, null, 2));
+            break;
+        }
+        return false;
       case "AUTHENTICATE":
         void authenticate(message, sendResponse);
         return true; // Keep the message channel open for async response.
