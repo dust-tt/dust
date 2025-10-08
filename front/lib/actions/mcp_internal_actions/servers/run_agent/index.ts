@@ -415,18 +415,16 @@ ${query}`
         };
 
         if (abortSignal) {
-          const onAbort = () => {
-            requestChildCancellation();
-          };
-
           if (abortSignal.aborted) {
-            onAbort();
+            requestChildCancellation();
             return finalizeAndReturn(
               new Err(new MCPError("Agent run cancelled", { tracked: false }))
             );
           }
 
-          abortSignal.addEventListener("abort", onAbort, { once: true });
+          abortSignal.addEventListener("abort", requestChildCancellation, {
+            once: true,
+          });
         }
 
         if (isNewConversation) {
