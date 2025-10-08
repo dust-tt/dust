@@ -1190,7 +1190,7 @@ impl Embedder for OpenAIEmbedder {
         self.id.clone()
     }
 
-    async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+    async fn initialize(&mut self, _credentials: Credentials) -> Result<()> {
         if !(vec!["text-embedding-3-small", "text-embedding-3-large-1536"]
             .contains(&self.id.as_str()))
         {
@@ -1200,81 +1200,41 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        let use_eu_endpoint: bool = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
-            Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
-            None => false,
-        };
-
-        let open_ai_api_key: Option<String> = match credentials.get("OPENAI_API_KEY") {
-            Some(api_key) => Some(api_key.clone()),
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
-                Ok(key) => Some(key),
-                Err(_) => None,
-            },
-        };
-
-        // This is only for logging purposes.
         let mut key_source = "";
 
-        match use_eu_endpoint {
-            true => match open_ai_api_key {
-                // If use_eu_endpoint is set, we ignore CORE_DATA_SOURCES_OPENAI_API_KEY
-                Some(api_key) => {
-                    self.api_key = Some(api_key.clone());
-                    self.host = Some("eu.api.openai.com".to_string());
-                    key_source = "use_eu_endpoint";
-                }
-                None => Err(anyhow!(
-                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                ))?,
-            },
-            false => {
-                // Give priority to `CORE_DATA_SOURCES_OPENAI_API_KEY` env variable
-                match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                        key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY";
-
-                        // This block is only for logging purposes, and can be removed when we stop using CORE_DATA_SOURCES_OPENAI_API_KEY
-                        match open_ai_api_key.as_ref() {
-                            Some(front_key) => {
-                                if let Some(core_key) = self.api_key.as_ref() {
-                                    if front_key != core_key {
-                                        fn last_two(s: &str) -> &str {
-                                            // Being safe in case it's an empty string
-                                            if s.len() <= 2 {
-                                                s
-                                            } else {
-                                                &s[s.len() - 2..]
-                                            }
-                                        }
-                                        warn!(
-                                            front_key = last_two(front_key.as_str()),
-                                            core_key = last_two(core_key.as_str()),
-                                            "CORE_DATA_SOURCES_OPENAI_API_KEY and OPENAI_API_KEY differ; using CORE_DATA_SOURCES_OPENAI_API_KEY."
-                                        );
-                                    }
-                                }
-                            }
-                            None => {
-                                // This tells us that bad things could happen if we were to unset CORE_DATA_SOURCES_OPENAI_API_KEY
-                                warn!("CORE_DATA_SOURCES_OPENAI_API_KEY is set, but OPENAI_API_KEY is not.")
-                            }
-                        }
-                    }
-                    Err(_) => match open_ai_api_key {
-                        Some(api_key) => {
-                            self.api_key = Some(api_key.clone());
-                            key_source = "open_ai_api_key";
-                        }
-                        None => Err(anyhow!(
-                            "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                        ))?,
-                    },
-                }
-                self.host = Some("api.openai.com".to_string());
+        // CORE_DATA_SOURCES_OPENAI_API_KEY_EU is transitional and will be removed soon
+        if let Ok(key) = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY_EU") {
+            if !key.is_empty() {
+                self.api_key = Some(key);
+                key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY_EU";
             }
         }
+
+        if self.api_key.is_none() {
+            if let Ok(key) = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
+                if !key.is_empty() {
+                    self.api_key = Some(key);
+                    key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY";
+                }
+            }
+        }
+
+        if self.api_key.is_none() {
+            return Err(anyhow!(
+            "Environment variable `CORE_DATA_SOURCES_OPENAI_API_KEY_EU` or `CORE_DATA_SOURCES_OPENAI_API_KEY` must be set."
+            ));
+        }
+
+        // Select host based on DUST_REGION
+        let dust_region = std::env::var("DUST_REGION").unwrap_or_default();
+        self.host = if dust_region == "europe-west1" {
+            Some("eu.api.openai.com".to_string())
+        } else if dust_region == "us-central1" {
+            Some("api.openai.com".to_string())
+        } else {
+            warn!("DUST_REGION is not set to a recognized value; using US openai endpoint.");
+            Some("api.openai.com".to_string())
+        };
 
         info!(
             model = self.id,
