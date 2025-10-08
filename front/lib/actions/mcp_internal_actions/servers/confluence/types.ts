@@ -164,3 +164,23 @@ export const ConfluenceUpdatePageRequestSchema = z.object({
 export type ConfluenceUpdatePageRequest = z.infer<
   typeof ConfluenceUpdatePageRequestSchema
 >;
+
+export const UpdatePagePayloadSchema = z.object({
+  id: z.string(),
+  version: z.object({
+    number: z.number(),
+    message: z.string().optional(),
+  }),
+  status: z.string().optional(),
+  title: z.string().optional(),
+  spaceId: z.string().optional(),
+  parentId: z.string().optional(),
+  body: z
+    .object({
+      representation: z.string(),
+      value: z.string(),
+    })
+    .optional(),
+});
+
+export type UpdatePagePayload = z.infer<typeof UpdatePagePayloadSchema>;

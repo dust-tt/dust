@@ -9,6 +9,7 @@ import type {
   ConfluencePage,
   ConfluenceSearchRequest,
   ConfluenceUpdatePageRequest,
+  UpdatePagePayload,
   WithAuthParams,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
 import {
@@ -298,34 +299,36 @@ export async function updatePage(
   const currentPage = currentPageResult.value;
   const endpoint = `/wiki/api/v2/pages/${updateData.id}`;
 
-  const payload: {
-    id: string;
-    version: { number: number; message?: string };
-    status?: string;
-    title?: string;
-    spaceId?: string;
-    parentId?: string;
-    body?: { representation: string; value: string };
-  } = {
-    id: updateData.id,
-    version: updateData.version,
-    status: updateData.status ?? (currentPage.status || "current"),
-    title: updateData.title ?? currentPage.title,
+  // Helper function to construct update payload
+  const buildUpdatePagePayload = (
+    updateData: ConfluenceUpdatePageRequest,
+    currentPage: ConfluencePage
+  ): UpdatePagePayload => {
+    const payload: UpdatePagePayload = {
+      id: updateData.id,
+      version: updateData.version,
+      status: updateData.status ?? (currentPage.status || "current"),
+      title: updateData.title ?? currentPage.title,
+    };
+
+    if (updateData.spaceId ?? currentPage.spaceId) {
+      payload.spaceId = updateData.spaceId ?? currentPage.spaceId;
+    }
+    if (updateData.parentId ?? currentPage.parentId) {
+      payload.parentId = updateData.parentId ?? currentPage.parentId;
+    }
+
+    if (updateData.body) {
+      payload.body = {
+        value: updateData.body.value,
+        representation: updateData.body.representation,
+      };
+    }
+
+    return payload;
   };
 
-  if (updateData.spaceId ?? currentPage.spaceId) {
-    payload.spaceId = updateData.spaceId ?? currentPage.spaceId;
-  }
-  if (updateData.parentId ?? currentPage.parentId) {
-    payload.parentId = updateData.parentId ?? currentPage.parentId;
-  }
-
-  if (updateData.body) {
-    payload.body = {
-      value: updateData.body.value,
-      representation: updateData.body.representation,
-    };
-  }
+  const payload = buildUpdatePagePayload(updateData, currentPage);
 
   const result = await confluenceApiCall(
     {
