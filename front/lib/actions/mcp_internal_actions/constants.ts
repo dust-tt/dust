@@ -423,6 +423,8 @@ The directive should be used to display a clickable version of the agent name in
       execute_read_query: "never_ask",
       list_objects: "never_ask",
       describe_object: "never_ask",
+      list_attachments: "never_ask",
+      read_attachment: "never_ask",
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
