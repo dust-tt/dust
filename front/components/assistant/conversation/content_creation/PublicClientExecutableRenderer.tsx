@@ -26,7 +26,10 @@ export function PublicClientExecutableRenderer({
     shareToken,
   });
   const [workOsCookie] = useCookies([WORKOS_SESSION]);
-  const hasWorkspace = "lastWorkspaceId" in workOsCookie;
+  const hasWorkspace =
+    workOsCookie &&
+    typeof workOsCookie === "object" &&
+    "lastWorkspaceId" in workOsCookie;
 
   const getFileBlob = React.useCallback(
     async (fileId: string): Promise<Blob | null> => {
