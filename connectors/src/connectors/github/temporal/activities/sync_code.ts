@@ -108,7 +108,8 @@ export async function githubExtractToGcsActivity({
   });
 
   if (repoInfoRes.isErr()) {
-    throw repoInfoRes.error;
+    logger.error({ err: repoInfoRes.error }, "Failed to get repository info");
+    return null;
   }
 
   const repoInfo = repoInfoRes.value;

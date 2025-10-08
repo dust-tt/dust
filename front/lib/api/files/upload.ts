@@ -273,7 +273,11 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
 
     // 4) Store transcript in processed version as plain text.
     const transcript = tr.value;
-    const writeStream = file.getWriteStream({ auth, version: "processed" });
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+      overrideContentType: "text/plain", // Explicitly set content type to plain text as it's a transcription
+    });
     await pipeline(Readable.from(transcript), writeStream);
 
     return new Ok(undefined);

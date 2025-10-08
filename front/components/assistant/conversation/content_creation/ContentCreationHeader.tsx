@@ -19,7 +19,6 @@ export function ContentCreationHeader({
         {onClose && (
           <Button
             variant="ghost"
-            size="xs"
             onClick={onClose}
             icon={XMarkIcon}
             className="text-element-600 hover:text-element-900 ml-auto"

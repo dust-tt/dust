@@ -47,7 +47,7 @@ export function ContentCreationContainer({
       return (
         <CenteredState>
           <Spinner size="sm" />
-          <span>Loading file...</span>
+          <span>Loading frame...</span>
         </CenteredState>
       );
     }

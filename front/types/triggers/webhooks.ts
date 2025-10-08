@@ -1,3 +1,5 @@
+import type { Icon } from "@dust-tt/sparkle";
+import { ActionGlobeAltIcon } from "@dust-tt/sparkle";
 import { z } from "zod";
 
 import type {
@@ -5,11 +7,11 @@ import type {
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { EditedByUser } from "@app/types/user";
-import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
-
 import { GITHUB_WEBHOOK_PRESET } from "@app/types/triggers/github_webhook_source_presets";
+import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
+import type { EditedByUser } from "@app/types/user";
 
 export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
   "sha1",
@@ -23,8 +25,15 @@ export type WebhookSourceSignatureAlgorithm =
 export const WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP: Record<
   Exclude<WebhookSourceKind, "custom">,
   PresetWebhook
-> = {
+> & {
+  custom: {
+    name: string;
+    icon: typeof Icon;
+    featureFlag?: WhitelistableFeature;
+  };
+} = {
   github: GITHUB_WEBHOOK_PRESET,
+  custom: { name: "Custom", icon: ActionGlobeAltIcon },
 } as const;
 
 export const WEBHOOK_SOURCE_KIND = ["custom", "github"] as const;

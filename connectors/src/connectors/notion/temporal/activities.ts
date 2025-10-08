@@ -2330,7 +2330,13 @@ export async function clearWorkflowCache({
     dataSourceId: connector.dataSourceId,
   });
 
-  localLogger.info("notionClearConnectorCacheActivity: Clearing cache.");
+  localLogger.info(
+    {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+    "notionClearConnectorCacheActivity: Clearing cache."
+  );
   await NotionConnectorPageCacheEntry.destroy({
     where: {
       connectorId: connector.id,
