@@ -589,6 +589,21 @@ export class FileResource extends BaseResource<FileModel> {
     return null;
   }
 
+  static async revokePublicSharingInWorkspace(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    return ShareableFileModel.update(
+      {
+        shareScope: "workspace",
+      },
+      {
+        where: {
+          workspaceId,
+          shareScope: "public",
+        },
+      }
+    );
+  }
+
   // Serialization logic.
 
   toJSON(auth?: Authenticator): FileType {
