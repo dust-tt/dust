@@ -810,7 +810,7 @@ export function AgentMessage({
           </div>
         )}
         {generatedFiles.length > 0 && (
-          <div className="mt-2 grid grid-cols-1 gap-2">
+          <div className="mt-2 grid grid-cols-3 gap-2">
             {generatedFiles.map((file) => {
               return (
                 <Citation
