@@ -1,8 +1,10 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
 import { launchJoinChannelWorkflow } from "@connectors/connectors/slack/temporal/client";
+import { apiConfig } from "@connectors/lib/api/config";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -45,6 +47,38 @@ export async function autoReadChannel(
   if (!slackConfiguration) {
     return new Err(
       new Error(`Slack configuration not found for teamId ${teamId}`)
+    );
+  }
+
+  // Check if the workspace is in maintenance mode before launching the workflow
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const dustAPI = new DustAPI(
+    {
+      url: apiConfig.getDustFrontAPIUrl(),
+    },
+    {
+      apiKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+    },
+    logger
+  );
+
+  // Make a simple API call to check if workspace is accessible
+  // If workspace is in maintenance, the API will return 503
+  const spacesRes = await dustAPI.getSpaces();
+  if (spacesRes.isErr()) {
+    logger.info(
+      {
+        connectorId: connector.id,
+        teamId,
+        error: spacesRes.error.message,
+      },
+      "Skipping auto-read channel: workspace API call failed (likely in maintenance)"
+    );
+    return new Err(
+      new Error(
+        `Cannot auto-read channel: workspace is unavailable (${spacesRes.error.message})`
+      )
     );
   }
 
