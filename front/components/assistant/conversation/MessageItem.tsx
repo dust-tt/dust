@@ -9,6 +9,7 @@ import {
 } from "@app/components/assistant/conversation/AttachmentCitation";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -42,6 +43,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     }: MessageItemProps,
     ref
   ) {
+    const fileUploaderService = useFileUploaderService({
+      owner,
+      useCase: "conversation",
+      useCaseMetadata: { conversationId },
+    });
     const { sId, type } = message;
     const sendNotification = useSendNotification();
 
@@ -117,6 +123,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 <AttachmentCitation
                   key={attachmentCitation.id}
                   attachmentCitation={attachmentCitation}
+                  fileUploaderService={fileUploaderService}
                 />
               );
             })
