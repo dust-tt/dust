@@ -104,23 +104,6 @@ export async function callAction<V extends t.Mixed>(
     return r;
   }
 
-  // Check if the response is a valid base response first
-  if (isActionResponseBase(r.value)) {
-    // Check if results field exists and is not null
-    const response = r.value as ActionResponseBase & {
-      results?: unknown;
-    };
-
-    if (!response.results || response.results === null) {
-      // The action returned null or missing results, which indicates a failure
-      return new Err({
-        type: "action_failed",
-        message: `Action failed response: results field is null or missing. Status: ${JSON.stringify(r.value.status)}`,
-        runId: r.value.run_id,
-      });
-    }
-  }
-
   // create a schema validator using the provided schema + the base response schema
   const responseSchema = t.intersection([
     ActionResponseBaseSchema,
