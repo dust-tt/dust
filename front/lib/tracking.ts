@@ -86,11 +86,11 @@ export function trackEvent({
   }
 
   const eventName = `${area}:${object}:${action}`;
-  const properties: Record<string, string | TrackingExtra> = {
+  const properties = {
     area,
     object,
     action,
-    ...(extra && { extra }),
+    ...extra,
   };
 
   posthog.capture(eventName, properties);

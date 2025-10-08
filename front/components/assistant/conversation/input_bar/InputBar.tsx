@@ -212,9 +212,9 @@ export function AssistantInputBar({
       object: "message_send",
       action: "submit",
       extra: {
-        has_attachments: attachedNodes.length > 0 ? "true" : "false",
-        has_tools: selectedMCPServerViews.length > 0 ? "true" : "false",
-        has_assistant: selectedAssistant ? "true" : "false",
+        has_attachments: attachedNodes.length > 0,
+        has_tools: selectedMCPServerViews.length > 0,
+        has_assistant: !!selectedAssistant,
       },
     });
 
