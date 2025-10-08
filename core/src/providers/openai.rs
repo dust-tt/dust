@@ -1217,6 +1217,14 @@ impl Embedder for OpenAIEmbedder {
         self.api_key = Some(key_part.to_string());
         self.host = Some(host_part.to_string());
 
+        // Check host validity to protect against SSRF
+        if !self.host.as_ref().unwrap().ends_with(".openai.com") {
+            return Err(anyhow!(
+                "Invalid OpenAI host `{}`: must end with `.openai.com`",
+                self.host.as_ref().unwrap()
+            ));
+        }
+
         info!(
             model = self.id,
             openai_host = self.host,
