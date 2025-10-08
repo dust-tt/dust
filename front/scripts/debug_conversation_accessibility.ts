@@ -12,7 +12,7 @@ makeScript(
     },
     userId: {
       alias: "u",
-      describe: "User ID (sId)",
+      describe: "User ID (number)",
       type: "string" as const,
       demandOption: true,
     },
