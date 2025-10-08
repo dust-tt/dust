@@ -31,7 +31,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::{info, warn};
+use tracing::info;
 
 use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
@@ -1200,46 +1200,25 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        let mut key_source = "";
+        // CORE_DATA_SOURCES_OPENAI_API_KEY can take two forms:
+        // - just the API key (e.g. sk-xxxx)
+        // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.openai.com)
 
-        // CORE_DATA_SOURCES_OPENAI_API_KEY_EU is transitional and will be removed soon
-        if let Ok(key) = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY_EU") {
-            if !key.is_empty() {
-                self.api_key = Some(key);
-                key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY_EU";
-            }
-        }
+        let raw = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY").map_err(|_| {
+            anyhow!("Environment variable `CORE_DATA_SOURCES_OPENAI_API_KEY` must be set.")
+        })?;
 
-        if self.api_key.is_none() {
-            if let Ok(key) = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
-                if !key.is_empty() {
-                    self.api_key = Some(key);
-                    key_source = "CORE_DATA_SOURCES_OPENAI_API_KEY";
-                }
-            }
-        }
-
-        if self.api_key.is_none() {
-            return Err(anyhow!(
-            "Environment variable `CORE_DATA_SOURCES_OPENAI_API_KEY_EU` or `CORE_DATA_SOURCES_OPENAI_API_KEY` must be set."
-            ));
-        }
-
-        // Select host based on DUST_REGION
-        let dust_region = std::env::var("DUST_REGION").unwrap_or_default();
-        self.host = if dust_region == "europe-west1" {
-            Some("eu.api.openai.com".to_string())
-        } else if dust_region == "us-central1" {
-            Some("api.openai.com".to_string())
-        } else {
-            warn!("DUST_REGION is not set to a recognized value; using US openai endpoint.");
-            Some("api.openai.com".to_string())
+        let (key_part, host_part) = match raw.split_once(';') {
+            Some((k, h)) => (k.trim(), h.trim()),
+            None => (raw.trim(), "api.openai.com"),
         };
+
+        self.api_key = Some(key_part.to_string());
+        self.host = Some(host_part.to_string());
 
         info!(
             model = self.id,
             openai_host = self.host,
-            key_source,
             "OpenAIEmbedder.initialize"
         );
         Ok(())
