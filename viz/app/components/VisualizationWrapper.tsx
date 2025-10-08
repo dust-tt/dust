@@ -167,6 +167,7 @@ export function useVisualizationAPI(
         const validatedMessage = validateMessage(event.data);
         if (!validatedMessage) {
           if (isDevelopment()) {
+            // Log to help debug the addition of new event types.
             console.log("Invalid message format received:", event.data);
           }
           return;
