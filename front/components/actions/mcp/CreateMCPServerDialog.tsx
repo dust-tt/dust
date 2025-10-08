@@ -39,10 +39,10 @@ import type {
 } from "@app/types";
 import {
   OAUTH_PROVIDER_NAMES,
+  sanitizeHeadersArray,
   setupOAuthConnection,
   validateUrl,
 } from "@app/types";
-import { sanitizeHeadersArray } from "@app/types";
 
 import { McpServerHeaders } from "./MCPServerHeaders";
 
@@ -554,11 +554,11 @@ export function CreateMCPServerSheet({
               }
               variant="primary"
               disabled={
-                !isOAuthFormValid ||
-                (authorization && !useCase) ||
+                !isOAuthFormValid ??
+                (authorization && !useCase) ??
                 (defaultServerConfig?.authMethod === "bearer" &&
-                  !sharedSecret) ||
-                (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
+                  !sharedSecret) ??
+                (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ??
                 isLoading
               }
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
