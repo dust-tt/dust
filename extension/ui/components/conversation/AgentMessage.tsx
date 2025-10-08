@@ -729,12 +729,6 @@ export function AgentMessage({
         const objectUrl = URL.createObjectURL(blob);
         const filename = file.title || file.fileId;
 
-        const revokeObjectUrl = () => {
-          setTimeout(() => {
-            URL.revokeObjectURL(objectUrl);
-          }, 30000);
-        };
-
         chrome.downloads.download(
           {
             url: objectUrl,
@@ -750,10 +744,11 @@ export function AgentMessage({
               document.body.appendChild(anchor);
               anchor.click();
               document.body.removeChild(anchor);
-              revokeObjectUrl();
-            } else {
-              revokeObjectUrl();
             }
+
+            setTimeout(() => {
+              URL.revokeObjectURL(objectUrl);
+            }, 30000);
           }
         );
       } catch (error) {
