@@ -16,7 +16,7 @@ const createMockAction = (
   configuration: null,
   name,
   description: `Description for ${name}`,
-  canBeConfigured: false,
+  configurable: false,
 });
 
 const createMockMCPAction = (
@@ -44,7 +44,7 @@ const createMockMCPAction = (
     _jsonSchemaString: null,
     secretName: null,
   },
-  canBeConfigured: true,
+  configurable: true,
 });
 
 const createMockMCPServerView = (
