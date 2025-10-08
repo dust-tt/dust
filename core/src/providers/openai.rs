@@ -1204,13 +1204,14 @@ impl Embedder for OpenAIEmbedder {
         // - just the API key (e.g. sk-xxxx)
         // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.openai.com)
 
-        let raw = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY").map_err(|_| {
-            anyhow!("Environment variable `CORE_DATA_SOURCES_OPENAI_API_KEY` must be set.")
-        })?;
+        let raw_openai_key_env =
+            std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY").map_err(|_| {
+                anyhow!("Environment variable `CORE_DATA_SOURCES_OPENAI_API_KEY` must be set.")
+            })?;
 
-        let (key_part, host_part) = match raw.split_once(';') {
+        let (key_part, host_part) = match raw_openai_key_env.split_once(';') {
             Some((k, h)) => (k.trim(), h.trim()),
-            None => (raw.trim(), "api.openai.com"),
+            None => (raw_openai_key_env.trim(), "api.openai.com"),
         };
 
         self.api_key = Some(key_part.to_string());
