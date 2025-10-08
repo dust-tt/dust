@@ -99,7 +99,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
     };
 
     const citations =
-      isUserMessage(data) && data.contentFragments
+      isUserMessage(data) && data.contentFragments.length > 0
         ? data.contentFragments.map((contentFragment) => {
             const attachmentCitation =
               contentFragmentToAttachmentCitation(contentFragment);
