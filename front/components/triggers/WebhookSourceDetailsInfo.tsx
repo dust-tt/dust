@@ -1,28 +1,41 @@
 import {
+  ActionIcons,
+  Button,
   Checkbox,
   ClipboardIcon,
   cn,
   EyeIcon,
   EyeSlashIcon,
   IconButton,
+  IconPicker,
   Input,
+  Label,
   Page,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   Separator,
+  TextArea,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 
+import { getIcon } from "@app/components/resources/resources_icons";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import {
+  DEFAULT_WEBHOOK_ICON,
+  normalizeWebhookIcon,
+} from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceView } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
-  webhookSourceView: WebhookSourceView;
+  webhookSourceView: WebhookSourceViewType;
   owner: LightWorkspaceType;
 };
 
@@ -52,6 +65,7 @@ export function WebhookSourceDetailsInfo({
   owner,
 }: WebhookSourceDetailsInfoProps) {
   const [isSecretVisible, setIsSecretVisible] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const sendNotification = useSendNotification();
   const form = useFormContext<WebhookSourceFormValues>();
 
@@ -61,6 +75,9 @@ export function WebhookSourceDetailsInfo({
   );
 
   const [isCopied, copy] = useCopyToClipboard();
+
+  const selectedIcon = form.watch("icon");
+  const IconComponent = getIcon(normalizeWebhookIcon(selectedIcon));
 
   useEffect(() => {
     if (isCopied) {
@@ -89,13 +106,67 @@ export function WebhookSourceDetailsInfo({
       )}
 
       <div className="space-y-5 text-foreground dark:text-foreground-night">
-        <Input
-          {...form.register("name")}
-          label="Custom Name"
-          isError={!!form.formState.errors.name}
-          message={form.formState.errors.name?.message}
-          placeholder={webhookSourceView.webhookSource.name}
-        />
+        <div className="space-y-2">
+          <Label htmlFor="trigger-name-icon">Name & Icon</Label>
+          <div className="flex items-end space-x-2">
+            <div className="flex-grow">
+              <Controller
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    id="trigger-name-icon"
+                    isError={!!form.formState.errors.name}
+                    message={form.formState.errors.name?.message}
+                    placeholder={webhookSourceView.webhookSource.name}
+                  />
+                )}
+              />
+            </div>
+            <PopoverRoot open={isPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={IconComponent}
+                  onClick={() => setIsPopoverOpen(true)}
+                  isSelect
+                />
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-fit py-0"
+                onInteractOutside={() => setIsPopoverOpen(false)}
+                onEscapeKeyDown={() => setIsPopoverOpen(false)}
+              >
+                <IconPicker
+                  icons={ActionIcons}
+                  selectedIcon={selectedIcon ?? DEFAULT_WEBHOOK_ICON}
+                  onIconSelect={(iconName: string) => {
+                    form.setValue("icon", iconName, { shouldDirty: true });
+                    setIsPopoverOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </PopoverRoot>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="trigger-description">Description</Label>
+          <Controller
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <TextArea
+                {...field}
+                id="trigger-description"
+                rows={3}
+                placeholder="Enter a description for this trigger"
+              />
+            )}
+          />
+        </div>
       </div>
 
       <Separator className="mb-4 mt-4" />

@@ -16,6 +16,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { ConfirmContext } from "@app/components/Confirm";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import type { CreateWebhookSourceFormData } from "@app/components/triggers/CreateWebhookSourceForm";
 import {
   CreateWebhookSourceFormContent,
@@ -38,6 +39,7 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
 import type {
@@ -322,13 +324,32 @@ function WebhookSourceSheetContent({
         try {
           const diff = diffWebhookSourceForm(editDefaults, values);
 
-          if (diff.name) {
+          if (
+            diff.name ??
+            (diff.description !== undefined || diff.icon !== undefined)
+          ) {
+            const requestBody: {
+              name: string;
+              description?: string;
+              icon?: string;
+            } = {
+              name: values.name,
+            };
+
+            if (diff.description !== undefined) {
+              requestBody.description = values.description;
+            }
+
+            if (diff.icon !== undefined) {
+              requestBody.icon = values.icon;
+            }
+
             const response = await fetch(
               `/api/w/${owner.sId}/webhook_sources/views/${systemView.sId}`,
               {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: diff.name }),
+                body: JSON.stringify(requestBody),
               }
             );
             if (!response.ok) {

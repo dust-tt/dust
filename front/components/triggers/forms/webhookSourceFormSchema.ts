@@ -1,9 +1,12 @@
 import { z } from "zod";
 
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
 import type { WebhookSourceView } from "@app/types/triggers/webhooks";
 
 export type WebhookSourceFormValues = {
   name: string;
+  description: string;
+  icon: string;
   sharingSettings: Record<string, boolean>;
 };
 
@@ -39,6 +42,8 @@ export function getWebhookSourceFormDefaults(
 
   return {
     name,
+    description: view.description ?? "",
+    icon: view.icon ?? DEFAULT_WEBHOOK_ICON,
     sharingSettings,
   };
 }
@@ -46,12 +51,16 @@ export function getWebhookSourceFormDefaults(
 export function getWebhookSourceFormSchema() {
   return z.object({
     name: z.string().min(1, "Name is required."),
+    description: z.string(),
+    icon: z.string(),
     sharingSettings: z.record(z.boolean()),
   });
 }
 
 type FormDiffType = {
   name?: string;
+  description?: string;
+  icon?: string;
   sharingChanges?: Array<{
     spaceId: string;
     action: "add" | "remove";
@@ -66,6 +75,14 @@ export function diffWebhookSourceForm(
 
   if (current.name !== initial.name) {
     out.name = current.name;
+  }
+
+  if (current.description !== initial.description) {
+    out.description = current.description;
+  }
+
+  if (current.icon !== initial.icon) {
+    out.icon = current.icon;
   }
 
   const sharingChanges: typeof out.sharingChanges = [];
