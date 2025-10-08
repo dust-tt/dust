@@ -1,6 +1,10 @@
 import React, { useEffect } from "react";
 
-import { trackEvent, TRACKING_ACTIONS, TRACKING_AREAS } from "@app/lib/tracking";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 
 declare global {
   interface Window {
@@ -25,69 +29,106 @@ export default function HubSpotForm() {
   const formId = "31e790e5-f4d5-4c79-acc5-acd770fe8f84";
 
   useEffect(() => {
-    const existingScript = document.getElementById("hubspot-script");
-    const createForm = () => {
-      if (window.hbspt && window.hbspt.forms && window.hbspt.forms.create) {
-        window.hbspt.forms.create({
-          region,
-          portalId,
-          formId,
-          target: "#hubspotForm",
-          onFormReady: ($form) => {
-            trackEvent({
-              area: TRACKING_AREAS.CONTACT,
-              object: "hubspot_form",
-              action: "ready",
-            });
+    const scriptSrc = `https://js-${region}.hsforms.net/forms/embed/developer/${portalId}.js`;
 
-            // Track step navigation
-            if ($form && typeof $form === "object" && "on" in $form) {
-              const form = $form as {
-                on: (event: string, handler: () => void) => void;
-                find: (selector: string) => {
-                  on: (event: string, handler: () => void) => void;
-                };
-              };
+    if (document.querySelector(`script[src="${scriptSrc}"]`)) {
+      return;
+    }
 
-              // Track next/previous button clicks for multi-step form
-              form.find(".hs-button.next-button").on("click", () => {
-                trackEvent({
-                  area: TRACKING_AREAS.CONTACT,
-                  object: "hubspot_form",
-                  action: "next_step",
-                });
-              });
+    const script = document.createElement("script");
+    script.src = scriptSrc;
+    script.defer = true;
 
-              form.find(".hs-button.previous-button").on("click", () => {
-                trackEvent({
-                  area: TRACKING_AREAS.CONTACT,
-                  object: "hubspot_form",
-                  action: "previous_step",
-                });
-              });
-            }
-          },
-          onFormSubmitted: () => {
-            trackEvent({
-              area: TRACKING_AREAS.CONTACT,
-              object: "hubspot_form",
-              action: TRACKING_ACTIONS.SUBMIT,
-            });
-          },
-        });
+    script.onload = () => {
+      const formContainer = document.getElementById("hubspotForm");
+      if (!formContainer) {
+        return;
       }
+
+      // Detect when HubSpot renders the form
+      const observer = new MutationObserver((mutations, obs) => {
+        const form = formContainer.querySelector("form");
+        if (form) {
+          obs.disconnect();
+
+          trackEvent({
+            area: TRACKING_AREAS.CONTACT,
+            object: "hubspot_form",
+            action: "ready",
+          });
+
+          formContainer.addEventListener(
+            "click",
+            (e) => {
+              const target = e.target as HTMLElement;
+
+              // Find if this is a button
+              const button =
+                target.tagName === "BUTTON" ||
+                target.tagName === "INPUT" ||
+                target.closest("button") ||
+                target.closest("input[type='submit']") ||
+                target.closest("input[type='button']");
+
+              if (button) {
+                const buttonElement =
+                  button === true ? target : (button as HTMLElement);
+
+                const text = buttonElement.textContent?.toLowerCase() || "";
+                const value =
+                  (buttonElement as HTMLInputElement).value?.toLowerCase() ||
+                  "";
+                const className = buttonElement.className?.toLowerCase() || "";
+                const buttonType = (
+                  buttonElement as HTMLInputElement | HTMLButtonElement
+                ).type;
+
+                const contains = (keyword: string) =>
+                  text.includes(keyword) ||
+                  value.includes(keyword) ||
+                  className.includes(keyword);
+
+                if (contains("next")) {
+                  trackEvent({
+                    area: TRACKING_AREAS.CONTACT,
+                    object: "hubspot_form",
+                    action: "next_step",
+                  });
+                } else if (contains("previous") || contains("back")) {
+                  trackEvent({
+                    area: TRACKING_AREAS.CONTACT,
+                    object: "hubspot_form",
+                    action: "previous_step",
+                  });
+                } else if (buttonType === "submit" || contains("submit")) {
+                  trackEvent({
+                    area: TRACKING_AREAS.CONTACT,
+                    object: "hubspot_form",
+                    action: TRACKING_ACTIONS.SUBMIT,
+                  });
+                }
+              }
+            },
+            true
+          );
+        }
+      });
+
+      observer.observe(formContainer, {
+        childList: true,
+        subtree: true,
+      });
     };
 
-    if (!existingScript) {
-      const script = document.createElement("script");
-      script.id = "hubspot-script";
-      script.src = `https://js-${region}.hsforms.net/forms/embed/developer/${portalId}.js`;
-      script.defer = true;
-      script.onload = createForm;
-      document.body.appendChild(script);
-    } else {
-      createForm();
-    }
+    script.onerror = () => {
+      trackEvent({
+        area: TRACKING_AREAS.CONTACT,
+        object: "hubspot_form",
+        action: "script_load_error",
+      });
+    };
+
+    document.body.appendChild(script);
   }, []);
 
   return (
