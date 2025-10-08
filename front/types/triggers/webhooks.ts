@@ -96,6 +96,7 @@ export const PostWebhookSourcesSchema = z.object({
   customHeaders: z.record(z.string(), z.string()).nullable(),
   includeGlobal: z.boolean().optional(),
   subscribedEvents: z.array(z.string()).default([]),
+  kind: z.enum(WEBHOOK_SOURCE_KIND),
 });
 
 export type PatchWebhookSourceViewBody = z.infer<

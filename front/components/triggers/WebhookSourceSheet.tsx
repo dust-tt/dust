@@ -187,6 +187,7 @@ function WebhookSourceSheetContent({
       signatureHeader: "",
       signatureAlgorithm: "sha256",
       customHeaders: null,
+      kind: mode.kind,
       subscribedEvents:
         mode.kind === "custom"
           ? []

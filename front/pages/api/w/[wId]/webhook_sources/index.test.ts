@@ -77,6 +77,8 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       signatureAlgorithm: "sha256",
       customHeaders: null,
       includeGlobal: true,
+      kind: "custom",
+      subscribedEvents: [],
     };
 
     await handler(req, res);
@@ -102,6 +104,8 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       signatureAlgorithm: "sha256",
       customHeaders: null,
       includeGlobal: true,
+      kind: "custom",
+      subscribedEvents: [],
     };
 
     await handler(req, res);

@@ -104,6 +104,8 @@ async function handler(
         signatureAlgorithm,
         customHeaders,
         includeGlobal,
+        subscribedEvents,
+        kind,
       } = bodyValidation.data;
 
       const workspace = auth.getNonNullableWorkspace();
@@ -121,12 +123,12 @@ async function handler(
                 ? secret
                 : generateSecureSecret(64),
           urlSecret: generateSecureSecret(64),
-          kind: "custom",
+          kind,
           signatureHeader:
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           customHeaders,
-          subscribedEvents: [],
+          subscribedEvents,
         });
 
         if (webhookSourceRes.isErr()) {
