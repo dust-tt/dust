@@ -93,7 +93,6 @@ const MAX_OUTPUT_ITEMS = 128;
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
-const MCP_TOOL_ABORTED_EVENT_NAME = "TOOL_ABORTED" as const;
 
 const EMPTY_INPUT_SCHEMA: JSONSchema7 = {
   properties: {},
@@ -351,20 +350,6 @@ export async function* tryCallMCPTool(
     );
 
     const abortSignal = signal;
-    let abortPromise: Promise<typeof MCP_TOOL_ABORTED_EVENT_NAME> | null = null;
-    if (abortSignal) {
-      if (abortSignal.aborted) {
-        abortPromise = Promise.resolve(MCP_TOOL_ABORTED_EVENT_NAME);
-      } else {
-        abortPromise = new Promise((resolve) => {
-          abortSignal.addEventListener(
-            "abort",
-            () => resolve(MCP_TOOL_ABORTED_EVENT_NAME),
-            { once: true }
-          );
-        });
-      }
-    }
 
     // Subscribe to notifications before calling the tool.
     // Longer term we should use the `onprogress` callback of the `callTool` method. Right now,
@@ -399,34 +384,17 @@ export async function* tryCallMCPTool(
 
     // Read from notificationStream and yield events until the tool is done.
     let toolDone = false;
-    let wasAborted = abortSignal?.aborted ?? false;
     while (!toolDone) {
-      const raceInputs: Array<
-        Promise<
-          | typeof MCP_TOOL_ABORTED_EVENT_NAME
-          | typeof MCP_TOOL_DONE_EVENT_NAME
-          | IteratorResult<MCPProgressNotificationType>
-        >
-      > = [
+      const notificationOrDone = await Promise.race([
         notificationStream.next(), // Next notification.
         toolPromise.then(() => MCP_TOOL_DONE_EVENT_NAME), // Or tool fully completes.
-      ];
-      if (abortPromise) {
-        raceInputs.push(abortPromise);
-      }
+      ]);
 
-      const notificationOrDone = await Promise.race(raceInputs);
-
-      if (notificationOrDone === MCP_TOOL_ABORTED_EVENT_NAME) {
-        wasAborted = true;
-        break;
-      }
-
+      // If the tool completed, break from the loop and stop reading notifications.
       if (notificationOrDone === MCP_TOOL_DONE_EVENT_NAME) {
         toolDone = true;
       } else {
-        const iteratorResult =
-          notificationOrDone as IteratorResult<MCPProgressNotificationType>;
+        const iteratorResult = notificationOrDone;
         if (iteratorResult.done) {
           // The notifications ended prematurely.
           break;
@@ -448,10 +416,6 @@ export async function* tryCallMCPTool(
       }
 
       throw toolError;
-    }
-
-    if (wasAborted) {
-      throw new MCPError("Tool execution cancelled", { tracked: false });
     }
 
     // Before returning the content to the caller, we make sure the notifications are fully flushed.
