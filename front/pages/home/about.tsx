@@ -242,13 +242,6 @@ const PEOPLE: Record<
     github: "https://github.com/victorpery",
     linkedIn: "https://www.linkedin.com/in/victor-pery/",
   },
-  wendy: {
-    name: "Wendy Zhao",
-    title: "Customer Education",
-    image: "https://avatars.githubusercontent.com/u/205610550?v=4",
-    github: "https://github.com/atrwendy",
-    linkedIn: "https://www.linkedin.com/in/wendyzhao07/",
-  },
   gaelle: {
     name: "Gaëlle Caplier",
     title: "Customer Success",
@@ -262,13 +255,6 @@ const PEOPLE: Record<
     image: "https://ca.slack-edge.com/T050RH73H9P-U08S29YC36H-b53f68fd8f87-512",
     github: "https://github.com/lcaloud",
     linkedIn: "https://www.linkedin.com/in/lenacaloud/",
-  },
-  ben: {
-    name: "Benjamin Toueg",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/498190?v=4",
-    github: "https://github.com/btoueg",
-    linkedIn: "https://www.linkedin.com/in/toueg",
   },
   david: {
     name: "David Ebbo",
