@@ -2,6 +2,10 @@ import {
   Button,
   classNames,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   PlusIcon,
   Spinner,
@@ -16,11 +20,16 @@ import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSou
 import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhookSource";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types";
 import type { WebhookSourceWithSystemViewAndUsage } from "@app/types/triggers/webhooks";
+import {
+  WEBHOOK_SOURCE_KIND,
+  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
+} from "@app/types/triggers/webhooks";
 
 type RowData = {
   webhookSource: WebhookSourceWithSystemViewAndUsage;
@@ -89,7 +98,11 @@ export const AdminTriggersList = ({
         const onClick = !webhookSource.systemView
           ? undefined
           : () => {
-              setSheetMode({ type: "edit", webhookSource });
+              setSheetMode({
+                type: "edit",
+                webhookSource,
+                kind: webhookSource.kind,
+              });
             };
 
         return {
@@ -207,15 +220,44 @@ export const AdminTriggersList = ({
     return columns;
   }, [setAgentSId]);
 
-  const CreateWebhookCTA = () => (
-    <Button
-      label="Create webhook source"
-      variant="outline"
-      icon={PlusIcon}
-      size="sm"
-      onClick={() => setSheetMode({ type: "create" })}
-    />
-  );
+  const CreateWebhookCTA = () => {
+    const { hasFeature } = useFeatureFlags({
+      workspaceId: owner.sId,
+    });
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label="Create webhook source"
+            variant="outline"
+            icon={PlusIcon}
+            size="sm"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {WEBHOOK_SOURCE_KIND.filter((kind) => {
+            const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind];
+            return (
+              preset.featureFlag === undefined || hasFeature(preset.featureFlag)
+            );
+          })
+            .sort((kindA, kindB) =>
+              WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindA].name.localeCompare(
+                WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kindB].name
+              )
+            )
+            .map((kind) => (
+              <DropdownMenuItem
+                key={kind}
+                label={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].name}
+                icon={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].icon}
+                onClick={() => setSheetMode({ type: "create", kind })}
+              />
+            ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   if (isWebhookSourcesWithViewsLoading) {
     return (

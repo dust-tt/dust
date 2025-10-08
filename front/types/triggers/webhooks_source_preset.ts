@@ -1,5 +1,7 @@
+import type { Icon } from "@dust-tt/sparkle";
 import { GithubLogo, JiraLogo } from "@dust-tt/sparkle";
-import { type Icon } from "@dust-tt/sparkle/dist/esm/components/Icon";
+
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 type EventFieldBase = {
   name: string;
@@ -48,4 +50,5 @@ export type PresetWebhook = {
   events: WebhookEvent[];
   icon: typeof Icon;
   description: string;
+  featureFlag?: WhitelistableFeature;
 };
