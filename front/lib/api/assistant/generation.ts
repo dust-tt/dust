@@ -17,7 +17,6 @@ import {
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
