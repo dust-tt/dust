@@ -139,7 +139,7 @@ interface ConversationMessageContentProps
 export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
->(({ children, citations, className, type, ...props }, ref) => {
+>(({ children, citations, className, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -152,8 +152,7 @@ export const ConversationMessageContent = React.forwardRef<
       <div
         className={cn(
           "s-text-sm @sm:s-text-base",
-          "s-text-foreground dark:s-text-foreground-night",
-          type !== "agentAsTool" && "@md:s-px-4"
+          "s-text-foreground dark:s-text-foreground-night"
         )}
       >
         {children}
