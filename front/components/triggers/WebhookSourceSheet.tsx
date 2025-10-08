@@ -43,7 +43,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
 import type { WebhookSourceWithSystemView } from "@app/types/triggers/webhooks";
 
-type WebhookSourceSheetMode =
+export type WebhookSourceSheetMode =
   | { type: "create" }
   | {
       type: "edit";
@@ -57,11 +57,6 @@ type WebhookSourceSheetProps = {
   owner: LightWorkspaceType;
   mode: WebhookSourceSheetMode | null;
   onClose: () => void;
-};
-
-const SHEET_PAGE_IDS = {
-  CREATE: "create",
-  EDIT: "edit",
 };
 
 export function WebhookSourceSheet({
@@ -109,7 +104,7 @@ export function WebhookSourceSheet({
 
   return (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
-      {debouncedOpen && (
+      {debouncedOpen && mode !== null && (
         <WebhookSourceSheetContent
           mode={mode}
           owner={owner}
@@ -123,7 +118,7 @@ export function WebhookSourceSheet({
 }
 
 type WebhookSourceSheetContentProps = {
-  mode: WebhookSourceSheetMode | null;
+  mode: WebhookSourceSheetMode;
   owner: LightWorkspaceType;
   setIsDirty: (value: boolean) => void;
   onClose: () => void;
@@ -139,9 +134,9 @@ function WebhookSourceSheetContent({
 }: WebhookSourceSheetContentProps) {
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification(true);
-  const [currentPageId, setCurrentPageId] = useState<string>(
-    mode?.type === "create" ? SHEET_PAGE_IDS.CREATE : SHEET_PAGE_IDS.EDIT
-  );
+  const [currentPageId, setCurrentPageId] = useState<
+    WebhookSourceSheetMode["type"]
+  >(mode.type);
   const [selectedTab, setSelectedTab] = useState<string>("info");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -160,9 +155,7 @@ function WebhookSourceSheetContent({
 
   useEffect(() => {
     if (mode) {
-      setCurrentPageId(
-        mode.type === "create" ? SHEET_PAGE_IDS.CREATE : SHEET_PAGE_IDS.EDIT
-      );
+      setCurrentPageId(mode.type);
       if (mode.type === "edit") {
         setSelectedTab("info");
       }
@@ -412,7 +405,7 @@ function WebhookSourceSheetContent({
   }, []);
 
   const handlePageChange = useCallback((pageId: string) => {
-    setCurrentPageId(pageId);
+    setCurrentPageId(pageId as "edit" | "create");
   }, []);
 
   const handleDeleteWebhookSource = useCallback(async () => {
@@ -446,7 +439,7 @@ function WebhookSourceSheetContent({
   }, [confirm, webhookSource, deleteWebhookSource, onClose]);
 
   const footerButtons = useMemo(() => {
-    if (currentPageId === SHEET_PAGE_IDS.CREATE) {
+    if (currentPageId === "create") {
       return {
         leftButton: {
           label: "Cancel",
@@ -499,7 +492,7 @@ function WebhookSourceSheetContent({
   const pages: MultiPageSheetPage[] = useMemo(
     () => [
       {
-        id: SHEET_PAGE_IDS.CREATE,
+        id: "create",
         title: "Create Webhook Source",
         description: "",
         icon: undefined,
@@ -512,7 +505,7 @@ function WebhookSourceSheetContent({
         ),
       },
       {
-        id: SHEET_PAGE_IDS.EDIT,
+        id: "edit",
         title:
           systemView?.customName ?? webhookSource?.name ?? "Webhook Source",
         description: "Webhook source for triggering assistants.",

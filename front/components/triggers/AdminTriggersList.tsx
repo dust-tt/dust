@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
@@ -69,14 +70,9 @@ export const AdminTriggersList = ({
   filter,
   setAgentSId,
 }: AdminTriggersListProps) => {
-  const [sheetMode, setSheetMode] = useState<
-    | { type: "create" }
-    | {
-        type: "edit";
-        webhookSource: WebhookSourceWithSystemViewAndUsage;
-      }
-    | null
-  >(null);
+  const [sheetMode, setSheetMode] = useState<WebhookSourceSheetMode | null>(
+    null
+  );
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
