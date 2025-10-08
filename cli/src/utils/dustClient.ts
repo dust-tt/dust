@@ -56,7 +56,6 @@ export const getDustClient = async (): Promise<
     },
     {
       apiKey: async () => {
-        // Always get a valid token (with proactive refresh logic)
         const token = await AuthService.getValidAccessToken();
         if (token.isErr()) {
           return null;
@@ -104,31 +103,8 @@ export const getDustClientWithRetry = async (): Promise<
   return new Ok(originalClient);
 };
 
-/**
- * Handles 401 errors by refreshing tokens and resetting the client
- */
-export const handle401Error = async (): Promise<boolean> => {
-  try {
-    // Reset the current client instance
-    resetDustClient();
-
-    // Try to refresh tokens
-    const refreshed = await AuthService.refreshTokens();
-
-    if (refreshed.isErr()) {
-      return false;
-    }
-
-    return refreshed.value;
-  } catch (error) {
-    console.error("Failed to handle 401 error:", error);
-    return false;
-  }
-};
-
 export default {
   getDustClient,
   resetDustClient,
   getDustClientWithRetry,
-  handle401Error,
 };

@@ -48,7 +48,6 @@ export const AuthService = {
     );
 
     if (!response.ok) {
-      // Clear tokens on authentication errors
       if (response.status === 400 || response.status === 401) {
         await TokenStorage.clearTokens();
         resetDustClient();
@@ -57,11 +56,8 @@ export const AuthService = {
     }
 
     const data = (await response.json()) as RefreshTokenResponse;
-
-    // Store the new tokens
     await TokenStorage.saveTokens(data.access_token, data.refresh_token);
 
-    // Reset the API client to use the new tokens
     resetDustClient();
 
     return new Ok(true);
@@ -73,12 +69,10 @@ export const AuthService = {
   async getValidAccessToken(): Promise<Result<string | null, Error>> {
     const accessToken = await TokenStorage.getAccessToken();
 
-    // Handle API keys (they don't expire)
     if (accessToken?.startsWith("sk-")) {
       return new Ok(accessToken);
     }
 
-    // Check if we have a valid access token
     const isValid = await TokenStorage.hasValidAccessToken();
 
     if (isValid.isErr()) {
@@ -86,13 +80,11 @@ export const AuthService = {
     }
 
     if (!isValid.value || !accessToken) {
-      // Try to refresh if token is invalid or missing
       const refreshed = await this.refreshTokens();
       if (refreshed.isErr()) {
         return new Err(new Error("Failed to refresh tokens"));
       }
 
-      // Return the newly refreshed token
       return new Ok(await TokenStorage.getAccessToken());
     }
 
@@ -113,7 +105,6 @@ export const AuthService = {
     const currentTime = Math.floor(Date.now() / 1000);
     const timeUntilExpiry = (decoded.exp ?? 0) - currentTime;
 
-    // If token expires in less than 30 seconds, refresh it proactively
     if (timeUntilExpiry < 30) {
       const refreshed = await this.refreshTokens();
       if (refreshed.isOk()) {
@@ -128,7 +119,6 @@ export const AuthService = {
    * Checks if the user is authenticated with valid tokens
    */
   async isAuthenticated(): Promise<boolean> {
-    // First check if we have a valid access token
     const hasValidAccessToken = await TokenStorage.hasValidAccessToken();
     if (hasValidAccessToken.isErr()) {
       return false;
@@ -138,7 +128,6 @@ export const AuthService = {
       return true;
     }
 
-    // If not, try to refresh tokens
     const refreshed = await this.refreshTokens();
     if (refreshed.isOk()) {
       return true;
