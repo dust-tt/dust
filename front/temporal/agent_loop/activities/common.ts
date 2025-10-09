@@ -120,6 +120,7 @@ async function processEventForUnreadState(
         configurationId: event.configurationId,
         conversationId: conversation.sId,
         messageId: event.messageId,
+        hasError: event.type === "agent_error" || event.type === "tool_error",
       },
     });
   }

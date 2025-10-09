@@ -310,6 +310,18 @@ const ConversationViewerVirtuoso = ({
               void mutateConversationParticipants(async (participants) =>
                 getUpdatedParticipantsFromEvent(participants, event)
               );
+
+              // Clear hasError when a message is retried.
+              void mutateConversations((currentData) => {
+                if (!currentData?.conversations) {
+                  return currentData;
+                }
+                return {
+                  conversations: currentData.conversations.map((c) =>
+                    c.sId === conversationId ? { ...c, hasError: false } : c
+                  ),
+                };
+              }, false);
             }
             break;
 
@@ -329,6 +341,20 @@ const ConversationViewerVirtuoso = ({
             // Mutate the messages to be sure that the swr cache is updated.
             // Fixes an issue where the last message of a conversation is "thinking" and not "done" the first time you switch back and forth to a conversation.
             void mutateMessages();
+
+            // Update the conversation hasError state in the local cache without making a network request.
+            void mutateConversations((currentData) => {
+              if (!currentData?.conversations) {
+                return currentData;
+              }
+              return {
+                conversations: currentData.conversations.map((c) =>
+                  c.sId === event.conversationId
+                    ? { ...c, hasError: event.hasError }
+                    : c
+                ),
+              };
+            }, false);
             break;
           default:
             ((t: never) => {
