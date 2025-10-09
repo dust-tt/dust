@@ -1,3 +1,4 @@
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
@@ -9,7 +10,6 @@ import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
-  MentionType,
   ModelId,
   Result,
   UserMessageType,
@@ -18,7 +18,12 @@ import type {
 import { isLightAgentMessageWithActionsType } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 
-type AgentStateClassification = "thinking" | "acting" | "writing" | "done";
+type AgentStateClassification =
+  | "placeholder"
+  | "thinking"
+  | "acting"
+  | "writing"
+  | "done";
 
 type ActionProgressState = Map<
   ModelId,
@@ -57,7 +62,7 @@ export type VirtuosoMessageListContext = {
   user: UserType;
   handleSubmit: (
     input: string,
-    mentions: MentionType[],
+    mentions: EditorMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string;
@@ -89,6 +94,9 @@ export const getMessageDate = (msg: VirtuosoMessage): Date =>
     ? new Date(msg.message.created)
     : new Date(msg.created);
 
+export const getMessageRank = (msg: VirtuosoMessage): number =>
+  isMessageTemporayState(msg) ? msg.message.rank : msg.rank;
+
 export const makeInitialMessageStreamState = (
   message: LightAgentMessageType | LightAgentMessageWithActionsType
 ): MessageTemporaryState => {
@@ -105,4 +113,11 @@ export const makeInitialMessageStreamState = (
     },
     useFullChainOfThought: false,
   };
+};
+
+export const areSameRank = (
+  messageA: VirtuosoMessage,
+  messageB: VirtuosoMessage
+) => {
+  return getMessageRank(messageA) === getMessageRank(messageB);
 };

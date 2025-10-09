@@ -112,15 +112,17 @@ export function useAgentMessageStreamVirtuoso({
     VirtuosoMessageListContext
   >();
 
-  const isFreshMountWithContent = useRef(
-    messageStreamState.message.status === "created" &&
-      (!!messageStreamState.message.content ||
-        !!messageStreamState.message.chainOfThought)
+  const shouldStream = useMemo(
+    () =>
+      messageStreamState.message.status === "created" &&
+      messageStreamState.agentState !== "placeholder",
+    [messageStreamState.message.status, messageStreamState.agentState]
   );
 
-  const shouldStream = useMemo(
-    () => messageStreamState.message.status === "created",
-    [messageStreamState.message.status]
+  const isFreshMountWithContent = useRef(
+    shouldStream &&
+      (!!messageStreamState.message.content ||
+        !!messageStreamState.message.chainOfThought)
   );
 
   const chainOfThought = useRef(

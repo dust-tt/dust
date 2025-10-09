@@ -1,8 +1,10 @@
 import { Button, cn, StopIcon } from "@dust-tt/sparkle";
+import _ from "lodash";
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
@@ -26,7 +28,6 @@ import type {
   ContentFragmentsType,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
-  MentionType,
   Result,
   WorkspaceType,
 } from "@app/types";
@@ -38,7 +39,7 @@ interface AssistantInputBarProps {
   owner: WorkspaceType;
   onSubmit: (
     input: string,
-    mentions: MentionType[],
+    mentions: EditorMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
@@ -203,13 +204,11 @@ export const AssistantInputBar = React.memo(function AssistantInputBar({
     }
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
-    const mentions: MentionType[] = [
-      ...new Set(rawMentions.map((mention) => mention.id)),
-    ].map((id) => ({ configurationId: id }));
+    const mentions: EditorMention[] = _.uniqBy(rawMentions, "id");
 
     const uploadedFiles = fileUploaderService.getFileBlobs();
     const mentionedAgents = agentConfigurations.filter((a) =>
-      mentions.some((m) => m.configurationId === a.sId)
+      mentions.some((m) => m.id === a.sId)
     );
 
     trackEvent({
@@ -426,7 +425,7 @@ export function FixedAssistantInputBar({
   owner: WorkspaceType;
   onSubmit: (
     input: string,
-    mentions: MentionType[],
+    mentions: EditorMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;

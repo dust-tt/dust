@@ -13,6 +13,7 @@ import { useActionValidationContext } from "@app/components/assistant/conversati
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
@@ -34,7 +35,6 @@ import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
   ContentFragmentsType,
-  MentionType,
   Result,
   SubscriptionType,
   UserType,
@@ -85,7 +85,7 @@ export function ConversationContainer({
 
   const handleSubmit = async (
     input: string,
-    mentions: MentionType[],
+    mentions: EditorMention[],
     contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!activeConversationId) {
@@ -98,7 +98,7 @@ export function ConversationContainer({
 
     const messageData = {
       input,
-      mentions,
+      mentions: mentions.map((mention) => ({ configurationId: mention.id })),
       contentFragments,
       clientSideMCPServerIds: removeNulls([serverId]),
     };
@@ -148,7 +148,7 @@ export function ConversationContainer({
               input,
               mentions,
               user,
-              lastMessageRank,
+              rank: lastMessageRank + 1,
             });
             return updateMessagePagesWithOptimisticData(
               currentMessagePages,
@@ -181,7 +181,7 @@ export function ConversationContainer({
   const handleConversationCreation = useCallback(
     async (
       input: string,
-      mentions: MentionType[],
+      mentions: EditorMention[],
       contentFragments: ContentFragmentsType,
       selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
@@ -200,7 +200,9 @@ export function ConversationContainer({
         user,
         messageData: {
           input,
-          mentions,
+          mentions: mentions.map((mention) => ({
+            configurationId: mention.id,
+          })),
           contentFragments,
           clientSideMCPServerIds: removeNulls([serverId]),
           selectedMCPServerViewIds,

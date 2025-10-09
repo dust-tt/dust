@@ -206,17 +206,17 @@ export function AgentMessageVirtuoso({
     const isInArray = generationContext.generatingMessages.some(
       (m) => m.messageId === sId
     );
-    if (agentMessageToRender.status === "created" && !isInArray) {
+    if (shouldStream && !isInArray) {
       generationContext.setGeneratingMessages((s) => [
         ...s,
         { messageId: sId, conversationId },
       ]);
-    } else if (agentMessageToRender.status !== "created" && isInArray) {
+    } else if (!shouldStream && isInArray) {
       generationContext.setGeneratingMessages((s) =>
         s.filter((m) => m.messageId !== sId)
       );
     }
-  }, [agentMessageToRender.status, generationContext, sId, conversationId]);
+  }, [shouldStream, generationContext, sId, conversationId]);
 
   const PopoverContent = useCallback(
     () => (
@@ -302,7 +302,7 @@ export function AgentMessageVirtuoso({
   // Show stop agent button only when streaming with multiple agents
   // (it feels distractive to show buttons while streaming so we would like to avoid as much as possible.
   // However, when there are multiple agents there is no other way to stop only single agent so we need to show it here).
-  if (hasMultiAgents && agentMessageToRender.status === "created") {
+  if (hasMultiAgents && shouldStream) {
     buttons.push(
       <Button
         key="stop-msg-button"
@@ -337,7 +337,7 @@ export function AgentMessageVirtuoso({
   }
 
   // Show retry button as long as it's not streaming
-  if (agentMessageToRender.status !== "created") {
+  if (agentMessageToRender.status !== "created" && !shouldStream) {
     buttons.push(
       <Button
         key="retry-msg-button"
@@ -449,9 +449,11 @@ export function AgentMessageVirtuoso({
       isDisabled={isArchived}
       renderName={renderName}
       timestamp={
-        agentMessageToRender.completedTs && !isDeepDive
-          ? formatTimestring(agentMessageToRender.completedTs)
-          : undefined
+        isDeepDive
+          ? undefined
+          : formatTimestring(
+              agentMessageToRender.completedTs ?? agentMessageToRender.created
+            )
       }
       completionStatus={
         <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />

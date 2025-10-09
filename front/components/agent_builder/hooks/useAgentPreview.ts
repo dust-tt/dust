@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import {
   createConversationWithMessage,
   submitMessage,
@@ -18,7 +19,6 @@ import type {
   ContentFragmentsType,
   ConversationType,
   LightAgentConfigurationType,
-  MentionType,
   Result,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -136,7 +136,7 @@ export function useDraftConversation({
 
   const handleSubmit = async (
     input: string,
-    mentions: MentionType[],
+    mentions: EditorMention[],
     contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!user) {
@@ -160,7 +160,7 @@ export function useDraftConversation({
 
       // Update mentions in the message data to use the current draft agent
       mentions = mentions.map((mention) =>
-        mention.configurationId === draftAgent?.sId && currentAgent?.sId
+        mention.id === draftAgent?.sId && currentAgent?.sId
           ? { ...mention, configurationId: currentAgent.sId }
           : mention
       );
@@ -172,7 +172,13 @@ export function useDraftConversation({
       });
     }
 
-    const messageData = { input, mentions, contentFragments };
+    const messageData = {
+      input,
+      mentions: mentions.map((mention) => ({
+        configurationId: mention.id,
+      })),
+      contentFragments,
+    };
 
     if (!conversation) {
       const result = await createConversationWithMessage({
