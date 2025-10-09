@@ -186,7 +186,11 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
   ) => {
     const chipContent = (
       <div
-        className={cn(chipVariants({ size, color }), className, onClick && "s-cursor-pointer")}
+        className={cn(
+          chipVariants({ size, color }),
+          className,
+          onClick && "s-cursor-pointer"
+        )}
         aria-label={label}
         ref={ref}
         onClick={onClick ? () => onClick() : undefined}

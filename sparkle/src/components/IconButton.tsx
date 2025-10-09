@@ -58,7 +58,10 @@ const iconButtonVariants = cva(
 );
 
 export interface IconButtonProps
-  extends Omit<React.ComponentPropsWithoutRef<typeof Button>, "label" | "variant"> {
+  extends Omit<
+    React.ComponentPropsWithoutRef<typeof Button>,
+    "label" | "variant"
+  > {
   variant?: IconButtonVariantType;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   tooltip?: string;
@@ -84,10 +87,11 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
       tooltip={tooltip}
       className={cn(
         iconButtonVariants({ variant }),
-        disabled && cn(
-          "s-text-primary-500 dark:s-text-primary-500-night",
-          "s-cursor-default hover:s-scale-100"
-        ),
+        disabled &&
+          cn(
+            "s-text-primary-500 dark:s-text-primary-500-night",
+            "s-cursor-default hover:s-scale-100"
+          ),
         className
       )}
       onClick={onClick}

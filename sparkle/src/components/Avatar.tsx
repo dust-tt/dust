@@ -6,7 +6,15 @@ import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
-export const AVATAR_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl", "auto"] as const;
+export const AVATAR_SIZES = [
+  "xs",
+  "sm",
+  "md",
+  "lg",
+  "xl",
+  "2xl",
+  "auto",
+] as const;
 export type AvatarSizeType = (typeof AVATAR_SIZES)[number];
 
 export const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
