@@ -168,10 +168,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "on_demand",
   },
-  simple_audio_transcription: {
-    description: "Simple Audio transcription feature",
-    stage: "dust_only",
-  },
   slideshow: {
     description: "Slideshow MCP tool",
     stage: "dust_only",

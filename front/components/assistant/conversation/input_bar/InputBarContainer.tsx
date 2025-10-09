@@ -37,7 +37,6 @@ import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -99,7 +98,6 @@ const InputBarContainer = ({
   selectedMCPServerViews,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -602,8 +600,7 @@ const InputBarContainer = ({
             </div>
             <div className="grow" />
             <div className="flex items-center gap-2 md:gap-1">
-              {featureFlags.hasFeature("simple_audio_transcription") &&
-                owner.metadata?.allowVoiceTranscription !== false &&
+              {owner.metadata?.allowVoiceTranscription !== false &&
                 actions.includes("voice") && (
                   <VoicePicker
                     voiceTranscriberService={voiceTranscriberService}
