@@ -2,9 +2,11 @@ import type { ReadStream } from "node:fs";
 
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { SpeechToTextChunkResponseModel } from "@elevenlabs/elevenlabs-js/api/types/SpeechToTextChunkResponseModel";
+import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 import type formidable from "formidable";
 import fs from "fs";
 
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { dustManagedCredentials, Err, Ok } from "@app/types";
@@ -12,7 +14,14 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 async function getElevenLabs() {
   const credentials = dustManagedCredentials();
-  return new ElevenLabsClient({ apiKey: credentials.ELEVENLABS_API_KEY });
+  const elevenLabsEnvironment =
+    regionsConfig.getCurrentRegion() === "europe-west1"
+      ? ElevenLabsEnvironment.ProductionEu
+      : ElevenLabsEnvironment.ProductionUs;
+  return new ElevenLabsClient({
+    apiKey: credentials.ELEVENLABS_API_KEY,
+    environment: elevenLabsEnvironment,
+  });
 }
 
 const _ELEVENLABS_TRANSCRIBE_MODEL = "scribe_v1";
