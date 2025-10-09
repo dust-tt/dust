@@ -141,7 +141,7 @@ export async function syncGongTranscript({
         .filter((obj) => obj.objectType === "Account")
         .flatMap((obj) =>
           obj.fields
-            .filter((field) => field.name === "name" && field.value)
+            .filter((field) => field.name === "Name" && field.value)
             .map((field) => `account:${field.value}`)
         )
     ) ?? [];
