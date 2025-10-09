@@ -256,12 +256,13 @@ export const intercom = async ({
         throw new Error(`No workspace found for connector ${connector.id}`);
       }
 
+      const MAX_CONVERSATIONS_COUNT = 100;
       const conversations: IntercomConversationType[] = [];
       let cursor: string | null = null;
       let hasMore = true;
       let totalCount = 0;
 
-      while (hasMore) {
+      while (hasMore && totalCount < MAX_CONVERSATIONS_COUNT) {
         const response = await fetchIntercomConversations({
           accessToken,
           slidingWindow: workspace.conversationsSlidingWindow,
@@ -284,7 +285,6 @@ export const intercom = async ({
       return {
         conversations: conversations.map((conv) => ({
           id: conv.id.toString(),
-          title: conv.title,
           open: conv.open,
           state: conv.state,
           created_at: conv.created_at,
