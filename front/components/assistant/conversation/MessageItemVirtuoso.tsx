@@ -125,12 +125,21 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
-    const shouldHideUserMessage = isHandoverUserMessage(data);
     const isAgentMessageHandover =
       prevData &&
       isHandoverUserMessage(prevData) &&
       isMessageTemporayState(data) &&
       data.message.parentMessageId === prevData.sId;
+
+    const isAgentMessageHandingOver =
+      nextData &&
+      isHandoverUserMessage(nextData) &&
+      isMessageTemporayState(data);
+
+    if (isHandoverUserMessage(data)) {
+      // We do not display the user message in a handover group.
+      return null;
+    }
 
     return (
       <>
@@ -140,11 +149,11 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
           ref={ref}
           className={classNames(
             "mx-auto min-w-60",
-            "pt-6 md:pt-10",
+            isAgentMessageHandover ? "pt-5" : "pt-6 md:pt-10",
             context.isInModal ? "max-w-full" : "max-w-3xl"
           )}
         >
-          {isUserMessage(data) && !shouldHideUserMessage && (
+          {isUserMessage(data) && (
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
@@ -159,6 +168,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
               conversationId={context.conversationId}
               isLastMessage={!nextData}
               isAgentMessageHandover={isAgentMessageHandover ?? false}
+              isAgentMessageHandingOver={isAgentMessageHandingOver ?? false}
               messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
