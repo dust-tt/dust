@@ -8,10 +8,7 @@ import { extname } from "path";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -19,7 +16,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { SupportedFileContentType } from "@app/types";
-import { assertNever, normalizeError, validateUrl } from "@app/types";
+import { assertNever, Err, normalizeError, Ok, validateUrl } from "@app/types";
 
 const OUTPUT_FORMATS = [
   "csv",
@@ -109,7 +106,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_supported_source_formats_for_output_format", agentLoopContext },
+      {
+        toolName: "get_supported_source_formats_for_output_format",
+        agentLoopContext,
+      },
       async ({ output_format }) => {
         const formats = await cacheWithRedis(
           async () => {
@@ -126,20 +126,17 @@ const createServer = (
           }
         )();
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text:
-                "Here are the formats you can use to convert to " +
-                output_format +
-                ": " +
-                // The output format is included because it's always possible to convert to it.
-                [...formats, output_format].join(", "),
-            },
-          ],
-        };
+        return new Ok([
+          {
+            type: "text",
+            text:
+              "Here are the formats you can use to convert to " +
+              output_format +
+              ": " +
+              // The output format is included because it's always possible to convert to it.
+              [...formats, output_format].join(", "),
+          },
+        ]);
       }
     )
   );
@@ -171,69 +168,66 @@ const createServer = (
       auth,
       { toolName: "convert_file_format", agentLoopContext },
       async ({ file_name, file_id_or_url, source_format, output_format }) => {
-      if (!process.env.CONVERTAPI_API_KEY) {
-        return makeMCPToolTextError("Missing environment variable.");
-      }
-
-      const contentType = getContentTypeFromOutputFormat(output_format);
-
-      const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
-      let url: string | UploadResult = file_id_or_url;
-
-      if (!validateUrl(file_id_or_url).valid) {
-        const r = getResourceNameAndIdFromSId(file_id_or_url);
-
-        if (r && r.resourceName === "file") {
-          const { resourceModelId } = r;
-
-          const file = await FileResource.fetchByModelIdWithAuth(
-            auth,
-            resourceModelId
-          );
-          if (!file) {
-            return makeMCPToolTextError(`File not found: ${file_id_or_url}`);
-          }
-
-          url = await convertapi.upload(
-            file.getReadStream({ auth, version: "original" }),
-            `${file_name}.${source_format}`
-          );
-        } else {
-          url = await convertapi.upload(
-            Readable.from(file_id_or_url),
-            `${file_name}.${source_format}`
-          );
+        if (!process.env.CONVERTAPI_API_KEY) {
+          return new Err(new MCPError("Missing environment variable."));
         }
-      }
 
-      try {
-        const result = await convertapi.convert(
-          output_format,
-          {
-            File: url,
-          },
-          source_format
-        );
+        const contentType = getContentTypeFromOutputFormat(output_format);
 
-        const content = result.files.map((file) => ({
-          type: "resource" as const,
-          resource: {
-            mimeType: contentType,
-            uri: file.url,
-            text: "Your file was generated successfully.",
-          },
-        }));
+        const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
+        let url: string | UploadResult = file_id_or_url;
 
-        return {
-          isError: false,
-          content,
-        };
-      } catch (e) {
-        return makeMCPToolTextError(
-          `There was an error generating your file: ${normalizeError(e)}. ` +
-            "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use."
-        );
-      }
+        if (!validateUrl(file_id_or_url).valid) {
+          const r = getResourceNameAndIdFromSId(file_id_or_url);
+
+          if (r && r.resourceName === "file") {
+            const { resourceModelId } = r;
+
+            const file = await FileResource.fetchByModelIdWithAuth(
+              auth,
+              resourceModelId
+            );
+            if (!file) {
+              return new Err(new MCPError(`File not found: ${file_id_or_url}`));
+            }
+
+            url = await convertapi.upload(
+              file.getReadStream({ auth, version: "original" }),
+              `${file_name}.${source_format}`
+            );
+          } else {
+            url = await convertapi.upload(
+              Readable.from(file_id_or_url),
+              `${file_name}.${source_format}`
+            );
+          }
+        }
+
+        try {
+          const result = await convertapi.convert(
+            output_format,
+            {
+              File: url,
+            },
+            source_format
+          );
+
+          const content = result.files.map((file) => ({
+            type: "resource" as const,
+            resource: {
+              mimeType: contentType,
+              uri: file.url,
+              text: "Your file was generated successfully.",
+            },
+          }));
+
+          return new Ok(content);
+        } catch (e) {
+          return new Err(new MCPError(
+            `There was an error generating your file: ${normalizeError(e)}. ` +
+              "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use."
+          ));
+        }
       }
     )
   );
@@ -265,42 +259,39 @@ const createServer = (
       auth,
       { toolName: "generate_file", agentLoopContext },
       async ({ file_name, file_content, source_format = "text" }) => {
-      if (!process.env.CONVERTAPI_API_KEY) {
-        return makeMCPToolTextError("Missing environment variable.");
-      }
+        if (!process.env.CONVERTAPI_API_KEY) {
+          return new Err(new MCPError("Missing environment variable."));
+        }
 
-      // Remove the leading dot from the extension.
-      const extension = extname(file_name).replace(/^\./, "");
-      if (!isValidOutputType(extension)) {
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text: `The format ${extension} is not supported.`,
-            },
-          ],
-        };
-      }
+        // Remove the leading dot from the extension.
+        const extension = extname(file_name).replace(/^\./, "");
+        if (!isValidOutputType(extension)) {
+          return new Ok([
+              {
+                type: "text",
+                text: `The format ${extension} is not supported.`,
+              },
+            ]);
+        }
 
-      // If the format requires conversion and we have plain text content,
-      // we need to convert it to HTML first.
-      if (
-        isBinaryFormat(extension) &&
-        !validateUrl(file_content).valid &&
-        !getResourceNameAndIdFromSId(file_content)
-      ) {
-        const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
+        // If the format requires conversion and we have plain text content,
+        // we need to convert it to HTML first.
+        if (
+          isBinaryFormat(extension) &&
+          !validateUrl(file_content).valid &&
+          !getResourceNameAndIdFromSId(file_content)
+        ) {
+          const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
 
-        try {
-          let htmlContent: string;
+          try {
+            let htmlContent: string;
 
-          // Convert content to HTML based on source format
-          switch (source_format) {
-            case "markdown": {
-              // Parse markdown to HTML
-              const parsedMarkdown = await marked.parse(file_content);
-              htmlContent = `<!DOCTYPE html>
+            // Convert content to HTML based on source format
+            switch (source_format) {
+              case "markdown": {
+                // Parse markdown to HTML
+                const parsedMarkdown = await marked.parse(file_content);
+                htmlContent = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -324,19 +315,19 @@ a:hover { text-decoration: underline; }
 ${parsedMarkdown}
 </body>
 </html>`;
-              break;
-            }
+                break;
+              }
 
-            case "html": {
-              // If already HTML, ensure it has proper structure
-              if (
-                file_content.includes("<html") &&
-                file_content.includes("<body")
-              ) {
-                htmlContent = file_content;
-              } else {
-                // Wrap partial HTML in document structure
-                htmlContent = `<!DOCTYPE html>
+              case "html": {
+                // If already HTML, ensure it has proper structure
+                if (
+                  file_content.includes("<html") &&
+                  file_content.includes("<body")
+                ) {
+                  htmlContent = file_content;
+                } else {
+                  // Wrap partial HTML in document structure
+                  htmlContent = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -348,14 +339,14 @@ body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
 ${file_content}
 </body>
 </html>`;
+                }
+                break;
               }
-              break;
-            }
 
-            case "text":
-            default: {
-              // Convert plain text to paragraphs
-              htmlContent = `<!DOCTYPE html>
+              case "text":
+              default: {
+                // Convert plain text to paragraphs
+                htmlContent = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -371,73 +362,67 @@ ${file_content
   .join("\n")}
 </body>
 </html>`;
-              break;
+                break;
+              }
             }
-          }
 
-          const tempFileName = file_name.replace(`.${extension}`, "");
-          const uploadResult = await convertapi.upload(
-            Readable.from(htmlContent),
-            `${tempFileName}.html`
-          );
+            const tempFileName = file_name.replace(`.${extension}`, "");
+            const uploadResult = await convertapi.upload(
+              Readable.from(htmlContent),
+              `${tempFileName}.html`
+            );
 
-          const result = await convertapi.convert(
-            extension,
-            {
-              File: uploadResult,
-            },
-            "html"
-          );
+            const result = await convertapi.convert(
+              extension,
+              {
+                File: uploadResult,
+              },
+              "html"
+            );
 
-          if (result.files.length > 0) {
-            const file = result.files[0];
-            const response = await fetch(file.url);
-            const buffer = await response.arrayBuffer();
-            const base64 = Buffer.from(buffer).toString("base64");
+            if (result.files.length > 0) {
+              const file = result.files[0];
+              const response = await fetch(file.url);
+              const buffer = await response.arrayBuffer();
+              const base64 = Buffer.from(buffer).toString("base64");
 
-            return {
-              isError: false,
-              content: [
-                {
-                  type: "resource" as const,
-                  resource: {
-                    name: file_name,
-                    blob: base64,
-                    text: "Your file was generated successfully.",
-                    mimeType: getContentTypeFromOutputFormat(extension),
-                    uri: "",
+              return new Ok([
+                  {
+                    type: "resource" as const,
+                    resource: {
+                      name: file_name,
+                      blob: base64,
+                      text: "Your file was generated successfully.",
+                      mimeType: getContentTypeFromOutputFormat(extension),
+                      uri: "",
+                    },
                   },
-                },
-              ],
-            };
+                ]);
+            }
+          } catch (e) {
+            return new Err(new MCPError(
+              `There was an error generating your ${extension} file: ${normalizeError(
+                e
+              )}. ` +
+                `For complex conversions, consider using the convert_file_format tool instead.`
+            ));
           }
-        } catch (e) {
-          return makeMCPToolTextError(
-            `There was an error generating your ${extension} file: ${normalizeError(
-              e
-            )}. ` +
-              `For complex conversions, consider using the convert_file_format tool instead.`
-          );
         }
-      }
 
-      // Basic case: we have a text-based format and we can generate the file directly.
-      return {
-        isError: false,
-        content: [
-          {
-            type: "resource" as const,
-            // We return a base64 blob, it will be uploaded in MCPConfigurationServerRunner.run.
-            resource: {
-              name: file_name,
-              blob: Buffer.from(file_content).toString("base64"),
-              text: "Your file was generated successfully.",
-              mimeType: getContentTypeFromOutputFormat(extension),
-              uri: "",
+        // Basic case: we have a text-based format and we can generate the file directly.
+        return new Ok([
+            {
+              type: "resource" as const,
+              // We return a base64 blob, it will be uploaded in MCPConfigurationServerRunner.run.
+              resource: {
+                name: file_name,
+                blob: Buffer.from(file_content).toString("base64"),
+                text: "Your file was generated successfully.",
+                mimeType: getContentTypeFromOutputFormat(extension),
+                uri: "",
+              },
             },
-          },
-        ],
-      };
+          ]);
       }
     )
   );

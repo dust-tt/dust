@@ -1,10 +1,8 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Readable } from "stream";
 
-import {
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makeMCPToolJSONSuccess } from "@app/lib/actions/mcp_internal_actions/utils";
 import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
@@ -78,13 +76,15 @@ export async function processAttachment({
   filename: string;
   extractText: () => Promise<Result<string, string>>;
   downloadContent: () => Promise<Result<Buffer, string>>;
-}): Promise<CallToolResult> {
+}): Promise<Result<CallToolResult["content"], MCPError>> {
   // Try text extraction for supported file types
   if (isTextExtractionSupportedContentType(mimeType)) {
     const textResult = await extractText();
 
     if (textResult.isOk()) {
-      return makeMCPToolJSONSuccess({ result: textResult.value });
+      return new Ok(
+        makeMCPToolJSONSuccess({ result: textResult.value }).content
+      );
     }
 
     logger.warn(
@@ -96,8 +96,8 @@ export async function processAttachment({
   const downloadResult = await downloadContent();
 
   if (downloadResult.isErr()) {
-    return makeMCPToolTextError(
-      `Failed to download attachment: ${downloadResult.error}`
+    return new Err(
+      new MCPError(`Failed to download attachment: ${downloadResult.error}`)
     );
   }
 
@@ -105,22 +105,21 @@ export async function processAttachment({
 
   // Return plain text content as text
   if (mimeType.startsWith("text/")) {
-    return makeMCPToolJSONSuccess({ result: buffer.toString("utf-8") });
+    return new Ok(
+      makeMCPToolJSONSuccess({ result: buffer.toString("utf-8") }).content
+    );
   }
 
   // Return binary files as resource for upload
-  return {
-    isError: false,
-    content: [
-      {
-        type: "resource" as const,
-        resource: {
-          blob: buffer.toString("base64"),
-          text: `Attachment: ${sanitizeFilename(filename)}`,
-          mimeType,
-          uri: "",
-        },
+  return new Ok([
+    {
+      type: "resource" as const,
+      resource: {
+        blob: buffer.toString("base64"),
+        text: `Attachment: ${sanitizeFilename(filename)}`,
+        mimeType,
+        uri: "",
       },
-    ],
-  };
+    },
+  ]);
 }

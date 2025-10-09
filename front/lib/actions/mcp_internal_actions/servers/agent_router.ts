@@ -4,10 +4,7 @@ import { z } from "zod";
 
 import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
@@ -37,51 +34,51 @@ const createServer = (
       auth,
       { toolName: LIST_ALL_AGENTS_TOOL_NAME, agentLoopContext },
       async () => {
-      const owner = auth.getNonNullableWorkspace();
-      const requestedGroupIds = auth.groups().map((g) => g.sId);
+        const owner = auth.getNonNullableWorkspace();
+        const requestedGroupIds = auth.groups().map((g) => g.sId);
 
-      const prodCredentials = await prodAPICredentialsForOwner(owner);
-      const api = new DustAPI(
-        apiConfig.getDustAPIConfig(),
-        {
-          ...prodCredentials,
-          extraHeaders: {
-            ...getHeaderFromGroupIds(requestedGroupIds),
+        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const api = new DustAPI(
+          apiConfig.getDustAPIConfig(),
+          {
+            ...prodCredentials,
+            extraHeaders: {
+              ...getHeaderFromGroupIds(requestedGroupIds),
+            },
           },
-        },
-        logger
-      );
+          logger
+        );
 
-      // We cannot call the internal getAgentConfigurations() here because it causes a circular dependency.
-      // Instead, we call the public API endpoint.
-      // Since this endpoint is using the workspace credentials we do not have the user and as a result
-      // we cannot use the "list" view, meaning we do not have the user's unpublished agents.
-      const res = await api.getAgentConfigurations({
-        view: "all",
-      });
-      if (res.isErr()) {
-        return new Err(new MCPError("Error fetching agent configurations"));
-      }
+        // We cannot call the internal getAgentConfigurations() here because it causes a circular dependency.
+        // Instead, we call the public API endpoint.
+        // Since this endpoint is using the workspace credentials we do not have the user and as a result
+        // we cannot use the "list" view, meaning we do not have the user's unpublished agents.
+        const res = await api.getAgentConfigurations({
+          view: "all",
+        });
+        if (res.isErr()) {
+          return new Err(new MCPError("Error fetching agent configurations"));
+        }
 
-      const agents = res.value;
-      const formattedAgents = agents.map((agent) => {
-        return {
-          name: agent.name,
-          mention: `:mention[${agent.name}]{sId=${agent.sId}}`,
-          description: agent.description,
-        };
-      });
+        const agents = res.value;
+        const formattedAgents = agents.map((agent) => {
+          return {
+            name: agent.name,
+            mention: `:mention[${agent.name}]{sId=${agent.sId}}`,
+            description: agent.description,
+          };
+        });
 
-      return new Ok([
-        {
-          type: "text",
-          text: "List of published agents successfully fetched",
-        },
-        {
-          type: "text",
-          text: JSON.stringify(formattedAgents),
-        },
-      ]);
+        return new Ok([
+          {
+            type: "text",
+            text: "List of published agents successfully fetched",
+          },
+          {
+            type: "text",
+            text: JSON.stringify(formattedAgents),
+          },
+        ]);
       }
     )
   );
@@ -99,72 +96,73 @@ const createServer = (
       auth,
       { toolName: SUGGEST_AGENTS_TOOL_NAME, agentLoopContext },
       async ({ userMessage }) => {
-      const owner = auth.getNonNullableWorkspace();
-      const requestedGroupIds = auth.groups().map((g) => g.sId);
+        const owner = auth.getNonNullableWorkspace();
+        const requestedGroupIds = auth.groups().map((g) => g.sId);
 
-      const prodCredentials = await prodAPICredentialsForOwner(owner);
-      const api = new DustAPI(
-        apiConfig.getDustAPIConfig(),
-        {
-          ...prodCredentials,
-          extraHeaders: {
-            ...getHeaderFromGroupIds(requestedGroupIds),
+        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const api = new DustAPI(
+          apiConfig.getDustAPIConfig(),
+          {
+            ...prodCredentials,
+            extraHeaders: {
+              ...getHeaderFromGroupIds(requestedGroupIds),
+            },
           },
-        },
-        logger
-      );
+          logger
+        );
 
-      // We cannot call the internal getAgentConfigurations() here because it causes a circular dependency.
-      // Instead, we call the public API endpoint.
-      // Since this endpoint is using the workspace credentials we do not have the user and as a result
-      // we cannot use the "list" view, meaning we do not have the user's unpublished agents.
-      const getAgentsRes = await api.getAgentConfigurations({
-        view: "all",
-      });
-      if (getAgentsRes.isErr()) {
-        return new Err(new MCPError("Error fetching agent configurations"));
-      }
-      const agents = getAgentsRes.value as LightAgentConfigurationType[];
+        // We cannot call the internal getAgentConfigurations() here because it causes a circular dependency.
+        // Instead, we call the public API endpoint.
+        // Since this endpoint is using the workspace credentials we do not have the user and as a result
+        // we cannot use the "list" view, meaning we do not have the user's unpublished agents.
+        const getAgentsRes = await api.getAgentConfigurations({
+          view: "all",
+        });
+        if (getAgentsRes.isErr()) {
+          return new Err(new MCPError("Error fetching agent configurations"));
+        }
+        const agents = getAgentsRes.value as LightAgentConfigurationType[];
 
-      const suggestedAgentsRes = await getSuggestedAgentsForContent(auth, {
-        agents,
-        content: userMessage,
-      });
-
-      if (suggestedAgentsRes.isErr()) {
-        return new Err(new MCPError(
-          `Error suggesting agents: ${suggestedAgentsRes.error}`
-        ));
-      }
-
-      const suggestedAgents = suggestedAgentsRes.value;
-      const formattedSuggestedAgents = suggestedAgents
-        .filter((agent) => agent.sId !== "dust")
-        .map((agent) => {
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          const instructions = agent.instructions || "";
-          const truncatedInstructions =
-            instructions.length > MAX_INSTRUCTIONS_LENGTH
-              ? instructions.slice(0, MAX_INSTRUCTIONS_LENGTH) + " (truncated)"
-              : instructions;
-
-          return {
-            mention: `:mention[${agent.name}]{sId=${agent.sId}}`,
-            description: agent.description,
-            instructions: truncatedInstructions,
-          };
+        const suggestedAgentsRes = await getSuggestedAgentsForContent(auth, {
+          agents,
+          content: userMessage,
         });
 
-      return new Ok([
-        {
-          type: "text",
-          text: "Suggested agents successfully fetched",
-        },
-        {
-          type: "text",
-          text: JSON.stringify(formattedSuggestedAgents),
-        },
-      ]);
+        if (suggestedAgentsRes.isErr()) {
+          return new Err(
+            new MCPError(`Error suggesting agents: ${suggestedAgentsRes.error}`)
+          );
+        }
+
+        const suggestedAgents = suggestedAgentsRes.value;
+        const formattedSuggestedAgents = suggestedAgents
+          .filter((agent) => agent.sId !== "dust")
+          .map((agent) => {
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            const instructions = agent.instructions || "";
+            const truncatedInstructions =
+              instructions.length > MAX_INSTRUCTIONS_LENGTH
+                ? instructions.slice(0, MAX_INSTRUCTIONS_LENGTH) +
+                  " (truncated)"
+                : instructions;
+
+            return {
+              mention: `:mention[${agent.name}]{sId=${agent.sId}}`,
+              description: agent.description,
+              instructions: truncatedInstructions,
+            };
+          });
+
+        return new Ok([
+          {
+            type: "text",
+            text: "Suggested agents successfully fetched",
+          },
+          {
+            type: "text",
+            text: JSON.stringify(formattedSuggestedAgents),
+          },
+        ]);
       }
     )
   );

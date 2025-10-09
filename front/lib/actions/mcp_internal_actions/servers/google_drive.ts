@@ -7,11 +7,10 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
-  makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Err, Ok } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const SUPPORTED_MIMETYPES = [
   "application/vnd.google-apps.document",

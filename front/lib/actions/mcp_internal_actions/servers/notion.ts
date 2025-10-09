@@ -1,3 +1,4 @@
+import type { Result } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -29,7 +30,13 @@ import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import type { TimeFrame } from "@app/types";
-import { Err, normalizeError, Ok, parseTimeFrame, timeFrameFromNow } from "@app/types";
+import {
+  Err,
+  normalizeError,
+  Ok,
+  parseTimeFrame,
+  timeFrameFromNow,
+} from "@app/types";
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -260,19 +267,21 @@ function makeQueryResource(
 async function withNotionClient<T>(
   fn: (notion: Client) => Promise<T>,
   authInfo?: AuthInfo
-): Promise<CallToolResult> {
+): Promise<Result<CallToolResult["content"], MCPError>> {
   try {
     const accessToken = authInfo?.token;
     if (!accessToken) {
-      return makePersonalAuthenticationError("notion");
+      return new Ok(makePersonalAuthenticationError("notion").content);
     }
     const notion = new Client({ auth: accessToken });
 
     const result = await fn(notion);
-    return makeMCPToolJSONSuccess({
-      message: "Success",
-      result: JSON.stringify(result),
-    });
+    return new Ok(
+      makeMCPToolJSONSuccess({
+        message: "Success",
+        result: JSON.stringify(result),
+      }).content
+    );
   } catch (e) {
     return new Err(new MCPError(normalizeError(e).message));
   }
@@ -306,47 +315,45 @@ const createServer = (
       auth,
       { toolName: "search" },
       async ({ query, type, relativeTimeFrame }, { authInfo }) => {
-      if (!agentLoopContext?.runContext) {
-        throw new Error("Agent loop run context is required");
-      }
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("Agent loop run context is required"));
+        }
 
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makePersonalAuthenticationError("notion");
-      }
-      const notion = new Client({ auth: accessToken });
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Ok(makePersonalAuthenticationError("notion").content);
+        }
+        const notion = new Client({ auth: accessToken });
 
-      const rawResults = await notion.search({
-        query,
-        filter: {
-          property: "object",
-          value: type,
-        },
-        page_size: NOTION_SEARCH_ACTION_NUM_RESULTS,
-      });
-
-      const timeFrame = parseTimeFrame(relativeTimeFrame);
-      const queryResource = makeQueryResource(query, type, timeFrame);
-
-      let results = rawResults.results;
-
-      // Notion search does not support time frame filtering, so we need to filter the results after the search.
-      if (timeFrame) {
-        const timestampInMs = timeFrameFromNow(timeFrame);
-        const date = new Date(timestampInMs);
-        results = rawResults.results.filter((result) => {
-          if (isFullPage(result) || isFullDatabase(result)) {
-            const lastEditedTime = parseISO(result.last_edited_time);
-            return lastEditedTime > date;
-          }
-          return true;
+        const rawResults = await notion.search({
+          query,
+          filter: {
+            property: "object",
+            value: type,
+          },
+          page_size: NOTION_SEARCH_ACTION_NUM_RESULTS,
         });
-      }
 
-      if (results.length === 0) {
-        return {
-          isError: false,
-          content: [
+        const timeFrame = parseTimeFrame(relativeTimeFrame);
+        const queryResource = makeQueryResource(query, type, timeFrame);
+
+        let results = rawResults.results;
+
+        // Notion search does not support time frame filtering, so we need to filter the results after the search.
+        if (timeFrame) {
+          const timestampInMs = timeFrameFromNow(timeFrame);
+          const date = new Date(timestampInMs);
+          results = rawResults.results.filter((result) => {
+            if (isFullPage(result) || isFullDatabase(result)) {
+              const lastEditedTime = parseISO(result.last_edited_time);
+              return lastEditedTime > date;
+            }
+            return true;
+          });
+        }
+
+        if (results.length === 0) {
+          return new Ok([
             {
               type: "resource" as const,
               resource: queryResource,
@@ -355,88 +362,85 @@ const createServer = (
               type: "text" as const,
               text: "No results found.",
             },
-          ],
-        };
-      } else {
-        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+          ]);
+        } else {
+          const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
-        const refs = getRefs().slice(
-          citationsOffset,
-          citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
-        );
+          const refs = getRefs().slice(
+            citationsOffset,
+            citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
+          );
 
-        const resultResources = results.map((result) => {
-          if (isFullPage(result)) {
-            const title =
-              (
-                Object.values(result.properties).find(
-                  (p) => p.type === "title"
-                ) as { title: RichTextItemResponse[] }
-              )?.title[0]?.plain_text ?? "Untitled Page";
+          const resultResources = results.map((result) => {
+            if (isFullPage(result)) {
+              const title =
+                (
+                  Object.values(result.properties).find(
+                    (p) => p.type === "title"
+                  ) as { title: RichTextItemResponse[] }
+                )?.title[0]?.plain_text ?? "Untitled Page";
 
-            const description = Object.entries(result.properties)
-              .filter(
-                ([, value]) =>
-                  value.type === "rich_text" && value.rich_text.length > 0
-              )
-              .map(([name, value]): [string, RichTextItemResponse[]] => [
-                name,
-                value.type === "rich_text" ? value.rich_text : [],
-              ])
-              .map(([name, richText]): string => {
-                return `${name}: ${richText
-                  .filter((t) => !!t?.plain_text)
-                  .map((t) => t?.plain_text)
-                  .join(" ")}`;
-              })
-              .join("\n");
+              const description = Object.entries(result.properties)
+                .filter(
+                  ([, value]) =>
+                    value.type === "rich_text" && value.rich_text.length > 0
+                )
+                .map(([name, value]): [string, RichTextItemResponse[]] => [
+                  name,
+                  value.type === "rich_text" ? value.rich_text : [],
+                ])
+                .map(([name, richText]): string => {
+                  return `${name}: ${richText
+                    .filter((t) => !!t?.plain_text)
+                    .map((t) => t?.plain_text)
+                    .join(" ")}`;
+                })
+                .join("\n");
 
-            return {
-              mimeType:
-                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-              uri: result.url,
-              text: title,
-              id: result.id,
-              tags: [
-                `created: ${result.created_time}`,
-                `lastEdited: ${result.last_edited_time}`,
-              ],
-              ref: refs.shift() as string,
-              chunks: description ? [description] : [],
-              source: {
-                provider: "notion",
-              },
-            } satisfies SearchResultResourceType;
-          } else if (isFullDatabase(result)) {
-            const title = result.title[0]?.plain_text ?? "Untitled Database";
-            const description = result.description
-              ?.map((d) => d?.plain_text)
-              .join(" ");
+              return {
+                mimeType:
+                  INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+                uri: result.url,
+                text: title,
+                id: result.id,
+                tags: [
+                  `created: ${result.created_time}`,
+                  `lastEdited: ${result.last_edited_time}`,
+                ],
+                ref: refs.shift() as string,
+                chunks: description ? [description] : [],
+                source: {
+                  provider: "notion",
+                },
+              } satisfies SearchResultResourceType;
+            } else if (isFullDatabase(result)) {
+              const title = result.title[0]?.plain_text ?? "Untitled Database";
+              const description = result.description
+                ?.map((d) => d?.plain_text)
+                .join(" ");
 
-            return {
-              mimeType:
-                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-              uri: result.url,
-              text: title,
-              id: result.id,
-              tags: [
-                `created: ${result.created_time}`,
-                `lastEdited: ${result.last_edited_time}`,
-              ],
-              ref: refs.shift() as string,
-              chunks: description ? [description] : [],
-              source: {
-                provider: "notion",
-              },
-            } satisfies SearchResultResourceType;
-          } else {
-            return JSON.stringify(result.object);
-          }
-        });
+              return {
+                mimeType:
+                  INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+                uri: result.url,
+                text: title,
+                id: result.id,
+                tags: [
+                  `created: ${result.created_time}`,
+                  `lastEdited: ${result.last_edited_time}`,
+                ],
+                ref: refs.shift() as string,
+                chunks: description ? [description] : [],
+                source: {
+                  provider: "notion",
+                },
+              } satisfies SearchResultResourceType;
+            } else {
+              return JSON.stringify(result.object);
+            }
+          });
 
-        return {
-          isError: false,
-          content: [
+          return new Ok([
             {
               type: "resource" as const,
               resource: queryResource,
@@ -452,10 +456,9 @@ const createServer = (
                     resource: result,
                   }
             ),
-          ],
-        };
+          ]);
+        }
       }
-    }
     )
   );
 
@@ -469,14 +472,10 @@ const createServer = (
       auth,
       { toolName: "retrieve_page" },
       async ({ pageId }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) => notion.pages.retrieve({ page_id: pageId }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -491,14 +490,10 @@ const createServer = (
       auth,
       { toolName: "retrieve_database_schema" },
       async ({ databaseId }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) => notion.databases.retrieve({ database_id: databaseId }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -523,7 +518,7 @@ const createServer = (
         { databaseId, filter, sorts, start_cursor, page_size },
         { authInfo }
       ) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) =>
             notion.databases.query({
               database_id: databaseId,
@@ -534,10 +529,6 @@ const createServer = (
             }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -562,7 +553,7 @@ const createServer = (
         { databaseId, filter, sorts, start_cursor, page_size },
         { authInfo }
       ) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) =>
             notion.databases.query({
               database_id: databaseId,
@@ -573,10 +564,6 @@ const createServer = (
             }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -596,14 +583,10 @@ const createServer = (
       auth,
       { toolName: "create_page" },
       async ({ parent, properties, icon, cover }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) => notion.pages.create({ parent, properties, icon, cover }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -621,7 +604,7 @@ const createServer = (
       auth,
       { toolName: "insert_row_into_database" },
       async ({ databaseId, properties, icon, cover }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) =>
             notion.pages.create({
               parent: { database_id: databaseId, type: "database_id" },
@@ -631,10 +614,6 @@ const createServer = (
             }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -659,15 +638,11 @@ const createServer = (
       auth,
       { toolName: "create_database" },
       async ({ parent, title, properties, icon, cover }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) =>
             notion.databases.create({ parent, title, properties, icon, cover }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -683,14 +658,10 @@ const createServer = (
       auth,
       { toolName: "update_page" },
       async ({ pageId, properties }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) => notion.pages.update({ page_id: pageId, properties }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -705,14 +676,10 @@ const createServer = (
       auth,
       { toolName: "retrieve_block" },
       async ({ blockId }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) => notion.blocks.retrieve({ block_id: blockId }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -732,7 +699,7 @@ const createServer = (
       auth,
       { toolName: "retrieve_block_children" },
       async ({ blockId, start_cursor, page_size }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) =>
             notion.blocks.children.list({
               block_id: blockId,
@@ -741,10 +708,6 @@ const createServer = (
             }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -764,7 +727,7 @@ const createServer = (
       auth,
       { toolName: "add_page_content" },
       async ({ blockId, children }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) =>
             notion.blocks.children.append({
               block_id: blockId,
@@ -772,10 +735,6 @@ const createServer = (
             }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -803,7 +762,7 @@ const createServer = (
       auth,
       { toolName: "create_comment" },
       async ({ parent_page_id, discussion_id, comment }, { authInfo }) => {
-        const result = await withNotionClient((notion) => {
+        return withNotionClient((notion) => {
           if (!parent_page_id && !discussion_id) {
             throw new Error(
               "Either parent_page_id or discussion_id must be provided."
@@ -823,10 +782,6 @@ const createServer = (
           }
           return notion.comments.create(params);
         }, authInfo);
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -843,14 +798,11 @@ const createServer = (
       auth,
       { toolName: "delete_block" },
       async ({ blockId }, { authInfo }) => {
-        const result = await withNotionClient(
-          (notion) => notion.blocks.update({ block_id: blockId, archived: true }),
+        return withNotionClient(
+          (notion) =>
+            notion.blocks.update({ block_id: blockId, archived: true }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -867,14 +819,10 @@ const createServer = (
       auth,
       { toolName: "fetch_comments" },
       async ({ blockId }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) => notion.comments.list({ block_id: blockId }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -890,14 +838,10 @@ const createServer = (
       auth,
       { toolName: "update_row_database" },
       async ({ pageId, properties }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) => notion.pages.update({ page_id: pageId, properties }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -913,15 +857,11 @@ const createServer = (
       auth,
       { toolName: "update_schema_database" },
       async ({ databaseId, properties }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) =>
             notion.databases.update({ database_id: databaseId, properties }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );
@@ -934,11 +874,7 @@ const createServer = (
       auth,
       { toolName: "list_users" },
       async (_, { authInfo }) => {
-        const result = await withNotionClient((notion) => notion.users.list({}), authInfo);
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
+        return withNotionClient((notion) => notion.users.list({}), authInfo);
       }
     )
   );
@@ -953,14 +889,10 @@ const createServer = (
       auth,
       { toolName: "get_about_user" },
       async ({ userId }, { authInfo }) => {
-        const result = await withNotionClient(
+        return withNotionClient(
           (notion) => notion.users.retrieve({ user_id: userId }),
           authInfo
         );
-        if (result.isError) {
-          return result;
-        }
-        return new Ok(result.content);
       }
     )
   );

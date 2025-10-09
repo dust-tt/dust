@@ -4,10 +4,7 @@ import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import apiConfig from "@app/lib/api/config";
@@ -138,7 +135,8 @@ const createServer = (
           );
         }
 
-        const { agentConfiguration: agent, subAgentConfiguration } = result.value;
+        const { agentConfiguration: agent, subAgentConfiguration } =
+          result.value;
         const agentUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/w/${owner.sId}/builder/agents/${agent.sId}`;
 
         // Prepare the structured output resource

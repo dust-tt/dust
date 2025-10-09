@@ -5,7 +5,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
-  makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -350,9 +349,7 @@ const createServer = (auth: Authenticator): McpServer => {
         // Subject and to are required for user display/confirmation
         if (!subject || to.length === 0) {
           return new Err(
-            new MCPError(
-              "Subject and recipients are required for confirmation"
-            )
+            new MCPError("Subject and recipients are required for confirmation")
           );
         }
 
@@ -412,7 +409,15 @@ const createServer = (auth: Authenticator): McpServer => {
       auth,
       { toolName: "create_reply_draft" },
       async (
-        { messageId, body, contentType = "html", replyAll = false, to, cc, bcc },
+        {
+          messageId,
+          body,
+          contentType = "html",
+          replyAll = false,
+          to,
+          cc,
+          bcc,
+        },
         { authInfo }
       ) => {
         const accessToken = authInfo?.token;

@@ -40,9 +40,10 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
-const createServer = (): McpServer => {
+const createServer = (auth: Authenticator): McpServer => {
   const server = makeInternalMCPServer("monday");
 
   server.tool(
@@ -50,7 +51,7 @@ const createServer = (): McpServer => {
     "Lists all accessible boards in Monday.com workspace. Returns up to 100 boards.",
     {},
     withToolLogging(
-      undefined,
+      auth,
       { toolName: "get_boards" },
       async (_params, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -60,10 +61,12 @@ const createServer = (): McpServer => {
         }
 
         const boards = await getBoards(accessToken);
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Boards retrieved successfully",
-          result: boards,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Boards retrieved successfully",
+            result: boards,
+          }).content
+        );
       }
     )
   );
@@ -75,7 +78,7 @@ const createServer = (): McpServer => {
       boardId: z.string().describe("The board ID to retrieve items from"),
     },
     withToolLogging(
-      undefined,
+      auth,
       { toolName: "get_board_items" },
       async ({ boardId }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -85,10 +88,12 @@ const createServer = (): McpServer => {
         }
 
         const items = await getBoardItems(accessToken, boardId);
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Board items retrieved successfully",
-          result: items,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Board items retrieved successfully",
+            result: items,
+          }).content
+        );
       }
     )
   );
@@ -100,7 +105,7 @@ const createServer = (): McpServer => {
       itemId: z.string().describe("The item ID to retrieve details for"),
     },
     withToolLogging(
-      undefined,
+      auth,
       { toolName: "get_item_details" },
       async ({ itemId }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -113,10 +118,12 @@ const createServer = (): McpServer => {
         if (!item) {
           return new Err(new MCPError("Item not found"));
         }
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Item details retrieved successfully",
-          result: item,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Item details retrieved successfully",
+            result: item,
+          }).content
+        );
       }
     )
   );
@@ -154,7 +161,7 @@ const createServer = (): McpServer => {
         .describe("Order direction (default: asc)"),
     },
     withToolLogging(
-      undefined,
+      auth,
       { toolName: "search_items" },
       async (
         {
@@ -195,10 +202,12 @@ const createServer = (): McpServer => {
         }
 
         const items = await searchItems(accessToken, filters);
-        return new Ok(makeMCPToolJSONSuccess({
-          message: `Found ${items.length} items (max 100 returned)`,
-          result: items,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: `Found ${items.length} items (max 100 returned)`,
+            result: items,
+          }).content
+        );
       }
     )
   );
@@ -221,7 +230,7 @@ const createServer = (): McpServer => {
         ),
     },
     withToolLogging(
-      undefined,
+      auth,
       { toolName: "create_item" },
       async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -237,10 +246,12 @@ const createServer = (): McpServer => {
           groupId,
           columnValues
         );
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Item created successfully",
-          result: item,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Item created successfully",
+            result: item,
+          }).content
+        );
       }
     )
   );
@@ -257,7 +268,7 @@ const createServer = (): McpServer => {
         ),
     },
     withToolLogging(
-      undefined,
+      auth,
       { toolName: "update_item" },
       async ({ itemId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -270,10 +281,12 @@ const createServer = (): McpServer => {
           return new Err(new MCPError("Invalid column values format"));
         }
         const item = await updateItem(accessToken, itemId, columnValues);
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Item updated successfully",
-          result: item,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Item updated successfully",
+            result: item,
+          }).content
+        );
       }
     )
   );
@@ -286,7 +299,7 @@ const createServer = (): McpServer => {
       body: z.string().describe("The content of the update/comment"),
     },
     withToolLogging(
-      undefined,
+      auth,
       { toolName: "create_update" },
       async ({ itemId, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
@@ -296,10 +309,12 @@ const createServer = (): McpServer => {
         }
 
         const update = await createUpdate(accessToken, itemId, body);
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Update added successfully",
-          result: update,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Update added successfully",
+            result: update,
+          }).content
+        );
       }
     )
   );

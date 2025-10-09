@@ -8,7 +8,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -135,14 +134,18 @@ const createServer = (
             pageToken,
             maxResults: maxResults ? Math.min(maxResults, 250) : undefined,
           });
-          return new Ok(makeMCPToolJSONSuccess({
-            message: "Calendars listed successfully",
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Calendars listed successfully",
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to list calendars"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to list calendars"
+            )
+          );
         }
       }
     )
@@ -227,14 +230,18 @@ const createServer = (
               : undefined,
           };
 
-          return new Ok(makeMCPToolJSONSuccess({
-            message: "Events listed successfully",
-            result: enrichedData,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Events listed successfully",
+              result: enrichedData,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to list/search events"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to list/search events"
+            )
+          );
         }
       }
     )
@@ -271,14 +278,16 @@ const createServer = (
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
             : res.data;
 
-          return new Ok(makeMCPToolJSONSuccess({
-            message: "Event fetched successfully",
-            result: enrichedEvent,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Event fetched successfully",
+              result: enrichedEvent,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to get event"
-          ));
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to get event")
+          );
         }
       }
     )
@@ -363,14 +372,18 @@ const createServer = (
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
             : res.data;
 
-          return new Ok(makeMCPToolJSONSuccess({
-            message: "Event created successfully",
-            result: enrichedEvent,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Event created successfully",
+              result: enrichedEvent,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to create event"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to create event"
+            )
+          );
         }
       }
     )
@@ -467,14 +480,18 @@ const createServer = (
             ? enrichEventWithDayOfWeek(res.data, userTimezone)
             : res.data;
 
-          return new Ok(makeMCPToolJSONSuccess({
-            message: "Event updated successfully",
-            result: enrichedEvent,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Event updated successfully",
+              result: enrichedEvent,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to update event"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to update event"
+            )
+          );
         }
       }
     )
@@ -505,14 +522,18 @@ const createServer = (
             calendarId,
             eventId,
           });
-          return new Ok(makeMCPToolJSONSuccess({
-            message: "Event deleted successfully",
-            result: "",
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Event deleted successfully",
+              result: "",
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to delete event"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to delete event"
+            )
+          );
         }
       }
     )
@@ -572,21 +593,26 @@ const createServer = (
 
         const busySlots = calendarData?.busy ?? [];
           const available = busySlots.length === 0;
-          return new Ok(makeMCPToolJSONSuccess({
-            result: {
-              available,
-              busySlots: busySlots.map((slot) => ({
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: {
+                available,
+                busySlots: busySlots.map((slot) => ({
 
-                start: slot.start ?? "",
+                  start: slot.start ?? "",
 
-                end: slot.end ?? "",
-              })),
-            },
-          }).content);
+                  end: slot.end ?? "",
+                })),
+              },
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to check calendar availability"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message ||
+                "Failed to check calendar availability"
+            )
+          );
         }
       }
     )

@@ -7,10 +7,7 @@ import {
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -107,23 +104,18 @@ function createServer(
             `File ${title} is too large (${(textByteSize / 1024 / 1024).toFixed(2)}MB) to include in the conversation. ` +
               `Maximum supported size is ${MAX_FILE_SIZE_FOR_INCLUDE / 1024 / 1024}MB. ` +
               `Consider using cat to read smaller portions of the file.`
-          );
+          ));
         }
 
-        return {
-          isError: false,
-          content: [
+        return new Ok([
             {
               type: "text",
               text: content.text,
             },
-          ],
-        };
+          ]);
       } else if (isImageContent(content)) {
         // For images, we return the URL as a resource with the correct MIME type
-        return {
-          isError: false,
-          content: [
+        return new Ok([
             {
               type: "resource",
               resource: {
@@ -133,14 +125,13 @@ function createServer(
                 text: `Image: ${title}`,
               },
             },
-          ],
-        };
+          ]);
       }
 
       return new Err(new MCPError(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         `File ${attachment?.title || fileId} of type ${attachment?.contentType || "unknown"} has no text or image content`
-      );
+      ));
       }
     )
   );
@@ -161,15 +152,12 @@ function createServer(
       const attachments = listAttachments(conversation);
 
       if (attachments.length === 0) {
-        return {
-          isError: false,
-          content: [
+        return new Ok([
             {
               type: "text",
               text: "No files are currently attached to the conversation.",
             },
-          ],
-        };
+          ]);
       }
 
       let content = `The following files are currently attached to the conversation:\n`;
@@ -180,13 +168,12 @@ function createServer(
         content += renderAttachmentXml({ attachment });
       }
 
-      return new Ok( [
+      return new Ok([
           {
             type: "text",
             text: content,
           },
-        ],
-      };
+        ]);
       }
     )
   );
@@ -252,22 +239,19 @@ function createServer(
       if (!isTextContent(content)) {
         return new Err(new MCPError(
           `File ${title} does not have text content that can be read with offset/limit`
-        );
+        ));
       }
 
       let text = content.text;
 
       // Returning early with a custom message if the text is empty.
       if (text.length === 0) {
-        return {
-          isError: false,
-          content: [
+        return new Ok([
             {
               type: "text",
               text: `No content retrieved for file ${title}.`,
             },
-          ],
-        };
+          ]);
       }
 
       // Apply offset and limit.
@@ -279,7 +263,7 @@ function createServer(
         if (start > text.length) {
           return new Err(new MCPError(
             `Offset ${start} is out of bounds for file ${title}.`
-          );
+          ));
         }
         if (limit === 0) {
           return new Err(new MCPError(`Limit cannot be equal to 0.`));
@@ -296,7 +280,7 @@ function createServer(
             `Grep pattern is too large (${(grepByteSize / 1024 / 1024).toFixed(2)}MB) to apply grep filtering. ` +
               `Maximum supported size is ${MAX_FILE_SIZE_FOR_GREP / 1024 / 1024}MB. ` +
               `Consider using offset/limit to read smaller portions of the file.`
-          );
+          ));
         }
 
         try {
@@ -307,22 +291,21 @@ function createServer(
         } catch (e) {
           return new Err(new MCPError(
             `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`
-          );
+          ));
         }
         if (text.length === 0) {
           return new Err(new MCPError(
             `No lines matched the grep pattern: ${grep}.`
-          );
+          ));
         }
       }
 
-      return new Ok( [
+      return new Ok([
           {
             type: "text",
             text,
           },
-        ],
-      };
+        ]);
       }
     )
   );

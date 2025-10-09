@@ -6,12 +6,11 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
-  makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { Err, Ok } from "@app/types";
 
 interface GmailHeader {
   name: string;

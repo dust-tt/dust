@@ -4,8 +4,6 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
 
-import { MCPError } from "@app/lib/actions/mcp_errors";
-
 import {
   generateCSVFileAndSnippet,
   generateJSONFileAndSnippet,
@@ -17,11 +15,9 @@ import type {
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type {
   AgentLoopContextType,
@@ -415,41 +411,41 @@ export default async function createServer(
             | { type: "resource"; resource: ToolGeneratedFileType }
           )[] = [];
 
-        params = await prepareParamsWithHistory(
-          params,
-          schema,
-          agentLoopContext.runContext,
-          auth
-        );
+          params = await prepareParamsWithHistory(
+            params,
+            schema,
+            agentLoopContext.runContext,
+            auth
+          );
 
-        const requestedGroupIds = auth.groups().map((g) => g.sId);
+          const requestedGroupIds = auth.groups().map((g) => g.sId);
 
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
-        const apiConfig = config.getDustAPIConfig();
-        const api = new DustAPI(
-          apiConfig,
-          {
-            ...prodCredentials,
-            extraHeaders: {
-              ...getHeaderFromGroupIds(requestedGroupIds),
-              ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
+          const prodCredentials = await prodAPICredentialsForOwner(owner);
+          const apiConfig = config.getDustAPIConfig();
+          const api = new DustAPI(
+            apiConfig,
+            {
+              ...prodCredentials,
+              extraHeaders: {
+                ...getHeaderFromGroupIds(requestedGroupIds),
+                ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
+              },
             },
-          },
-          logger,
-          apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
-        );
+            logger,
+            apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
+          );
 
-        const runRes = await api.runAppStreamed(
-          {
-            workspaceId: owner.sId,
-            appId: app.sId,
-            appSpaceId: app.space.sId,
-            appHash: "latest",
-          },
-          appConfig,
-          [params],
-          { useWorkspaceCredentials: true }
-        );
+          const runRes = await api.runAppStreamed(
+            {
+              workspaceId: owner.sId,
+              appId: app.sId,
+              appSpaceId: app.space.sId,
+              appHash: "latest",
+            },
+            appConfig,
+            [params],
+            { useWorkspaceCredentials: true }
+          );
 
           if (runRes.isErr()) {
             return new Err(
@@ -457,8 +453,8 @@ export default async function createServer(
             );
           }
 
-        const { eventStream } = runRes.value;
-        let lastBlockOutput = null;
+          const { eventStream } = runRes.value;
+          let lastBlockOutput = null;
 
           for await (const event of eventStream) {
             if (event.type === "error") {
@@ -478,31 +474,31 @@ export default async function createServer(
             }
           }
 
-        const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
+          const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
 
-        const containsFileOutput = (
-          output: unknown
-        ): output is DustFileOutput =>
-          typeof output === "object" &&
-          output !== null &&
-          "__dust_file" in output &&
-          typeof output.__dust_file === "object" &&
-          output.__dust_file !== null &&
-          "type" in output.__dust_file &&
-          "content" in output.__dust_file;
+          const containsFileOutput = (
+            output: unknown
+          ): output is DustFileOutput =>
+            typeof output === "object" &&
+            output !== null &&
+            "__dust_file" in output &&
+            typeof output.__dust_file === "object" &&
+            output.__dust_file !== null &&
+            "type" in output.__dust_file &&
+            "content" in output.__dust_file;
 
-        if (
-          containsFileOutput(sanitizedOutput) &&
-          agentLoopContext.runContext?.conversation
-        ) {
-          const fileContent = await processDustFileOutput(
-            auth,
-            sanitizedOutput,
-            agentLoopContext.runContext.conversation,
-            app.name
-          );
-          content.push(...fileContent);
-        }
+          if (
+            containsFileOutput(sanitizedOutput) &&
+            agentLoopContext.runContext?.conversation
+          ) {
+            const fileContent = await processDustFileOutput(
+              auth,
+              sanitizedOutput,
+              agentLoopContext.runContext.conversation,
+              app.name
+            );
+            content.push(...fileContent);
+          }
 
           content.push({
             type: "text",

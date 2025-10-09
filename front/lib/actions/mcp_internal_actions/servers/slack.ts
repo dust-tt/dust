@@ -3,7 +3,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
-import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
@@ -29,8 +28,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
 import {
   makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextSuccess,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -42,7 +39,9 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
-import { Err, Ok,
+import {
+  Err,
+  Ok,
   parseTimeFrame,
   stripNullBytes,
   timeFrameFromNow,
@@ -339,7 +338,7 @@ const createServer = async (
           if (!agentLoopContext?.runContext) {
             return new Err(
               new MCPError("Unreachable: missing agentLoopRunContext.")
-            );
+          );
           }
 
           if (keywords.length > 5) {
@@ -493,7 +492,7 @@ const createServer = async (
           if (!agentLoopContext?.runContext) {
             return new Err(
               new MCPError("Unreachable: missing agentLoopRunContext.")
-            );
+          );
           }
 
           const accessToken = authInfo?.token;
@@ -627,7 +626,7 @@ const createServer = async (
         if (!agentLoopContext?.runContext) {
           return new Err(
             new MCPError("Unreachable: missing agentLoopRunContext.")
-          );
+        );
         }
 
         const accessToken = authInfo?.token;
@@ -773,19 +772,19 @@ const createServer = async (
         if (!agentLoopContext?.runContext) {
           return new Err(
             new MCPError("Unreachable: missing agentLoopRunContext.")
-          );
+        );
         }
 
         try {
           return await executePostMessage(
             to,
             message,
-            threadTs,
-            fileId,
+            threadTs,fileId,
             accessToken,
             agentLoopContext,
             auth
           );
+
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
@@ -816,6 +815,7 @@ const createServer = async (
 
         try {
           return await executeListUsers(nameFilter, accessToken);
+
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
@@ -845,6 +845,7 @@ const createServer = async (
 
         try {
           return await executeGetUser(userId, accessToken);
+
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
@@ -879,6 +880,7 @@ const createServer = async (
             accessToken,
             mcpServerId
           );
+
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Err(new MCPError("slack"));

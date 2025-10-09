@@ -15,11 +15,12 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
 const SF_API_VERSION = "57.0";
 
-const createServer = (): McpServer => {
+const createServer = (auth: Authenticator): McpServer => {
   const server = makeInternalMCPServer("salesforce");
 
   server.tool(
@@ -44,10 +45,12 @@ const createServer = (): McpServer => {
 
         const result = await conn.query(query);
 
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Operation completed successfully",
-          result: result,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Operation completed successfully",
+            result: result,
+          }).content
+        );
       }
     )
   );
@@ -88,10 +91,12 @@ const createServer = (): McpServer => {
           .map((object) => `${object.name} (display_name="${object.label}")`)
           .join("\n");
 
-        return new Ok(makeMCPToolTextSuccess({
-          message: "Operation completed successfully",
-          result: objects,
-        }).content);
+        return new Ok(
+          makeMCPToolTextSuccess({
+            message: "Operation completed successfully",
+            result: objects,
+          }).content
+        );
       }
     )
   );
@@ -179,7 +184,8 @@ const createServer = (): McpServer => {
           });
         }
 
-        summary += "\nChild Relationships (for Parent-to-Child SOQL queries):\n";
+        summary +=
+          "\nChild Relationships (for Parent-to-Child SOQL queries):\n";
         if (result.childRelationships && result.childRelationships.length > 0) {
           result.childRelationships.forEach((rel: any) => {
             summary += `- RelationshipName: ${rel.relationshipName || "(N/A - check API docs)"}`;
@@ -193,10 +199,12 @@ const createServer = (): McpServer => {
         summary +=
           "\nNote: For custom relationships in SOQL, names often end with '__r' (e.g., MyCustomChildren__r). Use the 'RelationshipName' listed above.\n";
 
-        return new Ok(makeMCPToolTextSuccess({
-          message: "Object described successfully. Summary provided.",
-          result: summary,
-        }).content);
+        return new Ok(
+          makeMCPToolTextSuccess({
+            message: "Object described successfully. Summary provided.",
+            result: summary,
+          }).content
+        );
       }
     )
   );
@@ -240,12 +248,14 @@ const createServer = (): McpServer => {
           author: att.author,
         }));
 
-        return new Ok(makeMCPToolJSONSuccess({
-          message: `Found ${attachments.length} attachment(s) for record ${recordId}`,
-          result: {
-            attachments: attachmentSummary,
-          },
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: `Found ${attachments.length} attachment(s) for record ${recordId}`,
+            result: {
+              attachments: attachmentSummary,
+            },
+          }).content
+        );
       }
     )
   );
@@ -279,9 +289,11 @@ const createServer = (): McpServer => {
         );
 
         if (attachmentsResult.isErr()) {
-          return new Err(new MCPError(
-            `Failed to get attachments: ${attachmentsResult.error}`
-          ));
+          return new Err(
+            new MCPError(
+              `Failed to get attachments: ${attachmentsResult.error}`
+            )
+          );
         }
 
         const attachments = attachmentsResult.value;
@@ -290,9 +302,11 @@ const createServer = (): McpServer => {
         );
 
         if (!targetAttachment) {
-          return new Err(new MCPError(
-            `Attachment with ID ${attachmentId} not found on record ${recordId}.`
-          ));
+          return new Err(
+            new MCPError(
+              `Attachment with ID ${attachmentId} not found on record ${recordId}.`
+            )
+          );
         }
 
         return processAttachment({

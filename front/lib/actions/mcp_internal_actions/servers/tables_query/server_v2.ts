@@ -29,10 +29,7 @@ import {
   getSchemaContent,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/schema";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -107,9 +104,11 @@ function createServer(
           tables
         );
         if (tableConfigurationsRes.isErr()) {
-          return new Err(new MCPError(
-            `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
-          ));
+          return new Err(
+            new MCPError(
+              `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+            )
+          );
         }
         const tableConfigurations = tableConfigurationsRes.value;
         if (tableConfigurations.length === 0) {
@@ -149,9 +148,11 @@ function createServer(
         });
 
         if (schemaResult.isErr()) {
-          return new Err(new MCPError(
-            `Error retrieving database schema: ${schemaResult.error.message}`
-          ));
+          return new Err(
+            new MCPError(
+              `Error retrieving database schema: ${schemaResult.error.message}`
+            )
+          );
         }
 
         return new Ok([
