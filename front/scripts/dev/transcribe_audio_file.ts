@@ -16,11 +16,9 @@ async function transcribeAudioFile(
   {
     file,
     stream,
-    provider,
   }: {
     file: string;
     stream?: boolean;
-    provider: string;
   },
   execute: boolean,
   logger: Logger
@@ -38,8 +36,6 @@ async function transcribeAudioFile(
 
   const data = await readFile(file);
   const filename = basename(file);
-  const _provider = provider as "openai" | "elevenlabs";
-
   logger.info(
     { file: filename, size: data.length },
     "Transcribing audio file."
@@ -55,10 +51,7 @@ async function transcribeAudioFile(
     logger.info({ file }, "Streaming transcription started.");
     let totalLength = 0;
     try {
-      for await (const event of await transcribeStream(
-        formidableFile,
-        _provider
-      )) {
+      for await (const event of await transcribeStream(formidableFile)) {
         switch (event.type) {
           case "delta":
             totalLength += event.delta.length;
@@ -87,7 +80,7 @@ async function transcribeAudioFile(
   }
 
   // Non-streaming path
-  const transcribeResult = await transcribeFile(formidableFile, _provider);
+  const transcribeResult = await transcribeFile(formidableFile);
   if (transcribeResult.isErr()) {
     logger.error(
       { err: transcribeResult.error, file },
@@ -133,7 +126,7 @@ makeScript(
       description: "The provider to use for transcription",
     },
   },
-  async ({ file, execute, stream, provider }, logger) => {
-    await transcribeAudioFile({ file, stream, provider }, execute, logger);
+  async ({ file, execute, stream }, logger) => {
+    await transcribeAudioFile({ file, stream }, execute, logger);
   }
 );
