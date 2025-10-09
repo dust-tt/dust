@@ -99,6 +99,26 @@ export const PostWebhookSourcesSchema = z.object({
   kind: z.enum(WEBHOOK_SOURCE_KIND),
 });
 
+export const refineSubscribedEvents: [
+  (data: { kind: WebhookSourceKind; subscribedEvents: string[] }) => boolean,
+  {
+    message: string;
+    path: string[];
+  },
+] = [
+  ({
+    kind,
+    subscribedEvents,
+  }: {
+    kind: WebhookSourceKind;
+    subscribedEvents: string[];
+  }) => kind === "custom" || subscribedEvents.length > 0,
+  {
+    message: "Subscribed events must not be empty.",
+    path: ["subscribedEvents"],
+  },
+];
+
 export type PatchWebhookSourceViewBody = z.infer<
   typeof patchWebhookSourceViewBodySchema
 >;
