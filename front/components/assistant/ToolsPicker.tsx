@@ -21,10 +21,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  useInternalMCPServerViewsFromSpaces,
-  useRemoteMCPServerViewsFromSpaces,
-} from "@app/lib/swr/mcp_servers";
+import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types";
 
@@ -71,20 +68,12 @@ export function ToolsPicker({
     () => spaces.filter((s) => s.kind === "global"),
     [spaces]
   );
-  const { serverViews: autoServerViews, isLoading: isAutoServerViewsLoading } =
-    useInternalMCPServerViewsFromSpaces(
+  const { serverViews, isLoading: isServerViewsLoading } =
+    useMCPServerViewsFromSpaces(
       owner,
       globalSpaces,
       { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
     );
-  const {
-    serverViews: manualServerViews,
-    isLoading: isManualServerViewsLoading,
-  } = useRemoteMCPServerViewsFromSpaces(
-    owner,
-    globalSpaces,
-    { disabled: !isOpen } // We don't want to fetch the server views when the picker is closed.
-  );
 
   const selectedMCPServerViewIds = useMemo(
     () => selectedMCPServerViews.map((v) => v.sId),
@@ -92,10 +81,7 @@ export function ToolsPicker({
   );
 
   const { filteredServerViews, filteredServerViewsUnselected } = useMemo(() => {
-    const filteredServerViews = [
-      ...autoServerViews,
-      ...manualServerViews,
-    ].filter(
+    const filteredServerViews = serverViews.filter(
       (v) =>
         isJITMCPServerView(v) &&
         (searchText.length === 0 ||
@@ -113,12 +99,7 @@ export function ToolsPicker({
         (v) => !selectedMCPServerViewIds.includes(v.sId)
       ),
     };
-  }, [
-    autoServerViews,
-    manualServerViews,
-    searchText,
-    selectedMCPServerViewIds,
-  ]);
+  }, [serverViews, searchText, selectedMCPServerViewIds]);
 
   return (
     <DropdownMenu
@@ -200,7 +181,7 @@ export function ToolsPicker({
               />
             )}
           </>
-        ) : isAutoServerViewsLoading || isManualServerViewsLoading ? (
+        ) : isServerViewsLoading ? (
           <ToolsPickerLoading />
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
