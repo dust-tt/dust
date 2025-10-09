@@ -16,7 +16,9 @@ const {
   DUST_MANAGED_FIREWORKS_API_KEY = "",
   DUST_MANAGED_XAI_API_KEY = "",
   DUST_MANAGED_FIRECRAWL_API_KEY = "",
-  DUST_MANAGED_ELEVENLABS_API_KEY = "",
+  DUST_MANAGED_ELEVENLABS_API_KEY = "", // TODO(rcs): to remove
+  DUST_MANAGED_ELEVENLABS_API_KEY_US = "",
+  DUST_MANAGED_ELEVENLABS_API_KEY_EU = "",
   DUST_REGION = "",
 } = process.env;
 
@@ -89,8 +91,10 @@ export const credentialsFromProviders = (
 export const dustManagedCredentials = (options?: {
   useOpenAIEUKeyFlag?: boolean;
 }): CredentialsType => {
-  const useOpenAIEU =
-    options?.useOpenAIEUKeyFlag && DUST_REGION === "europe-west1";
+  const isEuropeRegion = DUST_REGION === "europe-west1";
+
+  const useOpenAIEU = options?.useOpenAIEUKeyFlag && isEuropeRegion;
+
   return {
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
     AZURE_OPENAI_API_KEY: DUST_MANAGED_AZURE_OPENAI_API_KEY,
@@ -109,6 +113,8 @@ export const dustManagedCredentials = (options?: {
     FIREWORKS_API_KEY: DUST_MANAGED_FIREWORKS_API_KEY,
     XAI_API_KEY: DUST_MANAGED_XAI_API_KEY,
     FIRECRAWL_API_KEY: DUST_MANAGED_FIRECRAWL_API_KEY,
-    ELEVENLABS_API_KEY: DUST_MANAGED_ELEVENLABS_API_KEY,
+    ELEVENLABS_API_KEY: isEuropeRegion
+      ? DUST_MANAGED_ELEVENLABS_API_KEY_EU
+      : DUST_MANAGED_ELEVENLABS_API_KEY_US,
   };
 };
