@@ -11,6 +11,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import logger from "@app/logger/logger";
 
 interface GoogleCalendarEventDateTime {
   date?: string;
@@ -523,17 +524,27 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
             items: [{ id: email }],
           },
         });
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        const busySlots = res.data.calendars?.[email]?.busy || [];
+
+        const calendarData = res.data.calendars?.[email];
+        for (const error of calendarData?.errors || []) {
+          if (error.reason === "notFound") {
+            return makeMCPToolTextError(
+              `Calendar not found for email: ${email}. The calendar may not exist or you may not have access to it.`
+            );
+          }
+          return makeMCPToolTextError(
+            `Error checking calendar availability for ${email}: ${error.reason}`
+          );
+        }
+
+        const busySlots = calendarData?.busy ?? [];
         const available = busySlots.length === 0;
         return makeMCPToolJSONSuccess({
           result: {
             available,
             busySlots: busySlots.map((slot) => ({
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              start: slot.start || "",
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              end: slot.end || "",
+              start: slot.start ?? "",
+              end: slot.end ?? "",
             })),
           },
         });
