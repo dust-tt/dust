@@ -48,6 +48,10 @@ const WorkspaceInteractiveContentSharingUpdateBodySchema = t.type({
   allowContentCreationFileSharing: t.boolean,
 });
 
+const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
+  allowVoiceTranscription: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
@@ -55,6 +59,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
+  WorkspaceVoiceTranscriptionUpdateBodySchema,
 ]);
 
 async function handler(
@@ -160,6 +165,14 @@ async function handler(
         if (!body.allowContentCreationFileSharing) {
           await FileResource.revokePublicSharingInWorkspace(auth);
         }
+      } else if ("allowVoiceTranscription" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowVoiceTranscription: body.allowVoiceTranscription,
+        };
+        await w.update({ metadata: newMetadata });
+        owner.metadata = newMetadata;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const [affectedCount] = await WorkspaceHasDomainModel.update(

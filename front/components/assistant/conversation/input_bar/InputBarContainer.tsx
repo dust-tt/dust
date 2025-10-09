@@ -597,6 +597,7 @@ const InputBarContainer = ({
             <div className="grow" />
             <div className="flex items-center gap-2 md:gap-1">
               {featureFlags.hasFeature("simple_audio_transcription") &&
+                owner.metadata?.allowVoiceTranscription !== false &&
                 actions.includes("voice") && (
                   <VoicePicker
                     voiceTranscriberService={voiceTranscriberService}
