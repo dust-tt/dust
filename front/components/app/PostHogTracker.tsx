@@ -13,7 +13,6 @@ const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_INITIALIZED_KEY = "dust-ph-init";
 
 const EXCLUDED_PATHS = [
-  "/subscribe",
   "/poke",
   "/poke/",
   "/sso-enforced",
@@ -21,6 +20,10 @@ const EXCLUDED_PATHS = [
   "/oauth/",
   "/share/",
 ];
+
+// In-product paths where we explicitly want to track pageviews.
+// These are path suffixes after /w/[wId].
+const IN_PRODUCT_PAGEVIEW_TRACKED_PATHS = ["/agent/new", "/subscribe"];
 
 interface PostHogTrackerProps {
   children: React.ReactNode;
@@ -196,6 +199,19 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     }
 
     const handleRouteChange = () => {
+      const pathname = router.pathname;
+
+      // Track all pageviews outside /w/ + specific in-product pages
+      const isInProduct = pathname.includes("/w/");
+      if (isInProduct) {
+        const isTrackedInProductPage = IN_PRODUCT_PAGEVIEW_TRACKED_PATHS.some(
+          (path) => pathname.includes(path)
+        );
+        if (!isTrackedInProductPage) {
+          return;
+        }
+      }
+
       posthog.capture("$pageview");
     };
 
@@ -203,7 +219,7 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     return () => {
       router.events.off("routeChangeComplete", handleRouteChange);
     };
-  }, [router.events, shouldTrack]);
+  }, [router.events, router.pathname, shouldTrack]);
 
   if (isTrackablePage && hasAcceptedCookies) {
     return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
