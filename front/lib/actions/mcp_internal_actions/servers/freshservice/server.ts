@@ -1,14 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { Err, Ok } from "@app/types";
 
 import type {
   FreshserviceServiceItemField,
@@ -188,61 +185,52 @@ const createServer = (): McpServer => {
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
-    withToolLogging(
-      undefined,
-      { toolName: "list_tickets" },
-      async ({ filter, fields, page, per_page }, { authInfo }) => {
-        try {
-          const result = await withAuth({
-            action: async (accessToken, freshserviceDomain) => {
-              const params = new URLSearchParams({
-                page: page.toString(),
-                per_page: per_page.toString(),
-              });
-
-              if (filter?.email) {
-                params.append("email", filter.email);
-              }
-              if (filter?.requester_id !== undefined) {
-                params.append("requester_id", filter.requester_id.toString());
-              }
-              if (filter?.updated_since) {
-                params.append("updated_since", filter.updated_since);
-              }
-              if (filter?.type) {
-                params.append("type", filter.type);
-              }
-              if (filter?.filter_type) {
-                params.append("filter", filter.filter_type);
-              }
-
-              const result = await apiRequest(
-                accessToken,
-                freshserviceDomain,
-                `tickets?${params.toString()}`
-              );
-
-              // Filter fields if specified, otherwise use default fields
-              const tickets: FreshserviceTicket[] = result.tickets || [];
-              const selectedFields: ReadonlyArray<string> =
-                fields && fields.length > 0 ? fields : DEFAULT_TICKET_FIELDS_LIST;
-              const filteredTickets = tickets.map((ticket) =>
-                pickFields(ticket, selectedFields)
-              );
-
-              return makeMCPToolJSONSuccess({
-                message: `Retrieved ${filteredTickets.length} tickets`,
-                result: filteredTickets,
-              });
-            },
-            authInfo,
+    async ({ filter, fields, page, per_page }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken, freshserviceDomain) => {
+          const params = new URLSearchParams({
+            page: page.toString(),
+            per_page: per_page.toString(),
           });
-          return new Ok(result.content);
-        } catch (error) {
-          return new Err(new MCPError(`Error: ${error instanceof Error ? error.message : "Unknown error"}`));
-        }
-      }
-    )
+
+          if (filter?.email) {
+            params.append("email", filter.email);
+          }
+          if (filter?.requester_id !== undefined) {
+            params.append("requester_id", filter.requester_id.toString());
+          }
+          if (filter?.updated_since) {
+            params.append("updated_since", filter.updated_since);
+          }
+          if (filter?.type) {
+            params.append("type", filter.type);
+          }
+          if (filter?.filter_type) {
+            params.append("filter", filter.filter_type);
+          }
+
+          const result = await apiRequest(
+            accessToken,
+            freshserviceDomain,
+            `tickets?${params.toString()}`
+          );
+
+          // Filter fields if specified, otherwise use default fields
+          const tickets: FreshserviceTicket[] = result.tickets || [];
+          const selectedFields: ReadonlyArray<string> =
+            fields && fields.length > 0 ? fields : DEFAULT_TICKET_FIELDS_LIST;
+          const filteredTickets = tickets.map((ticket) =>
+            pickFields(ticket, selectedFields)
+          );
+
+          return makeMCPToolJSONSuccess({
+            message: `Retrieved ${filteredTickets.length} tickets`,
+            result: filteredTickets,
+          });
+        },
+        authInfo,
+      });
+    }
   );
 
   server.tool(
