@@ -310,7 +310,7 @@ export const AssistantInputBar = React.memo(function AssistantInputBar({
         .filter((m) => m.conversationId === conversationId)
         .map((m) => m.messageId)
     );
-    mutateConversation();
+    void mutateConversation();
   };
 
   useEffect(() => {

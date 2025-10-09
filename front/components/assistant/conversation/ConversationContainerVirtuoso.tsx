@@ -138,7 +138,20 @@ export function ConversationContainerVirtuoso({
           undefined,
           { shallow: true }
         );
-        await mutateConversations();
+
+        await mutateConversations(
+          (currentData) => {
+            // Immediately update the list of conversations in the sidebar by adding the new conversation.
+            return {
+              ...currentData,
+              conversations: [
+                ...(currentData?.conversations ?? []),
+                conversationRes.value,
+              ],
+            };
+          },
+          { revalidate: false }
+        );
 
         return new Ok(undefined);
       }
