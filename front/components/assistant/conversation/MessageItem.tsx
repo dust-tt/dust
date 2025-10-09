@@ -3,10 +3,8 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import {
-  AttachmentCitation,
-  contentFragmentToAttachmentCitation,
-} from "@app/components/assistant/conversation/AttachmentCitation";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
