@@ -312,16 +312,19 @@ const ConversationViewerVirtuoso = ({
               );
 
               // Clear hasError when a message is retried.
-              void mutateConversations((currentData) => {
-                if (!currentData?.conversations) {
-                  return currentData;
-                }
-                return {
-                  conversations: currentData.conversations.map((c) =>
-                    c.sId === conversationId ? { ...c, hasError: false } : c
-                  ),
-                };
-              }, false);
+              void mutateConversations(
+                (currentData) => {
+                  if (!currentData?.conversations) {
+                    return currentData;
+                  }
+                  return {
+                    conversations: currentData.conversations.map((c) =>
+                      c.sId === conversationId ? { ...c, hasError: false } : c
+                    ),
+                  };
+                },
+                { revalidate: false }
+              );
             }
             break;
 
@@ -343,18 +346,21 @@ const ConversationViewerVirtuoso = ({
             void mutateMessages();
 
             // Update the conversation hasError state in the local cache without making a network request.
-            void mutateConversations((currentData) => {
-              if (!currentData?.conversations) {
-                return currentData;
-              }
-              return {
-                conversations: currentData.conversations.map((c) =>
-                  c.sId === event.conversationId
-                    ? { ...c, hasError: event.hasError }
-                    : c
-                ),
-              };
-            }, false);
+            void mutateConversations(
+              (currentData) => {
+                if (!currentData?.conversations) {
+                  return currentData;
+                }
+                return {
+                  conversations: currentData.conversations.map((c) =>
+                    c.sId === event.conversationId
+                      ? { ...c, hasError: event.hasError }
+                      : c
+                  ),
+                };
+              },
+              { revalidate: false }
+            );
             break;
           default:
             ((t: never) => {
