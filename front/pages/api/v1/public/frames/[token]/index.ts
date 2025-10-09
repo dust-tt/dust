@@ -122,7 +122,7 @@ async function handler(
       participant = await ConversationParticipantModel.findOne({
         where: {
           conversationId: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: workspace.id,
           userId: user.id,
         },
       });
