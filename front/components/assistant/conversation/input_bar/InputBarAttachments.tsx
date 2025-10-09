@@ -80,7 +80,7 @@ export function InputBarAttachments({
           type: "file",
           id: blob.id,
           title,
-          previewImageUrl: blob.previewImageUrl,
+          sourceUrl: blob.sourceUrl,
           contentType: blob.contentType,
           isUploading: blob.isUploading,
           description: uploadDate,

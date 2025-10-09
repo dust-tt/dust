@@ -30,6 +30,7 @@ import type {
   SupportedContentFragmentType,
   SupportedFileContentType,
 } from "@app/types";
+import { isSupportedImageContentType } from "@app/types";
 import {
   assertNever,
   isContentNodeContentFragment,
@@ -46,11 +47,11 @@ export type FileAttachment = {
   type: "file";
   id: string;
   title: string;
-  previewImageUrl?: string;
   contentType: SupportedFileContentType;
   isUploading: boolean;
   onRemove: () => void;
   description?: string;
+  sourceUrl?: string;
 };
 
 export type NodeAttachment = {
@@ -82,7 +83,6 @@ interface FileAttachmentCitation extends BaseAttachmentCitation {
   description?: string;
   fileId: string | null;
   isUploading?: boolean;
-  previewImageUrl?: string;
 }
 
 interface NodeAttachmentCitation extends BaseAttachmentCitation {
@@ -194,6 +194,12 @@ export function AttachmentCitation({
       </div>
     );
 
+  const previewImageUrl =
+    attachmentCitation.type === "file" &&
+    isSupportedImageContentType(attachmentCitation.contentType)
+      ? `${attachmentCitation.sourceUrl}?action=view`
+      : undefined;
+
   return (
     <>
       <Tooltip
@@ -216,10 +222,7 @@ export function AttachmentCitation({
               )
             }
           >
-            {attachmentCitation.type === "file" &&
-              attachmentCitation.previewImageUrl && (
-                <CitationImage imgSrc={attachmentCitation.previewImageUrl} />
-              )}
+            {previewImageUrl && <CitationImage imgSrc={previewImageUrl} />}
             <CitationIcons>{attachmentCitation.visual}</CitationIcons>
             <CitationTitle className="truncate text-ellipsis">
               {attachmentCitation.title}
@@ -311,7 +314,9 @@ export function contentFragmentToAttachmentCitation(
       visual,
       spaceName: contentFragment.contentNodeData.spaceName,
     };
-  } else if (isFileContentFragment(contentFragment)) {
+  }
+
+  if (isFileContentFragment(contentFragment)) {
     // Compute custom title/description for pasted files
     const isPasted = isPastedFile(contentFragment.contentType);
     const title = isPasted
@@ -330,9 +335,9 @@ export function contentFragmentToAttachmentCitation(
       fileId: contentFragment.fileId,
       contentType: contentFragment.contentType,
     };
-  } else {
-    assertNever(contentFragment);
   }
+
+  assertNever(contentFragment);
 }
 
 export function attachmentToAttachmentCitation(
@@ -343,7 +348,7 @@ export function attachmentToAttachmentCitation(
       type: "file",
       id: attachment.id,
       title: attachment.title,
-      previewImageUrl: attachment.previewImageUrl,
+      sourceUrl: attachment.sourceUrl,
       isUploading: attachment.isUploading,
       visual: <IconFromContentType contentType={attachment.contentType} />,
       description: attachment.description,

@@ -20,7 +20,6 @@ import {
   getFileFormatCategory,
   isAPIErrorResponse,
   isSupportedFileContentType,
-  isSupportedImageContentType,
   MAX_FILE_SIZES,
   Ok,
 } from "@app/types";
@@ -32,7 +31,7 @@ export interface FileBlob {
   id: string;
   fileId: string | null;
   isUploading: boolean;
-  previewImageUrl?: string;
+  sourceUrl?: string;
   size: number;
   publicUrl?: string;
 }
@@ -266,9 +265,7 @@ export function useFileUploaderService({
           ...fileBlob,
           fileId: file.sId,
           isUploading: false,
-          previewImageUrl: isSupportedImageContentType(fileBlob.contentType)
-            ? `${fileUploaded.downloadUrl}?action=view`
-            : undefined,
+          sourceUrl: fileUploaded.downloadUrl,
           publicUrl: file.publicUrl,
         });
       },
