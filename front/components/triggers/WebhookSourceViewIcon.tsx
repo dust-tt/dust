@@ -1,13 +1,13 @@
 import { Icon } from "@dust-tt/sparkle";
 
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceView } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 export const WebhookSourceViewIcon = ({
   webhookSourceView,
 }: {
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceView;
 }) => {
   const kind = webhookSourceView.webhookSource.kind;
 

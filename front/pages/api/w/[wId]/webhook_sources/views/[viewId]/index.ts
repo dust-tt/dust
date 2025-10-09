@@ -12,15 +12,15 @@ import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import { apiError } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceView } from "@app/types/triggers/webhooks";
 import { patchWebhookSourceViewBodySchema } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourceViewResponseBody = {
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceView;
 };
 
 export type PatchWebhookSourceViewResponseBody = {
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceView;
 };
 
 async function handler(

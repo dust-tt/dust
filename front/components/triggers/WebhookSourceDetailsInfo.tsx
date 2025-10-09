@@ -18,15 +18,15 @@ import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpoi
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceView } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceView;
   owner: LightWorkspaceType;
 };
 
-const getEditedLabel = (webhookSourceView: WebhookSourceViewType) => {
+const getEditedLabel = (webhookSourceView: WebhookSourceView) => {
   if (
     webhookSourceView.editedByUser === null ||
     (webhookSourceView.editedByUser.editedAt === null &&

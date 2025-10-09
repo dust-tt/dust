@@ -12,7 +12,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
-  WebhookSourceType,
+  WebhookSource,
   WebhookSourceWithViewsAndUsage,
 } from "@app/types/triggers/webhooks";
 import { PostWebhookSourcesSchema } from "@app/types/triggers/webhooks";
@@ -24,7 +24,7 @@ export type GetWebhookSourcesResponseBody = {
 
 export type PostWebhookSourcesResponseBody = {
   success: true;
-  webhookSource: WebhookSourceType;
+  webhookSource: WebhookSource;
 };
 
 async function handler(

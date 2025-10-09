@@ -40,7 +40,7 @@ export const WEBHOOK_SOURCE_KIND = ["custom", "github"] as const;
 
 export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
 
-export type WebhookSourceType = {
+export type WebhookSource = {
   id: ModelId;
   sId: string;
   name: string;
@@ -55,7 +55,7 @@ export type WebhookSourceType = {
   subscribedEvents: string[];
 };
 
-export type WebhookSourceViewType = {
+export type WebhookSourceView = {
   id: ModelId;
   sId: string;
   customName: string | null;
@@ -64,16 +64,16 @@ export type WebhookSourceViewType = {
   createdAt: number;
   updatedAt: number;
   spaceId: string;
-  webhookSource: WebhookSourceType;
+  webhookSource: WebhookSource;
   editedByUser: EditedByUser | null;
 };
 
-export type WebhookSourceWithViews = WebhookSourceType & {
-  views: WebhookSourceViewType[];
+export type WebhookSourceWithViews = WebhookSource & {
+  views: WebhookSourceView[];
 };
 
 export type WebhookSourceWithSystemView = WebhookSourceWithViews & {
-  systemView: WebhookSourceViewType | null;
+  systemView: WebhookSourceView | null;
 };
 
 export type WebhookSourceWithViewsAndUsage = WebhookSourceWithViews & {
