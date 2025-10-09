@@ -9,6 +9,7 @@ import type * as activities from "@connectors/connectors/intercom/temporal/activ
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
 import type { ModelId } from "@connectors/types";
 
+import { getTeamIdsToSyncActivity } from "./activities";
 import { intercomUpdatesSignal } from "./signals";
 
 const {
@@ -135,6 +136,25 @@ export async function intercomSyncWorkflow({
       });
       // Remove the processed help center from the original set after the async operation.
       uniqueHelpCenterIds.delete(helpCenterId);
+    }
+  }
+
+  if (isHourlyExecution) {
+    // sync all conversations of the last hour for all teams
+    const teamIds = await getTeamIdsToSyncActivity({ connectorId });
+
+    for (const teamId of teamIds) {
+      await executeChild(intercomHourlyConversationSyncWorkflow, {
+        workflowId: `${workflowId}-team-${teamId}`,
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            connectorId,
+            teamId,
+            currentSyncMs,
+          },
+        ],
+      });
     }
   }
 
@@ -279,6 +299,43 @@ export async function intercomTeamFullSyncWorkflow({
         connectorId,
         teamId,
         cursor,
+      });
+
+    await syncConversationBatchActivity({
+      connectorId,
+      teamId,
+      conversationIds,
+      currentSyncMs,
+    });
+
+    cursor = nextPageCursor;
+  } while (cursor);
+}
+
+/**
+ * Sync Workflow for a Conversations of the last hour.
+ * Launched by the IntercomSyncWorkflow, it will sync a given Conversations of the last hour.
+ * We sync a Team by fetching the conversations attached to this team.
+ */
+export async function intercomHourlyConversationSyncWorkflow({
+  connectorId,
+  teamId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  teamId: string;
+  currentSyncMs: number;
+}) {
+  let cursor = null;
+
+  // We loop over the conversations to sync them all, by batch of INTERCOM_CONVO_BATCH_SIZE.
+  do {
+    const { conversationIds, nextPageCursor } =
+      await getNextConversationBatchToSyncActivity({
+        connectorId,
+        teamId,
+        cursor,
+        lastHourOnly: true,
       });
 
     await syncConversationBatchActivity({
