@@ -1,9 +1,17 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
+import {
+  SLACK_GET_USER,
+  SLACK_LIST_PUBLIC_CHANNELS,
+  SLACK_LIST_THREADS,
+  SLACK_LIST_USERS,
+  SLACK_POST_MESSAGE,
+  SLACK_SEARCH_MESSAGES,
+  SLACK_SEMANTIC_SEARCH_MESSAGES,
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/constants";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,
@@ -16,18 +24,19 @@ import {
   executePostMessage,
   getSlackClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   makeInternalMCPServer,
-  makeMCPToolTextError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TimeFrame } from "@app/types";
 import {
   Err,
@@ -36,17 +45,7 @@ import {
   stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import {
-  SLACK_GET_USER,
-  SLACK_LIST_PUBLIC_CHANNELS,
-  SLACK_LIST_THREADS,
-  SLACK_LIST_USERS,
-  SLACK_POST_MESSAGE,
-  SLACK_SEARCH_MESSAGES,
-  SLACK_SEMANTIC_SEARCH_MESSAGES,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import uniqBy from "lodash/uniqBy";
 
 export type SlackSearchMatch = {
   author_name?: string;
@@ -455,7 +454,7 @@ const createServer = async (
             }
           } catch (error) {
             if (isSlackTokenRevoked(error)) {
-              return new Err(new MCPError("slack"));
+              return new Ok(makePersonalAuthenticationError("slack").content);
             }
             return new Err(new MCPError(`Error searching messages: ${error}`));
           }
@@ -596,7 +595,7 @@ const createServer = async (
             }
           } catch (error) {
             if (isSlackTokenRevoked(error)) {
-              return new Err(new MCPError("slack"));
+              return new Ok(makePersonalAuthenticationError("slack").content);
             }
             return new Err(new MCPError(`Error searching messages: ${error}`));
           }
@@ -727,7 +726,7 @@ const createServer = async (
           }
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
-            return new Err(new MCPError("slack"));
+            return new Ok(makePersonalAuthenticationError("slack").content);
           }
           return new Err(new MCPError(`Error listing threads: ${error}`));
         }
@@ -788,7 +787,7 @@ const createServer = async (
           );
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
-            return new Err(new MCPError("slack"));
+            return new Ok(makePersonalAuthenticationError("slack").content);
           }
           return new Err(new MCPError(`Error posting message: ${error}`));
         }
@@ -818,7 +817,7 @@ const createServer = async (
           return await executeListUsers(nameFilter, accessToken);
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
-            return new Err(new MCPError("slack"));
+            return new Ok(makePersonalAuthenticationError("slack").content);
           }
           return new Err(new MCPError(`Error listing users: ${error}`));
         }
@@ -847,7 +846,7 @@ const createServer = async (
           return await executeGetUser(userId, accessToken);
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
-            return new Err(new MCPError("slack"));
+            return new Ok(makePersonalAuthenticationError("slack").content);
           }
           return new Err(new MCPError(`Error retrieving user info: ${error}`));
         }

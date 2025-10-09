@@ -1,22 +1,8 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  executeGetUser,
-  executeListPublicChannels,
-  executeListUsers,
-  executePostMessage,
-  getSlackClient,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
-import {
-  makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import { Err, normalizeError, Ok } from "@app/types";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   SLACK_ADD_REACTION,
   SLACK_GET_USER,
@@ -26,8 +12,22 @@ import {
   SLACK_READ_CHANNEL_HISTORY,
   SLACK_READ_THREAD_MESSAGES,
   SLACK_REMOVE_REACTION,
-} from "@app/lib/actions/mcp_internal_actions/constants";
-import { MCPError } from "@app/lib/actions/mcp_errors";
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/constants";
+import {
+  executeGetUser,
+  executeListPublicChannels,
+  executeListUsers,
+  executePostMessage,
+  getSlackClient,
+} from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  makeInternalMCPServer,
+  makeMCPToolJSONSuccess,
+} from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const createServer = async (
   auth: Authenticator,
