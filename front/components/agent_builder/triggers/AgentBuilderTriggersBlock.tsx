@@ -1,5 +1,5 @@
 import {
-  BellIcon,
+  BoltIcon,
   Button,
   CardGrid,
   ClockIcon,
@@ -175,7 +175,7 @@ export function AgentBuilderTriggersBlock({
               <Button
                 label="Add Webhook"
                 variant="outline"
-                icon={BellIcon}
+                icon={BoltIcon}
                 onClick={() => handleCreateTrigger("webhook")}
                 type="button"
               />
@@ -205,7 +205,7 @@ export function AgentBuilderTriggersBlock({
                   <Button
                     label="Add Webhook"
                     variant="outline"
-                    icon={BellIcon}
+                    icon={BoltIcon}
                     onClick={() => handleCreateTrigger("webhook")}
                     type="button"
                   />

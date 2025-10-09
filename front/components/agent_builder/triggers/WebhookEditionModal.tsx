@@ -1,3 +1,4 @@
+import type { Icon } from "@dust-tt/sparkle";
 import {
   Button,
   Checkbox,
@@ -26,16 +27,20 @@ import { z } from "zod";
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useUser } from "@app/lib/swr/user";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 
 const webhookFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
   customPrompt: z.string(),
   webhookSourceViewSId: z.string().min(1, "Select a webhook source"),
+  event: z.string().optional(),
+  filter: z.string().optional(),
   includePayload: z.boolean().default(false),
 });
 
@@ -53,6 +58,7 @@ type WebhookOption = {
   value: string;
   label: string;
   kind: WebhookSourceKind;
+  icon: React.ComponentType<React.ComponentProps<typeof Icon>>;
 };
 
 export function WebhookEditionModal({
@@ -69,6 +75,8 @@ export function WebhookEditionModal({
       name: "Webhook Trigger",
       customPrompt: "",
       webhookSourceViewSId: "",
+      event: undefined,
+      filter: "",
       includePayload: false,
     }),
     []
@@ -80,6 +88,7 @@ export function WebhookEditionModal({
   });
 
   const selectedViewSId = form.watch("webhookSourceViewSId") ?? "";
+  const selectedEvent = form.watch("event");
   const includePayload = form.watch("includePayload");
 
   const { spaces } = useSpacesContext();
@@ -99,7 +108,6 @@ export function WebhookEditionModal({
 
   const webhookOptions = useMemo((): WebhookOption[] => {
     const options: WebhookOption[] = [];
-
     webhookSourcesWithViews.forEach((wsv) => {
       wsv.views
         .filter((view) => accessibleSpaceIds.has(view.spaceId))
@@ -108,12 +116,44 @@ export function WebhookEditionModal({
             value: view.sId,
             label: view.customName ?? wsv.name,
             kind: view.webhookSource.kind,
+            icon: (props) => (
+              <WebhookSourceViewIcon webhookSourceView={view} {...props} />
+            ),
           });
         });
     });
 
     return options;
   }, [webhookSourcesWithViews, accessibleSpaceIds]);
+
+  const selectedWebhookSource = useMemo(() => {
+    if (!selectedViewSId) {
+      return null;
+    }
+    for (const wsv of webhookSourcesWithViews) {
+      const view = wsv.views.find((v) => v.sId === selectedViewSId);
+      if (view) {
+        return wsv;
+      }
+    }
+    return null;
+  }, [webhookSourcesWithViews, selectedViewSId]);
+
+  const selectedPreset = useMemo((): PresetWebhook | null => {
+    if (!selectedWebhookSource || selectedWebhookSource.kind === "custom") {
+      return null;
+    }
+    return WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[selectedWebhookSource.kind];
+  }, [selectedWebhookSource]);
+
+  const availableEvents = useMemo(() => {
+    if (!selectedPreset || !selectedWebhookSource) {
+      return [];
+    }
+    return selectedPreset.events.filter((event) =>
+      selectedWebhookSource.subscribedEvents.includes(event.value)
+    );
+  }, [selectedPreset, selectedWebhookSource]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -127,11 +167,15 @@ export function WebhookEditionModal({
     }
 
     const includePayload = trigger.configuration.includePayload;
+    const event = trigger.configuration.event;
+    const filter = trigger.configuration.filter ?? "";
 
     form.reset({
       name: trigger.name,
       customPrompt: trigger.customPrompt ?? "",
       webhookSourceViewSId: trigger.webhookSourceViewSId ?? "",
+      event,
+      filter,
       includePayload,
     });
   }, [defaultValues, form, isOpen, trigger]);
@@ -146,6 +190,21 @@ export function WebhookEditionModal({
       return;
     }
 
+    // Validate that event is selected for preset webhooks (not custom)
+    if (
+      selectedWebhookSource &&
+      selectedWebhookSource.kind !== "custom" &&
+      selectedPreset &&
+      availableEvents.length > 0 &&
+      !data.event
+    ) {
+      form.setError("event", {
+        type: "manual",
+        message: "Please select an event",
+      });
+      return;
+    }
+
     const editor = trigger?.editor ?? user.id ?? null;
     const editorEmail = trigger?.editorEmail ?? user.email ?? undefined;
 
@@ -156,6 +215,8 @@ export function WebhookEditionModal({
       kind: "webhook",
       configuration: {
         includePayload: data.includePayload,
+        event: data.event,
+        filter: data.filter?.trim() ?? undefined,
       },
       webhookSourceViewSId: data.webhookSourceViewSId ?? undefined,
       editor,
@@ -240,9 +301,7 @@ export function WebhookEditionModal({
                           key={option.value}
                           label={option.label}
                           disabled={!isEditor}
-                          icon={
-                            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[option.kind].icon
-                          }
+                          icon={option.icon}
                           onClick={() => {
                             form.setValue(
                               "webhookSourceViewSId",
@@ -258,6 +317,70 @@ export function WebhookEditionModal({
                   </DropdownMenu>
                 )}
               </div>
+
+              {/* Event selector for non-custom webhooks */}
+              {selectedPreset && availableEvents.length > 0 && (
+                <div className="flex flex-col space-y-1">
+                  <Label htmlFor="webhook-event">Event</Label>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Select the event that will trigger this webhook.
+                  </p>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        id="webhook-event"
+                        variant="outline"
+                        isSelect
+                        className="w-fit"
+                        disabled={!isEditor}
+                        label={
+                          selectedEvent
+                            ? availableEvents.find(
+                                (e) => e.value === selectedEvent
+                              )?.name ?? "Select event"
+                            : "Select event"
+                        }
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuLabel label="Select event" />
+                      {availableEvents.map((event) => (
+                        <DropdownMenuItem
+                          key={event.value}
+                          label={event.name}
+                          disabled={!isEditor}
+                          onClick={() => {
+                            form.setValue("event", event.value, {
+                              shouldValidate: true,
+                            });
+                          }}
+                        />
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {form.formState.errors.event && (
+                    <p className="text-sm text-warning">
+                      {form.formState.errors.event.message}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Filters input */}
+              {selectedPreset && availableEvents.length > 0 && (
+                <div className="space-y-1">
+                  <Label htmlFor="trigger-filters">Filters (Optional)</Label>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Add a filter string for the webhook event
+                  </p>
+                  <TextArea
+                    id="trigger-filter"
+                    placeholder="Enter filter"
+                    disabled={!isEditor}
+                    {...form.register("filter")}
+                  />
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <div className="flex flex-col space-y-1">

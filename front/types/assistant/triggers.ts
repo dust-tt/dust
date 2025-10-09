@@ -11,6 +11,8 @@ export type ScheduleConfig = {
 
 export type WebhookConfig = {
   includePayload: boolean;
+  event?: string;
+  filter?: string;
 };
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
@@ -70,9 +72,15 @@ const ScheduleConfigSchema = t.type({
   timezone: t.string,
 });
 
-const WebhookConfigSchema = t.type({
-  includePayload: t.boolean,
-});
+const WebhookConfigSchema = t.intersection([
+  t.type({
+    includePayload: t.boolean,
+  }),
+  t.partial({
+    event: t.string,
+    filter: t.string,
+  }),
+]);
 
 export const TriggerSchema = t.union([
   t.type({
