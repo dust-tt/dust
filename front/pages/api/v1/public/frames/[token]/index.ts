@@ -94,6 +94,16 @@ async function handler(
 
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
+    if (!session) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+
     const auth = await Authenticator.fromSession(session, workspace.sId);
     if (!auth.isUser()) {
       return apiError(req, res, {
