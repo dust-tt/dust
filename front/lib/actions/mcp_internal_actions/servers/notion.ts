@@ -12,6 +12,7 @@ import type {
 import { parseISO } from "date-fns";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   SearchQueryResourceType,
   SearchResultResourceType,
@@ -20,15 +21,15 @@ import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_inter
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import type { TimeFrame } from "@app/types";
-import { normalizeError, parseTimeFrame, timeFrameFromNow } from "@app/types";
+import { Err, normalizeError, Ok, parseTimeFrame, timeFrameFromNow } from "@app/types";
 
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -273,7 +274,7 @@ async function withNotionClient<T>(
       result: JSON.stringify(result),
     });
   } catch (e) {
-    return makeMCPToolTextError(normalizeError(e).message);
+    return new Err(new MCPError(normalizeError(e).message));
   }
 }
 
@@ -301,7 +302,10 @@ const createServer = (
         .enum(["page", "database"])
         .describe("What type of notion objects to search."),
     },
-    async ({ query, type, relativeTimeFrame }, { authInfo }) => {
+    withToolLogging(
+      auth,
+      { toolName: "search" },
+      async ({ query, type, relativeTimeFrame }, { authInfo }) => {
       if (!agentLoopContext?.runContext) {
         throw new Error("Agent loop run context is required");
       }
@@ -452,6 +456,7 @@ const createServer = (
         };
       }
     }
+    )
   );
 
   server.tool(
@@ -460,11 +465,20 @@ const createServer = (
     {
       pageId: z.string().describe("The Notion page ID."),
     },
-    async ({ pageId }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.pages.retrieve({ page_id: pageId }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "retrieve_page" },
+      async ({ pageId }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.pages.retrieve({ page_id: pageId }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -473,11 +487,20 @@ const createServer = (
     {
       databaseId: z.string().describe("The Notion database ID."),
     },
-    async ({ databaseId }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.databases.retrieve({ database_id: databaseId }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "retrieve_database_schema" },
+      async ({ databaseId }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.databases.retrieve({ database_id: databaseId }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -493,21 +516,30 @@ const createServer = (
         .describe("Start cursor for pagination."),
       page_size: z.number().optional().describe("Page size for pagination."),
     },
-    async (
-      { databaseId, filter, sorts, start_cursor, page_size },
-      { authInfo }
-    ) =>
-      withNotionClient(
-        (notion) =>
-          notion.databases.query({
-            database_id: databaseId,
-            filter: filter as QueryDatabaseParameters["filter"],
-            sorts,
-            start_cursor,
-            page_size,
-          }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "retrieve_database_content" },
+      async (
+        { databaseId, filter, sorts, start_cursor, page_size },
+        { authInfo }
+      ) => {
+        const result = await withNotionClient(
+          (notion) =>
+            notion.databases.query({
+              database_id: databaseId,
+              filter: filter as QueryDatabaseParameters["filter"],
+              sorts,
+              start_cursor,
+              page_size,
+            }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -523,21 +555,30 @@ const createServer = (
         .describe("Start cursor for pagination."),
       page_size: z.number().optional().describe("Page size for pagination."),
     },
-    async (
-      { databaseId, filter, sorts, start_cursor, page_size },
-      { authInfo }
-    ) =>
-      withNotionClient(
-        (notion) =>
-          notion.databases.query({
-            database_id: databaseId,
-            filter: filter as QueryDatabaseParameters["filter"],
-            sorts,
-            start_cursor,
-            page_size,
-          }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "query_database" },
+      async (
+        { databaseId, filter, sorts, start_cursor, page_size },
+        { authInfo }
+      ) => {
+        const result = await withNotionClient(
+          (notion) =>
+            notion.databases.query({
+              database_id: databaseId,
+              filter: filter as QueryDatabaseParameters["filter"],
+              sorts,
+              start_cursor,
+              page_size,
+            }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -551,11 +592,20 @@ const createServer = (
       icon: z.any().optional().describe("Icon (optional)."),
       cover: z.any().optional().describe("Cover (optional)."),
     },
-    async ({ parent, properties, icon, cover }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.pages.create({ parent, properties, icon, cover }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "create_page" },
+      async ({ parent, properties, icon, cover }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.pages.create({ parent, properties, icon, cover }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -567,17 +617,26 @@ const createServer = (
       icon: z.any().optional().describe("Icon (optional)."),
       cover: z.any().optional().describe("Cover (optional)."),
     },
-    async ({ databaseId, properties, icon, cover }, { authInfo }) =>
-      withNotionClient(
-        (notion) =>
-          notion.pages.create({
-            parent: { database_id: databaseId, type: "database_id" },
-            properties,
-            icon,
-            cover,
-          }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "insert_row_into_database" },
+      async ({ databaseId, properties, icon, cover }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) =>
+            notion.pages.create({
+              parent: { database_id: databaseId, type: "database_id" },
+              properties,
+              icon,
+              cover,
+            }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -596,12 +655,21 @@ const createServer = (
       icon: z.any().optional().describe("Icon (optional)."),
       cover: z.any().optional().describe("Cover (optional)."),
     },
-    async ({ parent, title, properties, icon, cover }, { authInfo }) =>
-      withNotionClient(
-        (notion) =>
-          notion.databases.create({ parent, title, properties, icon, cover }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "create_database" },
+      async ({ parent, title, properties, icon, cover }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) =>
+            notion.databases.create({ parent, title, properties, icon, cover }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -611,11 +679,20 @@ const createServer = (
       pageId: z.string().describe("The Notion page ID."),
       properties: propertiesSchema,
     },
-    async ({ pageId, properties }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.pages.update({ page_id: pageId, properties }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "update_page" },
+      async ({ pageId, properties }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.pages.update({ page_id: pageId, properties }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -624,11 +701,20 @@ const createServer = (
     {
       blockId: z.string().describe("The Notion block ID."),
     },
-    async ({ blockId }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.blocks.retrieve({ block_id: blockId }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "retrieve_block" },
+      async ({ blockId }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.blocks.retrieve({ block_id: blockId }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -642,16 +728,25 @@ const createServer = (
         .describe("Start cursor for pagination."),
       page_size: z.number().optional().describe("Page size for pagination."),
     },
-    async ({ blockId, start_cursor, page_size }, { authInfo }) =>
-      withNotionClient(
-        (notion) =>
-          notion.blocks.children.list({
-            block_id: blockId,
-            start_cursor,
-            page_size,
-          }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "retrieve_block_children" },
+      async ({ blockId, start_cursor, page_size }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) =>
+            notion.blocks.children.list({
+              block_id: blockId,
+              start_cursor,
+              page_size,
+            }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -665,15 +760,24 @@ const createServer = (
           "Array of block objects to append as children. Blocks can be parented by other blocks, pages, or databases. There is a limit of 100 block children that can be appended by a single API request."
         ),
     },
-    async ({ blockId, children }, { authInfo }) =>
-      withNotionClient(
-        (notion) =>
-          notion.blocks.children.append({
-            block_id: blockId,
-            children: children as Array<BlockObjectRequest>,
-          }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "add_page_content" },
+      async ({ blockId, children }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) =>
+            notion.blocks.children.append({
+              block_id: blockId,
+              children: children as Array<BlockObjectRequest>,
+            }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -695,27 +799,36 @@ const createServer = (
         ),
       comment: z.string().describe("The comment text."),
     },
-    async ({ parent_page_id, discussion_id, comment }, { authInfo }) =>
-      withNotionClient((notion) => {
-        if (!parent_page_id && !discussion_id) {
-          throw new Error(
-            "Either parent_page_id or discussion_id must be provided."
-          );
+    withToolLogging(
+      auth,
+      { toolName: "create_comment" },
+      async ({ parent_page_id, discussion_id, comment }, { authInfo }) => {
+        const result = await withNotionClient((notion) => {
+          if (!parent_page_id && !discussion_id) {
+            throw new Error(
+              "Either parent_page_id or discussion_id must be provided."
+            );
+          }
+          let params: CreateCommentParameters;
+          if (parent_page_id) {
+            params = {
+              parent: { page_id: parent_page_id },
+              rich_text: [{ type: "text", text: { content: comment } }],
+            };
+          } else {
+            params = {
+              discussion_id: discussion_id!,
+              rich_text: [{ type: "text", text: { content: comment } }],
+            };
+          }
+          return notion.comments.create(params);
+        }, authInfo);
+        if (result.isError) {
+          return result;
         }
-        let params: CreateCommentParameters;
-        if (parent_page_id) {
-          params = {
-            parent: { page_id: parent_page_id },
-            rich_text: [{ type: "text", text: { content: comment } }],
-          };
-        } else {
-          params = {
-            discussion_id: discussion_id!,
-            rich_text: [{ type: "text", text: { content: comment } }],
-          };
-        }
-        return notion.comments.create(params);
-      }, authInfo)
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -726,11 +839,20 @@ const createServer = (
         .string()
         .describe("The ID of the block, page, or database to delete."),
     },
-    async ({ blockId }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.blocks.update({ block_id: blockId, archived: true }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "delete_block" },
+      async ({ blockId }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.blocks.update({ block_id: blockId, archived: true }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -741,11 +863,20 @@ const createServer = (
         .string()
         .describe("The ID of the page or block to fetch comments from."),
     },
-    async ({ blockId }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.comments.list({ block_id: blockId }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "fetch_comments" },
+      async ({ blockId }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.comments.list({ block_id: blockId }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -755,11 +886,20 @@ const createServer = (
       pageId: z.string().regex(uuidRegex).describe("The Notion page ID."),
       properties: propertiesSchema,
     },
-    async ({ pageId, properties }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.pages.update({ page_id: pageId, properties }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "update_row_database" },
+      async ({ pageId, properties }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.pages.update({ page_id: pageId, properties }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -769,20 +909,38 @@ const createServer = (
       databaseId: z.string().describe("The Notion database ID."),
       properties: propertiesSchema,
     },
-    async ({ databaseId, properties }, { authInfo }) =>
-      withNotionClient(
-        (notion) =>
-          notion.databases.update({ database_id: databaseId, properties }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "update_schema_database" },
+      async ({ databaseId, properties }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) =>
+            notion.databases.update({ database_id: databaseId, properties }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
     "list_users",
     "List all users in the Notion workspace.",
     {},
-    async (_, { authInfo }) =>
-      withNotionClient((notion) => notion.users.list({}), authInfo)
+    withToolLogging(
+      auth,
+      { toolName: "list_users" },
+      async (_, { authInfo }) => {
+        const result = await withNotionClient((notion) => notion.users.list({}), authInfo);
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   server.tool(
@@ -791,11 +949,20 @@ const createServer = (
     {
       userId: z.string().describe("The Notion user ID."),
     },
-    async ({ userId }, { authInfo }) =>
-      withNotionClient(
-        (notion) => notion.users.retrieve({ user_id: userId }),
-        authInfo
-      )
+    withToolLogging(
+      auth,
+      { toolName: "get_about_user" },
+      async ({ userId }, { authInfo }) => {
+        const result = await withNotionClient(
+          (notion) => notion.users.retrieve({ user_id: userId }),
+          authInfo
+        );
+        if (result.isError) {
+          return result;
+        }
+        return new Ok(result.content);
+      }
+    )
   );
 
   return server;

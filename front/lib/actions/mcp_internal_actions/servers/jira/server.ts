@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   createComment,
   createIssue,
@@ -14,6 +15,7 @@ import {
   getIssueFields,
   getIssueLinkTypes,
   getIssueTypes,
+  getJiraBaseUrl,
   getProject,
   getProjects,
   getProjectVersions,
@@ -26,7 +28,6 @@ import {
   transitionIssue,
   updateIssue,
   uploadAttachmentsToJira,
-  withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
   ADFDocumentSchema,
@@ -39,17 +40,17 @@ import {
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 const createServer = (
-  auth?: Authenticator,
+  auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
   const server = makeInternalMCPServer("jira");
@@ -58,23 +59,46 @@ const createServer = (
     "get_issue_read_fields",
     "Lists available Jira field keys/ids and names for use in the get_issue.fields parameter (read-time).",
     {},
-    async (_, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await listFieldSummaries(baseUrl, accessToken);
-          if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error retrieving fields: ${result.error}`
+    withToolLogging(
+      auth,
+      { toolName: "get_issue_read_fields" },
+      async (_, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Fields retrieved successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+
+          const result = await listFieldSummaries(baseUrl, accessToken);
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(`Error retrieving fields: ${result.error}`)
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Fields retrieved successfully",
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -89,9 +113,25 @@ const createServer = (
           "Optional list of fields to include. Defaults to a minimal set for performance."
         ),
     },
-    async ({ issueKey, fields }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_issue" },
+      async ({ issueKey, fields }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const issue = await getIssue({
             baseUrl,
             accessToken,
@@ -99,47 +139,79 @@ const createServer = (
             fields,
           });
           if (issue.isOk() && issue.value === null) {
-            return makeMCPToolJSONSuccess({
-              message: "No issue found with the specified key",
-              result: { found: false, issueKey },
-            });
-          }
-          if (issue.isErr()) {
-            return makeMCPToolTextError(
-              `Error retrieving issue: ${issue.error}`
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message: "No issue found with the specified key",
+                result: { found: false, issueKey },
+              }).content
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue retrieved successfully",
-            result: { issue: issue.value },
-          });
-        },
-        authInfo,
-      });
-    }
+          if (issue.isErr()) {
+            return new Err(
+              new MCPError(`Error retrieving issue: ${issue.error}`)
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue retrieved successfully",
+              result: { issue: issue.value },
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
     "get_projects",
     "Retrieves a list of JIRA projects.",
     {},
-    async (_, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await getProjects(baseUrl, accessToken);
-          if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error retrieving projects: ${result.error}`
+    withToolLogging(
+      auth,
+      { toolName: "get_projects" },
+      async (_, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Projects retrieved successfully",
-            result,
-          });
-        },
-        authInfo,
-      });
-    }
+
+          const result = await getProjects(baseUrl, accessToken);
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(`Error retrieving projects: ${result.error}`)
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Projects retrieved successfully",
+              result,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -148,28 +220,53 @@ const createServer = (
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
-    async ({ projectKey }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_project" },
+      async ({ projectKey }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await getProject(baseUrl, accessToken, projectKey);
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error retrieving project: ${result.error}`
+            return new Err(
+              new MCPError(`Error retrieving project: ${result.error}`)
             );
           }
           if (result.value === null) {
-            return makeMCPToolTextError(
-              `No project found with the specified key: ${projectKey}`
+            return new Err(
+              new MCPError(
+                `No project found with the specified key: ${projectKey}`
+              )
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Project retrieved successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Project retrieved successfully",
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -178,27 +275,50 @@ const createServer = (
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
-    async ({ projectKey }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_project_versions" },
+      async ({ projectKey }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await getProjectVersions(
             baseUrl,
             accessToken,
             projectKey
           );
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error retrieving project versions: ${result.error}`
+            return new Err(
+              new MCPError(`Error retrieving project versions: ${result.error}`)
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Project versions retrieved successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Project versions retrieved successfully",
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -207,23 +327,46 @@ const createServer = (
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
     },
-    async ({ issueKey }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await getTransitions(baseUrl, accessToken, issueKey);
-          if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error retrieving transitions: ${result.error}`
+    withToolLogging(
+      auth,
+      { toolName: "get_transitions" },
+      async ({ issueKey }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Transitions retrieved successfully",
-            result,
-          });
-        },
-        authInfo,
-      });
-    }
+
+          const result = await getTransitions(baseUrl, accessToken, issueKey);
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(`Error retrieving transitions: ${result.error}`)
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Transitions retrieved successfully",
+              result,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -245,12 +388,28 @@ const createServer = (
         .optional()
         .describe("Group or role name for visibility restriction"),
     },
-    async (
-      { issueKey, comment, visibilityType, visibilityValue },
-      { authInfo }
-    ) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "create_comment" },
+      async (
+        { issueKey, comment, visibilityType, visibilityValue },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const visibility =
             visibilityType && visibilityValue
               ? { type: visibilityType, value: visibilityValue }
@@ -264,29 +423,38 @@ const createServer = (
             visibility
           );
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error adding comment: ${result.error}`
+            return new Err(
+              new MCPError(`Error adding comment: ${result.error}`)
             );
           }
           if (result.value === null) {
-            return makeMCPToolJSONSuccess({
-              message: "Issue not found or no permission to add comment",
-              result: { found: false, issueKey },
-            });
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message: "Issue not found or no permission to add comment",
+                result: { found: false, issueKey },
+              }).content
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Comment added successfully",
-            result: {
-              issueKey,
-              comment:
-                typeof comment === "string" ? comment : "[Rich ADF Content]",
-              commentId: result.value.id,
-            },
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Comment added successfully",
+              result: {
+                issueKey,
+                comment:
+                  typeof comment === "string" ? comment : "[Rich ADF Content]",
+                commentId: result.value.id,
+              },
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -305,30 +473,53 @@ const createServer = (
         .optional()
         .describe("Token for next page of results (for pagination)"),
     },
-    async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_issues" },
+      async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await searchIssues(baseUrl, accessToken, filters, {
             nextPageToken,
             sortBy,
           });
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error searching issues: ${result.error}`
+            return new Err(
+              new MCPError(`Error searching issues: ${result.error}`)
             );
           }
           const message =
             result.value.issues.length === 0
               ? "No issues found matching the search criteria"
               : "Issues retrieved successfully";
-          return makeMCPToolJSONSuccess({
-            message,
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message,
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -355,9 +546,25 @@ const createServer = (
         .optional()
         .describe("Token for next page of results (for pagination)"),
     },
-    async ({ jql, maxResults, fields, nextPageToken }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_issues_using_jql" },
+      async ({ jql, maxResults, fields, nextPageToken }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await searchJiraIssuesUsingJql(
             baseUrl,
             accessToken,
@@ -369,22 +576,29 @@ const createServer = (
             }
           );
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error executing JQL search: ${result.error}`
+            return new Err(
+              new MCPError(`Error executing JQL search: ${result.error}`)
             );
           }
           const message =
             result.value.issues.length === 0
               ? "No issues found matching the JQL query"
               : "Issues retrieved successfully using JQL";
-          return makeMCPToolJSONSuccess({
-            message,
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message,
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -393,33 +607,50 @@ const createServer = (
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
-    async ({ projectKey }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          try {
-            const result = await getIssueTypes(
-              baseUrl,
-              accessToken,
-              projectKey
-            );
-            if (result.isErr()) {
-              return makeMCPToolTextError(
-                `Error retrieving issue types: ${result.error}`
-              );
-            }
-            return makeMCPToolJSONSuccess({
-              message: "Issue types retrieved successfully",
-              result,
-            });
-          } catch (error) {
-            return makeMCPToolTextError(
-              `Error retrieving issue types: ${error}`
+    withToolLogging(
+      auth,
+      { toolName: "get_issue_types" },
+      async ({ projectKey }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-        },
-        authInfo,
-      });
-    }
+
+          const result = await getIssueTypes(
+            baseUrl,
+            accessToken,
+            projectKey
+          );
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(`Error retrieving issue types: ${result.error}`)
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue types retrieved successfully",
+              result,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -431,58 +662,83 @@ const createServer = (
         .string()
         .describe("The issue type ID to get fields for (required)"),
     },
-    async ({ projectKey, issueTypeId }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          try {
-            const result = await getIssueFields(
-              baseUrl,
-              accessToken,
-              projectKey,
-              issueTypeId
-            );
-            if (result.isErr()) {
-              return makeMCPToolTextError(
-                `Error retrieving issue fields: ${result.error}`
-              );
-            }
-            return makeMCPToolJSONSuccess({
-              message: "Issue fields retrieved successfully",
-              result,
-            });
-          } catch (error) {
-            return makeMCPToolTextError(
-              `Error retrieving issue fields: ${error}`
+    withToolLogging(
+      auth,
+      { toolName: "get_issue_create_fields" },
+      async ({ projectKey, issueTypeId }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-        },
-        authInfo,
-      });
-    }
+
+          const result = await getIssueFields(
+            baseUrl,
+            accessToken,
+            projectKey,
+            issueTypeId
+          );
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(`Error retrieving issue fields: ${result.error}`)
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue fields retrieved successfully",
+              result,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
     "get_connection_info",
     "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves",
     {},
-    async (_, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("No access token found");
-      }
+    withToolLogging(
+      auth,
+      { toolName: "get_connection_info" },
+      async (_, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
 
-      const connectionInfo = await getConnectionInfo(accessToken);
-      if (connectionInfo.isErr()) {
-        return makeMCPToolTextError(
-          `Failed to retrieve connection information: ${connectionInfo.error}`
+        const connectionInfo = await getConnectionInfo(accessToken);
+        if (connectionInfo.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to retrieve connection information: ${connectionInfo.error}`
+            )
+          );
+        }
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Connection information retrieved successfully",
+            result: connectionInfo,
+          }).content
         );
       }
-
-      return makeMCPToolJSONSuccess({
-        message: "Connection information retrieved successfully",
-        result: connectionInfo,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -492,9 +748,25 @@ const createServer = (
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
     },
-    async ({ issueKey, transitionId }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "transition_issue" },
+      async ({ issueKey, transitionId }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await transitionIssue(
             baseUrl,
             accessToken,
@@ -513,25 +785,34 @@ const createServer = (
             } else if (result.error.includes("workflow")) {
               errorMessage = `Workflow error: ${result.error}. The issue's workflow may have conditions or validators preventing this transition.`;
             }
-            return makeMCPToolTextError(errorMessage);
+            return new Err(new MCPError(errorMessage));
           }
           if (result.value === null) {
-            return makeMCPToolJSONSuccess({
-              message: "Issue not found or no permission to transition it",
-              result: { found: false, issueKey },
-            });
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message: "Issue not found or no permission to transition it",
+                result: { found: false, issueKey },
+              }).content
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue transitioned successfully",
-            result: {
-              issueKey,
-              transitionId,
-            },
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue transitioned successfully",
+              result: {
+                issueKey,
+                transitionId,
+              },
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -542,9 +823,25 @@ const createServer = (
         "The description of the issue"
       ),
     },
-    async ({ issueData }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "create_issue" },
+      async ({ issueData }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await createIssue(baseUrl, accessToken, issueData);
           if (result.isErr()) {
             let errorMessage = `Error creating issue: ${result.error}`;
@@ -554,16 +851,23 @@ const createServer = (
             ) {
               errorMessage = `Field configuration error: ${result.error}. Some fields are not available for this project/issue type. Use get_issue_create_fields to check which fields are required and available before creating issues.`;
             }
-            return makeMCPToolTextError(errorMessage);
+            return new Err(new MCPError(errorMessage));
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue created successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue created successfully",
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -575,9 +879,25 @@ const createServer = (
         "The partial data to update the issue with - description field supports both plain text and ADF format"
       ),
     },
-    async ({ issueKey, updateData }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "update_issue" },
+      async ({ issueKey, updateData }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await updateIssue(
             baseUrl,
             accessToken,
@@ -585,27 +905,36 @@ const createServer = (
             updateData
           );
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error updating issue: ${result.error}`
+            return new Err(
+              new MCPError(`Error updating issue: ${result.error}`)
             );
           }
           if (result.value === null) {
-            return makeMCPToolJSONSuccess({
-              message: "Issue not found or no permission to update it",
-              result: { found: false, issueKey },
-            });
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message: "Issue not found or no permission to update it",
+                result: { found: false, issueKey },
+              }).content
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue updated successfully",
-            result: {
-              ...result.value,
-              updatedFields: Object.keys(updateData),
-            },
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue updated successfully",
+              result: {
+                ...result.value,
+                updatedFields: Object.keys(updateData),
+              },
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -616,25 +945,52 @@ const createServer = (
         "Link configuration including type and issues to link"
       ),
     },
-    async ({ linkData }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await createIssueLink(baseUrl, accessToken, linkData);
-          if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error creating issue link: ${result.error}`
+    withToolLogging(
+      auth,
+      { toolName: "create_issue_link" },
+      async ({ linkData }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue link created successfully",
-            result: {
-              ...linkData,
-            },
-          });
-        },
-        authInfo,
-      });
-    }
+
+          const result = await createIssueLink(
+            baseUrl,
+            accessToken,
+            linkData
+          );
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(`Error creating issue link: ${result.error}`)
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue link created successfully",
+              result: {
+                ...linkData,
+              },
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -643,46 +999,94 @@ const createServer = (
     {
       linkId: z.string().describe("The ID of the issue link to delete"),
     },
-    async ({ linkId }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await deleteIssueLink(baseUrl, accessToken, linkId);
-          if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error deleting issue link: ${result.error}`
+    withToolLogging(
+      auth,
+      { toolName: "delete_issue_link" },
+      async ({ linkId }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue link deleted successfully",
-            result: { linkId },
-          });
-        },
-        authInfo,
-      });
-    }
+
+          const result = await deleteIssueLink(baseUrl, accessToken, linkId);
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(`Error deleting issue link: ${result.error}`)
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue link deleted successfully",
+              result: { linkId },
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
     "get_issue_link_types",
     "Retrieves all available issue link types that can be used when creating issue links.",
     {},
-    async (_, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await getIssueLinkTypes(baseUrl, accessToken);
-          if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error retrieving issue link types: ${result.error}`
+    withToolLogging(
+      auth,
+      { toolName: "get_issue_link_types" },
+      async (_, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue link types retrieved successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+
+          const result = await getIssueLinkTypes(baseUrl, accessToken);
+          if (result.isErr()) {
+            return new Err(
+              new MCPError(
+                `Error retrieving issue link types: ${result.error}`
+              )
+            );
+          }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Issue link types retrieved successfully",
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -719,12 +1123,28 @@ const createServer = (
           "Pagination offset. Pass the previous response's nextStartAt to fetch the next page."
         ),
     },
-    async (
-      { emailAddress, name, maxResults = SEARCH_USERS_MAX_RESULTS, startAt },
-      { authInfo }
-    ) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_users" },
+      async (
+        { emailAddress, name, maxResults = SEARCH_USERS_MAX_RESULTS, startAt },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           if (emailAddress) {
             const result = await searchUsersByEmailExact(
               baseUrl,
@@ -733,8 +1153,8 @@ const createServer = (
               { maxResults, startAt }
             );
             if (result.isErr()) {
-              return makeMCPToolTextError(
-                `Error searching users: ${result.error}`
+              return new Err(
+                new MCPError(`Error searching users: ${result.error}`)
               );
             }
 
@@ -742,13 +1162,15 @@ const createServer = (
               result.value.users.length === 0
                 ? "No users found with the specified email address"
                 : `Found ${result.value.users.length} exact match(es) for the specified email address`;
-            return makeMCPToolJSONSuccess({
-              message,
-              result: {
-                users: result.value.users,
-                nextStartAt: result.value.nextStartAt,
-              },
-            });
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message,
+                result: {
+                  users: result.value.users,
+                  nextStartAt: result.value.nextStartAt,
+                },
+              }).content
+            );
           }
 
           const result = await listUsers(baseUrl, accessToken, {
@@ -757,8 +1179,8 @@ const createServer = (
             startAt,
           });
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error searching users: ${result.error}`
+            return new Err(
+              new MCPError(`Error searching users: ${result.error}`)
             );
           }
 
@@ -770,17 +1192,24 @@ const createServer = (
               : name
                 ? `Found ${result.value.users.length} user(s) matching the name`
                 : `Listed ${result.value.users.length} user(s)`;
-          return makeMCPToolJSONSuccess({
-            message,
-            result: {
-              users: result.value.users,
-              nextStartAt: result.value.nextStartAt,
-            },
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message,
+              result: {
+                users: result.value.users,
+                nextStartAt: result.value.nextStartAt,
+              },
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -817,9 +1246,25 @@ const createServer = (
         }),
       ]),
     },
-    async ({ issueKey, attachment }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "upload_attachment" },
+      async ({ issueKey, attachment }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           let fileToUpload: {
             buffer: Buffer;
             filename: string;
@@ -827,9 +1272,11 @@ const createServer = (
           };
 
           if (attachment.type === "conversation_file") {
-            if (!auth || !agentLoopContext) {
-              return makeMCPToolTextError(
-                "Authentication and conversation context required for conversation file attachments"
+            if (!agentLoopContext) {
+              return new Err(
+                new MCPError(
+                  "Conversation context required for conversation file attachments"
+                )
               );
             }
 
@@ -840,8 +1287,10 @@ const createServer = (
             );
 
             if (fileResult.isErr()) {
-              return makeMCPToolTextError(
-                `Failed to get conversation file ${attachment.fileId}: ${fileResult.error}`
+              return new Err(
+                new MCPError(
+                  `Failed to get conversation file ${attachment.fileId}: ${fileResult.error}`
+                )
               );
             }
 
@@ -852,8 +1301,10 @@ const createServer = (
             const estimatedSize = (attachment.base64Data.length * 3) / 4; // Base64 to bytes estimation
 
             if (estimatedSize > MAX_FILE_SIZE_BYTES) {
-              return makeMCPToolTextError(
-                `File ${attachment.filename} is too large. Maximum size allowed is ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`
+              return new Err(
+                new MCPError(
+                  `File ${attachment.filename} is too large. Maximum size allowed is ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`
+                )
               );
             }
 
@@ -865,12 +1316,14 @@ const createServer = (
                 contentType: attachment.contentType,
               };
             } catch (error) {
-              return makeMCPToolTextError(
-                `Failed to decode base64 data for ${attachment.filename}: ${normalizeError(error).message}`
+              return new Err(
+                new MCPError(
+                  `Failed to decode base64 data for ${attachment.filename}: ${normalizeError(error).message}`
+                )
               );
             }
           } else {
-            return makeMCPToolTextError("Invalid attachment type");
+            return new Err(new MCPError("Invalid attachment type"));
           }
 
           const uploadResult = await uploadAttachmentsToJira(
@@ -881,33 +1334,42 @@ const createServer = (
           );
 
           if (uploadResult.isErr()) {
-            return makeMCPToolTextError(
-              `Failed to upload attachment: ${uploadResult.error}`
+            return new Err(
+              new MCPError(
+                `Failed to upload attachment: ${uploadResult.error}`
+              )
             );
           }
 
           const uploadedAttachment = uploadResult.value[0];
 
-          return makeMCPToolJSONSuccess({
-            message: `Successfully uploaded attachment to issue ${issueKey}`,
-            result: {
-              issueKey,
-              attachment: {
-                id: uploadedAttachment.id,
-                filename: uploadedAttachment.filename,
-                size: uploadedAttachment.size,
-                mimeType: uploadedAttachment.mimeType,
-                created: uploadedAttachment.created,
-                author:
-                  uploadedAttachment.author.displayName ??
-                  uploadedAttachment.author.accountId,
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: `Successfully uploaded attachment to issue ${issueKey}`,
+              result: {
+                issueKey,
+                attachment: {
+                  id: uploadedAttachment.id,
+                  filename: uploadedAttachment.filename,
+                  size: uploadedAttachment.size,
+                  mimeType: uploadedAttachment.mimeType,
+                  created: uploadedAttachment.created,
+                  author:
+                    uploadedAttachment.author.displayName ??
+                    uploadedAttachment.author.accountId,
+                },
               },
-            },
-          });
-        },
-        authInfo,
-      });
-    }
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -916,9 +1378,25 @@ const createServer = (
     {
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
     },
-    async ({ issueKey }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_attachments" },
+      async ({ issueKey }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
+            );
+          }
+
           const attachmentsResult = await getIssueAttachments({
             baseUrl,
             accessToken,
@@ -926,7 +1404,7 @@ const createServer = (
           });
 
           if (attachmentsResult.isErr()) {
-            return makeMCPToolTextError(attachmentsResult.error);
+            return new Err(new MCPError(attachmentsResult.error));
           }
 
           const attachments = attachmentsResult.value;
@@ -941,22 +1419,29 @@ const createServer = (
             thumbnail: att.thumbnail,
           }));
 
-          return makeMCPToolJSONSuccess({
-            message: `Found ${attachments.length} attachment(s) for issue ${issueKey}`,
-            result: {
-              issueKey,
-              attachments: attachmentSummary,
-              totalAttachments: attachments.length,
-              totalSize: attachments.reduce(
-                (sum, att) => sum + (att.size || 0),
-                0
-              ),
-            },
-          });
-        },
-        authInfo,
-      });
-    }
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: `Found ${attachments.length} attachment(s) for issue ${issueKey}`,
+              result: {
+                issueKey,
+                attachments: attachmentSummary,
+                totalAttachments: attachments.length,
+                totalSize: attachments.reduce(
+                  (sum, att) => sum + (att.size || 0),
+                  0
+                ),
+              },
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -966,66 +1451,83 @@ const createServer = (
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
       attachmentId: z.string().describe("The ID of the attachment to read"),
     },
-    async ({ issueKey, attachmentId }, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          try {
-            const attachmentsResult = await getIssueAttachments({
-              baseUrl,
-              accessToken,
-              issueKey,
-            });
+    withToolLogging(
+      auth,
+      { toolName: "read_attachment" },
+      async ({ issueKey, attachmentId }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
 
-            if (attachmentsResult.isErr()) {
-              return makeMCPToolTextError(attachmentsResult.error);
-            }
-
-            const attachments = attachmentsResult.value;
-            const targetAttachment = attachments.find(
-              (att) => att.id === attachmentId
-            );
-            if (!targetAttachment) {
-              return makeMCPToolTextError(
-                `Attachment with ID ${attachmentId} not found on issue ${issueKey}`
-              );
-            }
-            return await processAttachment({
-              mimeType: targetAttachment.mimeType,
-              filename: targetAttachment.filename,
-              extractText: async () =>
-                extractTextFromAttachment({
-                  baseUrl,
-                  accessToken,
-                  attachmentId,
-                  mimeType: targetAttachment.mimeType,
-                }),
-              downloadContent: async () => {
-                const result = await getAttachmentContent({
-                  baseUrl,
-                  accessToken,
-                  attachmentId,
-                  mimeType: targetAttachment.mimeType,
-                });
-                if (result.isErr()) {
-                  return result;
-                }
-                return new Ok(Buffer.from(result.value.content, "base64"));
-              },
-            });
-          } catch (error) {
-            logger.error(`Error in read_attachment:`, {
-              error: error,
-              issueKey,
-              attachmentId,
-            });
-            return makeMCPToolTextError(
-              `Error in read_attachment: ${normalizeError(error).message}`
+        try {
+          const baseUrl = await getJiraBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine JIRA instance URL. Please check your connection."
+              )
             );
           }
-        },
-        authInfo,
-      });
-    }
+
+          const attachmentsResult = await getIssueAttachments({
+            baseUrl,
+            accessToken,
+            issueKey,
+          });
+
+          if (attachmentsResult.isErr()) {
+            return new Err(new MCPError(attachmentsResult.error));
+          }
+
+          const attachments = attachmentsResult.value;
+          const targetAttachment = attachments.find(
+            (att) => att.id === attachmentId
+          );
+          if (!targetAttachment) {
+            return new Err(
+              new MCPError(
+                `Attachment with ID ${attachmentId} not found on issue ${issueKey}`
+              )
+            );
+          }
+          return await processAttachment({
+            mimeType: targetAttachment.mimeType,
+            filename: targetAttachment.filename,
+            extractText: async () =>
+              extractTextFromAttachment({
+                baseUrl,
+                accessToken,
+                attachmentId,
+                mimeType: targetAttachment.mimeType,
+              }),
+            downloadContent: async () => {
+              const result = await getAttachmentContent({
+                baseUrl,
+                accessToken,
+                attachmentId,
+                mimeType: targetAttachment.mimeType,
+              });
+              if (result.isErr()) {
+                return result;
+              }
+              return new Ok(Buffer.from(result.value.content, "base64"));
+            },
+          });
+        } catch (error) {
+          logger.error(`Error in read_attachment:`, {
+            error: error,
+            issueKey,
+            attachmentId,
+          });
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   return server;

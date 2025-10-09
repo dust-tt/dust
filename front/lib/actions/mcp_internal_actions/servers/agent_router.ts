@@ -3,30 +3,40 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { DEFAULT_AGENT_ROUTER_ACTION_NAME } from "@app/lib/actions/constants";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
+import { Err, Ok } from "@app/types";
 import { getHeaderFromGroupIds } from "@app/types/groups";
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
 const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
-const createServer = (auth: Authenticator): McpServer => {
+const createServer = (
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer => {
   const server = makeInternalMCPServer(DEFAULT_AGENT_ROUTER_ACTION_NAME);
 
   server.tool(
     LIST_ALL_AGENTS_TOOL_NAME,
     "Returns a complete list of all published agents in the workspace.",
     {},
-    async () => {
+    withToolLogging(
+      auth,
+      { toolName: LIST_ALL_AGENTS_TOOL_NAME, agentLoopContext },
+      async () => {
       const owner = auth.getNonNullableWorkspace();
       const requestedGroupIds = auth.groups().map((g) => g.sId);
 
@@ -50,7 +60,7 @@ const createServer = (auth: Authenticator): McpServer => {
         view: "all",
       });
       if (res.isErr()) {
-        return makeMCPToolTextError("Error fetching agent configurations");
+        return new Err(new MCPError("Error fetching agent configurations"));
       }
 
       const agents = res.value;
@@ -62,20 +72,18 @@ const createServer = (auth: Authenticator): McpServer => {
         };
       });
 
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: "List of published agents successfully fetched",
-          },
-          {
-            type: "text",
-            text: JSON.stringify(formattedAgents),
-          },
-        ],
-      };
-    }
+      return new Ok([
+        {
+          type: "text",
+          text: "List of published agents successfully fetched",
+        },
+        {
+          type: "text",
+          text: JSON.stringify(formattedAgents),
+        },
+      ]);
+      }
+    )
   );
 
   server.tool(
@@ -87,7 +95,10 @@ const createServer = (auth: Authenticator): McpServer => {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),
     },
-    async ({ userMessage }) => {
+    withToolLogging(
+      auth,
+      { toolName: SUGGEST_AGENTS_TOOL_NAME, agentLoopContext },
+      async ({ userMessage }) => {
       const owner = auth.getNonNullableWorkspace();
       const requestedGroupIds = auth.groups().map((g) => g.sId);
 
@@ -111,7 +122,7 @@ const createServer = (auth: Authenticator): McpServer => {
         view: "all",
       });
       if (getAgentsRes.isErr()) {
-        return makeMCPToolTextError("Error fetching agent configurations");
+        return new Err(new MCPError("Error fetching agent configurations"));
       }
       const agents = getAgentsRes.value as LightAgentConfigurationType[];
 
@@ -121,9 +132,9 @@ const createServer = (auth: Authenticator): McpServer => {
       });
 
       if (suggestedAgentsRes.isErr()) {
-        return makeMCPToolTextError(
+        return new Err(new MCPError(
           `Error suggesting agents: ${suggestedAgentsRes.error}`
-        );
+        ));
       }
 
       const suggestedAgents = suggestedAgentsRes.value;
@@ -144,20 +155,18 @@ const createServer = (auth: Authenticator): McpServer => {
           };
         });
 
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: "Suggested agents successfully fetched",
-          },
-          {
-            type: "text",
-            text: JSON.stringify(formattedSuggestedAgents),
-          },
-        ],
-      };
-    }
+      return new Ok([
+        {
+          type: "text",
+          text: "Suggested agents successfully fetched",
+        },
+        {
+          type: "text",
+          text: JSON.stringify(formattedSuggestedAgents),
+        },
+      ]);
+      }
+    )
   );
 
   return server;

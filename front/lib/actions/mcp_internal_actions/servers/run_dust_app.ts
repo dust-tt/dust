@@ -4,6 +4,8 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
+
 import {
   generateCSVFileAndSnippet,
   generateJSONFileAndSnippet,
@@ -20,6 +22,7 @@ import {
   makeInternalMCPServer,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type {
   AgentLoopContextType,
   AgentLoopRunContextType,
@@ -46,9 +49,11 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
+  Err,
   extensionsForContentType,
   getHeaderFromGroupIds,
   getHeaderFromRole,
+  Ok,
   safeParseJSON,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
@@ -368,17 +373,18 @@ export default async function createServer(
       app.name,
       app.description,
       convertDatasetSchemaToZodRawShape(schema),
-      async () => {
-        return {
-          isError: false,
-          content: [
+      withToolLogging(
+        auth,
+        { toolName: app.name, agentLoopContext },
+        async () => {
+          return new Ok([
             {
               type: "text",
               text: "Successfully list Dust App configuration",
             },
-          ],
-        };
-      }
+          ]);
+        }
+      )
     );
   } else if (agentLoopContext && agentLoopContext.runContext) {
     if (
@@ -400,11 +406,14 @@ export default async function createServer(
       app.name,
       app.description,
       convertDatasetSchemaToZodRawShape(schema),
-      async (params) => {
-        const content: (
-          | TextContent
-          | { type: "resource"; resource: ToolGeneratedFileType }
-        )[] = [];
+      withToolLogging(
+        auth,
+        { toolName: app.name, agentLoopContext },
+        async (params) => {
+          const content: (
+            | TextContent
+            | { type: "resource"; resource: ToolGeneratedFileType }
+          )[] = [];
 
         params = await prepareParamsWithHistory(
           params,
@@ -442,32 +451,32 @@ export default async function createServer(
           { useWorkspaceCredentials: true }
         );
 
-        if (runRes.isErr()) {
-          return makeMCPToolTextError(
-            `Error running Dust app: ${runRes.error.message}`
-          );
-        }
+          if (runRes.isErr()) {
+            return new Err(
+              new MCPError(`Error running Dust app: ${runRes.error.message}`)
+            );
+          }
 
         const { eventStream } = runRes.value;
         let lastBlockOutput = null;
 
-        for await (const event of eventStream) {
-          if (event.type === "error") {
-            return makeMCPToolTextError(
-              `Error running Dust app: ${event.content.message}`
-            );
-          }
-
-          if (event.type === "block_execution") {
-            const e = event.content.execution[0][0];
-            if (e.error) {
-              return makeMCPToolTextError(
-                `Error in block execution: ${e.error}`
+          for await (const event of eventStream) {
+            if (event.type === "error") {
+              return new Err(
+                new MCPError(`Error running Dust app: ${event.content.message}`)
               );
             }
-            lastBlockOutput = e.value;
+
+            if (event.type === "block_execution") {
+              const e = event.content.execution[0][0];
+              if (e.error) {
+                return new Err(
+                  new MCPError(`Error in block execution: ${e.error}`)
+                );
+              }
+              lastBlockOutput = e.value;
+            }
           }
-        }
 
         const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
 
@@ -495,16 +504,14 @@ export default async function createServer(
           content.push(...fileContent);
         }
 
-        content.push({
-          type: "text",
-          text: JSON.stringify(sanitizedOutput, null, 2),
-        });
+          content.push({
+            type: "text",
+            text: JSON.stringify(sanitizedOutput, null, 2),
+          });
 
-        return {
-          isError: false,
-          content,
-        };
-      }
+          return new Ok(content);
+        }
+      )
     );
   } else {
     server.tool(
@@ -514,17 +521,18 @@ export default async function createServer(
         dustApp:
           ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP],
       },
-      async () => {
-        return {
-          isError: false,
-          content: [
+      withToolLogging(
+        auth,
+        { toolName: "run_dust_app", agentLoopContext },
+        async () => {
+          return new Ok([
             {
               type: "text",
               text: "Successfully saved Dust App configuration",
             },
-          ],
-        };
-      }
+          ]);
+        }
+      )
     );
   }
 

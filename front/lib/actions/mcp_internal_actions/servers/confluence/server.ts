@@ -1,40 +1,70 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   createPage,
+  getConfluenceBaseUrl,
   getCurrentUser,
   listPages,
   updatePage,
-  withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/confluence/confluence_api_helper";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, normalizeError, Ok } from "@app/types";
 
-const createServer = (): McpServer => {
+const createServer = (auth: Authenticator): McpServer => {
   const server = makeInternalMCPServer("confluence");
 
   server.tool(
     "get_current_user",
     "Get information about the currently authenticated Confluence user including account ID, display name, and email.",
     {},
-    async (_, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_current_user" },
+      async (_, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getConfluenceBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine Confluence instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await getCurrentUser(baseUrl, accessToken);
           if (result.isErr()) {
-            throw new Error(`Error getting current user: ${result.error}`);
+            return new Err(
+              new MCPError(`Error getting current user: ${result.error}`)
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Current user information retrieved successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Current user information retrieved successfully",
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -55,24 +85,50 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Number of results per page (default 25)"),
     },
-    async (params, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "get_pages" },
+      async (params, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getConfluenceBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine Confluence instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await listPages(baseUrl, accessToken, params);
           if (result.isErr()) {
-            throw new Error(`Error listing pages: ${result.error}`);
+            return new Err(
+              new MCPError(`Error listing pages: ${result.error}`)
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message:
-              result.value.results.length === 0
-                ? "No pages found"
-                : `Found ${result.value.results.length} page(s)`,
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message:
+                result.value.results.length === 0
+                  ? "No pages found"
+                  : `Found ${result.value.results.length} page(s)`,
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -104,21 +160,47 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Page body content"),
     },
-    async (params, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "create_page" },
+      async (params, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getConfluenceBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine Confluence instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await createPage(baseUrl, accessToken, params);
           if (result.isErr()) {
-            throw new Error(`Error creating page: ${result.error}`);
+            return new Err(
+              new MCPError(`Error creating page: ${result.error}`)
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Page created successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Page created successfully",
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   server.tool(
@@ -164,21 +246,47 @@ const createServer = (): McpServer => {
         .optional()
         .describe("New parent page ID to move the page under"),
     },
-    async (params, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
+    withToolLogging(
+      auth,
+      { toolName: "update_page" },
+      async (params, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("No access token found"));
+        }
+
+        try {
+          const baseUrl = await getConfluenceBaseUrl(accessToken);
+          if (!baseUrl) {
+            return new Err(
+              new MCPError(
+                "Failed to determine Confluence instance URL. Please check your connection."
+              )
+            );
+          }
+
           const result = await updatePage(baseUrl, accessToken, params);
           if (result.isErr()) {
-            throw new Error(`Error updating page: ${result.error}`);
+            return new Err(
+              new MCPError(`Error updating page: ${result.error}`)
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Page updated successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: "Page updated successfully",
+              result: result.value,
+            }).content
+          );
+        } catch (error) {
+          return new Err(
+            new MCPError(
+              `Authentication error: ${normalizeError(error).message}`
+            )
+          );
+        }
+      }
+    )
   );
 
   return server;

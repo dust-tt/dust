@@ -3,6 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
@@ -28,6 +29,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
 import {
   makeInternalMCPServer,
+  makeMCPToolJSONSuccess,
+  makeMCPToolTextSuccess,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -39,9 +42,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
-import {
-  Err,
-  Ok,
+import { Err, Ok,
   parseTimeFrame,
   stripNullBytes,
   timeFrameFromNow,

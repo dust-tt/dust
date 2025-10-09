@@ -113,7 +113,7 @@ export const withAuth = async ({
   }
 };
 
-async function getConfluenceBaseUrl(
+export async function getConfluenceBaseUrl(
   accessToken: string
 ): Promise<string | null> {
   const resourceInfo = await getConfluenceResourceInfo(accessToken);

@@ -3,10 +3,13 @@ import OpenAI from "openai";
 import { z } from "zod";
 
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -20,7 +23,10 @@ const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 w
 const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 
-const createServer = (auth: Authenticator): McpServer => {
+const createServer = (
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer => {
   const server = makeInternalMCPServer("image_generation");
 
   server.tool(
@@ -57,7 +63,10 @@ const createServer = (auth: Authenticator): McpServer => {
           "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
         ),
     },
-    async ({ prompt, name, quality, size }, { sendNotification, _meta }) => {
+    withToolLogging(
+      auth,
+      { toolName: "generate_image", agentLoopContext },
+      async ({ prompt, name, quality, size }, { sendNotification, _meta }) => {
       const workspace = auth.getNonNullableWorkspace();
 
       if (_meta?.progressToken) {
@@ -164,7 +173,8 @@ const createServer = (auth: Authenticator): McpServer => {
 
         return makeMCPToolTextError("Error generating image.");
       }
-    }
+      }
+    )
   );
 
   return server;

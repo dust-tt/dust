@@ -103,7 +103,7 @@ export async function getInternalMCPServer(
     case "primitive_types_debugger":
       return primitiveTypesDebuggerServer();
     case "jit_testing":
-      return jitTestingServer();
+      return jitTestingServer(auth);
     case "web_search_&_browse":
       return webtoolsServer(auth, agentLoopContext);
     case "search":
@@ -135,13 +135,13 @@ export async function getInternalMCPServer(
     case "salesforce":
       return salesforceServer();
     case "gmail":
-      return gmailServer();
+      return gmailServer(auth);
     case "google_calendar":
       return calendarServer(agentLoopContext);
     case "google_drive":
-      return driveServer();
+      return driveServer(auth);
     case "google_sheets":
-      return sheetsServer();
+      return sheetsServer(auth);
     case "data_sources_file_system":
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
@@ -157,7 +157,7 @@ export async function getInternalMCPServer(
     case AGENT_MEMORY_SERVER_NAME:
       return agentMemoryServer(auth, agentLoopContext);
     case "confluence":
-      return confluenceServer();
+      return confluenceServer(auth);
     case "outlook":
       return outlookServer();
     case "outlook_calendar":

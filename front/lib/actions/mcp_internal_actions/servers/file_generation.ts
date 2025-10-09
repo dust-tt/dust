@@ -7,10 +7,13 @@ import { marked } from "marked";
 import { extname } from "path";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
@@ -93,7 +96,10 @@ function getContentTypeFromOutputFormat(
   }
 }
 
-const createServer = (auth: Authenticator): McpServer => {
+const createServer = (
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer => {
   const server = makeInternalMCPServer("file_generation");
   server.tool(
     "get_supported_source_formats_for_output_format",
@@ -101,37 +107,41 @@ const createServer = (auth: Authenticator): McpServer => {
     {
       output_format: z.enum(OUTPUT_FORMATS).describe("The format to check."),
     },
-    async ({ output_format }) => {
-      const formats = await cacheWithRedis(
-        async () => {
-          const r = await fetch(
-            `https://v2.convertapi.com/info/*/to/${output_format}`
-          );
-          const data: { SourceFileFormats: string[] }[] = await r.json();
-          const formats = data.flatMap((f) => f.SourceFileFormats);
-          return formats;
-        },
-        () => `get_source_format_to_convert_to_${output_format}`,
-        {
-          ttlMs: 60 * 60 * 24 * 1000,
-        }
-      )();
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text:
-              "Here are the formats you can use to convert to " +
-              output_format +
-              ": " +
-              // The output format is included because it's always possible to convert to it.
-              [...formats, output_format].join(", "),
+    withToolLogging(
+      auth,
+      { toolName: "get_supported_source_formats_for_output_format", agentLoopContext },
+      async ({ output_format }) => {
+        const formats = await cacheWithRedis(
+          async () => {
+            const r = await fetch(
+              `https://v2.convertapi.com/info/*/to/${output_format}`
+            );
+            const data: { SourceFileFormats: string[] }[] = await r.json();
+            const formats = data.flatMap((f) => f.SourceFileFormats);
+            return formats;
           },
-        ],
-      };
-    }
+          () => `get_source_format_to_convert_to_${output_format}`,
+          {
+            ttlMs: 60 * 60 * 24 * 1000,
+          }
+        )();
+
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text:
+                "Here are the formats you can use to convert to " +
+                output_format +
+                ": " +
+                // The output format is included because it's always possible to convert to it.
+                [...formats, output_format].join(", "),
+            },
+          ],
+        };
+      }
+    )
   );
 
   server.tool(
@@ -157,7 +167,10 @@ const createServer = (auth: Authenticator): McpServer => {
         .enum(OUTPUT_FORMATS)
         .describe("The format of the output file."),
     },
-    async ({ file_name, file_id_or_url, source_format, output_format }) => {
+    withToolLogging(
+      auth,
+      { toolName: "convert_file_format", agentLoopContext },
+      async ({ file_name, file_id_or_url, source_format, output_format }) => {
       if (!process.env.CONVERTAPI_API_KEY) {
         return makeMCPToolTextError("Missing environment variable.");
       }
@@ -221,7 +234,8 @@ const createServer = (auth: Authenticator): McpServer => {
             "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use."
         );
       }
-    }
+      }
+    )
   );
 
   server.tool(
@@ -247,7 +261,10 @@ const createServer = (auth: Authenticator): McpServer => {
           "The format of the input content. Use 'markdown' for markdown-formatted text, 'html' for HTML content, or 'text' for plain text (default)."
         ),
     },
-    async ({ file_name, file_content, source_format = "text" }) => {
+    withToolLogging(
+      auth,
+      { toolName: "generate_file", agentLoopContext },
+      async ({ file_name, file_content, source_format = "text" }) => {
       if (!process.env.CONVERTAPI_API_KEY) {
         return makeMCPToolTextError("Missing environment variable.");
       }
@@ -421,7 +438,8 @@ ${file_content
           },
         ],
       };
-    }
+      }
+    )
   );
 
   return server;

@@ -6,10 +6,12 @@ import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   conversationAttachmentId,
@@ -65,9 +67,12 @@ function createServer(
           "The fileId of the attachment to include, as returned by the conversation_list_files action"
         ),
     },
-    async ({ fileId }) => {
+    withToolLogging(
+      auth,
+      { toolName: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME, agentLoopContext },
+      async ({ fileId }) => {
       if (!agentLoopContext?.runContext) {
-        return makeMCPToolTextError("No conversation context available");
+        return new Err(new MCPError("No conversation context available"));
       }
 
       const conversation = agentLoopContext.runContext.conversation;
@@ -84,7 +89,7 @@ function createServer(
       );
 
       if (fileRes.isErr()) {
-        return makeMCPToolTextError(fileRes.error);
+        return new Err(new MCPError(fileRes.error));
       }
 
       const { content, title } = fileRes.value;
@@ -98,7 +103,7 @@ function createServer(
       if (isTextContent(content)) {
         const textByteSize = computeTextByteSize(content.text);
         if (textByteSize > MAX_FILE_SIZE_FOR_INCLUDE) {
-          return makeMCPToolTextError(
+          return new Err(new MCPError(
             `File ${title} is too large (${(textByteSize / 1024 / 1024).toFixed(2)}MB) to include in the conversation. ` +
               `Maximum supported size is ${MAX_FILE_SIZE_FOR_INCLUDE / 1024 / 1024}MB. ` +
               `Consider using cat to read smaller portions of the file.`
@@ -132,20 +137,24 @@ function createServer(
         };
       }
 
-      return makeMCPToolTextError(
+      return new Err(new MCPError(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         `File ${attachment?.title || fileId} of type ${attachment?.contentType || "unknown"} has no text or image content`
       );
-    }
+      }
+    )
   );
 
   server.tool(
     DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
     "List all files attached to the conversation.",
     {},
-    async () => {
+    withToolLogging(
+      auth,
+      { toolName: DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME, agentLoopContext },
+      async () => {
       if (!agentLoopContext?.runContext) {
-        return makeMCPToolTextError("No conversation context available");
+        return new Err(new MCPError("No conversation context available"));
       }
 
       const conversation = agentLoopContext.runContext.conversation;
@@ -171,16 +180,15 @@ function createServer(
         content += renderAttachmentXml({ attachment });
       }
 
-      return {
-        isError: false,
-        content: [
+      return new Ok( [
           {
             type: "text",
             text: content,
           },
         ],
       };
-    }
+      }
+    )
   );
 
   server.tool(
@@ -214,9 +222,12 @@ function createServer(
             "matching this pattern will be returned."
         ),
     },
-    async ({ fileId, offset, limit, grep }) => {
+    withToolLogging(
+      auth,
+      { toolName: "cat", agentLoopContext },
+      async ({ fileId, offset, limit, grep }) => {
       if (!agentLoopContext?.runContext) {
-        return makeMCPToolTextError("No conversation context available");
+        return new Err(new MCPError("No conversation context available"));
       }
 
       const conversation = agentLoopContext.runContext.conversation;
@@ -232,14 +243,14 @@ function createServer(
       );
 
       if (fileRes.isErr()) {
-        return makeMCPToolTextError(fileRes.error);
+        return new Err(new MCPError(fileRes.error));
       }
 
       const { content, title } = fileRes.value;
 
       // Only process text content.
       if (!isTextContent(content)) {
-        return makeMCPToolTextError(
+        return new Err(new MCPError(
           `File ${title} does not have text content that can be read with offset/limit`
         );
       }
@@ -266,12 +277,12 @@ function createServer(
         const end = limit !== undefined ? start + limit : undefined;
 
         if (start > text.length) {
-          return makeMCPToolTextError(
+          return new Err(new MCPError(
             `Offset ${start} is out of bounds for file ${title}.`
           );
         }
         if (limit === 0) {
-          return makeMCPToolTextError(`Limit cannot be equal to 0.`);
+          return new Err(new MCPError(`Limit cannot be equal to 0.`));
         }
         text = text.slice(start, end);
       }
@@ -281,7 +292,7 @@ function createServer(
         // Check if the grep pattern is too large.
         const grepByteSize = computeTextByteSize(grep);
         if (grepByteSize > MAX_FILE_SIZE_FOR_GREP) {
-          return makeMCPToolTextError(
+          return new Err(new MCPError(
             `Grep pattern is too large (${(grepByteSize / 1024 / 1024).toFixed(2)}MB) to apply grep filtering. ` +
               `Maximum supported size is ${MAX_FILE_SIZE_FOR_GREP / 1024 / 1024}MB. ` +
               `Consider using offset/limit to read smaller portions of the file.`
@@ -294,27 +305,26 @@ function createServer(
           const matchedLines = lines.filter((line) => regex.test(line));
           text = matchedLines.join("\n");
         } catch (e) {
-          return makeMCPToolTextError(
+          return new Err(new MCPError(
             `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`
           );
         }
         if (text.length === 0) {
-          return makeMCPToolTextError(
+          return new Err(new MCPError(
             `No lines matched the grep pattern: ${grep}.`
           );
         }
       }
 
-      return {
-        isError: false,
-        content: [
+      return new Ok( [
           {
             type: "text",
             text,
           },
         ],
       };
-    }
+      }
+    )
   );
 
   return server;

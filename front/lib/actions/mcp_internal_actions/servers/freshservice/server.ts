@@ -1,11 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { Err, Ok } from "@app/types";
 
 import type {
   FreshserviceServiceItemField,
@@ -185,9 +188,25 @@ const createServer = (): McpServer => {
       page: z.number().optional().default(1),
       per_page: z.number().optional().default(30),
     },
-    async ({ filter, fields, page, per_page }, { authInfo }) => {
-      return withAuth({
-        action: async (accessToken, freshserviceDomain) => {
+    withToolLogging(
+      undefined,
+      { toolName: "list_tickets" },
+      async ({ filter, fields, page, per_page }, { authInfo }) => {
+        if (!authInfo?.token) {
+          return new Err(new MCPError(
+            "Authentication required. Please connect your Freshservice account."
+          ));
+        }
+
+        // Extract Freshservice domain from extra metadata
+        const freshserviceDomain = authInfo.extra?.freshservice_domain as string;
+        if (!freshserviceDomain) {
+          return new Err(new MCPError(
+            "Freshservice domain URL not configured. Please reconnect your Freshservice account."
+          ));
+        }
+
+        try {
           const params = new URLSearchParams({
             page: page.toString(),
             per_page: per_page.toString(),
@@ -210,7 +229,7 @@ const createServer = (): McpServer => {
           }
 
           const result = await apiRequest(
-            accessToken,
+            authInfo.token,
             freshserviceDomain,
             `tickets?${params.toString()}`
           );
@@ -223,14 +242,17 @@ const createServer = (): McpServer => {
             pickFields(ticket, selectedFields)
           );
 
-          return makeMCPToolJSONSuccess({
+          return new Ok(makeMCPToolJSONSuccess({
             message: `Retrieved ${filteredTickets.length} tickets`,
             result: filteredTickets,
-          });
-        },
-        authInfo,
-      });
-    }
+          }).content);
+        } catch (error) {
+          return new Err(new MCPError(
+            `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
+          ));
+        }
+      }
+    )
   );
 
   server.tool(

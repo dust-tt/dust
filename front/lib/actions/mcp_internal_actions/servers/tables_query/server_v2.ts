@@ -97,66 +97,64 @@ function createServer(
       tables:
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
-    async ({ tables }) => {
-      // Fetch table configurations
-      const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
-        auth,
-        tables
-      );
-      if (tableConfigurationsRes.isErr()) {
-        return makeMCPToolTextError(
-          `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+    withToolLogging(
+      auth,
+      { toolName: GET_DATABASE_SCHEMA_TOOL_NAME, agentLoopContext },
+      async ({ tables }) => {
+        // Fetch table configurations
+        const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
+          auth,
+          tables
         );
-      }
-      const tableConfigurations = tableConfigurationsRes.value;
-      if (tableConfigurations.length === 0) {
-        return {
-          isError: false,
-          content: [
+        if (tableConfigurationsRes.isErr()) {
+          return new Err(new MCPError(
+            `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+          ));
+        }
+        const tableConfigurations = tableConfigurationsRes.value;
+        if (tableConfigurations.length === 0) {
+          return new Ok([
             {
               type: "text",
               text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
             },
-          ],
-        };
-      }
-      const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
-        ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
-      ]);
-      const dataSourceViewsMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.sId, dsv])
-      );
-
-      // Call Core API's /database_schema endpoint
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const schemaResult = await coreAPI.getDatabaseSchema({
-        tables: tableConfigurations.map((t) => {
-          const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
-          if (
-            !dataSourceView ||
-            !dataSourceView.dataSource.dustAPIDataSourceId
-          ) {
-            throw new Error(
-              `Missing data source ID for view ${t.dataSourceViewId}`
-            );
-          }
-          return {
-            project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
-            data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
-            table_id: t.tableId,
-          };
-        }),
-      });
-
-      if (schemaResult.isErr()) {
-        return makeMCPToolTextError(
-          `Error retrieving database schema: ${schemaResult.error.message}`
+          ]);
+        }
+        const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+          ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
+        ]);
+        const dataSourceViewsMap = new Map(
+          dataSourceViews.map((dsv) => [dsv.sId, dsv])
         );
-      }
 
-      return {
-        isError: false,
-        content: [
+        // Call Core API's /database_schema endpoint
+        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+        const schemaResult = await coreAPI.getDatabaseSchema({
+          tables: tableConfigurations.map((t) => {
+            const dataSourceView = dataSourceViewsMap.get(t.dataSourceViewId);
+            if (
+              !dataSourceView ||
+              !dataSourceView.dataSource.dustAPIDataSourceId
+            ) {
+              throw new Error(
+                `Missing data source ID for view ${t.dataSourceViewId}`
+              );
+            }
+            return {
+              project_id: parseInt(dataSourceView.dataSource.dustAPIProjectId),
+              data_source_id: dataSourceView.dataSource.dustAPIDataSourceId,
+              table_id: t.tableId,
+            };
+          }),
+        });
+
+        if (schemaResult.isErr()) {
+          return new Err(new MCPError(
+            `Error retrieving database schema: ${schemaResult.error.message}`
+          ));
+        }
+
+        return new Ok([
           {
             type: "resource",
             resource: {
@@ -168,9 +166,9 @@ function createServer(
           ...getSchemaContent(schemaResult.value.schemas),
           ...getQueryWritingInstructionsContent(schemaResult.value.dialect),
           ...getDatabaseExampleRowsContent(schemaResult.value.schemas),
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   server.tool(
