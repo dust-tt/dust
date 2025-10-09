@@ -30,6 +30,9 @@ export const getProcessedFileDownloadUrl = (
   fileId: string
 ) => `/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
 
+export const getFileDownloadUrl = (owner: LightWorkspaceType, fileId: string) =>
+  `/api/w/${owner.sId}/files/${fileId}?action=download`;
+
 export const getFileViewUrl = (
   owner: LightWorkspaceType,
   fileId: string | null | undefined
