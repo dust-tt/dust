@@ -36,6 +36,7 @@ import type {
 import {
   ALL_FILE_FORMATS,
   Err,
+  frameContentType,
   isInteractiveContentFileContentType,
   normalizeError,
   Ok,
@@ -537,6 +538,21 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Sharing logic.
 
+  private getShareUrlForShareableFile(
+    shareableFile: ShareableFileModel
+  ): string {
+    assert(
+      this.isInteractiveContent,
+      "getShareUrlForShareableFile called on non-interactive content file"
+    );
+
+    if (this.contentType === frameContentType) {
+      return `${config.getClientFacingUrl()}/share/frame/${shareableFile.token}`;
+    }
+
+    return `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`;
+  }
+
   async setShareScope(
     auth: Authenticator,
     scope: FileShareScope
@@ -582,8 +598,7 @@ export class FileResource extends BaseResource<FileModel> {
       return {
         scope: shareableFile.shareScope,
         sharedAt: shareableFile.sharedAt,
-        // TODO(interactive_content): Adapt url for frame.
-        shareUrl: `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`,
+        shareUrl: this.getShareUrlForShareableFile(shareableFile),
       };
     }
 
