@@ -6,6 +6,7 @@ import { CenteredState } from "@app/components/assistant/conversation/content_cr
 import { PublicContentCreationHeader } from "@app/components/assistant/conversation/content_creation/PublicContentCreationHeader";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
+import { useUser } from "@app/lib/swr/user";
 
 interface PublicClientExecutableRendererProps {
   fileId: string;
@@ -22,6 +23,10 @@ export function PublicClientExecutableRenderer({
 }: PublicClientExecutableRendererProps) {
   const { frameContent, isFrameLoading, error } = usePublicFrame({
     shareToken,
+  });
+  const { user } = useUser({
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
   });
 
   const getFileBlob = React.useCallback(
@@ -62,6 +67,7 @@ export function PublicClientExecutableRenderer({
     <div className="flex h-full flex-col">
       <PublicContentCreationHeader
         title={formatFilenameForDisplay(fileName ?? "Frame")}
+        user={user}
       />
 
       {/* Content */}

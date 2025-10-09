@@ -6,6 +6,12 @@ import {
   CitationIcons,
   CitationImage,
   CitationTitle,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DocumentIcon,
   DoubleIcon,
   DoubleQuotesIcon,
@@ -15,10 +21,15 @@ import {
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useState } from "react";
 
+import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import type { ContentFragmentType, SupportedFileContentType } from "@app/types";
+import type {
+  ContentFragmentType,
+  SupportedContentFragmentType,
+  SupportedFileContentType,
+} from "@app/types";
 import {
   assertNever,
   isContentNodeContentFragment,
@@ -35,8 +46,8 @@ export type FileAttachment = {
   type: "file";
   id: string;
   title: string;
-  preview?: string;
-  contentType?: SupportedFileContentType;
+  previewImageUrl?: string;
+  contentType: SupportedFileContentType;
   isUploading: boolean;
   onRemove: () => void;
   description?: string;
@@ -61,25 +72,25 @@ interface BaseAttachmentCitation {
   title: string;
   sourceUrl?: string | null;
   visual: React.ReactNode;
+  onRemove?: () => void;
 }
 
 interface FileAttachmentCitation extends BaseAttachmentCitation {
   type: "file";
-  preview?: string;
-  isUploading?: boolean;
-  spaceName?: never;
-  path?: never;
-  spaceIcon?: never;
+
+  contentType: SupportedContentFragmentType;
   description?: string;
+  fileId: string | null;
+  isUploading?: boolean;
+  previewImageUrl?: string;
 }
 
 interface NodeAttachmentCitation extends BaseAttachmentCitation {
   type: "node";
-  spaceName: string;
+
   path?: string;
   spaceIcon?: React.ComponentType;
-  preview?: never;
-  isUploading?: never;
+  spaceName: string;
 }
 
 export type AttachmentCitation =
@@ -88,8 +99,7 @@ export type AttachmentCitation =
 
 interface AttachmentCitationProps {
   attachmentCitation: AttachmentCitation;
-  onRemove?: () => void;
-  onClick?: () => void;
+  fileUploaderService: FileUploaderService;
 }
 
 function getContentTypeIcon(
@@ -114,15 +124,54 @@ function getContentTypeIcon(
 
 export function AttachmentCitation({
   attachmentCitation,
-  onRemove,
-  onClick,
+  fileUploaderService,
 }: AttachmentCitationProps) {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerTitle, setViewerTitle] = useState("");
+  const [viewerText, setViewerText] = useState("");
+
+  const openPastedViewer = async (attachmentCitation: AttachmentCitation) => {
+    if (attachmentCitation.type !== "file") {
+      return;
+    }
+    if (!attachmentCitation.fileId) {
+      return;
+    }
+    const blob = fileUploaderService.getFileBlob(attachmentCitation.fileId);
+    if (!blob) {
+      return;
+    }
+    const text = await blob.file.text();
+    setViewerTitle(attachmentCitation.title);
+    setViewerText(text);
+    setViewerOpen(true);
+  };
+
+  const isTextualContentType = (attachmentCitation: AttachmentCitation) => {
+    if (attachmentCitation.type !== "file") {
+      return false;
+    }
+    const ct = attachmentCitation.contentType;
+    if (!ct) {
+      return false;
+    }
+    return (
+      ct.startsWith("text/") ||
+      ct === "application/json" ||
+      ct === "application/xml" ||
+      ct === "application/vnd.dust.section.json"
+    );
+  };
+  const onClick = isTextualContentType(attachmentCitation)
+    ? () => openPastedViewer(attachmentCitation)
+    : undefined;
+
   // citation cannot have href and onClick at the same time
   const citationInteractionProps = onClick
     ? {
-        onClick: (e: React.MouseEvent<HTMLDivElement>) => {
+        onClick: async (e: React.MouseEvent<HTMLDivElement>) => {
           e.preventDefault();
-          onClick();
+          await onClick();
         },
       }
     : {
@@ -146,49 +195,72 @@ export function AttachmentCitation({
     );
 
   return (
-    <Tooltip
-      trigger={
-        <Citation
-          {...citationInteractionProps}
-          isLoading={
-            attachmentCitation.type === "file" && attachmentCitation.isUploading
-          }
-          action={
-            onRemove && (
-              <CitationClose
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemove();
-                }}
-              />
-            )
-          }
-        >
-          {attachmentCitation.type === "file" && attachmentCitation.preview && (
-            <CitationImage imgSrc={attachmentCitation.preview} />
-          )}
-          <CitationIcons>{attachmentCitation.visual}</CitationIcons>
-          <CitationTitle className="truncate text-ellipsis">
-            {attachmentCitation.title}
-          </CitationTitle>
-          {attachmentCitation.type === "file" &&
-            attachmentCitation.description && (
+    <>
+      <Tooltip
+        trigger={
+          <Citation
+            {...citationInteractionProps}
+            isLoading={
+              attachmentCitation.type === "file" &&
+              attachmentCitation.isUploading
+            }
+            action={
+              attachmentCitation.onRemove && (
+                <CitationClose
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    attachmentCitation.onRemove &&
+                      attachmentCitation.onRemove();
+                  }}
+                />
+              )
+            }
+          >
+            {attachmentCitation.type === "file" &&
+              attachmentCitation.previewImageUrl && (
+                <CitationImage imgSrc={attachmentCitation.previewImageUrl} />
+              )}
+            <CitationIcons>{attachmentCitation.visual}</CitationIcons>
+            <CitationTitle className="truncate text-ellipsis">
+              {attachmentCitation.title}
+            </CitationTitle>
+            {attachmentCitation.type === "file" &&
+              attachmentCitation.description && (
+                <CitationDescription className="truncate text-ellipsis">
+                  {attachmentCitation.description}
+                </CitationDescription>
+              )}
+            {attachmentCitation.type === "node" && (
               <CitationDescription className="truncate text-ellipsis">
-                {attachmentCitation.description}
+                <span>
+                  {attachmentCitation.path ?? attachmentCitation.spaceName}
+                </span>
               </CitationDescription>
             )}
-          {attachmentCitation.type === "node" && (
-            <CitationDescription className="truncate text-ellipsis">
-              <span>
-                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                {attachmentCitation.path || attachmentCitation.spaceName}
-              </span>
-            </CitationDescription>
-          )}
-        </Citation>
-      }
-      label={tooltipContent}
-    />
+          </Citation>
+        }
+        label={tooltipContent}
+      />
+
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent size="xl" height="lg">
+          <DialogHeader>
+            <DialogTitle>{viewerTitle}</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
+              {viewerText}
+            </pre>
+          </DialogContainer>
+          <DialogFooter
+            rightButtonProps={{
+              label: "Close",
+              variant: "highlight",
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -197,17 +269,16 @@ export function contentFragmentToAttachmentCitation(
 ): AttachmentCitation {
   // Handle expired content fragments
   if (contentFragment.expiredReason) {
-    const visual = getContentTypeIcon(contentFragment.contentType);
     return {
       type: "file",
       id: contentFragment.sId,
       title: `${contentFragment.title} (no longer available)`,
-      sourceUrl: null,
-      visual: (
-        <span className="flex items-center justify-center">
-          <Icon visual={visual} size="md" className="text-gray-400" />
-        </span>
-      ),
+      visual: <IconFromContentType contentType={contentFragment.contentType} />,
+      fileId:
+        contentFragment.contentFragmentType === "file"
+          ? contentFragment.fileId
+          : null,
+      contentType: contentFragment.contentType,
     };
   }
 
@@ -241,8 +312,6 @@ export function contentFragmentToAttachmentCitation(
       spaceName: contentFragment.contentNodeData.spaceName,
     };
   } else if (isFileContentFragment(contentFragment)) {
-    const visual = getContentTypeIcon(contentFragment.contentType);
-
     // Compute custom title/description for pasted files
     const isPasted = isPastedFile(contentFragment.contentType);
     const title = isPasted
@@ -256,8 +325,10 @@ export function contentFragmentToAttachmentCitation(
       id: contentFragment.sId,
       title,
       sourceUrl: contentFragment.sourceUrl,
-      visual: <Icon visual={visual} size="md" />,
+      visual: <IconFromContentType contentType={contentFragment.contentType} />,
       description,
+      fileId: contentFragment.fileId,
+      contentType: contentFragment.contentType,
     };
   } else {
     assertNever(contentFragment);
@@ -268,16 +339,17 @@ export function attachmentToAttachmentCitation(
   attachment: Attachment
 ): AttachmentCitation {
   if (attachment.type === "file") {
-    const visual = getContentTypeIcon(attachment.contentType);
     return {
       type: "file",
       id: attachment.id,
       title: attachment.title,
-      preview: attachment.preview,
+      previewImageUrl: attachment.previewImageUrl,
       isUploading: attachment.isUploading,
-      visual: <Icon visual={visual} size="md" />,
-      sourceUrl: null,
+      visual: <IconFromContentType contentType={attachment.contentType} />,
       description: attachment.description,
+      fileId: attachment.id,
+      contentType: attachment.contentType,
+      onRemove: attachment.onRemove,
     };
   } else {
     return {
@@ -289,6 +361,16 @@ export function attachmentToAttachmentCitation(
       path: attachment.path,
       visual: attachment.visual,
       sourceUrl: attachment.url,
+      onRemove: attachment.onRemove,
     };
   }
 }
+
+const IconFromContentType = ({
+  contentType,
+}: {
+  contentType: string | undefined;
+}) => {
+  const visual = getContentTypeIcon(contentType);
+  return <Icon visual={visual} size="md" />;
+};

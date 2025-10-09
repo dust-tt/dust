@@ -32,7 +32,7 @@ export interface FileBlob {
   id: string;
   fileId: string | null;
   isUploading: boolean;
-  preview?: string;
+  previewImageUrl?: string;
   size: number;
   publicUrl?: string;
 }
@@ -266,7 +266,7 @@ export function useFileUploaderService({
           ...fileBlob,
           fileId: file.sId,
           isUploading: false,
-          preview: isSupportedImageContentType(fileBlob.contentType)
+          previewImageUrl: isSupportedImageContentType(fileBlob.contentType)
             ? `${fileUploaded.downloadUrl}?action=view`
             : undefined,
           publicUrl: file.publicUrl,
@@ -358,8 +358,13 @@ export function useFileUploaderService({
     return fileBlobs.filter(fileBlobHasFileId);
   };
 
+  const getFileBlob = (blobId: string) => {
+    return getFileBlobs().find((blob) => blob.id === blobId);
+  };
+
   return {
     fileBlobs,
+    getFileBlob,
     getFileBlobs,
     handleFileChange,
     handleFilesUpload,
@@ -373,8 +378,7 @@ export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
 
 const createFileBlob = (
   file: File,
-  contentType: SupportedFileContentType,
-  preview?: string
+  contentType: SupportedFileContentType
 ): FileBlob => ({
   contentType,
   file,
@@ -383,6 +387,5 @@ const createFileBlob = (
   // Will be set once the file has been uploaded.
   fileId: null,
   isUploading: true,
-  preview,
   size: file.size,
 });

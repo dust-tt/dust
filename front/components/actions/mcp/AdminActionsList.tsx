@@ -9,7 +9,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
+import { CreateMCPServerSheet } from "@app/components/actions/mcp/CreateMCPServerSheet";
 import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
@@ -315,7 +315,7 @@ export const AdminActionsList = ({
         assistantId={assistantSId}
         onClose={() => setAssistantSId(null)}
       />
-      <CreateMCPServerDialog
+      <CreateMCPServerSheet
         isOpen={isCreateOpen}
         internalMCPServer={internalMCPServerToCreate}
         setIsOpen={setIsCreateOpen}

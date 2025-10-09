@@ -13,7 +13,10 @@ import {
 } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
-import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
+import type {
+  GetConversationResponseBody,
+  PatchConversationsRequestBody,
+} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { GetConversationFilesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
@@ -42,11 +45,11 @@ export function useConversation({
   conversation: ConversationWithoutContentType | null;
   isConversationLoading: boolean;
   conversationError: ConversationError;
-  mutateConversation: () => void;
+  mutateConversation: ReturnType<
+    typeof useSWRWithDefaults<string, GetConversationResponseBody>
+  >["mutate"];
 } {
-  const conversationFetcher: Fetcher<{
-    conversation: ConversationWithoutContentType;
-  }> = fetcher;
+  const conversationFetcher: Fetcher<GetConversationResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId

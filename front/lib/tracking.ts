@@ -46,6 +46,7 @@ export const TRACKING_AREAS = {
   SPACES: "spaces",
   LABS: "labs",
   TOOLS: "tools",
+  FRAME: "frame",
 } as const;
 
 export type TrackingArea = (typeof TRACKING_AREAS)[keyof typeof TRACKING_AREAS];
@@ -91,7 +92,8 @@ export function trackEvent({
     area,
     object,
     action,
-    ...extra,
+    ...extra, // Spread for PostHog.
+    extra, // As object for Snowflake.
   };
 
   posthog.capture(eventName, properties);
