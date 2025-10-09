@@ -289,6 +289,7 @@ export type AgentMessageDoneEvent = {
   conversationId: string;
   configurationId: string;
   messageId: string;
+  hasError: boolean;
 };
 
 // Event sent when an error occurred during the tool call.
