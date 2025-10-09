@@ -2,13 +2,10 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { z } from "zod";
 
-import { MCPError } from "@app/lib/actions/mcp_errors";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { Err, Ok } from "@app/types";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 
 const createServer = (
@@ -64,15 +61,17 @@ const createServer = (
         // shared_across_users:
         //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
       },
-      withToolLogging(
-        auth,
-        { toolName: "memory_not_available", agentLoopContext },
-        async () => {
-          return new Err(
-            new MCPError("No user memory available as there is no user authenticated.")
-          );
-        }
-      )
+      async () => {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "No user memory available as there is no user authenticated.",
+            },
+          ],
+        };
+      }
     );
     return server;
   }
@@ -113,23 +112,19 @@ const createServer = (
       // shared_across_users:
       //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
     },
-    withToolLogging(
-      auth,
-      { toolName: "retrieve", agentLoopContext },
-      async () => {
-        assert(
-          agentLoopContext?.runContext,
-          "agentLoopContext is required to run the memory retrieve tool"
-        );
-        const { agentConfiguration } = agentLoopContext.runContext;
+    async () => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required to run the memory retrieve tool"
+      );
+      const { agentConfiguration } = agentLoopContext.runContext;
 
-        const memory = await AgentMemoryResource.retrieveMemory(auth, {
-          agentConfiguration,
-          user: user.toJSON(),
-        });
-        return new Ok(renderMemory(memory).content);
-      }
-    )
+      const memory = await AgentMemoryResource.retrieveMemory(auth, {
+        agentConfiguration,
+        user: user.toJSON(),
+      });
+      return renderMemory(memory);
+    }
   );
 
   server.tool(
@@ -142,24 +137,20 @@ const createServer = (
         .array(z.string())
         .describe("The array of new memory entries to record."),
     },
-    withToolLogging(
-      auth,
-      { toolName: "record_entries", agentLoopContext },
-      async ({ entries }) => {
-        assert(
-          agentLoopContext?.runContext,
-          "agentLoopContext is required to run the memory record_entries tool"
-        );
-        const { agentConfiguration } = agentLoopContext.runContext;
+    async ({ entries }) => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required to run the memory record_entries tool"
+      );
+      const { agentConfiguration } = agentLoopContext.runContext;
 
-        const memory = await AgentMemoryResource.recordEntries(auth, {
-          agentConfiguration,
-          user: user.toJSON(),
-          entries,
-        });
-        return new Ok(renderMemory(memory).content);
-      }
-    )
+      const memory = await AgentMemoryResource.recordEntries(auth, {
+        agentConfiguration,
+        user: user.toJSON(),
+        entries,
+      });
+      return renderMemory(memory);
+    }
   );
 
   server.tool(
@@ -172,24 +163,20 @@ const createServer = (
         .array(z.number())
         .describe("The indexes of the memory entries to erase."),
     },
-    withToolLogging(
-      auth,
-      { toolName: "erase_entries", agentLoopContext },
-      async ({ indexes }) => {
-        assert(
-          agentLoopContext?.runContext,
-          "agentLoopContext is required to run the memory erase_entries tool"
-        );
-        const { agentConfiguration } = agentLoopContext.runContext;
+    async ({ indexes }) => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required to run the memory erase_entries tool"
+      );
+      const { agentConfiguration } = agentLoopContext.runContext;
 
-        const memory = await AgentMemoryResource.eraseEntries(auth, {
-          agentConfiguration,
-          user: user.toJSON(),
-          indexes,
-        });
-        return new Ok(renderMemory(memory).content);
-      }
-    )
+      const memory = await AgentMemoryResource.eraseEntries(auth, {
+        agentConfiguration,
+        user: user.toJSON(),
+        indexes,
+      });
+      return renderMemory(memory);
+    }
   );
 
   server.tool(
@@ -211,24 +198,20 @@ const createServer = (
         )
         .describe("The array of memory entries to edit."),
     },
-    withToolLogging(
-      auth,
-      { toolName: "edit_entries", agentLoopContext },
-      async ({ edits }) => {
-        assert(
-          agentLoopContext?.runContext,
-          "agentLoopContext is required to run the memory edit_entries tool"
-        );
-        const { agentConfiguration } = agentLoopContext.runContext;
+    async ({ edits }) => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required to run the memory edit_entries tool"
+      );
+      const { agentConfiguration } = agentLoopContext.runContext;
 
-        const memory = await AgentMemoryResource.editEntries(auth, {
-          agentConfiguration,
-          user: user.toJSON(),
-          edits,
-        });
-        return new Ok(renderMemory(memory).content);
-      }
-    )
+      const memory = await AgentMemoryResource.editEntries(auth, {
+        agentConfiguration,
+        user: user.toJSON(),
+        edits,
+      });
+      return renderMemory(memory);
+    }
   );
 
   return server;
