@@ -41,3 +41,8 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     notFound: true,
   };
 });
+
+export default function SharedFilePage() {
+  // This page should never be rendered because of the redirect in getServerSideProps.
+  return null;
+}

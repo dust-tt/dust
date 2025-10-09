@@ -8,7 +8,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getFaviconPath } from "@app/lib/utils";
 
-interface SharedFilePageProps {
+interface SharedFramePageProps {
   shareUrl: string;
   title: string;
   token: string;
@@ -18,7 +18,7 @@ interface SharedFilePageProps {
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
-})<SharedFilePageProps>(async (context) => {
+})<SharedFramePageProps>(async (context) => {
   if (!context.params) {
     return {
       notFound: true,
@@ -64,13 +64,13 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-export default function SharedFilePage({
+export default function SharedFramePage({
   shareUrl,
   title,
   token,
   workspaceName,
   workspaceId,
-}: SharedFilePageProps) {
+}: SharedFramePageProps) {
   const humanFriendlyTitle = formatFilenameForDisplay(title);
   const faviconPath = getFaviconPath();
   const description = `Discover what ${workspaceName} built with AI. Explore now.`;
