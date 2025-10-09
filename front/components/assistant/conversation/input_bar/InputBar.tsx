@@ -360,7 +360,7 @@ export const AssistantInputBar = React.memo(function AssistantInputBar({
           "rounded-2xl transition-all",
           "bg-muted-background dark:bg-muted-background-night",
           "border",
-          "border-border-dark dark:border-border-dark-night",
+          "border-border-dark dark:border-border-dark/10",
           "sm:border-border-dark/50 sm:focus-within:border-border-dark",
           "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
           disable && "cursor-not-allowed opacity-75",

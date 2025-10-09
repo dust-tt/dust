@@ -50,6 +50,7 @@ interface ToolsPickerProps {
   onDeselect: (serverView: MCPServerViewType) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  buttonSize?: "xs" | "sm" | "md";
 }
 
 export function ToolsPicker({
@@ -59,6 +60,7 @@ export function ToolsPicker({
   onDeselect,
   isLoading = false,
   disabled = false,
+  buttonSize = "xs",
 }: ToolsPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -115,7 +117,7 @@ export function ToolsPicker({
         <Button
           icon={ToolsIcon}
           variant="ghost-secondary"
-          size="xs"
+          size={buttonSize}
           tooltip="Tools"
           disabled={disabled || isLoading}
         />
