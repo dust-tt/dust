@@ -29,9 +29,23 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { TimeFrame } from "@app/types";
-import { Err, Ok, parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
+import {
+  Err,
+  Ok,
+  parseTimeFrame,
+  stripNullBytes,
+  timeFrameFromNow,
+} from "@app/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { SLACK_GET_USER, SLACK_LIST_PUBLIC_CHANNELS, SLACK_LIST_THREADS, SLACK_LIST_USERS, SLACK_POST_MESSAGE, SLACK_SEARCH_MESSAGES, SLACK_SEMANTIC_SEARCH_MESSAGES } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  SLACK_GET_USER,
+  SLACK_LIST_PUBLIC_CHANNELS,
+  SLACK_LIST_THREADS,
+  SLACK_LIST_USERS,
+  SLACK_POST_MESSAGE,
+  SLACK_SEARCH_MESSAGES,
+  SLACK_SEMANTIC_SEARCH_MESSAGES,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 
 export type SlackSearchMatch = {
@@ -323,22 +337,26 @@ const createServer = async (
           { authInfo }
         ) => {
           if (!agentLoopContext?.runContext) {
-            return new Err(new MCPError("Unreachable: missing agentLoopRunContext."));
+            return new Err(
+              new MCPError("Unreachable: missing agentLoopRunContext.")
+            );
           }
-  
+
           if (keywords.length > 5) {
-            return new Err(new MCPError(
-              "The search query is too broad. Please reduce the number of keywords to 5 or less."
-            ));
+            return new Err(
+              new MCPError(
+                "The search query is too broad. Please reduce the number of keywords to 5 or less."
+              )
+            );
           }
-  
+
           const accessToken = authInfo?.token;
           if (!accessToken) {
             return new Err(new MCPError("Unreachable: missing access token."));
           }
-  
+
           const timeFrame = parseTimeFrame(relativeTimeFrame);
-  
+
           try {
             // Keyword search in slack only support AND queries which can easily return 0 hits.
             // To avoid this, we'll simulate an OR query by searching for each keyword separately.
@@ -353,50 +371,51 @@ const createServer = async (
                   usersTo,
                   usersMentioned,
                 });
-  
+
                 return slackSearch(query, accessToken);
               },
               { concurrency: 3 }
             );
-  
+
             // Flatten the results.
             const rawMatches = results.flat();
-  
+
             // Deduplicate matches by their permalink across keywords.
             const deduplicatedMatches = uniqBy(rawMatches, "permalink");
-  
+
             // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
             const matches = deduplicatedMatches.slice(
               0,
               SLACK_SEARCH_ACTION_NUM_RESULTS
             );
-  
+
             if (matches.length === 0) {
               return new Ok([
-                  {
-                    type: "text" as const,
-                    text: `No messages found.`,
-                  },
-                  {
-                    type: "resource" as const,
-                    resource: makeQueryResource(
-                      keywords,
-                      timeFrame,
-                      channels,
-                      usersFrom,
-                      usersTo,
-                      usersMentioned
-                    ),
-                  },
-                ])
+                {
+                  type: "text" as const,
+                  text: `No messages found.`,
+                },
+                {
+                  type: "resource" as const,
+                  resource: makeQueryResource(
+                    keywords,
+                    timeFrame,
+                    channels,
+                    usersFrom,
+                    usersTo,
+                    usersMentioned
+                  ),
+                },
+              ]);
             } else {
-              const { citationsOffset } = agentLoopContext.runContext.stepContext;
-  
+              const { citationsOffset } =
+                agentLoopContext.runContext.stepContext;
+
               const refs = getRefs().slice(
                 citationsOffset,
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
-  
+
               const results: SearchResultResourceType[] = matches.map(
                 (match): SearchResultResourceType => {
                   return {
@@ -404,7 +423,7 @@ const createServer = async (
                       INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
                     uri: match.permalink ?? "",
                     text: `#${match.channel_name ?? "Unknown"}, ${match.content ?? ""}`,
-  
+
                     id: match.message_ts ?? "",
                     source: {
                       provider: "slack",
@@ -415,24 +434,24 @@ const createServer = async (
                   };
                 }
               );
-  
+
               return new Ok([
-                  ...results.map((result) => ({
-                    type: "resource" as const,
-                    resource: result,
-                  })),
-                  {
-                    type: "resource" as const,
-                    resource: makeQueryResource(
-                      keywords,
-                      timeFrame,
-                      channels,
-                      usersFrom,
-                      usersTo,
-                      usersMentioned
-                    ),
-                  },
-                ]);
+                ...results.map((result) => ({
+                  type: "resource" as const,
+                  resource: result,
+                })),
+                {
+                  type: "resource" as const,
+                  resource: makeQueryResource(
+                    keywords,
+                    timeFrame,
+                    channels,
+                    usersFrom,
+                    usersTo,
+                    usersMentioned
+                  ),
+                },
+              ]);
             }
           } catch (error) {
             if (isSlackTokenRevoked(error)) {
@@ -472,16 +491,18 @@ const createServer = async (
           { authInfo }
         ) => {
           if (!agentLoopContext?.runContext) {
-            return new Err(new MCPError("Unreachable: missing agentLoopRunContext."));
+            return new Err(
+              new MCPError("Unreachable: missing agentLoopRunContext.")
+            );
           }
-  
+
           const accessToken = authInfo?.token;
           if (!accessToken) {
             return new Err(new MCPError("Unreachable: missing access token."));
           }
-  
+
           const timeFrame = parseTimeFrame(relativeTimeFrame);
-  
+
           try {
             const searchQuery = buildSlackSearchQuery(query, {
               timeFrame,
@@ -490,32 +511,33 @@ const createServer = async (
               usersTo,
               usersMentioned,
             });
-  
+
             const matches = await slackSearch(searchQuery, accessToken);
-            
+
             if (matches.length === 0) {
               return new Ok([
-                  { type: "text" as const, text: `No messages found.` },
-                  {
-                    type: "resource" as const,
-                    resource: makeQueryResource(
-                      [query],
-                      timeFrame,
-                      channels,
-                      usersFrom,
-                      usersTo,
-                      usersMentioned
-                    ),
-                  },
-            ]);
+                { type: "text" as const, text: `No messages found.` },
+                {
+                  type: "resource" as const,
+                  resource: makeQueryResource(
+                    [query],
+                    timeFrame,
+                    channels,
+                    usersFrom,
+                    usersTo,
+                    usersMentioned
+                  ),
+                },
+              ]);
             } else {
-              const { citationsOffset } = agentLoopContext.runContext.stepContext;
-  
+              const { citationsOffset } =
+                agentLoopContext.runContext.stepContext;
+
               const refs = getRefs().slice(
                 citationsOffset,
                 citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
               );
-  
+
               const getTextFromMatch = (match: SlackSearchMatch) => {
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 const author = match.author_name || "Unknown";
@@ -523,21 +545,21 @@ const createServer = async (
                 const channel = match.channel_name || "Unknown";
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 let content = match.content || "";
-  
+
                 // assistant.search.context wraps search words in \uE000 and \uE001,
                 // which display as squares in the UI, so we strip them out.
                 // Ideally, there would be a way to disable this behavior in the Slack API.
                 content = content.replace(/[\uE000\uE001]/g, "");
-  
+
                 // Replace <@U050CALAKFD|someone> with just @someone
                 content = content.replace(
                   /<@([A-Z0-9]+)\|([^>]+)>/g,
                   (_m, _id, username) => `@${username}`
                 );
-  
+
                 return `From ${author} in #${channel}: ${content}`;
               };
-  
+
               const results: SearchResultResourceType[] = matches.map(
                 (match): SearchResultResourceType => {
                   return {
@@ -553,7 +575,7 @@ const createServer = async (
                   };
                 }
               );
-  
+
               return new Ok([
                 ...results.map((result) => ({
                   type: "resource" as const,
@@ -603,7 +625,9 @@ const createServer = async (
       { toolName: SLACK_LIST_THREADS, agentLoopContext },
       async ({ channel, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
-          return new Err(new MCPError("Unreachable: missing agentLoopRunContext."));
+          return new Err(
+            new MCPError("Unreachable: missing agentLoopRunContext.")
+          );
         }
 
         const accessToken = authInfo?.token;
@@ -633,7 +657,6 @@ const createServer = async (
             return new Err(new MCPError(r.error ?? "Unknown error"));
           }
 
-
           const rawMatches = r.messages?.matches ?? [];
 
           // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
@@ -641,22 +664,22 @@ const createServer = async (
 
           if (matches.length === 0) {
             return new Ok([
-                {
-                  type: "text" as const,
-                  text: `No threads found.`,
-                },
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    [],
-                    timeFrame,
-                    [channel],
-                    [],
-                    [],
-                    []
-                  ),
-                },
-              ]);
+              {
+                type: "text" as const,
+                text: `No threads found.`,
+              },
+              {
+                type: "resource" as const,
+                resource: makeQueryResource(
+                  [],
+                  timeFrame,
+                  [channel],
+                  [],
+                  [],
+                  []
+                ),
+              },
+            ]);
           } else {
             const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
@@ -685,22 +708,22 @@ const createServer = async (
             );
 
             return new Ok([
-                ...results.map((result) => ({
-                  type: "resource" as const,
-                  resource: result,
-                })),
-                {
-                  type: "resource" as const,
-                  resource: makeQueryResource(
-                    [],
-                    timeFrame,
-                    [channel],
-                    [],
-                    [],
-                    []
-                  ),
-                },
-              ]);
+              ...results.map((result) => ({
+                type: "resource" as const,
+                resource: result,
+              })),
+              {
+                type: "resource" as const,
+                resource: makeQueryResource(
+                  [],
+                  timeFrame,
+                  [channel],
+                  [],
+                  [],
+                  []
+                ),
+              },
+            ]);
           }
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
@@ -748,7 +771,9 @@ const createServer = async (
         }
 
         if (!agentLoopContext?.runContext) {
-          return new Err(new MCPError("Unreachable: missing agentLoopRunContext."));
+          return new Err(
+            new MCPError("Unreachable: missing agentLoopRunContext.")
+          );
         }
 
         try {
@@ -817,7 +842,7 @@ const createServer = async (
         if (!accessToken) {
           return new Err(new MCPError("Access token not found"));
         }
-  
+
         try {
           return await executeGetUser(userId, accessToken);
         } catch (error) {

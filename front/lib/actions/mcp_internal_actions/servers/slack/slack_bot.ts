@@ -17,7 +17,16 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, normalizeError, Ok } from "@app/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { SLACK_ADD_REACTION, SLACK_GET_USER, SLACK_LIST_PUBLIC_CHANNELS, SLACK_LIST_USERS, SLACK_POST_MESSAGE, SLACK_READ_CHANNEL_HISTORY, SLACK_READ_THREAD_MESSAGES, SLACK_REMOVE_REACTION } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  SLACK_ADD_REACTION,
+  SLACK_GET_USER,
+  SLACK_LIST_PUBLIC_CHANNELS,
+  SLACK_LIST_USERS,
+  SLACK_POST_MESSAGE,
+  SLACK_READ_CHANNEL_HISTORY,
+  SLACK_READ_THREAD_MESSAGES,
+  SLACK_REMOVE_REACTION,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 
 const createServer = async (
@@ -78,9 +87,9 @@ const createServer = async (
             auth
           );
         } catch (error) {
-          return new Err(new MCPError(
-            `Error posting message: ${normalizeError(error)}`
-          ));
+          return new Err(
+            new MCPError(`Error posting message: ${normalizeError(error)}`)
+          );
         }
       }
     )
@@ -107,9 +116,9 @@ const createServer = async (
         try {
           return await executeListUsers(nameFilter, accessToken);
         } catch (error) {
-          return new Err(new MCPError(
-            `Error listing users: ${normalizeError(error)}`
-          ));
+          return new Err(
+            new MCPError(`Error listing users: ${normalizeError(error)}`)
+          );
         }
       }
     )
@@ -135,9 +144,9 @@ const createServer = async (
         try {
           return await executeGetUser(userId, accessToken);
         } catch (error) {
-          return new Err(new MCPError(
-            `Error retrieving user info: ${normalizeError(error)}`
-          ));
+          return new Err(
+            new MCPError(`Error retrieving user info: ${normalizeError(error)}`)
+          );
         }
       }
     )
@@ -168,9 +177,9 @@ const createServer = async (
             mcpServerId
           );
         } catch (error) {
-          return new Err(new MCPError(
-            `Error listing channels: ${normalizeError(error)}`
-          ));
+          return new Err(
+            new MCPError(`Error listing channels: ${normalizeError(error)}`)
+          );
         }
       }
     )
@@ -222,22 +231,26 @@ const createServer = async (
           const hasMore = !!response.has_more;
           const nextCursor = response.response_metadata?.next_cursor;
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: {
-              messages: response.messages,
-              has_more: hasMore,
-              next_cursor: nextCursor,
-              pagination_info: {
-                current_page_size: response.messages?.length ?? 0,
-                has_more_pages: hasMore,
-                next_cursor_for_pagination: nextCursor,
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: {
+                messages: response.messages,
+                has_more: hasMore,
+                next_cursor: nextCursor,
+                pagination_info: {
+                  current_page_size: response.messages?.length ?? 0,
+                  has_more_pages: hasMore,
+                  next_cursor_for_pagination: nextCursor,
+                },
               },
-            },
-          }).content);
+            }).content
+          );
         } catch (error) {
-          return new Err(new MCPError(
-            `Error reading channel history: ${normalizeError(error)}`
-          ));
+          return new Err(
+            new MCPError(
+              `Error reading channel history: ${normalizeError(error)}`
+            )
+          );
         }
       }
     )
@@ -281,9 +294,9 @@ const createServer = async (
         if (!accessToken) {
           return new Err(new MCPError("Access token not found"));
         }
-  
+
         const slackClient = await getSlackClient(accessToken);
-  
+
         try {
           const response = await slackClient.conversations.replies({
             channel: channel,
@@ -293,34 +306,38 @@ const createServer = async (
             oldest: oldest,
             latest: latest,
           });
-  
+
           const hasMore = !!response.has_more;
           const nextCursor = response.response_metadata?.next_cursor;
-  
+
           // First message is always the parent message
           const parentMessage = response.messages?.[0];
           const threadReplies = response.messages?.slice(1) ?? [];
-  
-          return new Ok(makeMCPToolJSONSuccess({
-            message: `Retrieved thread with ${response.messages?.length} total messages (1 parent + ${threadReplies.length} replies)${hasMore ? ". More replies available." : ""}`,
-            result: {
-              parent_message: parentMessage,
-              thread_replies: threadReplies,
-              total_messages: response.messages?.length ?? 0,
-              has_more: hasMore,
-              next_cursor: nextCursor,
-              pagination_info: {
-                current_page_size: response.messages?.length ?? 0,
-                replies_in_this_page: threadReplies.length,
-                has_more_pages: hasMore,
-                next_cursor_for_pagination: nextCursor,
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: `Retrieved thread with ${response.messages?.length} total messages (1 parent + ${threadReplies.length} replies)${hasMore ? ". More replies available." : ""}`,
+              result: {
+                parent_message: parentMessage,
+                thread_replies: threadReplies,
+                total_messages: response.messages?.length ?? 0,
+                has_more: hasMore,
+                next_cursor: nextCursor,
+                pagination_info: {
+                  current_page_size: response.messages?.length ?? 0,
+                  replies_in_this_page: threadReplies.length,
+                  has_more_pages: hasMore,
+                  next_cursor_for_pagination: nextCursor,
+                },
               },
-            },
-          }).content);
+            }).content
+          );
         } catch (error) {
-          return new Err(new MCPError(
-            `Error reading thread messages: ${normalizeError(error)}`
-          ));
+          return new Err(
+            new MCPError(
+              `Error reading thread messages: ${normalizeError(error)}`
+            )
+          );
         }
       }
     )
@@ -359,19 +376,21 @@ const createServer = async (
           });
 
           if (!response.ok) {
-            return new Err(new MCPError(
-              `Error adding reaction: ${response.error}`
-            ));
+            return new Err(
+              new MCPError(`Error adding reaction: ${response.error}`)
+            );
           }
 
-          return new Ok(makeMCPToolJSONSuccess({
-            message: `Successfully added ${name} reaction to message`,
-            result: response,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: `Successfully added ${name} reaction to message`,
+              result: response,
+            }).content
+          );
         } catch (error) {
-          return new Err(new MCPError(
-            `Error adding reaction: ${normalizeError(error)}`
-          ));
+          return new Err(
+            new MCPError(`Error adding reaction: ${normalizeError(error)}`)
+          );
         }
       }
     )
@@ -399,30 +418,32 @@ const createServer = async (
         if (!accessToken) {
           return new Err(new MCPError("Access token not found"));
         }
-  
+
         const slackClient = await getSlackClient(accessToken);
-  
+
         try {
           const response = await slackClient.reactions.remove({
             channel,
             timestamp,
             name,
           });
-  
+
           if (!response.ok) {
-            return new Err(new MCPError(
-              `Error removing reaction: ${response.error}`
-            ));
+            return new Err(
+              new MCPError(`Error removing reaction: ${response.error}`)
+            );
           }
-  
-          return new Ok(makeMCPToolJSONSuccess({
-            message: `Successfully removed ${name} reaction from message`,
-            result: response,
-          }).content);
+
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              message: `Successfully removed ${name} reaction from message`,
+              result: response,
+            }).content
+          );
         } catch (error) {
-          return new Err(new MCPError(
-            `Error removing reaction: ${normalizeError(error)}`
-          ));
+          return new Err(
+            new MCPError(`Error removing reaction: ${normalizeError(error)}`)
+          );
         }
       }
     )

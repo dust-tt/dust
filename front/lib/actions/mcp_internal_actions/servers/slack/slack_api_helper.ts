@@ -3,6 +3,7 @@ import type { Channel } from "@slack/web-api/dist/response/ConversationsListResp
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
 import slackifyMarkdown from "slackify-markdown";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { makeMCPToolJSONSuccess } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -13,7 +14,6 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
-import { MCPError } from "@app/lib/actions/mcp_errors";
 
 export const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
@@ -118,9 +118,9 @@ export async function executePostMessage(
       exclude_archived: true,
     });
     if (!conversationsList.ok) {
-      return new Err(new MCPError(
-        conversationsList.error ?? "Failed to list conversations"
-      ));
+      return new Err(
+        new MCPError(conversationsList.error ?? "Failed to list conversations")
+      );
     }
     const searchString = to.trim().replace(/^#/, "").toLowerCase();
     const channel = conversationsList.channels?.find(
@@ -129,16 +129,20 @@ export async function executePostMessage(
         c.id?.toLowerCase() === searchString
     );
     if (!channel) {
-      return new Err(new MCPError(
-        `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`
-      ));
+      return new Err(
+        new MCPError(
+          `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`
+        )
+      );
     }
     const channelId = channel.id;
 
     const signedUrl = await file.getSignedUrlForDownload(auth, "original");
     const fileResp = await fetch(signedUrl);
     if (!fileResp.ok) {
-      return new Err(new MCPError(`Failed to fetch file (HTTP ${fileResp.status})`));
+      return new Err(
+        new MCPError(`Failed to fetch file (HTTP ${fileResp.status})`)
+      );
     }
     const arrayBuf = await fileResp.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuf);
@@ -158,10 +162,12 @@ export async function executePostMessage(
       return new Err(new MCPError(uploadResp.error ?? "Unknown error"));
     }
 
-    return new Ok(makeMCPToolJSONSuccess({
-      message: `Message with file uploaded to ${channelId}`,
-      result: uploadResp,
-    }).content);
+    return new Ok(
+      makeMCPToolJSONSuccess({
+        message: `Message with file uploaded to ${channelId}`,
+        result: uploadResp,
+      }).content
+    );
   }
 
   // No file provided: regular message
@@ -176,10 +182,12 @@ export async function executePostMessage(
     return new Err(new MCPError(response.error ?? "Unknown error"));
   }
 
-  return new Ok(makeMCPToolJSONSuccess({
-    message: `Message posted to ${to}`,
-    result: response,
-  }).content);
+  return new Ok(
+    makeMCPToolJSONSuccess({
+      message: `Message posted to ${to}`,
+      result: response,
+    }).content
+  );
 }
 
 export async function executeListUsers(
@@ -215,25 +223,31 @@ export async function executeListUsers(
 
       // Early return if we found a user
       if (filteredUsers.length > 0) {
-        return new Ok(makeMCPToolJSONSuccess({
-          message: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
-          result: filteredUsers,
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
+            result: filteredUsers,
+          }).content
+        );
       }
     }
   } while (cursor);
 
   if (nameFilter) {
-    return new Ok(makeMCPToolJSONSuccess({
-      message: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
-      result: users,
-    }).content);
+    return new Ok(
+      makeMCPToolJSONSuccess({
+        message: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
+        result: users,
+      }).content
+    );
   }
 
-  return new Ok(makeMCPToolJSONSuccess({
-    message: `The workspace has ${users.length} users`,
-    result: users,
-  }).content);
+  return new Ok(
+    makeMCPToolJSONSuccess({
+      message: `The workspace has ${users.length} users`,
+      result: users,
+    }).content
+  );
 }
 
 export async function executeGetUser(userId: string, accessToken: string) {
@@ -243,10 +257,12 @@ export async function executeGetUser(userId: string, accessToken: string) {
   if (!response.ok || !response.user) {
     return new Err(new MCPError(response.error ?? "Unknown error"));
   }
-  return new Ok(makeMCPToolJSONSuccess({
-    message: `Retrieved user information for ${userId}`,
-    result: response.user,
-  }).content);
+  return new Ok(
+    makeMCPToolJSONSuccess({
+      message: `Retrieved user information for ${userId}`,
+      result: response.user,
+    }).content
+  );
 }
 
 export async function executeListPublicChannels(
@@ -274,21 +290,27 @@ export async function executeListPublicChannels(
 
     // Early return if we found a channel
     if (filteredChannels.length > 0) {
-      return new Ok(makeMCPToolJSONSuccess({
-        message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
-        result: filteredChannels,
-      }).content);
+      return new Ok(
+        makeMCPToolJSONSuccess({
+          message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
+          result: filteredChannels,
+        }).content
+      );
     }
   }
   if (nameFilter) {
-    return new Ok(makeMCPToolJSONSuccess({
-      message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
-      result: channels,
-    }).content);
+    return new Ok(
+      makeMCPToolJSONSuccess({
+        message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
+        result: channels,
+      }).content
+    );
   }
 
-  return new Ok(makeMCPToolJSONSuccess({
-    message: `The workspace has ${channels.length} channels`,
-    result: channels,
-  }).content);
+  return new Ok(
+    makeMCPToolJSONSuccess({
+      message: `The workspace has ${channels.length} channels`,
+      result: channels,
+    }).content
+  );
 }
