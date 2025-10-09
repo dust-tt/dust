@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import React, { ComponentType, MouseEventHandler } from "react";
 
 import { Tooltip } from "@sparkle/components";

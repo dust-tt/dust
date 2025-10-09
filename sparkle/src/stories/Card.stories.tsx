@@ -3,8 +3,8 @@ import React, { ComponentType } from "react";
 
 import { Card, Icon } from "@sparkle/components";
 import {
-  CARD_VARIANTS,
   CARD_SIZES,
+  CARD_VARIANTS,
   CardActionButton,
   CardGrid,
 } from "@sparkle/components/Card";
