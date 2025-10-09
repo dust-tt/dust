@@ -108,7 +108,7 @@ async function handler(
 
   const conversationId = file.useCaseMetadata?.conversationId;
 
-  let existingParticipant: ConversationParticipantModel | null = null;
+  let participant: ConversationParticipantModel | null = null;
 
   if (session && conversationId) {
     const auth = await Authenticator.fromSession(session, workspace.sId);
@@ -119,7 +119,7 @@ async function handler(
     });
 
     if (user && conversation) {
-      existingParticipant = await ConversationParticipantModel.findOne({
+      participant = await ConversationParticipantModel.findOne({
         where: {
           conversationId: conversation.id,
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -133,7 +133,7 @@ async function handler(
     content: fileContent,
     file: file.toJSON(),
     conversationId:
-      existingParticipant !== null && conversationId ? conversationId : null,
+      participant !== null && conversationId ? conversationId : null,
   });
 }
 
