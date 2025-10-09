@@ -26,7 +26,6 @@ import {
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import MessageItemVirtuoso from "@app/components/assistant/conversation/MessageItemVirtuoso";
-import { StickyHeaderVirtuoso } from "@app/components/assistant/conversation/StickyHeaderVirtuoso";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -83,15 +82,14 @@ interface ConversationViewerProps {
   user: UserType;
 }
 
-function easeOutSine(x: number): number {
-  return Math.sin((x * Math.PI) / 2);
+function easeOutQuint(x: number): number {
+  return 1 - Math.pow(1 - x, 5);
 }
 
-// Slighly slower than the default smooth scroll.
 function customSmoothScroll() {
   return {
     animationFrameCount: 30,
-    easing: easeOutSine,
+    easing: easeOutQuint,
   };
 }
 /**
@@ -266,7 +264,10 @@ const ConversationViewerVirtuoso = ({
           case "user_message_new":
             if (ref.current) {
               // Skip our own messages, otherwise they get duplicated because the event is fired before we get the message from the backend.
-              if (event.message.user?.id === user.id) {
+              if (
+                event.message.user?.id === user.id &&
+                event.message.context.origin !== "agent_handover"
+              ) {
                 return;
               }
               const predicate = (m: VirtuosoMessage) =>
@@ -317,8 +318,38 @@ const ConversationViewerVirtuoso = ({
             break;
 
           case "conversation_title":
-            void mutateConversation();
-            void mutateConversations(); // to refresh the list of convos in the sidebar (title)
+            void mutateConversation(
+              (current) => {
+                if (current) {
+                  return {
+                    ...current,
+                    conversation: {
+                      ...current.conversation,
+                      title: event.title,
+                    },
+                  };
+                }
+              },
+              { revalidate: false }
+            );
+
+            // to refresh the list of convos in the sidebar (title)
+            void mutateConversations(
+              (currentData) => {
+                if (currentData?.conversations) {
+                  return {
+                    ...currentData,
+                    conversations: currentData.conversations.map((c) =>
+                      c.sId === conversationId
+                        ? { ...c, title: event.title }
+                        : c
+                    ),
+                  };
+                }
+              },
+              { revalidate: false }
+            );
+
             break;
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
@@ -337,11 +368,12 @@ const ConversationViewerVirtuoso = ({
       }
     },
     [
-      mutateConversationParticipants,
+      conversationId,
+      debouncedMarkAsRead,
       mutateConversation,
+      mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
-      debouncedMarkAsRead,
       user.id,
     ]
   );
@@ -497,6 +529,10 @@ const ConversationViewerVirtuoso = ({
     []
   );
 
+  const itemIdentity = useCallback((item: VirtuosoMessage) => {
+    return `message-rank-${isMessageTemporayState(item) ? item.message.rank : item.rank}`;
+  }, []);
+
   const feedbacksByMessageId = useMemo(() => {
     return feedbacks.reduce(
       (acc, feedback) => {
@@ -507,46 +543,62 @@ const ConversationViewerVirtuoso = ({
     );
   }, [feedbacks]);
 
+  const context = useMemo(() => {
+    return {
+      user,
+      owner,
+      handleSubmit,
+      conversationId,
+      isInModal,
+      feedbacksByMessageId,
+    };
+  }, [
+    user,
+    owner,
+    handleSubmit,
+    conversationId,
+    isInModal,
+    feedbacksByMessageId,
+  ]);
+
   return (
     <>
       {conversationError && (
         <ConversationErrorDisplay error={conversationError} />
       )}
       {initialListData.length > 0 ? (
-        <VirtuosoMessageListLicense
-          licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
-        >
-          <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
-            initialData={initialListData}
-            initialLocation={{
-              index: justCreated ? 0 : "LAST",
-              align: justCreated ? "start" : "end",
-              behavior: "instant",
-            }}
-            ref={ref}
-            ItemContent={MessageItemVirtuoso}
-            // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
-            className={classNames(
-              "dd-privacy-mask",
-              "s-@container/conversation",
-              "h-full w-full",
-              isInModal ? "" : "px-4 md:px-8"
-            )}
-            shortSizeAlign="bottom"
-            StickyHeader={StickyHeaderVirtuoso}
-            StickyFooter={AssistantInputBarVirtuoso}
-            computeItemKey={computeItemKey}
-            onScroll={onScroll}
-            context={{
-              user,
-              owner,
-              handleSubmit,
-              conversationId,
-              isInModal,
-              feedbacksByMessageId,
-            }}
-          />
-        </VirtuosoMessageListLicense>
+        <>
+          <VirtuosoMessageListLicense
+            licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
+          >
+            <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
+              initialData={initialListData}
+              initialLocation={{
+                index: justCreated ? 0 : "LAST",
+                align: justCreated ? "start" : "end",
+                behavior: "instant",
+              }}
+              ref={ref}
+              ItemContent={MessageItemVirtuoso}
+              StickyFooter={AssistantInputBarVirtuoso}
+              // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
+              className={classNames(
+                "dd-privacy-mask",
+                "s-@container/conversation",
+                "h-full w-full",
+                isInModal ? "" : "px-4 md:px-8"
+              )}
+              shortSizeAlign="top"
+              computeItemKey={computeItemKey}
+              onScroll={onScroll}
+              context={context}
+              itemIdentity={itemIdentity}
+              // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
+              increaseViewportBy={8192}
+              enforceStickyFooterAtBottom={true}
+            />
+          </VirtuosoMessageListLicense>
+        </>
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center gap-8 py-4">
           <Spinner variant="color" size="xl" />

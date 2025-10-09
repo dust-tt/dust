@@ -660,6 +660,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "hootl_webhooks"
+  | "hootl_dev_webhooks"
   | "index_private_slack_channel"
   | "interactive_content_server"
   | "labs_mcp_actions_dashboard"
@@ -754,6 +755,8 @@ const ActionGeneratedFileSchema = z.object({
   snippet: z.string().nullable(),
   hidden: z.boolean().optional(),
 });
+
+export type ActionGeneratedFileType = z.infer<typeof ActionGeneratedFileSchema>;
 
 const AgentActionTypeSchema = z.object({
   id: ModelIdSchema,
@@ -933,7 +936,7 @@ const UserMessageContextSchema = z.object({
   originMessageId: z.string().optional().nullable(),
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
-  lastTriggerRunAt: z.date().optional().nullable(),
+  lastTriggerRunAt: z.number().optional().nullable(),
 });
 
 const UserMessageSchema = z.object({
@@ -2607,13 +2610,13 @@ export type FileUploadedRequestResponseType = z.infer<
   typeof FileUploadedRequestResponseSchema
 >;
 
-export const PublicFileResponseBodySchema = z.object({
+export const PublicFrameResponseBodySchema = z.object({
   content: z.string().optional(),
   file: FileTypeSchema,
 });
 
-export type PublicFileResponseBodyType = z.infer<
-  typeof PublicFileResponseBodySchema
+export type PublicFrameResponseBodyType = z.infer<
+  typeof PublicFrameResponseBodySchema
 >;
 
 export const MembershipOriginType = FlexibleEnumSchema<

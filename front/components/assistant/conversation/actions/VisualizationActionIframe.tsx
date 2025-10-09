@@ -66,41 +66,22 @@ const getExtensionFromBlob = (blob: Blob): string => {
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
-  visualization,
+  getFileBlob,
+  setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
-  setCodeDrawerOpened,
+  visualization,
   vizIframeRef,
-  workspaceId,
 }: {
-  visualization: Visualization;
+  getFileBlob: (fileId: string) => Promise<Blob | null>;
+  setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
-  setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
+  visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-  workspaceId: string | null;
 }) {
   const sendNotification = useSendNotification();
-  const code = visualization.code;
-
-  const getFileBlob = useCallback(
-    async (fileId: string) => {
-      const response = await fetch(
-        `/api/w/${workspaceId}/files/${fileId}?action=view`
-      );
-      if (!response.ok) {
-        return null;
-      }
-
-      const resBuffer = await response.arrayBuffer();
-
-      return new Blob([resBuffer], {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        type: response.headers.get("Content-Type") || undefined,
-      });
-    },
-    [workspaceId]
-  );
+  const { code } = visualization;
 
   const downloadFileFromBlob = useCallback(
     (blob: Blob, filename?: string) => {
@@ -244,6 +225,7 @@ interface VisualizationActionIframeProps {
   visualization: Visualization;
   workspaceId: string;
   isPublic?: boolean;
+  getFileBlob: (fileId: string) => Promise<Blob | null>;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -277,18 +259,19 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
+    getFileBlob,
     isInDrawer = false,
+    isPublic = false,
     visualization,
     workspaceId,
-    isPublic = false,
   } = props;
 
   useVisualizationDataHandler({
-    visualization,
-    workspaceId,
+    getFileBlob,
+    setCodeDrawerOpened,
     setContentHeight,
     setErrorMessage,
-    setCodeDrawerOpened,
+    visualization,
     vizIframeRef,
   });
 
@@ -400,7 +383,6 @@ export const VisualizationActionIframe = forwardRef<
                     {canRetry && (
                       <Button
                         variant="outline"
-                        size="sm"
                         label="Ask agent to fix"
                         onClick={handleRetryClick}
                         disabled={retryClicked}

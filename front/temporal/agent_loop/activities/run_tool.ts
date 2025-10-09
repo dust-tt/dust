@@ -134,6 +134,7 @@ export async function runToolActivity(
                 message: {
                   ...agentMessage,
                   content: (agentMessage.content ?? "") + "\n\n" + event.text,
+                  completedTs: event.created,
                 },
                 runIds: runIds ?? [],
               },

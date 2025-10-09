@@ -1,6 +1,7 @@
 import { Separator } from "@dust-tt/sparkle";
 import type React from "react";
 
+import { formatDurationString } from "@app/lib/utils/timestamps";
 import type {
   AgentMessageType,
   LightAgentMessageWithActionsType,
@@ -31,7 +32,7 @@ export function AgentActionSummary({
     statusText = "Cancelled after";
   }
 
-  const timeString = formatDuration(completedInMs);
+  const timeString = formatDurationString(completedInMs);
   const toolsText =
     nbActions === 0
       ? "without tools"
@@ -54,18 +55,3 @@ export function AgentActionSummary({
     </div>
   );
 }
-
-// Util to format time duration:
-// takes a number of milliseconds and returns a string like "1 min 30 sec".
-const formatDuration = (ms: number): string => {
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) {
-    return `${seconds} sec`;
-  }
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (remainingSeconds === 0) {
-    return `${minutes} min`;
-  }
-  return `${minutes} min ${remainingSeconds} sec`;
-};

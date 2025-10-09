@@ -483,20 +483,6 @@ module.exports = {
             transform: "scale(0.95)",
           },
         },
-        "cursor-blink": {
-          "0%": {
-            opacity: 1,
-          },
-          "60%": {
-            opacity: 1,
-          },
-          "70%": {
-            opacity: 0,
-          },
-          "100%": {
-            opacity: 0,
-          },
-        },
         "shiny-text": {
           "0%": {
             "background-position": "calc(-200%) 0",
@@ -532,7 +518,6 @@ module.exports = {
           "background-position-spin 2000ms infinite alternate",
         breathing: "breathing 3s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
-        "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
         rainbow: "rainbow var(--speed, 16s) infinite linear",
         "collapse-down": "collapse-down 150ms ease-out",

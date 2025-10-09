@@ -48,9 +48,11 @@ const useHandleMentions = (
       }
 
       if (mentionsToInsert.length !== 0) {
-        editorService.resetWithMentions(mentionsToInsert, disableAutoFocus);
-        stickyMentionsTextContent.current =
-          editorService.getTrimmedText() ?? null;
+        queueMicrotask(() => {
+          editorService.resetWithMentions(mentionsToInsert, disableAutoFocus);
+          stickyMentionsTextContent.current =
+            editorService.getTrimmedText() ?? null;
+        });
       }
     }
   }, [agentConfigurations, editorService, stickyMentions, disableAutoFocus]);

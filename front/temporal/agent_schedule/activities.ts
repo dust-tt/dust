@@ -120,7 +120,7 @@ async function createConversationForAgentConfiguration({
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
     origin: "triggered" as const,
-    lastTriggerRunAt: lastRunAt,
+    lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
 
   if (contentFragment) {

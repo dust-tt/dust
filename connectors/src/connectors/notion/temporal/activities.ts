@@ -231,7 +231,7 @@ export async function fetchDatabaseChildPages({
     returnUpToDatePageIdsForExistingDatabase ||
     // If the database is new (either we never seen it before, or the first time we saw it was
     // during this run), we return all the pages.
-    isExistingDatabase
+    !isExistingDatabase
   ) {
     return {
       pageIds: pages.map((p) => p.id),
@@ -2330,7 +2330,13 @@ export async function clearWorkflowCache({
     dataSourceId: connector.dataSourceId,
   });
 
-  localLogger.info("notionClearConnectorCacheActivity: Clearing cache.");
+  localLogger.info(
+    {
+      connectorId: connector.id,
+      workflowId: topLevelWorkflowId,
+    },
+    "notionClearConnectorCacheActivity: Clearing cache."
+  );
   await NotionConnectorPageCacheEntry.destroy({
     where: {
       connectorId: connector.id,

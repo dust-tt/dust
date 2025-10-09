@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -31,18 +32,14 @@ export interface FileBlob {
   id: string;
   fileId: string | null;
   isUploading: boolean;
-  preview?: string;
+  previewImageUrl?: string;
   size: number;
   publicUrl?: string;
 }
 export type FileBlobWithFileId = FileBlob & { fileId: string };
-type FileBlobUploadErrorCode =
-  | "failed_to_upload_file"
-  | "file_type_not_supported";
 
 class FileBlobUploadError extends Error {
   constructor(
-    readonly code: FileBlobUploadErrorCode,
     readonly file: File,
     msg?: string
   ) {
@@ -88,12 +85,12 @@ export function useFileUploaderService({
     for (const f of [...fileBlobs, ...files]) {
       const contentType = f instanceof File ? f.type : f.contentType;
 
-      const category = getFileFormatCategory(contentType) || "data";
-      // The fallback should never happen but let's avoid a crash.
+      const category = getFileFormatCategory(contentType) ?? "data";
+      // The fallback should never happen, but let's avoid a crash.
 
       categoryToSize.set(
         category,
-        (categoryToSize.get(category) || 0) + f.size
+        (categoryToSize.get(category) ?? 0) + f.size
       );
     }
 
@@ -124,7 +121,7 @@ export function useFileUploaderService({
     return finalFileBlobs;
   };
 
-  const handleFileChange = async (e: React.ChangeEvent) => {
+  const handleFileChange = async (e: ChangeEvent) => {
     const selectedFiles = Array.from(
       (e?.target as HTMLInputElement).files ?? []
     );
@@ -161,7 +158,6 @@ export function useFileUploaderService({
           acc.push(
             new Err(
               new FileBlobUploadError(
-                "file_type_not_supported",
                 renamedFile,
                 `File "${renamedFile.name}" is not supported (${fileType}).`
               )
@@ -182,8 +178,8 @@ export function useFileUploaderService({
   ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
     // Browsers have a limit on the number of concurrent network operations.
     // We have a limit of the allowed time to upload the content of a file once the file object has been created.
-    // If we start a large amount of uploads at the same time and the network is somewhat slow, it's possible that we'll
-    // have created the file objects long before the upload of the content will finish.
+    // If we start a large number of uploads at the same time and the network is somewhat slow, it's possible that we'll
+    // have created the file objects long before the upload of the content finishes.
     return concurrentExecutor(
       newFileBlobs,
       async (fileBlob) => {
@@ -208,7 +204,6 @@ export function useFileUploaderService({
 
           return new Err(
             new FileBlobUploadError(
-              "failed_to_upload_file",
               fileBlob.file,
               err instanceof Error ? err.message : undefined
             )
@@ -221,15 +216,12 @@ export function useFileUploaderService({
 
             return new Err(
               new FileBlobUploadError(
-                "failed_to_upload_file",
                 fileBlob.file,
                 isAPIErrorResponse(res) ? res.error.message : undefined
               )
             );
           } catch (err) {
-            return new Err(
-              new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
-            );
+            return new Err(new FileBlobUploadError(fileBlob.file));
           }
         }
 
@@ -239,7 +231,7 @@ export function useFileUploaderService({
         const formData = new FormData();
         formData.append("file", fileBlob.file);
 
-        // Upload file to the obtained URL.
+        // Upload a file to the obtained URL.
         let uploadResult;
         try {
           uploadResult = await fetch(file.uploadUrl, {
@@ -251,7 +243,6 @@ export function useFileUploaderService({
 
           return new Err(
             new FileBlobUploadError(
-              "failed_to_upload_file",
               fileBlob.file,
               err instanceof Error ? err.message : undefined
             )
@@ -262,7 +253,6 @@ export function useFileUploaderService({
           const { error } = await uploadResult.json();
           return new Err(
             new FileBlobUploadError(
-              "failed_to_upload_file",
               fileBlob.file,
               error?.message ?? "An unknown error happened."
             )
@@ -276,7 +266,7 @@ export function useFileUploaderService({
           ...fileBlob,
           fileId: file.sId,
           isUploading: false,
-          preview: isSupportedImageContentType(fileBlob.contentType)
+          previewImageUrl: isSupportedImageContentType(fileBlob.contentType)
             ? `${fileUploaded.downloadUrl}?action=view`
             : undefined,
           publicUrl: file.publicUrl,
@@ -347,7 +337,7 @@ export function useFileUploaderService({
         },
       });
 
-      const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
+      const allFilesReady = fileBlobs.every((f) => !f.isUploading);
       if (allFilesReady && isProcessingFiles) {
         setNumFilesProcessing(0);
       }
@@ -368,8 +358,13 @@ export function useFileUploaderService({
     return fileBlobs.filter(fileBlobHasFileId);
   };
 
+  const getFileBlob = (blobId: string) => {
+    return getFileBlobs().find((blob) => blob.id === blobId);
+  };
+
   return {
     fileBlobs,
+    getFileBlob,
     getFileBlobs,
     handleFileChange,
     handleFilesUpload,
@@ -383,8 +378,7 @@ export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
 
 const createFileBlob = (
   file: File,
-  contentType: SupportedFileContentType,
-  preview?: string
+  contentType: SupportedFileContentType
 ): FileBlob => ({
   contentType,
   file,
@@ -393,6 +387,5 @@ const createFileBlob = (
   // Will be set once the file has been uploaded.
   fileId: null,
   isUploading: true,
-  preview,
   size: file.size,
 });

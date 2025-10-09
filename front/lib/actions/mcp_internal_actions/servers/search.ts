@@ -26,6 +26,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -59,7 +60,15 @@ export async function searchFunction({
   agentLoopContext?: AgentLoopContextType;
 }): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const credentials = dustManagedCredentials();
+
+  // Fetch the feature flags for the owner of the run.
+  const keyWorkspaceFlags = await getFeatureFlags(
+    auth.getNonNullableWorkspace()
+  );
+
+  // Temporary flag to help test EU OpenAI in specific workspaces.
+  const useOpenAIEUKeyFlag = keyWorkspaceFlags.includes("use_openai_eu_key");
+  const credentials = dustManagedCredentials({ useOpenAIEUKeyFlag });
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
   if (!agentLoopContext?.runContext) {

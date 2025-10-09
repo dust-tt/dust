@@ -96,7 +96,6 @@ function ExportContentDropdown({
         <Button
           icon={ArrowDownOnSquareIcon}
           isSelect
-          size="xs"
           label="Download"
           variant="ghost"
         />
@@ -144,12 +143,11 @@ export function ClientExecutableRenderer({
   );
   const isFullScreen = fullScreenHash === "true";
 
-  const { fileContent, isFileContentLoading, error, mutateFileContent } =
-    useFileContent({
-      fileId,
-      owner,
-      cacheKey: contentHash,
-    });
+  const { fileContent, error, mutateFileContent } = useFileContent({
+    fileId,
+    owner,
+    cacheKey: contentHash,
+  });
 
   const { fileMetadata } = useFileMetadata({ fileId, owner });
 
@@ -246,14 +244,23 @@ export function ClientExecutableRenderer({
     };
   }, [isFullScreen, exitFullScreen]);
 
-  if (isFileContentLoading) {
-    return (
-      <CenteredState>
-        <Spinner size="sm" />
-        <span>Loading Frame...</span>
-      </CenteredState>
-    );
-  }
+  const getFileBlob = useCallback(
+    async (fileId: string): Promise<Blob | null> => {
+      const response = await fetch(
+        `/api/w/${owner.sId}/files/${fileId}?action=view`
+      );
+      if (!response.ok) {
+        return null;
+      }
+
+      const resBuffer = await response.arrayBuffer();
+
+      return new Blob([resBuffer], {
+        type: response.headers.get("Content-Type") ?? undefined,
+      });
+    },
+    [owner.sId]
+  );
 
   if (error) {
     return (
@@ -270,7 +277,6 @@ export function ClientExecutableRenderer({
           <Button
             icon={showCode ? EyeIcon : CommandLineIcon}
             onClick={() => setShowCode(!showCode)}
-            size="xs"
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
             variant="ghost"
           />
@@ -316,6 +322,7 @@ export function ClientExecutableRenderer({
               conversationId={conversation.sId}
               isInDrawer={true}
               ref={iframeRef}
+              getFileBlob={getFileBlob}
             />
             <PreviewActionButtons
               owner={owner}

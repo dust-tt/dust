@@ -213,7 +213,8 @@ async function batchRenderUserMessages(
         origin: userMessage.userContextOrigin,
         originMessageId: userMessage.userContextOriginMessageId,
         clientSideMCPServerIds: userMessage.clientSideMCPServerIds,
-        lastTriggerRunAt: userMessage.userContextLastTriggerRunAt,
+        lastTriggerRunAt:
+          userMessage.userContextLastTriggerRunAt?.getTime() ?? null,
       },
     } satisfies UserMessageType;
     return m;

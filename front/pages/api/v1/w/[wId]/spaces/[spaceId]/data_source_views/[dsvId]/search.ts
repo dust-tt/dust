@@ -195,6 +195,7 @@ async function handler(
         searchQuery,
         dataSource: dataSourceView.dataSource,
         dataSourceView,
+        auth,
       });
       if (s.isErr()) {
         switch (s.error.code) {

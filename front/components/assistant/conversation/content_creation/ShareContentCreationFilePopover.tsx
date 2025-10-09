@@ -1,8 +1,8 @@
 import {
+  ArrowUpOnSquareIcon,
   Button,
   ClipboardCheckIcon,
   ClipboardIcon,
-  cn,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,6 @@ import {
   GlobeAltIcon,
   InformationCircleIcon,
   Label,
-  LockIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -24,46 +23,34 @@ import React from "react";
 import { useShareContentCreationFile } from "@app/lib/swr/files";
 import type { FileShareScope, LightWorkspaceType } from "@app/types";
 
+const WORKSPACE_LABEL = "Internal - Workspace members with the link";
+
+const scopeOptions = [
+  {
+    icon: UserGroupIcon,
+    label: WORKSPACE_LABEL,
+    value: "workspace" as const,
+  },
+  {
+    icon: GlobeAltIcon,
+    label: "Public - Anyone with the link",
+    value: "public" as const,
+  },
+];
+
 interface FileSharingDropdownProps {
   selectedScope: FileShareScope;
   onScopeChange: (scope: FileShareScope) => void;
   owner: LightWorkspaceType;
   disabled?: boolean;
   isLoading?: boolean;
-  isUsingConversationFiles: boolean;
-  isPublicSharingForbidden: boolean;
 }
 
 function FileSharingDropdown({
   selectedScope,
   onScopeChange,
-  owner,
   disabled = false,
-  isUsingConversationFiles,
-  isPublicSharingForbidden,
 }: FileSharingDropdownProps) {
-  const scopeOptions: {
-    icon: React.ComponentType;
-    label: string;
-    value: FileShareScope;
-  }[] = [
-    {
-      icon: LockIcon,
-      label: "Only conversation participants",
-      value: "conversation_participants",
-    },
-    {
-      icon: UserGroupIcon,
-      label: `Anyone in ${owner.name} workspace`,
-      value: "workspace",
-    },
-    {
-      icon: GlobeAltIcon,
-      label: "Anyone with the link",
-      value: "public",
-    },
-  ];
-
   const selectedOption = scopeOptions.find(
     (opt) => opt.value === selectedScope
   );
@@ -71,7 +58,7 @@ function FileSharingDropdown({
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-sm font-semibold text-primary dark:text-primary-night">
-        Who can access
+        Link access
       </Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -82,12 +69,7 @@ function FileSharingDropdown({
             label={selectedOption?.label}
             icon={selectedOption?.icon}
             disabled={disabled}
-            className={cn(
-              "grid w-full grid-cols-[auto_1fr_auto] truncate",
-              selectedOption?.value === "public" &&
-                isUsingConversationFiles &&
-                "text-primary-400 dark:text-primary-400-night"
-            )}
+            className="grid w-full grid-cols-[auto_1fr_auto] truncate"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
@@ -98,10 +80,6 @@ function FileSharingDropdown({
               onClick={() => onScopeChange(option.value)}
               truncateText
               icon={option.icon}
-              disabled={
-                option.value === "public" &&
-                (isPublicSharingForbidden || isUsingConversationFiles)
-              }
             />
           ))}
         </DropdownMenuContent>
@@ -124,9 +102,8 @@ export function ShareContentCreationFilePopover({
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
-  const [selectedScope, setSelectedScope] = React.useState<FileShareScope>(
-    "conversation_participants"
-  );
+  const [selectedScope, setSelectedScope] =
+    React.useState<FileShareScope>("workspace");
 
   const isPublicSharingForbidden =
     owner.metadata?.allowContentCreationFileSharing === false;
@@ -170,7 +147,7 @@ export function ShareContentCreationFilePopover({
   return (
     <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <PopoverTrigger asChild>
-        <Button size="xs" variant="ghost" label="Share" />
+        <Button variant="ghost" label="Share" icon={ArrowUpOnSquareIcon} />
       </PopoverTrigger>
       <PopoverContent className="flex w-96 flex-col" align="end">
         <div className="flex flex-col gap-3">
@@ -179,7 +156,7 @@ export function ShareContentCreationFilePopover({
               Share this content
             </h2>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Share with your workspace or make it public
+              Choose who can open this link
             </p>
           </div>
 
@@ -189,37 +166,39 @@ export function ShareContentCreationFilePopover({
                 <Spinner size="sm" />
               </div>
             )}
-            {/* Warning if sharing is disabled. */}
             {!isFileShareLoading &&
               (isPublicSharingForbidden || isUsingConversationFiles) && (
                 <ContentMessage
                   className="mb-4"
                   title={
                     isPublicSharingForbidden
-                      ? "Sharing disabled by admin"
-                      : "This file contains company data"
+                      ? "Public sharing is disabled by your admin"
+                      : "This Frame includes company data"
                   }
-                  variant="golden"
+                  variant={isPublicSharingForbidden ? "primary" : "golden"}
                   icon={InformationCircleIcon}
                 >
                   {isPublicSharingForbidden
-                    ? "Your workspace administrator has turned off public sharing of Frame files."
-                    : "This Frame file relies on conversation files. The sharing to public option is " +
-                      "disabled to protect company information."}
+                    ? "You can still share with workspace members."
+                    : "Review before making it public."}
                 </ContentMessage>
               )}
-            {/* File sharing link. */}
             {!isFileShareLoading && (
               <div className="flex flex-col gap-3">
-                <FileSharingDropdown
-                  selectedScope={selectedScope}
-                  onScopeChange={handleScopeChange}
-                  owner={owner}
-                  disabled={isUpdatingShare}
-                  isUsingConversationFiles={isUsingConversationFiles}
-                  isPublicSharingForbidden={isPublicSharingForbidden}
-                  isLoading={isUpdatingShare}
-                />
+                {isPublicSharingForbidden ? (
+                  <div className="flex items-center gap-2">
+                    <UserGroupIcon />
+                    <p className="copy-sm">{WORKSPACE_LABEL}</p>
+                  </div>
+                ) : (
+                  <FileSharingDropdown
+                    selectedScope={selectedScope}
+                    onScopeChange={handleScopeChange}
+                    owner={owner}
+                    disabled={isUpdatingShare}
+                    isLoading={isUpdatingShare}
+                  />
+                )}
 
                 <Button
                   className="ml-auto grid grid-cols-[1rem_4rem]"

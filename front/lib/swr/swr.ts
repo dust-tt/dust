@@ -1,6 +1,12 @@
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
-import type { Fetcher, Key, SWRConfiguration } from "swr";
+import type {
+  Fetcher,
+  Key,
+  MutatorCallback,
+  MutatorOptions,
+  SWRConfiguration,
+} from "swr";
 import useSWR, { useSWRConfig } from "swr";
 import type {
   SWRInfiniteConfiguration,
@@ -72,9 +78,22 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     [tryMakeUrlWithoutParams, cache, globalMutate]
   );
 
-  const myMutateWhenDisabled = useCallback(() => {
-    return globalMutate(key);
-  }, [key, globalMutate]);
+  const myMutateWhenDisabled = useCallback(
+    (
+      data?: TData | Promise<TData> | MutatorCallback<TData> | undefined,
+      options?: boolean | MutatorOptions<any, any> | undefined
+    ) => {
+      // When using globalMutate with undefined data or options, it does a weird visual glitch in the UI.
+      // I don't really understand why.
+      if (data !== undefined || options !== undefined) {
+        return globalMutate(key, data, options);
+      } else {
+        // Using a separate globalMutate call without data or options args does not have this issue.
+        return globalMutate(key);
+      }
+    },
+    [key, globalMutate]
+  );
 
   const myMutateWhenDisabledRegardlessOfQueryParams = useCallback(() => {
     mutateKeysWithSameUrl(key);

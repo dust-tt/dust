@@ -7,13 +7,6 @@ import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session"
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getFaviconPath } from "@app/lib/utils";
-import { getAgentRoute } from "@app/lib/utils/router";
-import {
-  CONTENT_CREATION_SIDE_PANEL_TYPE,
-  FULL_SCREEN_HASH_PARAM,
-  SIDE_PANEL_HASH_PARAM,
-  SIDE_PANEL_TYPE_HASH_PARAM,
-} from "@app/types/conversation_side_panel";
 
 interface SharedFilePageProps {
   shareUrl: string;
@@ -47,28 +40,11 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     };
   }
 
-  const { file, shareScope } = result;
+  const { file } = result;
   const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
   if (!workspace) {
     return {
       notFound: true,
-    };
-  }
-
-  // If the file is shared with conversation participants, redirect to the conversation.
-  if (shareScope === "conversation_participants") {
-    const pathname = getAgentRoute(
-      workspace.sId,
-      file.useCaseMetadata?.conversationId
-    );
-    const hash = `#?${FULL_SCREEN_HASH_PARAM}=true&${SIDE_PANEL_TYPE_HASH_PARAM}=${CONTENT_CREATION_SIDE_PANEL_TYPE}&${SIDE_PANEL_HASH_PARAM}=${file.sId}`;
-    const destination = pathname + hash;
-
-    return {
-      redirect: {
-        destination,
-        permanent: false,
-      },
     };
   }
 
@@ -127,11 +103,12 @@ export default function SharedFilePage({
           content={`${humanFriendlyTitle} - ${workspaceName}`}
         />
         <meta property="og:description" content={description} />
-        <meta property="og:url" content={shareUrl} />
-        <meta property="og:site_name" content="Dust" />
-        <meta property="og:image" content="https://dust.tt/static/og/ic.png" />
-        <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image" content="https://dust.tt/static/og/ic.png" />
+        <meta property="og:site_name" content="Dust" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={shareUrl} />
         <meta
           property="og:image:alt"
           content={`Preview of ${humanFriendlyTitle} created by ${workspaceName}`}
