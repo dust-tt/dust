@@ -27,6 +27,7 @@ import { z } from "zod";
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useUser } from "@app/lib/swr/user";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
@@ -38,7 +39,7 @@ const webhookFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
   customPrompt: z.string(),
   webhookSourceViewSId: z.string().min(1, "Select a webhook source"),
-  event: z.string().nullable(),
+  event: z.string().optional(),
   filter: z.string().optional(),
   includePayload: z.boolean().default(false),
 });
@@ -57,7 +58,7 @@ type WebhookOption = {
   value: string;
   label: string;
   kind: WebhookSourceKind;
-  icon: typeof Icon;
+  icon: React.ComponentType<React.ComponentProps<typeof Icon>>;
 };
 
 export function WebhookEditionModal({
@@ -74,7 +75,7 @@ export function WebhookEditionModal({
       name: "Webhook Trigger",
       customPrompt: "",
       webhookSourceViewSId: "",
-      event: null,
+      event: undefined,
       filter: "",
       includePayload: false,
     }),
@@ -108,7 +109,6 @@ export function WebhookEditionModal({
   const webhookOptions = useMemo((): WebhookOption[] => {
     const options: WebhookOption[] = [];
     webhookSourcesWithViews.forEach((wsv) => {
-      const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[wsv.kind];
       wsv.views
         .filter((view) => accessibleSpaceIds.has(view.spaceId))
         .forEach((view) => {
@@ -116,7 +116,9 @@ export function WebhookEditionModal({
             value: view.sId,
             label: view.customName ?? wsv.name,
             kind: view.webhookSource.kind,
-            icon: preset.icon,
+            icon: (props) => (
+              <WebhookSourceViewIcon webhookSourceView={view} {...props} />
+            ),
           });
         });
     });
@@ -165,7 +167,7 @@ export function WebhookEditionModal({
     }
 
     const includePayload = trigger.configuration.includePayload;
-    const event = trigger.configuration.event ?? null;
+    const event = trigger.configuration.event;
     const filter = trigger.configuration.filter ?? "";
 
     form.reset({
@@ -213,8 +215,8 @@ export function WebhookEditionModal({
       kind: "webhook",
       configuration: {
         includePayload: data.includePayload,
-        event: data.event ?? null,
-        filter: data.filter?.trim() || null,
+        event: data.event,
+        filter: data.filter?.trim() ?? undefined,
       },
       webhookSourceViewSId: data.webhookSourceViewSId ?? undefined,
       editor,
@@ -299,9 +301,7 @@ export function WebhookEditionModal({
                           key={option.value}
                           label={option.label}
                           disabled={!isEditor}
-                          icon={
-                            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[option.kind].icon
-                          }
+                          icon={option.icon}
                           onClick={() => {
                             form.setValue(
                               "webhookSourceViewSId",
@@ -373,7 +373,7 @@ export function WebhookEditionModal({
                   <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     Add a filter string for the webhook event
                   </p>
-                  <Input
+                  <TextArea
                     id="trigger-filter"
                     placeholder="Enter filter"
                     disabled={!isEditor}

@@ -11,8 +11,8 @@ export type ScheduleConfig = {
 
 export type WebhookConfig = {
   includePayload: boolean;
-  event?: string | null;
-  filter?: string | null;
+  event?: string;
+  filter?: string;
 };
 
 export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
@@ -75,10 +75,10 @@ const ScheduleConfigSchema = t.type({
 const WebhookConfigSchema = t.intersection([
   t.type({
     includePayload: t.boolean,
-    event: t.union([t.string, t.null]),
   }),
   t.partial({
-    filter: t.union([t.string, t.null]),
+    event: t.string,
+    filter: t.string,
   }),
 ]);
 
