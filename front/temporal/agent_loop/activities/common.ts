@@ -15,6 +15,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types";
+import { ConversationError } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
@@ -179,6 +180,13 @@ export async function notifyWorkflowError(
       conversationId
     );
   if (conversationRes.isErr()) {
+    if (
+      conversationRes.error instanceof ConversationError &&
+      conversationRes.error.type === "conversation_not_found"
+    ) {
+      return;
+    }
+
     throw new Error(`Conversation not found: ${conversationId}`);
   }
   const conversation = conversationRes.value;

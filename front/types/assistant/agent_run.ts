@@ -55,9 +55,7 @@ export async function getAgentLoopData(
   } = agentLoopArgs;
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
-    return new Err(
-      new Error(`Conversation not found: ${conversationRes.error.message}`)
-    );
+    return conversationRes;
   }
 
   const conversation = conversationRes.value;
