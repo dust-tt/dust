@@ -62,6 +62,7 @@ export class DiscordConfigurationResource extends BaseResource<DiscordConfigurat
     connectorId: ModelId;
     transaction: Transaction;
   }) {
+    // Only one configuration per guild can have the bot enabled at a time.
     const otherDiscordConfigurationWithBotEnabled =
       await DiscordConfigurationModel.findOne({
         where: {
