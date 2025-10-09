@@ -312,7 +312,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Executive Overview Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Executive Overview",
+      "📊 Executive Overview",
       "High-level metrics for tracking overall product performance and user growth"
     );
 
@@ -694,7 +694,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Conversion Overview Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Conversion Overview",
+      "🎯 Conversion Overview",
       "Detailed breakdown of user journey steps from onboarding to activation"
     );
 
@@ -824,7 +824,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Drop-off Analysis Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Drop-off Analysis",
+      "📉 Drop-off Analysis",
       "Funnel analysis showing where users drop off in the journey"
     );
 
@@ -1026,7 +1026,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Time to Value Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Time to Value",
+      "⏱️ Time to Value",
       "How quickly users reach activation and key milestones"
     );
 
@@ -1090,7 +1090,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Marketing Performance Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Marketing Performance",
+      "🎯 Marketing Performance",
       "Track landing page performance: Homepage, Solutions, Industry pages"
     );
 
@@ -1441,7 +1441,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Data Source Adoption Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Data Source Adoption",
+      "📊 Data Source Adoption",
       "Track which data sources users connect and adoption patterns"
     );
 
@@ -1550,7 +1550,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Builder Engagement Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Builder Engagement",
+      "🔨 Builder Engagement",
       "Track assistant creation patterns and builder usage"
     );
 
@@ -1673,7 +1673,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Conversation Engagement Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Conversation Engagement",
+      "💬 Conversation Engagement",
       "Track conversation patterns and activation signals"
     );
 
@@ -1835,7 +1835,7 @@ class PostHogDashboardCreator {
     logger.info("Creating Trial Analysis Dashboard...");
 
     const dashboard = await this.createDashboard(
-      "[auto] Trial Analysis",
+      "🎯 Trial Analysis",
       "Track trial user behavior and conversion patterns"
     );
 
