@@ -14,7 +14,7 @@ interface PublicInteractiveContentHeaderProps {
   title: string;
   user: UserTypeWithWorkspaces | null;
   workspaceId?: string;
-  conversationId?: string | null;
+  conversationId: string | null;
 }
 
 // Applying flex & justify-center to the title won't make it centered in the header
