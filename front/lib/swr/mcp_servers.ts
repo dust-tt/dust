@@ -1178,8 +1178,8 @@ function useMCPServerViewsFromSpacesBase(
 
   const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    disabled: !spaces.length,
     ...swrOptions,
+    ...(!spaces.length ? { disabled: true } : {}),
   });
 
   return {
