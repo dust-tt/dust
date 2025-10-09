@@ -17,7 +17,6 @@ import {
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
@@ -495,15 +494,8 @@ export async function upsertDocument({
     );
   }
 
-  // Fetch the feature flags for the owner of the run.
-  const keyWorkspaceFlags = await getFeatureFlags(
-    auth.getNonNullableWorkspace()
-  );
-
-  // Temporary flag to help test EU OpenAI in specific workspaces.
-  const useOpenAIEUKeyFlag = keyWorkspaceFlags.includes("use_openai_eu_key");
   // Data source operations are performed with our credentials.
-  const credentials = dustManagedCredentials({ useOpenAIEUKeyFlag });
+  const credentials = dustManagedCredentials();
 
   // Create document with the Dust internal API.
   const upsertRes = await coreAPI.upsertDataSourceDocument({
@@ -538,28 +530,18 @@ export async function handleDataSourceSearch({
   searchQuery,
   dataSource,
   dataSourceView,
-  auth,
 }: {
   searchQuery: DataSourceSearchQuery;
   dataSource: DataSourceResource;
   dataSourceView?: DataSourceViewResource;
-  auth: Authenticator;
 }): Promise<
   Result<
     DataSourceSearchResponseType,
     Omit<DustError, "code"> & { code: "data_source_error" }
   >
 > {
-  // Fetch the feature flags for the owner of the run.
-  const keyWorkspaceFlags = await getFeatureFlags(
-    auth.getNonNullableWorkspace()
-  );
-
-  // Temporary flag to help test EU OpenAI in specific workspaces.
-  const useOpenAIEUKeyFlag = keyWorkspaceFlags.includes("use_openai_eu_key");
-
   // Dust managed credentials: all data sources.
-  const credentials = dustManagedCredentials({ useOpenAIEUKeyFlag });
+  const credentials = dustManagedCredentials();
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const data = await coreAPI.searchDataSource(
