@@ -43,6 +43,8 @@ const RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 
 const TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
 
+const ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
+
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
@@ -295,6 +297,8 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         return new Ok(configuration.retentionPeriodDays?.toString() || null);
       case TRACKERS_CONFIG_KEY:
         return new Ok(configuration.trackersEnabled.toString());
+      case ACCOUNTS_CONFIG_KEY:
+        return new Ok(configuration.accountsEnabled.toString());
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -346,6 +350,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       }
       case TRACKERS_CONFIG_KEY: {
         await configuration.setTrackersEnabled(configValue === "true");
+
+        return new Ok(undefined);
+      }
+      case ACCOUNTS_CONFIG_KEY: {
+        await configuration.setAccountsEnabled(configValue === "true");
 
         return new Ok(undefined);
       }

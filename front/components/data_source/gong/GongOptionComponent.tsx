@@ -16,6 +16,7 @@ import { normalizeError } from "@app/types";
 // TODO(2025-03-17): share these variables between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 const GONG_TRACKERS_CONFIG_KEY = "gongTrackersEnabled";
+const GONG_ACCOUNTS_CONFIG_KEY = "gongAccountsEnabled";
 
 function checkIsNonNegativeInteger(value: string) {
   return /^[0-9]+$/.test(value);
@@ -51,6 +52,16 @@ export function GongOptionComponent({
     configKey: GONG_TRACKERS_CONFIG_KEY,
   });
   const trackersEnabled = trackersConfigValue === "true";
+
+  const {
+    configValue: accountsConfigValue,
+    mutateConfig: mutateAccountsConfig,
+  } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: GONG_ACCOUNTS_CONFIG_KEY,
+  });
+  const accountsEnabled = accountsConfigValue === "true";
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -90,6 +101,8 @@ export function GongOptionComponent({
         await mutateRetentionPeriodConfig();
       } else if (configKey === GONG_TRACKERS_CONFIG_KEY) {
         await mutateTrackersConfig();
+      } else if (configKey === GONG_ACCOUNTS_CONFIG_KEY) {
+        await mutateAccountsConfig();
       }
       setLoading(false);
       sendNotification({
@@ -98,7 +111,9 @@ export function GongOptionComponent({
         description:
           configKey === GONG_RETENTION_PERIOD_CONFIG_KEY
             ? "Retention period successfully updated."
-            : "Trackers synchronization successfully enabled.",
+            : (configKey === GONG_TRACKERS_CONFIG_KEY
+                ? "Trackers"
+                : "Accounts") + " synchronization successfully updated.",
       });
     } else {
       setLoading(false);
@@ -189,6 +204,36 @@ export function GongOptionComponent({
               trackers associated to each call transcript.
               <br />
               {/* The procedure to follow to backfill existing transcripts is a full sync. */}
+              Only new transcripts will be affected, please contact us at
+              support@dust.tt if you need to update the existing transcripts.
+            </div>
+          </ContextItem.Description>
+        </ContextItem>
+
+        <ContextItem
+          title="Sync Account metadata"
+          visual={<ContextItem.Visual visual={GongLogo} />}
+          action={
+            <div className="relative">
+              <SliderToggle
+                size="xs"
+                onClick={async () => {
+                  await handleConfigUpdate(
+                    GONG_ACCOUNTS_CONFIG_KEY,
+                    (!accountsEnabled).toString()
+                  );
+                }}
+                selected={accountsEnabled}
+                disabled={readOnly || !isAdmin || loading}
+              />
+            </div>
+          }
+        >
+          <ContextItem.Description>
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
+              If activated, Dust will sync the account names from CRM context
+              associated to each call transcript.
+              <br />
               Only new transcripts will be affected, please contact us at
               support@dust.tt if you need to update the existing transcripts.
             </div>
