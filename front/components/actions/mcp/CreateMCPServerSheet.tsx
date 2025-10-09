@@ -1,11 +1,5 @@
 import {
   Button,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
@@ -15,6 +9,11 @@ import {
   InformationCircleIcon,
   Input,
   Label,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -39,10 +38,10 @@ import type {
 } from "@app/types";
 import {
   OAUTH_PROVIDER_NAMES,
+  sanitizeHeadersArray,
   setupOAuthConnection,
   validateUrl,
 } from "@app/types";
-import { sanitizeHeadersArray } from "@app/types";
 
 import { McpServerHeaders } from "./MCPServerHeaders";
 
@@ -58,7 +57,7 @@ type RemoteMCPServerDetailsProps = {
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
 };
 
-export function CreateMCPServerDialog({
+export function CreateMCPServerSheet({
   owner,
   internalMCPServer,
   setMCPServerToShow,
@@ -300,24 +299,24 @@ export function CreateMCPServerDialog({
   };
 
   return (
-    <Dialog
+    <Sheet
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
         resetState();
       }}
     >
-      <DialogContent size="lg">
-        <DialogHeader>
-          <DialogTitle>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle>
             {internalMCPServer
               ? `Add ${getMcpServerDisplayName(internalMCPServer)}`
               : defaultServerConfig
                 ? `Add ${defaultServerConfig.name}`
                 : "Add MCP Server"}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContainer className="max-h-[80vh] space-y-4 overflow-y-auto">
+          </SheetTitle>
+        </SheetHeader>
+        <SheetContainer className="space-y-4">
           {!internalMCPServer &&
             (!authorization || authorization.provider === "mcp_static") && (
               <>
@@ -531,32 +530,44 @@ export function CreateMCPServerDialog({
               onHeadersChange={(headers) => setCustomHeaders(headers)}
             />
           )}
-        </DialogContainer>
-        <DialogFooter
-          className="pt-4"
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            isLoading,
-            label: authorization ? "Setup connection" : "Save",
-            variant: "primary",
-            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-              e.preventDefault();
-              e.stopPropagation();
-              void handleSave(e);
-            },
-            disabled:
-              !isOAuthFormValid ||
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              (authorization && !useCase) ||
-              (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
-              (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ||
-              isLoading,
-          }}
-        />
-      </DialogContent>
-    </Dialog>
+        </SheetContainer>
+        <div className="mt-2">
+          <div className="flex flex-row gap-2 border-t border-border px-3 py-3 dark:border-border-night">
+            <Button
+              label="Cancel"
+              variant="outline"
+              onClick={() => {
+                setIsOpen(false);
+                resetState();
+              }}
+            />
+            <div className="flex-grow" />
+            <Button
+              label={
+                isLoading
+                  ? "Loading..."
+                  : authorization
+                    ? "Setup connection"
+                    : "Save"
+              }
+              variant="primary"
+              disabled={
+                !isOAuthFormValid ??
+                (authorization && !useCase) ??
+                (defaultServerConfig?.authMethod === "bearer" &&
+                  !sharedSecret) ??
+                (!internalMCPServer && !validateUrl(remoteServerUrl).valid) ??
+                isLoading
+              }
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void handleSave(e);
+              }}
+            />
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
