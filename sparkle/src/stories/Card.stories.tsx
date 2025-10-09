@@ -4,7 +4,7 @@ import React, { ComponentType } from "react";
 import { Card, Icon } from "@sparkle/components";
 import {
   CARD_VARIANTS,
-  CARD_VARIANTS_SIZES,
+  CARD_SIZES,
   CardActionButton,
   CardGrid,
 } from "@sparkle/components/Card";
@@ -28,7 +28,7 @@ export default meta;
 
 export const Demo = () => {
   const variants = CARD_VARIANTS;
-  const sizes = CARD_VARIANTS_SIZES;
+  const sizes = CARD_SIZES;
 
   return (
     <div className="s-flex s-flex-col s-gap-8 s-text-foreground dark:s-text-foreground-night">
