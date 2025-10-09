@@ -13,7 +13,7 @@ import {
 import React from "react";
 
 import {
-  AgentMessageContentCreationGeneratedFiles,
+  AgentMessageInteractiveContentGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
@@ -22,7 +22,7 @@ import type {
   AllSupportedFileContentType,
   LightWorkspaceType,
 } from "@app/types";
-import { clientExecutableContentType } from "@app/types";
+import { frameContentType, isInteractiveContentContentType } from "@app/types";
 
 interface FileGroup {
   contentType: AllSupportedFileContentType | "other";
@@ -33,7 +33,7 @@ interface FileGroup {
 
 // Configuration for content types that get their own groups.
 const GROUPED_CONTENT_TYPES = {
-  [clientExecutableContentType]: "Frame",
+  [frameContentType]: "Frame",
   "application/json": "JSON",
   "text/csv": "Tables",
   "text/plain": "Text",
@@ -126,7 +126,9 @@ function FileGroupSection({
   onFileClick,
   owner,
 }: FileGroupSectionProps) {
-  const isContentCreation = group.contentType === clientExecutableContentType;
+  const isInteractiveContent = isInteractiveContentContentType(
+    group.contentType
+  );
 
   return (
     <div className="space-y-2">
@@ -134,8 +136,8 @@ function FileGroupSection({
         {group.title}
       </div>
       <div>
-        {isContentCreation ? (
-          <AgentMessageContentCreationGeneratedFiles
+        {isInteractiveContent ? (
+          <AgentMessageInteractiveContentGeneratedFiles
             files={group.files}
             variant="grid"
             onClick={onFileClick}

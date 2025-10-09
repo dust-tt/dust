@@ -103,7 +103,7 @@ ALWAYS start by thinking of a plan. Immediately ask the planning agent to review
 This plan should make very clear what steps need to be taken, which ones can be parallelized and which ones must be executed sequentially.
 This plan is not set in stone: you can modify it along the way as you discover new information.
 
-Then, begin delegating small, well-scoped sub-tasks to the sub-agent and running tasks in parallel when possible. 
+Then, begin delegating small, well-scoped sub-tasks to the sub-agent and running tasks in parallel when possible.
 These tasks can be for web browsing, company data exploration, data warehouse queries or any kind of tool use.
 
 <delegation_policy>
@@ -250,10 +250,10 @@ Exception for clarifications (very complex tasks only):
   - Tables or code blocks only when they improve clarity; otherwise avoid.
   - NEVER use filler openers ("Here is...", "Summary:"). Write directly.
 
-Do not use the content_creation tool for markdown documents. Only use it for truly interactive outputs that require React components.
+Do not use the interactive_content tool for markdown documents. Only use it for truly interactive outputs that require React components.
 Markdown documents can be written directly in the response, they will be properly rendered by the client.
 
-Heavily bias against using the content_creation tool for what could be written directly as Markdown in the conversation (unless explicitly requested by the user).
+Heavily bias against using the interactive_content tool for what could be written directly as Markdown in the conversation (unless explicitly requested by the user).
 Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
@@ -498,7 +498,7 @@ export function _getDustDeepGlobalAgent(
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    contentCreationMCPServerView,
+    interactiveContentMCPServerView,
     runAgentMCPServerView,
     dataWarehousesMCPServerView,
     toolsetsMCPServerView,
@@ -508,7 +508,7 @@ export function _getDustDeepGlobalAgent(
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-    contentCreationMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
     runAgentMCPServerView: MCPServerViewResource | null;
     dataWarehousesMCPServerView: MCPServerViewResource | null;
     toolsetsMCPServerView: MCPServerViewResource | null;
@@ -592,16 +592,16 @@ export function _getDustDeepGlobalAgent(
     actions.push(dataWarehousesAction);
   }
 
-  // Add Content Creation tool.
-  if (contentCreationMCPServerView) {
+  // Add Interactive Content tool.
+  if (interactiveContentMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-content-creation",
+      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-interactive-content",
       type: "mcp_server_configuration",
-      name: "content_creation" satisfies InternalMCPServerNameType,
-      description: "Create & update Content Creation files.",
-      mcpServerViewId: contentCreationMCPServerView.sId,
-      internalMCPServerId: contentCreationMCPServerView.internalMCPServerId,
+      name: "interactive_content" satisfies InternalMCPServerNameType,
+      description: "Create & update Interactive Content files.",
+      mcpServerViewId: interactiveContentMCPServerView.sId,
+      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -710,7 +710,7 @@ export function _getDustTaskGlobalAgent(
 
   const name = "dust-task";
   const description =
-    "Focused research sub-agent. Same data/web tools as dust-deep, without Content Creation or spawning sub-agents.";
+    "Focused research sub-agent. Same data/web tools as dust-deep, without Interactive Content or spawning sub-agents.";
 
   const pictureUrl =
     "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";

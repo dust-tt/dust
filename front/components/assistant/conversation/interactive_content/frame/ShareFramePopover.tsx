@@ -20,7 +20,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { useShareContentCreationFile } from "@app/lib/swr/files";
+import { useShareInteractiveContentFile } from "@app/lib/swr/files";
 import type { FileShareScope, LightWorkspaceType } from "@app/types";
 
 const WORKSPACE_LABEL = "Internal - Workspace members with the link";
@@ -88,17 +88,17 @@ function FileSharingDropdown({
   );
 }
 
-interface ShareContentCreationFilePopoverProps {
+interface ShareFramePopoverProps {
   fileId: string;
   owner: LightWorkspaceType;
   isUsingConversationFiles: boolean;
 }
 
-export function ShareContentCreationFilePopover({
+export function ShareFramePopover({
   fileId,
   owner,
   isUsingConversationFiles,
-}: ShareContentCreationFilePopoverProps) {
+}: ShareFramePopoverProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const [isUpdatingShare, setIsUpdatingShare] = React.useState(false);
@@ -109,7 +109,7 @@ export function ShareContentCreationFilePopover({
     owner.metadata?.allowContentCreationFileSharing === false;
 
   const { doShare, fileShare, isFileShareLoading, isFileShareError } =
-    useShareContentCreationFile({
+    useShareInteractiveContentFile({
       fileId,
       owner,
     });

@@ -6,7 +6,7 @@ import { assertNever } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
-  CONTENT_CREATION_SIDE_PANEL_TYPE,
+  INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
@@ -17,7 +17,7 @@ type OpenPanelParams =
       messageId: string;
     }
   | {
-      type: "content_creation";
+      type: "interactive_content";
       fileId: string;
       timestamp?: string;
     };
@@ -25,7 +25,7 @@ type OpenPanelParams =
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
-  type === "actions" || type === "content_creation";
+  type === "actions" || type === "interactive_content";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -98,7 +98,7 @@ export function ConversationSidePanelProvider({
           break;
         }
 
-        case CONTENT_CREATION_SIDE_PANEL_TYPE:
+        case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
           params.timestamp
             ? setData(`${params.fileId}@${params.timestamp}`)
             : setData(params.fileId);

@@ -7,7 +7,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { FileShareScope, WithAPIErrorResponse } from "@app/types";
-import { fileShareScopeSchema } from "@app/types";
+import { fileShareScopeSchema, frameContentType } from "@app/types";
 
 const ShareFileRequestBodySchema = z.object({
   shareScope: fileShareScopeSchema,
@@ -66,8 +66,8 @@ async function handler(
     }
   }
 
-  // Only allow sharing Content Creation files.
-  if (!file.isContentCreation) {
+  // Only allow sharing Frame files.
+  if (!file.isInteractiveContent && file.contentType === frameContentType) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

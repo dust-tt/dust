@@ -127,7 +127,7 @@ const SPECIAL_CASES = {
   hubspot: "HubSpot",
   mcp: "MCP",
   // TODO(cc): remove this once we have settled on a name.
-  "content creation": "Frame",
+  "interactive content": "Frame",
 };
 
 // Create a single regex pattern for all special cases

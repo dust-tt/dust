@@ -4,8 +4,8 @@ import {
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
 import {
-  _getContentCreationToolConfiguration,
   _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
@@ -21,12 +21,12 @@ export function _getGeminiProGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -60,9 +60,9 @@ export function _getGeminiProGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
-      ..._getContentCreationToolConfiguration({
+      ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
