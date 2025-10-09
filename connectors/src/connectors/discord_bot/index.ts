@@ -38,14 +38,12 @@ export class DiscordBotConnectorManager extends BaseConnectorManager<DiscordBotC
     });
 
     const guildId = connectionData.connection.metadata.guild_id;
-    if (typeof guildId !== "string") {
+    if (typeof guildId !== "string" || !/^\d{17,20}$/.test(guildId)) {
       logger.error(
         { connectionId, guildId },
-        "Guild ID not found in OAuth connection metadata"
+        "Invalid guild ID in OAuth connection metadata"
       );
-      throw new Error(
-        `Guild ID not found in OAuth connection metadata for connectionId: ${connectionId}`
-      );
+      throw new Error(`Invalid guild ID for connectionId: ${connectionId}`);
     }
 
     const connector = await withTransaction(async (transaction) => {
