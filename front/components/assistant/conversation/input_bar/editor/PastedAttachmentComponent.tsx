@@ -26,10 +26,7 @@ export function PastedAttachmentComponent({
 
   const displayTitle = (title ?? "Pasted Attachment") + " (click to inline)";
   return (
-    <NodeViewWrapper
-      className="inline-flex align-middle"
-      style={{ maxWidth: "none" }}
-    >
+    <NodeViewWrapper className="inline-flex align-middle">
       <div
         onClick={handleClick}
         className={
