@@ -12,6 +12,7 @@ import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { ConversationModel } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -23,7 +24,8 @@ import { getAgentLoopData } from "@app/types/assistant/agent_run";
 async function processEventForDatabase(
   event: AgentMessageEvents,
   agentMessageRow: AgentMessage,
-  step: number
+  step: number,
+  conversation: ConversationWithoutContentType
 ): Promise<void> {
   switch (event.type) {
     case "agent_error":
@@ -36,6 +38,17 @@ async function processEventForDatabase(
         errorMetadata: event.error.metadata,
         completedAt: new Date(),
       });
+
+      // Mark the conversation as errored.
+      await ConversationModel.update(
+        { hasError: true },
+        {
+          where: {
+            id: conversation.id,
+            workspaceId: agentMessageRow.workspaceId,
+          },
+        }
+      );
 
       if (event.type === "agent_error") {
         await AgentStepContentResource.createNewVersion({
@@ -139,7 +152,7 @@ export async function updateResourceAndPublishEvent(
 ): Promise<void> {
   // Processing of events before publishing to Redis.
   await Promise.all([
-    processEventForDatabase(event, agentMessageRow, step),
+    processEventForDatabase(event, agentMessageRow, step, conversation),
     processEventForUnreadState(auth, { event, conversation }),
     processEventForTokenUsageTracking(auth, { event }),
   ]);

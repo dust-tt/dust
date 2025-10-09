@@ -127,6 +127,7 @@ export async function createConversation(
     content: [],
     unread: false,
     actionRequired: false,
+    hasError: false,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
   };
@@ -500,6 +501,15 @@ export async function postUserMessage(
       // this transaction, otherwise this other query will be competing for a connection in the database
       // connection pool, resulting in a deadlock.
       await getConversationRankVersionLock(conversation, t);
+
+      // Clear the hasError flag when posting a new user message.
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (conversationResource) {
+        await conversationResource.clearHasError(t);
+      }
 
       let nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
@@ -1265,6 +1275,15 @@ export async function retryAgentMessage(
   try {
     agentMessageResult = await withTransaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
+
+      // Clear the hasError flag when retrying an agent message.
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (conversationResource) {
+        await conversationResource.clearHasError(t);
+      }
 
       const messageRow = await Message.findOne({
         where: {

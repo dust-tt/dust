@@ -617,6 +617,10 @@ const RenderConversation = ({
     <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
   );
 
+  const ErrorIcon = () => (
+    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-red-500" />
+  );
+
   return (
     <>
       {isMultiSelect ? (
@@ -640,9 +644,11 @@ const RenderConversation = ({
           icon={
             conversation.actionRequired
               ? ExclamationCircleIcon
-              : conversation.unread
-                ? UnreadIcon
-                : undefined
+              : conversation.hasError
+                ? ErrorIcon
+                : conversation.unread
+                  ? UnreadIcon
+                  : undefined
           }
           label={conversationLabel}
           moreMenu={

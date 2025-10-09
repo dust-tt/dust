@@ -136,6 +136,7 @@ export async function getConversation(
     content,
     actionRequired,
     unread,
+    hasError: conversation.hasError,
     requestedGroupIds:
       conversation.getConversationRequestedGroupIdsFromModel(auth),
   });
