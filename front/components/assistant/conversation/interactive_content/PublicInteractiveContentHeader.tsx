@@ -21,7 +21,6 @@ interface PublicInteractiveContentHeaderProps {
 // since it has the logo on the left (and will soon have buttons on the right).
 // To make it perfectly centered, we need to set the same flex basis for both the right and left
 // elements.
-// TODO(interactive_content 2025-08-27): optimize the header for mobile views once we have buttons.
 export function PublicInteractiveContentHeader({
   title,
   user,
