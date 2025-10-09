@@ -35,7 +35,7 @@ import type { WebhookSourceView } from "@app/types/triggers/webhooks";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceView;
   owner: LightWorkspaceType;
 };
 
