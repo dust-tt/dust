@@ -43,6 +43,7 @@ export function GongOptionComponent({
     dataSource,
     configKey: GONG_RETENTION_PERIOD_CONFIG_KEY,
   });
+
   const {
     configValue: trackersConfigValue,
     mutateConfig: mutateTrackersConfig,
