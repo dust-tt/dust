@@ -91,7 +91,8 @@ export function trackEvent({
     area,
     object,
     action,
-    extras: extra,
+    ...extra, // Spread for PostHog.
+    extra, // As object for Snowflake.
   };
 
   posthog.capture(eventName, properties);
