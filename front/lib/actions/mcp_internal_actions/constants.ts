@@ -14,7 +14,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
-import { DUST_DEEP_DESCRIPTION } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import {
+  DUST_DEEP_DESCRIPTION,
+  DUST_DEEP_NAME,
+} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -71,7 +74,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "conversation_files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
-  "deep_research",
+  "deep_dive",
   "extract_data",
   "file_generation",
   "freshservice",
@@ -916,7 +919,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: SLIDESHOW_INSTRUCTIONS,
     },
   },
-  deep_research: {
+  deep_dive: {
     id: 29,
     availability: "auto",
     isRestricted: ({ featureFlags, isDustDeepDisabled }) => {
@@ -930,13 +933,13 @@ The directive should be used to display a clickable version of the agent name in
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
-      name: "deep_research",
+      name: "deep_dive",
       version: "0.1.0",
-      description: "Handoff the query to the deep research agent.",
+      description: `Handoff the query to the @${DUST_DEEP_NAME} agent.`,
       authorization: null,
       icon: "ActionAtomIcon",
       documentationUrl: null,
-      instructions: `This tool performs a complete handoff to the dust-deep research agent: ${DUST_DEEP_DESCRIPTION}`,
+      instructions: `This tool performs a complete handoff to the @${DUST_DEEP_NAME} agent: ${DUST_DEEP_DESCRIPTION}`,
     },
   },
   slack_bot: {

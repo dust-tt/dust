@@ -86,7 +86,7 @@ const TOP_MCP_SERVER_VIEWS = [
   "web_search_&_browse",
   "image_generation",
   AGENT_MEMORY_SERVER_NAME,
-  "deep_research",
+  "deep_dive",
   "interactive_content",
   "slack",
   "gmail",

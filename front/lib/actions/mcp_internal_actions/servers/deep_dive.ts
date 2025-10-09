@@ -20,13 +20,13 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  const server = makeInternalMCPServer("deep_research");
+  const server = makeInternalMCPServer("deep_dive");
 
   const owner = auth.getNonNullableWorkspace();
 
   server.tool(
-    "run_dust_deep",
-    "Handoff the query to the generic deep research agent",
+    "dive",
+    `Handoff the query to the ${DUST_DEEP_NAME} agent`,
     {},
     withToolLogging(
       auth,
@@ -78,7 +78,7 @@ const createServer = (
         }
 
         const response = makeMCPToolExit({
-          message: `Forwarding this request to @${DUST_DEEP_NAME} for Deep Research.`,
+          message: `Deep diving by forwarding this request to @${DUST_DEEP_NAME}.`,
           isError: false,
         });
 
