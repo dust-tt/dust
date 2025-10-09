@@ -877,12 +877,41 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  async clearHasError(transaction?: Transaction) {
-    return this.update(
+  static async markHasError(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationWithoutContentType },
+    transaction?: Transaction
+  ) {
+    return ConversationResource.model.update(
+      {
+        hasError: true,
+      },
+      {
+        where: {
+          id: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
+    );
+  }
+
+  static async clearHasError(
+    auth: Authenticator,
+    { conversation }: { conversation: ConversationWithoutContentType },
+    transaction?: Transaction
+  ) {
+    return ConversationResource.model.update(
       {
         hasError: false,
       },
-      transaction
+      {
+        where: {
+          id: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
     );
   }
 

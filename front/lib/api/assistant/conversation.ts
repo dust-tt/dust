@@ -502,14 +502,14 @@ export async function postUserMessage(
       // connection pool, resulting in a deadlock.
       await getConversationRankVersionLock(conversation, t);
 
-      // Clear the hasError flag when posting a new user message.
-      const conversationResource = await ConversationResource.fetchById(
+      // We clear the hasError flag of a conversation when posting a new user message.
+      await ConversationResource.clearHasError(
         auth,
-        conversation.sId
+        {
+          conversation,
+        },
+        t
       );
-      if (conversationResource) {
-        await conversationResource.clearHasError(t);
-      }
 
       let nextMessageRank =
         ((await Message.max<number | null, Message>("rank", {
@@ -1276,14 +1276,14 @@ export async function retryAgentMessage(
     agentMessageResult = await withTransaction(async (t) => {
       await getConversationRankVersionLock(conversation, t);
 
-      // Clear the hasError flag when retrying an agent message.
-      const conversationResource = await ConversationResource.fetchById(
+      // We clear the hasError flag of a conversation when retrying an agent message.
+      await ConversationResource.clearHasError(
         auth,
-        conversation.sId
+        {
+          conversation,
+        },
+        t
       );
-      if (conversationResource) {
-        await conversationResource.clearHasError(t);
-      }
 
       const messageRow = await Message.findOne({
         where: {

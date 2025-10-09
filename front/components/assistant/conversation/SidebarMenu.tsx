@@ -641,13 +641,16 @@ const RenderConversation = ({
       ) : (
         <NavigationListItem
           selected={router.query.cId === conversation.sId}
-          icon={
+          icon={conversation.actionRequired ? ExclamationCircleIcon : undefined}
+          status={
+            // If there is an action required, we show the exclamation icon only.
+            // Otherwise, the hasError takes precedence over the unread.
             conversation.actionRequired
-              ? ExclamationCircleIcon
+              ? undefined
               : conversation.hasError
-                ? ErrorIcon
+                ? "blocked"
                 : conversation.unread
-                  ? UnreadIcon
+                  ? "unread"
                   : undefined
           }
           label={conversationLabel}

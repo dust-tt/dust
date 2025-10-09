@@ -22,6 +22,7 @@ import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
+  auth: Authenticator,
   event: AgentMessageEvents,
   agentMessageRow: AgentMessage,
   step: number,
@@ -40,15 +41,9 @@ async function processEventForDatabase(
       });
 
       // Mark the conversation as errored.
-      await ConversationModel.update(
-        { hasError: true },
-        {
-          where: {
-            id: conversation.id,
-            workspaceId: agentMessageRow.workspaceId,
-          },
-        }
-      );
+      await ConversationResource.markHasError(auth, {
+        conversation,
+      });
 
       if (event.type === "agent_error") {
         await AgentStepContentResource.createNewVersion({
@@ -152,7 +147,7 @@ export async function updateResourceAndPublishEvent(
 ): Promise<void> {
   // Processing of events before publishing to Redis.
   await Promise.all([
-    processEventForDatabase(event, agentMessageRow, step, conversation),
+    processEventForDatabase(auth, event, agentMessageRow, step, conversation),
     processEventForUnreadState(auth, { event, conversation }),
     processEventForTokenUsageTracking(auth, { event }),
   ]);
