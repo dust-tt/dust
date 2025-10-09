@@ -71,6 +71,9 @@ export async function transcribeFile(
         const response = (await el.speechToText.convert({
           modelId: _ELEVENLABS_TRANSCRIBE_MODEL,
           file,
+          languageCode: undefined, // enable auto-detection of languages
+          tagAudioEvents: false, // disable tagging of audio events
+          diarize: false, // disable diarization
           // we can safely cast here because we know the response is a SpeechToTextChunkResponseModel
         })) as SpeechToTextChunkResponseModel;
 
