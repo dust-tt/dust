@@ -324,32 +324,13 @@ function WebhookSourceSheetContent({
         try {
           const diff = diffWebhookSourceForm(editDefaults, values);
 
-          if (
-            diff.name ??
-            (diff.description !== undefined || diff.icon !== undefined)
-          ) {
-            const requestBody: {
-              name: string;
-              description?: string;
-              icon?: string;
-            } = {
-              name: values.name,
-            };
-
-            if (diff.description !== undefined) {
-              requestBody.description = values.description;
-            }
-
-            if (diff.icon !== undefined) {
-              requestBody.icon = values.icon;
-            }
-
+          if (diff.requestBody) {
             const response = await fetch(
               `/api/w/${owner.sId}/webhook_sources/views/${systemView.sId}`,
               {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestBody),
+                body: JSON.stringify(diff.requestBody),
               }
             );
             if (!response.ok) {

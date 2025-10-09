@@ -58,9 +58,11 @@ export function getWebhookSourceFormSchema() {
 }
 
 type FormDiffType = {
-  name?: string;
-  description?: string;
-  icon?: string;
+  requestBody?: {
+    name: string;
+    description?: string;
+    icon?: string;
+  };
   sharingChanges?: Array<{
     spaceId: string;
     action: "add" | "remove";
@@ -73,16 +75,28 @@ export function diffWebhookSourceForm(
 ): FormDiffType {
   const out: FormDiffType = {};
 
-  if (current.name !== initial.name) {
-    out.name = current.name;
-  }
+  const hasNameChange = current.name !== initial.name;
+  const hasDescriptionChange = current.description !== initial.description;
+  const hasIconChange = current.icon !== initial.icon;
 
-  if (current.description !== initial.description) {
-    out.description = current.description;
-  }
+  if (hasNameChange || hasDescriptionChange || hasIconChange) {
+    const requestBody: {
+      name: string;
+      description?: string;
+      icon?: string;
+    } = {
+      name: current.name,
+    };
 
-  if (current.icon !== initial.icon) {
-    out.icon = current.icon;
+    if (hasDescriptionChange) {
+      requestBody.description = current.description;
+    }
+
+    if (hasIconChange) {
+      requestBody.icon = current.icon;
+    }
+
+    out.requestBody = requestBody;
   }
 
   const sharingChanges: typeof out.sharingChanges = [];
