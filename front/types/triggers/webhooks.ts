@@ -85,9 +85,7 @@ export type WebhookSourceWithSystemViewAndUsage =
     usage: AgentsUsageType | null;
   };
 
-export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
-
-export const PostWebhookSourcesSchema = z.object({
+export const basePostWebhookSourcesSchema = z.object({
   name: z.string().min(1, "Name is required"),
   // Secret can be omitted or empty when auto-generated server-side.
   secret: z.string().nullable(),
@@ -118,6 +116,12 @@ export const refineSubscribedEvents: [
     path: ["subscribedEvents"],
   },
 ];
+
+export const postWebhookSourcesSchema = basePostWebhookSourcesSchema.refine(
+  ...refineSubscribedEvents
+);
+
+export type PostWebhookSourcesBody = z.infer<typeof postWebhookSourcesSchema>;
 
 export type PatchWebhookSourceViewBody = z.infer<
   typeof patchWebhookSourceViewBodySchema

@@ -118,11 +118,10 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
     expect(data.webhookSource.secret.length).toBe(64);
   });
 
-  it("should create and retrieve GitHub webhook source with pull_request event", async () => {
-    // Create the webhook source
-    const { req: postReq, res: postRes } = await setupTest("admin", "POST");
+  it("should create GitHub webhook source with pull_request event", async () => {
+    const { req, res } = await setupTest("admin", "POST");
 
-    postReq.body = {
+    req.body = {
       name: "GitHub PR Webhook",
       secret: "pr-secret-456",
       signatureHeader: "X-Hub-Signature-256",
@@ -133,24 +132,36 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       subscribedEvents: ["pull_request"],
     };
 
-    await handler(postReq, postRes);
+    await handler(req, res);
 
-    expect(postRes._getStatusCode()).toBe(201);
-    const createData = postRes._getJSONData();
-    expect(createData.success).toBe(true);
+    expect(res._getStatusCode()).toBe(201);
+    const data = res._getJSONData();
+    expect(data.success).toBe(true);
+    expect(data.webhookSource.kind).toBe("github");
+    expect(data.webhookSource.subscribedEvents).toEqual(["pull_request"]);
+    expect(data.webhookSource.name).toBe("GitHub PR Webhook");
+  });
 
-    // Retrieve webhook sources and verify the created one
-    const { req: getReq, res: getRes } = await setupTest("admin", "GET");
-    await handler(getReq, getRes);
+  it("should return error when creating GitHub webhook source with no events", async () => {
+    const { req, res } = await setupTest("admin", "POST");
 
-    expect(getRes._getStatusCode()).toBe(200);
-    const getData = getRes._getJSONData();
-    expect(getData.webhookSourcesWithViews).toHaveLength(1);
+    req.body = {
+      name: "GitHub Webhook No Events",
+      secret: "test-secret",
+      signatureHeader: "X-Hub-Signature-256",
+      signatureAlgorithm: "sha256",
+      customHeaders: null,
+      includeGlobal: true,
+      kind: "github",
+      subscribedEvents: [],
+    };
 
-    const webhookSource = getData.webhookSourcesWithViews[0];
-    expect(webhookSource.kind).toBe("github");
-    expect(webhookSource.subscribedEvents).toEqual(["pull_request"]);
-    expect(webhookSource.subscribedEvents).toHaveLength(1);
-    expect(webhookSource.name).toBe("GitHub PR Webhook");
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    const data = res._getJSONData();
+    expect(data.error).toBeDefined();
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toContain("Subscribed events must not be empty");
   });
 });

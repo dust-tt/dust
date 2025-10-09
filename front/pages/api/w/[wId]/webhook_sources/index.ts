@@ -15,7 +15,7 @@ import type {
   WebhookSource,
   WebhookSourceWithViewsAndUsage,
 } from "@app/types/triggers/webhooks";
-import { PostWebhookSourcesSchema } from "@app/types/triggers/webhooks";
+import { postWebhookSourcesSchema } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
@@ -83,7 +83,7 @@ async function handler(
     }
 
     case "POST": {
-      const bodyValidation = PostWebhookSourcesSchema.safeParse(req.body);
+      const bodyValidation = postWebhookSourcesSchema.safeParse(req.body);
 
       if (!bodyValidation.success) {
         const pathError = fromError(bodyValidation.error).toString();

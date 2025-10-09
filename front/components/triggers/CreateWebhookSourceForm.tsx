@@ -18,7 +18,7 @@ import { z } from "zod";
 
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
-  PostWebhookSourcesSchema,
+  basePostWebhookSourcesSchema,
   refineSubscribedEvents,
   WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
@@ -38,13 +38,14 @@ export const validateCustomHeadersFromString = (value: string | null) => {
   }
 };
 
-export const CreateWebhookSourceSchema = PostWebhookSourcesSchema.extend({
-  customHeaders: z
-    .string()
-    .nullable()
-    .refine(validateCustomHeadersFromString, "Invalid JSON format"),
-  autoGenerate: z.boolean().default(true),
-})
+export const CreateWebhookSourceSchema = basePostWebhookSourcesSchema
+  .extend({
+    customHeaders: z
+      .string()
+      .nullable()
+      .refine(validateCustomHeadersFromString, "Invalid JSON format"),
+    autoGenerate: z.boolean().default(true),
+  })
   .refine(...refineSubscribedEvents)
   .refine(
     (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
@@ -142,7 +143,7 @@ export function CreateWebhookSourceFormContent({
                   )}
                 </div>
                 {fieldState.error && (
-                  <div className="flex items-center gap-1 text-xs text-warning dark:text-warning-night">
+                  <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
                     {fieldState.error.message}
                   </div>
                 )}
