@@ -1,6 +1,5 @@
-import { z } from "zod";
-
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
@@ -20,12 +19,12 @@ import {
   executePostMessage,
   getSlackClient,
 } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_api_helper";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, normalizeError, Ok } from "@app/types";
 
