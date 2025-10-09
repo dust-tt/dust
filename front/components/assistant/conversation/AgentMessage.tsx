@@ -454,7 +454,7 @@ export function AgentMessage({
   const isArchived = agentConfiguration.status === "archived";
 
   // Determine if this should be displayed as "agentAsTool" type.
-  const isDustDeep = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_DEEP;
+  const isDustDeep = agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE;
   const isDeepDive = isHandoverGroup && isDustDeep;
 
   return (

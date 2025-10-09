@@ -1712,6 +1712,7 @@ export type ReasoningModelConfigurationType = {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  DEEP_DIVE = "deep-dive",
   DUST_DEEP = "dust-deep",
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
@@ -1793,7 +1794,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 
 const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
-  GLOBAL_AGENTS_SID.DUST_DEEP,
+  GLOBAL_AGENTS_SID.DEEP_DIVE,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.O3_MINI,
@@ -1837,10 +1838,10 @@ export function compareAgentsForSort(
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return -1;
   }
-  if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return 1;
   }
 

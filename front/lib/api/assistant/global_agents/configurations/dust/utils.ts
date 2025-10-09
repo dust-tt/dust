@@ -11,7 +11,7 @@ export const isDustDeepDisabledByAdmin = memoizer.sync({
     const settings = await GlobalAgentSettings.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        agentId: GLOBAL_AGENTS_SID.DUST_DEEP,
+        agentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
       },
     });
     return settings?.status === "disabled_by_admin";

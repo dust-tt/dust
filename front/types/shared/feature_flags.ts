@@ -143,11 +143,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   research_agent: {
-    description: "Activate @research agent.",
-    stage: "dust_only",
+    description: "Activate @deepDive agent.",
+    stage: "rolling_out",
   },
   deep_research_as_a_tool: {
-    description: "Activate deep research as a tool",
+    description: "Activate Deep Dive tool",
     stage: "dust_only",
   },
   hootl_subscriptions: {

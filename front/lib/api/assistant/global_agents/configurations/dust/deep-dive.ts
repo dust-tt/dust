@@ -2,8 +2,8 @@ import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  DUST_DEEP_DESCRIPTION,
-  DUST_DEEP_NAME,
+  DEEP_DIVE_DESC,
+  DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
@@ -142,7 +142,7 @@ These tasks can be for web browsing, company data exploration, data warehouse qu
 
 <clarifying_questions>
 - Ask clarifying questions only when they are truly necessary to proceed or to prevent likely rework (e.g., missing scope, timeframe, audience, definitions, or constraints).
-- Reserve clarifying questions for very complex, deep research tasks. For routine or moderately complex tasks, proceed without asking.
+- Reserve clarifying questions for very complex, deep dive tasks. For routine or moderately complex tasks, proceed without asking.
 - Do not ask performative or obvious questions. If the information can be reasonably inferred, proceed.
 - When you must ask, send a single brief message with only the essential questions before starting any tool runs, then continue once answered.
 
@@ -239,7 +239,7 @@ DO NOT comment on your research or reasoning process. DO NOT tell the user about
 The user's UI already lets them inspect the output of the planning agent and your own reasoning process.
 
 Exception for clarifications (very complex tasks only):
-- If critical information is missing and you cannot proceed without it, and the task is very complex/deep research, you may send one brief clarifying message before using tools.
+- If critical information is missing and you cannot proceed without it, and the task is very complex/deep dive, you may send one brief clarifying message before using tools.
 - Keep that message to only essential questions. You may include key assumptions that require user confirmation; avoid any other commentary. Outside of this case, do not message the user until the final answer.
 
  Formatting rules (adapt to the task):
@@ -429,7 +429,7 @@ function getCompanyDataAction(
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-company-data-action",
+    sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-company-data-action",
     type: "mcp_server_configuration",
     name: "company_data",
     description: "The user's internal company data.",
@@ -469,7 +469,7 @@ function getCompanyDataWarehousesAction(
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-data-warehouses-action",
+    sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-data-warehouses-action",
     type: "mcp_server_configuration",
     name: "data_warehouses",
     description: "The user's data warehouses.",
@@ -491,10 +491,11 @@ function getCompanyDataWarehousesAction(
   };
 }
 
-export function _getDustDeepGlobalAgent(
+export function _getDeepDiveGlobalAgent(
   auth: Authenticator,
   {
     settings,
+    sId,
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
     dataSourcesFileSystemMCPServerView,
@@ -505,6 +506,7 @@ export function _getDustDeepGlobalAgent(
     slideshowMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
+    sId: string;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
@@ -524,12 +526,12 @@ export function _getDustDeepGlobalAgent(
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST_DEEP,
+    sId: sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: DUST_DEEP_NAME,
-    description: DUST_DEEP_DESCRIPTION,
+    name: DEEP_DIVE_NAME,
+    description: DEEP_DIVE_DESC,
     instructions: dustDeepInstructions,
     pictureUrl,
     scope: "global" as const,
@@ -574,7 +576,7 @@ export function _getDustDeepGlobalAgent(
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.DUST_DEEP,
+      agentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
       webSearchBrowseMCPServerView,
     }),
     ..._getToolsetsToolsConfiguration({
@@ -596,7 +598,7 @@ export function _getDustDeepGlobalAgent(
   if (interactiveContentMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-interactive-content",
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-interactive-content",
       type: "mcp_server_configuration",
       name: "interactive_content" satisfies InternalMCPServerNameType,
       description: "Create & update Interactive Content files.",
@@ -618,7 +620,7 @@ export function _getDustDeepGlobalAgent(
   if (runAgentMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-run-agent-dust-task",
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-run-agent-dust-task",
       type: "mcp_server_configuration",
       name: "sub_agent",
       description: "Run the dust-task sub-agent for focused tasks.",
@@ -636,7 +638,7 @@ export function _getDustDeepGlobalAgent(
     });
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-run-agent-dust-planning",
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-run-agent-dust-planning",
       type: "mcp_server_configuration",
       name: "planning_agent",
       description:
@@ -659,7 +661,7 @@ export function _getDustDeepGlobalAgent(
   if (slideshowMCPServerView) {
     actions.push({
       id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST_DEEP + "-slideshow",
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-slideshow",
       type: "mcp_server_configuration",
       name: "slideshow" satisfies InternalMCPServerNameType,
       description: "Create & update interactive slideshow presentations.",
@@ -709,8 +711,7 @@ export function _getDustTaskGlobalAgent(
   const owner = auth.getNonNullableWorkspace();
 
   const name = "dust-task";
-  const description =
-    "Focused research sub-agent. Same data/web tools as dust-deep, without Interactive Content or spawning sub-agents.";
+  const description = `Focused research sub-agent. Same data/web tools as ${DEEP_DIVE_NAME}, without Interactive Content or spawning sub-agents.`;
 
   const pictureUrl =
     "https://dust.tt/static/systemavatar/dust-task_avatar_full.png";

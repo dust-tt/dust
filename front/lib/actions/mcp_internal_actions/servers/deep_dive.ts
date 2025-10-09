@@ -9,7 +9,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { DUST_DEEP_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -26,7 +26,7 @@ const createServer = (
 
   server.tool(
     "dive",
-    `Handoff the query to the ${DUST_DEEP_NAME} agent`,
+    `Handoff the query to the ${DEEP_DIVE_NAME} agent`,
     {},
     withToolLogging(
       auth,
@@ -60,10 +60,10 @@ const createServer = (
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
-            name: DUST_DEEP_NAME,
-            description: "Deep research agent",
+            name: DEEP_DIVE_NAME,
+            description: "Deep dive agent",
           },
-          childAgentId: GLOBAL_AGENTS_SID.DUST_DEEP,
+          childAgentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
           mainAgent: agentConfiguration,
           originMessage: agentLoopContext.runContext.agentMessage,
           mainConversation: conversation,
@@ -78,7 +78,7 @@ const createServer = (
         }
 
         const response = makeMCPToolExit({
-          message: `Deep diving by forwarding this request to @${DUST_DEEP_NAME}.`,
+          message: `Deep diving by forwarding this request to @${DEEP_DIVE_NAME}.`,
           isError: false,
         });
 
