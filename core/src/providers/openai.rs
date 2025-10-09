@@ -1200,9 +1200,8 @@ impl Embedder for OpenAIEmbedder {
             ));
         }
 
-        // CORE_DATA_SOURCES_OPENAI_API_KEY can take two forms:
-        // - just the API key (e.g. sk-xxxx)
-        // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.api.openai.com)
+        // For the Embedder, we deliberately don't rely on passed credentials, to avoid using
+        // user creds in Dust app scenarios (unlike in LLM scenarios, where we want to use them).
 
         let raw_openai_key_env = match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
             Ok(v) => v,
@@ -1214,6 +1213,9 @@ impl Embedder for OpenAIEmbedder {
             }
         };
 
+        // The env variable can take two forms:
+        // - just the API key (e.g. sk-xxxx)
+        // - the API key followed by a semicolon and a custom host (e.g. sk-xxxx;eu.api.openai.com)
         let (key_part, host_part) = match raw_openai_key_env.split_once(';') {
             Some((k, h)) => (k.trim(), h.trim()),
             None => (raw_openai_key_env.trim(), "api.openai.com"),
