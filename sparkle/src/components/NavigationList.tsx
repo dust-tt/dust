@@ -82,7 +82,6 @@ const NavigationListItem = React.forwardRef<
       className,
       selected,
       label,
-      icon,
       href,
       target,
       rel,
@@ -107,13 +106,13 @@ const NavigationListItem = React.forwardRef<
         case "unread":
           return "s-bg-highlight-500 dark:s-bg-highlight-500-night";
         case "blocked":
-          return "s-bg-warning-500 dark:s-bg-warning-500-night";
+          return "s-bg-golden-500 dark:s-bg-golden-500-night";
         default:
           return "";
       }
     };
 
-    const shouldShowStatusDot = status === "unread" || status === "blocked";
+    const shouldShowStatusDot = status !== "idle";
 
     return (
       <div
@@ -155,7 +154,6 @@ const NavigationListItem = React.forwardRef<
                 )}
               />
             )}
-            {icon && <Icon visual={icon} size="sm" />}
             {label && (
               <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
                 {label}
