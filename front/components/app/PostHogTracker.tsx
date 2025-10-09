@@ -21,10 +21,6 @@ const EXCLUDED_PATHS = [
   "/share/",
 ];
 
-// In-product paths where we explicitly want to track pageviews.
-// These are path suffixes after /w/[wId].
-const IN_PRODUCT_PAGEVIEW_TRACKED_PATHS = ["/agent/new", "/subscribe"];
-
 interface PostHogTrackerProps {
   children: React.ReactNode;
 }
@@ -201,15 +197,10 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
     const handleRouteChange = () => {
       const pathname = router.pathname;
 
-      // Track all pageviews outside /w/ + specific in-product pages
-      const isInProduct = pathname.includes("/w/");
-      if (isInProduct) {
-        const isTrackedInProductPage = IN_PRODUCT_PAGEVIEW_TRACKED_PATHS.some(
-          (path) => pathname.includes(path)
-        );
-        if (!isTrackedInProductPage) {
-          return;
-        }
+      // Don't track pageviews on conversation pages (/agent/[cId]), but track /agent/new.
+      const isConversationPage = /\/agent\/(?!new$)[^/]+$/.test(pathname);
+      if (isConversationPage) {
+        return;
       }
 
       posthog.capture("$pageview");
