@@ -477,6 +477,10 @@ const InputBarContainer = ({
     disableAutoFocus
   );
 
+  const buttonSize = useMemo(() => {
+    return isMobile ? "sm" : "xs";
+  }, [isMobile]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const contentEditableClasses = classNames(
@@ -561,6 +565,7 @@ const InputBarContainer = ({
                     onNodeUnselect={onNodeUnselect}
                     attachedNodes={attachedNodes}
                     disabled={disableTextInput}
+                    buttonSize={buttonSize}
                   />
                 </>
               )}
@@ -571,13 +576,14 @@ const InputBarContainer = ({
                   onSelect={onMCPServerViewSelect}
                   onDeselect={onMCPServerViewDeselect}
                   disabled={disableTextInput}
+                  buttonSize={buttonSize}
                 />
               )}
               {(actions.includes("assistants-list") ||
                 actions.includes("assistants-list-with-actions")) && (
                 <AssistantPicker
                   owner={owner}
-                  size="xs"
+                  size={buttonSize}
                   onItemClick={(c) => {
                     editorService.insertMention({
                       id: c.sId,
@@ -601,10 +607,11 @@ const InputBarContainer = ({
                   <VoicePicker
                     voiceTranscriberService={voiceTranscriberService}
                     disabled={disableTextInput}
+                    buttonSize={buttonSize}
                   />
                 )}
               <Button
-                size="xs"
+                size={buttonSize}
                 isLoading={
                   disableSendButton &&
                   voiceTranscriberService.status !== "transcribing"

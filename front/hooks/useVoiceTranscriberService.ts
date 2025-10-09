@@ -211,12 +211,6 @@ export function useVoiceTranscriberService({
         onTranscribeDelta,
         onTranscribeComplete,
       });
-
-      sendNotification({
-        type: "success",
-        title: "Voice recorded.",
-        description: "Audio sent for transcription.",
-      });
     },
     [onTranscribeDelta, onTranscribeComplete, owner.sId, sendNotification]
   );
