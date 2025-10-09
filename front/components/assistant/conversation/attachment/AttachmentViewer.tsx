@@ -1,4 +1,5 @@
 import {
+  ArrowDownOnSquareIcon,
   Button,
   Dialog,
   DialogContainer,
@@ -8,7 +9,6 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { DownloadIcon } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
 import type { FileAttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
@@ -147,7 +147,7 @@ export const AttachmentViewer = ({
             {isAudio && (
               <Button
                 onClick={onClickDownload}
-                icon={DownloadIcon}
+                icon={ArrowDownOnSquareIcon}
                 size="mini"
                 tooltip="Download audio file"
                 variant="ghost"
