@@ -31,7 +31,7 @@ export type PatchConversationsRequestBody = t.TypeOf<
   typeof PatchConversationsRequestBodySchema
 >;
 
-export type GetConversationsResponseBody = {
+export type GetConversationResponseBody = {
   conversation: ConversationWithoutContentType;
 };
 
@@ -43,7 +43,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      GetConversationsResponseBody | PatchConversationResponseBody | void
+      GetConversationResponseBody | PatchConversationResponseBody | void
     >
   >,
   auth: Authenticator

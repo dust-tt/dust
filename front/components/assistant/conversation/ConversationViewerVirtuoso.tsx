@@ -318,8 +318,38 @@ const ConversationViewerVirtuoso = ({
             break;
 
           case "conversation_title":
-            void mutateConversation();
-            void mutateConversations(); // to refresh the list of convos in the sidebar (title)
+            void mutateConversation(
+              (current) => {
+                if (current) {
+                  return {
+                    ...current,
+                    conversation: {
+                      ...current.conversation,
+                      title: event.title,
+                    },
+                  };
+                }
+              },
+              { revalidate: false }
+            );
+
+            // to refresh the list of convos in the sidebar (title)
+            void mutateConversations(
+              (currentData) => {
+                if (currentData?.conversations) {
+                  return {
+                    ...currentData,
+                    conversations: currentData.conversations.map((c) =>
+                      c.sId === conversationId
+                        ? { ...c, title: event.title }
+                        : c
+                    ),
+                  };
+                }
+              },
+              { revalidate: false }
+            );
+
             break;
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
@@ -338,11 +368,12 @@ const ConversationViewerVirtuoso = ({
       }
     },
     [
-      mutateConversationParticipants,
+      conversationId,
+      debouncedMarkAsRead,
       mutateConversation,
+      mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
-      debouncedMarkAsRead,
       user.id,
     ]
   );
