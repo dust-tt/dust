@@ -4,13 +4,13 @@ import { isFolder, isWebsite } from "@dust-tt/client";
 import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import type {
   Attachment,
   FileAttachment,
   NodeAttachment,
-} from "@app/components/assistant/conversation/AttachmentCitation";
-import { attachmentToAttachmentCitation } from "@app/components/assistant/conversation/AttachmentCitation";
-import { AttachmentCitation } from "@app/components/assistant/conversation/AttachmentCitation";
+} from "@app/components/assistant/conversation/attachment/types";
+import { attachmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import {
   getDisplayDateFromPastedFileId,
   getDisplayNameFromPastedFileId,

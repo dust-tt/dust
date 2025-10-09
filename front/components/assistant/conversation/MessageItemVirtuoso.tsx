@@ -2,10 +2,8 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessageVirtuoso } from "@app/components/assistant/conversation/AgentMessageVirtuoso";
-import {
-  AttachmentCitation,
-  contentFragmentToAttachmentCitation,
-} from "@app/components/assistant/conversation/AttachmentCitation";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
 import type {
