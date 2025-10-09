@@ -2,7 +2,13 @@ import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
 import type { MembershipRoleType } from "@app/types";
-import { Err, mapToEnumValues, MEMBERSHIP_ROLE_TYPES, Ok } from "@app/types";
+import {
+  Err,
+  mapToEnumValues,
+  MEMBERSHIP_ROLE_TYPES,
+  Ok,
+  pluralize,
+} from "@app/types";
 
 export const inviteUser = createPlugin({
   manifest: {
@@ -65,7 +71,9 @@ export const inviteUser = createPlugin({
     const invalidEmails = emails.filter((email) => !isEmailValid(email));
     if (invalidEmails.length > 0) {
       return new Err(
-        new Error(`Invalid email address(es): ${invalidEmails.join(", ")}`)
+        new Error(
+          `Invalid email address${invalidEmails.length !== 1 ? "es" : ""}: ${invalidEmails.join(", ")}`
+        )
       );
     }
 
@@ -91,13 +99,13 @@ export const inviteUser = createPlugin({
 
     if (successes.length > 0) {
       results.push(
-        `Successfully invited ${successes.length} user(s): ${successes.map((r) => r.email).join(", ")}`
+        `Successfully invited ${successes.length} user${pluralize(successes.length)}: ${successes.map((r) => r.email).join(", ")}`
       );
     }
 
     if (failures.length > 0) {
       results.push(
-        `Failed to invite ${failures.length} user(s):`,
+        `Failed to invite ${failures.length} user${pluralize(failures.length)}:`,
         ...failures.map((r) => `  - ${r.email}: ${r.error_message}`)
       );
     }
