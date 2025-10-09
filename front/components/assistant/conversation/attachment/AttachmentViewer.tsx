@@ -1,4 +1,5 @@
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -7,12 +8,14 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { DownloadIcon } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
 import type { FileAttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
+  getFileDownloadUrl,
   getFileViewUrl,
   useFileContent,
   useFileProcessedContent,
@@ -104,7 +107,7 @@ export const AttachmentViewer = ({
       );
     };
 
-    // ok to not await, we handle loading state with isLoading, and if it fails the text will just not show
+    // ok to not await, we handle loading state with isLoading, and if it fails, the text will just not show
     void handleText();
   }, [
     attachmentCitation,
@@ -127,11 +130,32 @@ export const AttachmentViewer = ({
     </>
   );
 
+  const onClickDownload = () => {
+    const downloadUrl =
+      isAudio && fileId ? getFileDownloadUrl(owner, fileId) : undefined;
+
+    if (downloadUrl) {
+      window.open(downloadUrl, "_blank");
+    }
+  };
+
   return (
     <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
       <DialogContent size="xl" height="lg">
         <DialogHeader>
-          <DialogTitle>{attachmentCitation.title}</DialogTitle>
+          <DialogTitle>
+            {isAudio && (
+              <Button
+                onClick={onClickDownload}
+                icon={DownloadIcon}
+                size="mini"
+                tooltip="Download audio file"
+                variant="ghost"
+                className={"mr-2 align-middle"}
+              />
+            )}
+            {attachmentCitation.title}
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           {isLoading && (
