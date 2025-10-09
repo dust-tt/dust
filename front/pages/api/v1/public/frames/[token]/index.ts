@@ -1,7 +1,11 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
+import { Authenticator, getSession } from "@app/lib/auth";
+import {
+  ConversationModel,
+  ConversationParticipantModel,
+} from "@app/lib/models/assistant/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -86,15 +90,12 @@ async function handler(
       },
     });
   }
+  const session = await getSession(req, res);
 
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
-    const isWorkspaceUser = await isSessionWithUserFromWorkspace(
-      req,
-      res,
-      workspace.sId
-    );
-    if (!isWorkspaceUser) {
+    const auth = await Authenticator.fromSession(session, workspace.sId);
+    if (!auth.isUser()) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
@@ -105,9 +106,34 @@ async function handler(
     }
   }
 
+  const conversationId = file.useCaseMetadata?.conversationId;
+
+  let existingParticipant: ConversationParticipantModel | null = null;
+
+  if (session && conversationId) {
+    const auth = await Authenticator.fromSession(session, workspace.sId);
+    const user = auth.user();
+
+    const conversation = await ConversationModel.findOne({
+      where: { sId: conversationId },
+    });
+
+    if (user && conversation) {
+      existingParticipant = await ConversationParticipantModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          userId: user.id,
+        },
+      });
+    }
+  }
+
   res.status(200).json({
     content: fileContent,
     file: file.toJSON(),
+    conversationId:
+      existingParticipant !== null && conversationId ? conversationId : null,
   });
 }
 

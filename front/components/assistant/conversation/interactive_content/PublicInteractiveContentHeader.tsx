@@ -1,4 +1,9 @@
-import { Button, cn, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChatBubbleBottomCenterTextIcon,
+  cn,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 
 import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -8,6 +13,8 @@ import type { UserTypeWithWorkspaces } from "@app/types";
 interface PublicInteractiveContentHeaderProps {
   title: string;
   user: UserTypeWithWorkspaces | null;
+  workspaceId?: string;
+  conversationId?: string | null;
 }
 
 // Applying flex & justify-center to the title won't make it centered in the header
@@ -18,6 +25,8 @@ interface PublicInteractiveContentHeaderProps {
 export function PublicInteractiveContentHeader({
   title,
   user,
+  workspaceId,
+  conversationId,
 }: PublicInteractiveContentHeaderProps) {
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 @container dark:bg-gray-900">
@@ -45,6 +54,14 @@ export function PublicInteractiveContentHeader({
               variant="outline"
               icon={RocketIcon}
               onClick={withTracking(TRACKING_AREAS.FRAME, "sign_up")}
+            />
+          )}
+          {user && workspaceId && conversationId && (
+            <Button
+              label="Go to conversation"
+              href={`/w/${workspaceId}/agent/${conversationId}`}
+              variant="outline"
+              icon={ChatBubbleBottomCenterTextIcon}
             />
           )}
         </div>
