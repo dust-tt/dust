@@ -13,6 +13,7 @@ const ICONS = {
 const meta = {
   title: "Primitives/Chip",
   component: Chip,
+  tags: ["autodocs"],
   parameters: {
     layout: "padded",
   },

@@ -24,6 +24,7 @@ import {
 const meta = {
   title: "Components/Avatar",
   component: Avatar,
+  tags: ["autodocs"],
 } satisfies Meta<typeof Avatar>;
 
 export default meta;

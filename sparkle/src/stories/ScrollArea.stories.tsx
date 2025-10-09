@@ -4,13 +4,14 @@ import React from "react";
 import { ScrollBar } from "@sparkle/components/ScrollArea";
 import { ScrollArea, Separator } from "@sparkle/index_with_tw_base";
 
-const meta: Meta<typeof ScrollArea> = {
+const meta = {
   title: "Primitives/ScrollArea",
   component: ScrollArea,
-};
+  tags: ["autodocs"],
+} satisfies Meta<typeof ScrollArea>;
 
 export default meta;
-type Story = StoryObj<typeof ScrollArea>;
+type Story = StoryObj<typeof meta>;
 
 const tags = Array.from({ length: 50 }).map(
   (_, i, a) => `v1.2.0-beta.${a.length - i}`
