@@ -23,16 +23,16 @@ import { AgentMessageActions } from "@app/components/assistant/conversation/acti
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import {
-  AgentMessageContentCreationGeneratedFiles,
+  AgentMessageInteractiveContentGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import {
   CitationsContext,
@@ -68,7 +68,7 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
-  isContentCreationFileContentType,
+  isInteractiveContentFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
 } from "@app/types";
@@ -246,8 +246,8 @@ export function AgentMessage({
     conversationId,
   ]);
 
-  // Auto-open content creation drawer when content creation files are available.
-  const { contentCreationFiles } = useAutoOpenContentCreation({
+  // Auto-open interactive content drawer when interactive files are available.
+  const { interactiveFiles } = useAutoOpenInteractiveContent({
     messageStreamState,
     agentMessageToRender,
     isLastMessage,
@@ -602,7 +602,7 @@ export function AgentMessage({
       .filter(
         (file) =>
           !isSupportedImageContentType(file.contentType) &&
-          !isContentCreationFileContentType(file.contentType)
+          !isInteractiveContentFileContentType(file.contentType)
       );
 
     return (
@@ -613,8 +613,8 @@ export function AgentMessage({
           actionProgress={messageStreamState.actionProgress}
           owner={owner}
         />
-        <AgentMessageContentCreationGeneratedFiles
-          files={contentCreationFiles}
+        <AgentMessageInteractiveContentGeneratedFiles
+          files={interactiveFiles}
         />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid

@@ -44,7 +44,7 @@ export default function ConversationSidePanelContainer({
       {currentPanel && !isMobile && (
         <ResizableHandle withHandle className="z-50" />
       )}
-      {/* Panel Container - either Content Creation or Actions */}
+      {/* Panel Container - either Interactive Content or Actions */}
       <ResizablePanel
         ref={panelRef}
         minSize={20}

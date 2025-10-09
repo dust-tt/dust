@@ -6,6 +6,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { frameContentType } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -64,13 +65,13 @@ async function handler(
 
   const { file, content: fileContent, shareScope } = result;
 
-  // Only allow conversation Content Creation files.
-  if (!file.isContentCreation) {
+  // Only allow conversation Frame files.
+  if (!file.isInteractiveContent && file.contentType === frameContentType) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only Frame files can be shared publicly.",
+        message: "Only Frame can be shared publicly.",
       },
     });
   }

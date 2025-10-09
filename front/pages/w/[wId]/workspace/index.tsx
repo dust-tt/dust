@@ -26,7 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
-import { useContentCreationSharingToggle } from "@app/hooks/useContentCreationSharingToggle";
+import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -233,7 +233,7 @@ export default function WorkspaceAdmin({
         </Page.Vertical>
         <Page.Vertical align="stretch" gap="md">
           <Page.H variant="h4">Capabilities</Page.H>
-          <ContentCreationSharingToggle owner={owner} />
+          <InteractiveContentSharingToggle owner={owner} />
         </Page.Vertical>
         {!isSlackDataSourceBotEnabled && (
           <Page.Vertical align="stretch" gap="md">
@@ -406,9 +406,9 @@ function SlackBotToggle({
   );
 }
 
-function ContentCreationSharingToggle({ owner }: { owner: WorkspaceType }) {
-  const { isEnabled, isChanging, doToggleContentCreationSharing } =
-    useContentCreationSharingToggle({ owner });
+function InteractiveContentSharingToggle({ owner }: { owner: WorkspaceType }) {
+  const { isEnabled, isChanging, doToggleInteractiveContentSharing } =
+    useFrameSharingToggle({ owner });
 
   return (
     <ContextItem.List>
@@ -422,7 +422,7 @@ function ContentCreationSharingToggle({ owner }: { owner: WorkspaceType }) {
           <SliderToggle
             selected={isEnabled}
             disabled={isChanging}
-            onClick={doToggleContentCreationSharing}
+            onClick={doToggleInteractiveContentSharing}
           />
         }
       />

@@ -57,12 +57,12 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
-export function isMCPConfigurationForInternalContentCreation(
+export function isMCPConfigurationForInternalInteractiveContent(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "content_creation")
+    isInternalMCPServerOfName(arg.internalMCPServerId, "interactive_content")
   );
 }
 

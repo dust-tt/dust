@@ -20,10 +20,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
-import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
-import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
-import { ShareContentCreationFilePopover } from "@app/components/assistant/conversation/content_creation/ShareContentCreationFilePopover";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
+import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -112,7 +112,7 @@ function ExportContentDropdown({
   );
 }
 
-interface ClientExecutableRendererProps {
+interface FrameRendererProps {
   conversation: ConversationWithoutContentType;
   fileId: string;
   owner: LightWorkspaceType;
@@ -120,13 +120,13 @@ interface ClientExecutableRendererProps {
   contentHash?: string;
 }
 
-export function ClientExecutableRenderer({
+export function FrameRenderer({
   conversation,
   fileId,
   owner,
   lastEditedByAgentConfigurationId,
   contentHash,
-}: ClientExecutableRendererProps) {
+}: FrameRendererProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
@@ -272,7 +272,7 @@ export function ClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <ContentCreationHeader onClose={onClosePanel}>
+      <InteractiveContentHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
             icon={showCode ? EyeIcon : CommandLineIcon}
@@ -287,14 +287,14 @@ export function ClientExecutableRenderer({
               fileId={fileId}
               fileContent={fileContent ?? null}
             />
-            <ShareContentCreationFilePopover
+            <ShareFramePopover
               fileId={fileId}
               owner={owner}
               isUsingConversationFiles={isFileUsingConversationFiles}
             />
           </div>
         </div>
-      </ContentCreationHeader>
+      </InteractiveContentHeader>
 
       <div className="flex-1 overflow-hidden">
         {isLoading ? (

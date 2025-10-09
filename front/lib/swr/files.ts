@@ -187,7 +187,7 @@ export function useFileContent({
   };
 }
 
-export function useShareContentCreationFile({
+export function useShareInteractiveContentFile({
   fileId,
   owner,
 }: {

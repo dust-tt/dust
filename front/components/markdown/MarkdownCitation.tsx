@@ -39,7 +39,7 @@ export function getCitationIcon(
   }
 }
 
-// TODO(CONTENT_CREATION 2025-08-27): Use proper and distinct types for content creation content.
+// TODO(interactive_content 2025-08-27): Use proper and distinct types for Interactive Content.
 export interface MarkdownCitation {
   description?: string;
   href?: string;

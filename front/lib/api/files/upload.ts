@@ -23,7 +23,10 @@ import type {
   SupportedImageContentType,
 } from "@app/types";
 import { isSupportedAudioContentType } from "@app/types";
-import { isContentCreationFileContentType, normalizeError } from "@app/types";
+import {
+  isInteractiveContentFileContentType,
+  normalizeError,
+} from "@app/types";
 import {
   assertNever,
   Err,
@@ -360,8 +363,8 @@ const getProcessingFunction = ({
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
-  // Content Creation file types are not processed.
-  if (isContentCreationFileContentType(contentType)) {
+  // Interactive Content file types are not processed.
+  if (isInteractiveContentFileContentType(contentType)) {
     return undefined;
   }
 

@@ -155,7 +155,7 @@ function useVisualizationDataHandler({
           datadogLogger.info("Visualization error", {
             errorMessage: data.params.errorMessage,
             fileId: data.params.fileId,
-            isContentCreation: data.params.isContentCreation,
+            isInteractiveContent: data.params.isInteractiveContent,
           });
           setErrorMessage(data.params.errorMessage);
           break;

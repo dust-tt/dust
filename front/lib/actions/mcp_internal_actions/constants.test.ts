@@ -45,7 +45,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "missing_action_catcher", id: 13 },
       { name: "conversation_files", id: 17 },
       { name: "agent_memory", id: 21 },
-      { name: "content_creation", id: 23 },
+      { name: "interactive_content", id: 23 },
       { name: "slideshow", id: 28 },
       { name: "deep_research", id: 29 },
       { name: "search", id: 1006 },

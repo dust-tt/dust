@@ -1,25 +1,25 @@
 import { Spinner } from "@dust-tt/sparkle";
 
-import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
-import { PublicClientExecutableRenderer } from "@app/components/assistant/conversation/content_creation/PublicClientExecutableRenderer";
-import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/content_creation/UnsupportedContentRenderer";
+import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { PublicFrameRenderer } from "@app/components/assistant/conversation/interactive_content/PublicFrameRenderer";
+import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import Custom404 from "@app/pages/404";
-import { clientExecutableContentType } from "@app/types";
+import { frameContentType } from "@app/types";
 
-interface PublicContentCreationContainerProps {
+interface PublicInteractiveContentContainerProps {
   shareToken: string;
   workspaceId: string;
 }
 
 /**
- * Public-specific container for content creation.
+ * Public-specific container for interactive content.
  * Works without authentication, conversation context, or session requirements.
  */
-export function PublicContentCreationContainer({
+export function PublicInteractiveContentContainer({
   shareToken,
   workspaceId,
-}: PublicContentCreationContainerProps) {
+}: PublicInteractiveContentContainerProps) {
   const { frameMetadata, isFrameLoading, error } = usePublicFrame({
     shareToken,
   });
@@ -39,9 +39,9 @@ export function PublicContentCreationContainer({
     }
 
     switch (frameMetadata.contentType) {
-      case clientExecutableContentType:
+      case frameContentType:
         return (
-          <PublicClientExecutableRenderer
+          <PublicFrameRenderer
             fileId={frameMetadata.sId}
             fileName={frameMetadata.fileName}
             shareToken={shareToken}

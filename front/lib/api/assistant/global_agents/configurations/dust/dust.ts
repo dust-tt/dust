@@ -8,8 +8,8 @@ import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guid
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getAgentRouterToolsConfiguration,
-  _getContentCreationToolConfiguration,
   _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -37,7 +37,7 @@ export function _getDustGlobalAgent(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     deepResearchMCPServerView,
-    contentCreationMCPServerView,
+    interactiveContentMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
@@ -45,7 +45,7 @@ export function _getDustGlobalAgent(
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
     deepResearchMCPServerView: MCPServerViewResource | null;
-    contentCreationMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -298,9 +298,9 @@ export function _getDustGlobalAgent(
   }
 
   actions.push(
-    ..._getContentCreationToolConfiguration({
+    ..._getInteractiveContentToolConfiguration({
       agentId: GLOBAL_AGENTS_SID.DUST,
-      contentCreationMCPServerView,
+      interactiveContentMCPServerView,
     })
   );
 

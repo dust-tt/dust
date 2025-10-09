@@ -5,7 +5,7 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationContentCreationFileContentSchema } from "./output_schemas";
+import { NotificationInteractiveContentFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 import { TIMEZONE_NAMES } from "./timezone_names";
 
@@ -273,13 +273,11 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedAudioFileFormats
 >();
 
-const ContentCreationExecutableSchema = z.literal(
-  "application/vnd.dust.client-executable"
-);
+const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
-  ContentCreationExecutableSchema,
+  FrameContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -1156,7 +1154,7 @@ const NotificationStoreResourceContentSchema = z.object({
 });
 
 const NotificationContentSchema = z.union([
-  NotificationContentCreationFileContentSchema,
+  NotificationInteractiveContentFileContentSchema,
   NotificationImageContentSchema,
   NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,

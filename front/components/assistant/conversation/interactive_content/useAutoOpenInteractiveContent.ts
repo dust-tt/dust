@@ -1,30 +1,30 @@
 import React from "react";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { isContentCreationFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType } from "@app/types";
-import { isContentCreationFileContentType, removeNulls } from "@app/types";
+import { isInteractiveContentFileContentType, removeNulls } from "@app/types";
 
-interface UseAutoOpenContentCreationProps {
+interface useAutoOpenInteractiveContentProps {
   agentMessageToRender: LightAgentMessageType;
   isLastMessage: boolean;
   messageStreamState: MessageTemporaryState;
 }
 
 /**
- * Custom hook to automatically open content creation drawer based on agent message state.
- * Also returns the content creation files that were generated in the agent message.
+ * Custom hook to automatically open interactive content drawer based on agent message state.
+ * Also returns the interactive files that were generated in the agent message.
  *
  * Logic:
  * - Progress notifications (real-time): Always open drawer with updatedAt timestamp.
  * - Generated files (completed): Only open drawer on last message, skip updatedAt.
  */
-export function useAutoOpenContentCreation({
+export function useAutoOpenInteractiveContent({
   agentMessageToRender,
   isLastMessage,
   messageStreamState,
-}: UseAutoOpenContentCreationProps) {
+}: useAutoOpenInteractiveContentProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   // Track the last opened fileId to prevent double-opening glitch.
@@ -42,14 +42,14 @@ export function useAutoOpenContentCreation({
   // allowing generated→progress refreshes (when file is updated with new timestamp).
   const lastOpenedFileIdRef = React.useRef<string | null>(null);
 
-  // Get content creation files from progress notifications.
-  const contentCreationFilesFromProgress = React.useMemo(
+  // Get interactive files from progress notifications.
+  const interactiveFilesFromProgress = React.useMemo(
     () =>
       removeNulls(
         Array.from(messageStreamState.actionProgress.entries()).map(
           ([, progress]) => {
             const output = progress.progress?.data.output;
-            if (isContentCreationFileContentOutput(output)) {
+            if (isInteractiveContentFileContentOutput(output)) {
               return output;
             }
             return null;
@@ -59,46 +59,46 @@ export function useAutoOpenContentCreation({
     [messageStreamState.actionProgress]
   );
 
-  // Get completed content creation files from generatedFiles.
-  const completedContentCreationFiles = React.useMemo(
+  // Get completed interactive files from generatedFiles.
+  const completedInteractiveFiles = React.useMemo(
     () =>
       agentMessageToRender.generatedFiles.filter((file) =>
-        isContentCreationFileContentType(file.contentType)
+        isInteractiveContentFileContentType(file.contentType)
       ),
     [agentMessageToRender.generatedFiles]
   );
 
   React.useEffect(() => {
     // Handle progress notifications - always open drawer (supports generated->progress refresh).
-    if (contentCreationFilesFromProgress.length > 0) {
-      const [firstFile] = contentCreationFilesFromProgress;
+    if (interactiveFilesFromProgress.length > 0) {
+      const [firstFile] = interactiveFilesFromProgress;
       if (firstFile?.fileId) {
         lastOpenedFileIdRef.current = firstFile.fileId;
         // Always use updatedAt for real-time updates to trigger refresh.
         openPanel({
-          type: "content_creation",
+          type: "interactive_content",
           fileId: firstFile.fileId,
           timestamp: firstFile.updatedAt,
         });
       }
     }
     // Handle completed files - only open drawer on last message.
-    else if (completedContentCreationFiles.length > 0 && isLastMessage) {
-      const [firstFile] = completedContentCreationFiles;
+    else if (completedInteractiveFiles.length > 0 && isLastMessage) {
+      const [firstFile] = completedInteractiveFiles;
       const isNotAlreadyOpenedOnFile =
         lastOpenedFileIdRef.current !== firstFile.fileId;
       if (firstFile?.fileId && isNotAlreadyOpenedOnFile) {
         lastOpenedFileIdRef.current = firstFile.fileId;
         // Skip updatedAt for completed files since they're final state.
         openPanel({
-          type: "content_creation",
+          type: "interactive_content",
           fileId: firstFile.fileId,
         });
       }
     }
   }, [
-    contentCreationFilesFromProgress,
-    completedContentCreationFiles,
+    completedInteractiveFiles,
+    interactiveFilesFromProgress,
     isLastMessage,
     openPanel,
   ]);
@@ -109,6 +109,6 @@ export function useAutoOpenContentCreation({
   }, [agentMessageToRender.sId]);
 
   return {
-    contentCreationFiles: completedContentCreationFiles,
+    interactiveFiles: completedInteractiveFiles,
   };
 }

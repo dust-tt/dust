@@ -8,8 +8,8 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import {
   _getAgentRouterToolsConfiguration,
-  _getContentCreationToolConfiguration,
   _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import config from "@app/lib/api/config";
@@ -65,14 +65,14 @@ export function _getHelperGlobalAgent({
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
   searchMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
   helperPromptInstance: HelperAssistantPrompt;
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let prompt = "";
 
@@ -154,9 +154,9 @@ export function _getHelperGlobalAgent({
   const metadata = getGlobalAgentMetadata(sId);
 
   actions.push(
-    ..._getContentCreationToolConfiguration({
+    ..._getInteractiveContentToolConfiguration({
       agentId: sId,
-      contentCreationMCPServerView,
+      interactiveContentMCPServerView,
     })
   );
 

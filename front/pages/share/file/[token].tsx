@@ -1,6 +1,6 @@
 import Head from "next/head";
 
-import { PublicContentCreationContainer } from "@app/components/assistant/conversation/content_creation/PublicContentCreationContainer";
+import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer";
 import config from "@app/lib/api/config";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
@@ -118,7 +118,7 @@ export default function SharedFilePage({
         <link rel="icon" type="image/png" href={faviconPath} />
       </Head>
       <div className="h-dvh flex w-full">
-        <PublicContentCreationContainer
+        <PublicInteractiveContentContainer
           shareToken={token}
           workspaceId={workspaceId}
         />

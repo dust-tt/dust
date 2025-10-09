@@ -7,7 +7,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import { frameContentType, isString } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -65,8 +65,11 @@ async function handler(
 
   const { file: frameFile, shareScope } = result;
 
-  // Only allow conversation Content Creation files.
-  if (!frameFile.isContentCreation) {
+  // Only allow conversation Frame files.
+  if (
+    !frameFile.isInteractiveContent &&
+    frameFile.contentType === frameContentType
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
