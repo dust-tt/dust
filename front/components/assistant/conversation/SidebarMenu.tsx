@@ -16,7 +16,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
   Label,
   ListCheckIcon,
   MagicIcon,
