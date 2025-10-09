@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   ChevronDownIcon,
   CollapsibleComponent,
   DropdownMenu,
@@ -12,11 +13,14 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
-import { Controller } from "react-hook-form";
+import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
-  PostWebhookSourcesSchema,
+  basePostWebhookSourcesSchema,
+  refineSubscribedEvents,
+  WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
 } from "@app/types/triggers/webhooks";
 
@@ -34,19 +38,22 @@ export const validateCustomHeadersFromString = (value: string | null) => {
   }
 };
 
-export const CreateWebhookSourceSchema = PostWebhookSourcesSchema.extend({
-  customHeaders: z
-    .string()
-    .nullable()
-    .refine(validateCustomHeadersFromString, "Invalid JSON format"),
-  autoGenerate: z.boolean().default(true),
-}).refine(
-  (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
-  {
-    message: "Secret is required",
-    path: ["secret"],
-  }
-);
+export const CreateWebhookSourceSchema = basePostWebhookSourcesSchema
+  .extend({
+    customHeaders: z
+      .string()
+      .nullable()
+      .refine(validateCustomHeadersFromString, "Invalid JSON format"),
+    autoGenerate: z.boolean().default(true),
+  })
+  .refine(...refineSubscribedEvents)
+  .refine(
+    (data) => data.autoGenerate || (data.secret ?? "").trim().length > 0,
+    {
+      message: "Secret is required",
+      path: ["secret"],
+    }
+  );
 
 export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
@@ -54,11 +61,18 @@ export type CreateWebhookSourceFormData = z.infer<
 
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
+  kind: WebhookSourceKind;
 };
 
 export function CreateWebhookSourceFormContent({
   form,
+  kind,
 }: CreateWebhookSourceFormContentProps) {
+  const selectedEvents = useWatch({
+    control: form.control,
+    name: "subscribedEvents",
+  });
+
   return (
     <>
       <Controller
@@ -76,6 +90,67 @@ export function CreateWebhookSourceFormContent({
           />
         )}
       />
+
+      {kind !== "custom" &&
+        WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.length > 0 && (
+          <Controller
+            control={form.control}
+            name="subscribedEvents"
+            render={({ fieldState }) => (
+              <div className="space-y-3">
+                <Label htmlFor="subscribedEvents">Subscribed events</Label>
+                <div className="space-y-2">
+                  {WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.map(
+                    (event) => {
+                      const isSelected = selectedEvents.includes(event.value);
+                      return (
+                        <div
+                          key={event.value}
+                          className="flex items-center space-x-3"
+                        >
+                          <Checkbox
+                            id={`${kind}-event-${event.value}`}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                form.setValue(
+                                  "subscribedEvents",
+                                  [...selectedEvents, event.value],
+                                  { shouldValidate: true, shouldDirty: true }
+                                );
+                              } else {
+                                form.setValue(
+                                  "subscribedEvents",
+                                  selectedEvents.filter(
+                                    (e) => e !== event.value
+                                  ),
+                                  { shouldValidate: true, shouldDirty: true }
+                                );
+                              }
+                            }}
+                          />
+                          <div className="grid gap-1.5 leading-none">
+                            <label
+                              htmlFor={`${kind}-event-${event.value}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {event.name}
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+                {fieldState.error && (
+                  <div className="dark:text-warning-night flex items-center gap-1 text-xs text-warning">
+                    {fieldState.error.message}
+                  </div>
+                )}
+              </div>
+            )}
+          />
+        )}
 
       <div>
         <CollapsibleComponent
