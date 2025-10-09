@@ -6,7 +6,6 @@ import {
   Checkbox,
   ContactsRobotIcon,
   DocumentIcon,
-  DotIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,7 +17,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   ExclamationCircleIcon,
-  Icon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -612,14 +610,6 @@ const RenderConversation = ({
     (moment(conversation.created).isSame(moment(), "day")
       ? "New Conversation"
       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
-
-  const UnreadIcon = () => (
-    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
-  );
-
-  const ErrorIcon = () => (
-    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-red-500" />
-  );
 
   return (
     <>

@@ -369,6 +369,7 @@ const ConversationViewerVirtuoso = ({
       mutateConversations,
       mutateMessages,
       debouncedMarkAsRead,
+      conversationId,
       user.id,
     ]
   );

@@ -356,6 +356,9 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
+      mutateConversationParticipants,
+      conversationId,
+      debouncedMarkAsRead,
     ]
   );
 
