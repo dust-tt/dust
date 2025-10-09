@@ -107,6 +107,8 @@ export function WebhookSourceDetailsInfo({
     webhookSourceView.webhookSource.urlSecret,
   ]);
 
+  const isCustomKind = webhookSourceView.webhookSource.kind === "custom";
+
   return (
     <div className="flex flex-col gap-2">
       {editedLabel !== null && (
@@ -117,7 +119,9 @@ export function WebhookSourceDetailsInfo({
 
       <div className="space-y-5 text-foreground dark:text-foreground-night">
         <div className="space-y-2">
-          <Label htmlFor="trigger-name-icon">Name & Icon</Label>
+          <Label htmlFor="trigger-name-icon">
+            {isCustomKind ? "Name & Icon" : "Name"}
+          </Label>
           <div className="flex items-end space-x-2">
             <div className="flex-grow">
               <Input
@@ -128,31 +132,33 @@ export function WebhookSourceDetailsInfo({
                 placeholder={webhookSourceView.webhookSource.name}
               />
             </div>
-            <PopoverRoot open={isPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={IconComponent}
-                  onClick={() => setIsPopoverOpen(true)}
-                  isSelect
-                />
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-fit py-0"
-                onInteractOutside={() => setIsPopoverOpen(false)}
-                onEscapeKeyDown={() => setIsPopoverOpen(false)}
-              >
-                <IconPicker
-                  icons={ActionIcons}
-                  selectedIcon={selectedIcon ?? DEFAULT_WEBHOOK_ICON}
-                  onIconSelect={(iconName: string) => {
-                    form.setValue("icon", iconName, { shouldDirty: true });
-                    setIsPopoverOpen(false);
-                  }}
-                />
-              </PopoverContent>
-            </PopoverRoot>
+            {isCustomKind && (
+              <PopoverRoot open={isPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={IconComponent}
+                    onClick={() => setIsPopoverOpen(true)}
+                    isSelect
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-fit py-0"
+                  onInteractOutside={() => setIsPopoverOpen(false)}
+                  onEscapeKeyDown={() => setIsPopoverOpen(false)}
+                >
+                  <IconPicker
+                    icons={ActionIcons}
+                    selectedIcon={selectedIcon ?? DEFAULT_WEBHOOK_ICON}
+                    onIconSelect={(iconName: string) => {
+                      form.setValue("icon", iconName, { shouldDirty: true });
+                      setIsPopoverOpen(false);
+                    }}
+                  />
+                </PopoverContent>
+              </PopoverRoot>
+            )}
           </div>
         </div>
 
