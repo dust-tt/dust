@@ -28,6 +28,7 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
@@ -51,7 +52,6 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 
 const MAX_AUTO_RETRY = 3;
 
@@ -59,7 +59,6 @@ const MAX_AUTO_RETRY = 3;
 // action to execute and generate its inputs.
 //
 // TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
-
 // be refactored in a follow up PR.
 export async function runModelActivity(
   auth: Authenticator,
