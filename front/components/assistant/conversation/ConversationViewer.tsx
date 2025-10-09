@@ -375,6 +375,7 @@ const ConversationViewer = React.forwardRef<
       mutateConversations,
       mutateMessages,
       mutateConversationParticipants,
+      conversationId,
       debouncedMarkAsRead,
     ]
   );
