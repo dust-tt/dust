@@ -89,7 +89,7 @@ export const credentialsFromProviders = (
 };
 
 export const dustManagedCredentials = (): CredentialsType => {
-  // Use the EU OpenAI key and endpoint if the Dust region is europe-west1.
+  // Based on the Dust region, we use different keys / endpoints for some providers.
   const isEuropeRegion = DUST_REGION === "europe-west1";
 
   return {

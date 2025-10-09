@@ -565,7 +565,7 @@ export async function runModelActivity(
         } | null;
         const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
 
-        // Determine the openai region
+        // Pass the current region, which helps decide whether encrypted blocks are usable
         const currentRegion = regionsConfig.getCurrentRegion();
         let region: "us" | "eu";
         switch (currentRegion) {
