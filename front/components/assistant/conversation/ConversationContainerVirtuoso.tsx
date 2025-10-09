@@ -13,6 +13,7 @@ import { useActionValidationContext } from "@app/components/assistant/conversati
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewerVirtuoso from "@app/components/assistant/conversation/ConversationViewerVirtuoso";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
@@ -28,7 +29,6 @@ import {
 import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   ContentFragmentsType,
-  MentionType,
   Result,
   SubscriptionType,
   UserType,
@@ -80,7 +80,7 @@ export function ConversationContainerVirtuoso({
   const handleConversationCreation = useCallback(
     async (
       input: string,
-      mentions: MentionType[],
+      mentions: EditorMention[],
       contentFragments: ContentFragmentsType,
       selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
@@ -99,7 +99,9 @@ export function ConversationContainerVirtuoso({
         user,
         messageData: {
           input,
-          mentions,
+          mentions: mentions.map((mention) => ({
+            configurationId: mention.id,
+          })),
           contentFragments,
           clientSideMCPServerIds: removeNulls([serverId]),
           selectedMCPServerViewIds,
@@ -127,11 +129,7 @@ export function ConversationContainerVirtuoso({
       } else {
         // We start the push before creating the message to optimize for instantaneity as well.
         await router.push(
-          getAgentRoute(
-            owner.sId,
-            conversationRes.value.sId,
-            "justCreated=true"
-          ),
+          getAgentRoute(owner.sId, conversationRes.value.sId),
           undefined,
           { shallow: true }
         );
