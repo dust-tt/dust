@@ -499,7 +499,8 @@ The directive should be used to display a clickable version of the agent name in
       },
       icon: "GcalLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-      instructions: null,
+      instructions:
+        "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool.",
     },
   },
   conversation_files: {
