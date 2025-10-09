@@ -19,7 +19,7 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
-import { Controller, useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
@@ -69,6 +69,16 @@ export function WebhookSourceDetailsInfo({
   const sendNotification = useSendNotification();
   const form = useFormContext<WebhookSourceFormValues>();
 
+  const { field: nameField, fieldState: nameFieldState } = useController({
+    control: form.control,
+    name: "name",
+  });
+
+  const { field: descriptionField } = useController({
+    control: form.control,
+    name: "description",
+  });
+
   const editedLabel = useMemo(
     () => getEditedLabel(webhookSourceView),
     [webhookSourceView]
@@ -110,18 +120,12 @@ export function WebhookSourceDetailsInfo({
           <Label htmlFor="trigger-name-icon">Name & Icon</Label>
           <div className="flex items-end space-x-2">
             <div className="flex-grow">
-              <Controller
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    id="trigger-name-icon"
-                    isError={!!form.formState.errors.name}
-                    message={form.formState.errors.name?.message}
-                    placeholder={webhookSourceView.webhookSource.name}
-                  />
-                )}
+              <Input
+                {...nameField}
+                id="trigger-name-icon"
+                isError={!!nameFieldState.error}
+                message={nameFieldState.error?.message}
+                placeholder={webhookSourceView.webhookSource.name}
               />
             </div>
             <PopoverRoot open={isPopoverOpen}>
@@ -154,17 +158,11 @@ export function WebhookSourceDetailsInfo({
 
         <div className="space-y-2">
           <Label htmlFor="trigger-description">Description</Label>
-          <Controller
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <TextArea
-                {...field}
-                id="trigger-description"
-                rows={3}
-                placeholder="Enter a description for this trigger"
-              />
-            )}
+          <TextArea
+            {...descriptionField}
+            id="trigger-description"
+            rows={3}
+            placeholder="Enter a description for this trigger"
           />
         </div>
       </div>
