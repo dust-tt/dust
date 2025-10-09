@@ -29,9 +29,9 @@ export function PublicInteractiveContentHeader({
   conversationId,
 }: PublicInteractiveContentHeaderProps) {
   return (
-    <AppLayoutTitle className="h-12 bg-gray-50 @container dark:bg-gray-900">
+    <AppLayoutTitle className="h-12 bg-gray-50 px-4 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">
-        <div className="grow-1 flex shrink-0 items-center md:basis-60">
+        <div className="grow-1 flex shrink-0 basis-12 items-center md:basis-60">
           <PublicWebsiteLogo size="small" />
         </div>
 
@@ -46,7 +46,7 @@ export function PublicInteractiveContentHeader({
           </span>
         </div>
 
-        <div className="md:grow-1 flex justify-end md:basis-60">
+        <div className="grow-1 flex basis-12 justify-end md:basis-60">
           {!user && (
             <Button
               label="Try it yourself"
@@ -54,6 +54,7 @@ export function PublicInteractiveContentHeader({
               variant="outline"
               icon={RocketIcon}
               onClick={withTracking(TRACKING_AREAS.FRAME, "sign_up")}
+              className="hidden sm:flex"
             />
           )}
           {user && workspaceId && conversationId && (
@@ -62,6 +63,7 @@ export function PublicInteractiveContentHeader({
               href={`/w/${workspaceId}/agent/${conversationId}`}
               variant="outline"
               icon={ChatBubbleBottomCenterTextIcon}
+              className="hidden sm:flex"
             />
           )}
         </div>
