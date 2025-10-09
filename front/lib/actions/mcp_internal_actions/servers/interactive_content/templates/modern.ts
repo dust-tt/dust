@@ -3,8 +3,9 @@ import type { SlideTemplate } from "../templates";
 export const modernTemplate: SlideTemplate = {
   id: "modern",
   name: "Modern",
-  description: "Contemporary design with bold typography and strategic use of color",
-  type: "slides", 
+  description:
+    "Contemporary design with bold typography and strategic use of color",
+  type: "slides",
   structure: "Hero → Overview → Features → Conclusion",
   code: `<Slideshow.Slide.Cover
     title="Your Presentation"
@@ -13,12 +14,12 @@ export const modernTemplate: SlideTemplate = {
     titleClassName="text-5xl font-bold"
     subtitleClassName="text-xl font-light opacity-90"
   />
-  
+
   <Slideshow.Slide.Split className="bg-white">
     <div className="space-y-6">
       <Slideshow.Heading className="text-slate-900 font-semibold">Overview</Slideshow.Heading>
       <Slideshow.Text className="text-lg text-slate-700 leading-relaxed">
-        Modern, professional content with strategic use of typography and 
+        Modern, professional content with strategic use of typography and
         contemporary design elements.
       </Slideshow.Text>
     </div>
@@ -28,7 +29,7 @@ export const modernTemplate: SlideTemplate = {
       </div>
     </div>
   </Slideshow.Slide.Split>
-  
+
   <Slideshow.Slide.Full className="bg-slate-50">
     <Slideshow.Heading className="text-center text-slate-900 font-semibold mb-10">Key Features</Slideshow.Heading>
     <div className="grid grid-cols-3 gap-8">
@@ -54,5 +55,5 @@ export const modernTemplate: SlideTemplate = {
         <div className="text-sm text-slate-600">Strategic implementation</div>
       </div>
     </div>
-  </Slideshow.Slide.Full>`
+  </Slideshow.Slide.Full>`,
 };

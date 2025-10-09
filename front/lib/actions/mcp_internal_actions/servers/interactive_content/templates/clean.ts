@@ -3,7 +3,8 @@ import type { SlideTemplate } from "../templates";
 export const cleanTemplate: SlideTemplate = {
   id: "clean",
   name: "Clean",
-  description: "Crisp, organized design with clear hierarchy and professional typography",
+  description:
+    "Crisp, organized design with clear hierarchy and professional typography",
   type: "slides",
   structure: "Title → Content → Analysis → Actions",
   code: `<Slideshow.Slide.Cover
@@ -13,19 +14,19 @@ export const cleanTemplate: SlideTemplate = {
     titleClassName="text-4xl font-semibold text-gray-900"
     subtitleClassName="text-lg text-gray-600 font-medium"
   />
-  
+
   <Slideshow.Slide.Full className="bg-white">
     <div className="max-w-4xl mx-auto">
       <Slideshow.Heading className="text-gray-900 font-semibold mb-6">
         Main Content
       </Slideshow.Heading>
       <Slideshow.Text className="text-lg leading-relaxed text-gray-700">
-        Clear, professional content with excellent readability and 
+        Clear, professional content with excellent readability and
         structured information hierarchy.
       </Slideshow.Text>
     </div>
   </Slideshow.Slide.Full>
-  
+
   <Slideshow.Slide.Split className="bg-white">
     <div className="space-y-4">
       <Slideshow.Heading className="text-gray-900 font-semibold">Analysis</Slideshow.Heading>
@@ -50,16 +51,16 @@ export const cleanTemplate: SlideTemplate = {
       </div>
     </div>
   </Slideshow.Slide.Split>
-  
+
   <Slideshow.Slide.Bullets
     title="Action Items"
     items={[
       "First recommended action",
-      "Second strategic initiative", 
+      "Second strategic initiative",
       "Third implementation step",
       "Fourth follow-up activity"
     ]}
     className="bg-white"
     titleClassName="text-gray-900 font-semibold"
-  />`
+  />`,
 };
