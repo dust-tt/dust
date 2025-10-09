@@ -1,13 +1,12 @@
 import { Spinner } from "@dust-tt/sparkle";
 import React from "react";
-import { useCookies } from "react-cookie";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
 import { PublicContentCreationHeader } from "@app/components/assistant/conversation/content_creation/PublicContentCreationHeader";
-import { WORKOS_SESSION } from "@app/lib/cookies";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
+import { useUser } from "@app/lib/swr/user";
 
 interface PublicClientExecutableRendererProps {
   fileId: string;
@@ -25,11 +24,10 @@ export function PublicClientExecutableRenderer({
   const { frameContent, isFrameLoading, error } = usePublicFrame({
     shareToken,
   });
-  const [workOsCookie] = useCookies([WORKOS_SESSION]);
-  const hasWorkspace =
-    workOsCookie &&
-    typeof workOsCookie === "object" &&
-    "lastWorkspaceId" in workOsCookie;
+  const { user } = useUser({
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+  });
 
   const getFileBlob = React.useCallback(
     async (fileId: string): Promise<Blob | null> => {
@@ -69,7 +67,7 @@ export function PublicClientExecutableRenderer({
     <div className="flex h-full flex-col">
       <PublicContentCreationHeader
         title={formatFilenameForDisplay(fileName ?? "Frame")}
-        hasWorkspace={hasWorkspace}
+        user={user}
       />
 
       {/* Content */}

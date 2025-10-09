@@ -1,7 +1,6 @@
 import type { UserType } from "@app/types/user";
 
 export const DUST_COOKIES_ACCEPTED = "dust-cookies-accepted";
-export const WORKOS_SESSION = "workos_session";
 
 /**
  * Determines if cookies have been accepted based on cookie value or user authentication
