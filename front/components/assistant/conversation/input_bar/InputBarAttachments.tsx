@@ -145,6 +145,7 @@ export function InputBarAttachments({
           return (
             <AttachmentCitation
               key={attachmentCitation.id}
+              owner={owner}
               attachmentCitation={attachmentCitation}
               fileUploaderService={files.service}
             />

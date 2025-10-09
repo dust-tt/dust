@@ -113,6 +113,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
             return (
               <AttachmentCitation
+                owner={context.owner}
                 key={attachmentCitation.id}
                 attachmentCitation={attachmentCitation}
                 fileUploaderService={fileUploaderService}

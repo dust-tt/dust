@@ -18,15 +18,18 @@ import {
   FolderIcon,
   Icon,
   ImageIcon,
+  Spinner,
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { useFileContent, useFileProcessedContent } from "@app/lib/swr/files";
 import type {
   ContentFragmentType,
+  LightWorkspaceType,
   SupportedContentFragmentType,
   SupportedFileContentType,
 } from "@app/types";
@@ -70,6 +73,7 @@ export type Attachment = FileAttachment | NodeAttachment;
 
 interface BaseAttachmentCitation {
   id: string;
+  attachmentCitationType: "fragment" | "inputBar";
   title: string;
   sourceUrl?: string | null;
   visual: React.ReactNode;
@@ -98,9 +102,30 @@ export type AttachmentCitation =
   | NodeAttachmentCitation;
 
 interface AttachmentCitationProps {
+  owner: LightWorkspaceType;
   attachmentCitation: AttachmentCitation;
   fileUploaderService: FileUploaderService;
 }
+const isTextualContentType = (attachmentCitation: AttachmentCitation) => {
+  if (attachmentCitation.type !== "file") {
+    return false;
+  }
+  const ct = attachmentCitation.contentType;
+  return (
+    ct.startsWith("text/") ||
+    ct === "application/json" ||
+    ct === "application/xml" ||
+    ct === "application/vnd.dust.section.json"
+  );
+};
+
+const isAudioContentType = (attachmentCitation: AttachmentCitation) => {
+  if (attachmentCitation.type !== "file") {
+    return false;
+  }
+  const ct = attachmentCitation.contentType;
+  return ct.startsWith("audio/");
+};
 
 function getContentTypeIcon(
   contentType: string | undefined
@@ -123,60 +148,11 @@ function getContentTypeIcon(
 }
 
 export function AttachmentCitation({
+  owner,
   attachmentCitation,
   fileUploaderService,
 }: AttachmentCitationProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [viewerTitle, setViewerTitle] = useState("");
-  const [viewerText, setViewerText] = useState("");
-
-  const openPastedViewer = async (attachmentCitation: AttachmentCitation) => {
-    if (attachmentCitation.type !== "file") {
-      return;
-    }
-    if (!attachmentCitation.fileId) {
-      return;
-    }
-    const blob = fileUploaderService.getFileBlob(attachmentCitation.fileId);
-    if (!blob) {
-      return;
-    }
-    const text = await blob.file.text();
-    setViewerTitle(attachmentCitation.title);
-    setViewerText(text);
-    setViewerOpen(true);
-  };
-
-  const isTextualContentType = (attachmentCitation: AttachmentCitation) => {
-    if (attachmentCitation.type !== "file") {
-      return false;
-    }
-    const ct = attachmentCitation.contentType;
-    if (!ct) {
-      return false;
-    }
-    return (
-      ct.startsWith("text/") ||
-      ct === "application/json" ||
-      ct === "application/xml" ||
-      ct === "application/vnd.dust.section.json"
-    );
-  };
-  const onClick = isTextualContentType(attachmentCitation)
-    ? () => openPastedViewer(attachmentCitation)
-    : undefined;
-
-  // citation cannot have href and onClick at the same time
-  const citationInteractionProps = onClick
-    ? {
-        onClick: async (e: React.MouseEvent<HTMLDivElement>) => {
-          e.preventDefault();
-          await onClick();
-        },
-      }
-    : {
-        href: attachmentCitation.sourceUrl ?? "",
-      };
 
   const tooltipContent =
     attachmentCitation.type === "file" ? (
@@ -200,16 +176,32 @@ export function AttachmentCitation({
       ? `${attachmentCitation.sourceUrl}?action=view`
       : undefined;
 
+  const isLoading =
+    attachmentCitation.type === "file" && attachmentCitation.isUploading;
+
+  const canOpenInDialog =
+    attachmentCitation.type === "file" &&
+    (isTextualContentType(attachmentCitation) ||
+      isAudioContentType(attachmentCitation));
+
+  const dialogOrDownloadProps = canOpenInDialog
+    ? {
+        onClick: (e: React.MouseEvent<HTMLDivElement>) => {
+          e.preventDefault();
+          setViewerOpen(true);
+        },
+      }
+    : {
+        href: attachmentCitation.sourceUrl ?? undefined,
+      };
+
   return (
     <>
       <Tooltip
         trigger={
           <Citation
-            {...citationInteractionProps}
-            isLoading={
-              attachmentCitation.type === "file" &&
-              attachmentCitation.isUploading
-            }
+            {...dialogOrDownloadProps}
+            isLoading={isLoading}
             action={
               attachmentCitation.onRemove && (
                 <CitationClose
@@ -244,25 +236,15 @@ export function AttachmentCitation({
         }
         label={tooltipContent}
       />
-
-      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent size="xl" height="lg">
-          <DialogHeader>
-            <DialogTitle>{viewerTitle}</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
-              {viewerText}
-            </pre>
-          </DialogContainer>
-          <DialogFooter
-            rightButtonProps={{
-              label: "Close",
-              variant: "highlight",
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      {attachmentCitation.type === "file" && (
+        <FileViewer
+          setViewerOpen={setViewerOpen}
+          viewerOpen={viewerOpen}
+          attachmentCitation={attachmentCitation}
+          fileUploaderService={fileUploaderService}
+          owner={owner}
+        />
+      )}
     </>
   );
 }
@@ -282,6 +264,7 @@ export function contentFragmentToAttachmentCitation(
           ? contentFragment.fileId
           : null,
       contentType: contentFragment.contentType,
+      attachmentCitationType: "fragment",
     };
   }
 
@@ -313,6 +296,7 @@ export function contentFragmentToAttachmentCitation(
       sourceUrl: contentFragment.sourceUrl,
       visual,
       spaceName: contentFragment.contentNodeData.spaceName,
+      attachmentCitationType: "fragment",
     };
   }
 
@@ -334,6 +318,7 @@ export function contentFragmentToAttachmentCitation(
       description,
       fileId: contentFragment.fileId,
       contentType: contentFragment.contentType,
+      attachmentCitationType: "fragment",
     };
   }
 
@@ -355,6 +340,7 @@ export function attachmentToAttachmentCitation(
       fileId: attachment.id,
       contentType: attachment.contentType,
       onRemove: attachment.onRemove,
+      attachmentCitationType: "inputBar",
     };
   } else {
     return {
@@ -367,6 +353,7 @@ export function attachmentToAttachmentCitation(
       visual: attachment.visual,
       sourceUrl: attachment.url,
       onRemove: attachment.onRemove,
+      attachmentCitationType: "inputBar",
     };
   }
 }
@@ -378,4 +365,129 @@ const IconFromContentType = ({
 }) => {
   const visual = getContentTypeIcon(contentType);
   return <Icon visual={visual} size="md" />;
+};
+
+const FileViewer = ({
+  viewerOpen,
+  setViewerOpen,
+  attachmentCitation,
+  fileUploaderService,
+  owner,
+}: {
+  viewerOpen: boolean;
+  setViewerOpen: (open: boolean) => void;
+  attachmentCitation: FileAttachmentCitation;
+  fileUploaderService: FileUploaderService;
+  owner: LightWorkspaceType;
+}) => {
+  const [text, setText] = useState<string | undefined>();
+
+  const isAudio = isAudioContentType(attachmentCitation);
+
+  // Yes this is weird, but for fragments we have the fileId directly
+  // For input bar attachments, we need to get the file blob first
+  // because the attachment fileId is actually the blob id
+  // TODO: to fix
+  const fileId =
+    attachmentCitation.attachmentCitationType === "fragment"
+      ? attachmentCitation.fileId
+      : fileUploaderService.getFileBlob(attachmentCitation.fileId)?.fileId;
+
+  const { fileContent, isFileContentLoading } = useFileContent({
+    fileId,
+    owner,
+    config: {
+      // Only fetch if we are on text, as for audio we use the processed content, which is the transcript
+      disabled: isAudio || !viewerOpen,
+    },
+  });
+
+  const {
+    content: _processedContent,
+    isContentLoading: isProcessedContentLoading,
+  } = useFileProcessedContent({
+    fileId,
+    owner,
+    config: {
+      disabled: !isAudio || !viewerOpen,
+    },
+  });
+
+  const isLoading = isAudio ? isProcessedContentLoading : isFileContentLoading;
+
+  const processedContent = useMemo(
+    () => {
+      if (isProcessedContentLoading) {
+        return;
+      }
+      return _processedContent()?.text();
+    },
+    // we can ignore this warning because we only want to recompute when loading state changes, as the function is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isProcessedContentLoading]
+  );
+
+  useEffect(() => {
+    const handleText = async () => {
+      if (isAudio) {
+        if (isProcessedContentLoading) {
+          return;
+        }
+        setText(await processedContent);
+        return;
+      }
+
+      if (attachmentCitation.attachmentCitationType === "fragment") {
+        if (isFileContentLoading) {
+          return;
+        }
+        setText(fileContent);
+        return;
+      }
+
+      setText(
+        await fileUploaderService
+          .getFileBlob(attachmentCitation.fileId)
+          ?.file.text()
+      );
+    };
+
+    // ok to not await, we handle loading state with isLoading, and if it fails the text will just not show
+    void handleText();
+  }, [
+    attachmentCitation,
+    fileContent,
+    fileUploaderService,
+    isAudio,
+    isFileContentLoading,
+    isProcessedContentLoading,
+    processedContent,
+  ]);
+
+  return (
+    <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+      <DialogContent size="xl" height="lg">
+        <DialogHeader>
+          <DialogTitle>{attachmentCitation.title}</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          {isLoading ? (
+            <div className="flex h-48 w-full items-center justify-center">
+              <Spinner />
+            </div>
+          ) : (
+            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
+              {text}
+            </pre>
+          )}
+        </DialogContainer>
+        <DialogFooter
+          rightButtonProps={{
+            label: "Close",
+            variant: "highlight",
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
 };
