@@ -403,4 +403,61 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
       "Invalid route parameters: expected string wId, webhookSourceId and webhookSourceUrlSecret."
     );
   });
+
+  it("returns 200 when GitHub webhook source does not subscribe to pull_request event", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    // Create a GitHub webhook source that doesn't subscribe to pull_request events
+    const webhookSourceFactory = new WebhookSourceFactory(workspace);
+    const webhookSourceResult = await webhookSourceFactory.create({
+      name: "Test GitHub Webhook Source",
+      kind: "github",
+      subscribedEvents: ["issues"], // Subscribe to issues but not pull_request
+    });
+
+    if (webhookSourceResult.isErr()) {
+      throw new Error(
+        `Failed to create webhook source: ${webhookSourceResult.error.message}`
+      );
+    }
+
+    const webhookSource = webhookSourceResult.value;
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId(),
+      webhookSourceUrlSecret: webhookSource.urlSecret,
+    };
+    req.body = {
+      action: "opened",
+      issue: {
+        url: "https://api.github.com/repos/example/repo/issues/1",
+        id: 1001,
+        number: 1,
+      },
+      assignee: {
+        login: "octocat",
+      },
+      label: {
+        id: 208045946,
+      },
+      sender: {
+        login: "octocat",
+      },
+    };
+    req.headers = {
+      "content-type": "application/json",
+      "x-github-event": "pull_request", // This is the GitHub event header
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
+  });
 });

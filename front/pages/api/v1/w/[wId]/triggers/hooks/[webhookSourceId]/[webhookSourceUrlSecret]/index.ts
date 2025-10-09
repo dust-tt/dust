@@ -24,6 +24,7 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { Err } from "@app/types";
+import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
 
@@ -236,6 +237,27 @@ async function handler(
           message: `Webhook triggers rate limit exceeded. You can trigger up to ${webhookLimit} webhooks per ${maxMessagesTimeframe}.`,
         },
       });
+    }
+  }
+
+  // Filter out non-subscribed events
+  if (webhookSource.kind !== "custom") {
+    const { type, field } =
+      WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].eventCheck;
+
+    // Node http module behavior is to lowercase all headers keys
+    const receivedEventName = req[type][field.toLowerCase()];
+
+    if (
+      receivedEventName === undefined ||
+      // Event not in preset
+      !WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].events
+        .map((event) => event.name)
+        .includes(receivedEventName) ||
+      // Event not subscribed
+      !webhookSource.subscribedEvents.includes(receivedEventName)
+    ) {
+      return res.status(200).json({ success: true });
     }
   }
 

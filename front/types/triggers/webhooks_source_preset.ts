@@ -25,7 +25,7 @@ export type EventField = EventFieldBase &
   );
 
 export type EventCheck = {
-  type: "header" | "payload";
+  type: "headers" | "body";
   field: string;
 };
 
@@ -46,7 +46,7 @@ export type WebhookPresetIcon =
 
 export type PresetWebhook = {
   name: string;
-  eventCheck: EventCheck | null;
+  eventCheck: EventCheck;
   events: WebhookEvent[];
   icon: typeof Icon;
   description: string;
