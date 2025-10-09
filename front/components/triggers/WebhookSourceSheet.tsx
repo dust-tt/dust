@@ -322,13 +322,13 @@ function WebhookSourceSheetContent({
         try {
           const diff = diffWebhookSourceForm(editDefaults, values);
 
-          if (diff.name) {
+          if (diff.requestBody) {
             const response = await fetch(
               `/api/w/${owner.sId}/webhook_sources/views/${systemView.sId}`,
               {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: diff.name }),
+                body: JSON.stringify(diff.requestBody),
               }
             );
             if (!response.ok) {
