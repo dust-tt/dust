@@ -20,6 +20,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
@@ -37,6 +38,12 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
     { data, context, prevData, nextData }: MessageItemProps,
     ref
   ) {
+    const fileUploaderService = useFileUploaderService({
+      owner: context.owner,
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: context.conversationId },
+    });
+
     const sId = getMessageSId(data);
 
     const sendNotification = useSendNotification();
@@ -99,15 +106,17 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
     };
 
     const citations =
-      isUserMessage(data) && data.contentFragments
+      isUserMessage(data) && data.contentFragments.length > 0
         ? data.contentFragments.map((contentFragment) => {
             const attachmentCitation =
               contentFragmentToAttachmentCitation(contentFragment);
 
             return (
               <AttachmentCitation
+                owner={context.owner}
                 key={attachmentCitation.id}
                 attachmentCitation={attachmentCitation}
+                fileUploaderService={fileUploaderService}
               />
             );
           })

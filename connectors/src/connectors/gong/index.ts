@@ -82,6 +82,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       {
         baseUrl: baseUrlRes.value,
         trackersEnabled: false,
+        accountsEnabled: false,
       }
     );
 

@@ -211,12 +211,6 @@ export function useVoiceTranscriberService({
         onTranscribeDelta,
         onTranscribeComplete,
       });
-
-      sendNotification({
-        type: "success",
-        title: "Voice recorded.",
-        description: "Audio sent for transcription.",
-      });
     },
     [onTranscribeDelta, onTranscribeComplete, owner.sId, sendNotification]
   );
@@ -279,7 +273,8 @@ export function useVoiceTranscriberService({
     await stopAndFinalize();
   }, [stopAndFinalize]);
 
-  return featureFlags.hasFeature("simple_audio_transcription")
+  return featureFlags.hasFeature("simple_audio_transcription") &&
+    owner.metadata?.allowVoiceTranscription !== false
     ? {
         status,
         level,

@@ -6,7 +6,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { BellIcon } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -65,6 +65,10 @@ export function UserMessage({
     []
   );
 
+  const renderName = useCallback((name: string | null) => {
+    return <div className="heading-base">{name}</div>;
+  }, []);
+
   return (
     <div className="flex flex-grow flex-col">
       <div className="min-w-60 max-w-full self-end">
@@ -72,7 +76,7 @@ export function UserMessage({
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           pictureUrl={message.context.profilePictureUrl || message.user?.image}
           name={message.context.fullName ?? undefined}
-          renderName={(name) => <div className="heading-base">{name}</div>}
+          renderName={renderName}
           timestamp={formatTimestring(message.created)}
           infoChip={
             message.context.origin === "triggered" && (

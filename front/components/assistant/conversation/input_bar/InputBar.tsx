@@ -1,5 +1,5 @@
 import { Button, cn, StopIcon } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -58,7 +58,7 @@ interface AssistantInputBarProps {
  * need to pass the agent configuration to the input bar (it may not be in the
  * user's list of agents)
  */
-export function AssistantInputBar({
+export const AssistantInputBar = React.memo(function AssistantInputBar({
   owner,
   onSubmit,
   conversationId,
@@ -310,7 +310,7 @@ export function AssistantInputBar({
         .filter((m) => m.conversationId === conversationId)
         .map((m) => m.messageId)
     );
-    mutateConversation();
+    void mutateConversation();
   };
 
   useEffect(() => {
@@ -335,7 +335,7 @@ export function AssistantInputBar({
     const generatingCount = generationContext.generatingMessages.filter(
       (m) => m.conversationId === conversationId
     ).length;
-    return generatingCount > 1 ? "Stop all agents" : "Stop agent";
+    return generatingCount > 1 ? "Stop all" : "Stop";
   };
 
   return (
@@ -360,7 +360,7 @@ export function AssistantInputBar({
           "rounded-2xl transition-all",
           "bg-muted-background dark:bg-muted-background-night",
           "border",
-          "border-border-dark dark:border-border-dark-night",
+          "border-border-dark dark:border-border-dark/10",
           "sm:border-border-dark/50 sm:focus-within:border-border-dark",
           "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
           disable && "cursor-not-allowed opacity-75",
@@ -411,7 +411,7 @@ export function AssistantInputBar({
       </div>
     </div>
   );
-}
+});
 
 export function FixedAssistantInputBar({
   owner,

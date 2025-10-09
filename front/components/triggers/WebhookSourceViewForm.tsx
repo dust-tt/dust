@@ -25,13 +25,13 @@ import {
 import type { LightWorkspaceType } from "@app/types";
 import type {
   PatchWebhookSourceViewBody,
-  WebhookSourceViewType,
+  WebhookSourceView,
 } from "@app/types/triggers/webhooks";
 import { patchWebhookSourceViewBodySchema } from "@app/types/triggers/webhooks";
 
 interface WebhookSourceViewFormProps {
   owner: LightWorkspaceType;
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceView;
 }
 
 export function WebhookSourceViewForm({

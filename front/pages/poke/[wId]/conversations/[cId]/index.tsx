@@ -1,6 +1,7 @@
 import {
   Button,
   CheckIcon,
+  ChevronDownIcon,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -13,7 +14,6 @@ import {
   Input,
   Markdown,
   Page,
-  Popover,
   Spinner,
   useCopyToClipboard,
   XMarkIcon,
@@ -130,6 +130,22 @@ const AgentMessageView = ({
   useMarkdown,
   workspaceId,
 }: AgentMessageViewProps) => {
+  const [expandedActions, setExpandedActions] = useState<Set<number>>(
+    new Set()
+  );
+
+  const toggleAction = (index: number) => {
+    setExpandedActions((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="w-full">
       <ConversationMessage
@@ -186,53 +202,59 @@ const AgentMessageView = ({
           )}
         </div>
         {message.actions.map((a, i) => {
+          const isExpanded = expandedActions.has(i);
           return (
-            <div
-              key={`action-${i}`}
-              className={classNames(
-                "mt-1 flex items-center pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
-              )}
-            >
-              {a.mcpIO && (
-                <Popover
-                  className="w-[84%]"
-                  content={
-                    <CodeBlock wrapLongLines className="language-json">
-                      {JSON.stringify(
-                        {
-                          params: a.mcpIO.params,
-                          output: a.mcpIO.output,
-                          generatedFiles: a.mcpIO.generatedFiles,
-                        },
-                        undefined,
-                        2
-                      ) ?? ""}
-                    </CodeBlock>
-                  }
-                  trigger={
-                    <Button
-                      variant={a.mcpIO?.isError ? "warning" : "primary"}
-                      size="xs"
-                      icon={a.mcpIO?.isError ? XMarkIcon : CheckIcon}
-                      className="mr-2"
-                    />
-                  }
-                />
-              )}
-              {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
-              step {a.step}: <b className="px-1">{a.functionCallName}()</b>
-              {a.runId && (
-                <>
-                  log:{" "}
-                  <a
-                    key={`runId-${i}`}
-                    href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
-                    target="_blank"
-                    className="text-highlight-500"
-                  >
-                    {a.runId.substring(0, 8)}{" "}
-                  </a>
-                </>
+            <div key={`action-${i}`} className="mt-1">
+              <div
+                className={classNames(
+                  "flex items-center pl-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
+                )}
+              >
+                {a.mcpIO && (
+                  <Button
+                    variant={a.mcpIO?.isError ? "warning" : "primary"}
+                    size="xs"
+                    icon={
+                      isExpanded
+                        ? ChevronDownIcon
+                        : a.mcpIO?.isError
+                          ? XMarkIcon
+                          : CheckIcon
+                    }
+                    className="mr-2"
+                    onClick={() => toggleAction(i)}
+                  />
+                )}
+                {a.created && <>{new Date(a.created).toLocaleTimeString()}: </>}
+                step {a.step}: <b className="px-1">{a.functionCallName}()</b>
+                {a.runId && (
+                  <>
+                    log:{" "}
+                    <a
+                      key={`runId-${i}`}
+                      href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
+                      target="_blank"
+                      className="text-highlight-500"
+                    >
+                      {a.runId.substring(0, 8)}{" "}
+                    </a>
+                  </>
+                )}
+              </div>
+              {a.mcpIO && isExpanded && (
+                <div className="ml-8 mt-2">
+                  <CodeBlock wrapLongLines className="language-json">
+                    {JSON.stringify(
+                      {
+                        params: a.mcpIO.params,
+                        output: a.mcpIO.output,
+                        generatedFiles: a.mcpIO.generatedFiles,
+                      },
+                      undefined,
+                      2
+                    ) ?? ""}
+                  </CodeBlock>
+                </div>
               )}
             </div>
           );

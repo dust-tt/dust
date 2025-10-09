@@ -1,10 +1,13 @@
-import { cn } from "@dust-tt/sparkle";
+import { Button, cn, RocketIcon } from "@dust-tt/sparkle";
 
 import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { UserTypeWithWorkspaces } from "@app/types";
 
 interface PublicInteractiveContentHeaderProps {
   title: string;
+  user: UserTypeWithWorkspaces | null;
 }
 
 // Applying flex & justify-center to the title won't make it centered in the header
@@ -14,6 +17,7 @@ interface PublicInteractiveContentHeaderProps {
 // TODO(interactive_content 2025-08-27): optimize the header for mobile views once we have buttons.
 export function PublicInteractiveContentHeader({
   title,
+  user,
 }: PublicInteractiveContentHeaderProps) {
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 @container dark:bg-gray-900">
@@ -33,7 +37,17 @@ export function PublicInteractiveContentHeader({
           </span>
         </div>
 
-        <div className="md:grow-1 md:basis-60"></div>
+        <div className="md:grow-1 flex justify-end md:basis-60">
+          {!user && (
+            <Button
+              label="Try it yourself"
+              href="/home"
+              variant="outline"
+              icon={RocketIcon}
+              onClick={withTracking(TRACKING_AREAS.FRAME, "sign_up")}
+            />
+          )}
+        </div>
       </div>
     </AppLayoutTitle>
   );

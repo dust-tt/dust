@@ -11,7 +11,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { useRemoteMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
+import { useManualMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import {
   useDeleteMCPServerConnection,
   useMCPServerConnections,
@@ -41,7 +41,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
 
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const { serverViews, isLoading: isMCPServerViewsLoading } =
-    useRemoteMCPServerViewsFromSpaces(owner, spaces);
+    useManualMCPServerViewsFromSpaces(owner, spaces);
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
     connectionType: "personal",

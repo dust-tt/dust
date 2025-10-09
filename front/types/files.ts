@@ -319,18 +319,18 @@ export const FILE_FORMATS = {
   "audio/mpeg": {
     cat: "audio",
     exts: [".mp3", ".mp4"],
-    isSafeToDisplay: false,
+    isSafeToDisplay: true,
   },
   // In theory deprecated => https://mimetype.io/audio/x-m4a
   // But apple voice recordings use it.
   "audio/x-m4a": {
     cat: "audio",
     exts: [".m4a", ".mp4"],
-    isSafeToDisplay: false,
+    isSafeToDisplay: true,
   },
-  "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: false },
-  "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: false },
-  "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: false },
+  "audio/wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
+  "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
+  "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
   // Unknown.
   "application/octet-stream": {

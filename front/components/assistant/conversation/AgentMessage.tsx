@@ -637,29 +637,20 @@ export function AgentMessage({
 
         {agentMessage.content !== null && (
           <div>
-            {lastTokenClassification !== "chain_of_thought" &&
-            agentMessage.content === "" ? (
-              <div className="blinking-cursor">
-                <span></span>
-              </div>
-            ) : (
-              <CitationsContext.Provider
-                value={{
-                  references,
-                  updateActiveReferences,
-                }}
-              >
-                <Markdown
-                  content={sanitizeVisualizationContent(agentMessage.content)}
-                  isStreaming={
-                    streaming && lastTokenClassification === "tokens"
-                  }
-                  isLastMessage={isLastMessage}
-                  additionalMarkdownComponents={additionalMarkdownComponents}
-                  additionalMarkdownPlugins={additionalMarkdownPlugins}
-                />
-              </CitationsContext.Provider>
-            )}
+            <CitationsContext.Provider
+              value={{
+                references,
+                updateActiveReferences,
+              }}
+            >
+              <Markdown
+                content={sanitizeVisualizationContent(agentMessage.content)}
+                isStreaming={streaming && lastTokenClassification === "tokens"}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
+              />
+            </CitationsContext.Provider>
           </div>
         )}
         {generatedFiles.length > 0 && (

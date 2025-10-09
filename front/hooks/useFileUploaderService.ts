@@ -20,7 +20,6 @@ import {
   getFileFormatCategory,
   isAPIErrorResponse,
   isSupportedFileContentType,
-  isSupportedImageContentType,
   MAX_FILE_SIZES,
   Ok,
 } from "@app/types";
@@ -32,7 +31,7 @@ export interface FileBlob {
   id: string;
   fileId: string | null;
   isUploading: boolean;
-  preview?: string;
+  sourceUrl?: string;
   size: number;
   publicUrl?: string;
 }
@@ -266,9 +265,7 @@ export function useFileUploaderService({
           ...fileBlob,
           fileId: file.sId,
           isUploading: false,
-          preview: isSupportedImageContentType(fileBlob.contentType)
-            ? `${fileUploaded.downloadUrl}?action=view`
-            : undefined,
+          sourceUrl: fileUploaded.downloadUrl,
           publicUrl: file.publicUrl,
         });
       },
@@ -322,26 +319,32 @@ export function useFileUploaderService({
   };
 
   const removeFile = (fileId: string) => {
-    const fileBlob = fileBlobs.find((f) => f.id === fileId);
+    setFileBlobs((prevFiles) => {
+      const fileBlob = prevFiles.find((f) => f.id === fileId);
 
-    if (fileBlob) {
-      setFileBlobs((prevFiles) =>
-        prevFiles.filter((f) => f.fileId !== fileBlob?.fileId)
-      );
+      if (!fileBlob) {
+        return prevFiles;
+      }
 
-      // Intentionally not awaiting the fetch call to allow it to run asynchronously.
-      void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      // Delete from server if file has been uploaded
+      if (fileBlob.fileId) {
+        void fetch(`/api/w/${owner.sId}/files/${fileBlob.fileId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      }
 
-      const allFilesReady = fileBlobs.every((f) => !f.isUploading);
+      const filtered = prevFiles.filter((f) => f.id !== fileBlob.id);
+
+      const allFilesReady = filtered.every((f) => !f.isUploading);
       if (allFilesReady && isProcessingFiles) {
         setNumFilesProcessing(0);
       }
-    }
+
+      return filtered;
+    });
   };
 
   const resetUpload = () => {
@@ -358,8 +361,16 @@ export function useFileUploaderService({
     return fileBlobs.filter(fileBlobHasFileId);
   };
 
+  const getFileBlob = (blobId: string | null | undefined) => {
+    if (!blobId) {
+      return undefined;
+    }
+    return getFileBlobs().find((blob) => blob.id === blobId);
+  };
+
   return {
     fileBlobs,
+    getFileBlob,
     getFileBlobs,
     handleFileChange,
     handleFilesUpload,
@@ -373,8 +384,7 @@ export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
 
 const createFileBlob = (
   file: File,
-  contentType: SupportedFileContentType,
-  preview?: string
+  contentType: SupportedFileContentType
 ): FileBlob => ({
   contentType,
   file,
@@ -383,6 +393,5 @@ const createFileBlob = (
   // Will be set once the file has been uploaded.
   fileId: null,
   isUploading: true,
-  preview,
   size: file.size,
 });

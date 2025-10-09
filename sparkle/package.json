@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
     "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",

@@ -2,6 +2,7 @@ import { Button, cn, MicIcon, SquareIcon } from "@dust-tt/sparkle";
 import React, { useRef, useState } from "react";
 
 import type { VoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 
 // Component intent:
 // - Supports two recording interaction patterns:
@@ -12,12 +13,15 @@ import type { VoiceTranscriberService } from "@app/hooks/useVoiceTranscriberServ
 interface VoicePickerProps {
   voiceTranscriberService: VoiceTranscriberService;
   disabled?: boolean;
+  buttonSize?: "xs" | "sm" | "md";
 }
 
 export function VoicePicker({
   voiceTranscriberService,
   disabled = false,
+  buttonSize = "xs",
 }: VoicePickerProps) {
+  const isMobile = useIsMobile();
   const [mode, setMode] = useState<"hold" | "click">("hold");
 
   // Track pointer press to distinguish click (<150ms) vs hold (>=150ms).
@@ -123,8 +127,8 @@ export function VoicePicker({
         className={cn(
           "duration-600 flex items-center justify-end gap-2 overflow-hidden px-2 transition-all ease-in-out",
           voiceTranscriberService.status === "recording"
-            ? "w-32 opacity-100"
-            : "w-8 opacity-0"
+            ? "opacity-100"
+            : "opacity-0"
         )}
       >
         <div className="heading-xs font-mono">
@@ -133,7 +137,7 @@ export function VoicePicker({
         <VoiceLevelDisplay level={voiceTranscriberService.level} />
       </div>
       <Button
-        size="xs"
+        size={buttonSize}
         icon={
           voiceTranscriberService.status === "recording" && mode === "click"
             ? SquareIcon
@@ -154,7 +158,9 @@ export function VoicePicker({
           voiceTranscriberService.status === "transcribing"
         )}
         label={
-          voiceTranscriberService.status === "recording" && mode === "click"
+          voiceTranscriberService.status === "recording" &&
+          mode === "click" &&
+          !isMobile
             ? "Stop"
             : undefined
         }

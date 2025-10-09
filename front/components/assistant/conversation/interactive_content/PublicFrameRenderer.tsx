@@ -6,6 +6,7 @@ import { CenteredState } from "@app/components/assistant/conversation/interactiv
 import { PublicInteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
+import { useUser } from "@app/lib/swr/user";
 
 interface PublicFrameRendererProps {
   fileId: string;
@@ -22,6 +23,10 @@ export function PublicFrameRenderer({
 }: PublicFrameRendererProps) {
   const { frameContent, isFrameLoading, error } = usePublicFrame({
     shareToken,
+  });
+  const { user } = useUser({
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
   });
 
   const getFileBlob = React.useCallback(
@@ -62,6 +67,7 @@ export function PublicFrameRenderer({
     <div className="flex h-full flex-col">
       <PublicInteractiveContentHeader
         title={formatFilenameForDisplay(fileName ?? "Frame")}
+        user={user}
       />
 
       {/* Content */}

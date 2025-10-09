@@ -28,7 +28,7 @@
   "dependencies": {
     "@datadog/browser-logs": "^6.13.0",
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/sparkle": "^0.3.2",
+    "@dust-tt/sparkle": "^0.3.3",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
     "@heroicons/react": "^2.0.11",
@@ -68,7 +68,7 @@
     "@types/cls-hooked": "^4.3.9",
     "@types/json-schema": "^7.0.15",
     "@uiw/react-textarea-code-editor": "^3.0.2",
-    "@virtuoso.dev/message-list": "^1.13.3",
+    "@virtuoso.dev/message-list": "^1.14.0",
     "@workos-inc/node": "^7.50.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",

@@ -116,45 +116,49 @@ export const DocumentUploadOrEditModal = ({
 
   // Get the processed file content from the file API
   const [fileId, setFileId] = useState<string | null>(null);
-  const { isContentLoading } = useFileProcessedContent(owner, fileId ?? null, {
-    disabled: !fileId,
-    onSuccess: async (response) => {
-      let content = null;
-      // If response is null, either text extract fails or the file is not safe to display.
-      // Fallback to the local file content.
-      if (response === null) {
-        const fileBlob = fileUploaderService.getFileBlobs()[0];
-        if (fileBlob) {
-          content = await fileBlob.file.text();
+  const { isContentLoading } = useFileProcessedContent({
+    owner,
+    fileId: fileId ?? null,
+    config: {
+      disabled: !fileId,
+      onSuccess: async (response) => {
+        let content = null;
+        // If response is null, either text extract fails or the file is not safe to display.
+        // Fallback to the local file content.
+        if (response === null) {
+          const fileBlob = fileUploaderService.getFileBlobs()[0];
+          if (fileBlob) {
+            content = await fileBlob.file.text();
+          }
+        } else {
+          content = await response.text();
         }
-      } else {
-        content = await response.text();
-      }
 
-      if (!content || content.trim().length === 0) {
+        if (!content || content.trim().length === 0) {
+          sendNotification({
+            type: "error",
+            title: "Empty document content",
+            description:
+              "The uploaded file is empty. Please upload a file with content.",
+          });
+          fileUploaderService.resetUpload();
+          return;
+        }
+        setDocumentState((prev) => ({
+          ...prev,
+          text: content,
+        }));
+      },
+      onError: (error) => {
+        fileUploaderService.resetUpload();
         sendNotification({
           type: "error",
-          title: "Empty document content",
-          description:
-            "The uploaded file is empty. Please upload a file with content.",
+          title: "Error fetching document content",
+          description: normalizeError(error).message,
         });
-        fileUploaderService.resetUpload();
-        return;
-      }
-      setDocumentState((prev) => ({
-        ...prev,
-        text: content,
-      }));
+      },
+      shouldRetryOnError: false,
     },
-    onError: (error) => {
-      fileUploaderService.resetUpload();
-      sendNotification({
-        type: "error",
-        title: "Error fetching document content",
-        description: normalizeError(error).message,
-      });
-    },
-    shouldRetryOnError: false,
   });
   const [isUpsertingDocument, setIsUpsertingDocument] = useState(false);
 

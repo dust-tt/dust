@@ -114,7 +114,7 @@ async function handler(
         });
       }
 
-      if (!isUploadSupported({ contentType, useCase })) {
+      if (!isUploadSupported({ auth, contentType, useCase })) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

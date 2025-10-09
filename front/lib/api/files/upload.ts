@@ -357,9 +357,11 @@ type ProcessingFunction = (
 ) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
+  auth,
   contentType,
   useCase,
 }: {
+  auth: Authenticator;
   contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
@@ -401,7 +403,11 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedAudioContentType(contentType)) {
-    if (useCase === "conversation") {
+    if (
+      useCase === "conversation" &&
+      // Only handle voice transcription if the workspace has enabled it.
+      auth.getNonNullableWorkspace().metadata?.allowVoiceTranscription !== false
+    ) {
       return extractTextFromAudioAndUpload;
     }
     return undefined;
@@ -493,6 +499,7 @@ const getProcessingFunction = ({
 };
 
 export const isUploadSupported = (arg: {
+  auth: Authenticator;
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
@@ -506,7 +513,7 @@ const maybeApplyProcessing: ProcessingFunction = async (
 ) => {
   const start = performance.now();
 
-  const processing = getProcessingFunction(file);
+  const processing = getProcessingFunction({ auth, ...file });
   if (!processing) {
     return new Err(
       new Error(

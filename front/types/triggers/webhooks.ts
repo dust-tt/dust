@@ -42,7 +42,7 @@ export const WEBHOOK_SOURCE_KIND = ["custom", "github", "test"] as const;
 
 export type WebhookSourceKind = (typeof WEBHOOK_SOURCE_KIND)[number];
 
-export type WebhookSourceType = {
+export type WebhookSource = {
   id: ModelId;
   sId: string;
   name: string;
@@ -57,7 +57,7 @@ export type WebhookSourceType = {
   subscribedEvents: string[];
 };
 
-export type WebhookSourceViewType = {
+export type WebhookSourceView = {
   id: ModelId;
   sId: string;
   customName: string | null;
@@ -66,16 +66,16 @@ export type WebhookSourceViewType = {
   createdAt: number;
   updatedAt: number;
   spaceId: string;
-  webhookSource: WebhookSourceType;
+  webhookSource: WebhookSource;
   editedByUser: EditedByUser | null;
 };
 
-export type WebhookSourceWithViews = WebhookSourceType & {
-  views: WebhookSourceViewType[];
+export type WebhookSourceWithViews = WebhookSource & {
+  views: WebhookSourceView[];
 };
 
 export type WebhookSourceWithSystemView = WebhookSourceWithViews & {
-  systemView: WebhookSourceViewType | null;
+  systemView: WebhookSourceView | null;
 };
 
 export type WebhookSourceWithViewsAndUsage = WebhookSourceWithViews & {
@@ -87,9 +87,7 @@ export type WebhookSourceWithSystemViewAndUsage =
     usage: AgentsUsageType | null;
   };
 
-export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
-
-export const PostWebhookSourcesSchema = z.object({
+export const basePostWebhookSourcesSchema = z.object({
   name: z.string().min(1, "Name is required"),
   // Secret can be omitted or empty when auto-generated server-side.
   secret: z.string().nullable(),
@@ -97,7 +95,35 @@ export const PostWebhookSourcesSchema = z.object({
   signatureAlgorithm: z.enum(WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS),
   customHeaders: z.record(z.string(), z.string()).nullable(),
   includeGlobal: z.boolean().optional(),
+  subscribedEvents: z.array(z.string()).default([]),
+  kind: z.enum(WEBHOOK_SOURCE_KIND),
 });
+
+export const refineSubscribedEvents: [
+  (data: { kind: WebhookSourceKind; subscribedEvents: string[] }) => boolean,
+  {
+    message: string;
+    path: string[];
+  },
+] = [
+  ({
+    kind,
+    subscribedEvents,
+  }: {
+    kind: WebhookSourceKind;
+    subscribedEvents: string[];
+  }) => kind === "custom" || subscribedEvents.length > 0,
+  {
+    message: "Subscribed events must not be empty.",
+    path: ["subscribedEvents"],
+  },
+];
+
+export const postWebhookSourcesSchema = basePostWebhookSourcesSchema.refine(
+  ...refineSubscribedEvents
+);
+
+export type PostWebhookSourcesBody = z.infer<typeof postWebhookSourcesSchema>;
 
 export type PatchWebhookSourceViewBody = z.infer<
   typeof patchWebhookSourceViewBodySchema
