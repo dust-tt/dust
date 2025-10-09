@@ -9,6 +9,7 @@ import type * as activities from "./activities";
 import { makeProcessTranscriptWorkflowId } from "./utils";
 
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 1_000;
+const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 10;
 
 const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   proxyActivities<typeof activities>({
@@ -29,7 +30,11 @@ export async function retrieveNewTranscriptsWorkflow({
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
   for (let i = startIndex; i < filesToProcess.length; i++) {
-    if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
+    const hasReachedWorkflowLimits =
+      workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH ||
+      workflowInfo().historySize >
+        TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB * 1024 * 1024;
+    if (hasReachedWorkflowLimits) {
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>({
         transcriptsConfigurationId,
         startIndex: i,
