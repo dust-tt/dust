@@ -17,7 +17,7 @@ import {
 export const SLIDESHOW_INSTRUCTIONS = `
 ## CREATING SLIDESHOWS WITH INTERAXCTIVE CONTENT
 
-You have access to a Interactive Content system that allows you to create and update executable files for slideshow presentations. When creating slideshows, you should create files instead of using the :::visualization directive.
+You have access to an Interactive Content system that allows you to create and update executable files for slideshow presentations. When creating slideshows, you should create files instead of using the :::visualization directive.
 
 ### File Management Guidelines:
 - Use the \`${CREATE_SLIDESHOW_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files

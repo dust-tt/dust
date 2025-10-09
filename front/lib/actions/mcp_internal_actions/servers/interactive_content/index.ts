@@ -62,10 +62,10 @@ function buildInteractiveContentFileNotification(
 }
 
 /**
- * Interactive Content Server - Allows the model to create and update interactive content files.
+ * Interactive Content Server - Allows the model to create and update Interactive Content files.
  * Interactive Content includes any file that users can execute, run, or interact with directly.
  * Currently supports client-executable files, with plans to expand to other interactive formats.
- * Files are rendered in a Frame viewer where users can execute and interact with them.
+ * Files are rendered in a viewer where users can execute and interact with them.
  * We return the file resource only on file creation, as edit updates the existing file.
  */
 const createServer = (
@@ -76,13 +76,13 @@ const createServer = (
 
   server.tool(
     CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Create a new interactive file that users can execute or interact with. Use this for " +
+    "Create a new Interactive Content file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing.",
     {
       file_name: z
         .string()
         .describe(
-          "The name of the Frame file to create, including extension (e.g. " +
+          "The name of the Interactive Content file to create, including extension (e.g. " +
             "DataVisualization.tsx)"
         ),
       mime_type: z
@@ -92,21 +92,21 @@ const createServer = (
           ]
         )
         .describe(
-          "The MIME type for the interactive file. Use " +
+          "The MIME type for the Interactive Content file. Use " +
             `'${frameContentType}' for Frame components (React/JSX).`
         ),
       content: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "The content for the Frame file. Should be complete and ready for execution or " +
+          "The content for the Interactive Content file. Should be complete and ready for execution or " +
             "interaction."
         ),
       description: z
         .string()
         .optional()
         .describe(
-          "Optional description of what this Frame file does (e.g., " +
+          "Optional description of what this Interactive Content file does (e.g., " +
             "'Interactive data visualization', 'Executable analysis script', " +
             "'Dynamic dashboard')"
         ),
@@ -296,7 +296,7 @@ const createServer = (
       async ({ file_id }, { sendNotification, _meta }) => {
         if (!agentLoopContext?.runContext) {
           throw new Error(
-            "Could not access Agent Loop Context from revert interactive content file tool."
+            "Could not access Agent Loop Context from revert Interactive Content file tool."
           );
         }
 
@@ -345,12 +345,12 @@ const createServer = (
 
   server.tool(
     RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Rename an interactive file. Use this to change the file name while keeping the content unchanged.",
+    "Rename an Interactive Content file. Use this to change the file name while keeping the content unchanged.",
     {
       file_id: z
         .string()
         .describe(
-          "The ID of the interactive file to rename (e.g., 'fil_abc123')"
+          "The ID of the Interactive Content file to rename (e.g., 'fil_abc123')"
         ),
       new_file_name: z
         .string()
@@ -405,15 +405,15 @@ const createServer = (
 
   server.tool(
     RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Retrieve the current content of an existing interactive file by its file ID. " +
-      "Use this to read back the content of interactive files you have previously created or " +
-      `updated. Use this tool before calling ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} to ` +
+    "Retrieve the current content of an existing Interactive Content file by its file ID. " +
+      "Use this to read back the content of Interactive Content files you have previously created " +
+      `or updated. Use this tool before calling ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
     {
       file_id: z
         .string()
         .describe(
-          "The ID of the interactive file to retrieve (e.g., 'fil_abc123')"
+          "The ID of the Interactive Content file to retrieve (e.g., 'fil_abc123')"
         ),
     },
     withToolLogging(

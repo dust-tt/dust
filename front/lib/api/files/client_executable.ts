@@ -339,11 +339,11 @@ export async function getClientExecutableFileContent(
       return new Err(new Error(`File not found: ${fileId}`));
     }
 
-    // Check if it's an interactive file.
+    // Check if it's an Interactive Content file.
     if (!isInteractiveContentFileContentType(fileResource.contentType)) {
       return new Err(
         new Error(
-          `File '${fileId}' is not an interactive file ` +
+          `File '${fileId}' is not an Interactive Content file ` +
             `(content type: ${fileResource.contentType})`
         )
       );
