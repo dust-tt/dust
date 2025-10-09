@@ -794,28 +794,8 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
 };
 
 const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
-  `
-When executing multiple tool calls, output text only after all tools have completed.
-
-This restriction applies ONLY to visible text output - you should still use your ` +
-  `full internal reasoning and thinking process to plan your approach and analyze results.
-
-Example of what NOT to do:
-User: "Analyze our sales data and create a report"
-Assistant: "I'll search for the sales data first..."
-[search_tool]
-Assistant: "Great, now let me create a visualization..."
-[create_chart_tool]
-Assistant: [final response]
-
-Example of correct behavior:
-User: "Analyze our sales data and create a report"
-[search_tool]
-[create_chart_tool]
-Assistant: [final response]
-
-Think deeply and reason internally as needed. Execute all tools first, then provide your complete response.
-`;
+  `Never output any text between tool calls, or between tool calls and tool results. ` +
+  `Only start outputting text after the last tool call and tool result, once you are ready to provide your final answer.\n`;
 
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
