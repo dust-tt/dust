@@ -1239,7 +1239,9 @@ export class DustAPI {
     const { body } = res.value.response;
 
     if (!body) {
-      return new Err(new Error("Expected a stream response, but got an empty body"));
+      return new Err(
+        new Error("Expected a stream response, but got an empty body")
+      );
     }
 
     if (typeof body === "string") {
@@ -1250,7 +1252,6 @@ export class DustAPI {
 
     return new Ok(blob);
   }
-
 
   async uploadFile({
     contentType,
