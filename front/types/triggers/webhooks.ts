@@ -10,9 +10,9 @@ import type { AgentsUsageType } from "@app/types/data_source";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { GITHUB_WEBHOOK_PRESET } from "@app/types/triggers/github_webhook_source_presets";
+import { TEST_WEBHOOK_PRESET } from "@app/types/triggers/test_webhook_source_presets";
 import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
 import type { EditedByUser } from "@app/types/user";
-import { TEST_WEBHOOK_PRESET } from "@app/types/triggers/test_webhook_source_presets";
 
 export const WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS = [
   "sha1",

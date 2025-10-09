@@ -26,7 +26,7 @@ const TEST_EVENT: WebhookEvent = {
 export const TEST_WEBHOOK_PRESET: PresetWebhook = {
   name: "Test",
   eventCheck: {
-    type: "header",
+    type: "headers",
     field: "event-type",
   },
   events: [TEST_EVENT],
