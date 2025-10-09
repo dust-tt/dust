@@ -30,6 +30,7 @@ import {
 } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
@@ -522,7 +523,9 @@ function WebhookSourceSheetContent({
         title:
           systemView?.customName ?? webhookSource?.name ?? "Webhook Source",
         description: "Webhook source for triggering assistants.",
-        icon: WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
+        icon: systemView
+          ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
+          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

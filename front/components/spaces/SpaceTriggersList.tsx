@@ -1,12 +1,12 @@
-import { DataTable, Icon, Spinner } from "@dust-tt/sparkle";
+import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 type RowData = {
   id: string;
@@ -88,13 +88,7 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
             webhookSourceView.webhookSource.name,
           description: webhookSourceView.description ?? "",
           avatar: (
-            <Icon
-              visual={
-                WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[
-                  webhookSourceView.webhookSource.kind
-                ].icon
-              }
-            />
+            <WebhookSourceViewIcon webhookSourceView={webhookSourceView} />
           ),
           lastUpdated: webhookSourceView.updatedAt,
         };

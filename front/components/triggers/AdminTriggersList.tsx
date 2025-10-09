@@ -7,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
-  Icon,
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -18,6 +17,7 @@ import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHe
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -48,11 +48,7 @@ const NameCell = ({ row }: { row: RowData }) => {
           webhookSource.systemView ? "" : "opacity-50"
         )}
       >
-        {systemView && (
-          <Icon
-            visual={WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].icon}
-          />
-        )}
+        {systemView && <WebhookSourceViewIcon webhookSourceView={systemView} />}
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
             {systemView?.customName ?? webhookSource.name}
