@@ -570,10 +570,12 @@ export async function getNextConversationBatchToSyncActivity({
   connectorId,
   teamId,
   cursor,
+  lastHourOnly,
 }: {
   connectorId: ModelId;
   teamId?: string;
   cursor: string | null;
+  lastHourOnly?: boolean;
 }): Promise<{ conversationIds: string[]; nextPageCursor: string | null }> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
 
@@ -589,6 +591,9 @@ export async function getNextConversationBatchToSyncActivity({
   let result;
 
   const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const closedAfter = lastHourOnly
+    ? new Date(Date.now() - 1 * 60 * 60 * 1000).getTime()
+    : undefined;
 
   if (teamId) {
     result = await fetchIntercomConversations({
@@ -597,6 +602,7 @@ export async function getNextConversationBatchToSyncActivity({
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
+      closedAfter,
     });
   } else {
     result = await fetchIntercomConversations({
@@ -604,6 +610,7 @@ export async function getNextConversationBatchToSyncActivity({
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
+      closedAfter,
     });
   }
 
@@ -706,6 +713,26 @@ export async function syncAllTeamsActivity({
       });
     }
   }
+}
+
+/**
+ * This activity is responsible for getting the list of team ids
+ * that can be synced for a given connector.
+ */
+export async function getTeamIdsToSyncActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<string[]> {
+  const teamsWithReadPermission = await IntercomTeamModel.findAll({
+    where: {
+      connectorId,
+      permission: "read",
+    },
+    attributes: ["teamId"],
+  });
+
+  return teamsWithReadPermission.map((team) => team.teamId);
 }
 
 /**
