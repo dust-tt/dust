@@ -278,9 +278,8 @@ export class DustAPI {
     // Conveniently clean path from any leading "/" just in case
     args.path = args.path.replace(/^\/+/, "");
 
-    let url = `${this.apiUrl()}/api/v1/w/${
-      args.overrideWorkspaceId ?? this.workspaceId()
-    }/${args.path}`;
+    let url = `${this.apiUrl()}/api/v1/w/${args.overrideWorkspaceId ?? this.workspaceId()
+      }/${args.path}`;
 
     if (args.query) {
       url += `?${args.query.toString()}`;
@@ -547,7 +546,7 @@ export class DustAPI {
         const decoder = new TextDecoder();
 
         try {
-          for (;;) {
+          for (; ;) {
             const { value, done } = await reader.read();
 
             if (value) {
@@ -967,7 +966,7 @@ export class DustAPI {
         const decoder = new TextDecoder();
 
         try {
-          for (;;) {
+          for (; ;) {
             const { value, done } = await reader.read();
             if (value) {
               parser.feed(decoder.decode(value, { stream: true }));
@@ -1238,7 +1237,7 @@ export class DustAPI {
       method: "GET",
       path: `files/${fileID}?action=download`,
     });
-    
+
     if (res.isErr()) {
       return res;
     }
@@ -1246,7 +1245,7 @@ export class DustAPI {
     // Handle redirect response (the API redirects to a signed URL)
     if (res.value.response.status >= 200 && res.value.response.status < 400) {
       const redirectUrl = res.value.response.url;
-      
+
       // Validate the redirect URL format to prevent SSRF attacks
       if (!this._validateRedirectUrl(redirectUrl)) {
         return new Err({
@@ -1254,7 +1253,7 @@ export class DustAPI {
           message: `Invalid redirect URL format. Expected format: https://storage.googleapis.com/... Got: ${redirectUrl}`,
         });
       }
-      
+
       // Fetch the actual file content from the signed URL
       try {
         const fileResponse = await fetch(redirectUrl);
@@ -1264,7 +1263,7 @@ export class DustAPI {
             message: `Failed to download file from signed URL: ${fileResponse.status}`,
           });
         }
-        
+
         const buffer = Buffer.from(await fileResponse.arrayBuffer());
         return new Ok(buffer);
       } catch (error) {
@@ -1325,7 +1324,7 @@ export class DustAPI {
         return new Err(
           new Error(
             errorData?.error?.message ||
-              `Failed to upload file: ${response.status}`
+            `Failed to upload file: ${response.status}`
           )
         );
       }
