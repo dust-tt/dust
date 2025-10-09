@@ -48,6 +48,17 @@ export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
+export const SLACK_ADD_REACTION = "add_reaction";
+export const SLACK_REMOVE_REACTION = "remove_reaction";
+export const SLACK_GET_USER = "get_user";
+export const SLACK_LIST_PUBLIC_CHANNELS = "list_public_channels";
+export const SLACK_LIST_THREADS = "list_threads";
+export const SLACK_LIST_USERS = "list_users";
+export const SLACK_POST_MESSAGE = "post_message";
+export const SLACK_READ_CHANNEL_HISTORY = "read_channel_history";
+export const SLACK_READ_THREAD_MESSAGES = "read_thread_messages";
+export const SLACK_SEARCH_MESSAGES = "search_messages";
+export const SLACK_SEMANTIC_SEARCH_MESSAGES = "semantic_search_messages";
 
 export const SEARCH_SERVER_NAME = "search";
 

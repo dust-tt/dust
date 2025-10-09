@@ -12,6 +12,8 @@ import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getAgentRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import { Err, Ok } from "@app/types";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 
 export const getSlackClient = async (accessToken?: string) => {
   if (!accessToken) {
@@ -108,7 +110,7 @@ export async function executePostMessage(
   if (fileId) {
     const file = await FileResource.fetchById(auth, fileId);
     if (!file) {
-      throw new Error("File not found");
+      return new Err(new MCPError("File not found"));
     }
 
     // Resolve channel id
@@ -116,9 +118,9 @@ export async function executePostMessage(
       exclude_archived: true,
     });
     if (!conversationsList.ok) {
-      throw new Error(
+      return new Err(new MCPError(
         conversationsList.error ?? "Failed to list conversations"
-      );
+      ));
     }
     const searchString = to.trim().replace(/^#/, "").toLowerCase();
     const channel = conversationsList.channels?.find(
@@ -127,16 +129,16 @@ export async function executePostMessage(
         c.id?.toLowerCase() === searchString
     );
     if (!channel) {
-      throw new Error(
+      return new Err(new MCPError(
         `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`
-      );
+      ));
     }
     const channelId = channel.id;
 
     const signedUrl = await file.getSignedUrlForDownload(auth, "original");
     const fileResp = await fetch(signedUrl);
     if (!fileResp.ok) {
-      throw new Error(`Failed to fetch file (HTTP ${fileResp.status})`);
+      return new Err(new MCPError(`Failed to fetch file (HTTP ${fileResp.status})`));
     }
     const arrayBuf = await fileResp.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuf);
@@ -153,13 +155,13 @@ export async function executePostMessage(
     });
 
     if (!uploadResp.ok) {
-      throw new Error(uploadResp.error);
+      return new Err(new MCPError(uploadResp.error ?? "Unknown error"));
     }
 
-    return makeMCPToolJSONSuccess({
+    return new Ok(makeMCPToolJSONSuccess({
       message: `Message with file uploaded to ${channelId}`,
       result: uploadResp,
-    });
+    }).content);
   }
 
   // No file provided: regular message
@@ -171,13 +173,13 @@ export async function executePostMessage(
   });
 
   if (!response.ok) {
-    throw new Error(response.error);
+    return new Err(new MCPError(response.error ?? "Unknown error"));
   }
 
-  return makeMCPToolJSONSuccess({
+  return new Ok(makeMCPToolJSONSuccess({
     message: `Message posted to ${to}`,
     result: response,
-  });
+  }).content);
 }
 
 export async function executeListUsers(
@@ -194,7 +196,7 @@ export async function executeListUsers(
       limit: 100,
     });
     if (!response.ok) {
-      throw new Error(response.error);
+      return new Err(new MCPError(response.error ?? "Unknown error"));
     }
     users.push(...(response.members ?? []).filter((member) => !member.is_bot));
     cursor = response.response_metadata?.next_cursor;
@@ -213,25 +215,25 @@ export async function executeListUsers(
 
       // Early return if we found a user
       if (filteredUsers.length > 0) {
-        return makeMCPToolJSONSuccess({
+        return new Ok(makeMCPToolJSONSuccess({
           message: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
           result: filteredUsers,
-        });
+        }).content);
       }
     }
   } while (cursor);
 
   if (nameFilter) {
-    return makeMCPToolJSONSuccess({
+    return new Ok(makeMCPToolJSONSuccess({
       message: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
       result: users,
-    });
+    }).content);
   }
 
-  return makeMCPToolJSONSuccess({
+  return new Ok(makeMCPToolJSONSuccess({
     message: `The workspace has ${users.length} users`,
     result: users,
-  });
+  }).content);
 }
 
 export async function executeGetUser(userId: string, accessToken: string) {
@@ -239,13 +241,12 @@ export async function executeGetUser(userId: string, accessToken: string) {
   const response = await slackClient.users.info({ user: userId });
 
   if (!response.ok || !response.user) {
-    throw new Error(response.error ?? "Unknown error");
+    return new Err(new MCPError(response.error ?? "Unknown error"));
   }
-
-  return makeMCPToolJSONSuccess({
+  return new Ok(makeMCPToolJSONSuccess({
     message: `Retrieved user information for ${userId}`,
     result: response.user,
-  });
+  }).content);
 }
 
 export async function executeListPublicChannels(
@@ -273,21 +274,21 @@ export async function executeListPublicChannels(
 
     // Early return if we found a channel
     if (filteredChannels.length > 0) {
-      return makeMCPToolJSONSuccess({
+      return new Ok(makeMCPToolJSONSuccess({
         message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
         result: filteredChannels,
-      });
+      }).content);
     }
   }
   if (nameFilter) {
-    return makeMCPToolJSONSuccess({
+    return new Ok(makeMCPToolJSONSuccess({
       message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
       result: channels,
-    });
+    }).content);
   }
 
-  return makeMCPToolJSONSuccess({
+  return new Ok(makeMCPToolJSONSuccess({
     message: `The workspace has ${channels.length} channels`,
     result: channels,
-  });
+  }).content);
 }
