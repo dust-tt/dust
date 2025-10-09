@@ -1190,7 +1190,7 @@ impl Embedder for OpenAIEmbedder {
         self.id.clone()
     }
 
-    async fn initialize(&mut self, _credentials: Credentials) -> Result<()> {
+    async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
         if !(vec!["text-embedding-3-small", "text-embedding-3-large-1536"]
             .contains(&self.id.as_str()))
         {
@@ -1202,15 +1202,17 @@ impl Embedder for OpenAIEmbedder {
 
         // For the Embedder, we deliberately don't rely on passed credentials, to avoid using
         // user creds in Dust app scenarios (unlike in LLM scenarios, where we want to use them).
-
+        // We only use it as a fallback for local development.
         let raw_openai_key_env = match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY") {
             Ok(v) => v,
-            _ => {
-                // The fallback to DUST_MANAGED_OPENAI_API_KEY is for local development only
-                std::env::var("DUST_MANAGED_OPENAI_API_KEY").map_err(|_| {
-                    anyhow!("CORE_DATA_SOURCES_OPENAI_API_KEY or DUST_MANAGED_OPENAI_API_KEY must be set.")
-                })?
-            }
+            Err(_) => match credentials.get("OPENAI_API_KEY") {
+                Some(api_key) => api_key.clone(),
+                None => {
+                    return Err(anyhow!(
+                        "CORE_DATA_SOURCES_OPENAI_API_KEY or OPENAI_API_KEY must be set."
+                    ));
+                }
+            },
         };
 
         // The env variable can take two forms:
