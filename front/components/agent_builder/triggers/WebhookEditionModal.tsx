@@ -29,6 +29,8 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useUser } from "@app/lib/swr/user";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types";
+import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
+import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 const webhookFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
@@ -50,6 +52,7 @@ interface WebhookEditionModalProps {
 type WebhookOption = {
   value: string;
   label: string;
+  kind: WebhookSourceKind;
 };
 
 export function WebhookEditionModal({
@@ -104,6 +107,7 @@ export function WebhookEditionModal({
           options.push({
             value: view.sId,
             label: view.customName ?? wsv.name,
+            kind: view.webhookSource.kind,
           });
         });
     });
@@ -236,6 +240,9 @@ export function WebhookEditionModal({
                           key={option.value}
                           label={option.label}
                           disabled={!isEditor}
+                          icon={
+                            WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[option.kind].icon
+                          }
                           onClick={() => {
                             form.setValue(
                               "webhookSourceViewSId",
