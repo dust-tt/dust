@@ -581,6 +581,21 @@ const RenderConversations = ({
   );
 };
 
+function getConversationDotStatus(
+  conversation: ConversationWithoutContentType
+): "blocked" | "unread" | "idle" {
+  if (conversation.actionRequired) {
+    return "blocked";
+  }
+  if (conversation.hasError) {
+    return "blocked";
+  }
+  if (conversation.unread) {
+    return "unread";
+  }
+  return "idle";
+}
+
 const RenderConversation = ({
   conversation,
   isMultiSelect,
@@ -631,18 +646,7 @@ const RenderConversation = ({
       ) : (
         <NavigationListItem
           selected={router.query.cId === conversation.sId}
-          icon={conversation.actionRequired ? ExclamationCircleIcon : undefined}
-          status={
-            // If there is an action required, we show the exclamation icon only.
-            // Otherwise, the hasError takes precedence over the unread.
-            conversation.actionRequired
-              ? undefined
-              : conversation.hasError
-                ? "blocked"
-                : conversation.unread
-                  ? "unread"
-                  : undefined
-          }
+          status={getConversationDotStatus(conversation)}
           label={conversationLabel}
           moreMenu={
             <ConversationMenu
