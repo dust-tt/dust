@@ -381,10 +381,12 @@ export class GongClient {
     callIds,
     pageCursor = null,
     trackersEnabled = false,
+    accountsEnabled = false,
   }: {
     callIds: string[];
     pageCursor?: string | null;
     trackersEnabled?: boolean;
+    accountsEnabled?: boolean;
   }): Promise<{
     callsMetadata: GongTranscriptMetadata[];
     nextPageCursor: string | null;
@@ -403,7 +405,7 @@ export class GongClient {
         callIds,
       },
       contentSelector: {
-        context: "Extended",
+        ...(accountsEnabled ? { context: "Extended" } : {}),
         exposedFields: {
           parties: true,
           ...(trackersEnabled ? { content: { trackers: true } } : {}),
