@@ -77,6 +77,8 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       signatureAlgorithm: "sha256",
       customHeaders: null,
       includeGlobal: true,
+      kind: "custom",
+      subscribedEvents: [],
     };
 
     await handler(req, res);
@@ -102,6 +104,8 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
       signatureAlgorithm: "sha256",
       customHeaders: null,
       includeGlobal: true,
+      kind: "custom",
+      subscribedEvents: [],
     };
 
     await handler(req, res);
@@ -112,5 +116,52 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
     expect(data.success).toBe(true);
     expect(typeof data.webhookSource.secret).toBe("string");
     expect(data.webhookSource.secret.length).toBe(64);
+  });
+
+  it("should create GitHub webhook source with pull_request event", async () => {
+    const { req, res } = await setupTest("admin", "POST");
+
+    req.body = {
+      name: "GitHub PR Webhook",
+      secret: "pr-secret-456",
+      signatureHeader: "X-Hub-Signature-256",
+      signatureAlgorithm: "sha256",
+      customHeaders: null,
+      includeGlobal: true,
+      kind: "github",
+      subscribedEvents: ["pull_request"],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    const data = res._getJSONData();
+    expect(data.success).toBe(true);
+    expect(data.webhookSource.kind).toBe("github");
+    expect(data.webhookSource.subscribedEvents).toEqual(["pull_request"]);
+    expect(data.webhookSource.name).toBe("GitHub PR Webhook");
+  });
+
+  it("should return error when creating GitHub webhook source with no events", async () => {
+    const { req, res } = await setupTest("admin", "POST");
+
+    req.body = {
+      name: "GitHub Webhook No Events",
+      secret: "test-secret",
+      signatureHeader: "X-Hub-Signature-256",
+      signatureAlgorithm: "sha256",
+      customHeaders: null,
+      includeGlobal: true,
+      kind: "github",
+      subscribedEvents: [],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    const data = res._getJSONData();
+    expect(data.error).toBeDefined();
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toContain("Subscribed events must not be empty");
   });
 });

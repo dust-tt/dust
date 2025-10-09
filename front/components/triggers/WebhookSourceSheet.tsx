@@ -1,7 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  ActionGlobeAltIcon,
-  Avatar,
   Button,
   InformationCircleIcon,
   LockIcon,
@@ -32,6 +30,7 @@ import {
 } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
@@ -187,8 +186,15 @@ function WebhookSourceSheetContent({
       signatureHeader: "",
       signatureAlgorithm: "sha256",
       customHeaders: null,
+      kind: mode.kind,
+      subscribedEvents:
+        mode.kind === "custom"
+          ? []
+          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].events.map(
+              (e) => e.value
+            ),
     }),
-    []
+    [mode.kind]
   );
 
   const createForm = useForm<CreateWebhookSourceFormData>({
@@ -504,7 +510,10 @@ function WebhookSourceSheetContent({
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
-              <CreateWebhookSourceFormContent form={createForm} />
+              <CreateWebhookSourceFormContent
+                form={createForm}
+                kind={mode.kind}
+              />
             </div>
           </FormProvider>
         ),
@@ -514,7 +523,9 @@ function WebhookSourceSheetContent({
         title:
           systemView?.customName ?? webhookSource?.name ?? "Webhook Source",
         description: "Webhook source for triggering assistants.",
-        icon: () => <Avatar icon={ActionGlobeAltIcon} size="md" />,
+        icon: systemView
+          ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
+          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>

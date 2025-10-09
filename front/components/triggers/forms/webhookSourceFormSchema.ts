@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceView } from "@app/types/triggers/webhooks";
 
 export type WebhookSourceFormValues = {
   name: string;
@@ -8,7 +8,7 @@ export type WebhookSourceFormValues = {
 };
 
 export function getWebhookSourceFormDefaults(
-  view: WebhookSourceViewType,
+  view: WebhookSourceView,
   webhookSourceWithViews?: { views: Array<{ spaceId: string }> },
   spaces?: Array<{ sId: string; kind: string }>
 ): WebhookSourceFormValues {

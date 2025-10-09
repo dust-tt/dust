@@ -39,7 +39,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_pages",
-    "Search for Confluence pages using CQL (Confluence Query Language). Only returns page objects. Examples: 'type=page AND space=DEV', 'type=page AND title~\"meeting\"', 'type=page AND creator=currentUser()'",
+    "Search for Confluence pages using CQL (Confluence Query Language). Only returns page objects. Supports flexible text matching: use '~' for contains (title~\"meeting\"), '!~' for not contains, or '=' for exact match. Examples: 'type=page AND space=DEV', 'type=page AND title~\"meeting notes\"', 'type=page AND text~\"quarterly\"', 'type=page AND creator=currentUser()'",
     {
       cql: z
         .string()

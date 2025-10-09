@@ -4,7 +4,7 @@
 // not on the Stripe dashboard.
 export const PRO_PLAN_COST_MONTHLY = 29;
 export const PRO_PLAN_COST_YEARLY = 27;
-export const BUSINESS_PLAN_COST_MONTHLY = 39;
+export const BUSINESS_PLAN_COST_MONTHLY = 45;
 
 export const getPriceWithCurrency = (price: number): string => {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;

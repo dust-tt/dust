@@ -13,11 +13,11 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
-import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -48,7 +48,7 @@ const NameCell = ({ row }: { row: RowData }) => {
           webhookSource.systemView ? "" : "opacity-50"
         )}
       >
-        {systemView && <div>{getAvatarFromIcon(systemView.icon, "sm")}</div>}
+        {systemView && <WebhookSourceViewIcon webhookSourceView={systemView} />}
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
           <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
             {systemView?.customName ?? webhookSource.name}

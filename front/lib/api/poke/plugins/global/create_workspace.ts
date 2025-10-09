@@ -26,8 +26,9 @@ export const createWorkspacePlugin = createPlugin({
       },
       isBusiness: {
         type: "boolean",
-        label: "Is Business",
-        description: "Is the workspace a business workspace (Pro plan 39€)",
+        label: "Whitelist workspace for Enterprise seat based plan",
+        description:
+          "Workspace will subscribe to Enterprise seat based plan (45€/$/£) when doing their Stripe checkout session.",
       },
       planCode: {
         type: "string",

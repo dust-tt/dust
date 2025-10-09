@@ -122,6 +122,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               return (
                 <AttachmentCitation
                   key={attachmentCitation.id}
+                  owner={owner}
                   attachmentCitation={attachmentCitation}
                   fileUploaderService={fileUploaderService}
                 />

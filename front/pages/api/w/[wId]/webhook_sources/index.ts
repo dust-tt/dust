@@ -12,10 +12,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type {
-  WebhookSourceType,
+  WebhookSource,
   WebhookSourceWithViewsAndUsage,
 } from "@app/types/triggers/webhooks";
-import { PostWebhookSourcesSchema } from "@app/types/triggers/webhooks";
+import { postWebhookSourcesSchema } from "@app/types/triggers/webhooks";
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
@@ -24,7 +24,7 @@ export type GetWebhookSourcesResponseBody = {
 
 export type PostWebhookSourcesResponseBody = {
   success: true;
-  webhookSource: WebhookSourceType;
+  webhookSource: WebhookSource;
 };
 
 async function handler(
@@ -83,7 +83,7 @@ async function handler(
     }
 
     case "POST": {
-      const bodyValidation = PostWebhookSourcesSchema.safeParse(req.body);
+      const bodyValidation = postWebhookSourcesSchema.safeParse(req.body);
 
       if (!bodyValidation.success) {
         const pathError = fromError(bodyValidation.error).toString();
@@ -104,6 +104,8 @@ async function handler(
         signatureAlgorithm,
         customHeaders,
         includeGlobal,
+        subscribedEvents,
+        kind,
       } = bodyValidation.data;
 
       const workspace = auth.getNonNullableWorkspace();
@@ -121,12 +123,12 @@ async function handler(
                 ? secret
                 : generateSecureSecret(64),
           urlSecret: generateSecureSecret(64),
-          kind: "custom",
+          kind,
           signatureHeader:
             trimmedSignatureHeader.length > 0 ? trimmedSignatureHeader : null,
           signatureAlgorithm,
           customHeaders,
-          subscribedEvents: [],
+          subscribedEvents,
         });
 
         if (webhookSourceRes.isErr()) {

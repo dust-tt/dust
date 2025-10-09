@@ -7,7 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import type { LightWorkspaceType } from "@app/types";
@@ -52,7 +52,10 @@ export function WebhookSourceDetailsSharing({
 }: WebhookSourceDetailsSharingProps) {
   const [filter, setFilter] = useState("");
   const form = useFormContext<WebhookSourceFormValues>();
-  const sharingSettings = form.watch("sharingSettings") || {};
+  const sharingSettings = useWatch({
+    control: form.control,
+    name: "sharingSettings",
+  });
 
   const globalSpace = spaces.find((space) => space.kind === "global");
   const availableSpaces = spaces.filter((s) => s.kind === "regular");
