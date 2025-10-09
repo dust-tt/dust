@@ -192,64 +192,54 @@ const createServer = (): McpServer => {
       undefined,
       { toolName: "list_tickets" },
       async ({ filter, fields, page, per_page }, { authInfo }) => {
-        if (!authInfo?.token) {
-          return new Err(new MCPError(
-            "Authentication required. Please connect your Freshservice account."
-          ));
-        }
-
-        // Extract Freshservice domain from extra metadata
-        const freshserviceDomain = authInfo.extra?.freshservice_domain as string;
-        if (!freshserviceDomain) {
-          return new Err(new MCPError(
-            "Freshservice domain URL not configured. Please reconnect your Freshservice account."
-          ));
-        }
-
         try {
-          const params = new URLSearchParams({
-            page: page.toString(),
-            per_page: per_page.toString(),
+          const result = await withAuth({
+            action: async (accessToken, freshserviceDomain) => {
+              const params = new URLSearchParams({
+                page: page.toString(),
+                per_page: per_page.toString(),
+              });
+
+              if (filter?.email) {
+                params.append("email", filter.email);
+              }
+              if (filter?.requester_id !== undefined) {
+                params.append("requester_id", filter.requester_id.toString());
+              }
+              if (filter?.updated_since) {
+                params.append("updated_since", filter.updated_since);
+              }
+              if (filter?.type) {
+                params.append("type", filter.type);
+              }
+              if (filter?.filter_type) {
+                params.append("filter", filter.filter_type);
+              }
+
+              const result = await apiRequest(
+                accessToken,
+                freshserviceDomain,
+                `tickets?${params.toString()}`
+              );
+
+              // Filter fields if specified, otherwise use default fields
+              const tickets: FreshserviceTicket[] = result.tickets || [];
+              const selectedFields: ReadonlyArray<string> =
+                fields && fields.length > 0 ? fields : DEFAULT_TICKET_FIELDS_LIST;
+              const filteredTickets = tickets.map((ticket) =>
+                pickFields(ticket, selectedFields)
+              );
+
+              return makeMCPToolJSONSuccess({
+                message: `Retrieved ${filteredTickets.length} tickets`,
+                result: filteredTickets,
+              });
+            },
+            authInfo,
           });
-
-          if (filter?.email) {
-            params.append("email", filter.email);
-          }
-          if (filter?.requester_id !== undefined) {
-            params.append("requester_id", filter.requester_id.toString());
-          }
-          if (filter?.updated_since) {
-            params.append("updated_since", filter.updated_since);
-          }
-          if (filter?.type) {
-            params.append("type", filter.type);
-          }
-          if (filter?.filter_type) {
-            params.append("filter", filter.filter_type);
-          }
-
-          const result = await apiRequest(
-            authInfo.token,
-            freshserviceDomain,
-            `tickets?${params.toString()}`
-          );
-
-          // Filter fields if specified, otherwise use default fields
-          const tickets: FreshserviceTicket[] = result.tickets || [];
-          const selectedFields: ReadonlyArray<string> =
-            fields && fields.length > 0 ? fields : DEFAULT_TICKET_FIELDS_LIST;
-          const filteredTickets = tickets.map((ticket) =>
-            pickFields(ticket, selectedFields)
-          );
-
-          return new Ok(makeMCPToolJSONSuccess({
-            message: `Retrieved ${filteredTickets.length} tickets`,
-            result: filteredTickets,
-          }).content);
+          return new Ok(result.content);
         } catch (error) {
-          return new Err(new MCPError(
-            `API request failed: ${error instanceof Error ? error.message : "Unknown error"}`
-          ));
+          return new Err(new MCPError(`Error: ${error instanceof Error ? error.message : "Unknown error"}`));
         }
       }
     )
