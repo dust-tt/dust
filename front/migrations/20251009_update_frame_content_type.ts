@@ -34,7 +34,7 @@ async function updateLegacyFrameContentType(
       };
 
       let updatedCount = 0;
-      if (execute) {
+      if (!execute) {
         updatedCount = await FileModel.count({
           where: whereClause,
         });
