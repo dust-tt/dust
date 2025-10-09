@@ -76,7 +76,7 @@ const createServer = (
 
   server.tool(
     CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Create a new Frame file that users can execute or interact with. Use this for " +
+    "Create a new interactive file that users can execute or interact with. Use this for " +
       "content that provides functionality beyond static viewing.",
     {
       file_name: z
@@ -92,7 +92,7 @@ const createServer = (
           ]
         )
         .describe(
-          "The MIME type for the Frame file. Use " +
+          "The MIME type for the interactive file. Use " +
             `'${frameContentType}' for Frame components (React/JSX).`
         ),
       content: z
@@ -156,10 +156,10 @@ const createServer = (
             buildInteractiveContentFileNotification(
               _meta.progressToken,
               fileResource,
-              "Creating Frame file..."
+              "Creating interactive file..."
             );
 
-          // Send a notification to the MCP Client, to display the Frame file.
+          // Send a notification to the MCP Client, to display the interactive file.
           await sendNotification(notification);
         }
 
@@ -345,11 +345,13 @@ const createServer = (
 
   server.tool(
     RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Rename a Frame file. Use this to change the file name while keeping the content unchanged.",
+    "Rename an interactive file. Use this to change the file name while keeping the content unchanged.",
     {
       file_id: z
         .string()
-        .describe("The ID of the Frame file to rename (e.g., 'fil_abc123')"),
+        .describe(
+          "The ID of the interactive file to rename (e.g., 'fil_abc123')"
+        ),
       new_file_name: z
         .string()
         .describe(
@@ -385,7 +387,7 @@ const createServer = (
             buildInteractiveContentFileNotification(
               _meta.progressToken,
               fileResource,
-              "Renaming Frame file..."
+              "Renaming interactive file..."
             );
 
           await sendNotification(notification);
@@ -403,14 +405,16 @@ const createServer = (
 
   server.tool(
     RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-    "Retrieve the current content of an existing Frame file by its file ID. " +
-      "Use this to read back the content of Frame files you have previously created or " +
+    "Retrieve the current content of an existing interactive file by its file ID. " +
+      "Use this to read back the content of interactive files you have previously created or " +
       `updated. Use this tool before calling ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
     {
       file_id: z
         .string()
-        .describe("The ID of the Frame file to retrieve (e.g., 'fil_abc123')"),
+        .describe(
+          "The ID of the interactive file to retrieve (e.g., 'fil_abc123')"
+        ),
     },
     withToolLogging(
       auth,
