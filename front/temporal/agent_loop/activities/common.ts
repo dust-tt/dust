@@ -180,10 +180,7 @@ export async function notifyWorkflowError(
       conversationId
     );
   if (conversationRes.isErr()) {
-    if (
-      conversationRes.error instanceof ConversationError &&
-      conversationRes.error.type === "conversation_not_found"
-    ) {
+    if (conversationRes.error.type === "conversation_not_found") {
       return;
     }
 
