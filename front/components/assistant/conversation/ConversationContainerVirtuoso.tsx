@@ -5,7 +5,7 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
@@ -28,7 +28,6 @@ import {
 import { getAgentRoute } from "@app/lib/utils/router";
 import type {
   ContentFragmentsType,
-  LightAgentConfigurationType,
   MentionType,
   Result,
   SubscriptionType,
@@ -56,8 +55,6 @@ export function ConversationContainerVirtuoso({
 
   const { hasBlockedActions, totalBlockedActions, showBlockedActionsDialog } =
     useActionValidationContext();
-
-  const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
   const router = useRouter();
 
@@ -242,9 +239,6 @@ export function ConversationContainerVirtuoso({
           <AgentBrowserContainer
             onAgentConfigurationClick={(agentId) => {
               setSelectedAssistant({ configurationId: agentId });
-            }}
-            setAssistantToMention={(assistant) => {
-              assistantToMention.current = assistant;
             }}
             owner={owner}
             user={user}
