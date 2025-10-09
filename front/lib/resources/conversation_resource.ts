@@ -369,6 +369,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggerId: conversation.triggerSId(),
       actionRequired,
       unread,
+      hasError: conversation.hasError,
       requestedGroupIds:
         conversation.getConversationRequestedGroupIdsFromModel(auth),
     });
@@ -441,6 +442,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           updated: p.updatedAt.getTime(),
           unread: p.unread,
           actionRequired: p.actionRequired,
+          hasError: c.hasError,
           sId: c.sId,
           owner,
           title: c.title,
@@ -497,6 +499,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           triggerId: triggerId,
           actionRequired,
           unread,
+          hasError: c.hasError,
           requestedGroupIds: new this(
             this.model,
             c
@@ -868,6 +871,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.update(
       {
         requestedGroupIds,
+      },
+      transaction
+    );
+  }
+
+  async clearHasError(transaction?: Transaction) {
+    return this.update(
+      {
+        hasError: false,
       },
       transaction
     );
