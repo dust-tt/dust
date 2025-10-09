@@ -247,6 +247,7 @@ export interface CustomEditorProps {
     to: number;
   }) => void;
   longTextPasteCharsThreshold?: number;
+  onInlineText?: (fileId: string, textContent: string) => void;
 }
 
 const useCustomEditor = ({
@@ -258,6 +259,7 @@ const useCustomEditor = ({
   owner,
   onLongTextPaste,
   longTextPasteCharsThreshold,
+  onInlineText,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -284,7 +286,9 @@ const useCustomEditor = ({
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
-    PastedAttachmentExtension,
+    PastedAttachmentExtension.configure({
+      onInlineText,
+    }),
     URLStorageExtension,
   ];
   if (onUrlDetected) {
