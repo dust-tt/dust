@@ -7,7 +7,7 @@ import { Err, Ok } from "@app/types";
 export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
   manifest: {
     id: "delete-labs-transcript-histories",
-    name: "Transcript Full Resync",
+    name: "Transcripts Full Resync",
     description:
       "Delete all labs_conversation_histories for a specific transcriptsConfiguration to restart sync",
     resourceTypes: ["workspaces"],
@@ -18,6 +18,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
         description:
           "Select the transcripts configuration to delete all history for",
         async: true,
+        multiple: false,
         values: [],
       },
     },
