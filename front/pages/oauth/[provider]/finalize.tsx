@@ -37,33 +37,55 @@ export default function Finalize({
   // Finalize the connection on component mount.
   useEffect(() => {
     async function finalizeOAuth() {
-      // You can end up here when you directly edit the configuration
-      // (e.g. go to GitHub and configure repositories from Dust App in Settings, hence no opener).
-      // We cannot really do anything here, so we simply redirect to Dust homepage.
-      if (!window.opener) {
-        window.location.href = window.location.origin;
+      const res = await doFinalize(provider, queryParams);
+
+      // Prepare message data
+      const messageData = res.isErr()
+        ? {
+            type: "connection_finalized",
+            error: res.error.message || "Failed to finalize connection",
+            provider,
+          }
+        : {
+            type: "connection_finalized",
+            connection: res.value,
+            provider,
+          };
+
+      // Method 1: window.opener (preferred, direct communication)
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage(messageData, window.location.origin);
+        } catch (e) {
+          console.error("[OAuth Finalize] window.opener.postMessage failed", e);
+        }
       } else {
-        const res = await doFinalize(provider, queryParams);
-        // Send a message `connection_finalized` to the window that opened
-        // this one, with either an error or the connection data.
-        if (res.isErr()) {
-          window.opener.postMessage(
-            {
-              type: "connection_finalized",
-              error: res.error.message || "Failed to finalize connection",
-            },
-            window.location.origin
-          );
-        } else {
-          window.opener.postMessage(
-            {
-              type: "connection_finalized",
-              connection: res.value,
-            },
-            window.location.origin
-          );
+        // Method 2: BroadcastChannel (fallback for modern browsers)
+        try {
+          const channel = new BroadcastChannel("oauth_finalize");
+          channel.postMessage(messageData);
+          setTimeout(() => channel.close(), 100);
+        } catch (e) {
+          console.error("[OAuth Finalize] BroadcastChannel failed", e);
+        }
+
+        // Method 3: localStorage (fallback for all browsers)
+        try {
+          const storageKey = `oauth_finalize_${provider}`;
+          localStorage.setItem(storageKey, JSON.stringify(messageData));
+        } catch (e) {
+          console.error("[OAuth Finalize] localStorage failed", e);
         }
       }
+
+      // Close window after a short delay to ensure message delivery
+      setTimeout(() => {
+        window.close();
+        // If window.close() fails, redirect to home
+        setTimeout(() => {
+          window.location.href = window.location.origin;
+        }, 100);
+      }, 1000);
     }
     void finalizeOAuth();
   }, [queryParams, provider, doFinalize]);
