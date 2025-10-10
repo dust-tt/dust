@@ -95,6 +95,15 @@ export async function setupOAuthConnection({
         const stored = localStorage.getItem(storageKey);
         if (stored) {
           const data = JSON.parse(stored);
+
+          // Check if data has expired (30 second window)
+          if (data.expiresAt && Date.now() > data.expiresAt) {
+            // Data expired, remove it and ignore
+            localStorage.removeItem(storageKey);
+            return;
+          }
+
+          // Clean up immediately after reading
           localStorage.removeItem(storageKey);
           handleFinalization(data);
         }
