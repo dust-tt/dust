@@ -580,25 +580,28 @@ const createServer = (
           });
 
           const calendarData = res.data.calendars?.[email];
-        for (const error of calendarData?.errors ?? []) {
-          if (error.reason === "notFound") {
-            return makeMCPToolTextError(
-              `Calendar not found for email: ${email}. The calendar may not exist or you may not have access to it.`
+          for (const error of calendarData?.errors ?? []) {
+            if (error.reason === "notFound") {
+              return new Err(
+                new MCPError(
+                  `Calendar not found for email: ${email}. The calendar may not exist or you may not have access to it.`
+                )
+              );
+            }
+            return new Err(
+              new MCPError(
+                `Error checking calendar availability for ${email}: ${error.reason}`
+              )
             );
           }
-          return makeMCPToolTextError(
-            `Error checking calendar availability for ${email}: ${error.reason}`
-          );
-        }
 
-        const busySlots = calendarData?.busy ?? [];
+          const busySlots = calendarData?.busy ?? [];
           const available = busySlots.length === 0;
           return new Ok(
             makeMCPToolJSONSuccess({
               result: {
                 available,
                 busySlots: busySlots.map((slot) => ({
-
                   start: slot.start ?? "",
 
                   end: slot.end ?? "",
