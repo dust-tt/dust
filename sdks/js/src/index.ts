@@ -278,8 +278,9 @@ export class DustAPI {
     // Conveniently clean path from any leading "/" just in case
     args.path = args.path.replace(/^\/+/, "");
 
-    let url = `${this.apiUrl()}/api/v1/w/${args.overrideWorkspaceId ?? this.workspaceId()
-      }/${args.path}`;
+    let url = `${this.apiUrl()}/api/v1/w/${
+      args.overrideWorkspaceId ?? this.workspaceId()
+    }/${args.path}`;
 
     if (args.query) {
       url += `?${args.query.toString()}`;
@@ -546,7 +547,7 @@ export class DustAPI {
         const decoder = new TextDecoder();
 
         try {
-          for (; ;) {
+          for (;;) {
             const { value, done } = await reader.read();
 
             if (value) {
@@ -966,7 +967,7 @@ export class DustAPI {
         const decoder = new TextDecoder();
 
         try {
-          for (; ;) {
+          for (;;) {
             const { value, done } = await reader.read();
             if (value) {
               parser.feed(decoder.decode(value, { stream: true }));
@@ -1324,7 +1325,7 @@ export class DustAPI {
         return new Err(
           new Error(
             errorData?.error?.message ||
-            `Failed to upload file: ${response.status}`
+              `Failed to upload file: ${response.status}`
           )
         );
       }
