@@ -88,22 +88,19 @@ export const credentialsFromProviders = (
   return credentials;
 };
 
-export const dustManagedCredentials = (options?: {
-  useOpenAIEUKeyFlag?: boolean;
-}): CredentialsType => {
+export const dustManagedCredentials = (): CredentialsType => {
+  // Based on the Dust region, we use different keys / endpoints for some providers.
   const isEuropeRegion = DUST_REGION === "europe-west1";
-
-  const useOpenAIEU = options?.useOpenAIEUKeyFlag && isEuropeRegion;
 
   return {
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
     AZURE_OPENAI_API_KEY: DUST_MANAGED_AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT: DUST_MANAGED_AZURE_OPENAI_ENDPOINT,
     MISTRAL_API_KEY: DUST_MANAGED_MISTRAL_API_KEY,
-    OPENAI_API_KEY: useOpenAIEU
+    OPENAI_API_KEY: isEuropeRegion
       ? DUST_MANAGED_OPENAI_API_KEY_EU
       : DUST_MANAGED_OPENAI_API_KEY,
-    OPENAI_USE_EU_ENDPOINT: useOpenAIEU ? "true" : "false",
+    OPENAI_USE_EU_ENDPOINT: isEuropeRegion ? "true" : "false",
     TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
     SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,

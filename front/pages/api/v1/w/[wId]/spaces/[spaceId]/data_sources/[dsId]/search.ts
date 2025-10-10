@@ -231,7 +231,7 @@ async function handler(
         });
       }
       const searchQuery = r.data;
-      const s = await handleDataSourceSearch({ searchQuery, dataSource, auth });
+      const s = await handleDataSourceSearch({ searchQuery, dataSource });
       if (s.isErr()) {
         switch (s.error.code) {
           case "data_source_error":

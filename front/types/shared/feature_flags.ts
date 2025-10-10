@@ -176,10 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Webhooks for Human Out Of The Loop (aka Triggers) / webhooks",
     stage: "dust_only",
   },
-  use_openai_eu_key: {
-    description: "Use OpenAI EU API key instead of the default OpenAI API key",
-    stage: "on_demand",
-  },
   slack_bot_mcp: {
     description: "Slack bot MCP server for workspace-level Slack integration",
     stage: "on_demand",
