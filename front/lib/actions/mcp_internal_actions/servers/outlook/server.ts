@@ -1,12 +1,18 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { Err, Ok } from "@app/types";
+
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const OUTLOOK_TOOL_NAME = "outlook";
 
 const OutlookEmailAddressSchema = z.object({
   address: z.string(),
@@ -68,7 +74,7 @@ const OutlookContactSchema = z.object({
 type OutlookMessage = z.infer<typeof OutlookMessageSchema>;
 type OutlookContact = z.infer<typeof OutlookContactSchema>;
 
-const createServer = (): McpServer => {
+const createServer = (auth: Authenticator): McpServer => {
   const server = makeInternalMCPServer("outlook");
 
   server.tool(
@@ -96,54 +102,62 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Fields to include in the response."),
     },
-    async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
 
-      const params = new URLSearchParams();
-      params.append("$top", Math.min(top, 100).toString());
+        const params = new URLSearchParams();
+        params.append("$top", Math.min(top, 100).toString());
 
-      if (search) {
-        params.append("$search", `"${search}"`);
-      } else {
-        params.append("$skip", skip.toString());
-      }
+        if (search) {
+          params.append("$search", `"${search}"`);
+        } else {
+          params.append("$skip", skip.toString());
+        }
 
-      if (select && select.length > 0) {
-        params.append("$select", select.join(","));
-      } else {
-        params.append(
-          "$select",
-          "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,parentFolderId"
+        if (select && select.length > 0) {
+          params.append("$select", select.join(","));
+        } else {
+          params.append(
+            "$select",
+            "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,parentFolderId"
+          );
+        }
+
+        const response = await fetchFromOutlook(
+          `/me/messages?${params.toString()}`,
+          accessToken,
+          { method: "GET" }
+        );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          return new Err(
+            new MCPError(
+              `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
+        }
+
+        const result = await response.json();
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Messages fetched successfully",
+            result: {
+              messages: (result.value || []) as OutlookMessage[],
+              nextLink: result["@odata.nextLink"],
+              totalCount: result["@odata.count"],
+            },
+          }).content
         );
       }
-
-      const response = await fetchFromOutlook(
-        `/me/messages?${params.toString()}`,
-        accessToken,
-        { method: "GET" }
-      );
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
-        );
-      }
-
-      const result = await response.json();
-
-      return makeMCPToolJSONSuccess({
-        message: "Messages fetched successfully",
-        result: {
-          messages: (result.value || []) as OutlookMessage[],
-          nextLink: result["@odata.nextLink"],
-          totalCount: result["@odata.count"],
-        },
-      });
-    }
+    )
   );
 
   server.tool(
@@ -165,61 +179,67 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Number of drafts to skip for pagination."),
     },
-    async ({ search, top = 10, skip = 0 }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      async ({ search, top = 10, skip = 0 }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const params = new URLSearchParams();
+        params.append("$filter", "isDraft eq true");
+        params.append("$top", Math.min(top, 100).toString());
+
+        if (search) {
+          params.append("$search", `"${search}"`);
+        } else {
+          params.append("$skip", skip.toString());
+        }
+
+        const response = await fetchFromOutlook(
+          `/me/messages?${params.toString()}`,
+          accessToken,
+          { method: "GET" }
+        );
+
+        if (!response.ok) {
+          return new Err(new MCPError("Failed to get drafts"));
+        }
+
+        const result = await response.json();
+
+        // Get detailed information for each draft
+        const draftDetails = await concurrentExecutor(
+          result.value || [],
+          async (draft: { id: string }): Promise<OutlookMessage | null> => {
+            const draftResponse = await fetchFromOutlook(
+              `/me/messages/${draft.id}`,
+              accessToken,
+              { method: "GET" }
+            );
+
+            if (!draftResponse.ok) {
+              return null;
+            }
+
+            return draftResponse.json();
+          },
+          { concurrency: 10 }
+        );
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Drafts fetched successfully",
+            result: {
+              drafts: draftDetails.filter(Boolean) as OutlookMessage[],
+              nextLink: result["@odata.nextLink"],
+            },
+          }).content
+        );
       }
-
-      const params = new URLSearchParams();
-      params.append("$filter", "isDraft eq true");
-      params.append("$top", Math.min(top, 100).toString());
-
-      if (search) {
-        params.append("$search", `"${search}"`);
-      } else {
-        params.append("$skip", skip.toString());
-      }
-
-      const response = await fetchFromOutlook(
-        `/me/messages?${params.toString()}`,
-        accessToken,
-        { method: "GET" }
-      );
-
-      if (!response.ok) {
-        return makeMCPToolTextError("Failed to get drafts");
-      }
-
-      const result = await response.json();
-
-      // Get detailed information for each draft
-      const draftDetails = await concurrentExecutor(
-        result.value || [],
-        async (draft: { id: string }): Promise<OutlookMessage | null> => {
-          const draftResponse = await fetchFromOutlook(
-            `/me/messages/${draft.id}`,
-            accessToken,
-            { method: "GET" }
-          );
-
-          if (!draftResponse.ok) {
-            return null;
-          }
-
-          return draftResponse.json();
-        },
-        { concurrency: 10 }
-      );
-
-      return makeMCPToolJSONSuccess({
-        message: "Drafts fetched successfully",
-        result: {
-          drafts: draftDetails.filter(Boolean) as OutlookMessage[],
-          nextLink: result["@odata.nextLink"],
-        },
-      });
-    }
+    )
   );
 
   server.tool(
@@ -245,65 +265,71 @@ const createServer = (): McpServer => {
         .optional()
         .describe("The importance level of the email"),
     },
-    async (
-      { to, cc, bcc, subject, contentType, body, importance = "normal" },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      async (
+        { to, cc, bcc, subject, contentType, body, importance = "normal" },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        // Create the email message object for Microsoft Graph API
+        const message: any = {
+          subject,
+          importance,
+          body: {
+            contentType,
+            content: body,
+          },
+          toRecipients: to.map((email) => ({
+            emailAddress: { address: email },
+          })),
+          isDraft: true,
+        };
+
+        if (cc && cc.length > 0) {
+          message.ccRecipients = cc.map((email) => ({
+            emailAddress: { address: email },
+          }));
+        }
+
+        if (bcc && bcc.length > 0) {
+          message.bccRecipients = bcc.map((email) => ({
+            emailAddress: { address: email },
+          }));
+        }
+
+        // Make the API call to create the draft in Outlook
+        const response = await fetchFromOutlook("/me/messages", accessToken, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(message),
+        });
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          return new Err(new MCPError(`Failed to create draft: ${errorText}`));
+        }
+
+        const result = await response.json();
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Draft created successfully",
+            result: {
+              messageId: result.id,
+              conversationId: result.conversationId,
+            },
+          }).content
+        );
       }
-
-      // Create the email message object for Microsoft Graph API
-      const message: any = {
-        subject,
-        importance,
-        body: {
-          contentType,
-          content: body,
-        },
-        toRecipients: to.map((email) => ({
-          emailAddress: { address: email },
-        })),
-        isDraft: true,
-      };
-
-      if (cc && cc.length > 0) {
-        message.ccRecipients = cc.map((email) => ({
-          emailAddress: { address: email },
-        }));
-      }
-
-      if (bcc && bcc.length > 0) {
-        message.bccRecipients = bcc.map((email) => ({
-          emailAddress: { address: email },
-        }));
-      }
-
-      // Make the API call to create the draft in Outlook
-      const response = await fetchFromOutlook("/me/messages", accessToken, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(message),
-      });
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(`Failed to create draft: ${errorText}`);
-      }
-
-      const result = await response.json();
-
-      return makeMCPToolJSONSuccess({
-        message: "Draft created successfully",
-        result: {
-          messageId: result.id,
-          conversationId: result.conversationId,
-        },
-      });
-    }
+    )
   );
 
   server.tool(
@@ -314,34 +340,40 @@ const createServer = (): McpServer => {
       subject: z.string().describe("The subject of the draft to delete"),
       to: z.array(z.string()).describe("The email addresses of the recipients"),
     },
-    async ({ messageId, subject, to }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      async ({ messageId, subject, to }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
 
-      // Subject and to are required for user display/confirmation
-      if (!subject || to.length === 0) {
-        return makeMCPToolTextError(
-          "Subject and recipients are required for confirmation"
+        // Subject and to are required for user display/confirmation
+        if (!subject || to.length === 0) {
+          return new Err(
+            new MCPError("Subject and recipients are required for confirmation")
+          );
+        }
+
+        const response = await fetchFromOutlook(
+          `/me/messages/${messageId}`,
+          accessToken,
+          { method: "DELETE" }
+        );
+
+        if (!response.ok) {
+          return new Err(new MCPError("Failed to delete draft"));
+        }
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Draft deleted successfully",
+            result: "",
+          }).content
         );
       }
-
-      const response = await fetchFromOutlook(
-        `/me/messages/${messageId}`,
-        accessToken,
-        { method: "DELETE" }
-      );
-
-      if (!response.ok) {
-        return makeMCPToolTextError("Failed to delete draft");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Draft deleted successfully",
-        result: "",
-      });
-    }
+    )
   );
 
   server.tool(
@@ -376,78 +408,94 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Override the BCC recipients for the reply."),
     },
-    async (
-      { messageId, body, contentType = "html", replyAll = false, to, cc, bcc },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
-
-      // Create the reply draft
-      const endpoint = replyAll
-        ? `/me/messages/${messageId}/createReplyAll`
-        : `/me/messages/${messageId}/createReply`;
-
-      const replyMessage: any = {
-        message: {
-          body: {
-            contentType,
-            content: body,
-          },
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      async (
+        {
+          messageId,
+          body,
+          contentType = "html",
+          replyAll = false,
+          to,
+          cc,
+          bcc,
         },
-      };
-
-      // Add recipients if overriding
-      if (to && to.length > 0) {
-        replyMessage.message.toRecipients = to.map((email) => ({
-          emailAddress: { address: email },
-        }));
-      }
-
-      if (cc && cc.length > 0) {
-        replyMessage.message.ccRecipients = cc.map((email) => ({
-          emailAddress: { address: email },
-        }));
-      }
-
-      if (bcc && bcc.length > 0) {
-        replyMessage.message.bccRecipients = bcc.map((email) => ({
-          emailAddress: { address: email },
-        }));
-      }
-
-      const response = await fetchFromOutlook(endpoint, accessToken, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(replyMessage),
-      });
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        if (response.status === 404) {
-          return makeMCPToolTextError(`Message not found: ${messageId}`);
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
         }
-        return makeMCPToolTextError(
-          `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
+
+        // Create the reply draft
+        const endpoint = replyAll
+          ? `/me/messages/${messageId}/createReplyAll`
+          : `/me/messages/${messageId}/createReply`;
+
+        const replyMessage: any = {
+          message: {
+            body: {
+              contentType,
+              content: body,
+            },
+          },
+        };
+
+        // Add recipients if overriding
+        if (to && to.length > 0) {
+          replyMessage.message.toRecipients = to.map((email) => ({
+            emailAddress: { address: email },
+          }));
+        }
+
+        if (cc && cc.length > 0) {
+          replyMessage.message.ccRecipients = cc.map((email) => ({
+            emailAddress: { address: email },
+          }));
+        }
+
+        if (bcc && bcc.length > 0) {
+          replyMessage.message.bccRecipients = bcc.map((email) => ({
+            emailAddress: { address: email },
+          }));
+        }
+
+        const response = await fetchFromOutlook(endpoint, accessToken, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(replyMessage),
+        });
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          if (response.status === 404) {
+            return new Err(new MCPError(`Message not found: ${messageId}`));
+          }
+          return new Err(
+            new MCPError(
+              `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
+        }
+
+        const result = await response.json();
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Reply draft created successfully",
+            result: {
+              messageId: result.id,
+              conversationId: result.conversationId,
+              originalMessageId: messageId,
+              subject: result.subject,
+            },
+          }).content
         );
       }
-
-      const result = await response.json();
-
-      return makeMCPToolJSONSuccess({
-        message: "Reply draft created successfully",
-        result: {
-          messageId: result.id,
-          conversationId: result.conversationId,
-          originalMessageId: messageId,
-          subject: result.subject,
-        },
-      });
-    }
+    )
   );
 
   server.tool(
@@ -475,54 +523,62 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Fields to include in the response."),
     },
-    async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
 
-      const params = new URLSearchParams();
-      params.append("$top", Math.min(top, 100).toString());
+        const params = new URLSearchParams();
+        params.append("$top", Math.min(top, 100).toString());
 
-      if (search) {
-        params.append("$search", `"${search}"`);
-      } else {
-        params.append("$skip", skip.toString());
-      }
+        if (search) {
+          params.append("$search", `"${search}"`);
+        } else {
+          params.append("$skip", skip.toString());
+        }
 
-      if (select && select.length > 0) {
-        params.append("$select", select.join(","));
-      } else {
-        params.append(
-          "$select",
-          "id,displayName,givenName,surname,emailAddresses,businessPhones,homePhones,mobilePhone,jobTitle,companyName,department,officeLocation"
+        if (select && select.length > 0) {
+          params.append("$select", select.join(","));
+        } else {
+          params.append(
+            "$select",
+            "id,displayName,givenName,surname,emailAddresses,businessPhones,homePhones,mobilePhone,jobTitle,companyName,department,officeLocation"
+          );
+        }
+
+        const response = await fetchFromOutlook(
+          `/me/contacts?${params.toString()}`,
+          accessToken,
+          { method: "GET" }
+        );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          return new Err(
+            new MCPError(
+              `Failed to get contacts: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
+        }
+
+        const result = await response.json();
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Contacts fetched successfully",
+            result: {
+              contacts: (result.value || []) as OutlookContact[],
+              nextLink: result["@odata.nextLink"],
+              totalCount: result["@odata.count"],
+            },
+          }).content
         );
       }
-
-      const response = await fetchFromOutlook(
-        `/me/contacts?${params.toString()}`,
-        accessToken,
-        { method: "GET" }
-      );
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to get contacts: ${response.status} ${response.statusText} - ${errorText}`
-        );
-      }
-
-      const result = await response.json();
-
-      return makeMCPToolJSONSuccess({
-        message: "Contacts fetched successfully",
-        result: {
-          contacts: (result.value || []) as OutlookContact[],
-          nextLink: result["@odata.nextLink"],
-          totalCount: result["@odata.count"],
-        },
-      });
-    }
+    )
   );
 
   server.tool(
@@ -552,84 +608,92 @@ const createServer = (): McpServer => {
       department: z.string().optional().describe("Department"),
       officeLocation: z.string().optional().describe("Office location"),
     },
-    async (
-      {
-        displayName,
-        givenName,
-        surname,
-        emailAddresses,
-        businessPhones,
-        homePhones,
-        mobilePhone,
-        jobTitle,
-        companyName,
-        department,
-        officeLocation,
-      },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
-
-      const contact: any = {
-        displayName,
-      };
-
-      if (givenName) {
-        contact.givenName = givenName;
-      }
-      if (surname) {
-        contact.surname = surname;
-      }
-      if (emailAddresses) {
-        contact.emailAddresses = emailAddresses;
-      }
-      if (businessPhones) {
-        contact.businessPhones = businessPhones;
-      }
-      if (homePhones) {
-        contact.homePhones = homePhones;
-      }
-      if (mobilePhone) {
-        contact.mobilePhone = mobilePhone;
-      }
-      if (jobTitle) {
-        contact.jobTitle = jobTitle;
-      }
-      if (companyName) {
-        contact.companyName = companyName;
-      }
-      if (department) {
-        contact.department = department;
-      }
-      if (officeLocation) {
-        contact.officeLocation = officeLocation;
-      }
-
-      const response = await fetchFromOutlook("/me/contacts", accessToken, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      async (
+        {
+          displayName,
+          givenName,
+          surname,
+          emailAddresses,
+          businessPhones,
+          homePhones,
+          mobilePhone,
+          jobTitle,
+          companyName,
+          department,
+          officeLocation,
         },
-        body: JSON.stringify(contact),
-      });
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
 
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to create contact: ${response.status} ${response.statusText} - ${errorText}`
+        const contact: any = {
+          displayName,
+        };
+
+        if (givenName) {
+          contact.givenName = givenName;
+        }
+        if (surname) {
+          contact.surname = surname;
+        }
+        if (emailAddresses) {
+          contact.emailAddresses = emailAddresses;
+        }
+        if (businessPhones) {
+          contact.businessPhones = businessPhones;
+        }
+        if (homePhones) {
+          contact.homePhones = homePhones;
+        }
+        if (mobilePhone) {
+          contact.mobilePhone = mobilePhone;
+        }
+        if (jobTitle) {
+          contact.jobTitle = jobTitle;
+        }
+        if (companyName) {
+          contact.companyName = companyName;
+        }
+        if (department) {
+          contact.department = department;
+        }
+        if (officeLocation) {
+          contact.officeLocation = officeLocation;
+        }
+
+        const response = await fetchFromOutlook("/me/contacts", accessToken, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contact),
+        });
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          return new Err(
+            new MCPError(
+              `Failed to create contact: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
+        }
+
+        const result = await response.json();
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Contact created successfully",
+            result: result as OutlookContact,
+          }).content
         );
       }
-
-      const result = await response.json();
-
-      return makeMCPToolJSONSuccess({
-        message: "Contact created successfully",
-        result: result as OutlookContact,
-      });
-    }
+    )
   );
 
   server.tool(
@@ -663,93 +727,101 @@ const createServer = (): McpServer => {
       department: z.string().optional().describe("Department"),
       officeLocation: z.string().optional().describe("Office location"),
     },
-    async (
-      {
-        contactId,
-        displayName,
-        givenName,
-        surname,
-        emailAddresses,
-        businessPhones,
-        homePhones,
-        mobilePhone,
-        jobTitle,
-        companyName,
-        department,
-        officeLocation,
-      },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
-
-      const contact: any = {};
-
-      if (displayName) {
-        contact.displayName = displayName;
-      }
-      if (givenName) {
-        contact.givenName = givenName;
-      }
-      if (surname) {
-        contact.surname = surname;
-      }
-      if (emailAddresses) {
-        contact.emailAddresses = emailAddresses;
-      }
-      if (businessPhones) {
-        contact.businessPhones = businessPhones;
-      }
-      if (homePhones) {
-        contact.homePhones = homePhones;
-      }
-      if (mobilePhone) {
-        contact.mobilePhone = mobilePhone;
-      }
-      if (jobTitle) {
-        contact.jobTitle = jobTitle;
-      }
-      if (companyName) {
-        contact.companyName = companyName;
-      }
-      if (department) {
-        contact.department = department;
-      }
-      if (officeLocation) {
-        contact.officeLocation = officeLocation;
-      }
-
-      const response = await fetchFromOutlook(
-        `/me/contacts/${contactId}`,
-        accessToken,
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
+      async (
         {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(contact),
+          contactId,
+          displayName,
+          givenName,
+          surname,
+          emailAddresses,
+          businessPhones,
+          homePhones,
+          mobilePhone,
+          jobTitle,
+          companyName,
+          department,
+          officeLocation,
+        },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
         }
-      );
 
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        if (response.status === 404) {
-          return makeMCPToolTextError(`Contact not found: ${contactId}`);
+        const contact: any = {};
+
+        if (displayName) {
+          contact.displayName = displayName;
         }
-        return makeMCPToolTextError(
-          `Failed to update contact: ${response.status} ${response.statusText} - ${errorText}`
+        if (givenName) {
+          contact.givenName = givenName;
+        }
+        if (surname) {
+          contact.surname = surname;
+        }
+        if (emailAddresses) {
+          contact.emailAddresses = emailAddresses;
+        }
+        if (businessPhones) {
+          contact.businessPhones = businessPhones;
+        }
+        if (homePhones) {
+          contact.homePhones = homePhones;
+        }
+        if (mobilePhone) {
+          contact.mobilePhone = mobilePhone;
+        }
+        if (jobTitle) {
+          contact.jobTitle = jobTitle;
+        }
+        if (companyName) {
+          contact.companyName = companyName;
+        }
+        if (department) {
+          contact.department = department;
+        }
+        if (officeLocation) {
+          contact.officeLocation = officeLocation;
+        }
+
+        const response = await fetchFromOutlook(
+          `/me/contacts/${contactId}`,
+          accessToken,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(contact),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          if (response.status === 404) {
+            return new Err(new MCPError(`Contact not found: ${contactId}`));
+          }
+          return new Err(
+            new MCPError(
+              `Failed to update contact: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
+        }
+
+        const result = await response.json();
+
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Contact updated successfully",
+            result: result as OutlookContact,
+          }).content
         );
       }
-
-      const result = await response.json();
-
-      return makeMCPToolJSONSuccess({
-        message: "Contact updated successfully",
-        result: result as OutlookContact,
-      });
-    }
+    )
   );
 
   return server;

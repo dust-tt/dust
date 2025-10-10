@@ -128,7 +128,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_completions_usage", agentLoopContext },
+      { toolNameForMonitoring: "openai_usage", agentLoopContext },
       async (params) => {
         const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
         if (
@@ -277,7 +277,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_organization_costs", agentLoopContext },
+      { toolNameForMonitoring: "openai_usage", agentLoopContext },
       async (params) => {
         const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
         if (

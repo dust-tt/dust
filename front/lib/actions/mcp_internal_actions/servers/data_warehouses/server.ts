@@ -78,7 +78,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ nodeId, limit, nextPageCursor, dataSources }) => {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
@@ -181,7 +181,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ query, rootNodeId, limit, nextPageCursor, dataSources }) => {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
@@ -257,7 +257,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ dataSources, tableIds }) => {
         const dataSourceConfigurationsResult =
           await getAgentDataSourceConfigurations(
@@ -352,7 +352,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: TABLES_FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ dataSources, tableIds, query, fileName }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(

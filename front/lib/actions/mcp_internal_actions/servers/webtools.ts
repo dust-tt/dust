@@ -64,7 +64,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: WEBSEARCH_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: WEBSEARCH_TOOL_NAME, agentLoopContext },
       async ({ query, page }) => {
         if (!agentLoopContext?.runContext) {
           throw new Error(
@@ -156,7 +156,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: WEBBROWSER_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: WEBBROWSER_TOOL_NAME, agentLoopContext },
       async ({
         urls,
         format = "markdown",

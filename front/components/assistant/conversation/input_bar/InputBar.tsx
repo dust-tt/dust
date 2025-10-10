@@ -1,9 +1,8 @@
-import { Button, cn, StopIcon } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import _ from "lodash";
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
-import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
@@ -17,8 +16,6 @@ import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddDeleteConversationTool,
-  useCancelMessage,
-  useConversation,
   useConversationTools,
 } from "@app/lib/swr/conversations";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
@@ -75,13 +72,6 @@ export const AssistantInputBar = React.memo(function AssistantInputBar({
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
   >([]);
-
-  const { mutateConversation } = useConversation({
-    conversationId,
-    workspaceId: owner.sId,
-    options: { disabled: true }, // We just want to get the mutation function
-  });
-  const cancelMessage = useCancelMessage({ owner, conversationId });
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations: baseAgentConfigurations } =
@@ -289,70 +279,12 @@ export const AssistantInputBar = React.memo(function AssistantInputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
-  const [isStopping, setIsStopping] = useState<boolean>(false);
-
-  // GenerationContext: to know if we are generating or not
-  const generationContext = useContext(GenerationContext);
-  if (!generationContext) {
-    throw new Error(
-      "FixedAssistantInputBar must be used within a GenerationContextProvider"
-    );
-  }
-
-  const handleStopGeneration = async () => {
-    if (!conversationId) {
-      return;
-    }
-    setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
-    await cancelMessage(
-      generationContext.generatingMessages
-        .filter((m) => m.conversationId === conversationId)
-        .map((m) => m.messageId)
-    );
-    void mutateConversation();
-  };
-
-  useEffect(() => {
-    if (
-      isStopping &&
-      !generationContext.generatingMessages.some(
-        (m) => m.conversationId === conversationId
-      )
-    ) {
-      setIsStopping(false);
-    }
-  }, [isStopping, generationContext.generatingMessages, conversationId]);
-
   useEffect(() => {
     setDisableSendButton(disable);
   }, [disable]);
 
-  const getStopButtonLabel = () => {
-    if (isStopping) {
-      return "Stopping...";
-    }
-    const generatingCount = generationContext.generatingMessages.filter(
-      (m) => m.conversationId === conversationId
-    ).length;
-    return generatingCount > 1 ? "Stop all" : "Stop";
-  };
-
   return (
     <div className="flex w-full flex-col">
-      {generationContext.generatingMessages.some(
-        (m) => m.conversationId === conversationId
-      ) && (
-        <div className="flex justify-center px-4 pb-4">
-          <Button
-            variant="outline"
-            label={getStopButtonLabel()}
-            icon={StopIcon}
-            onClick={handleStopGeneration}
-            disabled={isStopping}
-          />
-        </div>
-      )}
-
       <div
         className={classNames(
           "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",

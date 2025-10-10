@@ -146,6 +146,7 @@ export type BaseAgentMessageType = {
   created: number;
   completedTs: number | null;
   parentMessageId: string | null;
+  parentAgentMessageId: string | null; // If handover, this is the agent message that summoned this agent.
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;

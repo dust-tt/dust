@@ -1,4 +1,3 @@
-import { Spinner } from "@dust-tt/sparkle";
 import type {
   ListScrollLocation,
   VirtuosoMessageListMethods,
@@ -38,6 +37,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
@@ -78,7 +78,7 @@ const DEFAULT_PAGE_LIMIT = 50;
 
 interface ConversationViewerProps {
   conversationId: string;
-  isInModal?: boolean;
+  agentBuilderContext?: VirtuosoMessageListContext["agentBuilderContext"];
   setPlanLimitReached?: (planLimitReached: boolean) => void;
   owner: WorkspaceType;
   user: UserType;
@@ -103,7 +103,7 @@ const ConversationViewerVirtuoso = ({
   owner,
   user,
   conversationId,
-  isInModal = false,
+  agentBuilderContext,
   setPlanLimitReached,
 }: ConversationViewerProps) => {
   const ref =
@@ -155,11 +155,13 @@ const ConversationViewerVirtuoso = ({
     options: { disabled: true }, // We don't need the participants, only the mutator.
   });
 
-  const [initialListData, setInitialListData] = useState<VirtuosoMessage[]>([]);
+  const [initialListData, setInitialListData] = useState<
+    VirtuosoMessage[] | undefined
+  >(undefined);
 
   // Setup the initial list data when the conversation is loaded.
   useEffect(() => {
-    if (initialListData.length === 0 && messages.length > 0) {
+    if (!initialListData && messages.length > 0) {
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(
         messages.flatMap((m) => m.messages)
       );
@@ -559,7 +561,7 @@ const ConversationViewerVirtuoso = ({
       owner,
       handleSubmit,
       conversationId,
-      isInModal,
+      agentBuilderContext,
       feedbacksByMessageId,
     };
   }, [
@@ -567,7 +569,7 @@ const ConversationViewerVirtuoso = ({
     owner,
     handleSubmit,
     conversationId,
-    isInModal,
+    agentBuilderContext,
     feedbacksByMessageId,
   ]);
 
@@ -576,44 +578,48 @@ const ConversationViewerVirtuoso = ({
       {conversationError && (
         <ConversationErrorDisplay error={conversationError} />
       )}
-      {initialListData.length > 0 ? (
-        <>
-          <VirtuosoMessageListLicense
-            licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
-          >
-            <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
-              initialData={initialListData}
-              initialLocation={{
+      <VirtuosoMessageListLicense
+        licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
+      >
+        <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
+          data={{
+            data: initialListData,
+            scrollModifier: {
+              type: "item-location",
+              location: {
                 index: "LAST",
                 align: "end",
                 behavior: "instant",
-              }}
-              ref={ref}
-              ItemContent={MessageItemVirtuoso}
-              StickyFooter={AssistantInputBarVirtuoso}
-              // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
-              className={classNames(
-                "dd-privacy-mask",
-                "s-@container/conversation",
-                "h-full w-full",
-                isInModal ? "" : "px-4 md:px-8"
-              )}
-              shortSizeAlign="top"
-              computeItemKey={computeItemKey}
-              onScroll={onScroll}
-              context={context}
-              itemIdentity={itemIdentity}
-              // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
-              increaseViewportBy={8192}
-              enforceStickyFooterAtBottom={true}
-            />
-          </VirtuosoMessageListLicense>
-        </>
-      ) : (
-        <div className="flex w-full flex-1 flex-col items-center justify-center gap-8 py-4">
-          <Spinner variant="color" size="xl" />
-        </div>
-      )}
+              },
+              purgeItemSizes: true,
+            },
+          }}
+          initialLocation={{
+            index: "LAST",
+            align: "end",
+            behavior: "instant",
+          }}
+          ref={ref}
+          ItemContent={MessageItemVirtuoso}
+          StickyFooter={AssistantInputBarVirtuoso}
+          // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
+          className={classNames(
+            "dd-privacy-mask",
+            "s-@container/conversation",
+            "h-full w-full",
+            agentBuilderContext ? "px-4" : "px-4 md:px-8"
+          )}
+          shortSizeAlign="top"
+          computeItemKey={computeItemKey}
+          onScroll={onScroll}
+          context={context}
+          itemIdentity={itemIdentity}
+          EmptyPlaceholder={ConversationViewerEmptyState}
+          // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
+          increaseViewportBy={8192}
+          enforceStickyFooterAtBottom={true}
+        />
+      </VirtuosoMessageListLicense>
     </>
   );
 };

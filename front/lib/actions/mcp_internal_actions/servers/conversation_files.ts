@@ -6,10 +6,9 @@ import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import {
-  makeInternalMCPServer,
-  makeMCPToolTextError,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   conversationAttachmentId,
@@ -65,60 +64,63 @@ function createServer(
           "The fileId of the attachment to include, as returned by the conversation_list_files action"
         ),
     },
-    async ({ fileId }) => {
-      if (!agentLoopContext?.runContext) {
-        return makeMCPToolTextError("No conversation context available");
-      }
-
-      const conversation = agentLoopContext.runContext.conversation;
-
-      const model = getSupportedModelConfig(
-        agentLoopContext.runContext.agentConfiguration.model
-      );
-
-      const fileRes = await getFileFromConversation(
-        auth,
-        fileId,
-        conversation,
-        model
-      );
-
-      if (fileRes.isErr()) {
-        return makeMCPToolTextError(fileRes.error);
-      }
-
-      const { content, title } = fileRes.value;
-
-      // Get the file metadata to extract the actual content type
-      const attachments = listAttachments(conversation);
-      const attachment = attachments.find(
-        (a) => conversationAttachmentId(a) === fileId
-      );
-
-      if (isTextContent(content)) {
-        const textByteSize = computeTextByteSize(content.text);
-        if (textByteSize > MAX_FILE_SIZE_FOR_INCLUDE) {
-          return makeMCPToolTextError(
-            `File ${title} is too large (${(textByteSize / 1024 / 1024).toFixed(2)}MB) to include in the conversation. ` +
-              `Maximum supported size is ${MAX_FILE_SIZE_FOR_INCLUDE / 1024 / 1024}MB. ` +
-              `Consider using cat to read smaller portions of the file.`
-          );
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "jit_include_file",
+        agentLoopContext,
+      },
+      async ({ fileId }) => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("No conversation context available"));
         }
 
-        return {
-          isError: false,
-          content: [
+        const conversation = agentLoopContext.runContext.conversation;
+
+        const model = getSupportedModelConfig(
+          agentLoopContext.runContext.agentConfiguration.model
+        );
+
+        const fileRes = await getFileFromConversation(
+          auth,
+          fileId,
+          conversation,
+          model
+        );
+
+        if (fileRes.isErr()) {
+          return new Err(new MCPError(fileRes.error));
+        }
+
+        const { content, title } = fileRes.value;
+
+        // Get the file metadata to extract the actual content type
+        const attachments = listAttachments(conversation);
+        const attachment = attachments.find(
+          (a) => conversationAttachmentId(a) === fileId
+        );
+
+        if (isTextContent(content)) {
+          const textByteSize = computeTextByteSize(content.text);
+          if (textByteSize > MAX_FILE_SIZE_FOR_INCLUDE) {
+            return new Err(
+              new MCPError(
+                `File ${title} is too large (${(textByteSize / 1024 / 1024).toFixed(2)}MB) to include in the conversation. ` +
+                  `Maximum supported size is ${MAX_FILE_SIZE_FOR_INCLUDE / 1024 / 1024}MB. ` +
+                  `Consider using cat to read smaller portions of the file.`
+              )
+            );
+          }
+
+          return new Ok([
             {
               type: "text",
               text: content.text,
             },
-          ],
-        };
-      } else if (isImageContent(content)) {
-        // For images, we return the URL as a resource with the correct MIME type
-        return {
-          isError: false,
-          content: [
+          ]);
+        } else if (isImageContent(content)) {
+          // For images, we return the URL as a resource with the correct MIME type
+          return new Ok([
             {
               type: "resource",
               resource: {
@@ -128,59 +130,62 @@ function createServer(
                 text: `Image: ${title}`,
               },
             },
-          ],
-        };
-      }
+          ]);
+        }
 
-      return makeMCPToolTextError(
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        `File ${attachment?.title || fileId} of type ${attachment?.contentType || "unknown"} has no text or image content`
-      );
-    }
+        return new Err(
+          new MCPError(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            `File ${attachment?.title || fileId} of type ${attachment?.contentType || "unknown"} has no text or image content`
+          )
+        );
+      }
+    )
   );
 
   server.tool(
     DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
     "List all files attached to the conversation.",
     {},
-    async () => {
-      if (!agentLoopContext?.runContext) {
-        return makeMCPToolTextError("No conversation context available");
-      }
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "jit_list_files",
+        agentLoopContext,
+      },
+      async () => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("No conversation context available"));
+        }
 
-      const conversation = agentLoopContext.runContext.conversation;
-      const attachments = listAttachments(conversation);
+        const conversation = agentLoopContext.runContext.conversation;
+        const attachments = listAttachments(conversation);
 
-      if (attachments.length === 0) {
-        return {
-          isError: false,
-          content: [
+        if (attachments.length === 0) {
+          return new Ok([
             {
               type: "text",
               text: "No files are currently attached to the conversation.",
             },
-          ],
-        };
-      }
-
-      let content = `The following files are currently attached to the conversation:\n`;
-      for (const [i, attachment] of attachments.entries()) {
-        if (i > 0) {
-          content += "\n";
+          ]);
         }
-        content += renderAttachmentXml({ attachment });
-      }
 
-      return {
-        isError: false,
-        content: [
+        let content = `The following files are currently attached to the conversation:\n`;
+        for (const [i, attachment] of attachments.entries()) {
+          if (i > 0) {
+            content += "\n";
+          }
+          content += renderAttachmentXml({ attachment });
+        }
+
+        return new Ok([
           {
             type: "text",
             text: content,
           },
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   server.tool(
@@ -214,107 +219,113 @@ function createServer(
             "matching this pattern will be returned."
         ),
     },
-    async ({ fileId, offset, limit, grep }) => {
-      if (!agentLoopContext?.runContext) {
-        return makeMCPToolTextError("No conversation context available");
-      }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "jit_cat_file", agentLoopContext },
+      async ({ fileId, offset, limit, grep }) => {
+        if (!agentLoopContext?.runContext) {
+          return new Err(new MCPError("No conversation context available"));
+        }
 
-      const conversation = agentLoopContext.runContext.conversation;
-      const model = getSupportedModelConfig(
-        agentLoopContext.runContext.agentConfiguration.model
-      );
-
-      const fileRes = await getFileFromConversation(
-        auth,
-        fileId,
-        conversation,
-        model
-      );
-
-      if (fileRes.isErr()) {
-        return makeMCPToolTextError(fileRes.error);
-      }
-
-      const { content, title } = fileRes.value;
-
-      // Only process text content.
-      if (!isTextContent(content)) {
-        return makeMCPToolTextError(
-          `File ${title} does not have text content that can be read with offset/limit`
+        const conversation = agentLoopContext.runContext.conversation;
+        const model = getSupportedModelConfig(
+          agentLoopContext.runContext.agentConfiguration.model
         );
-      }
 
-      let text = content.text;
+        const fileRes = await getFileFromConversation(
+          auth,
+          fileId,
+          conversation,
+          model
+        );
 
-      // Returning early with a custom message if the text is empty.
-      if (text.length === 0) {
-        return {
-          isError: false,
-          content: [
+        if (fileRes.isErr()) {
+          return new Err(new MCPError(fileRes.error));
+        }
+
+        const { content, title } = fileRes.value;
+
+        // Only process text content.
+        if (!isTextContent(content)) {
+          return new Err(
+            new MCPError(
+              `File ${title} does not have text content that can be read with offset/limit`
+            )
+          );
+        }
+
+        let text = content.text;
+
+        // Returning early with a custom message if the text is empty.
+        if (text.length === 0) {
+          return new Ok([
             {
               type: "text",
               text: `No content retrieved for file ${title}.`,
             },
-          ],
-        };
-      }
-
-      // Apply offset and limit.
-      if (offset !== undefined || limit !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        const start = offset || 0;
-        const end = limit !== undefined ? start + limit : undefined;
-
-        if (start > text.length) {
-          return makeMCPToolTextError(
-            `Offset ${start} is out of bounds for file ${title}.`
-          );
-        }
-        if (limit === 0) {
-          return makeMCPToolTextError(`Limit cannot be equal to 0.`);
-        }
-        text = text.slice(start, end);
-      }
-
-      // Apply grep filter if provided.
-      if (grep) {
-        // Check if the grep pattern is too large.
-        const grepByteSize = computeTextByteSize(grep);
-        if (grepByteSize > MAX_FILE_SIZE_FOR_GREP) {
-          return makeMCPToolTextError(
-            `Grep pattern is too large (${(grepByteSize / 1024 / 1024).toFixed(2)}MB) to apply grep filtering. ` +
-              `Maximum supported size is ${MAX_FILE_SIZE_FOR_GREP / 1024 / 1024}MB. ` +
-              `Consider using offset/limit to read smaller portions of the file.`
-          );
+          ]);
         }
 
-        try {
-          const regex = new RegExp(grep, "gm");
-          const lines = text.split("\n");
-          const matchedLines = lines.filter((line) => regex.test(line));
-          text = matchedLines.join("\n");
-        } catch (e) {
-          return makeMCPToolTextError(
-            `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`
-          );
-        }
-        if (text.length === 0) {
-          return makeMCPToolTextError(
-            `No lines matched the grep pattern: ${grep}.`
-          );
-        }
-      }
+        // Apply offset and limit.
+        if (offset !== undefined || limit !== undefined) {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          const start = offset || 0;
+          const end = limit !== undefined ? start + limit : undefined;
 
-      return {
-        isError: false,
-        content: [
+          if (start > text.length) {
+            return new Err(
+              new MCPError(
+                `Offset ${start} is out of bounds for file ${title}.`
+              )
+            );
+          }
+          if (limit === 0) {
+            return new Err(new MCPError(`Limit cannot be equal to 0.`));
+          }
+          text = text.slice(start, end);
+        }
+
+        // Apply grep filter if provided.
+        if (grep) {
+          // Check if the grep pattern is too large.
+          const grepByteSize = computeTextByteSize(grep);
+          if (grepByteSize > MAX_FILE_SIZE_FOR_GREP) {
+            return new Err(
+              new MCPError(
+                `Grep pattern is too large (${(grepByteSize / 1024 / 1024).toFixed(2)}MB) to apply grep filtering. ` +
+                  `Maximum supported size is ${MAX_FILE_SIZE_FOR_GREP / 1024 / 1024}MB. ` +
+                  `Consider using offset/limit to read smaller portions of the file.`
+              )
+            );
+          }
+
+          try {
+            const regex = new RegExp(grep, "gm");
+            const lines = text.split("\n");
+            const matchedLines = lines.filter((line) => regex.test(line));
+            text = matchedLines.join("\n");
+          } catch (e) {
+            return new Err(
+              new MCPError(
+                `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`
+              )
+            );
+          }
+          if (text.length === 0) {
+            return new Err(
+              new MCPError(`No lines matched the grep pattern: ${grep}.`)
+            );
+          }
+        }
+
+        return new Ok([
           {
             type: "text",
             text,
           },
-        ],
-      };
-    }
+        ]);
+      }
+    )
   );
 
   return server;

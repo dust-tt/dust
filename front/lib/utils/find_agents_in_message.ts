@@ -25,6 +25,12 @@ export interface Text {
 
 export type AugmentedMessage = Mention | Text;
 
+interface MentionFromLLM {
+  type: "mention";
+  name: string;
+}
+type AugmentedMessageFromLLM = MentionFromLLM | Text;
+
 async function listAgents(auth: Authenticator) {
   const agents = await getAgentConfigurationsForView({
     auth,
@@ -52,11 +58,12 @@ export const findAgentsInMessage = async (
   message: string
 ) => {
   const agents = await listAgents(auth);
+  const agentListForLLM = agents.map((a) => a.name);
   const config = getActionConfig(auth);
 
   const res = await runAction(auth, _ACTION_NAME, config, [
     {
-      agents_list: agents,
+      agents_list: agentListForLLM,
       message,
     },
   ]);
@@ -72,10 +79,7 @@ export const findAgentsInMessage = async (
     status: { run },
     traces,
     results,
-    run_id,
   } = res.value;
-
-  logger.info("Action runId : " + run_id);
 
   switch (run) {
     case "errored":
@@ -97,7 +101,15 @@ export const findAgentsInMessage = async (
         `Action ${_ACTION_NAME} output: ${JSON.stringify(results[0][0])}`
       );
 
-      return results[0][0].value as AugmentedMessage[];
+      // as it's the output of a LLM we ensure we only keep valid augmented messages
+      const augmentedMessagesFromLLM = asAugmentedMessageFromLLMArray(
+        results[0][0]?.value
+      );
+      // then we transform the LLM output to something the frontend understands
+      return augmentedMessagesFromLLM.map((m) =>
+        messageFromLLMToAugmentedMessage(agents, m)
+      );
+
     case "running":
       logger.error(
         `Action ${_ACTION_NAME} is still running, expected to be done`
@@ -105,5 +117,54 @@ export const findAgentsInMessage = async (
       return [{ type: "message", text: message }];
     default:
       assertNever(run);
+  }
+};
+
+function asAugmentedMessageFromLLMArray(
+  value: unknown
+): AugmentedMessageFromLLM[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item) => {
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
+    const obj = item as Record<string, unknown>;
+
+    if (obj.type === "mention" && typeof obj.name === "string") {
+      return true;
+    }
+
+    return obj.type === "text" && typeof obj.text === "string";
+  });
+}
+
+const messageFromLLMToAugmentedMessage = (
+  agentLists: { id: string; name: string }[],
+  augmentedMessageFromLLM: AugmentedMessageFromLLM
+): AugmentedMessage => {
+  switch (augmentedMessageFromLLM.type) {
+    case "text":
+      // passthrough if it's a text message
+      return augmentedMessageFromLLM;
+    case "mention":
+      // if it's a mention, we try to find the agent in the list from its name
+      const found = agentLists.find(
+        (a) =>
+          a.name.trim().toLowerCase() ===
+          augmentedMessageFromLLM.name.trim().toLowerCase()
+      );
+      if (found) {
+        // if we found it, we return a mention
+        return { type: "mention", id: found.id, name: found.name };
+      }
+
+      // if we didn't find it, we return a text message with the name of the agent
+      return { type: "text", text: augmentedMessageFromLLM.name };
+    default:
+      assertNever(augmentedMessageFromLLM);
   }
 };

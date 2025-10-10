@@ -1,8 +1,8 @@
 import React from "react";
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { MessageTemporaryState } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType } from "@app/types";
 import { isInteractiveContentFileContentType, removeNulls } from "@app/types";
 
