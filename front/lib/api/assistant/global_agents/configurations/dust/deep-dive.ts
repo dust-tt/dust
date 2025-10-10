@@ -495,7 +495,6 @@ export function _getDeepDiveGlobalAgent(
   auth: Authenticator,
   {
     settings,
-    sId,
     preFetchedDataSources,
     webSearchBrowseMCPServerView,
     dataSourcesFileSystemMCPServerView,
@@ -506,7 +505,6 @@ export function _getDeepDiveGlobalAgent(
     slideshowMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
-    sId: string;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
@@ -526,7 +524,7 @@ export function _getDeepDiveGlobalAgent(
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
-    sId: sId,
+    sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,

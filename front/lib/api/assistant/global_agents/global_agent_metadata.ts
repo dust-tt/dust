@@ -263,13 +263,6 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       };
-    case GLOBAL_AGENTS_SID.DUST_DEEP:
-      return {
-        sId: GLOBAL_AGENTS_SID.DUST_DEEP,
-        name: DEEP_DIVE_NAME,
-        description: DEEP_DIVE_DESC,
-        pictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
-      };
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
       return {
         sId: GLOBAL_AGENTS_SID.DEEP_DIVE,

@@ -1713,7 +1713,6 @@ export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
   DEEP_DIVE = "deep-dive",
-  DUST_DEEP = "dust-deep",
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
   DUST_PLANNING = "dust-planning",
