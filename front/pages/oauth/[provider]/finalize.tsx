@@ -38,6 +38,8 @@ export default function Finalize({
   // Finalize the connection on component mount.
   useEffect(() => {
     async function finalizeOAuth() {
+      // You can end up here when you directly edit the configuration
+      // (e.g. go to GitHub and configure repositories from Dust App in Settings, hence no opener).
       const res = await doFinalize(provider, queryParams);
 
       // Prepare message data
@@ -76,21 +78,6 @@ export default function Finalize({
             "[OAuth Finalize] BroadcastChannel failed",
             e
           );
-        }
-
-        // Method 3: localStorage (fallback for all browsers)
-        try {
-          const storageKey = `oauth_finalize_${provider}`;
-          const dataWithExpiration = {
-            ...messageData,
-            expiresAt: Date.now() + 30000, // 30 seconds expiration
-          };
-          localStorage.setItem(
-            storageKey,
-            JSON.stringify(dataWithExpiration)
-          );
-        } catch (e) {
-          logger.error({ err: e }, "[OAuth Finalize] localStorage failed", e);
         }
       }
 
