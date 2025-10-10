@@ -25,6 +25,7 @@ import type {
 } from "@app/types";
 import { Err } from "@app/types";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
+import triggers from "@app/pages/api/w/[wId]/me/triggers";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
 
@@ -74,6 +75,11 @@ export const config = {
       sizeLimit: "2mb",
     },
   },
+};
+
+const isMatchingPayload = (payload: any, filter: string) => {
+  // TODO: implement filetering
+  return true;
 };
 
 async function handler(
@@ -241,22 +247,25 @@ async function handler(
   }
 
   // Filter out non-subscribed events
+  let receivedEventName: string | undefined;
   if (webhookSource.kind !== "custom") {
-    const { type, field } =
-      WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].eventCheck;
+    const preset = WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind];
+    const { type, field } = preset.eventCheck;
 
     // Node http module behavior is to lowercase all headers keys
-    const receivedEventName = req[type][field.toLowerCase()];
+    receivedEventName =
+      type === "headers"
+        ? (req.headers[field.toLowerCase()] as string)
+        : req.body[field];
 
     if (
       receivedEventName === undefined ||
       // Event not in preset
-      !WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[webhookSource.kind].events
-        .map((event) => event.name)
-        .includes(receivedEventName) ||
+      !preset.events.map((event) => event.value).includes(receivedEventName) ||
       // Event not subscribed
       !webhookSource.subscribedEvents.includes(receivedEventName)
     ) {
+      // The webhook source does not care about this event, return early
       return res.status(200).json({ success: true });
     }
   }
@@ -269,7 +278,7 @@ async function handler(
 
   // Fetch all triggers based on the webhook source id
   // flatten the triggers
-  const triggers = (
+  const allTriggers = (
     await concurrentExecutor(
       views,
       async (view) => {
@@ -282,6 +291,27 @@ async function handler(
       { concurrency: 10 }
     )
   ).flat();
+
+  // Filter triggers based on trigger event configuration
+  const triggers = allTriggers.filter((t) => {
+    const trigger = t.toJSON();
+    if (trigger.kind !== "webhook") {
+      return true;
+    }
+    if (webhookSource.kind === "custom") {
+      return true;
+    }
+
+    // If the trigger has a specific event configured, check if it matches
+    if (trigger.configuration.event) {
+      return (
+        trigger.configuration.event === receivedEventName &&
+        isMatchingPayload(body, trigger.configuration.filter ?? "")
+      );
+    }
+
+    return true;
+  });
 
   // Check if any of the triggers requires the payload.
   const triggersWithMetadata = triggers.map((t) => {
