@@ -239,15 +239,6 @@ export default async function createServer(
         )
         .optional()
         .nullable(),
-      conversationId: z
-        .string()
-        .describe(
-          "The conversation id where the sub-agent will run. " +
-            "Can be used to continue an existing conversation of the sub-agent. " +
-            "Cannot be the same as the main conversation."
-        )
-        .optional()
-        .nullable(),
       ...configurableProperties,
     },
     withToolLogging(
@@ -260,7 +251,6 @@ export default async function createServer(
           executionMode,
           toolsetsToAdd,
           fileOrContentFragmentIds,
-          conversationId,
         },
         { sendNotification, _meta }
       ) => {
@@ -275,14 +265,6 @@ export default async function createServer(
           agentConfiguration: mainAgent,
           conversation: mainConversation,
         } = agentLoopContext.runContext;
-
-        if (conversationId === mainConversation.sId) {
-          return new Err(
-            new MCPError(
-              "Conversation id cannot be the same as the main conversation."
-            )
-          );
-        }
 
         const childAgentIdRes = parseAgentConfigurationUri(uri);
         if (childAgentIdRes.isErr()) {
@@ -358,9 +340,7 @@ ${query}`
               : query,
             toolsetsToAdd: toolsetsToAdd ?? null,
             fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
-            conversationId: isHandoff
-              ? mainConversation.sId
-              : conversationId ?? null,
+            conversationId: isHandoff ? mainConversation.sId : null,
             originMessage: agentLoopContext.runContext.agentMessage,
           }
         );
