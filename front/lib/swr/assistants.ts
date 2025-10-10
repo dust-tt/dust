@@ -19,6 +19,11 @@ import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[t
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
+// Removed legacy observability endpoints: tools-usage, messages-per-day-by-version
+import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
+import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
+// Removed legacy latency distribution/histogram endpoints
+import type { GetLatencyAvgByVersionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency-avg-by-version";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
@@ -44,6 +49,99 @@ export function useAssistantTemplates() {
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
+  };
+}
+
+// Removed: useAgentToolsUsage, useAgentMessagesPerDayByVersion
+
+export function useAgentUsageMetrics({
+  workspaceId,
+  agentConfigurationId,
+  days = 30,
+  interval = "day",
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  interval?: "day" | "week";
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetUsageMetricsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/usage-metrics?days=${days}&interval=${interval}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    usageMetrics: data ?? null,
+    isUsageMetricsLoading: !error && !data && !disabled,
+    isUsageMetricsError: error,
+    isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useAgentToolExecution({
+  workspaceId,
+  agentConfigurationId,
+  days = 30,
+  size = 10,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  size?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetToolExecutionResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}&size=${size}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    toolExecution: data ?? null,
+    isToolExecutionLoading: !error && !data && !disabled,
+    isToolExecutionError: error,
+    isToolExecutionValidating: isValidating,
+  };
+}
+
+// Removed: useAgentLatencyDistribution, useAgentLatencyHistogram
+
+export function useAgentLatencyAvgByVersion({
+  workspaceId,
+  agentConfigurationId,
+  tool,
+  days = 30,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  tool: string | null;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetLatencyAvgByVersionResponse> = fetcher;
+  const key =
+    tool && !disabled
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency-avg-by-version?days=${days}&tool=${encodeURIComponent(
+          tool
+        )}`
+      : null;
+
+  const { data, error, isValidating } = useSWRWithDefaults(key, fetcherFn);
+
+  return {
+    latencyAvgByVersion: data ?? null,
+    isLatencyAvgByVersionLoading: !error && !data && !!tool && !disabled,
+    isLatencyAvgByVersionError: error,
+    isLatencyAvgByVersionValidating: isValidating,
   };
 }
 

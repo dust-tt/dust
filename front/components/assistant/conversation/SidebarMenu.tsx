@@ -440,7 +440,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                               label="Edit agent"
                             />
                             <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
+                              <DropdownMenuSubContent className="min-w-64">
                                 <DropdownMenuSearchbar
                                   ref={agentsSearchInputRef}
                                   name="search"

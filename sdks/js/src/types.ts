@@ -1418,6 +1418,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "data_source_view_not_found"
   | "dataset_not_found"
   | "dust_app_secret_not_found"
+  | "elasticsearch_error"
   | "expired_oauth_token_error"
   | "feature_flag_already_exists"
   | "feature_flag_not_found"

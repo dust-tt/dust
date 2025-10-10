@@ -10,15 +10,21 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
+import { ActivityIcon } from "lucide-react";
 import React, { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBuilderObservability";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
-type AgentBuilderRightPanelTabType = "testing" | "performance" | "template";
+type AgentBuilderRightPanelTabType =
+  | "testing"
+  | "performance"
+  | "observability"
+  | "template";
 
 interface PanelHeaderProps {
   isPreviewPanelOpen: boolean;
@@ -60,6 +66,12 @@ function PanelHeader({
                   label="Performance"
                   icon={BarChartIcon}
                   onClick={() => onTabChange("performance")}
+                />
+                <TabsTrigger
+                  value="observability"
+                  label="Observability"
+                  icon={ActivityIcon}
+                  onClick={() => onTabChange("observability")}
                 />
                 {hasTemplate && (
                   <TabsTrigger
@@ -110,6 +122,13 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
         tooltip="Performance"
         onClick={() => onTabSelect("performance")}
       />
+      <Button
+        icon={ActivityIcon}
+        variant="ghost"
+        size="sm"
+        tooltip="Observability"
+        onClick={() => onTabSelect("observability")}
+      />
       {hasTemplate && (
         <Button
           icon={MagicIcon}
@@ -150,6 +169,13 @@ function ExpandedContent({
       {selectedTab === "performance" && (
         <div className="flex-1 overflow-y-auto p-4">
           <AgentBuilderPerformance
+            agentConfigurationSId={agentConfigurationSId}
+          />
+        </div>
+      )}
+      {selectedTab === "observability" && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <AgentBuilderObservability
             agentConfigurationSId={agentConfigurationSId}
           />
         </div>
