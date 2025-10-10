@@ -14,7 +14,7 @@ import {
   isCustomResourceIconType,
 } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { WhitelistableFeature } from "@app/types";
 
 interface DataVisualizationCardProps {
@@ -56,8 +56,8 @@ function MCPServerCard({
   onToolInfoClick,
   featureFlags,
 }: MCPServerCardProps) {
-  const requirement = getMCPServerToolsConfigurations(view, featureFlags);
-  const canAdd = requirement.configurable !== "no" ? true : !isSelected;
+  const requirements = getMCPServerRequirements(view, featureFlags);
+  const canAdd = requirements.noRequirement ? !isSelected : true;
 
   const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]

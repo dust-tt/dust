@@ -4,7 +4,7 @@ import type {
   AdditionalConfigurationInBuilderType,
   MCPServerConfigurationType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 /**
@@ -15,10 +15,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 export function getDefaultConfiguration(
   mcpServerView?: MCPServerViewType | null
 ): MCPServerConfigurationType {
-  const toolsConfigurations = mcpServerView
-    ? getMCPServerToolsConfigurations(mcpServerView)
-    : null;
-
   const defaults: MCPServerConfigurationType = {
     mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
     dataSourceConfigurations: null,
@@ -33,9 +29,17 @@ export function getDefaultConfiguration(
     secretName: null,
   };
 
-  if (!toolsConfigurations) {
+  if (!mcpServerView) {
     return defaults;
   }
+
+  const {
+    requiredLists,
+    requiredEnums,
+    requiredBooleans,
+    requiredStrings,
+    requiredNumbers,
+  } = getMCPServerRequirements(mcpServerView);
 
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
 
@@ -44,10 +48,7 @@ export function getDefaultConfiguration(
   // validation to catch truly missing required fields
 
   // Boolean configurations: use explicit default or fallback to false
-  for (const {
-    key,
-    default: defaultValue,
-  } of toolsConfigurations.booleanConfigurations) {
+  for (const { key, default: defaultValue } of requiredBooleans) {
     set(
       additionalConfig,
       key,
@@ -56,21 +57,18 @@ export function getDefaultConfiguration(
     );
   }
 
-  // Enum configurations: use explicit default or fallback to first option
-  for (const [
-    key,
-    { options: enumOptions, default: defaultValue },
-  ] of Object.entries(toolsConfigurations.enumConfigurations)) {
+  for (const [key, { options, default: defaultValue }] of Object.entries(
+    requiredEnums
+  )) {
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
-    } else if (enumOptions.length > 0) {
-      set(additionalConfig, key, enumOptions[0].value);
+    } else if (options.length > 0) {
+      set(additionalConfig, key, options[0].value);
     }
   }
 
-  // List configurations: use explicit default or fallback to empty array
   for (const [key, { default: defaultValue }] of Object.entries(
-    toolsConfigurations.listConfigurations
+    requiredLists
   )) {
     set(
       additionalConfig,
@@ -79,21 +77,13 @@ export function getDefaultConfiguration(
     );
   }
 
-  // String configurations: set defaults when available
-  for (const {
-    key,
-    default: defaultValue,
-  } of toolsConfigurations.stringConfigurations) {
+  for (const { key, default: defaultValue } of requiredStrings) {
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
     }
   }
 
-  // Number configurations: set defaults when available
-  for (const {
-    key,
-    default: defaultValue,
-  } of toolsConfigurations.numberConfigurations) {
+  for (const { key, default: defaultValue } of requiredNumbers) {
     if (defaultValue !== undefined) {
       set(additionalConfig, key, defaultValue);
     }
@@ -110,12 +100,9 @@ export function getDefaultConfiguration(
  * @returns Default form data object
  */
 export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
-  const config = getDefaultConfiguration(mcpServerView);
-  const result = {
+  return {
     name: "",
     description: "",
-    configuration: config,
+    configuration: getDefaultConfiguration(mcpServerView),
   };
-
-  return result;
 }

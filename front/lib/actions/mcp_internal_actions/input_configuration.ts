@@ -472,92 +472,72 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-/*
-The "mayRequire" properties are true in one of two cases:
-  1. There is a property with a missing value that must be inputted to validate the schema.
-  2. There is a property with a default value that may still be changed by the user.
-*/
-export interface MCPServerToolsConfigurations {
-  dataSourceConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
-  dataWarehouseConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
-  tableConfiguration?: {
-    description?: string;
-    default?: { uri: string }[];
-  };
-  childAgentConfiguration?: {
-    description?: string;
-    default?: { uri: string };
-  };
-  reasoningConfiguration?: {
-    description?: string;
-    default?: {
-      modelId: string;
-      providerId: string;
-      temperature: number;
-      reasoningEffort: string;
-    };
-  };
+export interface MCPServerRequirements {
+  requiresDataSourceConfiguration: boolean;
+  requiresDataWarehouseConfiguration: boolean;
+  requiresTableConfiguration: boolean;
+  requiresChildAgentConfiguration: boolean;
+  requiresReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
-  stringConfigurations: {
+  requiredStrings: {
     key: string;
     description?: string;
     default?: string;
   }[];
-  numberConfigurations: {
+  requiredNumbers: {
     key: string;
     description?: string;
     default?: number;
   }[];
-  booleanConfigurations: {
+  requiredBooleans: {
     key: string;
     description?: string;
     default?: boolean;
   }[];
-  enumConfigurations: Record<
+  requiredEnums: Record<
     string,
     {
-      options: Array<{ value: string; label: string; description?: string }>;
+      options: { value: string; label: string; description?: string }[];
       description?: string;
       default?: string;
     }
   >;
-  listConfigurations: Record<
+  requiredLists: Record<
     string,
     {
-      options: Array<{ value: string; label: string; description?: string }>;
+      options: { value: string; label: string; description?: string }[];
       description?: string;
       values?: string[];
       default?: string;
     }
   >;
-  mayRequireDustAppConfiguration: boolean;
-  mayRequireSecretConfiguration: boolean;
-  configurable: "no" | "optional" | "required";
+  requiresDustAppConfiguration: boolean;
+  requiresSecretConfiguration: boolean;
+  noRequirement: boolean;
 }
 
-export function getMCPServerToolsConfigurations(
+export function getMCPServerRequirements(
   mcpServerView: MCPServerViewType | null | undefined,
   featureFlags?: WhitelistableFeature[]
-): MCPServerToolsConfigurations {
+): MCPServerRequirements {
   if (!mcpServerView) {
     return {
+      requiresDataSourceConfiguration: false,
+      requiresDataWarehouseConfiguration: false,
+      requiresTableConfiguration: false,
+      requiresChildAgentConfiguration: false,
+      requiresReasoningConfiguration: false,
       mayRequireTimeFrameConfiguration: false,
       mayRequireJsonSchemaConfiguration: false,
-      stringConfigurations: [],
-      numberConfigurations: [],
-      booleanConfigurations: [],
-      enumConfigurations: {},
-      listConfigurations: {},
-      mayRequireDustAppConfiguration: false,
-      mayRequireSecretConfiguration: false,
-      configurable: "optional",
+      requiredStrings: [],
+      requiredNumbers: [],
+      requiredBooleans: [],
+      requiredEnums: {},
+      requiredLists: {},
+      requiresDustAppConfiguration: false,
+      requiresSecretConfiguration: false,
+      noRequirement: false,
     };
   }
   const { server } = mcpServerView;
@@ -625,117 +605,60 @@ export function getMCPServerToolsConfigurations(
       : "no";
   }
 
-  function getConfigurableStateForArray<T extends { default?: unknown }>(
-    config: T[]
-  ): "no" | "optional" | "required" {
-    return config.length > 0
-      ? config.every((c) => c.default !== undefined)
-        ? "optional"
-        : "required"
-      : "no";
+  function checkArrayHasDefaults(
+    config:
+      | { default?: boolean }[]
+      | { default?: number }[]
+      | { default?: string }[]
+  ): boolean {
+    return config.every((c) => c.default !== undefined);
   }
 
-  function getConfigurableStateForRecord<T extends { default?: unknown }>(
-    config: Record<string, T>
-  ): "no" | "optional" | "required" {
-    return Object.values(config).length > 0
-      ? Object.values(config).every((c) => c.default !== undefined)
-        ? "optional"
-        : "required"
-      : "no";
+  function checkRecordHasDefaults(
+    config: Record<string, { default?: string }>
+  ): boolean {
+    return Object.values(config).every((c) => c.default !== undefined);
   }
 
-  const dataSourceConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const requiresDataSourceConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      })
+    ).length > 0;
 
-  const dataWarehouseConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const requiresDataWarehouseConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_WAREHOUSE,
+      })
+    ).length > 0;
 
-  const tableConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefaultArray(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const requiresTableConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE,
+      })
+    ).length > 0;
 
-  const childAgentConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefault(
-        schema,
-        (v: unknown): v is { uri: string } =>
-          v !== null && typeof v === "object" && "uri" in v
-      ),
-    }))
-    .at(0);
+  const requiresChildAgentConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT,
+      })
+    ).length > 0;
 
-  const reasoningConfiguration = Object.values(
-    findPathsToConfiguration({
-      mcpServerView,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
-    })
-  )
-    .map((schema) => ({
-      description: schema.description,
-      default: extractSchemaDefault(
-        schema,
-        (
-          v: unknown
-        ): v is {
-          modelId: string;
-          providerId: string;
-          temperature: number;
-          reasoningEffort: string;
-        } =>
-          v !== null &&
-          typeof v === "object" &&
-          "modelId" in v &&
-          "providerId" in v &&
-          "temperature" in v &&
-          "reasoningEffort" in v
-      ),
-    }))
-    .at(0);
+  const requiresReasoningConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.REASONING_MODEL,
+      })
+    ).length > 0;
 
   // If there is no toolsMetadata (= undefined or empty array), it means everything is enabled
   const disabledToolNames =
@@ -756,7 +679,7 @@ export function getMCPServerToolsConfigurations(
     (tool) => tool.inputSchema?.properties?.jsonSchema
   );
 
-  const stringConfigurations = Object.entries(
+  const requiredStrings = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
@@ -767,7 +690,7 @@ export function getMCPServerToolsConfigurations(
     default: extractSchemaDefault(schema, isString),
   }));
 
-  const numberConfigurations = Object.entries(
+  const requiredNumbers = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.NUMBER,
@@ -781,7 +704,7 @@ export function getMCPServerToolsConfigurations(
     ),
   }));
 
-  const booleanConfigurations = Object.entries(
+  const requiredBooleans = Object.entries(
     findPathsToConfiguration({
       mcpServerView,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
@@ -795,16 +718,16 @@ export function getMCPServerToolsConfigurations(
         (v: unknown): v is boolean => typeof v === "boolean"
       ),
     }))
-    // Exclude useSummary if user doesn't have web_summarization feature flag.
+    // Exclude useSummary if the user doesn't have the web_summarization feature flag.
     .filter(
       ({ key }) =>
         key !== "useSummary" || featureFlags?.includes("web_summarization")
     );
 
-  const enumConfigurations: Record<
+  const requiredEnums: Record<
     string,
     {
-      options: Array<{ value: string; label: string; description?: string }>;
+      options: { value: string; label: string; description?: string }[];
       description?: string;
       default?: string;
     }
@@ -843,11 +766,11 @@ export function getMCPServerToolsConfigurations(
               }
               return null;
             })
-            .filter((v) => v !== null) as Array<{
+            .filter((v) => v !== null) as {
             value: string;
             label: string;
             description?: string;
-          }>)
+          }[])
         : [];
 
       if (options.length === 0) {
@@ -865,10 +788,10 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const listConfigurations: Record<
+  const requiredLists: Record<
     string,
     {
-      options: Array<{ value: string; label: string; description?: string }>;
+      options: { value: string; label: string; description?: string }[];
       description?: string;
       values?: string[];
       default?: string;
@@ -905,11 +828,11 @@ export function getMCPServerToolsConfigurations(
             }
             return null;
           })
-          .filter((v) => v !== null) as Array<{
+          .filter((v) => v !== null) as {
           value: string;
           label: string;
           description?: string;
-        }>) ?? [];
+        }[]) ?? [];
 
       if (options.length === 0) {
         throw new Error(`No valid list options found for key ${key}`);
@@ -928,7 +851,7 @@ export function getMCPServerToolsConfigurations(
     })
   );
 
-  const mayRequireDustAppConfiguration =
+  const requiresDustAppConfiguration =
     Object.keys(
       findPathsToConfiguration({
         mcpServerView,
@@ -936,52 +859,37 @@ export function getMCPServerToolsConfigurations(
       })
     ).length > 0;
 
-  const mayRequireSecretConfiguration =
+  const requiresSecretConfiguration =
     mcpServerView.server.requiresSecret === true;
 
-  const configurableStates = [
-    getConfigurableStateForOptional(dataSourceConfiguration),
-    getConfigurableStateForOptional(dataWarehouseConfiguration),
-    getConfigurableStateForOptional(tableConfiguration),
-    getConfigurableStateForOptional(childAgentConfiguration),
-    getConfigurableStateForOptional(reasoningConfiguration),
-    getConfigurableStateForArray(stringConfigurations),
-    getConfigurableStateForArray(numberConfigurations),
-    getConfigurableStateForArray(booleanConfigurations),
-    getConfigurableStateForRecord(enumConfigurations),
-    getConfigurableStateForRecord(listConfigurations),
-  ];
-
-  const realConfigurable = configurableStates.every((c) => c === "no")
-    ? "no"
-    : configurableStates.every((c) => c === "optional" || c === "no")
-      ? "optional"
-      : "required";
-
-  const configurable =
-    mayRequireSecretConfiguration ||
-    mayRequireDustAppConfiguration ||
-    mayRequireJsonSchemaConfiguration ||
-    mayRequireTimeFrameConfiguration
-      ? "required"
-      : realConfigurable;
-
   return {
-    dataSourceConfiguration,
-    dataWarehouseConfiguration,
-    tableConfiguration,
-    childAgentConfiguration,
-    reasoningConfiguration,
+    requiresDataSourceConfiguration,
+    requiresDataWarehouseConfiguration,
+    requiresTableConfiguration,
+    requiresChildAgentConfiguration,
+    requiresReasoningConfiguration,
     mayRequireTimeFrameConfiguration,
     mayRequireJsonSchemaConfiguration,
-    stringConfigurations,
-    numberConfigurations,
-    booleanConfigurations,
-    enumConfigurations,
-    listConfigurations,
-    mayRequireDustAppConfiguration,
-    mayRequireSecretConfiguration,
-    configurable,
+    requiredStrings,
+    requiredNumbers,
+    requiredBooleans,
+    requiredEnums,
+    requiredLists,
+    requiresDustAppConfiguration,
+    requiresSecretConfiguration,
+    noRequirement:
+      !requiresDataSourceConfiguration &&
+      !requiresDataWarehouseConfiguration &&
+      !requiresTableConfiguration &&
+      !requiresChildAgentConfiguration &&
+      !requiresReasoningConfiguration &&
+      !requiresDustAppConfiguration &&
+      !mayRequireTimeFrameConfiguration &&
+      !requiredStrings.some((c) => c.default === undefined) &&
+      !requiredNumbers.some((c) => c.default === undefined) &&
+      !requiredBooleans.some((c) => c.default === undefined) &&
+      !Object.values(requiredEnums).some((c) => c.default === undefined) &&
+      !Object.values(requiredLists).some((c) => c.default === undefined),
   };
 }
 

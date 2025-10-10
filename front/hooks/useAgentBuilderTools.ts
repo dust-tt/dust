@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 function getGroupedMCPServerViews({
@@ -54,7 +54,7 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const toolsConfigurations = getMCPServerToolsConfigurations(view);
+      const toolsConfigurations = getMCPServerRequirements(view);
 
       const isWithKnowledge =
         toolsConfigurations.dataSourceConfiguration ??
