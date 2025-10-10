@@ -143,6 +143,10 @@ function WebhookSourceSheetContent({
   >(mode.type);
   const [selectedTab, setSelectedTab] = useState<string>("info");
   const [isSaving, setIsSaving] = useState(false);
+  const [githubWebhookData, setGithubWebhookData] = useState<{
+    connectionId: string;
+    selectedRepo: { id: number; name: string; fullName: string; owner: string };
+  } | null>(null);
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -247,12 +251,73 @@ function WebhookSourceSheetContent({
         includeGlobal: true,
       };
 
-      await createWebhookSource(apiData);
+      const webhookSourceRes = await createWebhookSource(apiData);
+
+      if (!webhookSourceRes) {
+        return;
+      }
+
+      // If this is a GitHub webhook and we have connection data, create the webhook on GitHub
+      if (mode.kind === "github" && githubWebhookData) {
+        try {
+          const webhookUrl = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceRes.sId}/${webhookSourceRes.urlSecret}`;
+
+          const githubRes = await fetch(
+            `/api/w/${owner.sId}/oauth/github/create_webhook`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                connectionId: githubWebhookData.connectionId,
+                owner: githubWebhookData.selectedRepo.owner,
+                repo: githubWebhookData.selectedRepo.name,
+                events: data.subscribedEvents,
+                webhookUrl,
+                secret: webhookSourceRes.secret ?? undefined,
+              }),
+            }
+          );
+
+          if (!githubRes.ok) {
+            const errorData = await githubRes.json();
+            sendNotification({
+              type: "error",
+              title: "Failed to create webhook on GitHub",
+              description:
+                errorData.error?.message ??
+                "An error occurred while creating the webhook on GitHub",
+            });
+            return;
+          }
+
+          sendNotification({
+            type: "success",
+            title: "Webhook created successfully",
+            description: `Webhook has been created on ${githubWebhookData.selectedRepo.fullName}`,
+          });
+        } catch (error) {
+          sendNotification({
+            type: "error",
+            title: "Failed to create webhook on GitHub",
+            description:
+              error instanceof Error ? error.message : "An error occurred",
+          });
+          return;
+        }
+      }
 
       createForm.reset();
       onClose();
     },
-    [createWebhookSource, createForm, onClose]
+    [
+      createWebhookSource,
+      createForm,
+      onClose,
+      mode.kind,
+      githubWebhookData,
+      owner.sId,
+      sendNotification,
+    ]
   );
 
   const applySharingChanges = useCallback(
@@ -513,6 +578,8 @@ function WebhookSourceSheetContent({
               <CreateWebhookSourceFormContent
                 form={createForm}
                 kind={mode.kind}
+                owner={owner}
+                onGithubDataChange={setGithubWebhookData}
               />
             </div>
           </FormProvider>

@@ -13,9 +13,13 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { useForm } from "react-hook-form";
+import { useCallback, useEffect, useState } from "react";
 import { Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { useSendNotification } from "@app/hooks/useNotification";
+import type { LightWorkspaceType } from "@app/types";
+import { setupOAuthConnection } from "@app/types";
 import type { WebhookSourceKind } from "@app/types/triggers/webhooks";
 import {
   basePostWebhookSourcesSchema,
@@ -23,6 +27,14 @@ import {
   WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
 } from "@app/types/triggers/webhooks";
+
+type GithubRepo = {
+  id: number;
+  name: string;
+  fullName: string;
+  owner: string;
+  private: boolean;
+};
 
 export const validateCustomHeadersFromString = (value: string | null) => {
   if (value === null || value.trim() === "") {
@@ -59,19 +71,105 @@ export type CreateWebhookSourceFormData = z.infer<
   typeof CreateWebhookSourceSchema
 >;
 
+export type GithubWebhookData = {
+  connectionId: string;
+  selectedRepo: GithubRepo;
+};
+
 type CreateWebhookSourceFormContentProps = {
   form: ReturnType<typeof useForm<CreateWebhookSourceFormData>>;
   kind: WebhookSourceKind;
+  owner: LightWorkspaceType;
+  onGithubDataChange?: (data: GithubWebhookData | null) => void;
 };
 
 export function CreateWebhookSourceFormContent({
   form,
   kind,
+  owner,
+  onGithubDataChange,
 }: CreateWebhookSourceFormContentProps) {
+  const sendNotification = useSendNotification();
+  const [githubConnectionId, setGithubConnectionId] = useState<string | null>(
+    null
+  );
+  const [githubRepos, setGithubRepos] = useState<GithubRepo[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState<GithubRepo | null>(null);
+  const [isLoadingRepos, setIsLoadingRepos] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+
   const selectedEvents = useWatch({
     control: form.control,
     name: "subscribedEvents",
   });
+
+  const handleGithubConnect = useCallback(async () => {
+    setIsConnecting(true);
+    try {
+      // Use personal_actions (OAuth App) for webhook creation
+      const result = await setupOAuthConnection({
+        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+        owner,
+        provider: "github",
+        useCase: "personal_actions",
+        extraConfig: {},
+      });
+
+      if (result.isErr()) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect to GitHub",
+          description: result.error.message,
+        });
+        return;
+      }
+
+      setGithubConnectionId(result.value.connection_id);
+
+      // Fetch repositories
+      setIsLoadingRepos(true);
+      const reposRes = await fetch(
+        `/api/w/${owner.sId}/oauth/github/repos?connectionId=${result.value.connection_id}`
+      );
+
+      if (!reposRes.ok) {
+        throw new Error("Failed to fetch repositories");
+      }
+
+      const reposData = await reposRes.json();
+      setGithubRepos(reposData.repos);
+
+      if (reposData.repos.length === 0) {
+        sendNotification({
+          type: "info",
+          title: "No repositories found",
+          description: "No repositories found for this connection",
+        });
+      }
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect to GitHub",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+      });
+    } finally {
+      setIsConnecting(false);
+      setIsLoadingRepos(false);
+    }
+  }, [owner, sendNotification]);
+
+  // Notify parent when GitHub data changes
+  useEffect(() => {
+    if (githubConnectionId && selectedRepo && onGithubDataChange) {
+      onGithubDataChange({
+        connectionId: githubConnectionId,
+        selectedRepo,
+      });
+    } else if (onGithubDataChange) {
+      onGithubDataChange(null);
+    }
+  }, [githubConnectionId, selectedRepo, onGithubDataChange]);
 
   return (
     <>
@@ -90,6 +188,64 @@ export function CreateWebhookSourceFormContent({
           />
         )}
       />
+
+      {/* GitHub OAuth Connection for GitHub webhooks */}
+      {kind === "github" && (
+        <div className="space-y-3">
+          <Label>GitHub Connection</Label>
+          {!githubConnectionId ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Connect your GitHub account to create webhooks on your
+                repositories.
+              </p>
+              <Button
+                label="Connect to GitHub"
+                variant="primary"
+                onClick={handleGithubConnect}
+                isLoading={isConnecting}
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-success">
+                ✓ Connected to GitHub
+              </div>
+
+              {githubRepos.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Select Repository</Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        label={
+                          selectedRepo
+                            ? selectedRepo.fullName
+                            : "Select a repository"
+                        }
+                        variant="outline"
+                        isSelect
+                        icon={ChevronDownIcon}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {githubRepos.map((repo) => (
+                        <DropdownMenuItem
+                          key={repo.id}
+                          onClick={() => setSelectedRepo(repo)}
+                        >
+                          {repo.fullName}
+                          {repo.private && " 🔒"}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {kind !== "custom" &&
         WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[kind].events.length > 0 && (

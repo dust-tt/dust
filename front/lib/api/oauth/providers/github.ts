@@ -21,7 +21,7 @@ export class GithubOAuthProvider implements BaseOAuthStrategyProvider {
       // OAuth flow for personal connections (user access tokens)
       return (
         `https://github.com/login/oauth/authorize?` +
-        `client_id=${config.getOAuthGithubAppPersonalActions()}` +
+        `client_id=Iv23libXMAo5S84J6fv7` +
         `&state=${connection.connection_id}` +
         `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("github"))}` +
         `&scope=repo`
@@ -55,6 +55,10 @@ export class GithubOAuthProvider implements BaseOAuthStrategyProvider {
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions") {
+      // Allow empty extraConfig for webhook use case
+      if (Object.keys(extraConfig).length === 0) {
+        return true;
+      }
       return (
         Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig
       );
