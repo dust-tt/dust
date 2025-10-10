@@ -581,6 +581,7 @@ export const RunAgentResultResourceSchema = z.object({
         href: z.string().optional(),
         title: z.string(),
         provider: z.string(),
+        mimeType: z.string(),
       })
     )
     .optional(),

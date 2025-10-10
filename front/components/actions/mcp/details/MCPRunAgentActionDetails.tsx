@@ -44,6 +44,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
+import type { AllSupportedFileContentType } from "@app/types";
 
 export function MCPRunAgentActionDetails({
   lastNotification,
@@ -168,10 +169,12 @@ export function MCPRunAgentActionDetails({
         citation.href
       );
       markdownCitations[key] = {
+        contentType: citation.mimeType as AllSupportedFileContentType,
         title: citation.title,
         href: citation.href,
         description: citation.description,
         icon: <IconComponent />,
+        fileId: key,
       };
     });
     return markdownCitations;

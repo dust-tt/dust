@@ -11,7 +11,10 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useState } from "react";
 
-import type { FileAttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
+import type {
+  FileAttachmentCitation,
+  MarkdownAttachmentCitation,
+} from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import {
@@ -31,7 +34,7 @@ export const AttachmentViewer = ({
 }: {
   viewerOpen: boolean;
   setViewerOpen: (open: boolean) => void;
-  attachmentCitation: FileAttachmentCitation;
+  attachmentCitation: FileAttachmentCitation | MarkdownAttachmentCitation;
   conversationId: string | null;
   owner: LightWorkspaceType;
 }) => {
@@ -42,6 +45,7 @@ export const AttachmentViewer = ({
       conversationId: conversationId ?? undefined,
     },
   });
+
   const [text, setText] = useState<string | undefined>();
 
   const isAudio = isAudioContentType(attachmentCitation);
@@ -51,7 +55,8 @@ export const AttachmentViewer = ({
   // because the attachment fileId is actually the blob id
   // TODO: to fix
   const fileId =
-    attachmentCitation.attachmentCitationType === "fragment"
+    attachmentCitation.attachmentCitationType === "fragment" ||
+    attachmentCitation.attachmentCitationType === "mcp"
       ? attachmentCitation.fileId
       : fileUploaderService.getFileBlob(attachmentCitation.fileId)?.fileId;
 
