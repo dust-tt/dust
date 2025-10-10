@@ -7,6 +7,7 @@ import {
   ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
+import { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import {
   GithubCodeDirectory,
   GithubCodeFile,
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
   await ConfluenceFolder.sync({ alter: true });
   await ConfluencePage.sync({ alter: true });
   await ConfluenceSpace.sync({ alter: true });
+  await DiscordConfigurationModel.sync({ alter: true });
   await SlackConfigurationModel.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
   await SlackChannel.sync({ alter: true });

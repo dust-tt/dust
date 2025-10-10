@@ -367,6 +367,7 @@ const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
 
 const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "confluence"
+  | "discord_bot"
   | "github"
   | "google_drive"
   | "intercom"
@@ -683,6 +684,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "web_summarization"
   | "xai_feature"
   | "noop_model_feature"
+  | "discord_bot"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
