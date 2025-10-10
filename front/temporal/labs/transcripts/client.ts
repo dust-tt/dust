@@ -18,7 +18,7 @@ export async function launchRetrieveTranscriptsWorkflow(
 
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {
-      args: [transcriptsConfiguration.sId],
+      args: [{ transcriptsConfigurationId: transcriptsConfiguration.sId }],
       taskQueue: TRANSCRIPTS_QUEUE_NAME,
       workflowId: workflowId,
       cronSchedule: "*/5 * * * *",
