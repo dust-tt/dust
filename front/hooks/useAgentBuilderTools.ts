@@ -61,10 +61,9 @@ function getGroupedMCPServerViews({
       } = getMCPServerRequirements(view);
 
       const isWithKnowledge =
-        requiresDataSourceConfiguration ??
-        requiresDataWarehouseConfiguration ??
-        requiresTableConfiguration ??
-        false;
+        requiresDataSourceConfiguration ||
+        requiresDataWarehouseConfiguration ||
+        requiresTableConfiguration;
 
       return isWithKnowledge
         ? "mcpServerViewsWithKnowledge"
