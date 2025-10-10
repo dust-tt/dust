@@ -19,27 +19,13 @@ import type {
 } from "@app/types";
 import { Err, isContentFragmentMessageTypeModel, Ok } from "@app/types";
 
-import type { PruningContext, PruningStrategy } from "./pruning";
+import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {
-  CombinedPruning,
-  CurrentInteractionPruning,
-  PreviousInteractionsPruning,
+  getInteractionTokenCount,
+  progressivelyPruneInteraction,
+  pruneAllToolResults,
 } from "./pruning";
 import { renderAllMessages } from "./shared/message_rendering";
-import {
-  PRUNED_RESULT_PLACEHOLDER,
-  PRUNED_TOOL_RESULT_TOKENS,
-} from "./shared/token_utils";
-
-// Extend types to include token counts
-type MessageWithTokens = ModelMessageTypeMultiActions & {
-  tokenCount: number;
-};
-
-type InteractionWithTokens = {
-  messages: MessageWithTokens[];
-  totalTokens: number;
-};
 
 /**
  * Group messages into interactions (user turn + agent responses)
@@ -49,12 +35,10 @@ function groupMessagesIntoInteractions(
 ): InteractionWithTokens[] {
   const interactions: InteractionWithTokens[] = [];
   let currentInteraction: MessageWithTokens[] = [];
-  let currentTokens = 0;
 
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
     currentInteraction.push(message);
-    currentTokens += message.tokenCount;
 
     // Start a new interaction when we see the next user message
     const isLastMessage = i === messages.length - 1;
@@ -63,110 +47,12 @@ function groupMessagesIntoInteractions(
     if (isLastMessage || nextIsUser) {
       interactions.push({
         messages: currentInteraction,
-        totalTokens: currentTokens,
       });
       currentInteraction = [];
-      currentTokens = 0;
     }
   }
 
   return interactions;
-}
-
-/**
- * Apply pruning to tool results within an interaction
- */
-function pruneToolResultsInInteraction(
-  interaction: InteractionWithTokens,
-  pruningStrategy: PruningStrategy,
-  context: Omit<PruningContext, "messageIndex" | "totalMessagesInInteraction">
-): InteractionWithTokens {
-  const prunedMessages = interaction.messages.map((msg, index) => {
-    if (msg.role === "function") {
-      const shouldPrune = pruningStrategy.shouldPruneToolResult(msg, {
-        ...context,
-        messageIndex: index,
-        totalMessagesInInteraction: interaction.messages.length,
-      });
-
-      if (shouldPrune) {
-        return {
-          ...msg,
-          content: PRUNED_RESULT_PLACEHOLDER,
-          tokenCount: PRUNED_TOOL_RESULT_TOKENS,
-        };
-      }
-    }
-    return msg;
-  });
-
-  const totalTokens = prunedMessages.reduce(
-    (sum, msg) => sum + msg.tokenCount,
-    0
-  );
-
-  return {
-    messages: prunedMessages,
-    totalTokens,
-  };
-}
-
-/**
- * Progressively prune tool results from the current interaction to meet token budget
- */
-async function progressivelyPruneInteraction(
-  interaction: InteractionWithTokens,
-  maxTokens: number,
-  _model: ModelConfigurationType,
-  _context: Omit<PruningContext, "messageIndex" | "totalMessagesInInteraction">
-): Promise<InteractionWithTokens> {
-  if (interaction.totalTokens <= maxTokens) {
-    return interaction;
-  }
-
-  // Find all tool result messages
-  const toolResultIndices: number[] = [];
-  for (let i = 0; i < interaction.messages.length; i++) {
-    if (interaction.messages[i].role === "function") {
-      toolResultIndices.push(i);
-    }
-  }
-
-  // Prune from oldest to newest, recalculating tokens each time
-  let prunedInteraction = { ...interaction };
-  for (const index of toolResultIndices) {
-    const message = prunedInteraction.messages[index];
-    if (
-      message.role === "function" &&
-      message.content !== PRUNED_RESULT_PLACEHOLDER
-    ) {
-      // Create a new array with the pruned message
-      const newMessages = [...prunedInteraction.messages];
-      newMessages[index] = {
-        ...message,
-        content: PRUNED_RESULT_PLACEHOLDER,
-        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
-      };
-
-      // Recalculate total tokens
-      const newTotalTokens = newMessages.reduce(
-        (sum, msg) => sum + msg.tokenCount,
-        0
-      );
-
-      prunedInteraction = {
-        messages: newMessages,
-        totalTokens: newTotalTokens,
-      };
-
-      // Check if we've pruned enough
-      if (newTotalTokens <= maxTokens) {
-        break;
-      }
-    }
-  }
-
-  return prunedInteraction;
 }
 
 export async function renderConversationEnhanced(
@@ -181,7 +67,6 @@ export async function renderConversationEnhanced(
     excludeImages,
     onMissingAction = "inject-placeholder",
     enablePreviousInteractionsPruning = false,
-    currentInteractionPruningConfig = { keepLastN: 2 },
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -192,9 +77,6 @@ export async function renderConversationEnhanced(
     excludeImages?: boolean;
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
-    currentInteractionPruningConfig?: {
-      keepLastN: number;
-    };
   }
 ): Promise<
   Result<
@@ -247,24 +129,17 @@ export async function renderConversationEnhanced(
   // Group into interactions
   const interactions = groupMessagesIntoInteractions(messagesWithTokens);
 
-  // Set up pruning strategies
-  const strategies: PruningStrategy[] = [];
-  if (enablePreviousInteractionsPruning) {
-    strategies.push(new PreviousInteractionsPruning());
-  }
-  strategies.push(
-    new CurrentInteractionPruning(currentInteractionPruningConfig.keepLastN)
-  );
-  const pruningStrategy = new CombinedPruning(strategies);
-
-  // Apply pruning to interactions
+  // Apply pruning to previous interactions if enabled
   const prunedInteractions = interactions.map((interaction, index) => {
-    const context = {
-      interactionIndex: index,
-      totalInteractions: interactions.length,
-      isLastInteraction: index === interactions.length - 1,
-    };
-    return pruneToolResultsInInteraction(interaction, pruningStrategy, context);
+    const isLastInteraction = index === interactions.length - 1;
+
+    // Only prune tool results from previous interactions if flag is enabled
+    if (enablePreviousInteractionsPruning && !isLastInteraction) {
+      return pruneAllToolResults(interaction);
+    }
+
+    // Don't apply any static pruning to the current interaction
+    return interaction;
   });
 
   // Calculate base token usage
@@ -284,26 +159,23 @@ export async function renderConversationEnhanced(
     let interaction = prunedInteractions[i];
     const isLastInteraction = i === prunedInteractions.length - 1;
 
-    // For the last interaction, try progressive pruning if needed
+    // For the last interaction, try progressive pruning if it doesn't fit within the token budget.
+    // This means the we progressively prune the earliest tools results until the interaction fits within the token budget.
+    const interactionTokens = getInteractionTokenCount(interaction);
     if (
       isLastInteraction &&
-      interaction.totalTokens > allowedTokenCount - tokensUsed
+      interactionTokens > allowedTokenCount - tokensUsed
     ) {
       const availableTokens = allowedTokenCount - tokensUsed;
       interaction = await progressivelyPruneInteraction(
         interaction,
-        availableTokens,
-        model,
-        {
-          interactionIndex: i,
-          totalInteractions: prunedInteractions.length,
-          isLastInteraction: true,
-        }
+        availableTokens
       );
     }
 
-    if (tokensUsed + interaction.totalTokens <= allowedTokenCount) {
-      tokensUsed += interaction.totalTokens;
+    const finalInteractionTokens = getInteractionTokenCount(interaction);
+    if (tokensUsed + finalInteractionTokens <= allowedTokenCount) {
+      tokensUsed += finalInteractionTokens;
       selected.unshift(...interaction.messages);
     } else {
       break;
