@@ -67,7 +67,7 @@ function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+        toolNameForMonitoring: "jit_include_file",
         agentLoopContext,
       },
       async ({ fileId }) => {
@@ -150,7 +150,7 @@ function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
+        toolNameForMonitoring: "jit_list_files",
         agentLoopContext,
       },
       async () => {
@@ -221,7 +221,7 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "cat", agentLoopContext },
+      { toolNameForMonitoring: "jit_cat_file", agentLoopContext },
       async ({ fileId, offset, limit, grep }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));

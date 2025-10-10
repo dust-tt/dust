@@ -313,7 +313,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "search" },
+      { toolNameForMonitoring: "notion" },
       async ({ query, type, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("Agent loop run context is required"));
@@ -470,7 +470,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "retrieve_page" },
+      { toolNameForMonitoring: "notion" },
       async ({ pageId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.pages.retrieve({ page_id: pageId }),
@@ -488,7 +488,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "retrieve_database_schema" },
+      { toolNameForMonitoring: "notion" },
       async ({ databaseId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.databases.retrieve({ database_id: databaseId }),
@@ -513,7 +513,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "retrieve_database_content" },
+      { toolNameForMonitoring: "notion" },
       async (
         { databaseId, filter, sorts, start_cursor, page_size },
         { authInfo }
@@ -548,7 +548,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "query_database" },
+      { toolNameForMonitoring: "notion" },
       async (
         { databaseId, filter, sorts, start_cursor, page_size },
         { authInfo }
@@ -581,7 +581,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_page" },
+      { toolNameForMonitoring: "notion" },
       async ({ parent, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.pages.create({ parent, properties, icon, cover }),
@@ -602,7 +602,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "insert_row_into_database" },
+      { toolNameForMonitoring: "notion" },
       async ({ databaseId, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -636,7 +636,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_database" },
+      { toolNameForMonitoring: "notion" },
       async ({ parent, title, properties, icon, cover }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -656,7 +656,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "update_page" },
+      { toolNameForMonitoring: "notion" },
       async ({ pageId, properties }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.pages.update({ page_id: pageId, properties }),
@@ -674,7 +674,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "retrieve_block" },
+      { toolNameForMonitoring: "notion" },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.blocks.retrieve({ block_id: blockId }),
@@ -697,7 +697,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "retrieve_block_children" },
+      { toolNameForMonitoring: "notion" },
       async ({ blockId, start_cursor, page_size }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -725,7 +725,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "add_page_content" },
+      { toolNameForMonitoring: "notion" },
       async ({ blockId, children }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -760,7 +760,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_comment" },
+      { toolNameForMonitoring: "notion" },
       async ({ parent_page_id, discussion_id, comment }, { authInfo }) => {
         return withNotionClient((notion) => {
           if (!parent_page_id && !discussion_id) {
@@ -796,7 +796,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "delete_block" },
+      { toolNameForMonitoring: "notion" },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -817,7 +817,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "fetch_comments" },
+      { toolNameForMonitoring: "notion" },
       async ({ blockId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.comments.list({ block_id: blockId }),
@@ -836,7 +836,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "update_row_database" },
+      { toolNameForMonitoring: "notion" },
       async ({ pageId, properties }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.pages.update({ page_id: pageId, properties }),
@@ -855,7 +855,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "update_schema_database" },
+      { toolNameForMonitoring: "notion" },
       async ({ databaseId, properties }, { authInfo }) => {
         return withNotionClient(
           (notion) =>
@@ -872,7 +872,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "list_users" },
+      { toolNameForMonitoring: "notion" },
       async (_, { authInfo }) => {
         return withNotionClient((notion) => notion.users.list({}), authInfo);
       }
@@ -887,7 +887,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_about_user" },
+      { toolNameForMonitoring: "notion" },
       async ({ userId }, { authInfo }) => {
         return withNotionClient(
           (notion) => notion.users.retrieve({ user_id: userId }),

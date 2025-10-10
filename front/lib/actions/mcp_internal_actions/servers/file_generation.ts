@@ -107,7 +107,7 @@ const createServer = (
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: "get_supported_source_formats_for_output_format",
+        toolNameForMonitoring: "file_generation",
         agentLoopContext,
       },
       async ({ output_format }) => {
@@ -166,7 +166,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "convert_file_format", agentLoopContext },
+      { toolNameForMonitoring: "file_generation", agentLoopContext },
       async ({ file_name, file_id_or_url, source_format, output_format }) => {
         if (!process.env.CONVERTAPI_API_KEY) {
           return new Err(new MCPError("Missing environment variable."));
@@ -259,7 +259,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "generate_file", agentLoopContext },
+      { toolNameForMonitoring: "file_generation", agentLoopContext },
       async ({ file_name, file_content, source_format = "text" }) => {
         if (!process.env.CONVERTAPI_API_KEY) {
           return new Err(new MCPError("Missing environment variable."));

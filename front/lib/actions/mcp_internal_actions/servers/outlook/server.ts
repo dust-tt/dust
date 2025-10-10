@@ -101,7 +101,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_messages" },
+      { toolNameForMonitoring: "outlook" },
       async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -178,7 +178,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_drafts" },
+      { toolNameForMonitoring: "outlook" },
       async ({ search, top = 10, skip = 0 }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -264,7 +264,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_draft" },
+      { toolNameForMonitoring: "outlook" },
       async (
         { to, cc, bcc, subject, contentType, body, importance = "normal" },
         { authInfo }
@@ -339,7 +339,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "delete_draft" },
+      { toolNameForMonitoring: "outlook" },
       async ({ messageId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -407,7 +407,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_reply_draft" },
+      { toolNameForMonitoring: "outlook" },
       async (
         {
           messageId,
@@ -522,7 +522,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_contacts" },
+      { toolNameForMonitoring: "outlook" },
       async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -607,7 +607,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_contact" },
+      { toolNameForMonitoring: "outlook" },
       async (
         {
           displayName,
@@ -726,7 +726,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "update_contact" },
+      { toolNameForMonitoring: "outlook" },
       async (
         {
           contactId,

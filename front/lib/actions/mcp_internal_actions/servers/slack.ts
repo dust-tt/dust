@@ -323,7 +323,7 @@ const createServer = async (
       },
       withToolLogging(
         auth,
-        { toolNameForMonitoring: SLACK_SEARCH_MESSAGES, agentLoopContext },
+        { toolNameForMonitoring: "slack", agentLoopContext },
         async (
           {
             keywords,
@@ -624,7 +624,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_LIST_THREADS, agentLoopContext },
+      { toolNameForMonitoring: "slack", agentLoopContext },
       async ({ channel, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(
@@ -765,7 +765,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_POST_MESSAGE, agentLoopContext },
+      { toolNameForMonitoring: "slack", agentLoopContext },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -809,7 +809,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_LIST_USERS, agentLoopContext },
+      { toolNameForMonitoring: "slack", agentLoopContext },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -838,7 +838,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_GET_USER, agentLoopContext },
+      { toolNameForMonitoring: "slack", agentLoopContext },
       async ({ userId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -868,7 +868,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_LIST_PUBLIC_CHANNELS, agentLoopContext },
+      { toolNameForMonitoring: "slack", agentLoopContext },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {

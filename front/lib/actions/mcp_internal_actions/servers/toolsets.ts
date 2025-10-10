@@ -29,7 +29,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "list", agentLoopContext },
+      { toolNameForMonitoring: "list_toolsets", agentLoopContext },
       async () => {
         const mcpServerViewIdsFromAgentConfiguration =
           agentLoopContext?.runContext?.agentConfiguration.actions

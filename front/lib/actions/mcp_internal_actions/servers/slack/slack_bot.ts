@@ -64,7 +64,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_POST_MESSAGE, agentLoopContext },
+      { toolNameForMonitoring: "slack_bot", agentLoopContext },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -105,7 +105,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_LIST_USERS, agentLoopContext },
+      { toolNameForMonitoring: "slack_bot", agentLoopContext },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -133,7 +133,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_GET_USER, agentLoopContext },
+      { toolNameForMonitoring: "slack_bot", agentLoopContext },
       async ({ userId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -162,7 +162,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_LIST_PUBLIC_CHANNELS, agentLoopContext },
+      { toolNameForMonitoring: "slack_bot", agentLoopContext },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -210,7 +210,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_READ_CHANNEL_HISTORY, agentLoopContext },
+      { toolNameForMonitoring: "slack_bot", agentLoopContext },
       async ({ channel, limit = 20, cursor, oldest, latest }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -284,7 +284,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_READ_THREAD_MESSAGES, agentLoopContext },
+      { toolNameForMonitoring: "slack_bot", agentLoopContext },
       async (
         { channel, threadTs, limit = 20, cursor, oldest, latest },
         { authInfo }
@@ -358,7 +358,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_ADD_REACTION, agentLoopContext },
+      { toolNameForMonitoring: "slack_bot", agentLoopContext },
       async ({ channel, timestamp, name }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -411,7 +411,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: SLACK_REMOVE_REACTION, agentLoopContext },
+      { toolNameForMonitoring: "slack_bot", agentLoopContext },
       async ({ channel, timestamp, name }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {

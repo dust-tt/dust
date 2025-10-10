@@ -31,7 +31,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "execute_read_query" },
+      { toolNameForMonitoring: "salesforce" },
       async ({ query }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -67,7 +67,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "list_objects" },
+      { toolNameForMonitoring: "salesforce" },
       async ({ filter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -109,7 +109,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "describe_object" },
+      { toolNameForMonitoring: "salesforce" },
       async ({ objectName }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -217,7 +217,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "list_attachments" },
+      { toolNameForMonitoring: "salesforce" },
       async ({ recordId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -271,7 +271,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "read_attachment" },
+      { toolNameForMonitoring: "salesforce" },
       async ({ recordId, attachmentId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;

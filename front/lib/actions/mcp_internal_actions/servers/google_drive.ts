@@ -48,7 +48,7 @@ const createServer = (auth: any): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "list_drives" },
+      { toolNameForMonitoring: "google_drive" },
       async ({ pageToken }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
@@ -141,7 +141,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "search_files" },
+      { toolNameForMonitoring: "google_drive" },
       async (
         { q, pageToken, pageSize, driveId, includeSharedDrives, orderBy },
         { authInfo }
@@ -228,7 +228,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_file_content" },
+      { toolNameForMonitoring: "google_drive" },
       async ({ fileId, offset, limit }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {

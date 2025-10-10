@@ -52,7 +52,7 @@ const createServer = (auth: Authenticator): McpServer => {
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_boards" },
+      { toolNameForMonitoring: "monday" },
       async (_params, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -79,7 +79,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_board_items" },
+      { toolNameForMonitoring: "monday" },
       async ({ boardId }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -106,7 +106,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_item_details" },
+      { toolNameForMonitoring: "monday" },
       async ({ itemId }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -162,7 +162,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "search_items" },
+      { toolNameForMonitoring: "monday" },
       async (
         {
           query,
@@ -231,7 +231,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_item" },
+      { toolNameForMonitoring: "monday" },
       async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -269,7 +269,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "update_item" },
+      { toolNameForMonitoring: "monday" },
       async ({ itemId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -300,7 +300,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_update" },
+      { toolNameForMonitoring: "monday" },
       async ({ itemId, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
 

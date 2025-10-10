@@ -62,7 +62,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "list_spreadsheets" },
+      { toolNameForMonitoring: "google_sheets" },
       async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
@@ -117,7 +117,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_spreadsheet" },
+      { toolNameForMonitoring: "google_sheets" },
       async ({ spreadsheetId, includeGridData }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -169,7 +169,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_worksheet" },
+      { toolNameForMonitoring: "google_sheets" },
       async (
         { spreadsheetId, range, majorDimension, valueRenderOption },
         { authInfo }
@@ -229,7 +229,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "update_cells" },
+      { toolNameForMonitoring: "google_sheets" },
       async (
         { spreadsheetId, range, values, majorDimension, valueInputOption },
         { authInfo }
@@ -296,7 +296,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "append_data" },
+      { toolNameForMonitoring: "google_sheets" },
       async (
         {
           spreadsheetId,
@@ -354,7 +354,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "clear_range" },
+      { toolNameForMonitoring: "google_sheets" },
       async ({ spreadsheetId, range }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -397,7 +397,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_spreadsheet" },
+      { toolNameForMonitoring: "google_sheets" },
       async ({ title, sheetTitles }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -452,7 +452,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "add_worksheet" },
+      { toolNameForMonitoring: "google_sheets" },
       async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -506,7 +506,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "delete_worksheet" },
+      { toolNameForMonitoring: "google_sheets" },
       async ({ spreadsheetId, sheetId }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -584,7 +584,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "format_cells" },
+      { toolNameForMonitoring: "google_sheets" },
       async (
         {
           spreadsheetId,
@@ -664,7 +664,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "copy_sheet" },
+      { toolNameForMonitoring: "google_sheets" },
       async (
         { sourceSpreadsheetId, sheetId, destinationSpreadsheetId },
         { authInfo }
@@ -709,7 +709,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "rename_worksheet" },
+      { toolNameForMonitoring: "google_sheets" },
       async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -767,7 +767,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "move_worksheet" },
+      { toolNameForMonitoring: "google_sheets" },
       async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {

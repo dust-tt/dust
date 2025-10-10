@@ -78,7 +78,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_drafts" },
+      { toolNameForMonitoring: "gmail" },
       async ({ q, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -157,7 +157,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_draft" },
+      { toolNameForMonitoring: "gmail" },
       async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -235,7 +235,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "delete_draft" },
+      { toolNameForMonitoring: "gmail" },
       async ({ draftId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -291,7 +291,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "get_messages" },
+      { toolNameForMonitoring: "gmail" },
       async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -422,7 +422,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "create_reply_draft" },
+      { toolNameForMonitoring: "gmail" },
       async (
         { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
         { authInfo }
