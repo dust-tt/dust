@@ -52,7 +52,9 @@ const createServer = (auth: any): McpServer => {
       async ({ pageToken }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
-          return new Err(new MCPError("Failed to authenticate with Google Drive"));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
         }
 
         try {
@@ -62,13 +64,15 @@ const createServer = (auth: any): McpServer => {
             fields: "nextPageToken, drives(id, name, createdTime)",
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to list drives"
-          ));
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to list drives")
+          );
         }
       }
     )
@@ -144,7 +148,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       ) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
-          return new Err(new MCPError("Failed to authenticate with Google Drive"));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
         }
 
         try {
@@ -183,13 +189,17 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
 
           const res = await drive.files.list(requestParams);
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to search files"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to search files"
+            )
+          );
         }
       }
     )
@@ -222,7 +232,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       async ({ fileId, offset, limit }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
-          return new Err(new MCPError("Failed to authenticate with Google Drive"));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
         }
 
         try {
@@ -235,14 +247,18 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
           const file = fileMetadata.data;
 
           if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
-            return new Err(new MCPError(
-              `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`
-            ));
+            return new Err(
+              new MCPError(
+                `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`
+              )
+            );
           }
           if (file.size && parseInt(file.size) > MAX_FILE_SIZE) {
-            return new Err(new MCPError(
-              `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
-            ));
+            return new Err(
+              new MCPError(
+                `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+              )
+            );
           }
 
           let content: string;
@@ -256,9 +272,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
                 mimeType: "text/plain",
               });
               if (typeof exportRes.data !== "string") {
-                return new Err(new MCPError(
-                  "Failed to export file content as text/plain"
-                ));
+                return new Err(
+                  new MCPError("Failed to export file content as text/plain")
+                );
               }
               content = exportRes.data;
               break;
@@ -273,17 +289,17 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
               });
 
               if (typeof downloadRes.data !== "string") {
-                return new Err(new MCPError(
-                  "Failed to download file content as text"
-                ));
+                return new Err(
+                  new MCPError("Failed to download file content as text")
+                );
               }
               content = downloadRes.data;
               break;
             }
             default:
-              return new Err(new MCPError(
-                `Unsupported file type: ${file.mimeType}`
-              ));
+              return new Err(
+                new MCPError(`Unsupported file type: ${file.mimeType}`)
+              );
           }
 
           // Apply offset and limit
@@ -295,23 +311,27 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
           const hasMore = endIndex < content.length;
           const nextOffset = hasMore ? endIndex : undefined;
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: {
-              fileId,
-              fileName: file.name,
-              mimeType: file.mimeType,
-              content: truncatedContent,
-              returnedContentLength: truncatedContent.length,
-              totalContentLength,
-              offset: startIndex,
-              nextOffset,
-              hasMore,
-            },
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: {
+                fileId,
+                fileName: file.name,
+                mimeType: file.mimeType,
+                content: truncatedContent,
+                returnedContentLength: truncatedContent.length,
+                totalContentLength,
+                offset: startIndex,
+                nextOffset,
+                hasMore,
+              },
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to get file content"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to get file content"
+            )
+          );
         }
       }
     )

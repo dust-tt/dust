@@ -223,10 +223,12 @@ const createServer = (
 
           return new Ok(content);
         } catch (e) {
-          return new Err(new MCPError(
-            `There was an error generating your file: ${normalizeError(e)}. ` +
-              "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use."
-          ));
+          return new Err(
+            new MCPError(
+              `There was an error generating your file: ${normalizeError(e)}. ` +
+                "You may be able to get the desired result by chaining multiple conversions, look closely to the source format you use."
+            )
+          );
         }
       }
     )
@@ -267,11 +269,11 @@ const createServer = (
         const extension = extname(file_name).replace(/^\./, "");
         if (!isValidOutputType(extension)) {
           return new Ok([
-              {
-                type: "text",
-                text: `The format ${extension} is not supported.`,
-              },
-            ]);
+            {
+              type: "text",
+              text: `The format ${extension} is not supported.`,
+            },
+          ]);
         }
 
         // If the format requires conversion and we have plain text content,
@@ -387,42 +389,44 @@ ${file_content
               const base64 = Buffer.from(buffer).toString("base64");
 
               return new Ok([
-                  {
-                    type: "resource" as const,
-                    resource: {
-                      name: file_name,
-                      blob: base64,
-                      text: "Your file was generated successfully.",
-                      mimeType: getContentTypeFromOutputFormat(extension),
-                      uri: "",
-                    },
+                {
+                  type: "resource" as const,
+                  resource: {
+                    name: file_name,
+                    blob: base64,
+                    text: "Your file was generated successfully.",
+                    mimeType: getContentTypeFromOutputFormat(extension),
+                    uri: "",
                   },
-                ]);
+                },
+              ]);
             }
           } catch (e) {
-            return new Err(new MCPError(
-              `There was an error generating your ${extension} file: ${normalizeError(
-                e
-              )}. ` +
-                `For complex conversions, consider using the convert_file_format tool instead.`
-            ));
+            return new Err(
+              new MCPError(
+                `There was an error generating your ${extension} file: ${normalizeError(
+                  e
+                )}. ` +
+                  `For complex conversions, consider using the convert_file_format tool instead.`
+              )
+            );
           }
         }
 
         // Basic case: we have a text-based format and we can generate the file directly.
         return new Ok([
-            {
-              type: "resource" as const,
-              // We return a base64 blob, it will be uploaded in MCPConfigurationServerRunner.run.
-              resource: {
-                name: file_name,
-                blob: Buffer.from(file_content).toString("base64"),
-                text: "Your file was generated successfully.",
-                mimeType: getContentTypeFromOutputFormat(extension),
-                uri: "",
-              },
+          {
+            type: "resource" as const,
+            // We return a base64 blob, it will be uploaded in MCPConfigurationServerRunner.run.
+            resource: {
+              name: file_name,
+              blob: Buffer.from(file_content).toString("base64"),
+              text: "Your file was generated successfully.",
+              mimeType: getContentTypeFromOutputFormat(extension),
+              uri: "",
             },
-          ]);
+          },
+        ]);
       }
     )
   );

@@ -1,9 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  makeInternalMCPServer,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -49,15 +47,9 @@ const createServer = (
       "placeholder_tool",
       "This tool is a placeholder to catch missing actions.",
       {},
-      withToolLogging(
-        auth,
-        { toolName: "placeholder_tool" },
-        async () => {
-          return new Ok([
-            { type: "text", text: "No action name found" },
-          ]);
-        }
-      )
+      withToolLogging(auth, { toolName: "placeholder_tool" }, async () => {
+        return new Ok([{ type: "text", text: "No action name found" }]);
+      })
     );
   }
   return server;

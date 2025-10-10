@@ -123,13 +123,15 @@ const createServer = (auth: Authenticator): McpServer => {
           { concurrency: 10 }
         );
 
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Drafts fetched successfully",
-          result: {
-            drafts,
-            nextPageToken: result.nextPageToken,
-          },
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Drafts fetched successfully",
+            result: {
+              drafts,
+              nextPageToken: result.nextPageToken,
+            },
+          }).content
+        );
       }
     )
   );
@@ -210,13 +212,15 @@ const createServer = (auth: Authenticator): McpServer => {
 
         const result = await response.json();
 
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Draft created successfully",
-          result: {
-            draftId: result.id,
-            messageId: result.message.id,
-          },
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Draft created successfully",
+            result: {
+              draftId: result.id,
+              messageId: result.message.id,
+            },
+          }).content
+        );
       }
     )
   );
@@ -254,10 +258,12 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError("Failed to delete draft"));
         }
 
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Draft deleted successfully",
-          result: "",
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Draft deleted successfully",
+            result: "",
+          }).content
+        );
       }
     )
   );
@@ -309,9 +315,11 @@ const createServer = (auth: Authenticator): McpServer => {
 
         if (!response.ok) {
           const errorText = await getErrorText(response);
-          return new Err(new MCPError(
-            `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
-          ));
+          return new Err(
+            new MCPError(
+              `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
         }
 
         const result = await response.json();
@@ -365,19 +373,21 @@ const createServer = (auth: Authenticator): McpServer => {
           message = `Messages fetched with ${totalFailed} failures out of ${totalRequested} total messages`;
         }
 
-        return new Ok(makeMCPToolJSONSuccess({
-          message,
-          result: {
-            messages: successfulMessages,
-            failedMessages,
-            summary: {
-              totalRequested,
-              totalSuccessful,
-              totalFailed,
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message,
+            result: {
+              messages: successfulMessages,
+              failedMessages,
+              summary: {
+                totalRequested,
+                totalSuccessful,
+                totalFailed,
+              },
+              nextPageToken: result.nextPageToken,
             },
-            nextPageToken: result.nextPageToken,
-          },
-        }).content);
+          }).content
+        );
       }
     )
   );
@@ -422,128 +432,136 @@ const createServer = (auth: Authenticator): McpServer => {
           return new Err(new MCPError("Authentication required"));
         }
 
-      // Fetch the original message
-      const messageResponse = await fetchFromGmail(
-        `/gmail/v1/users/me/messages/${messageId}?format=full`,
-        accessToken,
-        { method: "GET" }
-      );
+        // Fetch the original message
+        const messageResponse = await fetchFromGmail(
+          `/gmail/v1/users/me/messages/${messageId}?format=full`,
+          accessToken,
+          { method: "GET" }
+        );
 
         if (!messageResponse.ok) {
           const errorText = await getErrorText(messageResponse);
           if (messageResponse.status === 404) {
             return new Err(new MCPError(`Message not found: ${messageId}`));
           }
-          return new Err(new MCPError(
-            `Failed to get original message: ${messageResponse.status} ${messageResponse.statusText} - ${errorText}`
-          ));
+          return new Err(
+            new MCPError(
+              `Failed to get original message: ${messageResponse.status} ${messageResponse.statusText} - ${errorText}`
+            )
+          );
         }
 
-      const originalMessage: GmailMessage = await messageResponse.json();
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const headers = originalMessage.payload?.headers || [];
+        const originalMessage: GmailMessage = await messageResponse.json();
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const headers = originalMessage.payload?.headers || [];
 
-      // Extract header values
-      const originalFrom = getHeaderValue(headers, "From");
-      const originalTo = getHeaderValue(headers, "To");
-      const originalCc = getHeaderValue(headers, "Cc");
-      const originalBcc = getHeaderValue(headers, "Bcc");
-      const originalSubject = getHeaderValue(headers, "Subject");
-      const originalMessageId = getHeaderValue(headers, "Message-ID");
-      const originalReferences = getHeaderValue(headers, "References");
-      const originalDate = getHeaderValue(headers, "Date");
+        // Extract header values
+        const originalFrom = getHeaderValue(headers, "From");
+        const originalTo = getHeaderValue(headers, "To");
+        const originalCc = getHeaderValue(headers, "Cc");
+        const originalBcc = getHeaderValue(headers, "Bcc");
+        const originalSubject = getHeaderValue(headers, "Subject");
+        const originalMessageId = getHeaderValue(headers, "Message-ID");
+        const originalReferences = getHeaderValue(headers, "References");
+        const originalDate = getHeaderValue(headers, "Date");
 
-      // Determine recipients
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
-      const replyCc = cc?.length ? cc.join(", ") : originalCc;
-      const replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
+        // Determine recipients
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
+        const replyCc = cc?.length ? cc.join(", ") : originalCc;
+        const replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
 
         if (!replyTo?.trim()) {
-          return new Err(new MCPError(
-            "Cannot determine reply-to address from original message"
-          ));
+          return new Err(
+            new MCPError(
+              "Cannot determine reply-to address from original message"
+            )
+          );
         }
 
-      // Create subject and headers
-      const replySubject = originalSubject?.startsWith("Re:")
-        ? originalSubject
-        : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          `Re: ${originalSubject || "No Subject"}`;
-      const encodedSubject = `=?UTF-8?B?${Buffer.from(replySubject, "utf-8").toString("base64")}?=`;
-      const threadingHeaders = createThreadingHeaders(
-        originalMessageId,
-        originalReferences
-      );
+        // Create subject and headers
+        const replySubject = originalSubject?.startsWith("Re:")
+          ? originalSubject
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            `Re: ${originalSubject || "No Subject"}`;
+        const encodedSubject = `=?UTF-8?B?${Buffer.from(replySubject, "utf-8").toString("base64")}?=`;
+        const threadingHeaders = createThreadingHeaders(
+          originalMessageId,
+          originalReferences
+        );
 
-      // Build reply body
-      const originalBody = decodeMessageBody(originalMessage.payload);
-      const fullBody = buildReplyBody(
-        body,
-        contentType,
-        originalBody,
-        originalDate,
-        originalFrom
-      );
+        // Build reply body
+        const originalBody = decodeMessageBody(originalMessage.payload);
+        const fullBody = buildReplyBody(
+          body,
+          contentType,
+          originalBody,
+          originalDate,
+          originalFrom
+        );
 
-      // Construct the reply message
-      const messageLines = [
-        `To: ${replyTo}`,
-        replyCc ? `Cc: ${replyCc}` : null,
-        replyBcc ? `Bcc: ${replyBcc}` : null,
-        `Subject: ${encodedSubject}`,
-        "Content-Type: text/html; charset=UTF-8",
-        "MIME-Version: 1.0",
-        ...threadingHeaders,
-        "",
-        fullBody,
-      ].filter((line): line is string => line !== null);
+        // Construct the reply message
+        const messageLines = [
+          `To: ${replyTo}`,
+          replyCc ? `Cc: ${replyCc}` : null,
+          replyBcc ? `Bcc: ${replyBcc}` : null,
+          `Subject: ${encodedSubject}`,
+          "Content-Type: text/html; charset=UTF-8",
+          "MIME-Version: 1.0",
+          ...threadingHeaders,
+          "",
+          fullBody,
+        ].filter((line): line is string => line !== null);
 
-      const message = messageLines.join("\r\n");
+        const message = messageLines.join("\r\n");
 
-      // Encode the message in base64 as required by the Gmail API
-      const encodedMessage = Buffer.from(message)
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
+        // Encode the message in base64 as required by the Gmail API
+        const encodedMessage = Buffer.from(message)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
 
-      const response = await fetchFromGmail(
-        "/gmail/v1/users/me/drafts",
-        accessToken,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: {
-              raw: encodedMessage,
-              threadId: originalMessage.threadId,
+        const response = await fetchFromGmail(
+          "/gmail/v1/users/me/drafts",
+          accessToken,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          }),
-        }
-      );
+            body: JSON.stringify({
+              message: {
+                raw: encodedMessage,
+                threadId: originalMessage.threadId,
+              },
+            }),
+          }
+        );
 
         if (!response.ok) {
           const errorText = await getErrorText(response);
-          return new Err(new MCPError(
-            `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
-          ));
+          return new Err(
+            new MCPError(
+              `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
         }
 
-      const result = await response.json();
+        const result = await response.json();
 
-        return new Ok(makeMCPToolJSONSuccess({
-          message: "Reply draft created successfully",
-          result: {
-            draftId: result.id,
-            messageId: result.message.id,
-            originalMessageId: messageId,
-            replyTo,
-            subject: replySubject,
-          },
-        }).content);
+        return new Ok(
+          makeMCPToolJSONSuccess({
+            message: "Reply draft created successfully",
+            result: {
+              draftId: result.id,
+              messageId: result.message.id,
+              originalMessageId: messageId,
+              replyTo,
+              subject: replySubject,
+            },
+          }).content
+        );
       }
     )
   );

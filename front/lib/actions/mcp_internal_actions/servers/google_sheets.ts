@@ -66,7 +66,9 @@ const createServer = (auth: Authenticator): McpServer => {
       async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
-          return new Err(new MCPError("Failed to authenticate with Google Drive"));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Drive")
+          );
         }
 
         try {
@@ -85,13 +87,17 @@ const createServer = (auth: Authenticator): McpServer => {
             corpora: "allDrives",
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to list spreadsheets"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to list spreadsheets"
+            )
+          );
         }
       }
     )
@@ -115,9 +121,9 @@ const createServer = (auth: Authenticator): McpServer => {
       async ({ spreadsheetId, includeGridData }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -126,13 +132,17 @@ const createServer = (auth: Authenticator): McpServer => {
             includeGridData,
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to get spreadsheet"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to get spreadsheet"
+            )
+          );
         }
       }
     )
@@ -166,9 +176,9 @@ const createServer = (auth: Authenticator): McpServer => {
       ) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -179,13 +189,17 @@ const createServer = (auth: Authenticator): McpServer => {
             valueRenderOption,
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to get worksheet data"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to get worksheet data"
+            )
+          );
         }
       }
     )
@@ -222,9 +236,9 @@ const createServer = (auth: Authenticator): McpServer => {
       ) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -238,13 +252,17 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to update cells"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to update cells"
+            )
+          );
         }
       }
     )
@@ -292,9 +310,9 @@ const createServer = (auth: Authenticator): McpServer => {
       ) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -309,13 +327,15 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to append data"
-          ));
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to append data")
+          );
         }
       }
     )
@@ -338,9 +358,9 @@ const createServer = (auth: Authenticator): McpServer => {
       async ({ spreadsheetId, range }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -349,13 +369,15 @@ const createServer = (auth: Authenticator): McpServer => {
             range,
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to clear range"
-          ));
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to clear range")
+          );
         }
       }
     )
@@ -379,9 +401,9 @@ const createServer = (auth: Authenticator): McpServer => {
       async ({ title, sheetTitles }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -397,13 +419,17 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to create spreadsheet"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to create spreadsheet"
+            )
+          );
         }
       }
     )
@@ -430,9 +456,9 @@ const createServer = (auth: Authenticator): McpServer => {
       async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -455,13 +481,17 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to add worksheet"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to add worksheet"
+            )
+          );
         }
       }
     )
@@ -480,9 +510,9 @@ const createServer = (auth: Authenticator): McpServer => {
       async ({ spreadsheetId, sheetId }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -499,13 +529,17 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to delete worksheet"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to delete worksheet"
+            )
+          );
         }
       }
     )
@@ -565,9 +599,9 @@ const createServer = (auth: Authenticator): McpServer => {
       ) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -594,13 +628,17 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to format cells"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to format cells"
+            )
+          );
         }
       }
     )
@@ -633,9 +671,9 @@ const createServer = (auth: Authenticator): McpServer => {
       ) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -647,13 +685,15 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to copy sheet"
-          ));
+          return new Err(
+            new MCPError(normalizeError(err).message || "Failed to copy sheet")
+          );
         }
       }
     )
@@ -673,9 +713,9 @@ const createServer = (auth: Authenticator): McpServer => {
       async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -696,13 +736,17 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to rename worksheet"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to rename worksheet"
+            )
+          );
         }
       }
     )
@@ -727,9 +771,9 @@ const createServer = (auth: Authenticator): McpServer => {
       async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
-          return new Err(new MCPError(
-            "Failed to authenticate with Google Sheets"
-          ));
+          return new Err(
+            new MCPError("Failed to authenticate with Google Sheets")
+          );
         }
 
         try {
@@ -750,13 +794,17 @@ const createServer = (auth: Authenticator): McpServer => {
             },
           });
 
-          return new Ok(makeMCPToolJSONSuccess({
-            result: res.data,
-          }).content);
+          return new Ok(
+            makeMCPToolJSONSuccess({
+              result: res.data,
+            }).content
+          );
         } catch (err) {
-          return new Err(new MCPError(
-            normalizeError(err).message || "Failed to move worksheet"
-          ));
+          return new Err(
+            new MCPError(
+              normalizeError(err).message || "Failed to move worksheet"
+            )
+          );
         }
       }
     )
