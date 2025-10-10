@@ -19,7 +19,9 @@ const { isFullSyncPendingOrOngoing } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
 
-const { getNextDatabaseToUpsert } = proxyActivities<typeof activities>({
+const { getNextDatabaseToUpsert, clearWorkflowCache } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "10 minute",
 });
 
@@ -32,6 +34,8 @@ export async function processDatabaseUpsertQueueWorkflow({
 }: {
   connectorId: ModelId;
 }) {
+  const topLevelWorkflowId = workflowInfo().workflowId;
+
   const res = await isFullSyncPendingOrOngoing({
     connectorId,
   });
@@ -52,12 +56,15 @@ export async function processDatabaseUpsertQueueWorkflow({
   });
 
   if (notionDatabaseId) {
+    // Clear the workflow cache before processing
+    await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+
     // We either haven't processed the DB recently, or we have no trace of ever processing it.
     await upsertDatabaseInCore({
       connectorId,
       databaseId: notionDatabaseId,
       runTimestamp: Date.now(),
-      topLevelWorkflowId: workflowInfo().workflowId,
+      topLevelWorkflowId,
       queue: new PQueue({
         concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
       }),
