@@ -52,15 +52,21 @@ export function getDataSourceViewIdsFromActions(
 
   return removeNulls(
     relevantActions.flatMap((action) => {
+      const dataSourceViewIds = new Set<string>();
+
       if (action.dataSources) {
-        return action.dataSources.map(
-          (dataSource) => dataSource.dataSourceViewId
-        );
-      } else if (action.tables) {
-        return action.tables.map((table) => table.dataSourceViewId);
-      } else {
-        return [];
+        action.dataSources.forEach((dataSource) => {
+          dataSourceViewIds.add(dataSource.dataSourceViewId);
+        });
       }
+
+      if (action.tables) {
+        action.tables.forEach((table) => {
+          dataSourceViewIds.add(table.dataSourceViewId);
+        });
+      }
+
+      return Array.from(dataSourceViewIds);
     })
   );
 }
