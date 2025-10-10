@@ -5,7 +5,7 @@ import {
   cn,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import Placeholder from "@tiptap/extension-placeholder";
+import { Placeholder } from "@tiptap/extensions";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React from "react";
@@ -82,6 +82,7 @@ export function CoEditionContainer({
           ),
         }),
       ],
+      immediatelyRender: false,
     },
     [owner.sId]
   );
