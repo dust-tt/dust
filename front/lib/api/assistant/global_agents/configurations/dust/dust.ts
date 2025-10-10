@@ -106,7 +106,7 @@ export function _getDustGlobalAgent(
   - It requires doing several web searches, or browsing 3+ web pages
   - It requires running SQL queries
   - It requires 3+ steps of tool uses
-  - The user specifically asks for a "deep dive", a "deep research", a "comprehensive analysis" or other terms that indicate a deep dive task
+  - The user specifically asks for a "deep dive", a "deep research", a "comprehensive analysis" or other terms that indicate a deep research task
 
   Any other request is considered "simple".
 
