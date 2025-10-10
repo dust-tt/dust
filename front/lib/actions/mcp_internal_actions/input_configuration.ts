@@ -820,13 +820,15 @@ export function getMCPServerRequirements(
       !requiresTableConfiguration &&
       !requiresChildAgentConfiguration &&
       !requiresReasoningConfiguration &&
-      !requiresDustAppConfiguration &&
       !mayRequireTimeFrameConfiguration &&
+      !mayRequireJsonSchemaConfiguration &&
       !requiredStrings.some((c) => c.default === undefined) &&
       !requiredNumbers.some((c) => c.default === undefined) &&
       !requiredBooleans.some((c) => c.default === undefined) &&
       !Object.values(requiredEnums).some((c) => c.default === undefined) &&
-      !Object.values(requiredLists).some((c) => c.default === undefined),
+      !Object.values(requiredLists).some((c) => c.default === undefined) &&
+      !requiresDustAppConfiguration &&
+      !requiresSecretConfiguration,
   };
 }
 
