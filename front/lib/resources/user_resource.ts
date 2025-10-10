@@ -455,6 +455,11 @@ export class UserResource extends BaseResource<UserModel> {
         {
           model: MembershipModel,
           as: "memberships",
+          where: {
+            id: {
+              [Op.in]: memberships.map((m) => m.id),
+            },
+          },
         },
       ],
       order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
