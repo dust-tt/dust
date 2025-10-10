@@ -141,7 +141,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
           className={classNames(
             "mx-auto min-w-60",
             "pt-6 md:pt-10",
-            context.isInModal ? "max-w-full" : "max-w-3xl"
+            "max-w-3xl"
           )}
         >
           {isUserMessage(data) && !shouldHideUserMessage && (
