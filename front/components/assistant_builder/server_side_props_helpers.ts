@@ -66,8 +66,9 @@ export async function buildInitialActions({
       action.type === "mcp_server_configuration",
       "Legacy action type, non-MCP, are no longer supported."
     );
+    // Prefer matching by view sId for robustness (action names can be customized)
     const mcpServerView = mcpServerViews.find(
-      (mcpServerView) => mcpServerView.server.name === action.name
+      (view) => view.sId === action.mcpServerViewId
     );
 
     const builderAction = await getMCPServerActionConfiguration(
