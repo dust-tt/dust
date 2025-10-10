@@ -3,14 +3,58 @@ import React from "react";
 
 import { Spinner } from "../index_with_tw_base";
 
+const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
+const SPINNER_VARIANTS = ["mono", "color", "light", "dark", "rose300"] as const;
+
 const meta = {
   title: "Primitives/Spinner",
   component: Spinner,
   tags: ["autodocs"],
+  argTypes: {
+    size: {
+      options: SPINNER_SIZES,
+      control: { type: "select" },
+      description: "Size of the spinner",
+    },
+    variant: {
+      options: SPINNER_VARIANTS,
+      control: { type: "select" },
+      description:
+        "Visual variant of the spinner (mono adapts to dark/light theme)",
+    },
+  },
 } satisfies Meta<typeof Spinner>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const Playground: Story = {
+  args: {
+    size: "md",
+    variant: "color",
+  },
+};
+
+export const Small: Story = {
+  args: {
+    size: "sm",
+    variant: "color",
+  },
+};
+
+export const Large: Story = {
+  args: {
+    size: "lg",
+    variant: "color",
+  },
+};
+
+export const MonoVariant: Story = {
+  args: {
+    size: "md",
+    variant: "mono",
+  },
+};
 
 export const SpinnerExample = () => {
   return (

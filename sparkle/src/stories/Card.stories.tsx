@@ -23,10 +23,78 @@ const meta = {
   title: "Primitives/Card",
   component: Card,
   tags: ["autodocs"],
+  argTypes: {
+    variant: {
+      options: CARD_VARIANTS,
+      control: { type: "select" },
+      description: "Visual style variant of the card",
+    },
+    size: {
+      options: CARD_SIZES,
+      control: { type: "select" },
+      description: "Size/padding of the card",
+    },
+    disabled: {
+      control: "boolean",
+      description:
+        "Whether the card is disabled (reduced opacity, no interactions)",
+    },
+    className: {
+      control: "text",
+      description: "Additional CSS classes to apply",
+    },
+    children: {
+      control: "text",
+      description: "Content to display inside the card",
+    },
+  },
 } satisfies Meta<typeof Card>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const Playground: Story = {
+  args: {
+    variant: "primary",
+    size: "md",
+    disabled: false,
+    children: "Card Content",
+  },
+  render: (args) => <Card {...args} />,
+};
+
+export const Primary: Story = {
+  args: {
+    variant: "primary",
+    size: "md",
+    children: "Primary Card",
+  },
+};
+
+export const Secondary: Story = {
+  args: {
+    variant: "secondary",
+    size: "md",
+    children: "Secondary Card",
+  },
+};
+
+export const Tertiary: Story = {
+  args: {
+    variant: "tertiary",
+    size: "md",
+    children: "Tertiary Card",
+  },
+};
+
+export const DisabledCard: Story = {
+  args: {
+    variant: "primary",
+    size: "md",
+    disabled: true,
+    children: "Disabled Card",
+  },
+};
 
 export const AllVariants: Story = {
   render: () => {

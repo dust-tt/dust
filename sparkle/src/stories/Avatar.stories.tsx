@@ -21,14 +21,84 @@ import {
   SlackLogo,
 } from "../index_with_tw_base";
 
+import { AVATAR_SIZES } from "@sparkle/components/Avatar";
+
+const ICONS = {
+  none: null,
+  ActionBeerIcon: ActionBeerIcon,
+  StarStrokeIcon: StarStrokeIcon,
+} as const;
+
 const meta = {
   title: "Components/Avatar",
   component: Avatar,
   tags: ["autodocs"],
+  argTypes: {
+    size: {
+      options: AVATAR_SIZES,
+      control: { type: "select" },
+      description: "Size of the avatar",
+    },
+    name: {
+      control: "text",
+      description:
+        "Name to display (shows first letter or full name for special characters)",
+    },
+    visual: {
+      control: "text",
+      description: "URL to an image or emoji URL",
+    },
+    emoji: {
+      control: "text",
+      description: "Emoji to display in the avatar",
+    },
+    icon: {
+      options: Object.keys(ICONS),
+      mapping: ICONS,
+      control: { type: "select" },
+      description: "Icon component to display",
+    },
+    backgroundColor: {
+      control: "text",
+      description: "Tailwind background color class (e.g., 's-bg-blue-200')",
+    },
+    iconColor: {
+      control: "text",
+      description:
+        "Tailwind text color class for icon (e.g., 's-text-gray-50')",
+    },
+    clickable: {
+      control: "boolean",
+      description: "Whether the avatar has hover effects",
+    },
+    busy: {
+      control: "boolean",
+      description: "Whether to show breathing animation",
+    },
+    disabled: {
+      control: "boolean",
+      description: "Whether the avatar is disabled (reduced opacity)",
+    },
+    isRounded: {
+      control: "boolean",
+      description: "Whether to use fully rounded (circle) style",
+    },
+  },
 } satisfies Meta<typeof Avatar>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const Playground: Story = {
+  args: {
+    size: "md",
+    name: "John Doe",
+    clickable: false,
+    busy: false,
+    disabled: false,
+    isRounded: false,
+  },
+};
 
 const gridStyle = {
   display: "grid",
