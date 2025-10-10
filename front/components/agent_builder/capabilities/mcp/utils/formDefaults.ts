@@ -43,18 +43,8 @@ export function getDefaultConfiguration(
 
   const additionalConfig: AdditionalConfigurationInBuilderType = {};
 
-  // Set default values for all configuration types when available
-  // This provides better UX by pre-filling known defaults while still allowing
-  // validation to catch truly missing required fields
-
-  // Boolean configurations: use explicit default or fallback to false
   for (const { key, default: defaultValue } of requiredBooleans) {
-    set(
-      additionalConfig,
-      key,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      defaultValue !== undefined ? defaultValue : false
-    );
+    set(additionalConfig, key, defaultValue ?? false);
   }
 
   for (const [key, { options, default: defaultValue }] of Object.entries(
