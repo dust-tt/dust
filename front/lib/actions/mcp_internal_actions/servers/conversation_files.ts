@@ -107,7 +107,8 @@ function createServer(
               new MCPError(
                 `File ${title} is too large (${(textByteSize / 1024 / 1024).toFixed(2)}MB) to include in the conversation. ` +
                   `Maximum supported size is ${MAX_FILE_SIZE_FOR_INCLUDE / 1024 / 1024}MB. ` +
-                  `Consider using cat to read smaller portions of the file.`
+                  `Consider using cat to read smaller portions of the file.`,
+                { tracked: false }
               )
             );
           }
@@ -135,8 +136,7 @@ function createServer(
 
         return new Err(
           new MCPError(
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            `File ${attachment?.title || fileId} of type ${attachment?.contentType || "unknown"} has no text or image content`
+            `File ${attachment?.title ?? fileId} of type ${attachment?.contentType ?? "unknown"} has no text or image content`
           )
         );
       }
@@ -249,7 +249,10 @@ function createServer(
         if (!isTextContent(content)) {
           return new Err(
             new MCPError(
-              `File ${title} does not have text content that can be read with offset/limit`
+              `File ${title} does not have text content that can be read with offset/limit`,
+              {
+                tracked: false,
+              }
             )
           );
         }
@@ -275,12 +278,19 @@ function createServer(
           if (start > text.length) {
             return new Err(
               new MCPError(
-                `Offset ${start} is out of bounds for file ${title}.`
+                `Offset ${start} is out of bounds for file ${title}.`,
+                {
+                  tracked: false,
+                }
               )
             );
           }
           if (limit === 0) {
-            return new Err(new MCPError(`Limit cannot be equal to 0.`));
+            return new Err(
+              new MCPError(`Limit cannot be equal to 0.`, {
+                tracked: false,
+              })
+            );
           }
           text = text.slice(start, end);
         }
@@ -294,7 +304,10 @@ function createServer(
               new MCPError(
                 `Grep pattern is too large (${(grepByteSize / 1024 / 1024).toFixed(2)}MB) to apply grep filtering. ` +
                   `Maximum supported size is ${MAX_FILE_SIZE_FOR_GREP / 1024 / 1024}MB. ` +
-                  `Consider using offset/limit to read smaller portions of the file.`
+                  `Consider using offset/limit to read smaller portions of the file.`,
+                {
+                  tracked: false,
+                }
               )
             );
           }
@@ -307,13 +320,16 @@ function createServer(
           } catch (e) {
             return new Err(
               new MCPError(
-                `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`
+                `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`,
+                { tracked: false }
               )
             );
           }
           if (text.length === 0) {
             return new Err(
-              new MCPError(`No lines matched the grep pattern: ${grep}.`)
+              new MCPError(`No lines matched the grep pattern: ${grep}.`, {
+                tracked: false,
+              })
             );
           }
         }
