@@ -27,61 +27,67 @@ const createServer = (
     "list",
     "List the available toolsets with their names and descriptions. This is like using 'ls' in Unix.",
     {},
-    withToolLogging(auth, { toolName: "list", agentLoopContext }, async () => {
-      const mcpServerViewIdsFromAgentConfiguration =
-        agentLoopContext?.runContext?.agentConfiguration.actions
-          .filter(isServerSideMCPServerConfiguration)
-          .map((action) => action.mcpServerViewId) ?? [];
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: "list_toolsets", agentLoopContext },
+      async () => {
+        const mcpServerViewIdsFromAgentConfiguration =
+          agentLoopContext?.runContext?.agentConfiguration.actions
+            .filter(isServerSideMCPServerConfiguration)
+            .map((action) => action.mcpServerViewId) ?? [];
 
-      const owner = auth.getNonNullableWorkspace();
-      const requestedGroupIds = auth.groups().map((g) => g.sId);
-      const prodCredentials = await prodAPICredentialsForOwner(owner);
-      const config = apiConfig.getDustAPIConfig();
-      const api = new DustAPI(
-        config,
-        {
-          ...prodCredentials,
-          extraHeaders: {
-            ...getHeaderFromGroupIds(requestedGroupIds),
+        const owner = auth.getNonNullableWorkspace();
+        const requestedGroupIds = auth.groups().map((g) => g.sId);
+        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const config = apiConfig.getDustAPIConfig();
+        const api = new DustAPI(
+          config,
+          {
+            ...prodCredentials,
+            extraHeaders: {
+              ...getHeaderFromGroupIds(requestedGroupIds),
+            },
           },
-        },
-        logger,
-        config.nodeEnv === "development" ? "http://localhost:3000" : null
-      );
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-      const r = await api.getMCPServerViews(globalSpace.sId, true);
-      if (r.isErr()) {
-        throw new Error(r.error.message);
-      }
-
-      const mcpServerViews = r.value
-        .filter(
-          (mcpServerView) =>
-            !mcpServerViewIdsFromAgentConfiguration.includes(mcpServerView.sId)
-        )
-        .filter(
-          (mcpServerView) =>
-            getMCPServerToolsConfigurations(mcpServerView).configurable !==
-            "required"
-        )
-        .filter(
-          (mcpServerView) =>
-            mcpServerView.server.availability !== "auto_hidden_builder"
+          logger,
+          config.nodeEnv === "development" ? "http://localhost:3000" : null
         );
+        const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+        const r = await api.getMCPServerViews(globalSpace.sId, true);
+        if (r.isErr()) {
+          throw new Error(r.error.message);
+        }
 
-      return new Ok(
-        mcpServerViews.map((mcpServerView) => ({
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOLSET_LIST_RESULT,
-            uri: "",
-            id: mcpServerView.sId,
-            text: getMcpServerViewDisplayName(mcpServerView),
-            description: getMcpServerViewDescription(mcpServerView),
-          },
-        }))
-      );
-    })
+        const mcpServerViews = r.value
+          .filter(
+            (mcpServerView) =>
+              !mcpServerViewIdsFromAgentConfiguration.includes(
+                mcpServerView.sId
+              )
+          )
+          .filter(
+            (mcpServerView) =>
+              getMCPServerToolsConfigurations(mcpServerView).configurable !==
+              "required"
+          )
+          .filter(
+            (mcpServerView) =>
+              mcpServerView.server.availability !== "auto_hidden_builder"
+          );
+
+        return new Ok(
+          mcpServerViews.map((mcpServerView) => ({
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOLSET_LIST_RESULT,
+              uri: "",
+              id: mcpServerView.sId,
+              text: getMcpServerViewDisplayName(mcpServerView),
+              description: getMcpServerViewDescription(mcpServerView),
+            },
+          }))
+        );
+      }
+    )
   );
 
   return server;

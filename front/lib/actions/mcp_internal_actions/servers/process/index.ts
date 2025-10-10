@@ -87,7 +87,7 @@ function makeExtractInformationFromDocumentsTool(
 ) {
   return withToolLogging(
     auth,
-    { toolName: PROCESS_TOOL_NAME, agentLoopContext },
+    { toolNameForMonitoring: PROCESS_TOOL_NAME, agentLoopContext },
     async ({
       dataSources,
       objective,

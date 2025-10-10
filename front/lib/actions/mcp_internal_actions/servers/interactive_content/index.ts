@@ -113,7 +113,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
@@ -226,7 +229,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
@@ -290,7 +296,7 @@ const createServer = (
     withToolLogging(
       auth,
       {
-        toolName: REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+        toolNameForMonitoring: REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ file_id }, { sendNotification, _meta }) => {
@@ -360,7 +366,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async ({ file_id, new_file_name }, { sendNotification, _meta }) => {
         const { agentConfiguration } = agentLoopContext?.runContext ?? {};
 
@@ -419,7 +428,7 @@ const createServer = (
     withToolLogging(
       auth,
       {
-        toolName: RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+        toolNameForMonitoring: RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
         agentLoopContext,
       },
       async ({ file_id }) => {

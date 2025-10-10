@@ -93,7 +93,7 @@ export function registerListTool(
     ListToolInputSchema,
     withToolLogging(
       auth,
-      { toolName: FILESYSTEM_LIST_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: FILESYSTEM_LIST_TOOL_NAME, agentLoopContext },
       async ({
         nodeId,
         dataSources,

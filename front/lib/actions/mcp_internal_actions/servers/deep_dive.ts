@@ -30,7 +30,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolName: "handoff", agentLoopContext },
+      { toolNameForMonitoring: "handoff", agentLoopContext },
       async () => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));
