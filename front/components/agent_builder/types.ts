@@ -134,7 +134,7 @@ export const capabilityFormSchema = z
       return true;
     }
 
-    if (toolsConfigurations.mayRequireTimeFrameConfiguration) {
+    if (toolsConfigurations.timeFrameConfigurable) {
       if (
         configuration.timeFrame !== null &&
         (configuration.timeFrame.duration === null ||
@@ -150,7 +150,7 @@ export const capabilityFormSchema = z
     }
 
     if (
-      toolsConfigurations.mayRequireJsonSchemaConfiguration &&
+      toolsConfigurations.jsonSchemaConfigurable &&
       configuration._jsonSchemaString !== null
     ) {
       const parsedSchema = validateConfiguredJsonSchema(
@@ -184,15 +184,15 @@ export function getDefaultMCPAction(
     // Ensure default name always matches validation regex (^[a-z0-9_]+$)
     name: sanitizedName,
     description:
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      toolsConfigurations.tableConfiguration ??
-      false
+      toolsConfigurations.dataSourceConfigurable ||
+      toolsConfigurations.dataWarehouseConfigurable ||
+      toolsConfigurations.tableConfigurable
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
           : "",
-    configurable: toolsConfigurations.configurable !== "no",
+    configurable:
+      toolsConfigurations.configurabilityState !== "noConfiguration",
   };
 }
 

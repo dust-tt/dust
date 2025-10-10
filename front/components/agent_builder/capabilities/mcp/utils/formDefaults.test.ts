@@ -87,16 +87,21 @@ describe("getDefaultConfiguration", () => {
 
     it("should use mcpServerView sId as mcpServerViewId", () => {
       mockGetMCPServerToolsConfigurations.mockReturnValue({
-        mayRequireTimeFrameConfiguration: false,
-        mayRequireJsonSchemaConfiguration: false,
+        dataSourceConfigurable: false,
+        dataWarehouseConfigurable: false,
+        tableConfigurable: false,
+        childAgentConfigurable: false,
+        reasoningConfigurable: false,
+        timeFrameConfigurable: false,
+        jsonSchemaConfigurable: false,
         stringConfigurations: [],
         numberConfigurations: [],
         booleanConfigurations: [],
         enumConfigurations: {},
         listConfigurations: {},
-        mayRequireDustAppConfiguration: false,
-        mayRequireSecretConfiguration: false,
-        configurable: "optional",
+        dustAppConfigurable: false,
+        secretConfigurable: false,
+        configurabilityState: "optionalConfiguration",
       });
 
       const result = getDefaultConfiguration(mockMCPServerView);
@@ -107,10 +112,20 @@ describe("getDefaultConfiguration", () => {
     describe("boolean configurations", () => {
       it("should set boolean configurations to false by default", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
           numberConfigurations: [],
+          enumConfigurations: {},
+          listConfigurations: {},
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           booleanConfigurations: [
             {
               key: "is_enabled",
@@ -119,11 +134,6 @@ describe("getDefaultConfiguration", () => {
             { key: "admin_mode", description: "Admin mode setting" },
             { key: "nested.deep.flag", description: "A deeply nested boolean" },
           ],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -141,10 +151,20 @@ describe("getDefaultConfiguration", () => {
 
       it("should use explicit boolean defaults when available", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
           numberConfigurations: [],
+          enumConfigurations: {},
+          listConfigurations: {},
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           booleanConfigurations: [
             {
               key: "feature_enabled",
@@ -154,11 +174,6 @@ describe("getDefaultConfiguration", () => {
             { key: "debug_mode", description: "Debug mode", default: false },
             { key: "auto_save", description: "Auto save" }, // no explicit default
           ],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -172,16 +187,21 @@ describe("getDefaultConfiguration", () => {
 
       it("should handle empty boolean configurations", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
           numberConfigurations: [],
           booleanConfigurations: [],
           enumConfigurations: {},
           listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -193,11 +213,20 @@ describe("getDefaultConfiguration", () => {
     describe("enum configurations", () => {
       it("should set enum configurations to first option", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
           numberConfigurations: [],
           booleanConfigurations: [],
+          listConfigurations: {},
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           enumConfigurations: {
             priority: {
               options: [
@@ -223,10 +252,6 @@ describe("getDefaultConfiguration", () => {
               description: "Nested enum",
             },
           },
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -242,11 +267,20 @@ describe("getDefaultConfiguration", () => {
 
       it("should skip enum configurations with empty options", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
           numberConfigurations: [],
           booleanConfigurations: [],
+          listConfigurations: {},
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           enumConfigurations: {
             valid_enum: {
               options: [
@@ -260,10 +294,6 @@ describe("getDefaultConfiguration", () => {
               description: "Empty enum",
             },
           },
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -276,11 +306,20 @@ describe("getDefaultConfiguration", () => {
 
       it("should use explicit enum defaults when available", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
           numberConfigurations: [],
           booleanConfigurations: [],
+          listConfigurations: {},
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           enumConfigurations: {
             priority: {
               options: [
@@ -300,10 +339,6 @@ describe("getDefaultConfiguration", () => {
               description: "Status", // no explicit default, should use first
             },
           },
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -318,12 +353,20 @@ describe("getDefaultConfiguration", () => {
     describe("list configurations", () => {
       it("should set list configurations to empty arrays", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
           numberConfigurations: [],
           booleanConfigurations: [],
           enumConfigurations: {},
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           listConfigurations: {
             tags: {
               options: [
@@ -344,9 +387,6 @@ describe("getDefaultConfiguration", () => {
               description: "Nested list",
             },
           },
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -364,8 +404,20 @@ describe("getDefaultConfiguration", () => {
     describe("string configurations", () => {
       it("should set defaults for string configurations when available", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
+          numberConfigurations: [],
+          booleanConfigurations: [],
+          enumConfigurations: {},
+          listConfigurations: {},
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           stringConfigurations: [
             {
               key: "api_key",
@@ -379,13 +431,6 @@ describe("getDefaultConfiguration", () => {
             },
             { key: "user_name", description: "User Name" }, // no default
           ],
-          numberConfigurations: [],
-          booleanConfigurations: [],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -402,20 +447,25 @@ describe("getDefaultConfiguration", () => {
     describe("number configurations", () => {
       it("should set defaults for number configurations when available", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
+          booleanConfigurations: [],
+          enumConfigurations: {},
+          listConfigurations: {},
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           numberConfigurations: [
             { key: "timeout", description: "Timeout in seconds", default: 30 },
             { key: "max_retries", description: "Maximum retries", default: 3 },
             { key: "port", description: "Port number" }, // no default
           ],
-          booleanConfigurations: [],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -432,8 +482,16 @@ describe("getDefaultConfiguration", () => {
     describe("mixed configurations", () => {
       it("should handle all configuration types together", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           stringConfigurations: [
             { key: "api_key", description: "API Key", default: "secret-key" },
           ],
@@ -459,9 +517,6 @@ describe("getDefaultConfiguration", () => {
               description: "Tags",
             },
           },
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -480,8 +535,16 @@ describe("getDefaultConfiguration", () => {
     describe("comprehensive default handling", () => {
       it("should handle mixed types with nested paths and explicit defaults", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           stringConfigurations: [
             { key: "api.key", description: "API Key", default: "dev-key-123" },
             { key: "api.endpoint", description: "API Endpoint" }, // no default
@@ -541,9 +604,6 @@ describe("getDefaultConfiguration", () => {
               description: "Allowed origins", // no default (will use empty array)
             },
           },
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -586,10 +646,18 @@ describe("getDefaultConfiguration", () => {
     describe("nested path handling", () => {
       it("should handle deeply nested configuration paths", () => {
         mockGetMCPServerToolsConfigurations.mockReturnValue({
-          mayRequireTimeFrameConfiguration: false,
-          mayRequireJsonSchemaConfiguration: false,
+          dataSourceConfigurable: false,
+          dataWarehouseConfigurable: false,
+          tableConfigurable: false,
+          childAgentConfigurable: false,
+          reasoningConfigurable: false,
+          timeFrameConfigurable: false,
+          jsonSchemaConfigurable: false,
           stringConfigurations: [],
           numberConfigurations: [],
+          dustAppConfigurable: false,
+          secretConfigurable: false,
+          configurabilityState: "optionalConfiguration",
           booleanConfigurations: [
             { key: "level1.level2.level3.deep_flag", description: "Deep flag" },
           ],
@@ -608,9 +676,6 @@ describe("getDefaultConfiguration", () => {
               description: "Advanced options",
             },
           },
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -724,8 +789,19 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
       };
 
       mockGetMCPServerToolsConfigurations.mockReturnValue({
-        mayRequireTimeFrameConfiguration: false,
-        mayRequireJsonSchemaConfiguration: false,
+        dataSourceConfigurable: false,
+        dataWarehouseConfigurable: false,
+        tableConfigurable: false,
+        childAgentConfigurable: false,
+        reasoningConfigurable: false,
+        timeFrameConfigurable: false,
+        jsonSchemaConfigurable: false,
+        booleanConfigurations: [],
+        enumConfigurations: {},
+        listConfigurations: {},
+        dustAppConfigurable: false,
+        secretConfigurable: false,
+        configurabilityState: "optionalConfiguration",
         stringConfigurations: [
           { key: "required_field", description: "Required field" }, // no default
           {
@@ -742,12 +818,6 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
             default: 42,
           },
         ],
-        booleanConfigurations: [],
-        enumConfigurations: {},
-        listConfigurations: {},
-        mayRequireDustAppConfiguration: false,
-        mayRequireSecretConfiguration: false,
-        configurable: "optional",
       });
 
       const result = getDefaultConfiguration(mockMCPServerView);

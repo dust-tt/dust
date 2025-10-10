@@ -230,7 +230,7 @@ export function MCPServerViewsSheet({
     }
 
     return filteredList.filter(
-      (view) => !getMCPServerToolsConfigurations(view).reasoningConfiguration
+      (view) => !getMCPServerToolsConfigurations(view).reasoningConfigurable
     );
   }, [
     topMCPServerViews,
@@ -396,9 +396,9 @@ export function MCPServerViewsSheet({
       featureFlags
     );
 
-    if (toolsConfigurations.configurable !== "no") {
+    if (toolsConfigurations.configurabilityState !== "noConfiguration") {
       const action = getDefaultMCPAction(mcpServerView);
-      const isReasoning = toolsConfigurations.reasoningConfiguration
+      const isReasoning = toolsConfigurations.reasoningConfigurable
         ? true
         : false;
 
@@ -416,14 +416,8 @@ export function MCPServerViewsSheet({
 
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) =>
-              model.modelId ===
-              toolsConfigurations.reasoningConfiguration?.default?.modelId
-          ) ??
-          reasoningModels.find(
             (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
-          ) ??
-          reasoningModels[0];
+          ) ?? reasoningModels[0];
 
         configuredAction = {
           ...action,
@@ -642,27 +636,23 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {toolsConfigurations.reasoningConfiguration && (
+                {toolsConfigurations.reasoningConfigurable && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.childAgentConfiguration && (
+                {toolsConfigurations.childAgentConfigurable && (
                   <ChildAgentSection />
                 )}
 
-                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+                {toolsConfigurations.timeFrameConfigurable && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.mayRequireDustAppConfiguration && (
-                  <DustAppSection />
-                )}
+                {toolsConfigurations.dustAppConfigurable && <DustAppSection />}
 
-                {toolsConfigurations.mayRequireSecretConfiguration && (
-                  <SecretSection />
-                )}
+                {toolsConfigurations.secretConfigurable && <SecretSection />}
 
-                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+                {toolsConfigurations.jsonSchemaConfigurable && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />

@@ -56,8 +56,14 @@ function MCPServerCard({
   onToolInfoClick,
   featureFlags,
 }: MCPServerCardProps) {
-  const requirement = getMCPServerToolsConfigurations(view, featureFlags);
-  const canAdd = requirement.configurable !== "no" ? true : !isSelected;
+  const toolsConfigurations = getMCPServerToolsConfigurations(
+    view,
+    featureFlags
+  );
+  const canAdd =
+    toolsConfigurations.configurabilityState !== "noConfiguration"
+      ? true
+      : !isSelected;
 
   const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
