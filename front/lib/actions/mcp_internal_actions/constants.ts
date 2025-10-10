@@ -85,6 +85,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "google_sheets",
   "hubspot",
   "image_generation",
+  "elevenlabs",
   "include_data",
   "interactive_content",
   "slideshow",
@@ -1034,6 +1035,30 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
+  elevenlabs: {
+    id: 34,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("elevenlabs_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      text_to_speech: "low",
+      generate_music: "low",
+    },
+    tools_retry_policies: { default: "retry_on_interrupt" },
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "elevenlabs",
+      version: "1.0.0",
+      description: "Generate speech audio and music with ElevenLabs.",
+      authorization: null,
+      icon: "ActionMegaphoneIcon",
+      documentationUrl: null,
+      instructions: null,
+    },
+  },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
@@ -1237,7 +1262,7 @@ The directive should be used to display a clickable version of the agent name in
       instructions: null,
     },
   },
-  // Using satisfies here instead of : type to avoid typescript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
+  // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: {
     id: number;
