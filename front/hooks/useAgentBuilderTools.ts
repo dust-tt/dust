@@ -54,12 +54,16 @@ function getGroupedMCPServerViews({
 
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
-      const toolsConfigurations = getMCPServerRequirements(view);
+      const {
+        requiresDataSourceConfiguration,
+        requiresDataWarehouseConfiguration,
+        requiresTableConfiguration,
+      } = getMCPServerRequirements(view);
 
       const isWithKnowledge =
-        toolsConfigurations.dataSourceConfiguration ??
-        toolsConfigurations.dataWarehouseConfiguration ??
-        toolsConfigurations.tableConfiguration ??
+        requiresDataSourceConfiguration ??
+        requiresDataWarehouseConfiguration ??
+        requiresTableConfiguration ??
         false;
 
       return isWithKnowledge
