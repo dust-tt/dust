@@ -7,6 +7,7 @@ import {
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
@@ -90,14 +91,8 @@ async function processEventForUnreadState(
     conversation,
   }: { event: AgentMessageEvents; conversation: ConversationWithoutContentType }
 ) {
-  const agentMessageDoneEventTypes: AgentMessageEvents["type"][] = [
-    "agent_message_success",
-    "agent_generation_cancelled",
-    "agent_error",
-    "tool_error",
-  ];
   // If the event is a done event, we want to mark the conversation as unread for all participants.
-  if (agentMessageDoneEventTypes.includes(event.type)) {
+  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
     // No excluded user because the message is created by the agent.
     await ConversationResource.markAsUnreadForOtherParticipants(auth, {
       conversation,

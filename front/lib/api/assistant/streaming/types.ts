@@ -26,3 +26,11 @@ export type ConversationEvents =
   | AgentMessageNewEvent
   | UserMessageNewEvent
   | AgentMessageDoneEvent;
+
+export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =
+  [
+    "agent_message_success",
+    "agent_generation_cancelled",
+    "agent_error",
+    "tool_error",
+  ] as const;
