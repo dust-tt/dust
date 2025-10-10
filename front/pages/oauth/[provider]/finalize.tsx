@@ -3,6 +3,7 @@ import { useEffect } from "react";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { useFinalize } from "@app/lib/swr/oauth";
+import logger from "@app/logger/logger";
 import type { OAuthProvider } from "@app/types";
 import { isOAuthProvider } from "@app/types";
 
@@ -57,7 +58,11 @@ export default function Finalize({
         try {
           window.opener.postMessage(messageData, window.location.origin);
         } catch (e) {
-          console.error("[OAuth Finalize] window.opener.postMessage failed", e);
+          logger.error(
+            { err: e },
+            "[OAuth Finalize] window.opener.postMessage failed",
+            e
+          );
         }
       } else {
         // Method 2: BroadcastChannel (fallback for modern browsers)
@@ -66,7 +71,11 @@ export default function Finalize({
           channel.postMessage(messageData);
           setTimeout(() => channel.close(), 100);
         } catch (e) {
-          console.error("[OAuth Finalize] BroadcastChannel failed", e);
+          logger.error(
+            { err: e },
+            "[OAuth Finalize] BroadcastChannel failed",
+            e
+          );
         }
 
         // Method 3: localStorage (fallback for all browsers)
@@ -74,7 +83,7 @@ export default function Finalize({
           const storageKey = `oauth_finalize_${provider}`;
           localStorage.setItem(storageKey, JSON.stringify(messageData));
         } catch (e) {
-          console.error("[OAuth Finalize] localStorage failed", e);
+          logger.error({ err: e }, "[OAuth Finalize] localStorage failed", e);
         }
       }
 
