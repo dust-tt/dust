@@ -340,12 +340,7 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
-    case GLOBAL_AGENTS_SID.DUST_DEEP:
       agentConfiguration = _getDeepDiveGlobalAgent(auth, {
-        sId:
-          sId === GLOBAL_AGENTS_SID.DUST_DEEP
-            ? GLOBAL_AGENTS_SID.DUST_DEEP
-            : GLOBAL_AGENTS_SID.DEEP_DIVE,
         settings,
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
@@ -408,7 +403,6 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.NOTION,
   GLOBAL_AGENTS_SID.O1_MINI,
   GLOBAL_AGENTS_SID.SLACK,
-  GLOBAL_AGENTS_SID.DUST_DEEP,
   // Hidden helper sub-agent, only invoked via run_agent by deep-dive
   GLOBAL_AGENTS_SID.DUST_TASK,
   GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
