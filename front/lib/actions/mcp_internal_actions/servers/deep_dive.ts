@@ -25,12 +25,12 @@ const createServer = (
   const owner = auth.getNonNullableWorkspace();
 
   server.tool(
-    "dive",
+    "handoff",
     `Handoff the query to the ${DEEP_DIVE_NAME} agent`,
     {},
     withToolLogging(
       auth,
-      { toolName: "run_dust_deep", agentLoopContext },
+      { toolName: "handoff", agentLoopContext },
       async () => {
         if (!agentLoopContext?.runContext) {
           return new Err(new MCPError("No conversation context available"));
@@ -54,9 +54,9 @@ const createServer = (
         );
 
         const runContext = agentLoopContext.runContext;
-        const { agentConfiguration, conversation } = runContext;
+        const { agentConfiguration, conversation, agentMessage } = runContext;
         const instructions = agentConfiguration.instructions;
-        const query = `You have been summoned by @${agentConfiguration.name}. Its instructions are: <main_agent_instructions>${instructions ?? ""}</main_agent_instructions>`;
+        const query = `The user's query is being handed off to you from @${agentConfiguration.name} within the same conversation. The calling agent's instructions are: <caller_agent_instructions>${instructions ?? ""}</caller_agent_instructions>`;
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
@@ -65,7 +65,7 @@ const createServer = (
           },
           childAgentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
           mainAgent: agentConfiguration,
-          originMessage: agentLoopContext.runContext.agentMessage,
+          originMessage: agentMessage,
           mainConversation: conversation,
           query,
           toolsetsToAdd: null,
@@ -77,8 +77,18 @@ const createServer = (
           return new Err(convRes.error);
         }
 
+        // Determine what to display before the Deep Dive agent mention:
+        // - If agent already has content: display nothing (content is already shown)
+        // - If no content but has chain of thought: display the chain of thought
+        // - Otherwise: display nothing
+        const prefixContent = agentMessage.content
+          ? ""
+          : agentMessage.chainOfThought ?? "";
+        const mentionString = `\n:mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}}`;
+        const responseText = prefixContent + mentionString;
+
         const response = makeMCPToolExit({
-          message: `Deep diving by forwarding this request to @${DEEP_DIVE_NAME}.`,
+          message: responseText,
           isError: false,
         });
 
