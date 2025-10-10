@@ -20,14 +20,14 @@ import type {
 import { isLightAgentMessageWithActionsType } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
 
-type AgentStateClassification =
+export type AgentStateClassification =
   | "placeholder"
   | "thinking"
   | "acting"
   | "writing"
   | "done";
 
-type ActionProgressState = Map<
+export type ActionProgressState = Map<
   ModelId,
   {
     action: AgentMCPActionType;

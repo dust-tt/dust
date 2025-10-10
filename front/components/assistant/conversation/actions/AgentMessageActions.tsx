@@ -13,7 +13,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import type {
   ActionProgressState,
   AgentStateClassification,
-} from "@app/lib/assistant/state/messageReducer";
+} from "@app/components/assistant/conversation/types";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
