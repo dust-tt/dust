@@ -3,8 +3,8 @@ import {
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
-  GEMINI_FLASH_DEFAULT_MODEL_CONFIG,
-  GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import {
   MISTRAL_LARGE_MODEL_CONFIG,
@@ -12,8 +12,8 @@ import {
 } from "@app/types/assistant/models/mistral";
 import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
 import {
-  GPT_4_1_MINI_MODEL_CONFIG,
-  GPT_4_1_MODEL_CONFIG,
+  GPT_5_MINI_NO_REASONING_MODEL_CONFIG,
+  GPT_5_MODEL_CONFIG,
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import { isProviderWhitelisted } from "@app/types/assistant/models/providers";
@@ -34,18 +34,19 @@ export function getSmallWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4_1_MINI_MODEL_CONFIG;
+    return GPT_5_MINI_NO_REASONING_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
     return CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    return GEMINI_FLASH_DEFAULT_MODEL_CONFIG;
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "mistral")) {
     return MISTRAL_SMALL_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "xai")) {
+    // TODO(rcs): move to grok 4 fast non-reasoning
     return GROK_3_MINI_MODEL_CONFIG;
   }
   return null;
@@ -55,10 +56,10 @@ export function getLargeNonAnthropicWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
   if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4_1_MODEL_CONFIG;
+    return GPT_5_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
+    return GEMINI_2_5_PRO_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "mistral")) {
     return MISTRAL_LARGE_MODEL_CONFIG;
@@ -75,19 +76,7 @@ export function getLargeWhitelistedModel(
   if (isProviderWhitelisted(owner, "anthropic")) {
     return CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG;
   }
-  if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4_1_MODEL_CONFIG;
-  }
-  if (isProviderWhitelisted(owner, "google_ai_studio")) {
-    return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
-  }
-  if (isProviderWhitelisted(owner, "mistral")) {
-    return MISTRAL_LARGE_MODEL_CONFIG;
-  }
-  if (isProviderWhitelisted(owner, "xai")) {
-    return GROK_4_MODEL_CONFIG;
-  }
-  return null;
+  return getLargeNonAnthropicWhitelistedModel(owner);
 }
 
 export const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;

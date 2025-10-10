@@ -203,6 +203,29 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
 };
+export const GPT_5_MINI_NO_REASONING_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_MINI_MODEL_ID,
+  displayName: "GPT-5 Mini",
+  contextSize: 400_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64, // 32_768
+  largeModel: true,
+  description:
+    "OpenAI's faster, and cost-efficient version of GPT-5 for well-defined tasks.",
+  shortDescription: "OpenAI's latest mini model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+};
 export const GPT_5_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_5_MINI_MODEL_ID,
