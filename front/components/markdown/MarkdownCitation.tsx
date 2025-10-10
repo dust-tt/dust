@@ -1,7 +1,12 @@
 import { DocumentTextIcon, FaviconIcon, ImageIcon } from "@dust-tt/sparkle";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ConnectorProvider } from "@app/types";
+import type {
+  ConnectorProvider,
+  SupportedFileContentType} from "@app/types";
+import {
+  AllSupportedFileContentType
+} from "@app/types";
 
 export function getCitationIcon(
   type: string,
@@ -45,4 +50,6 @@ export interface MarkdownCitation {
   href?: string;
   icon: React.JSX.Element;
   title: string;
+  contentType: SupportedFileContentType;
+  fileId: string;
 }

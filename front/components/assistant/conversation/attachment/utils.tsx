@@ -13,12 +13,14 @@ import React from "react";
 import type {
   Attachment,
   AttachmentCitation,
+  FileAttachmentCitation,
 } from "@app/components/assistant/conversation/attachment/types";
 import {
   getDisplayDateFromPastedFileId,
   getDisplayNameFromPastedFileId,
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type { ContentFragmentType } from "@app/types";
 import {
@@ -176,6 +178,20 @@ export function attachmentToAttachmentCitation(
       attachmentCitationType: "inputBar",
     };
   }
+}
+
+export function markdownCitationToAttachmentCitation(
+  citation: MarkdownCitation
+): AttachmentCitation {
+  return {
+    attachmentCitationType: "fragment",
+    contentType: citation.contentType,
+    fileId: citation.fileId,
+    id: citation.fileId,
+    title: document.title,
+    type: "file",
+    visual: <IconFromContentType contentType={citation.contentType} />,
+  };
 }
 
 export const IconFromContentType = ({

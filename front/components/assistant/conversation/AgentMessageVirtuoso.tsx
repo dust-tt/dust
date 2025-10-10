@@ -62,6 +62,8 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentMessageStreamVirtuoso } from "@app/hooks/useAgentMessageStreamVirtuoso";
+import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useCancelMessage } from "@app/lib/swr/conversations";
 import { useConversationMessage } from "@app/lib/swr/conversations";
@@ -90,6 +92,7 @@ interface AgentMessageProps {
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
+  fileUploaderService: FileUploaderService;
 }
 
 export function AgentMessageVirtuoso({
@@ -536,6 +539,12 @@ function AgentMessageContent({
   const agentMessage = messageStreamState.message;
   const { sId, configuration: agentConfiguration } = agentMessage;
 
+  const fileUploaderService = useFileUploaderService({
+    owner: owner,
+    useCase: "conversation",
+    useCaseMetadata: { conversationId },
+  });
+
   const retryHandlerWithResetState = useCallback(
     async (error: PersonalAuthenticationRequiredErrorContent) => {
       methods.data.map((m) =>
@@ -718,11 +727,15 @@ function AgentMessageContent({
             activeReferences: generatedFiles.map((file) => ({
               index: -1,
               document: {
+                fileId: file.fileId,
+                contentType: file.contentType,
                 href: `/api/w/${owner.sId}/files/${file.fileId}`,
                 icon: <DocumentIcon />,
                 title: file.title,
               },
             })),
+            owner,
+            fileUploaderService,
           })}
         </div>
       )}
@@ -768,11 +781,15 @@ function getAgentMessageToRender({
 
 function getCitations({
   activeReferences,
+  owner,
+  fileUploaderService,
 }: {
   activeReferences: {
     index: number;
     document: MarkdownCitation;
   }[];
+  owner: LightWorkspaceType;
+  fileUploaderService: FileUploaderService;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
 
@@ -782,6 +799,8 @@ function getCitations({
         key={index}
         document={document}
         index={index}
+        owner={owner}
+        fileUploaderService={fileUploaderService}
       />
     );
   });
