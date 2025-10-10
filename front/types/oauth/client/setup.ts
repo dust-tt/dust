@@ -78,7 +78,7 @@ export async function setupOAuthConnection({
 
     window.addEventListener("message", handleWindowMessage);
 
-    // Method 2: BroadcastChannel (fallback for modern browsers)
+    // Method 2: BroadcastChannel (fallback)
     let channel: BroadcastChannel | null = null;
     try {
       channel = new BroadcastChannel("oauth_finalize");
@@ -89,38 +89,11 @@ export async function setupOAuthConnection({
       // BroadcastChannel not supported, will use localStorage
     }
 
-    // Method 3: localStorage polling (fallback for all browsers)
-    const checkLocalStorage = () => {
-      try {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          const data = JSON.parse(stored);
-
-          // Check if data has expired (30 second window)
-          if (data.expiresAt && Date.now() > data.expiresAt) {
-            // Data expired, remove it and ignore
-            localStorage.removeItem(storageKey);
-            return;
-          }
-
-          // Clean up immediately after reading
-          localStorage.removeItem(storageKey);
-          handleFinalization(data);
-        }
-      } catch (e) {
-        // Ignore localStorage errors
-      }
-    };
-
-    // Poll localStorage every 100ms
-    const storageCheckInterval = setInterval(checkLocalStorage, 100);
-
     const cleanup = () => {
       window.removeEventListener("message", handleWindowMessage);
       if (channel) {
         channel.close();
       }
-      clearInterval(storageCheckInterval);
     };
   });
 }
