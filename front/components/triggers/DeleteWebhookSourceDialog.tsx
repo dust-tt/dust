@@ -60,6 +60,7 @@ export function DeleteWebhookSourceDialog({
             label: "Remove",
             variant: "warning",
             disabled: isDeleting,
+            autoFocus: true,
             onClick: async () => {
               const success = await deleteWebhookSource(webhookSource.sId);
               if (success) {
