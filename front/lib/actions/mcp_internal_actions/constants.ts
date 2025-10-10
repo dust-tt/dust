@@ -721,7 +721,7 @@ The directive should be used to display a clickable version of the agent name in
     availability: "auto",
     allowMultipleInstances: false,
     isRestricted: undefined,
-    isPreview: true,
+    isPreview: false,
     tools_stakes: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
