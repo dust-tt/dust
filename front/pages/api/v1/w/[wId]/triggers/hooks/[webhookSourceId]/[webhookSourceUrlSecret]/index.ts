@@ -14,6 +14,10 @@ import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
+import {
+  matchPayload,
+  parseMatcherExpression,
+} from "@app/lib/webhooks/payload_matcher";
 import { verifySignature } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
@@ -23,7 +27,7 @@ import type {
   ContentFragmentInputWithFileIdType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { Err } from "@app/types";
+import { Err, normalizeError } from "@app/types";
 import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.1; // 10%
@@ -267,8 +271,7 @@ async function handler(
     webhookSource.id
   );
 
-  // Fetch all triggers based on the webhook source id
-  // flatten the triggers
+  // Fetch all triggers based on the webhook source id and flatten the triggers.
   const triggers = (
     await concurrentExecutor(
       views,
@@ -283,8 +286,57 @@ async function handler(
     )
   ).flat();
 
+  // Filter triggers by payload matching (non-custom webhooks only). Custom webhooks don't have known
+  // schemas, so we can't validate filters against them.
+  const filteredTriggers = triggers.filter((trigger) => {
+    const t = trigger.toJSON();
+
+    // Only filter non-custom webhooks.
+    if (webhookSource.kind === "custom") {
+      return true;
+    }
+
+    // If no filter configured, include trigger.
+    if (t.kind !== "webhook" || !t.configuration.filter) {
+      return true;
+    }
+
+    try {
+      const parsedFilter = parseMatcherExpression(t.configuration.filter);
+      const r = matchPayload(req.body, parsedFilter);
+      if (!r) {
+        logger.info(
+          {
+            triggerId: t.id,
+            triggerName: t.name,
+            filter: t.configuration.filter,
+          },
+          "Webhook trigger filter did not match payload"
+        );
+      }
+      return r;
+    } catch (err) {
+      // FAIL CLOSED: Invalid filters block the trigger from executing.
+      logger.error(
+        {
+          triggerId: t.id,
+          triggerName: t.name,
+          filter: t.configuration.filter,
+          err: normalizeError(err),
+        },
+        "Invalid filter expression in webhook trigger"
+      );
+      return false;
+    }
+  });
+
+  // If no triggers match after filtering, return success without launching workflows.
+  if (filteredTriggers.length === 0) {
+    return res.status(200).json({ success: true });
+  }
+
   // Check if any of the triggers requires the payload.
-  const triggersWithMetadata = triggers.map((t) => {
+  const triggersWithMetadata = filteredTriggers.map((t) => {
     const trigger = t.toJSON();
     const includePayload =
       trigger.kind === "webhook" && trigger.configuration.includePayload;

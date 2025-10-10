@@ -22,6 +22,9 @@ export const INVALID_TIMEZONE_MESSAGE =
 export const TOO_FREQUENT_MESSAGE =
   "Unable to generate a schedule: it can't be more frequent than hourly. Please try rephrasing.";
 
+export const WEBHOOK_FILTER_GENERIC_ERROR_MESSAGE =
+  "Unable to generate a filter. Please try rephrasing.";
+
 export async function generateCronRule(
   auth: Authenticator,
   {
@@ -113,4 +116,80 @@ export async function generateCronRule(
     return new Err(new Error(INVALID_TIMEZONE_MESSAGE));
   }
   return new Ok({ cron: cronRule, timezone });
+}
+
+export async function generateWebhookFilter(
+  auth: Authenticator,
+  {
+    naturalDescription,
+    eventSchema,
+  }: {
+    naturalDescription: string;
+    eventSchema: Record<string, any>;
+  }
+): Promise<Result<{ filter: string }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const model = getSmallWhitelistedModel(owner);
+  if (!model) {
+    return new Err(
+      new Error("Failed to find a whitelisted model to generate filter")
+    );
+  }
+
+  const config = cloneBaseConfig(
+    getDustProdAction("assistant-builder-webhook-filter-generator").config
+  );
+  config.CREATE_FILTER.provider_id = model.providerId;
+  config.CREATE_FILTER.model_id = model.modelId;
+
+  const res = await runActionStreamed(
+    auth,
+    "assistant-builder-webhook-filter-generator",
+    config,
+    [
+      {
+        naturalDescription,
+        expectedPayloadDescription: JSON.stringify(eventSchema),
+      },
+    ],
+    {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    }
+  );
+
+  if (res.isErr()) {
+    return new Err(new Error(`Error generating filter: ${res.error}`));
+  }
+
+  const { eventStream } = res.value;
+  let filter: string | null = null;
+
+  for await (const event of eventStream) {
+    if (event.type === "error") {
+      return new Err(
+        new Error(`Error generating filter: ${event.content.message}`)
+      );
+    }
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        return new Err(new Error(`Error generating filter: ${e.error}`));
+      }
+
+      if (event.content.block_name === "OUTPUT" && e.value) {
+        const v = e.value as any;
+        if (v.filter) {
+          filter = v.filter;
+        }
+      }
+    }
+  }
+
+  if (!filter) {
+    return new Err(new Error(WEBHOOK_FILTER_GENERIC_ERROR_MESSAGE));
+  }
+
+  return new Ok({ filter });
 }
