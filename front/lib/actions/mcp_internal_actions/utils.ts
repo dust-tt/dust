@@ -238,7 +238,6 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
   return (
     !isInternalMCPServerOfName(view.server.sId, AGENT_MEMORY_SERVER_NAME) &&
     // Only tools that do not require any configuration can be enabled directly in a conversation.
-    getMCPServerToolsConfigurations(view).configurabilityState !==
-      "requiredConfiguration"
+    getMCPServerToolsConfigurations(view).configurable !== "required"
   );
 }

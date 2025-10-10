@@ -101,7 +101,7 @@ describe("getDefaultConfiguration", () => {
         listConfigurations: {},
         dustAppConfigurable: false,
         secretConfigurable: false,
-        configurabilityState: "optionalConfiguration",
+        configurable: "optional",
       });
 
       const result = getDefaultConfiguration(mockMCPServerView);
@@ -125,7 +125,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           booleanConfigurations: [
             {
               key: "is_enabled",
@@ -164,7 +164,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           booleanConfigurations: [
             {
               key: "feature_enabled",
@@ -201,7 +201,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -226,7 +226,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           enumConfigurations: {
             priority: {
               options: [
@@ -280,7 +280,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           enumConfigurations: {
             valid_enum: {
               options: [
@@ -319,7 +319,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           enumConfigurations: {
             priority: {
               options: [
@@ -366,7 +366,7 @@ describe("getDefaultConfiguration", () => {
           enumConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           listConfigurations: {
             tags: {
               options: [
@@ -417,7 +417,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           stringConfigurations: [
             {
               key: "api_key",
@@ -460,7 +460,7 @@ describe("getDefaultConfiguration", () => {
           listConfigurations: {},
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           numberConfigurations: [
             { key: "timeout", description: "Timeout in seconds", default: 30 },
             { key: "max_retries", description: "Maximum retries", default: 3 },
@@ -491,7 +491,7 @@ describe("getDefaultConfiguration", () => {
           jsonSchemaConfigurable: false,
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           stringConfigurations: [
             { key: "api_key", description: "API Key", default: "secret-key" },
           ],
@@ -544,7 +544,7 @@ describe("getDefaultConfiguration", () => {
           jsonSchemaConfigurable: false,
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           stringConfigurations: [
             { key: "api.key", description: "API Key", default: "dev-key-123" },
             { key: "api.endpoint", description: "API Endpoint" }, // no default
@@ -657,7 +657,7 @@ describe("getDefaultConfiguration", () => {
           numberConfigurations: [],
           dustAppConfigurable: false,
           secretConfigurable: false,
-          configurabilityState: "optionalConfiguration",
+          configurable: "optional",
           booleanConfigurations: [
             { key: "level1.level2.level3.deep_flag", description: "Deep flag" },
           ],
@@ -801,7 +801,7 @@ describe("Analysis: Why strings and numbers don't get defaults", () => {
         listConfigurations: {},
         dustAppConfigurable: false,
         secretConfigurable: false,
-        configurabilityState: "optionalConfiguration",
+        configurable: "optional",
         stringConfigurations: [
           { key: "required_field", description: "Required field" }, // no default
           {

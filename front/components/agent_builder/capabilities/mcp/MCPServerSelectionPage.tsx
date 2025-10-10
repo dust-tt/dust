@@ -60,10 +60,7 @@ function MCPServerCard({
     view,
     featureFlags
   );
-  const canAdd =
-    toolsConfigurations.configurabilityState !== "noConfiguration"
-      ? true
-      : !isSelected;
+  const canAdd = toolsConfigurations.configurable !== "no" ? true : !isSelected;
 
   const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]

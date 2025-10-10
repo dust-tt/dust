@@ -519,10 +519,7 @@ export interface MCPServerToolsConfigurations {
   jsonSchemaConfigurable: boolean;
   dustAppConfigurable: boolean;
   secretConfigurable: boolean;
-  configurabilityState:
-    | "noConfiguration"
-    | "optionalConfiguration"
-    | "requiredConfiguration";
+  configurable: "no" | "optional" | "required";
 }
 
 export function getMCPServerToolsConfigurations(
@@ -540,7 +537,7 @@ export function getMCPServerToolsConfigurations(
       jsonSchemaConfigurable: false,
       dustAppConfigurable: false,
       secretConfigurable: false,
-      configurabilityState: "noConfiguration",
+      configurable: "no",
       stringConfigurations: [],
       numberConfigurations: [],
       booleanConfigurations: [],
@@ -570,22 +567,22 @@ export function getMCPServerToolsConfigurations(
 
   function getConfigurableStateForArray<T extends { default?: unknown }>(
     config: T[]
-  ): "noConfiguration" | "optionalConfiguration" | "requiredConfiguration" {
+  ): "no" | "optional" | "required" {
     return config.length > 0
       ? config.every((c) => c.default !== undefined)
-        ? "optionalConfiguration"
-        : "requiredConfiguration"
-      : "noConfiguration";
+        ? "optional"
+        : "required"
+      : "no";
   }
 
   function getConfigurableStateForRecord<T extends { default?: unknown }>(
     config: Record<string, T>
-  ): "noConfiguration" | "optionalConfiguration" | "requiredConfiguration" {
+  ): "no" | "optional" | "required" {
     return Object.values(config).length > 0
       ? Object.values(config).every((c) => c.default !== undefined)
-        ? "optionalConfiguration"
-        : "requiredConfiguration"
-      : "noConfiguration";
+        ? "optional"
+        : "required"
+      : "no";
   }
 
   const dataSourceConfigurable =
@@ -842,17 +839,13 @@ export function getMCPServerToolsConfigurations(
     getConfigurableStateForRecord(listConfigurations),
   ];
 
-  const realConfigurable = configurableStates.every(
-    (c) => c === "noConfiguration"
-  )
-    ? "noConfiguration"
-    : configurableStates.every(
-          (c) => c === "optionalConfiguration" || c === "noConfiguration"
-        )
-      ? "optionalConfiguration"
-      : "requiredConfiguration";
+  const realConfigurable = configurableStates.every((c) => c === "no")
+    ? "no"
+    : configurableStates.every((c) => c === "optional" || c === "no")
+      ? "optional"
+      : "required";
 
-  const configurabilityState =
+  const configurable =
     secretConfigurable ||
     dustAppConfigurable ||
     jsonSchemaConfigurable ||
@@ -862,7 +855,7 @@ export function getMCPServerToolsConfigurations(
     dataSourceConfigurable ||
     dataWarehouseConfigurable ||
     tableConfigurable
-      ? "requiredConfiguration"
+      ? "required"
       : realConfigurable;
 
   return {
@@ -880,7 +873,7 @@ export function getMCPServerToolsConfigurations(
     listConfigurations,
     dustAppConfigurable,
     secretConfigurable,
-    configurabilityState,
+    configurable,
   };
 }
 

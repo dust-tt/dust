@@ -396,7 +396,7 @@ export function MCPServerViewsSheet({
       featureFlags
     );
 
-    if (toolsConfigurations.configurabilityState !== "noConfiguration") {
+    if (toolsConfigurations.configurable !== "no") {
       const action = getDefaultMCPAction(mcpServerView);
       const isReasoning = toolsConfigurations.reasoningConfigurable
         ? true
