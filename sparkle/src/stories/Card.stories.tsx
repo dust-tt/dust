@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React, { ComponentType } from "react";
 
 import { Card, Icon } from "@sparkle/components";
@@ -22,59 +22,133 @@ import {
 const meta = {
   title: "Primitives/Card",
   component: Card,
+  tags: ["autodocs"],
+  argTypes: {
+    variant: {
+      options: CARD_VARIANTS,
+      control: { type: "select" },
+      description: "Visual style variant of the card",
+    },
+    size: {
+      options: CARD_SIZES,
+      control: { type: "select" },
+      description: "Size/padding of the card",
+    },
+    disabled: {
+      control: "boolean",
+      description:
+        "Whether the card is disabled (reduced opacity, no interactions)",
+    },
+    className: {
+      control: "text",
+      description: "Additional CSS classes to apply",
+    },
+    children: {
+      control: "text",
+      description: "Content to display inside the card",
+    },
+  },
 } satisfies Meta<typeof Card>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Demo = () => {
-  const variants = CARD_VARIANTS;
-  const sizes = CARD_SIZES;
-
-  return (
-    <div className="s-flex s-flex-col s-gap-8 s-text-foreground dark:s-text-foreground-night">
-      {variants.map((variant) => (
-        <div key={variant} className="s-flex s-flex-col s-gap-4">
-          <h3 className="s-text-lg s-font-semibold">
-            {variant.charAt(0).toUpperCase() + variant.slice(1)} Variant
-          </h3>
-          <div className="s-flex s-gap-4">
-            {sizes.map((size) => (
-              <div>
-                <Card
-                  key={size}
-                  variant={variant}
-                  size={size}
-                  onClick={() => {
-                    console.log(
-                      `Button clicked - Size: ${size}, Variant: ${variant}`
-                    );
-                  }}
-                >
-                  Hello World
-                </Card>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+export const Playground: Story = {
+  args: {
+    variant: "primary",
+    size: "md",
+    disabled: false,
+    children: "Card Content",
+  },
+  render: (args) => <Card {...args} />,
 };
 
-export const InteractiveStates = () => (
-  <div className="s-flex s-gap-4">
-    <Card
-      variant="primary"
-      onClick={() => alert("Primary Clicked")}
-      className="s-hover:bg-primary-200"
-    >
-      Hover/Active
-    </Card>
-    <Card variant="secondary" disabled>
-      Disabled
-    </Card>
-  </div>
-);
+export const Primary: Story = {
+  args: {
+    variant: "primary",
+    size: "md",
+    children: "Primary Card",
+  },
+};
+
+export const Secondary: Story = {
+  args: {
+    variant: "secondary",
+    size: "md",
+    children: "Secondary Card",
+  },
+};
+
+export const Tertiary: Story = {
+  args: {
+    variant: "tertiary",
+    size: "md",
+    children: "Tertiary Card",
+  },
+};
+
+export const DisabledCard: Story = {
+  args: {
+    variant: "primary",
+    size: "md",
+    disabled: true,
+    children: "Disabled Card",
+  },
+};
+
+export const AllVariants: Story = {
+  render: () => {
+    const variants = CARD_VARIANTS;
+    const sizes = CARD_SIZES;
+
+    return (
+      <div className="s-flex s-flex-col s-gap-8 s-text-foreground dark:s-text-foreground-night">
+        {variants.map((variant) => (
+          <div key={variant} className="s-flex s-flex-col s-gap-4">
+            <h3 className="s-text-lg s-font-semibold">
+              {variant.charAt(0).toUpperCase() + variant.slice(1)} Variant
+            </h3>
+            <div className="s-flex s-gap-4">
+              {sizes.map((size) => (
+                <div>
+                  <Card
+                    key={size}
+                    variant={variant}
+                    size={size}
+                    onClick={() => {
+                      console.log(
+                        `Button clicked - Size: ${size}, Variant: ${variant}`
+                      );
+                    }}
+                  >
+                    Hello World
+                  </Card>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  },
+};
+
+export const InteractiveStates: Story = {
+  render: () => (
+    <div className="s-flex s-gap-4">
+      <Card
+        variant="primary"
+        onClick={() => alert("Primary Clicked")}
+        className="s-hover:bg-primary-200"
+      >
+        Hover/Active
+      </Card>
+      <Card variant="secondary" disabled>
+        Disabled
+      </Card>
+    </div>
+  ),
+};
 
 interface CardData {
   icon: ComponentType<{ className?: string }>;
@@ -120,28 +194,30 @@ const cardData: CardData[] = [
   },
 ];
 
-export const ActionCardDemo: React.FC = () => (
-  <CardGrid>
-    {cardData.map((card, index) => (
-      <Card
-        key={index}
-        variant="primary"
-        size="md"
-        onClick={() => {
-          alert(`You clicked on ${card.title}`);
-        }}
-        action={<CardActionButton size="mini" icon={XMarkIcon} />}
-      >
-        <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
-          <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">
-            <Icon visual={card.icon} size="sm" />
-            <div className="s-w-full">{card.title}</div>
+export const WithActions: Story = {
+  render: () => (
+    <CardGrid>
+      {cardData.map((card, index) => (
+        <Card
+          key={index}
+          variant="primary"
+          size="md"
+          onClick={() => {
+            alert(`You clicked on ${card.title}`);
+          }}
+          action={<CardActionButton size="mini" icon={XMarkIcon} />}
+        >
+          <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
+            <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">
+              <Icon visual={card.icon} size="sm" />
+              <div className="s-w-full">{card.title}</div>
+            </div>
+            <div className="s-w-full s-truncate s-text-sm s-text-muted-foreground">
+              {card.description}
+            </div>
           </div>
-          <div className="s-w-full s-truncate s-text-sm s-text-muted-foreground">
-            {card.description}
-          </div>
-        </div>
-      </Card>
-    ))}
-  </CardGrid>
-);
+        </Card>
+      ))}
+    </CardGrid>
+  ),
+};
