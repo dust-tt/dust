@@ -73,6 +73,7 @@ function generateConfiguredInput({
    * If the value is provided, we validate it against the expected type.
    * If the value is not provided and there is no default value, we throw an error.
    */
+  // TODO(2025-10-10 aubin): remove this function.
   const getValidatedValue = <U extends PrimitiveType>(
     actionConfiguration: MCPToolConfigurationType,
     keyPath: string,
@@ -87,11 +88,9 @@ function generateConfiguredInput({
       );
       if (propSchema) {
         // Handle both object-level default {value, mimeType}
-        // Handle both object-level default {value, mimeType}
         if (
           propSchema.default &&
           typeof propSchema.default === "object" &&
-          propSchema.default !== null &&
           "value" in propSchema.default
         ) {
           if (typeGuard(propSchema.default.value)) {
@@ -251,11 +250,9 @@ function generateConfiguredInput({
         );
         if (propSchema) {
           // Handle both object-level default {values, mimeType}
-          // Handle both object-level default {values, mimeType}
           if (
             propSchema.default &&
             typeof propSchema.default === "object" &&
-            propSchema.default !== null &&
             "values" in propSchema.default
           ) {
             if (
@@ -276,7 +273,7 @@ function generateConfiguredInput({
           }
         }
       }
-      if (!Array.isArray(values) || values.some((v) => typeof v !== "string")) {
+      if (!Array.isArray(values) || values.some((v) => isString(v))) {
         throw new Error(
           `Expected array of string values for key ${keyPath}, got ${typeof values}`
         );
@@ -480,6 +477,7 @@ export interface MCPServerRequirements {
   requiresReasoningConfiguration: boolean;
   mayRequireTimeFrameConfiguration: boolean;
   mayRequireJsonSchemaConfiguration: boolean;
+  // TODO(2025-10-10 aubin): align type with enums and lists by using Records.
   requiredStrings: {
     key: string;
     description?: string;
@@ -550,7 +548,6 @@ export function getMCPServerRequirements(
     if (
       schema.default &&
       typeof schema.default === "object" &&
-      schema.default !== null &&
       "value" in schema.default &&
       typeGuard(schema.default.value)
     ) {
@@ -558,66 +555,6 @@ export function getMCPServerRequirements(
     }
 
     return undefined;
-  }
-
-  function extractSchemaDefaultArray<T>(
-    schema: JSONSchema,
-    typeGuard: (value: unknown) => value is T
-  ): T[] | undefined {
-    // findPathsToConfiguration returns an empty object if the schema default is an empty Array
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      Object.keys(schema.default).length === 0
-    ) {
-      return [];
-    }
-
-    // Try object-level default first: { default: T[] }
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      schema.default !== null
-    ) {
-      const defaults: T[] = [];
-      Object.entries(schema.default).map(([index, value]) => {
-        if (
-          typeof index === "string" &&
-          Number.isInteger(Number(index)) &&
-          typeGuard(value)
-        ) {
-          defaults.push(value);
-        }
-      });
-      return defaults;
-    }
-
-    return undefined;
-  }
-
-  function getConfigurableStateForOptional<T extends { default?: unknown }>(
-    config?: T
-  ): "no" | "optional" | "required" {
-    return config !== undefined
-      ? config.default === undefined
-        ? "required"
-        : "optional"
-      : "no";
-  }
-
-  function checkArrayHasDefaults(
-    config:
-      | { default?: boolean }[]
-      | { default?: number }[]
-      | { default?: string }[]
-  ): boolean {
-    return config.every((c) => c.default !== undefined);
-  }
-
-  function checkRecordHasDefaults(
-    config: Record<string, { default?: string }>
-  ): boolean {
-    return Object.values(config).every((c) => c.default !== undefined);
   }
 
   const requiresDataSourceConfiguration =
@@ -942,7 +879,6 @@ function isSchemaConfigurable(
 /**
  * Recursively finds all property keys and subschemas match a specific sub-schema.
  * This function handles nested objects and arrays.
- * @param inputSchema The schema to find matching subschemas in: it is expected to be inlined. (I.e. without $ref pointers)
  * @returns A record of property keys that match the schema comparison.
  * Empty record if no matches are found.
  */
