@@ -131,10 +131,9 @@ export function getDefaultMCPServerActionConfiguration(
     },
     name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
     description:
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      toolsConfigurations.tableConfiguration ??
-      false
+      toolsConfigurations.dataSourceConfigurable ||
+      toolsConfigurations.dataWarehouseConfigurable ||
+      toolsConfigurations.tableConfigurable
         ? ""
         : mcpServerView
           ? getMcpServerViewDescription(mcpServerView)
