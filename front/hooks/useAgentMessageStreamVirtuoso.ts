@@ -310,7 +310,7 @@ export function useAgentMessageStreamVirtuoso({
       if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(eventType)) {
         if (runStartedAt !== null) {
           const elapsedMs = Date.now() - runStartedAt;
-          const LONG_RUN_THRESHOLD_MS = 120; // 2 minutes
+          const LONG_RUN_THRESHOLD_MS = 120_000; // 2 minutes
           if (elapsedMs >= LONG_RUN_THRESHOLD_MS) {
             notify(
               `${messageStreamState.message.configuration.name} finished`,
