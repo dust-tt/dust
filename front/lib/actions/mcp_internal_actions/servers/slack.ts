@@ -338,7 +338,7 @@ const createServer = async (
           if (!agentLoopContext?.runContext) {
             return new Err(
               new MCPError("Unreachable: missing agentLoopRunContext.")
-          );
+            );
           }
 
           if (keywords.length > 5) {
@@ -492,7 +492,7 @@ const createServer = async (
           if (!agentLoopContext?.runContext) {
             return new Err(
               new MCPError("Unreachable: missing agentLoopRunContext.")
-          );
+            );
           }
 
           const accessToken = authInfo?.token;
@@ -626,7 +626,7 @@ const createServer = async (
         if (!agentLoopContext?.runContext) {
           return new Err(
             new MCPError("Unreachable: missing agentLoopRunContext.")
-        );
+          );
         }
 
         const accessToken = authInfo?.token;
@@ -772,19 +772,19 @@ const createServer = async (
         if (!agentLoopContext?.runContext) {
           return new Err(
             new MCPError("Unreachable: missing agentLoopRunContext.")
-        );
+          );
         }
 
         try {
           return await executePostMessage(
             to,
             message,
-            threadTs,fileId,
+            threadTs,
+            fileId,
             accessToken,
             agentLoopContext,
             auth
           );
-
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
@@ -815,7 +815,6 @@ const createServer = async (
 
         try {
           return await executeListUsers(nameFilter, accessToken);
-
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
@@ -845,7 +844,6 @@ const createServer = async (
 
         try {
           return await executeGetUser(userId, accessToken);
-
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Ok(makePersonalAuthenticationError("slack").content);
