@@ -6,16 +6,14 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { REASONING_EFFORT_IDS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffortIdType,
-} from "@app/types/assistant/assistant";
-import {
-  MODEL_IDS,
-  MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
-} from "@app/types/assistant/assistant";
+} from "@app/types/assistant/models/types";
 
 /**
  * Type guard to validate reasoning model default values against schema constraints
