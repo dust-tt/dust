@@ -18,11 +18,7 @@ import type {
   ModelMessageTypeMultiActions,
   UserMessageType,
 } from "@app/types";
-import {
-  assertNever,
-  isContentFragmentType,
-  removeNulls,
-} from "@app/types";
+import { removeNulls } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentContentItemType,
@@ -233,7 +229,9 @@ export async function getSteps(
 /**
  * Renders a user message with metadata
  */
-export function renderUserMessage(m: UserMessageType): ModelMessageTypeMultiActions {
+export function renderUserMessage(
+  m: UserMessageType
+): ModelMessageTypeMultiActions {
   // Replace all `:mention[{name}]{.*}` with `@name`.
   const content = m.content.replaceAll(
     /:mention\[([^\]]+)\]\{[^}]+\}/g,
@@ -277,9 +275,7 @@ export function renderUserMessage(m: UserMessageType): ModelMessageTypeMultiActi
     });
 
   if (m.created) {
-    metadataItems.push(
-      `- Sent at: ${formatWithTimeZone(new Date(m.created))}`
-    );
+    metadataItems.push(`- Sent at: ${formatWithTimeZone(new Date(m.created))}`);
   }
 
   if (m.context.origin === "triggered") {

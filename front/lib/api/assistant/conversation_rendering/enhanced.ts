@@ -19,12 +19,11 @@ import type {
 } from "@app/types";
 import { Err, isContentFragmentMessageTypeModel, Ok } from "@app/types";
 
+import type { PruningContext, PruningStrategy } from "./pruning";
 import {
   CombinedPruning,
   CurrentInteractionPruning,
   PreviousInteractionsPruning,
-  type PruningContext,
-  type PruningStrategy,
 } from "./pruning";
 import { renderAllMessages } from "./shared/message_rendering";
 import {
@@ -118,8 +117,8 @@ function pruneToolResultsInInteraction(
 async function progressivelyPruneInteraction(
   interaction: InteractionWithTokens,
   maxTokens: number,
-  model: ModelConfigurationType,
-  context: Omit<PruningContext, "messageIndex" | "totalMessagesInInteraction">
+  _model: ModelConfigurationType,
+  _context: Omit<PruningContext, "messageIndex" | "totalMessagesInInteraction">
 ): Promise<InteractionWithTokens> {
   if (interaction.totalTokens <= maxTokens) {
     return interaction;
@@ -271,7 +270,7 @@ export async function renderConversationEnhanced(
   // Calculate base token usage
   const toolDefinitionsCountAdjustmentFactor = 0.7;
   const tokensMargin = 1024;
-  let baseTokens =
+  const baseTokens =
     promptCount +
     Math.floor(toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor) +
     tokensMargin;
@@ -286,7 +285,10 @@ export async function renderConversationEnhanced(
     const isLastInteraction = i === prunedInteractions.length - 1;
 
     // For the last interaction, try progressive pruning if needed
-    if (isLastInteraction && interaction.totalTokens > allowedTokenCount - tokensUsed) {
+    if (
+      isLastInteraction &&
+      interaction.totalTokens > allowedTokenCount - tokensUsed
+    ) {
       const availableTokens = allowedTokenCount - tokensUsed;
       interaction = await progressivelyPruneInteraction(
         interaction,
@@ -354,7 +356,7 @@ export async function renderConversationEnhanced(
 
   // Remove tokenCount from final messages
   const finalMessages: ModelMessageTypeMultiActions[] = selected.map(
-    ({ tokenCount, ...msg }) => msg
+    ({ tokenCount: _tokenCount, ...msg }) => msg
   );
 
   logger.info(

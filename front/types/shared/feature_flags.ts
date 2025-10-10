@@ -109,7 +109,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   prune_previous_interactions: {
-    description: "Enable pruning of tool results from previous interactions in conversations",
+    description:
+      "Enable pruning of tool results from previous interactions in conversations",
     stage: "dust_only",
   },
   salesforce_synced_queries: {

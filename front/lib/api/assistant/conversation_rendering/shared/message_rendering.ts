@@ -20,7 +20,8 @@ import {
 } from "@app/types";
 import type { TextContentType } from "@app/types/assistant/agent_message_content";
 
-import { getSteps, renderContentFragment, renderUserMessage, type Step } from "./common";
+import type { Step } from "./common";
+import { getSteps, renderContentFragment, renderUserMessage } from "./common";
 
 /**
  * Renders agent message steps into model messages
@@ -39,8 +40,7 @@ export function renderAgentSteps(
       s?.contents.some((c) => c.type === "text_content")
     );
     if (stepsWithContent.length) {
-      const lastStepWithContent =
-        stepsWithContent[stepsWithContent.length - 1];
+      const lastStepWithContent = stepsWithContent[stepsWithContent.length - 1];
       const textContents: TextContentType[] = [];
       for (const content of lastStepWithContent.contents) {
         if (content.type === "text_content") {
