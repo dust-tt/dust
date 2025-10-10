@@ -129,7 +129,10 @@ export function useAgentMessageStreamVirtuoso({
 
   // Track the start time of the streaming run to compute duration on completion.
   const { notify } = useBrowserNotification();
-  const runStartedAt = shouldStream ? Date.now() : null;
+  const runStartedAtRef = useRef<number | null>(null);
+  if (shouldStream && runStartedAtRef.current === null) {
+    runStartedAtRef.current = Date.now();
+  }
 
   const chainOfThought = useRef(
     messageStreamState.message.chainOfThought ?? ""
@@ -308,8 +311,8 @@ export function useAgentMessageStreamVirtuoso({
 
       // Notify if the run took a long time and just finished.
       if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(eventType)) {
-        if (runStartedAt !== null) {
-          const elapsedMs = Date.now() - runStartedAt;
+        if (runStartedAtRef.current !== null) {
+          const elapsedMs = Date.now() - runStartedAtRef.current;
           const LONG_RUN_THRESHOLD_MS = 120_000; // 2 minutes
           if (elapsedMs >= LONG_RUN_THRESHOLD_MS) {
             notify(
@@ -340,7 +343,6 @@ export function useAgentMessageStreamVirtuoso({
       methods,
       mutateMessage,
       notify,
-      runStartedAt,
       sId,
     ]
   );
