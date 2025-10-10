@@ -59,11 +59,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Prevent users from creating agents, allowing only admins and builders",
     stage: "on_demand",
   },
-  interactive_content_server: {
-    description:
-      "Interactive Content MCP server - gives access to the new visualization layout",
-    stage: "on_demand",
-  },
   google_ai_studio_experimental_models_feature: {
     description: "Access to experimental Google AI Studio models",
     stage: "on_demand",

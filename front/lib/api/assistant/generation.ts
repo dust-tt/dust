@@ -17,7 +17,6 @@ import {
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -177,12 +176,9 @@ export async function constructPromptMultiActions(
     guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasInteractiveContentServer =
-    featureFlags.includes("interactive_content_server") &&
-    agentConfiguration.actions.some((action) =>
-      isMCPConfigurationForInternalInteractiveContent(action)
-    );
+  const hasInteractiveContentServer = agentConfiguration.actions.some(
+    (action) => isMCPConfigurationForInternalInteractiveContent(action)
+  );
 
   // Only inject the visualization system prompt if the Interactive Content server is not enabled.
   if (agentConfiguration.visualizationEnabled && !hasInteractiveContentServer) {
