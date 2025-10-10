@@ -274,16 +274,16 @@ export async function processTranscriptActivity(
     return;
   }
 
+  localLogger.info(
+    {},
+    "[processTranscriptActivity] No history found. Starting to process transcript."
+  );
+
   let transcriptTitle = "";
   let transcriptContent = "";
   let userParticipated = true;
   let fileContentIsAccessible = true;
   let additionalTags: string[] = [];
-
-  localLogger.info(
-    {},
-    "[processTranscriptActivity] No history found. Proceeding."
-  );
 
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
@@ -351,37 +351,6 @@ export async function processTranscriptActivity(
       "[processTranscriptActivity] File content is not accessible. Stopping."
     );
     return;
-  }
-
-  try {
-    const labsTranscriptsHistory = await transcriptsConfiguration.recordHistory(
-      {
-        fileId,
-        fileName: transcriptTitle.substring(0, 255),
-        workspace: owner,
-      }
-    );
-    localLogger.info(
-      {
-        labsTranscriptsHistoryId: labsTranscriptsHistory.id,
-        fileName: labsTranscriptsHistory.fileName,
-        fileId: labsTranscriptsHistory.fileId,
-        conversationId: labsTranscriptsHistory.conversationId,
-        stored: labsTranscriptsHistory.stored,
-        createdAt: labsTranscriptsHistory.createdAt,
-        updatedAt: labsTranscriptsHistory.updatedAt,
-      },
-      "[processTranscriptActivity] History record created."
-    );
-  } catch (error) {
-    if (error instanceof UniqueConstraintError) {
-      localLogger.info(
-        {},
-        "[processTranscriptActivity] History record already exists. Stopping."
-      );
-      return;
-    }
-    throw error;
   }
 
   let fullStorageDataSourceViewId = null;
@@ -751,5 +720,37 @@ export async function processTranscriptActivity(
       },
       "[processTranscriptActivity] Sent processed transcript email."
     );
+  }
+
+  // Mark file as processed only after all processing succeeds
+  try {
+    const labsTranscriptsHistory = await transcriptsConfiguration.recordHistory(
+      {
+        fileId,
+        fileName: transcriptTitle.substring(0, 255),
+        workspace: owner,
+      }
+    );
+    localLogger.info(
+      {
+        labsTranscriptsHistoryId: labsTranscriptsHistory.id,
+        fileName: labsTranscriptsHistory.fileName,
+        fileId: labsTranscriptsHistory.fileId,
+        conversationId: labsTranscriptsHistory.conversationId,
+        stored: labsTranscriptsHistory.stored,
+        createdAt: labsTranscriptsHistory.createdAt,
+        updatedAt: labsTranscriptsHistory.updatedAt,
+      },
+      "[processTranscriptActivity] History record created."
+    );
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      localLogger.info(
+        {},
+        "[processTranscriptActivity] History record already exists. File was already processed successfully."
+      );
+      return;
+    }
+    throw error;
   }
 }
