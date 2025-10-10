@@ -273,7 +273,7 @@ function generateConfiguredInput({
           }
         }
       }
-      if (!Array.isArray(values) || values.some((v) => isString(v))) {
+      if (!Array.isArray(values) || values.some((v) => !isString(v))) {
         throw new Error(
           `Expected array of string values for key ${keyPath}, got ${typeof values}`
         );
