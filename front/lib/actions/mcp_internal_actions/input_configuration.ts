@@ -469,6 +469,23 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
+function extractSchemaDefault<T>(
+  schema: JSONSchema,
+  typeGuard: (value: unknown) => value is T
+): T | undefined {
+  // Try object-level default first: { value: T, mimeType: "..." }
+  if (
+    schema.default &&
+    typeof schema.default === "object" &&
+    "value" in schema.default &&
+    typeGuard(schema.default.value)
+  ) {
+    return schema.default.value;
+  }
+
+  return undefined;
+}
+
 export interface MCPServerRequirements {
   requiresDataSourceConfiguration: boolean;
   requiresDataWarehouseConfiguration: boolean;
@@ -539,23 +556,6 @@ export function getMCPServerRequirements(
     };
   }
   const { server } = mcpServerView;
-
-  function extractSchemaDefault<T>(
-    schema: JSONSchema,
-    typeGuard: (value: unknown) => value is T
-  ): T | undefined {
-    // Try object-level default first: { value: T, mimeType: "..." }
-    if (
-      schema.default &&
-      typeof schema.default === "object" &&
-      "value" in schema.default &&
-      typeGuard(schema.default.value)
-    ) {
-      return schema.default.value;
-    }
-
-    return undefined;
-  }
 
   const requiresDataSourceConfiguration =
     Object.keys(
