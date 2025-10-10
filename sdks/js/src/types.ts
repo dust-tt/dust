@@ -683,7 +683,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_openai_eu_key"
   | "web_summarization"
   | "xai_feature"
-  | "virtualized_conversations"
   | "noop_model_feature"
 >();
 
