@@ -11,7 +11,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Ok } from "@app/types";
 
 const createServer = (
   auth: Authenticator,
