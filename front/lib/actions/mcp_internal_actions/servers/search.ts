@@ -270,7 +270,7 @@ function createServer(
       commonInputsSchema,
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        { toolNameForMonitoring: SEARCH_TOOL_NAME, agentLoopContext },
         async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );
@@ -286,7 +286,7 @@ function createServer(
       },
       withToolLogging(
         auth,
-        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        { toolNameForMonitoring: SEARCH_TOOL_NAME, agentLoopContext },
         async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );

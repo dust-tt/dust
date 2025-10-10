@@ -67,7 +67,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "create_agent", agentLoopContext },
+      { toolNameForMonitoring: "create_agent", agentLoopContext },
       async ({
         name,
         description,

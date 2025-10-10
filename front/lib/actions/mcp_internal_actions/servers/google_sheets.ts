@@ -62,7 +62,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "list_spreadsheets" },
+      { toolNameForMonitoring: "list_spreadsheets" },
       async ({ nameFilter, pageToken, pageSize }, { authInfo }) => {
         const drive = await getDriveClient(authInfo);
         if (!drive) {
@@ -117,7 +117,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_spreadsheet" },
+      { toolNameForMonitoring: "get_spreadsheet" },
       async ({ spreadsheetId, includeGridData }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -169,7 +169,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_worksheet" },
+      { toolNameForMonitoring: "get_worksheet" },
       async (
         { spreadsheetId, range, majorDimension, valueRenderOption },
         { authInfo }
@@ -229,7 +229,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "update_cells" },
+      { toolNameForMonitoring: "update_cells" },
       async (
         { spreadsheetId, range, values, majorDimension, valueInputOption },
         { authInfo }
@@ -296,7 +296,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "append_data" },
+      { toolNameForMonitoring: "append_data" },
       async (
         {
           spreadsheetId,
@@ -354,7 +354,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "clear_range" },
+      { toolNameForMonitoring: "clear_range" },
       async ({ spreadsheetId, range }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -397,7 +397,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_spreadsheet" },
+      { toolNameForMonitoring: "create_spreadsheet" },
       async ({ title, sheetTitles }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -452,7 +452,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "add_worksheet" },
+      { toolNameForMonitoring: "add_worksheet" },
       async ({ spreadsheetId, title, rowCount, columnCount }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -506,7 +506,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "delete_worksheet" },
+      { toolNameForMonitoring: "delete_worksheet" },
       async ({ spreadsheetId, sheetId }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -584,7 +584,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "format_cells" },
+      { toolNameForMonitoring: "format_cells" },
       async (
         {
           spreadsheetId,
@@ -664,7 +664,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "copy_sheet" },
+      { toolNameForMonitoring: "copy_sheet" },
       async (
         { sourceSpreadsheetId, sheetId, destinationSpreadsheetId },
         { authInfo }
@@ -709,7 +709,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "rename_worksheet" },
+      { toolNameForMonitoring: "rename_worksheet" },
       async ({ spreadsheetId, sheetId, newTitle }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {
@@ -767,7 +767,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "move_worksheet" },
+      { toolNameForMonitoring: "move_worksheet" },
       async ({ spreadsheetId, sheetId, newIndex }, { authInfo }) => {
         const sheets = await getSheetsClient(authInfo);
         if (!sheets) {

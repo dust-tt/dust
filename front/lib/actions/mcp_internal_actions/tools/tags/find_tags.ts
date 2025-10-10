@@ -54,7 +54,7 @@ export function registerFindTagsTool(
     findTagsSchema,
     withToolLogging(
       auth,
-      { toolName: FIND_TAGS_TOOL_NAME, agentLoopContext },
+      { toolNameForMonitoring: FIND_TAGS_TOOL_NAME, agentLoopContext },
       async ({
         query,
         dataSources,

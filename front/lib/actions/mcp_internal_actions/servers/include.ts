@@ -265,7 +265,7 @@ function createServer(
       commonInputsSchema,
       withToolLogging(
         auth,
-        { toolName: "include", agentLoopContext },
+        { toolNameForMonitoring: "include", agentLoopContext },
         includeFunction
       )
     );
@@ -279,7 +279,7 @@ function createServer(
       },
       withToolLogging(
         auth,
-        { toolName: "include", agentLoopContext },
+        { toolNameForMonitoring: "include", agentLoopContext },
         includeFunction
       )
     );

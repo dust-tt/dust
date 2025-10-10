@@ -74,7 +74,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_issue" },
+      { toolNameForMonitoring: "create_issue" },
       async ({ owner, repo, title, body, assignees, labels }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -124,7 +124,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_pull_request" },
+      { toolNameForMonitoring: "get_pull_request" },
       async ({ owner, repo, pullNumber }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -439,7 +439,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_pull_request_review" },
+      { toolNameForMonitoring: "create_pull_request_review" },
       async (
         { owner, repo, pullNumber, body, event, comments = [] },
         { authInfo }
@@ -489,7 +489,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "list_organization_projects" },
+      { toolNameForMonitoring: "list_organization_projects" },
       async ({ owner }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -631,7 +631,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "add_issue_to_project" },
+      { toolNameForMonitoring: "add_issue_to_project" },
       async ({ owner, repo, issueNumber, projectId, field }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -743,7 +743,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "comment_on_issue" },
+      { toolNameForMonitoring: "comment_on_issue" },
       async ({ owner, repo, issueNumber, body }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -790,7 +790,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_issue" },
+      { toolNameForMonitoring: "get_issue" },
       async ({ owner, repo, issueNumber }, { authInfo }) => {
         const octokit = await createOctokit(auth, {
           accessToken: authInfo?.token,
@@ -946,7 +946,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "list_issues" },
+      { toolNameForMonitoring: "list_issues" },
       async (
         {
           owner,
@@ -1106,7 +1106,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "list_pull_requests" },
+      { toolNameForMonitoring: "list_pull_requests" },
       async (
         {
           owner,

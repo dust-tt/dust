@@ -78,7 +78,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_drafts" },
+      { toolNameForMonitoring: "get_drafts" },
       async ({ q, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -157,7 +157,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_draft" },
+      { toolNameForMonitoring: "create_draft" },
       async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -235,7 +235,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "delete_draft" },
+      { toolNameForMonitoring: "delete_draft" },
       async ({ draftId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -291,7 +291,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_messages" },
+      { toolNameForMonitoring: "get_messages" },
       async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -422,7 +422,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_reply_draft" },
+      { toolNameForMonitoring: "create_reply_draft" },
       async (
         { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
         { authInfo }

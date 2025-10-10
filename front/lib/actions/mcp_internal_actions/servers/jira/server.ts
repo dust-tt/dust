@@ -61,7 +61,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolName: "get_issue_read_fields" },
+      { toolNameForMonitoring: "get_issue_read_fields" },
       async (_, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -98,7 +98,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_issue" },
+      { toolNameForMonitoring: "get_issue" },
       async ({ issueKey, fields }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -140,7 +140,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolName: "get_projects" },
+      { toolNameForMonitoring: "get_projects" },
       async (_, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -171,7 +171,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_project" },
+      { toolNameForMonitoring: "get_project" },
       async ({ projectKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -209,7 +209,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_project_versions" },
+      { toolNameForMonitoring: "get_project_versions" },
       async ({ projectKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -246,7 +246,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_transitions" },
+      { toolNameForMonitoring: "get_transitions" },
       async ({ issueKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -291,7 +291,7 @@ const createServer = (
 
     withToolLogging(
       auth,
-      { toolName: "create_comment" },
+      { toolNameForMonitoring: "create_comment" },
       async (
         { issueKey, comment, visibilityType, visibilityValue },
         { authInfo }
@@ -361,7 +361,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_issues" },
+      { toolNameForMonitoring: "get_issues" },
       async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -417,7 +417,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_issues_using_jql" },
+      { toolNameForMonitoring: "get_issues_using_jql" },
       async ({ jql, maxResults, fields, nextPageToken }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -462,7 +462,7 @@ const createServer = (
 
     withToolLogging(
       auth,
-      { toolName: "get_issue_types" },
+      { toolNameForMonitoring: "get_issue_types" },
       async ({ projectKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -506,7 +506,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_issue_create_fields" },
+      { toolNameForMonitoring: "get_issue_create_fields" },
       async ({ projectKey, issueTypeId }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -546,7 +546,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolName: "get_connection_info" },
+      { toolNameForMonitoring: "get_connection_info" },
       async (_, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -582,7 +582,7 @@ const createServer = (
 
     withToolLogging(
       auth,
-      { toolName: "transition_issue" },
+      { toolNameForMonitoring: "transition_issue" },
       async ({ issueKey, transitionId }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -640,7 +640,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "create_issue" },
+      { toolNameForMonitoring: "create_issue" },
       async ({ issueData }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -680,7 +680,7 @@ const createServer = (
 
     withToolLogging(
       auth,
-      { toolName: "update_issue" },
+      { toolNameForMonitoring: "update_issue" },
       async ({ issueKey, updateData }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -729,7 +729,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "create_issue_link" },
+      { toolNameForMonitoring: "create_issue_link" },
       async ({ linkData }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -766,7 +766,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "delete_issue_link" },
+      { toolNameForMonitoring: "delete_issue_link" },
       async ({ linkId }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -794,7 +794,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolName: "get_issue_link_types" },
+      { toolNameForMonitoring: "get_issue_link_types" },
       async (_, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -855,7 +855,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_users" },
+      { toolNameForMonitoring: "get_users" },
       async (
         { emailAddress, name, maxResults = SEARCH_USERS_MAX_RESULTS, startAt },
         { authInfo }
@@ -961,7 +961,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "upload_attachment" },
+      { toolNameForMonitoring: "upload_attachment" },
       async ({ issueKey, attachment }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -1076,7 +1076,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "get_attachments" },
+      { toolNameForMonitoring: "get_attachments" },
       async ({ issueKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -1132,7 +1132,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "read_attachment" },
+      { toolNameForMonitoring: "read_attachment" },
       async ({ issueKey, attachmentId }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {

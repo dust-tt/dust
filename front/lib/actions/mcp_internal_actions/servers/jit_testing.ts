@@ -68,7 +68,7 @@ function createServer(auth: Authenticator): McpServer {
     },
     withToolLogging(
       auth,
-      { toolName: "jit_all_optionals_and_defaults" },
+      { toolNameForMonitoring: "jit_all_optionals_and_defaults" },
       async (params) => {
         return new Ok([
           {

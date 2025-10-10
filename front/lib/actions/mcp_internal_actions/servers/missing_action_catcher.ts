@@ -27,7 +27,7 @@ const createServer = (
       {},
       withToolLogging(
         auth,
-        { toolName: actionName, agentLoopContext },
+        { toolNameForMonitoring: actionName, agentLoopContext },
         async () => {
           return new Err(
             new MCPError(
@@ -47,9 +47,13 @@ const createServer = (
       "placeholder_tool",
       "This tool is a placeholder to catch missing actions.",
       {},
-      withToolLogging(auth, { toolName: "placeholder_tool" }, async () => {
-        return new Ok([{ type: "text", text: "No action name found" }]);
-      })
+      withToolLogging(
+        auth,
+        { toolNameForMonitoring: "placeholder_tool" },
+        async () => {
+          return new Ok([{ type: "text", text: "No action name found" }]);
+        }
+      )
     );
   }
   return server;

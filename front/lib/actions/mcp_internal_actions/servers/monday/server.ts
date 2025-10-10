@@ -52,7 +52,7 @@ const createServer = (auth: Authenticator): McpServer => {
     {},
     withToolLogging(
       auth,
-      { toolName: "get_boards" },
+      { toolNameForMonitoring: "get_boards" },
       async (_params, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -79,7 +79,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_board_items" },
+      { toolNameForMonitoring: "get_board_items" },
       async ({ boardId }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -106,7 +106,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_item_details" },
+      { toolNameForMonitoring: "get_item_details" },
       async ({ itemId }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -162,7 +162,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "search_items" },
+      { toolNameForMonitoring: "search_items" },
       async (
         {
           query,
@@ -231,7 +231,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_item" },
+      { toolNameForMonitoring: "create_item" },
       async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -269,7 +269,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "update_item" },
+      { toolNameForMonitoring: "update_item" },
       async ({ itemId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -300,7 +300,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_update" },
+      { toolNameForMonitoring: "create_update" },
       async ({ itemId, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
 

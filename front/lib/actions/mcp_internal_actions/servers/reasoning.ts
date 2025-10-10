@@ -66,7 +66,7 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolName: "advanced_reasoning", agentLoopContext },
+      { toolNameForMonitoring: "advanced_reasoning", agentLoopContext },
       async (
         { model: { modelId, providerId, temperature, reasoningEffort } },
         { sendNotification, _meta }

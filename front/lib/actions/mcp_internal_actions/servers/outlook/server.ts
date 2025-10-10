@@ -101,7 +101,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_messages" },
+      { toolNameForMonitoring: "get_messages" },
       async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -178,7 +178,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_drafts" },
+      { toolNameForMonitoring: "get_drafts" },
       async ({ search, top = 10, skip = 0 }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -264,7 +264,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_draft" },
+      { toolNameForMonitoring: "create_draft" },
       async (
         { to, cc, bcc, subject, contentType, body, importance = "normal" },
         { authInfo }
@@ -339,7 +339,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "delete_draft" },
+      { toolNameForMonitoring: "delete_draft" },
       async ({ messageId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -407,7 +407,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_reply_draft" },
+      { toolNameForMonitoring: "create_reply_draft" },
       async (
         {
           messageId,
@@ -522,7 +522,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "get_contacts" },
+      { toolNameForMonitoring: "get_contacts" },
       async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -607,7 +607,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "create_contact" },
+      { toolNameForMonitoring: "create_contact" },
       async (
         {
           displayName,
@@ -726,7 +726,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolName: "update_contact" },
+      { toolNameForMonitoring: "update_contact" },
       async (
         {
           contactId,

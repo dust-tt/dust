@@ -96,7 +96,10 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolName: GET_DATABASE_SCHEMA_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: GET_DATABASE_SCHEMA_TOOL_NAME,
+        agentLoopContext,
+      },
       async ({ tables }) => {
         // Fetch table configurations
         const tableConfigurationsRes = await fetchTableDataSourceConfigurations(
@@ -189,7 +192,10 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolName: EXECUTE_DATABASE_QUERY_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: EXECUTE_DATABASE_QUERY_TOOL_NAME,
+        agentLoopContext,
+      },
       async ({ tables, query, fileName }) => {
         // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
         if (!agentLoopContext?.runContext) {

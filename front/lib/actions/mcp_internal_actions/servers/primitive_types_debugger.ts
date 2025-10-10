@@ -23,7 +23,7 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolName: "tool_without_user_config", agentLoopContext },
+      { toolNameForMonitoring: "tool_without_user_config", agentLoopContext },
       async ({ query }) => {
         return new Ok([
           {
@@ -109,7 +109,7 @@ function createServer(
     },
     withToolLogging(
       auth,
-      { toolName: "pass_through", agentLoopContext },
+      { toolNameForMonitoring: "pass_through", agentLoopContext },
       async (params) => {
         return new Ok([
           {

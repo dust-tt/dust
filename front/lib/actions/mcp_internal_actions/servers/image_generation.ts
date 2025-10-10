@@ -62,7 +62,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: "generate_image", agentLoopContext },
+      { toolNameForMonitoring: "generate_image", agentLoopContext },
       async ({ prompt, name, quality, size }, { sendNotification, _meta }) => {
         const workspace = auth.getNonNullableWorkspace();
 
