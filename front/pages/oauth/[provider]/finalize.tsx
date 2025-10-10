@@ -81,7 +81,14 @@ export default function Finalize({
         // Method 3: localStorage (fallback for all browsers)
         try {
           const storageKey = `oauth_finalize_${provider}`;
-          localStorage.setItem(storageKey, JSON.stringify(messageData));
+          const dataWithExpiration = {
+            ...messageData,
+            expiresAt: Date.now() + 30000, // 30 seconds expiration
+          };
+          localStorage.setItem(
+            storageKey,
+            JSON.stringify(dataWithExpiration)
+          );
         } catch (e) {
           logger.error({ err: e }, "[OAuth Finalize] localStorage failed", e);
         }
