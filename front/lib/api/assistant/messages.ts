@@ -484,6 +484,7 @@ async function getMaxRankMessages(
   const where: WhereOptions<Message> = {
     conversationId: conversation.id,
     workspaceId: auth.getNonNullableWorkspace().id,
+    visibility: "visible",
   };
 
   if (lastValue) {
@@ -531,6 +532,7 @@ async function fetchMessagesForPage(
     where: {
       conversationId: conversation.id,
       workspaceId: auth.getNonNullableWorkspace().id,
+      visibility: "visible",
       id: {
         [Op.in]: relevantMessageIds,
       },
