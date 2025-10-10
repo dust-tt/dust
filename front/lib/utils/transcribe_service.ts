@@ -47,6 +47,7 @@ export async function transcribeFile(
       languageCode: undefined, // enable auto-detection of languages
       tagAudioEvents: false, // disable tagging of audio events
       diarize: false, // disable diarization
+      enableLogging: false, // disable logging, for Zero Data Retention
       // we can safely cast here because we know the response is a SpeechToTextChunkResponseModel
     })) as SpeechToTextChunkResponseModel;
 
