@@ -56,7 +56,7 @@ const createServer = (
         const runContext = agentLoopContext.runContext;
         const { agentConfiguration, conversation, agentMessage } = runContext;
         const instructions = agentConfiguration.instructions;
-        const query = `You have been summoned by @${agentConfiguration.name}. Its instructions are: <caller_agent_instructions>${instructions ?? ""}</caller_agent_instructions>`;
+        const query = `The user's query is being handed off to you from @${agentConfiguration.name} within the same conversation. The calling agent's instructions are: <caller_agent_instructions>${instructions ?? ""}</caller_agent_instructions>`;
 
         const convRes = await getOrCreateConversation(api, runContext, {
           childAgentBlob: {
