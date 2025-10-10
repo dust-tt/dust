@@ -55,22 +55,22 @@ export function createDynamicConfigurationFields(
   toolsConfigurations: MCPServerToolsConfigurations
 ) {
   return {
-    childAgentId: toolsConfigurations.childAgentConfiguration
+    childAgentId: toolsConfigurations.childAgentConfigurable
       ? childAgentIdSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.childAgent.required,
         })
       : z.null(),
-    reasoningModel: toolsConfigurations.reasoningConfiguration
+    reasoningModel: toolsConfigurations.reasoningConfigurable
       ? reasoningModelSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.reasoningModel.required,
         })
       : z.null(),
-    dustAppConfiguration: toolsConfigurations.mayRequireDustAppConfiguration
+    dustAppConfiguration: toolsConfigurations.dustAppConfigurable
       ? dustAppConfigurationSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
-    secretName: toolsConfigurations.mayRequireSecretConfiguration
+    secretName: toolsConfigurations.secretConfigurable
       ? secretNameSchema.refine((val) => val !== null, {
           message: VALIDATION_MESSAGES.secret.required,
         })
