@@ -11,6 +11,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
 
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const OUTLOOK_TOOL_NAME = "outlook";
+
 const OutlookEmailAddressSchema = z.object({
   address: z.string(),
   name: z.string().optional(),
@@ -101,7 +104,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "outlook" },
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
       async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -178,7 +181,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "outlook" },
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
       async ({ search, top = 10, skip = 0 }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -264,7 +267,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "outlook" },
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
       async (
         { to, cc, bcc, subject, contentType, body, importance = "normal" },
         { authInfo }
@@ -339,7 +342,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "outlook" },
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
       async ({ messageId, subject, to }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -407,7 +410,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "outlook" },
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
       async (
         {
           messageId,
@@ -522,7 +525,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "outlook" },
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
       async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -607,7 +610,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "outlook" },
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
       async (
         {
           displayName,
@@ -726,7 +729,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "outlook" },
+      { toolNameForMonitoring: OUTLOOK_TOOL_NAME },
       async (
         {
           contactId,

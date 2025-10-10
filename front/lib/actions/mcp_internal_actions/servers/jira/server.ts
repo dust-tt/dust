@@ -49,6 +49,9 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { Err, normalizeError, Ok } from "@app/types";
 
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const JIRA_TOOL_NAME = "jira";
+
 const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
@@ -61,7 +64,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async (_, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -98,7 +101,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ issueKey, fields }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -140,7 +143,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async (_, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -171,7 +174,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ projectKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -209,7 +212,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ projectKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -246,7 +249,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ issueKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -291,7 +294,7 @@ const createServer = (
 
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async (
         { issueKey, comment, visibilityType, visibilityValue },
         { authInfo }
@@ -361,7 +364,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -417,7 +420,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ jql, maxResults, fields, nextPageToken }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -462,7 +465,7 @@ const createServer = (
 
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ projectKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -506,7 +509,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ projectKey, issueTypeId }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -546,7 +549,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async (_, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -582,7 +585,7 @@ const createServer = (
 
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ issueKey, transitionId }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -640,7 +643,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ issueData }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -680,7 +683,7 @@ const createServer = (
 
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ issueKey, updateData }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -729,7 +732,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ linkData }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -766,7 +769,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ linkId }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -794,7 +797,7 @@ const createServer = (
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async (_, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -855,7 +858,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async (
         { emailAddress, name, maxResults = SEARCH_USERS_MAX_RESULTS, startAt },
         { authInfo }
@@ -961,7 +964,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ issueKey, attachment }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -1076,7 +1079,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ issueKey }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {
@@ -1132,7 +1135,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "jira" },
+      { toolNameForMonitoring: JIRA_TOOL_NAME },
       async ({ issueKey, attachmentId }, { authInfo }) => {
         return withAuth({
           action: async (baseUrl, accessToken) => {

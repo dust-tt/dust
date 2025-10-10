@@ -46,6 +46,9 @@ export type SlackSearchMatch = {
   permalink?: string;
 };
 
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const SLACK_TOOL_LOG_NAME = "slack";
+
 export const slackSearch = async (
   query: string,
   accessToken: string
@@ -314,7 +317,7 @@ const createServer = async (
       },
       withToolLogging(
         auth,
-        { toolNameForMonitoring: "slack", agentLoopContext },
+        { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
         async (
           {
             keywords,
@@ -469,7 +472,7 @@ const createServer = async (
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: "slack",
+          toolNameForMonitoring: SLACK_TOOL_LOG_NAME,
           agentLoopContext,
         },
         async (
@@ -615,7 +618,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "slack", agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ channel, relativeTimeFrame }, { authInfo }) => {
         if (!agentLoopContext?.runContext) {
           return new Err(
@@ -756,7 +759,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "slack", agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ to, message, threadTs, fileId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -800,7 +803,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "slack", agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -829,7 +832,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "slack", agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ userId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
@@ -859,7 +862,7 @@ const createServer = async (
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "slack", agentLoopContext },
+      { toolNameForMonitoring: SLACK_TOOL_LOG_NAME, agentLoopContext },
       async ({ nameFilter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {

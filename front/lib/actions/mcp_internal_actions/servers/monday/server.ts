@@ -43,6 +43,9 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const MONDAY_TOOL_NAME = "monday";
+
 const createServer = (auth: Authenticator): McpServer => {
   const server = makeInternalMCPServer("monday");
 
@@ -52,7 +55,7 @@ const createServer = (auth: Authenticator): McpServer => {
     {},
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "monday" },
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
       async (_params, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -79,7 +82,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "monday" },
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
       async ({ boardId }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -106,7 +109,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "monday" },
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
       async ({ itemId }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -162,7 +165,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "monday" },
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
       async (
         {
           query,
@@ -231,7 +234,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "monday" },
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
       async ({ boardId, itemName, groupId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -269,7 +272,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "monday" },
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
       async ({ itemId, columnValues }, { authInfo }) => {
         const accessToken = authInfo?.token;
 
@@ -300,7 +303,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "monday" },
+      { toolNameForMonitoring: MONDAY_TOOL_NAME },
       async ({ itemId, body }, { authInfo }) => {
         const accessToken = authInfo?.token;
 

@@ -20,6 +20,9 @@ import { Err, Ok } from "@app/types";
 
 const SF_API_VERSION = "57.0";
 
+// We use a single tool name for monitoring given the high granularity (can be revisited).
+const SALESFORCE_TOOL_LOG_NAME = "salesforce";
+
 const createServer = (auth: Authenticator): McpServer => {
   const server = makeInternalMCPServer("salesforce");
 
@@ -31,7 +34,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "salesforce" },
+      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
       async ({ query }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -67,7 +70,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "salesforce" },
+      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
       async ({ filter }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -109,7 +112,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "salesforce" },
+      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
       async ({ objectName }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -217,7 +220,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "salesforce" },
+      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
       async ({ recordId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
@@ -271,7 +274,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     withToolLogging(
       auth,
-      { toolNameForMonitoring: "salesforce" },
+      { toolNameForMonitoring: SALESFORCE_TOOL_LOG_NAME },
       async ({ recordId, attachmentId }, { authInfo }) => {
         const accessToken = authInfo?.token;
         const instanceUrl = authInfo?.extra?.instance_url as string | undefined;
