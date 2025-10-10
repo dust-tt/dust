@@ -1,7 +1,9 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import { config } from "@app/lib/api/regions/config";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
+import { launchRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import { Err, Ok } from "@app/types";
 
 export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
@@ -47,7 +49,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
         }
 
         const statusParts = [];
-        statusParts.push(`ID: ${config.sId}`);
+        statusParts.push(`ID: ${config.id}`);
         statusParts.push(`User: ${user?.email ?? "Unknown"}`);
         statusParts.push(config.isActive ? "Active" : "Inactive");
         statusParts.push(datasourceInfo);
@@ -61,7 +63,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
 
         return {
           label: `[${config.provider}] ${statusParts.join(" | ")}`,
-          value: config.sId,
+          value: String(config.id),
         };
       })
     );
@@ -72,19 +74,22 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();
-    const configurationSId = args.transcriptsConfigurationId[0];
+    const configurationIdStr = args.transcriptsConfigurationId[0];
 
-    if (!configurationSId) {
+    if (!configurationIdStr) {
       return new Err(new Error("No transcripts configuration selected"));
     }
 
+    const configurationId = parseInt(configurationIdStr, 10);
     const configuration =
-      await LabsTranscriptsConfigurationResource.fetchById(configurationSId);
+      await LabsTranscriptsConfigurationResource.fetchByModelId(
+        configurationId
+      );
 
     if (!configuration) {
       return new Err(
         new Error(
-          `Could not find transcripts configuration with id ${configurationSId}`
+          `Could not find transcripts configuration with id ${configurationId}`
         )
       );
     }
@@ -118,9 +123,28 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
       },
     });
 
+    // Determine the correct Temporal namespace based on region
+    const currentRegion = config.getCurrentRegion();
+    const temporalNamespace =
+      currentRegion === "europe-west1"
+        ? "eu-dust-front-prod.gmnlm"
+        : "dust-front-prod.gmnlm";
+    const temporalLink = `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows?query=%60WorkflowId%60+STARTS_WITH+%22labs-transcripts-retrieve-${configuration.id}%22`;
+
+    // Restart the workflow
+    const launchResult = await launchRetrieveTranscriptsWorkflow(configuration);
+
+    if (launchResult.isErr()) {
+      return new Err(
+        new Error(
+          `Successfully deleted ${countBefore} history record(s), but failed to restart workflow: ${launchResult.error.message}\n\nTemporal workflow: ${temporalLink}`
+        )
+      );
+    }
+
     return new Ok({
       display: "text",
-      value: `Successfully deleted ${countBefore} history record(s) for transcripts configuration [${configuration.provider}]. The sync can now restart from the beginning.`,
+      value: `Successfully deleted ${countBefore} history record(s) for transcripts configuration [${configuration.provider}] and restarted the workflow. The sync will now restart from the beginning.\n\nTemporal workflow: ${temporalLink}`,
     });
   },
 });
