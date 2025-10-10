@@ -440,6 +440,7 @@ impl LocalTable {
             duration = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows.len(),
+            first_row_id = rows.get(0).map(|row| row.row_id()).unwrap_or(""),
             truncate,
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
