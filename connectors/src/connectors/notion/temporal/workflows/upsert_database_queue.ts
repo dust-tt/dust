@@ -34,8 +34,6 @@ export async function processDatabaseUpsertQueueWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  const topLevelWorkflowId = workflowInfo().workflowId;
-
   const res = await isFullSyncPendingOrOngoing({
     connectorId,
   });
@@ -57,14 +55,17 @@ export async function processDatabaseUpsertQueueWorkflow({
 
   if (notionDatabaseId) {
     // Clear the workflow cache before processing
-    await clearWorkflowCache({ connectorId, topLevelWorkflowId });
+    await clearWorkflowCache({
+      connectorId,
+      topLevelWorkflowId: workflowInfo().workflowId,
+    });
 
     // We either haven't processed the DB recently, or we have no trace of ever processing it.
     await upsertDatabaseInCore({
       connectorId,
       databaseId: notionDatabaseId,
       runTimestamp: Date.now(),
-      topLevelWorkflowId,
+      topLevelWorkflowId: workflowInfo().workflowId,
       queue: new PQueue({
         concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
       }),
