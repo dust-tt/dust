@@ -11,15 +11,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
-  SLACK_GET_USER,
-  SLACK_LIST_PUBLIC_CHANNELS,
-  SLACK_LIST_THREADS,
-  SLACK_LIST_USERS,
-  SLACK_POST_MESSAGE,
-  SLACK_SEARCH_MESSAGES,
-  SLACK_SEMANTIC_SEARCH_MESSAGES,
-} from "@app/lib/actions/mcp_internal_actions/servers/slack/constants";
-import {
   executeGetUser,
   executeListPublicChannels,
   executeListUsers,
@@ -478,7 +469,7 @@ const createServer = async (
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: SLACK_SEMANTIC_SEARCH_MESSAGES,
+          toolNameForMonitoring: "slack",
           agentLoopContext,
         },
         async (
@@ -881,7 +872,6 @@ const createServer = async (
             accessToken,
             mcpServerId
           );
-
         } catch (error) {
           if (isSlackTokenRevoked(error)) {
             return new Err(new MCPError("slack"));
