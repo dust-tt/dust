@@ -14,7 +14,6 @@ const meta = {
 } satisfies Meta<typeof AnchoredPopover>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 export const MultipleAnchors: StoryObj<typeof AnchoredPopover> = {
   render: () => {
