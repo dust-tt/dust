@@ -125,12 +125,11 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
 
-    const shouldHideUserMessage = isHandoverUserMessage(data);
-    const isAgentMessageHandover =
-      prevData &&
-      isHandoverUserMessage(prevData) &&
-      isMessageTemporayState(data) &&
-      data.message.parentMessageId === prevData.sId;
+    if (isHandoverUserMessage(data)) {
+      // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
+      // because it has no value to display.
+      return null;
+    }
 
     return (
       <>
@@ -144,7 +143,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
             "max-w-3xl"
           )}
         >
-          {isUserMessage(data) && !shouldHideUserMessage && (
+          {isUserMessage(data) && (
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
@@ -158,7 +157,6 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={context.user}
               conversationId={context.conversationId}
               isLastMessage={!nextData}
-              isAgentMessageHandover={isAgentMessageHandover ?? false}
               messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}

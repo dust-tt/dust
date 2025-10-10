@@ -177,6 +177,7 @@ async function handler(
         created: Date.now(),
         completedTs: null,
         parentMessageId: null,
+        parentAgentMessageId: null,
         status: "created",
         content: null,
         chainOfThought: null,

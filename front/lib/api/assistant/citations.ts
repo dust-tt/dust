@@ -133,6 +133,7 @@ export function getLightAgentMessageFromAgentMessage(
     version: agentMessage.version,
     rank: agentMessage.rank,
     parentMessageId: agentMessage.parentMessageId,
+    parentAgentMessageId: agentMessage.parentAgentMessageId,
     content: agentMessage.content,
     chainOfThought: agentMessage.chainOfThought,
     error: agentMessage.error,
