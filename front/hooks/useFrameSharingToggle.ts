@@ -3,13 +3,11 @@ import { useEffect, useState } from "react";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { LightWorkspaceType } from "@app/types";
 
-interface UseContentCreationSharingToggleProps {
+interface UseFrameSharingToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useContentCreationSharingToggle({
-  owner,
-}: UseContentCreationSharingToggleProps) {
+export function useFrameSharingToggle({ owner }: UseFrameSharingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const [isEnabled, setIsEnabled] = useState(
     owner.metadata?.allowContentCreationFileSharing !== false
@@ -20,7 +18,7 @@ export function useContentCreationSharingToggle({
     setIsEnabled(owner.metadata?.allowContentCreationFileSharing !== false);
   }, [owner.metadata?.allowContentCreationFileSharing]);
 
-  const doToggleContentCreationSharing = async () => {
+  const doToggleInteractiveContentSharing = async () => {
     setIsChanging(true);
     try {
       const res = await fetch(`/api/w/${owner.sId}`, {
@@ -52,6 +50,6 @@ export function useContentCreationSharingToggle({
   return {
     isEnabled,
     isChanging,
-    doToggleContentCreationSharing,
+    doToggleInteractiveContentSharing,
   };
 }

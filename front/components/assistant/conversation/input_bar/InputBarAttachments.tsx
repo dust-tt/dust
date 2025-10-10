@@ -1,28 +1,16 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isFolder, isWebsite } from "@dust-tt/client";
-import {
-  CitationGrid,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DoubleIcon,
-  Icon,
-} from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import type {
   Attachment,
   FileAttachment,
   NodeAttachment,
-} from "@app/components/assistant/conversation/AttachmentCitation";
-import {
-  AttachmentCitation,
-  attachmentToAttachmentCitation,
-} from "@app/components/assistant/conversation/AttachmentCitation";
+} from "@app/components/assistant/conversation/attachment/types";
+import { attachmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import {
   getDisplayDateFromPastedFileId,
   getDisplayNameFromPastedFileId,
@@ -50,7 +38,7 @@ interface NodeAttachmentsProps {
 
 interface InputBarAttachmentsProps {
   owner: LightWorkspaceType;
-  files?: FileAttachmentsProps;
+  files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
 }
 
@@ -92,10 +80,11 @@ export function InputBarAttachments({
           type: "file",
           id: blob.id,
           title,
-          preview: blob.preview,
+          sourceUrl: blob.sourceUrl,
           contentType: blob.contentType,
           isUploading: blob.isUploading,
           description: uploadDate,
+          fileId: blob.id,
           onRemove: () => files.service.removeFile(blob.id),
         };
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -142,83 +131,27 @@ export function InputBarAttachments({
     );
   }, [nodes, spacesMap]);
 
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const [viewerTitle, setViewerTitle] = useState("");
-  const [viewerText, setViewerText] = useState("");
-
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
   if (allAttachments.length === 0) {
     return null;
   }
 
-  const openPastedViewer = async (attachment: Attachment) => {
-    if (!files) {
-      return;
-    }
-    const blob = files.service.fileBlobs.find((b) => b.id === attachment.id);
-    if (!blob) {
-      return;
-    }
-    const text = await blob.file.text();
-    setViewerTitle(attachment.title);
-    setViewerText(text);
-    setViewerOpen(true);
-  };
-
-  const isTextualContentType = (attachment: Attachment) => {
-    if (attachment.type !== "file") {
-      return false;
-    }
-    const ct = attachment.contentType;
-    if (!ct) {
-      return false;
-    }
-    return (
-      ct.startsWith("text/") ||
-      ct === "application/json" ||
-      ct === "application/xml" ||
-      ct === "application/vnd.dust.section.json"
-    );
-  };
-
   return (
     <>
       <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
         {allAttachments.map((attachment) => {
           const attachmentCitation = attachmentToAttachmentCitation(attachment);
-          const canPreviewText = isTextualContentType(attachment);
           return (
             <AttachmentCitation
               key={attachmentCitation.id}
+              owner={owner}
               attachmentCitation={attachmentCitation}
-              onRemove={attachment.onRemove}
-              onClick={
-                canPreviewText ? () => openPastedViewer(attachment) : undefined
-              }
+              fileUploaderService={files.service}
             />
           );
         })}
       </CitationGrid>
-
-      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent size="xl" height="lg">
-          <DialogHeader>
-            <DialogTitle>{viewerTitle}</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
-              {viewerText}
-            </pre>
-          </DialogContainer>
-          <DialogFooter
-            rightButtonProps={{
-              label: "Close",
-              variant: "highlight",
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

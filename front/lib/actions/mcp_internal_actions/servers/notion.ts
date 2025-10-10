@@ -368,7 +368,7 @@ const createServer = (
                 Object.values(result.properties).find(
                   (p) => p.type === "title"
                 ) as { title: RichTextItemResponse[] }
-              )?.title[0].plain_text ?? "Untitled Page";
+              )?.title[0]?.plain_text ?? "Untitled Page";
 
             const description = Object.entries(result.properties)
               .filter(
@@ -381,8 +381,8 @@ const createServer = (
               ])
               .map(([name, richText]): string => {
                 return `${name}: ${richText
-                  .filter((t) => !!t.plain_text)
-                  .map((t) => t.plain_text)
+                  .filter((t) => !!t?.plain_text)
+                  .map((t) => t?.plain_text)
                   .join(" ")}`;
               })
               .join("\n");
@@ -404,9 +404,9 @@ const createServer = (
               },
             } satisfies SearchResultResourceType;
           } else if (isFullDatabase(result)) {
-            const title = result.title[0].plain_text ?? "Untitled Database";
+            const title = result.title[0]?.plain_text ?? "Untitled Database";
             const description = result.description
-              ?.map((d) => d.plain_text)
+              ?.map((d) => d?.plain_text)
               .join(" ");
 
             return {
@@ -545,7 +545,7 @@ const createServer = (
     "Create a new Notion page.",
     {
       parent: parentPageSchema.describe(
-        "The existing parent page where the new page is inserted. Must be a valid page ID."
+        "The existing parent page where the new page is inserted. Must be an existing page ID. Use the search action to find a page ID."
       ),
       properties: propertiesSchema,
       icon: z.any().optional().describe("Icon (optional)."),
@@ -585,7 +585,7 @@ const createServer = (
     "Create a new Notion database (table).",
     {
       parent: parentPageSchema.describe(
-        "Parent object (see Notion API). Must include type: 'page_id' and a valid page_id."
+        "The existing parent where the new database is inserted. Must be an existing page ID. Use the search action to find a page ID."
       ),
       title: z
         .array(titleRichTextSchema)

@@ -2,26 +2,31 @@ import { Spinner } from "@dust-tt/sparkle";
 import React from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
-import { PublicContentCreationHeader } from "@app/components/assistant/conversation/content_creation/PublicContentCreationHeader";
+import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { PublicInteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { usePublicFrame } from "@app/lib/swr/frames";
+import { useUser } from "@app/lib/swr/user";
 
-interface PublicClientExecutableRendererProps {
+interface PublicFrameRendererProps {
   fileId: string;
   fileName?: string;
   shareToken: string;
   workspaceId: string;
 }
 
-export function PublicClientExecutableRenderer({
+export function PublicFrameRenderer({
   fileId,
   fileName,
   shareToken,
   workspaceId,
-}: PublicClientExecutableRendererProps) {
+}: PublicFrameRendererProps) {
   const { frameContent, isFrameLoading, error } = usePublicFrame({
     shareToken,
+  });
+  const { user } = useUser({
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
   });
 
   const getFileBlob = React.useCallback(
@@ -60,8 +65,9 @@ export function PublicClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <PublicContentCreationHeader
+      <PublicInteractiveContentHeader
         title={formatFilenameForDisplay(fileName ?? "Frame")}
+        user={user}
       />
 
       {/* Content */}

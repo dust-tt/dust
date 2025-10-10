@@ -215,7 +215,7 @@ const WorkspacePage = ({
 
       <div className="flex-col justify-center">
         <div className="flex flex-col space-y-8">
-          <div className="mt-4 flex flex-row items-stretch space-x-3">
+          <div className="space-3 mt-4 flex flex-row items-stretch">
             <Tabs defaultValue="workspace" className="min-w-[512px]">
               <TabsList>
                 <TabsTrigger value="workspace" label="Workspace" />
@@ -256,16 +256,18 @@ const WorkspacePage = ({
           </div>
           <Tabs defaultValue="datasources" className="min-h-[1024px] w-full">
             <TabsList>
-              <TabsTrigger value="datasources" label="Data Sources" />
-              <TabsTrigger value="datasourceviews" label="Data Source Views" />
-              <TabsTrigger value="mcpviews" label="MCP Server Views" />
-              <TabsTrigger value="spaces" label="Spaces" />
-              <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="agents" label="Agents" />
               <TabsTrigger value="apps" label="Apps" />
+              <TabsTrigger value="datasources" label="Data Sources" />
+              <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
+              <TabsTrigger value="groups" label="Groups" />
+              <TabsTrigger value="mcpviews" label="MCP Server Views" />
+              <TabsTrigger value="spaces" label="Spaces" />
               <TabsTrigger value="trackers" label="Trackers" />
               <TabsTrigger value="triggers" label="Triggers" />
+
+              {/* Plugin Logs on the far right */}
               <TabsTrigger value="plugins" label="Plugins Logs" />
             </TabsList>
 

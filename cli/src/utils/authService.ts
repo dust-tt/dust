@@ -110,6 +110,7 @@ export const AuthService = {
       if (refreshed.isOk()) {
         return new Ok(await TokenStorage.getAccessToken());
       }
+      return refreshed;
     }
 
     return new Ok(accessToken);

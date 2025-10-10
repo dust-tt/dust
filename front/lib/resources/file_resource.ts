@@ -36,7 +36,8 @@ import type {
 import {
   ALL_FILE_FORMATS,
   Err,
-  isContentCreationFileContentType,
+  frameContentType,
+  isInteractiveContentFileContentType,
   normalizeError,
   Ok,
   removeNulls,
@@ -315,9 +316,9 @@ export class FileResource extends BaseResource<FileModel> {
 
     const updateResult = await this.update({ status: "ready" });
 
-    // For Content Creation conversation files, automatically create a ShareableFileModel with
+    // For Interactive Content conversation files, automatically create a ShareableFileModel with
     // default workspace scope.
-    if (this.isContentCreation) {
+    if (this.isInteractiveContent) {
       await ShareableFileModel.upsert({
         fileId: this.id,
         shareScope: "workspace",
@@ -347,10 +348,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.updatedAt.getTime();
   }
 
-  get isContentCreation(): boolean {
+  get isInteractiveContent(): boolean {
     return (
       this.useCase === "conversation" &&
-      isContentCreationFileContentType(this.contentType)
+      isInteractiveContentFileContentType(this.contentType)
     );
   }
 
@@ -537,13 +538,28 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Sharing logic.
 
+  private getShareUrlForShareableFile(
+    shareableFile: ShareableFileModel
+  ): string {
+    assert(
+      this.isInteractiveContent,
+      "getShareUrlForShareableFile called on non-interactive content file"
+    );
+
+    if (this.contentType === frameContentType) {
+      return `${config.getClientFacingUrl()}/share/frame/${shareableFile.token}`;
+    }
+
+    return `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`;
+  }
+
   async setShareScope(
     auth: Authenticator,
     scope: FileShareScope
   ): Promise<void> {
-    // Only Content Creation files can be shared.
-    if (!this.isContentCreation) {
-      throw new Error("Only Frame files can be shared");
+    // Only Interactive Content files can be shared.
+    if (!this.isInteractiveContent) {
+      throw new Error("Only Interactive Content files can be shared");
     }
 
     const user = auth.getNonNullableUser();
@@ -570,7 +586,7 @@ export class FileResource extends BaseResource<FileModel> {
     sharedAt: Date;
     shareUrl: string;
   } | null> {
-    if (!this.isContentCreation) {
+    if (!this.isInteractiveContent) {
       return null;
     }
 
@@ -582,7 +598,7 @@ export class FileResource extends BaseResource<FileModel> {
       return {
         scope: shareableFile.shareScope,
         sharedAt: shareableFile.sharedAt,
-        shareUrl: `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`,
+        shareUrl: this.getShareUrlForShareableFile(shareableFile),
       };
     }
 

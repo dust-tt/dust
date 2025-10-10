@@ -154,14 +154,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Subscription feature for Schedule & Triggers.",
     stage: "dust_only",
   },
+  hootl_dev_webhooks: {
+    description: "GitHub webhooks for Human Out Of The Loop (aka Triggers)",
+    stage: "dust_only",
+  },
   slack_enhanced_default_agent: {
     description:
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "on_demand",
-  },
-  simple_audio_transcription: {
-    description: "Simple Audio transcription feature",
-    stage: "dust_only",
   },
   slideshow: {
     description: "Slideshow MCP tool",

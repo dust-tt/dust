@@ -155,7 +155,7 @@ function useVisualizationDataHandler({
           datadogLogger.info("Visualization error", {
             errorMessage: data.params.errorMessage,
             fileId: data.params.fileId,
-            isContentCreation: data.params.isContentCreation,
+            isInteractiveContent: data.params.isInteractiveContent,
           });
           setErrorMessage(data.params.errorMessage);
           break;
@@ -383,7 +383,6 @@ export const VisualizationActionIframe = forwardRef<
                     {canRetry && (
                       <Button
                         variant="outline"
-                        size="sm"
                         label="Ask agent to fix"
                         onClick={handleRetryClick}
                         disabled={retryClicked}

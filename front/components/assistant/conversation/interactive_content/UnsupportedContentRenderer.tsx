@@ -1,9 +1,9 @@
 import { ContentMessage, ExclamationCircleIcon } from "@dust-tt/sparkle";
 import React from "react";
 
-import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
-import { ContentCreationHeader } from "@app/components/assistant/conversation/content_creation/ContentCreationHeader";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 
 interface UnsupportedContentRendererProps {
   contentType: string;
@@ -18,7 +18,7 @@ export function UnsupportedContentRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <ContentCreationHeader onClose={closePanel} />
+      <InteractiveContentHeader onClose={closePanel} />
 
       <div className="flex-1 overflow-hidden">
         <CenteredState>

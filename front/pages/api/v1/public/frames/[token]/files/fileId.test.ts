@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { clientExecutableContentType } from "@app/types/files";
+import { frameContentType } from "@app/types/files";
 
 import handler from "./[fileId]";
 
@@ -20,7 +20,7 @@ describe("/api/v1/public/frames/[token]/files/[fileId] security tests", () => {
 
     // Create frame file with conversation context.
     const frameFile = await FileFactory.create(workspace, null, {
-      contentType: clientExecutableContentType,
+      contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
       status: "ready",
@@ -72,7 +72,7 @@ describe("/api/v1/public/frames/[token]/files/[fileId] security tests", () => {
 
     // Frame from conversation A.
     const frameFile = await FileFactory.create(workspace, null, {
-      contentType: clientExecutableContentType,
+      contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
       status: "ready",
@@ -125,7 +125,7 @@ describe("/api/v1/public/frames/[token]/files/[fileId] security tests", () => {
 
     // Frame from conversation.
     const frameFile = await FileFactory.create(workspace, null, {
-      contentType: clientExecutableContentType,
+      contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
       status: "ready",
@@ -177,7 +177,7 @@ describe("/api/v1/public/frames/[token]/files/[fileId] security tests", () => {
 
     // Frame from conversation.
     const frameFile = await FileFactory.create(workspace, null, {
-      contentType: clientExecutableContentType,
+      contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
       status: "ready",
@@ -229,7 +229,7 @@ describe("/api/v1/public/frames/[token]/files/[fileId] security tests", () => {
 
     // Frame from conversation.
     const frameFile = await FileFactory.create(workspace, null, {
-      contentType: clientExecutableContentType,
+      contentType: frameContentType,
       fileName: "frame.html",
       fileSize: 1000,
       status: "ready",

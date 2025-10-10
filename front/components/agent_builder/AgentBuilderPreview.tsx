@@ -17,6 +17,7 @@ import {
   GenerationContext,
   GenerationContextProvider,
 } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
@@ -25,7 +26,6 @@ import type {
   ContentFragmentsType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MentionType,
   Result,
   UserType,
   WorkspaceType,
@@ -73,7 +73,7 @@ interface PreviewContentProps {
   resetConversation: () => void;
   handleSubmit: (
     input: string,
-    mentions: MentionType[],
+    mentions: EditorMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   setStickyMentions: (mentions: AgentMention[]) => void;

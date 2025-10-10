@@ -92,6 +92,7 @@ async function handler(
       "zendeskCustomFieldsConfig",
       "gongRetentionPeriodDays",
       "gongTrackersEnabled",
+      "gongAccountsEnabled",
       "privateIntegrationCredentialId",
     ].includes(configKey)
   ) {

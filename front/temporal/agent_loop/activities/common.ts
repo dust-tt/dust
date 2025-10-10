@@ -179,6 +179,10 @@ export async function notifyWorkflowError(
       conversationId
     );
   if (conversationRes.isErr()) {
+    if (conversationRes.error.type === "conversation_not_found") {
+      return;
+    }
+
     throw new Error(`Conversation not found: ${conversationId}`);
   }
   const conversation = conversationRes.value;

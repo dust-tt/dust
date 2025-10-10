@@ -1,4 +1,4 @@
-import { clientExecutableContentType } from "@app/types";
+import { frameContentType } from "@app/types";
 
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
@@ -311,4 +311,4 @@ const CHART_COLORS = [
 </PieChart>
 `;
 
-export const VIZ_MIME_TYPE = clientExecutableContentType;
+export const VIZ_MIME_TYPE = frameContentType;

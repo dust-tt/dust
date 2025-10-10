@@ -62,18 +62,6 @@ main {
   }
 }
 
-.blinking-cursor > :not(pre):last-child::after {
-  content: "";
-  width: 8px;
-  height: 16px;
-  @apply bg-success-400;
-  display: inline-block;
-  @apply animate-cursor-blink;
-  margin-left: 5px;
-  position: relative;
-  top: 4px;
-}
-
 @keyframes shake {
   10%,
   90% {
@@ -139,10 +127,6 @@ main {
 
 .animate-fade-collapse {
   animation: fade-collapse 500ms ease-out forwards;
-}
-
-.s-blinking-cursor > :not(pre):last-child::after {
-  /* ... existing code ... */
 }
 
 /* Privacy mask style for dd-privacy-mask elements - only when enabled */

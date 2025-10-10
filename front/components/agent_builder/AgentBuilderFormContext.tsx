@@ -100,7 +100,7 @@ const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  canBeConfigured: z.boolean().optional(),
+  configurable: z.boolean().optional(),
 });
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -196,6 +196,8 @@ const scheduleConfigSchema = z.object({
 
 const webhookConfigSchema = z.object({
   includePayload: z.boolean(),
+  event: z.string().optional(),
+  filter: z.string().optional(),
 });
 
 const webhookTriggerSchema = z.object({

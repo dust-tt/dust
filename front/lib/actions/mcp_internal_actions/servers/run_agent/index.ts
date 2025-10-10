@@ -241,7 +241,11 @@ export default async function createServer(
         .nullable(),
       conversationId: z
         .string()
-        .describe("The conversation id where the sub-agent will run.")
+        .describe(
+          "The conversation id where the sub-agent will run. " +
+            "Can be used to continue an existing conversation of the sub-agent. " +
+            "Cannot be the same as the main conversation."
+        )
         .optional()
         .nullable(),
       ...configurableProperties,

@@ -1,8 +1,9 @@
 import { GithubLogo } from "@dust-tt/sparkle";
+
 import type {
   EventField,
-  WebhookEvent,
   PresetWebhook,
+  WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 
 const USER_CHILDREN_FIELDS: EventField[] = [
@@ -514,11 +515,12 @@ const GITHUB_ISSUES_EVENT: WebhookEvent = {
 export const GITHUB_WEBHOOK_PRESET: PresetWebhook = {
   name: "GitHub",
   eventCheck: {
-    type: "header",
+    type: "headers",
     field: "X-GitHub-Event",
   },
   events: [GITHUB_PULL_REQUEST_EVENT, GITHUB_ISSUES_EVENT],
   icon: GithubLogo,
   description:
     "Receive events from GitHub such as creation or edition of issues or pull requests.",
+  featureFlag: "hootl_dev_webhooks",
 };

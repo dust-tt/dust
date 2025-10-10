@@ -1,6 +1,8 @@
 import type { NotificationType } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import type { MessageTemporaryState } from "@app/components/assistant/conversation/types";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
@@ -32,13 +34,13 @@ export function createPlaceholderUserMessage({
   input,
   mentions,
   user,
-  lastMessageRank,
+  rank,
   contentFragments,
 }: {
   input: string;
-  mentions: MentionType[];
+  mentions: EditorMention[];
   user: UserType;
-  lastMessageRank: number;
+  rank: number;
   contentFragments?: ContentFragmentsType;
 }): UserMessageType & { contentFragments: ContentFragmentType[] } {
   const createdAt = new Date().getTime();
@@ -48,13 +50,13 @@ export function createPlaceholderUserMessage({
     id: -1,
     content: input,
     created: createdAt,
-    mentions,
+    mentions: mentions.map((mention) => ({ configurationId: mention.id })),
     user,
     visibility: "visible",
     type: "user_message",
-    sId: `placeholder-${createdAt.toString()}`,
+    sId: `placeholder-user-message-${createdAt.toString()}`,
     version: 0,
-    rank: lastMessageRank + 1,
+    rank: rank,
     context: {
       email,
       fullName,
@@ -80,7 +82,7 @@ export function createPlaceholderUserMessage({
             created: Date.now(),
             visibility: "visible" as const,
             version: 0,
-            rank: lastMessageRank,
+            rank,
             sourceUrl: null,
             contentType: cf.contentType,
             context: {
@@ -121,7 +123,7 @@ export function createPlaceholderUserMessage({
             created: Date.now(),
             visibility: "visible" as const,
             version: 0,
-            rank: lastMessageRank,
+            rank,
             sourceUrl: null,
 
             context: {
@@ -136,6 +138,47 @@ export function createPlaceholderUserMessage({
           }) satisfies ContentFragmentType
       ),
     ],
+  };
+}
+
+export function createPlaceholderAgentMessage({
+  mention,
+  rank,
+}: {
+  mention: EditorMention;
+  rank: number;
+}): MessageTemporaryState {
+  const createdAt = new Date().getTime();
+  return {
+    message: {
+      sId: `placeholder-agent-message-${createdAt.toString()}`,
+      rank: rank,
+      type: "agent_message",
+      version: 0,
+      created: createdAt,
+      completedTs: null,
+      parentMessageId: null,
+      status: "created",
+      content: null,
+      chainOfThought: null,
+      error: null,
+      configuration: {
+        sId: mention.id,
+        name: mention.label,
+        pictureUrl: "",
+        status: "active",
+        canRead: true,
+        requestedGroupIds: [],
+      },
+      citations: {},
+      generatedFiles: [],
+      actions: [],
+    },
+    agentState: "placeholder",
+    isRetrying: false,
+    lastUpdated: new Date(),
+    actionProgress: new Map(),
+    useFullChainOfThought: false,
   };
 }
 

@@ -457,3 +457,37 @@ export function decodeSqids(obj: unknown): unknown {
   }
   return obj;
 }
+
+export function smoothScrollIntoView({
+  element,
+  interval = 100,
+}: {
+  interval?: number;
+  element: HTMLElement;
+}) {
+  return new Promise<void>((resolve) => {
+    //  We leave a little margin, -2 instead of 0, since the autoscroll below can sometimes scroll
+    // a bit over 0, to -0.3 or -0.5
+    const margin = -2;
+
+    const top = element.getBoundingClientRect().top;
+
+    // No need to scroll if the element is already in view
+    if (top >= margin) {
+      resolve();
+      return;
+    }
+
+    element.scrollIntoView({ behavior: "smooth" });
+    const check = () => {
+      const current = Math.round(element.getBoundingClientRect().top);
+
+      if (current >= margin) {
+        resolve();
+      } else {
+        setTimeout(check, interval);
+      }
+    };
+    check();
+  });
+}

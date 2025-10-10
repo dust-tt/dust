@@ -16,6 +16,8 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentMention } from "@app/types";
 import { isAgentMention } from "@app/types";
 
+const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
+
 export const AssistantInputBarVirtuoso = ({
   context,
 }: {
@@ -39,14 +41,6 @@ export const AssistantInputBarVirtuoso = ({
       : lastUserMessage.mentions.filter(isAgentMention);
   }, [lastUserMessage]);
 
-  const scrollToBottom = useCallback(() => {
-    methods.scrollToItem({
-      index: "LAST",
-      align: "end",
-      behavior: "smooth",
-    });
-  }, [methods]);
-
   const { bottomOffset } = useVirtuosoLocation();
   const distanceUntilButtonVisibe = 100;
   const distanceToFullOpacity = 200;
@@ -57,8 +51,15 @@ export const AssistantInputBarVirtuoso = ({
       ? 0
       : (bottomOffset - distanceUntilButtonVisibe) / distanceToFullOpacity
   );
-  const hiddenRotation = 180;
-  const rotation = hiddenRotation * (1 - opacity);
+
+  const scrollToBottom = useCallback(() => {
+    methods.scrollToItem({
+      index: "LAST",
+      align: "end",
+      behavior:
+        bottomOffset < MAX_DISTANCE_FOR_SMOOTH_SCROLL ? "smooth" : "instant",
+    });
+  }, [bottomOffset, methods]);
 
   return (
     <div
@@ -73,7 +74,6 @@ export const AssistantInputBarVirtuoso = ({
           top: "-30px",
           right: "50%",
           opacity,
-          transform: `rotate(${rotation}deg)`,
           visibility: hidden ? "hidden" : "visible",
         }}
       >

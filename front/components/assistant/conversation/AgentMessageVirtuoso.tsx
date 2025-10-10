@@ -1,11 +1,13 @@
 import {
   ArrowPathIcon,
+  AtomIcon,
   Button,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   ConversationMessage,
   DocumentIcon,
+  Icon,
   InteractiveImageGrid,
   Markdown,
   Separator,
@@ -20,17 +22,18 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
+import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import {
-  AgentMessageContentCreationGeneratedFiles,
+  AgentMessageInteractiveContentGeneratedFiles,
   DefaultAgentMessageGeneratedFiles,
 } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { useActionValidationContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useAutoOpenContentCreation } from "@app/components/assistant/conversation/content_creation/useAutoOpenContentCreation";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import type {
   AgentMessageStateWithControlEvent,
@@ -76,7 +79,7 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
-  isContentCreationFileContentType,
+  isInteractiveContentFileContentType,
   isPersonalAuthenticationRequiredErrorContent,
   isSupportedImageContentType,
 } from "@app/types";
@@ -84,6 +87,7 @@ import {
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
+  isAgentMessageHandover: boolean;
   messageStreamState: MessageTemporaryState;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
@@ -93,6 +97,7 @@ interface AgentMessageProps {
 export function AgentMessageVirtuoso({
   conversationId,
   isLastMessage,
+  isAgentMessageHandover,
   messageStreamState,
   messageFeedback,
   owner,
@@ -201,17 +206,17 @@ export function AgentMessageVirtuoso({
     const isInArray = generationContext.generatingMessages.some(
       (m) => m.messageId === sId
     );
-    if (agentMessageToRender.status === "created" && !isInArray) {
+    if (shouldStream && !isInArray) {
       generationContext.setGeneratingMessages((s) => [
         ...s,
         { messageId: sId, conversationId },
       ]);
-    } else if (agentMessageToRender.status !== "created" && isInArray) {
+    } else if (!shouldStream && isInArray) {
       generationContext.setGeneratingMessages((s) =>
         s.filter((m) => m.messageId !== sId)
       );
     }
-  }, [agentMessageToRender.status, generationContext, sId, conversationId]);
+  }, [shouldStream, generationContext, sId, conversationId]);
 
   const PopoverContent = useCallback(
     () => (
@@ -297,7 +302,7 @@ export function AgentMessageVirtuoso({
   // Show stop agent button only when streaming with multiple agents
   // (it feels distractive to show buttons while streaming so we would like to avoid as much as possible.
   // However, when there are multiple agents there is no other way to stop only single agent so we need to show it here).
-  if (hasMultiAgents && agentMessageToRender.status === "created") {
+  if (hasMultiAgents && shouldStream) {
     buttons.push(
       <Button
         key="stop-msg-button"
@@ -332,7 +337,7 @@ export function AgentMessageVirtuoso({
   }
 
   // Show retry button as long as it's not streaming
-  if (agentMessageToRender.status !== "created") {
+  if (agentMessageToRender.status !== "created" && !shouldStream) {
     buttons.push(
       <Button
         key="retry-msg-button"
@@ -405,18 +410,34 @@ export function AgentMessageVirtuoso({
   const canMention = agentConfiguration.canRead;
   const isArchived = agentConfiguration.status === "archived";
 
+  // Determine if this should be displayed as "agentAsTool" type.
+  const isDustDeep = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_DEEP;
+  const isDeepDive = isAgentMessageHandover && isDustDeep;
+
   const renderName = useCallback(
-    () => (
-      <AgentHandle
-        assistant={{
-          sId: agentConfiguration.sId,
-          name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
-        }}
-        canMention={canMention}
-        isDisabled={isArchived}
-      />
-    ),
-    [agentConfiguration.name, agentConfiguration.sId, canMention, isArchived]
+    () =>
+      isDeepDive ? (
+        <span className="inline-flex items-center text-muted-foreground dark:text-muted-foreground-night">
+          <Icon visual={AtomIcon} size="sm" />
+          <span className="ml-1">Deep Dive</span>
+        </span>
+      ) : (
+        <AgentHandle
+          assistant={{
+            sId: agentConfiguration.sId,
+            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+          }}
+          canMention={canMention}
+          isDisabled={isArchived}
+        />
+      ),
+    [
+      agentConfiguration.name,
+      agentConfiguration.sId,
+      canMention,
+      isArchived,
+      isDeepDive,
+    ]
   );
 
   return (
@@ -427,8 +448,17 @@ export function AgentMessageVirtuoso({
       avatarBusy={agentMessageToRender.status === "created"}
       isDisabled={isArchived}
       renderName={renderName}
-      timestamp={formatTimestring(agentMessageToRender.created)}
-      type="agent"
+      timestamp={
+        isDeepDive
+          ? undefined
+          : formatTimestring(
+              agentMessageToRender.completedTs ?? agentMessageToRender.created
+            )
+      }
+      completionStatus={
+        <AgentMessageCompletionStatus agentMessage={agentMessageToRender} />
+      }
+      type={isDeepDive ? "agentAsTool" : "agent"}
       citations={citations}
     >
       <div>
@@ -558,8 +588,8 @@ function AgentMessageContent({
     []
   );
 
-  // Auto-open content creation drawer when content creation files are available.
-  const { contentCreationFiles } = useAutoOpenContentCreation({
+  // Auto-open interactive content drawer when interactive files are available.
+  const { interactiveFiles } = useAutoOpenInteractiveContent({
     messageStreamState,
     agentMessageToRender: agentMessage,
     isLastMessage,
@@ -617,7 +647,7 @@ function AgentMessageContent({
     .filter(
       (file) =>
         !isSupportedImageContentType(file.contentType) &&
-        !isContentCreationFileContentType(file.contentType)
+        !isInteractiveContentFileContentType(file.contentType)
     );
 
   return (
@@ -628,7 +658,7 @@ function AgentMessageContent({
         actionProgress={messageStreamState.actionProgress}
         owner={owner}
       />
-      <AgentMessageContentCreationGeneratedFiles files={contentCreationFiles} />
+      <AgentMessageInteractiveContentGeneratedFiles files={interactiveFiles} />
       {(inProgressImages.length > 0 || completedImages.length > 0) && (
         <InteractiveImageGrid
           images={[
@@ -650,27 +680,20 @@ function AgentMessageContent({
 
       {agentMessage.content !== null && (
         <div>
-          {lastTokenClassification !== "chain_of_thought" &&
-          agentMessage.content === "" ? (
-            <div className="blinking-cursor">
-              <span></span>
-            </div>
-          ) : (
-            <CitationsContext.Provider
-              value={{
-                references,
-                updateActiveReferences,
-              }}
-            >
-              <Markdown
-                content={sanitizeVisualizationContent(agentMessage.content)}
-                isStreaming={streaming && lastTokenClassification === "tokens"}
-                isLastMessage={isLastMessage}
-                additionalMarkdownComponents={additionalMarkdownComponents}
-                additionalMarkdownPlugins={additionalMarkdownPlugins}
-              />
-            </CitationsContext.Provider>
-          )}
+          <CitationsContext.Provider
+            value={{
+              references,
+              updateActiveReferences,
+            }}
+          >
+            <Markdown
+              content={sanitizeVisualizationContent(agentMessage.content)}
+              isStreaming={streaming && lastTokenClassification === "tokens"}
+              isLastMessage={isLastMessage}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
+            />
+          </CitationsContext.Provider>
         </div>
       )}
       {generatedFiles.length > 0 && (

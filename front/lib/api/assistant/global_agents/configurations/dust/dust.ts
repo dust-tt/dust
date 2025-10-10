@@ -9,6 +9,7 @@ import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_ag
 import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -36,6 +37,7 @@ export function _getDustGlobalAgent(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     deepResearchMCPServerView,
+    interactiveContentMCPServerView,
   }: {
     settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
@@ -43,6 +45,7 @@ export function _getDustGlobalAgent(
     webSearchBrowseMCPServerView: MCPServerViewResource | null;
     searchMCPServerView: MCPServerViewResource | null;
     deepResearchMCPServerView: MCPServerViewResource | null;
+    interactiveContentMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
   const owner = auth.getNonNullableWorkspace();
@@ -147,7 +150,7 @@ export function _getDustGlobalAgent(
     scope: "global" as const,
     userFavorite: false,
     model,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     tags: [],
@@ -293,6 +296,13 @@ export function _getDustGlobalAgent(
       secretName: null,
     });
   }
+
+  actions.push(
+    ..._getInteractiveContentToolConfiguration({
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      interactiveContentMCPServerView,
+    })
+  );
 
   // Fix the action ids.
   actions.forEach((action, i) => {

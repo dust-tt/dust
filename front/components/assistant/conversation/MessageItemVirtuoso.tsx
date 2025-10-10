@@ -2,10 +2,8 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessageVirtuoso } from "@app/components/assistant/conversation/AgentMessageVirtuoso";
-import {
-  AttachmentCitation,
-  contentFragmentToAttachmentCitation,
-} from "@app/components/assistant/conversation/AttachmentCitation";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
 import type {
@@ -15,10 +13,12 @@ import type {
 import {
   getMessageDate,
   getMessageSId,
+  isHandoverUserMessage,
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
@@ -36,6 +36,12 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
     { data, context, prevData, nextData }: MessageItemProps,
     ref
   ) {
+    const fileUploaderService = useFileUploaderService({
+      owner: context.owner,
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: context.conversationId },
+    });
+
     const sId = getMessageSId(data);
 
     const sendNotification = useSendNotification();
@@ -98,15 +104,17 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
     };
 
     const citations =
-      isUserMessage(data) && data.contentFragments
+      isUserMessage(data) && data.contentFragments.length > 0
         ? data.contentFragments.map((contentFragment) => {
             const attachmentCitation =
               contentFragmentToAttachmentCitation(contentFragment);
 
             return (
               <AttachmentCitation
+                owner={context.owner}
                 key={attachmentCitation.id}
                 attachmentCitation={attachmentCitation}
+                fileUploaderService={fileUploaderService}
               />
             );
           })
@@ -116,6 +124,13 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
       prevData &&
       getMessageDate(prevData).toDateString() ===
         getMessageDate(data).toDateString();
+
+    const shouldHideUserMessage = isHandoverUserMessage(data);
+    const isAgentMessageHandover =
+      prevData &&
+      isHandoverUserMessage(prevData) &&
+      isMessageTemporayState(data) &&
+      data.message.parentMessageId === prevData.sId;
 
     return (
       <>
@@ -129,7 +144,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
             context.isInModal ? "max-w-full" : "max-w-3xl"
           )}
         >
-          {isUserMessage(data) && (
+          {isUserMessage(data) && !shouldHideUserMessage && (
             <UserMessage
               citations={citations}
               conversationId={context.conversationId}
@@ -143,6 +158,7 @@ const MessageItemVirtuoso = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={context.user}
               conversationId={context.conversationId}
               isLastMessage={!nextData}
+              isAgentMessageHandover={isAgentMessageHandover ?? false}
               messageStreamState={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}

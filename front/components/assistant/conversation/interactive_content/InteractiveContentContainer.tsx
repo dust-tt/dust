@@ -1,26 +1,26 @@
 import { Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import { CenteredState } from "@app/components/assistant/conversation/content_creation/CenteredState";
-import { ClientExecutableRenderer } from "@app/components/assistant/conversation/content_creation/ClientExecutableRenderer";
-import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/content_creation/UnsupportedContentRenderer";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
+import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
-import { clientExecutableContentType } from "@app/types";
+import { frameContentType } from "@app/types";
 
-interface ContentCreationContainerProps {
+interface InteractiveContentContainerProps {
   conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 
-export function ContentCreationContainer({
+export function InteractiveContentContainer({
   conversation,
   owner,
-}: ContentCreationContainerProps) {
+}: InteractiveContentContainerProps) {
   const { data: contentHash } = useConversationSidePanelContext();
 
   const contentId = useMemo(() => {
@@ -47,7 +47,7 @@ export function ContentCreationContainer({
       return (
         <CenteredState>
           <Spinner size="sm" />
-          <span>Loading file...</span>
+          <span>Loading frame...</span>
         </CenteredState>
       );
     }
@@ -71,9 +71,9 @@ export function ContentCreationContainer({
 
     // Render appropriate content based on content type.
     switch (fileMetadata.contentType) {
-      case clientExecutableContentType:
+      case frameContentType:
         return (
-          <ClientExecutableRenderer
+          <FrameRenderer
             conversation={conversation}
             fileId={contentId}
             lastEditedByAgentConfigurationId={

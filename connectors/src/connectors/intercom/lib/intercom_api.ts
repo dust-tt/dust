@@ -3,6 +3,7 @@ import type {
   IntercomCollectionType,
   IntercomConversationType,
   IntercomConversationWithPartsType,
+  IntercomFetchConversationsResponseType,
   IntercomHelpCenterType,
   IntercomTeamType,
 } from "@connectors/connectors/intercom/lib/types";
@@ -314,21 +315,17 @@ export async function fetchIntercomConversations({
   slidingWindow,
   cursor = null,
   pageSize = 20,
+  closedAfter,
+  state,
 }: {
   accessToken: string;
   teamId?: string;
   slidingWindow: number;
   cursor: string | null;
   pageSize?: number;
-}): Promise<{
-  conversations: IntercomConversationType[];
-  pages: {
-    next?: {
-      page: number;
-      starting_after: string;
-    };
-  };
-}> {
+  closedAfter?: number;
+  state?: string;
+}): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(
     Date.now() - slidingWindow * 24 * 60 * 60 * 1000
   );
@@ -359,21 +356,38 @@ export async function fetchIntercomConversations({
     });
   }
 
-  const response = await queryIntercomAPI({
-    accessToken,
-    path: `conversations/search`,
-    method: "POST",
-    body: {
-      query: {
-        operator: "AND",
-        value: queryFilters,
+  if (closedAfter) {
+    queryFilters.push({
+      field: "statistics.last_close_at",
+      operator: ">",
+      value: closedAfter,
+    });
+  }
+
+  if (state) {
+    queryFilters.push({
+      field: "state",
+      operator: "=",
+      value: state,
+    });
+  }
+
+  const response: IntercomFetchConversationsResponseType =
+    await queryIntercomAPI({
+      accessToken,
+      path: `conversations/search`,
+      method: "POST",
+      body: {
+        query: {
+          operator: "AND",
+          value: queryFilters,
+        },
+        pagination: {
+          per_page: pageSize,
+          starting_after: cursor,
+        },
       },
-      pagination: {
-        per_page: pageSize,
-        starting_after: cursor,
-      },
-    },
-  });
+    });
 
   return response;
 }

@@ -75,7 +75,7 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView,
   searchMCPServerView,
   dataSourcesFileSystemMCPServerView,
-  contentCreationMCPServerView,
+  interactiveContentMCPServerView,
   runAgentMCPServerView,
   toolsetsMCPServerView,
   dataWarehousesMCPServerView,
@@ -91,7 +91,7 @@ function getGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
   dataSourcesFileSystemMCPServerView: MCPServerViewResource | null;
-  contentCreationMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
   runAgentMCPServerView: MCPServerViewResource | null;
   toolsetsMCPServerView: MCPServerViewResource | null;
   dataWarehousesMCPServerView: MCPServerViewResource | null;
@@ -124,12 +124,14 @@ function getGlobalAgent({
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
         searchMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT35_TURBO:
       agentConfiguration = _getGPT35TurboGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT4:
@@ -137,6 +139,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5:
@@ -144,6 +147,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_NANO:
@@ -151,6 +155,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_MINI:
@@ -158,6 +163,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GPT5_THINKING:
@@ -165,6 +171,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O1:
@@ -172,6 +179,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O1_MINI:
@@ -182,6 +190,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O3_MINI:
@@ -189,6 +198,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.O3:
@@ -196,16 +206,20 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
-      agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
+      agentConfiguration = _getClaudeInstantGlobalAgent({
+        settings,
+      });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
       agentConfiguration = _getClaude4SonnetGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
@@ -213,6 +227,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
@@ -220,12 +235,14 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       agentConfiguration = _getClaude3HaikuGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
@@ -233,16 +250,21 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_2:
-      agentConfiguration = _getClaude2GlobalAgent({ auth, settings });
+      agentConfiguration = _getClaude2GlobalAgent({
+        auth,
+        settings,
+      });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
       agentConfiguration = _getMistralLargeGlobalAgent({
         settings,
         auth,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
@@ -250,12 +272,14 @@ function getGlobalAgent({
         settings,
         auth,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
       agentConfiguration = _getMistralSmallGlobalAgent({
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
@@ -263,6 +287,7 @@ function getGlobalAgent({
         auth,
         settings,
         webSearchBrowseMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
@@ -311,6 +336,7 @@ function getGlobalAgent({
         webSearchBrowseMCPServerView,
         searchMCPServerView,
         deepResearchMCPServerView,
+        interactiveContentMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_DEEP:
@@ -319,7 +345,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         webSearchBrowseMCPServerView,
         dataSourcesFileSystemMCPServerView,
-        contentCreationMCPServerView,
+        interactiveContentMCPServerView,
         runAgentMCPServerView,
         dataWarehousesMCPServerView,
         toolsetsMCPServerView,
@@ -411,7 +437,7 @@ export async function getGlobalAgents(
     webSearchBrowseMCPServerView,
     searchMCPServerView,
     dataSourcesFileSystemMCPServerView,
-    contentCreationMCPServerView,
+    interactiveContentMCPServerView,
     runAgentMCPServerView,
     toolsetsMCPServerView,
     dataWarehousesMCPServerView,
@@ -452,7 +478,7 @@ export async function getGlobalAgents(
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "content_creation"
+          "interactive_content"
         )
       : null,
     variant === "full"
@@ -536,7 +562,7 @@ export async function getGlobalAgents(
       webSearchBrowseMCPServerView,
       searchMCPServerView,
       dataSourcesFileSystemMCPServerView,
-      contentCreationMCPServerView,
+      interactiveContentMCPServerView,
       runAgentMCPServerView,
       toolsetsMCPServerView,
       dataWarehousesMCPServerView,

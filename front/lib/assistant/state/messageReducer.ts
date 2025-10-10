@@ -10,6 +10,7 @@ import type {
 } from "@app/types/actions";
 
 export type AgentStateClassification =
+  | "placeholder"
   | "thinking"
   | "acting"
   | "writing"

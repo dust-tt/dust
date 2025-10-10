@@ -9,7 +9,6 @@ import {
 } from "@virtuoso.dev/message-list";
 import _ from "lodash";
 import debounce from "lodash/debounce";
-import { useSearchParams } from "next/navigation";
 import React, {
   useCallback,
   useEffect,
@@ -21,17 +20,20 @@ import React, {
 import { AssistantInputBarVirtuoso } from "@app/components/assistant/conversation/AssistantInputBarVirtuoso";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
+import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import {
+  createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import MessageItemVirtuoso from "@app/components/assistant/conversation/MessageItemVirtuoso";
-import { StickyHeaderVirtuoso } from "@app/components/assistant/conversation/StickyHeaderVirtuoso";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 import {
+  areSameRank,
+  getMessageRank,
   isMessageTemporayState,
   isUserMessage,
   makeInitialMessageStreamState,
@@ -59,7 +61,6 @@ import type {
   ContentFragmentType,
   ConversationTitleEvent,
   LightMessageType,
-  MentionType,
   Result,
   UserMessageNewEvent,
   UserType,
@@ -83,15 +84,14 @@ interface ConversationViewerProps {
   user: UserType;
 }
 
-function easeOutSine(x: number): number {
-  return Math.sin((x * Math.PI) / 2);
+function easeOutQuint(x: number): number {
+  return 1 - Math.pow(1 - x, 5);
 }
 
-// Slighly slower than the default smooth scroll.
 function customSmoothScroll() {
   return {
     animationFrameCount: 30,
-    easing: easeOutSine,
+    easing: easeOutQuint,
   };
 }
 /**
@@ -149,8 +149,6 @@ const ConversationViewerVirtuoso = ({
     limit: DEFAULT_PAGE_LIMIT,
   });
 
-  const justCreated = useSearchParams().get("justCreated") === "true";
-
   const { mutateConversationParticipants } = useConversationParticipants({
     conversationId,
     workspaceId: owner.sId,
@@ -178,12 +176,9 @@ const ConversationViewerVirtuoso = ({
     }
 
     // We use the messages ranks to know what is older and what is newer.
+    const ranks = ref.current.data.get().map(getMessageRank);
 
-    const minRank = Math.min(
-      ...ref.current.data
-        .get()
-        .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
-    );
+    const minRank = Math.min(...ranks);
 
     const messagesFromBackend = messages.flatMap((m) => m.messages);
 
@@ -197,11 +192,7 @@ const ConversationViewerVirtuoso = ({
       );
     }
 
-    const maxRank = Math.max(
-      ...ref.current.data
-        .get()
-        .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
-    );
+    const maxRank = Math.max(...ranks);
 
     const recentMessagesFromBackend = messagesFromBackend.filter(
       (m) => m.rank > maxRank
@@ -261,16 +252,16 @@ const ConversationViewerVirtuoso = ({
 
       if (!eventIds.current.includes(eventPayload.eventId)) {
         eventIds.current.push(eventPayload.eventId);
-
         switch (event.type) {
           case "user_message_new":
             if (ref.current) {
-              // Skip our own messages, otherwise they get duplicated because the event is fired before we get the message from the backend.
-              if (event.message.user?.id === user.id) {
-                return;
-              }
+              const userMessage: VirtuosoMessage = {
+                ...event.message,
+                contentFragments: [],
+              };
               const predicate = (m: VirtuosoMessage) =>
-                isUserMessage(m) && m.sId === event.message.sId;
+                isUserMessage(m) && areSameRank(m, userMessage);
+
               const exists = ref.current.data.find(predicate);
 
               if (!exists) {
@@ -281,8 +272,10 @@ const ConversationViewerVirtuoso = ({
                 // We don't update if it already exists as if it already exists, it means we have received the message from the backend.
               }
 
-              void mutateConversationParticipants(async (participants) =>
-                getUpdatedParticipantsFromEvent(participants, event)
+              void mutateConversationParticipants(
+                async (participants) =>
+                  getUpdatedParticipantsFromEvent(participants, event),
+                { revalidate: false }
               );
             }
             break;
@@ -294,8 +287,7 @@ const ConversationViewerVirtuoso = ({
 
               // Replace the message in the exist list data, or append.
               const predicate = (m: VirtuosoMessage) =>
-                isMessageTemporayState(m) &&
-                m.message.rank === messageStreamState.message.rank;
+                isMessageTemporayState(m) && areSameRank(m, messageStreamState);
               const exists = ref.current.data.find(predicate);
 
               if (exists) {
@@ -317,8 +309,38 @@ const ConversationViewerVirtuoso = ({
             break;
 
           case "conversation_title":
-            void mutateConversation();
-            void mutateConversations(); // to refresh the list of convos in the sidebar (title)
+            void mutateConversation(
+              (current) => {
+                if (current) {
+                  return {
+                    ...current,
+                    conversation: {
+                      ...current.conversation,
+                      title: event.title,
+                    },
+                  };
+                }
+              },
+              { revalidate: false }
+            );
+
+            // to refresh the list of convos in the sidebar (title)
+            void mutateConversations(
+              (currentData) => {
+                if (currentData?.conversations) {
+                  return {
+                    ...currentData,
+                    conversations: currentData.conversations.map((c) =>
+                      c.sId === conversationId
+                        ? { ...c, title: event.title }
+                        : c
+                    ),
+                  };
+                }
+              },
+              { revalidate: false }
+            );
+
             break;
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
@@ -337,12 +359,12 @@ const ConversationViewerVirtuoso = ({
       }
     },
     [
-      mutateConversationParticipants,
+      conversationId,
+      debouncedMarkAsRead,
       mutateConversation,
+      mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
-      debouncedMarkAsRead,
-      user.id,
     ]
   );
 
@@ -362,7 +384,7 @@ const ConversationViewerVirtuoso = ({
   const handleSubmit = useCallback(
     async (
       input: string,
-      mentions: MentionType[],
+      mentions: EditorMention[],
       contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (!ref?.current) {
@@ -374,33 +396,54 @@ const ConversationViewerVirtuoso = ({
       }
       const messageData = {
         input,
-        mentions,
+        mentions: mentions.map((mention) => ({ configurationId: mention.id })),
         contentFragments,
         clientSideMCPServerIds: removeNulls([serverId]),
       };
 
       const lastMessageRank = Math.max(
-        ...ref.current.data
-          .get()
-          .map((m) => (isMessageTemporayState(m) ? m.message.rank : m.rank))
+        ...ref.current.data.get().map(getMessageRank)
       );
 
-      const placeholderMessage: VirtuosoMessage = createPlaceholderUserMessage({
+      let rank =
+        lastMessageRank +
+        // Content fragments are prepended as "message" in the conversation, before the user message.
+        // We need to account for their ranks as well.
+        contentFragments.contentNodes.length +
+        contentFragments.uploaded.length +
+        // +1 for the user message
+        1;
+      const placeholderUserMsg: VirtuosoMessage = createPlaceholderUserMessage({
         input,
         mentions,
         user,
-        lastMessageRank,
+        rank,
         contentFragments,
       });
 
+      const placeholderAgentMsgs: VirtuosoMessage[] = [];
+      for (const mention of mentions) {
+        // +1 per agent message mentionned
+        rank += 1;
+        placeholderAgentMsgs.push(
+          createPlaceholderAgentMessage({
+            mention,
+            rank,
+          })
+        );
+      }
+
       const nbMessages = ref.current.data.get().length;
-      ref.current.data.append([placeholderMessage], () => {
-        return {
-          index: nbMessages, // Avoid jumping around when the agent message is generated.
-          align: "start",
-          behavior: customSmoothScroll,
-        };
-      });
+      ref.current.data.append(
+        [placeholderUserMsg, ...placeholderAgentMsgs],
+        () => {
+          return {
+            index: nbMessages, // Avoid jumping around when the agent message is generated.
+            align: "start",
+            behavior: customSmoothScroll,
+          };
+        }
+      );
 
       const result = await submitMessage({
         owner,
@@ -436,8 +479,7 @@ const ConversationViewerVirtuoso = ({
 
       // map() is how we update the state of virtuoso messages.
       ref.current.data.map((m) =>
-        isUserMessage(m) &&
-        (m.sId === placeholderMessage.sId || m.sId === messageFromBackend.sId)
+        areSameRank(m, placeholderUserMsg)
           ? {
               ...messageFromBackend,
               contentFragments: contentFragmentsFromBackend,
@@ -497,6 +539,10 @@ const ConversationViewerVirtuoso = ({
     []
   );
 
+  const itemIdentity = useCallback((item: VirtuosoMessage) => {
+    return `message-rank-${isMessageTemporayState(item) ? item.message.rank : item.rank}`;
+  }, []);
+
   const feedbacksByMessageId = useMemo(() => {
     return feedbacks.reduce(
       (acc, feedback) => {
@@ -507,46 +553,62 @@ const ConversationViewerVirtuoso = ({
     );
   }, [feedbacks]);
 
+  const context = useMemo(() => {
+    return {
+      user,
+      owner,
+      handleSubmit,
+      conversationId,
+      isInModal,
+      feedbacksByMessageId,
+    };
+  }, [
+    user,
+    owner,
+    handleSubmit,
+    conversationId,
+    isInModal,
+    feedbacksByMessageId,
+  ]);
+
   return (
     <>
       {conversationError && (
         <ConversationErrorDisplay error={conversationError} />
       )}
       {initialListData.length > 0 ? (
-        <VirtuosoMessageListLicense
-          licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
-        >
-          <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
-            initialData={initialListData}
-            initialLocation={{
-              index: justCreated ? 0 : "LAST",
-              align: justCreated ? "start" : "end",
-              behavior: "instant",
-            }}
-            ref={ref}
-            ItemContent={MessageItemVirtuoso}
-            // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
-            className={classNames(
-              "dd-privacy-mask",
-              "s-@container/conversation",
-              "h-full w-full",
-              isInModal ? "" : "px-4 md:px-8"
-            )}
-            shortSizeAlign="bottom"
-            StickyHeader={StickyHeaderVirtuoso}
-            StickyFooter={AssistantInputBarVirtuoso}
-            computeItemKey={computeItemKey}
-            onScroll={onScroll}
-            context={{
-              user,
-              owner,
-              handleSubmit,
-              conversationId,
-              isInModal,
-              feedbacksByMessageId,
-            }}
-          />
-        </VirtuosoMessageListLicense>
+        <>
+          <VirtuosoMessageListLicense
+            licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
+          >
+            <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
+              initialData={initialListData}
+              initialLocation={{
+                index: "LAST",
+                align: "end",
+                behavior: "instant",
+              }}
+              ref={ref}
+              ItemContent={MessageItemVirtuoso}
+              StickyFooter={AssistantInputBarVirtuoso}
+              // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
+              className={classNames(
+                "dd-privacy-mask",
+                "s-@container/conversation",
+                "h-full w-full",
+                isInModal ? "" : "px-4 md:px-8"
+              )}
+              shortSizeAlign="top"
+              computeItemKey={computeItemKey}
+              onScroll={onScroll}
+              context={context}
+              itemIdentity={itemIdentity}
+              // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
+              increaseViewportBy={8192}
+              enforceStickyFooterAtBottom={true}
+            />
+          </VirtuosoMessageListLicense>
+        </>
       ) : (
         <div className="flex w-full flex-1 flex-col items-center justify-center gap-8 py-4">
           <Spinner variant="color" size="xl" />

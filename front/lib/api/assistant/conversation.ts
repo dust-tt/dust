@@ -539,7 +539,9 @@ export async function postUserMessage(
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
                   userContextOriginMessageId: originMessage?.sId ?? null,
-                  userContextLastTriggerRunAt: context.lastTriggerRunAt,
+                  userContextLastTriggerRunAt: context.lastTriggerRunAt
+                    ? new Date(context.lastTriggerRunAt)
+                    : null,
                   userId: user
                     ? user.id
                     : (

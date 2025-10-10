@@ -85,13 +85,14 @@ export async function intercomSyncWorkflow({
     }
   );
 
-  // If we got no signal, then we're on the hourly execution
-  // We will only refresh the Help Center data as Conversations have webhooks
-  if (
+  const isHourlyExecution =
     uniqueHelpCenterIds.size === 0 &&
     uniqueTeamIds.size === 0 &&
-    !hasUpdatedSelectAllConvos
-  ) {
+    !hasUpdatedSelectAllConvos;
+
+  // If we got no signal, then we're on the hourly execution
+  // We will only refresh the Help Center data as Conversations have webhooks
+  if (isHourlyExecution) {
     const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
     helpCenterIds.forEach((i) => uniqueHelpCenterIds.add(i));
   }
@@ -146,6 +147,7 @@ export async function intercomSyncWorkflow({
       if (!uniqueTeamIds.has(teamId)) {
         continue;
       }
+
       // Async operation yielding control to the Temporal runtime.
       await executeChild(intercomTeamFullSyncWorkflow, {
         workflowId: `${workflowId}-team-${teamId}`,

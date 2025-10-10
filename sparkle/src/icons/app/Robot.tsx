@@ -11,7 +11,7 @@ const SvgRobot = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M12 14a8 8 0 0 1 8 8H4a8 8 0 0 1 8-8Zm1-11h4a3 3 0 0 1 3 3v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V6a3 3 0 0 1 3-3h4V2h2v1ZM8 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
+      d="M12 14a8 8 0 0 1 8 8H4a8 8 0 0 1 8-8Zm2-11h3a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h3V2h4v1ZM8 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"
     />
   </svg>
 );

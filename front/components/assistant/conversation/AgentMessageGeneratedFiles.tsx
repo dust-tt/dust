@@ -12,7 +12,7 @@ import {
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import type { LightAgentMessageType } from "@app/types";
-import { clientExecutableContentType } from "@app/types";
+import { frameContentType } from "@app/types";
 
 interface DefaultAgentMessageGeneratedFilesProps {
   document: MarkdownCitation;
@@ -45,29 +45,29 @@ export function DefaultAgentMessageGeneratedFiles({
   );
 }
 
-// Content creation files.
+// Interactive content files.
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
 ) {
-  if (file.contentType === clientExecutableContentType) {
-    return "Visualization";
+  if (file.contentType === frameContentType) {
+    return "Frame";
   }
 
   return null;
 }
 
-interface AgentMessageContentCreationGeneratedFilesProps {
+interface AgentMessageInteractiveContentGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
   onClick?: () => void;
   variant?: "list" | "grid";
 }
 
-export function AgentMessageContentCreationGeneratedFiles({
+export function AgentMessageInteractiveContentGeneratedFiles({
   files,
   onClick,
   variant = "list",
-}: AgentMessageContentCreationGeneratedFilesProps) {
+}: AgentMessageInteractiveContentGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
 
   if (files.length === 0) {
@@ -80,7 +80,7 @@ export function AgentMessageContentCreationGeneratedFiles({
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
           openPanel({
-            type: "content_creation",
+            type: "interactive_content",
             fileId: file.fileId,
           });
           onClick?.();

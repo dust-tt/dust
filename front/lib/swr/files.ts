@@ -22,7 +22,7 @@ import type {
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
-  fileId: string
+  fileId: string | null | undefined
 ) => `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
 
 export const getProcessedFileDownloadUrl = (
@@ -30,15 +30,26 @@ export const getProcessedFileDownloadUrl = (
   fileId: string
 ) => `/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
 
-export function useFileProcessedContent(
+export const getFileDownloadUrl = (owner: LightWorkspaceType, fileId: string) =>
+  `/api/w/${owner.sId}/files/${fileId}?action=download`;
+
+export const getFileViewUrl = (
   owner: LightWorkspaceType,
-  fileId: string | null,
+  fileId: string | null | undefined
+) => `/api/w/${owner.sId}/files/${fileId}?action=view`;
+
+export function useFileProcessedContent({
+  owner,
+  fileId,
+  config,
+}: {
+  owner: LightWorkspaceType;
+  fileId: string | null | undefined;
   config?: SWRConfiguration & {
     disabled?: boolean;
-  }
-) {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const isDisabled = config?.disabled || fileId === null;
+  };
+}) {
+  const isDisabled = config?.disabled ?? !fileId;
 
   const {
     data: response,
@@ -159,10 +170,14 @@ export function useFileContent({
   fileId,
   owner,
   cacheKey,
+  config,
 }: {
-  fileId: string;
+  fileId: string | null | undefined;
   owner: LightWorkspaceType;
   cacheKey?: string;
+  config?: SWRConfiguration & {
+    disabled?: boolean;
+  };
 }) {
   // Include cacheKey in the SWR key if provided to force cache invalidation.
   const swrKey = cacheKey
@@ -176,7 +191,8 @@ export function useFileContent({
       const response = await fetch(url);
 
       return response.text();
-    }
+    },
+    { disabled: !fileId || config?.disabled, ...config }
   );
 
   return {
@@ -187,7 +203,7 @@ export function useFileContent({
   };
 }
 
-export function useShareContentCreationFile({
+export function useShareInteractiveContentFile({
   fileId,
   owner,
 }: {

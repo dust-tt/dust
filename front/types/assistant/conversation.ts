@@ -89,7 +89,7 @@ export type UserMessageContext = {
   profilePictureUrl: string | null;
   origin?: UserMessageOrigin | null;
   originMessageId?: string | null;
-  lastTriggerRunAt?: Date | null;
+  lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
 };

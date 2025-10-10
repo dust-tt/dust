@@ -1,11 +1,11 @@
 import groupBy from "lodash/groupBy";
 
 import {
-  CREATE_CONTENT_CREATION_FILE_TOOL_NAME,
-  EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-  RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
-  REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/content_creation/types";
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/types";
 import {
   getFileContent,
   getUpdatedContentAndOccurrences,
@@ -19,16 +19,15 @@ import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type {
-  ContentCreationFileContentType,
+  InteractiveContentFileContentType,
   ModelId,
   Result,
   WorkspaceType,
 } from "@app/types";
 import {
-  clientExecutableContentType,
-  CONTENT_CREATION_FILE_FORMATS,
   Err,
-  isContentCreationContentType,
+  INTERACTIVE_CONTENT_FILE_FORMATS,
+  isInteractiveContentFileContentType,
   normalizeError,
   Ok,
 } from "@app/types";
@@ -95,10 +94,10 @@ function validateFileTitle({
   mimeType,
 }: {
   fileName: string;
-  mimeType: ContentCreationFileContentType;
+  mimeType: InteractiveContentFileContentType;
 }): Result<undefined, { tracked: boolean; message: string }> {
   // Validate that the file extension matches the MIME type.
-  const fileFormat = CONTENT_CREATION_FILE_FORMATS[mimeType];
+  const fileFormat = INTERACTIVE_CONTENT_FILE_FORMATS[mimeType];
   const fileNameParts = fileName.split(".");
   if (fileNameParts.length < 2) {
     const supportedExts = fileFormat.exts.join(", ");
@@ -134,7 +133,7 @@ export async function createClientExecutableFile(
   }: {
     content: string;
     conversationId: string;
-    mimeType: ContentCreationFileContentType;
+    mimeType: InteractiveContentFileContentType;
     fileName: string;
     createdByAgentConfigurationId?: string;
   }
@@ -151,8 +150,8 @@ export async function createClientExecutableFile(
     const workspace = auth.getNonNullableWorkspace();
 
     // Validate that the MIME type is supported.
-    if (!isContentCreationContentType(mimeType)) {
-      const supportedTypes = Object.keys(CONTENT_CREATION_FILE_FORMATS).join(
+    if (!isInteractiveContentFileContentType(mimeType)) {
+      const supportedTypes = Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS).join(
         ", "
       );
 
@@ -298,9 +297,9 @@ export async function renameClientExecutableFile(
     return new Err({ message: `File not found: ${fileId}`, tracked: true });
   }
 
-  if (fileResource.contentType !== clientExecutableContentType) {
+  if (!isInteractiveContentFileContentType(fileResource.contentType)) {
     return new Err({
-      message: `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`,
+      message: `File '${fileId}' is not an interactive content file (content type: ${fileResource.contentType})`,
       tracked: false,
     });
   }
@@ -340,11 +339,11 @@ export async function getClientExecutableFileContent(
       return new Err(new Error(`File not found: ${fileId}`));
     }
 
-    // Check if it's a content creation file.
-    if (fileResource.contentType !== clientExecutableContentType) {
+    // Check if it's an Interactive Content file.
+    if (!isInteractiveContentFileContentType(fileResource.contentType)) {
       return new Err(
         new Error(
-          `File '${fileId}' is not a content creation file ` +
+          `File '${fileId}' is not an Interactive Content file ` +
             `(content type: ${fileResource.contentType})`
         )
       );
@@ -376,7 +375,7 @@ export function isCreateFileActionType(
 } {
   return (
     action.toolConfiguration.originalName ===
-      CREATE_CONTENT_CREATION_FILE_TOOL_NAME &&
+      CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME &&
     typeof action.augmentedInputs.content === "string" &&
     typeof action.augmentedInputs.file_name === "string"
   );
@@ -389,7 +388,7 @@ function isEditFileActionType(
 } {
   return (
     action.toolConfiguration.originalName ===
-      EDIT_CONTENT_CREATION_FILE_TOOL_NAME &&
+      EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME &&
     typeof action.augmentedInputs.old_string === "string" &&
     typeof action.augmentedInputs.new_string === "string"
   );
@@ -400,7 +399,7 @@ function isRevertFileActionType(
 ): action is AgentMCPActionModel {
   return (
     action.toolConfiguration.originalName ===
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME
+    REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME
   );
 }
 
@@ -411,7 +410,7 @@ function isRenameFileActionType(
 } {
   return (
     action.toolConfiguration.originalName ===
-      RENAME_CONTENT_CREATION_FILE_TOOL_NAME &&
+      RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME &&
     typeof action.augmentedInputs.new_file_name === "string"
   );
 }
@@ -490,9 +489,9 @@ function isEditOrRevertOrRenameFileAction(
   }
 
   return [
-    EDIT_CONTENT_CREATION_FILE_TOOL_NAME,
-    REVERT_CONTENT_CREATION_FILE_TOOL_NAME,
-    RENAME_CONTENT_CREATION_FILE_TOOL_NAME,
+    EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+    REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+    RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   ].includes(action.toolConfiguration.originalName);
 }
 
@@ -668,7 +667,7 @@ export function getRevertedFileName(
   return createFileAction.augmentedInputs.file_name;
 }
 
-// Revert the changes made to the Content Creation file in the last agent message.
+// Revert the changes made to the Interactive Content file in the last agent message.
 // This reconstructs the previous file content and name by replaying edit and rename
 // operations chronologically from the create action.
 export async function revertClientExecutableFileChanges(
@@ -693,9 +692,9 @@ export async function revertClientExecutableFileChanges(
     return new Err({ message: `File not found: ${fileId}`, tracked: true });
   }
 
-  if (fileResource.contentType !== clientExecutableContentType) {
+  if (!isInteractiveContentFileContentType(fileResource.contentType)) {
     return new Err({
-      message: `File '${fileId}' is not a content creation file (content type: ${fileResource.contentType})`,
+      message: `File '${fileId}' is not an interactive content file (content type: ${fileResource.contentType})`,
       tracked: true,
     });
   }

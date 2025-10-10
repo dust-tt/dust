@@ -7,7 +7,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
-  isMCPConfigurationForInternalContentCreation,
+  isMCPConfigurationForInternalInteractiveContent,
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
@@ -176,12 +176,12 @@ export async function constructPromptMultiActions(
     guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
-  const hasContentCreationServer = agentConfiguration.actions.some((action) =>
-    isMCPConfigurationForInternalContentCreation(action)
+  const hasInteractiveContentServer = agentConfiguration.actions.some(
+    (action) => isMCPConfigurationForInternalInteractiveContent(action)
   );
 
-  // Only inject the visualization system prompt if the Content Creation server is not enabled.
-  if (agentConfiguration.visualizationEnabled && !hasContentCreationServer) {
+  // Only inject the visualization system prompt if the Interactive Content server is not enabled.
+  if (agentConfiguration.visualizationEnabled && !hasInteractiveContentServer) {
     guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 

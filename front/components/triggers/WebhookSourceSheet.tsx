@@ -1,7 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  ActionGlobeAltIcon,
-  Avatar,
   Button,
   InformationCircleIcon,
   LockIcon,
@@ -32,6 +30,7 @@ import {
 } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
 import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import {
@@ -41,9 +40,13 @@ import {
 } from "@app/lib/swr/webhook_source";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightWorkspaceType, RequireAtLeastOne } from "@app/types";
-import type { WebhookSourceWithSystemView } from "@app/types/triggers/webhooks";
+import type {
+  WebhookSourceKind,
+  WebhookSourceWithSystemView,
+} from "@app/types/triggers/webhooks";
+import { WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP } from "@app/types/triggers/webhooks";
 
-export type WebhookSourceSheetMode =
+export type WebhookSourceSheetMode = { kind: WebhookSourceKind } & (
   | { type: "create" }
   | {
       type: "edit";
@@ -51,7 +54,8 @@ export type WebhookSourceSheetMode =
         WebhookSourceWithSystemView,
         "systemView"
       >;
-    };
+    }
+);
 
 type WebhookSourceSheetProps = {
   owner: LightWorkspaceType;
@@ -182,8 +186,15 @@ function WebhookSourceSheetContent({
       signatureHeader: "",
       signatureAlgorithm: "sha256",
       customHeaders: null,
+      kind: mode.kind,
+      subscribedEvents:
+        mode.kind === "custom"
+          ? []
+          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].events.map(
+              (e) => e.value
+            ),
     }),
-    []
+    [mode.kind]
   );
 
   const createForm = useForm<CreateWebhookSourceFormData>({
@@ -311,13 +322,13 @@ function WebhookSourceSheetContent({
         try {
           const diff = diffWebhookSourceForm(editDefaults, values);
 
-          if (diff.name) {
+          if (diff.requestBody) {
             const response = await fetch(
               `/api/w/${owner.sId}/webhook_sources/views/${systemView.sId}`,
               {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: diff.name }),
+                body: JSON.stringify(diff.requestBody),
               }
             );
             if (!response.ok) {
@@ -493,13 +504,16 @@ function WebhookSourceSheetContent({
     () => [
       {
         id: "create",
-        title: "Create Webhook Source",
+        title: `Create ${WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].name} Webhook Source`,
         description: "",
-        icon: undefined,
+        icon: WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
         content: (
           <FormProvider {...createForm}>
             <div className="space-y-4">
-              <CreateWebhookSourceFormContent form={createForm} />
+              <CreateWebhookSourceFormContent
+                form={createForm}
+                kind={mode.kind}
+              />
             </div>
           </FormProvider>
         ),
@@ -509,7 +523,9 @@ function WebhookSourceSheetContent({
         title:
           systemView?.customName ?? webhookSource?.name ?? "Webhook Source",
         description: "Webhook source for triggering assistants.",
-        icon: () => <Avatar icon={ActionGlobeAltIcon} size="md" />,
+        icon: systemView
+          ? () => <WebhookSourceViewIcon webhookSourceView={systemView} />
+          : WEBHOOK_SOURCE_KIND_TO_PRESETS_MAP[mode.kind].icon,
         content:
           systemView && webhookSource ? (
             <FormProvider {...editForm}>
@@ -566,6 +582,7 @@ function WebhookSourceSheetContent({
       webhookSource,
       editForm,
       selectedTab,
+      mode,
       changeTab,
       isDeleting,
       handleDeleteWebhookSource,

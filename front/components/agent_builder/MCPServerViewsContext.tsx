@@ -100,13 +100,14 @@ function getGroupedMCPServerViews({
     groupBy(mcpServerViewsWithLabel, (view) => {
       const toolsConfigurations = getMCPServerToolsConfigurations(view);
 
-      // Special handling for content_creation server:
-      // The content_creation server includes list and cat tools for convenience, but its primary purpose is
+      // Special handling for interactive_content server:
+      // The interactive_content server includes list and cat tools for convenience, but its primary purpose is
       // not data source operations. We don't want it to be classified as requiring knowledge.
-      const isContentCreationServer = view.server.name === "content_creation";
+      const isInteractiveContentServer =
+        view.server.name === "interactive_content";
 
       const isWithKnowledge =
-        !isContentCreationServer &&
+        !isInteractiveContentServer &&
         (toolsConfigurations.dataSourceConfiguration ??
           toolsConfigurations.dataWarehouseConfiguration ??
           toolsConfigurations.tableConfiguration ??
