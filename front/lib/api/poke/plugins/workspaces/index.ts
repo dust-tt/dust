@@ -5,6 +5,7 @@ export * from "./clean_outdated_directory_sync_groups";
 export * from "./compute_statistics";
 export * from "./conversations_retention";
 export * from "./create_space";
+export * from "./delete_labs_transcript_histories";
 export * from "./delete_workspace";
 export * from "./disable_sso_enforcement";
 export * from "./extend_trial";
