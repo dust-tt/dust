@@ -337,6 +337,20 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "assistant-builder-webhook-filter-generator": {
+    app: {
+      appId: "sCp3o6PPZN",
+      appHash:
+        "73ea1b98446fe45fafdc178267eb0a0847b42999efb621900cc5cd9991fd0456",
+    },
+    config: {
+      CREATE_FILTER: {
+        function_call: "set_filter",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
   "voice-find-agent-and-tools": {
     app: {
       appId: "F15zoc9d8a",

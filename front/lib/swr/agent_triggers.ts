@@ -95,6 +95,35 @@ export function useTextAsCronRule({
   return textAsCronRule;
 }
 
+export function useWebhookFilterGenerator({
+  workspace,
+}: {
+  workspace: LightWorkspaceType;
+}) {
+  const generateFilter = useCallback(
+    async (
+      naturalDescription: string,
+      eventSchema?: Record<string, any>
+    ): Promise<{ filter: string }> => {
+      const r = await fetcher(
+        `/api/w/${workspace.sId}/assistant/agent_configurations/webhook_filter_generator`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            naturalDescription,
+            eventSchema,
+          }),
+        }
+      );
+
+      return { filter: r.filter };
+    },
+    [workspace]
+  );
+
+  return generateFilter;
+}
+
 export function useTriggerSubscribers({
   workspaceId,
   agentConfigurationId,

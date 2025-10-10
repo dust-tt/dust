@@ -1,4 +1,4 @@
-import { get } from "lodash";
+import get from 'lodash/get';
 
 // Type definitions for matcher expressions.
 export type Operation = "in" | "contains";
