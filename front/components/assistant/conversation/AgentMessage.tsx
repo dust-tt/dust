@@ -372,8 +372,12 @@ export function AgentMessage({
     );
   }
 
-  // Show retry button as long as it's not streaming
-  if (agentMessageToRender.status !== "created") {
+  // Show the retry button as long as it's not streaming and not failed,
+  // which have their own retry button in ErrorMessage.
+  if (
+    agentMessageToRender.status !== "created" &&
+    agentMessageToRender.status !== "failed"
+  ) {
     buttons.push(
       <Button
         key="retry-msg-button"
