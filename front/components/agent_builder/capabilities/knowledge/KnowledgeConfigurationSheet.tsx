@@ -61,7 +61,7 @@ import {
   ADVANCED_SEARCH_SWITCH,
   SEARCH_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { TemplateActionPreset } from "@app/types";
@@ -155,7 +155,10 @@ function KnowledgeConfigurationSheetForm({
 
   const handleSave = (formData: CapabilityFormData) => {
     const { description, configuration, mcpServerView } = formData;
-    const toolsConfigurations = getMCPServerToolsConfigurations(mcpServerView);
+    const {
+      requiresDataSourceConfiguration,
+      requiresDataWarehouseConfiguration,
+    } = getMCPServerRequirements(mcpServerView);
 
     // Transform the tree structure to selection configurations
     const dataSourceConfigurations = transformTreeToSelectionConfigurations(
@@ -164,9 +167,7 @@ function KnowledgeConfigurationSheetForm({
     );
 
     const datasource =
-      toolsConfigurations.dataSourceConfiguration ??
-      toolsConfigurations.dataWarehouseConfiguration ??
-      false
+      requiresDataSourceConfiguration || requiresDataWarehouseConfiguration
         ? { dataSourceConfigurations: dataSourceConfigurations }
         : { tablesConfigurations: dataSourceConfigurations };
 
@@ -283,8 +284,8 @@ function KnowledgeConfigurationSheetContent({
     return null;
   }, [mcpServerView]);
 
-  const toolsConfigurations = useMemo(() => {
-    return getMCPServerToolsConfigurations(mcpServerView);
+  const requirements = useMemo(() => {
+    return getMCPServerRequirements(mcpServerView);
   }, [mcpServerView]);
 
   // Focus NameSection input when navigating to CONFIGURATION page
@@ -361,10 +362,10 @@ function KnowledgeConfigurationSheetContent({
   const pages: MultiPageSheetPage[] = [
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-      title: toolsConfigurations.tableConfiguration
+      title: requirements.requiresTableConfiguration
         ? "Select Tables"
         : "Select Data Sources",
-      description: toolsConfigurations.tableConfiguration
+      description: requirements.requiresTableConfiguration
         ? "Choose the tables to query for your processing method"
         : "Choose the data sources to include in your knowledge base",
       icon: undefined,
@@ -393,11 +394,11 @@ function KnowledgeConfigurationSheetContent({
             triggerValidationOnChange={true}
           />
 
-          {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+          {requirements.mayRequireTimeFrameConfiguration && (
             <TimeFrameSection actionType="extract" />
           )}
 
-          {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+          {requirements.mayRequireJsonSchemaConfiguration && (
             <JsonSchemaSection getAgentInstructions={getAgentInstructions} />
           )}
 

@@ -9,11 +9,9 @@ vi.mock("@app/lib/actions/mcp_internal_actions/input_configuration", () => ({
   getMCPServerToolsConfigurations: vi.fn(),
 }));
 
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 
-const mockGetMCPServerToolsConfigurations = vi.mocked(
-  getMCPServerToolsConfigurations
-);
+const mockGetMCPServerToolsConfigurations = vi.mocked(getMCPServerRequirements);
 
 describe("getDefaultConfiguration", () => {
   beforeEach(() => {
