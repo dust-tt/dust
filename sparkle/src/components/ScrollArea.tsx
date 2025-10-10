@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-interface ScrollAreaProps
+export interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   hideScrollBar?: boolean;
   orientation?: "vertical" | "horizontal";
@@ -175,4 +175,4 @@ const ScrollBar = React.forwardRef<
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName;
 
 export { ScrollArea, ScrollBar };
-export type { ScrollBarSize };
+export type { ScrollAreaProps, ScrollBarSize };
