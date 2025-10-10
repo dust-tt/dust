@@ -3,6 +3,7 @@ import { config } from "@app/lib/api/regions/config";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
@@ -36,8 +37,9 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
       );
 
     // Build enum values with detailed information
-    const options = await Promise.all(
-      configurations.map(async (config) => {
+    const options = await concurrentExecutor(
+      configurations,
+      async (config) => {
         const hasHistory = await config.hasAnyHistory();
         const mostRecentDate = await config.getMostRecentHistoryDate();
         const user = await config.getUser();
@@ -52,7 +54,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
         }
 
         const statusParts = [];
-        statusParts.push(`ID: ${config.id}`);
+        statusParts.push(`ID: ${config.id.toString()}`);
         statusParts.push(`User: ${user?.email ?? "Unknown"}`);
         statusParts.push(config.isActive ? "Active" : "Inactive");
         statusParts.push(datasourceInfo);
@@ -68,7 +70,8 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
           label: `[${config.provider}] ${statusParts.join(" | ")}`,
           value: String(config.id),
         };
-      })
+      },
+      { concurrency: 8 }
     );
 
     return new Ok({
@@ -114,7 +117,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
     if (countBefore === 0) {
       return new Ok({
         display: "text",
-        value: `No history records found for this transcripts configuration.`,
+        value: "No history records found for this transcripts configuration.",
       });
     }
 
