@@ -133,10 +133,9 @@ export default function HubSpotForm() {
     document.body.appendChild(script);
 
     // Load Default.com script
-    window.__default__ = window.__default__ || {};
+    window.__default__ = window.__default__ ?? {};
     window.__default__.form_id = 503792;
     window.__default__.team_id = 579;
-    window.__default__.listenToIds = [`hubspotForm-${formId}`];
 
     const loadDefaultScript = (attempt = 0) => {
       const defaultScript = document.createElement("script");
