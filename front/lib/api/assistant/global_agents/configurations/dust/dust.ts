@@ -4,7 +4,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
-import { DUST_DEEP_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
@@ -112,7 +112,7 @@ export function _getDustGlobalAgent(
 
   <complex_request_guidelines>
   If the request is complex, do not handle it yourself.
-  Immediately delegate the request to the deep research agent by using the \`deep_research\` tool.
+  Immediately delegate the request to the deep dive agent by using the \`deep_dive\` tool.
   </complex_request_guidelines>
 
   <simple_request_guidelines>
@@ -283,7 +283,7 @@ export function _getDustGlobalAgent(
       sId: GLOBAL_AGENTS_SID.DUST + "-deep-dive",
       type: "mcp_server_configuration",
       name: "deep_dive" satisfies InternalMCPServerNameType,
-      description: `Handoff the query to the @${DUST_DEEP_NAME} agent`,
+      description: `Handoff the query to the @${DEEP_DIVE_NAME} agent`,
       mcpServerViewId: deepDiveMCPServerView.sId,
       internalMCPServerId: deepDiveMCPServerView.internalMCPServerId,
       dataSources: null,
