@@ -1047,11 +1047,7 @@ function recursiveInlineAllRefs(
   return outputSchema;
 }
 
-/**
- * Inlines all references in a schema.
- * @param schema The schema to inline references in.
- * @returns The schema with all references inlined.
- */
-export function inlineAllRefs(schema: JSONSchema): JSONSchema {
+// TODO(2025-10-10 aubin): remove this.
+function inlineAllRefs(schema: JSONSchema): JSONSchema {
   return recursiveInlineAllRefs(schema, schema);
 }
