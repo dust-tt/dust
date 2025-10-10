@@ -3,7 +3,10 @@ import { config } from "@app/lib/api/regions/config";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
-import { launchRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
+import {
+  launchRetrieveTranscriptsWorkflow,
+  stopRetrieveTranscriptsWorkflow,
+} from "@app/temporal/labs/transcripts/client";
 import { Err, Ok } from "@app/types";
 
 export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
@@ -131,13 +134,25 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
         : "dust-front-prod.gmnlm";
     const temporalLink = `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows?query=%60WorkflowId%60+STARTS_WITH+%22labs-transcripts-retrieve-${configuration.id}%22`;
 
-    // Restart the workflow
-    const launchResult = await launchRetrieveTranscriptsWorkflow(configuration);
+    // Stop the existing workflow if it's running (don't change isActive status)
+    const stopResult = await stopRetrieveTranscriptsWorkflow(
+      configuration,
+      false
+    );
+    if (stopResult.isErr()) {
+      return new Err(
+        new Error(
+          `Successfully deleted ${countBefore} history record(s), but failed to stop existing workflow: ${stopResult.error.message}\n\nTemporal workflow: ${temporalLink}`
+        )
+      );
+    }
 
+    // Start a new workflow
+    const launchResult = await launchRetrieveTranscriptsWorkflow(configuration);
     if (launchResult.isErr()) {
       return new Err(
         new Error(
-          `Successfully deleted ${countBefore} history record(s), but failed to restart workflow: ${launchResult.error.message}\n\nTemporal workflow: ${temporalLink}`
+          `Successfully deleted ${countBefore} history record(s) and stopped workflow, but failed to restart it: ${launchResult.error.message}\n\nTemporal workflow: ${temporalLink}`
         )
       );
     }
