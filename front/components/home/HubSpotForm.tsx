@@ -146,7 +146,10 @@ export default function HubSpotForm() {
       };
       defaultScript.onerror = () => {
         if (attempt < 3) {
-          setTimeout(() => loadDefaultScript(attempt + 1), 1000 * (attempt + 1));
+          setTimeout(
+            () => loadDefaultScript(attempt + 1),
+            1000 * (attempt + 1)
+          );
         }
       };
       document.head.appendChild(defaultScript);
