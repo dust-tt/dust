@@ -199,7 +199,12 @@ export function ProviderSelection({
         description: "Could not connect to Gong. Please try again.",
       });
     }
-  }, [saveConnectorConnection, sendNotification, mutateTranscriptsConfiguration, owner.sId]);
+  }, [
+    saveConnectorConnection,
+    sendNotification,
+    mutateTranscriptsConfiguration,
+    owner.sId,
+  ]);
 
   const handleConnectModjoTranscriptsSource = useCallback(
     async ({
