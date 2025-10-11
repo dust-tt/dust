@@ -30,7 +30,14 @@ type MigrationStatus = {
 async function checkOldWorkflowStatus(
   config: LabsTranscriptsConfigurationResource,
   logger: Logger
-): Promise<"running" | "not_found" | "terminated" | "failed" | "continued_as_new" | "unknown"> {
+): Promise<
+  | "running"
+  | "not_found"
+  | "terminated"
+  | "failed"
+  | "continued_as_new"
+  | "unknown"
+> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeRetrieveTranscriptWorkflowId(config);
 
