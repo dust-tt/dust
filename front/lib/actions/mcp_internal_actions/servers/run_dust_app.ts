@@ -371,7 +371,7 @@ export default async function createServer(
       convertDatasetSchemaToZodRawShape(schema),
       withToolLogging(
         auth,
-        { toolNameForMonitoring: app.name, agentLoopContext },
+        { toolNameForMonitoring: "run_dust_app", agentLoopContext },
         async () => {
           return new Ok([
             {
@@ -404,7 +404,7 @@ export default async function createServer(
       convertDatasetSchemaToZodRawShape(schema),
       withToolLogging(
         auth,
-        { toolNameForMonitoring: app.name, agentLoopContext },
+        { toolNameForMonitoring: "run_dust_app", agentLoopContext },
         async (params) => {
           const content: (
             | TextContent
