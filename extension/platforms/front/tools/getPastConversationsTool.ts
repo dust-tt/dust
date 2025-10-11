@@ -79,9 +79,7 @@ export function registerGetPastConversationsTool(
 
         // Extract the customer's email (handle property contains the email)
         const customerEmail =
-          "handle" in inboundMessage.from
-            ? inboundMessage.from.handle
-            : null;
+          "handle" in inboundMessage.from ? inboundMessage.from.handle : null;
 
         if (!customerEmail) {
           return {
