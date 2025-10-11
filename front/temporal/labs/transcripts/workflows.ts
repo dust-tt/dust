@@ -14,6 +14,9 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 10;
 const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "20 minutes",
+    retry: {
+      nonRetryableErrorTypes: ["TranscriptNonRetryableError"],
+    },
   });
 
 export async function retrieveNewTranscriptsWorkflow({
