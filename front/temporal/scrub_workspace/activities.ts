@@ -357,3 +357,24 @@ async function cleanupCustomerio(auth: Authenticator) {
     );
   });
 }
+
+export async function endSubscriptionFreeEndedWorkspacesActivity(): Promise<{
+  workspaceIds: string[];
+}> {
+  const { workspaces } =
+    await SubscriptionResource.internalFetchWorkspacesWithFreeEndedSubscriptions();
+
+  await concurrentExecutor(
+    workspaces,
+    async (workspace) => {
+      await SubscriptionResource.endActiveSubscription(workspace);
+    },
+    {
+      concurrency: 4,
+    }
+  );
+
+  return {
+    workspaceIds: workspaces.map((w) => w.sId),
+  };
+}
