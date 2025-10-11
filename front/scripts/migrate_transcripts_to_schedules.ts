@@ -21,6 +21,7 @@ type MigrationStatus = {
     | "not_found"
     | "terminated"
     | "failed"
+    | "continued_as_new"
     | "unknown";
   migrationStatus: "success" | "failed" | "skipped";
   error?: string;
@@ -29,7 +30,7 @@ type MigrationStatus = {
 async function checkOldWorkflowStatus(
   config: LabsTranscriptsConfigurationResource,
   logger: Logger
-): Promise<"running" | "not_found" | "terminated" | "failed" | "unknown"> {
+): Promise<"running" | "not_found" | "terminated" | "failed" | "continued_as_new" | "unknown"> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeRetrieveTranscriptWorkflowId(config);
 
@@ -53,6 +54,8 @@ async function checkOldWorkflowStatus(
       return "terminated";
     } else if (description.status.name === "FAILED") {
       return "failed";
+    } else if (description.status.name === "CONTINUED_AS_NEW") {
+      return "continued_as_new";
     } else {
       return "unknown";
     }

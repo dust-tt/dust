@@ -165,9 +165,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     sId: string,
     transaction?: Transaction
   ): Promise<LabsTranscriptsConfigurationResource | null> {
-    if (!sId) {
-      return null;
-    }
     const resourceId = getResourceIdFromSId(sId);
     if (!resourceId) {
       return null;
