@@ -351,7 +351,7 @@ export async function launchFirecrawlCrawlPageWorkflow(
     await client.workflow.start(firecrawlCrawlPageWorkflow, {
       args: [connectorId, crawlId, scrapeId],
       // Firecrawl API often returns 404 if we attempt to get the page details too quickly.
-      startDelay: "10s", // Delay the start of the workflow by 10 seconds.
+      startDelay: "30s", // Delay the start of the workflow by 30 seconds.
       taskQueue: WebCrawlerQueueNames.FIRECRAWL,
       workflowId: workflowId,
       searchAttributes: {
