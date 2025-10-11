@@ -215,7 +215,7 @@ const WorkspacePage = ({
 
       <div className="flex-col justify-center">
         <div className="flex flex-col space-y-8">
-          <div className="space-3 mt-4 flex flex-row items-stretch">
+          <div className="mt-4 flex flex-row items-stretch gap-3">
             <Tabs defaultValue="workspace" className="min-w-[512px]">
               <TabsList>
                 <TabsTrigger value="workspace" label="Workspace" />

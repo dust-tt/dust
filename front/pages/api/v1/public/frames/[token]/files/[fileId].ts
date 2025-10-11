@@ -134,11 +134,15 @@ async function handler(
     });
   }
 
-  // Verify the file belongs to the same conversation as the frame.
-  const sameConversation =
-    targetFile.useCase === "conversation" &&
-    targetFile.useCaseMetadata?.conversationId === frameConversationId;
-  if (!sameConversation) {
+  const { useCase, useCaseMetadata } = targetFile;
+  const isSupportedUsecase =
+    useCase === "tool_output" || useCase === "conversation";
+
+  // Verify the file has a supported usecase and belongs to the same conversation as the frame.
+  const canAccessFileThroughFrame =
+    isSupportedUsecase &&
+    useCaseMetadata?.conversationId === frameConversationId;
+  if (!canAccessFileThroughFrame) {
     return apiError(req, res, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
