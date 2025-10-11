@@ -23,6 +23,12 @@ export async function retrieveNewTranscriptsWorkflow({
   transcriptsConfigurationId: string;
   startIndex?: number;
 }) {
+  if (!transcriptsConfigurationId) {
+    throw new Error(
+      "transcriptsConfigurationId is required but was undefined or empty"
+    );
+  }
+
   const filesToProcess = await retrieveNewTranscriptsActivity(
     transcriptsConfigurationId
   );
@@ -35,10 +41,12 @@ export async function retrieveNewTranscriptsWorkflow({
       workflowInfo().historySize >
         TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB * 1024 * 1024;
     if (hasReachedWorkflowLimits) {
+      // Continue from where we left off to avoid OOM when processing many files
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>({
         transcriptsConfigurationId,
         startIndex: i,
       });
+      return;
     }
 
     const fileId = filesToProcess[i];
