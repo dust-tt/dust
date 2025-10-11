@@ -23,22 +23,32 @@ export async function retrieveNewTranscriptsWorkflow({
   transcriptsConfigurationId: string;
   startIndex?: number;
 }) {
+  if (!transcriptsConfigurationId) {
+    throw new Error(
+      "transcriptsConfigurationId is required but was undefined or empty"
+    );
+  }
+
+  // Retrieve new transcripts
   const filesToProcess = await retrieveNewTranscriptsActivity(
     transcriptsConfigurationId
   );
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
+  // Process files starting from startIndex
   for (let i = startIndex; i < filesToProcess.length; i++) {
     const hasReachedWorkflowLimits =
       workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH ||
       workflowInfo().historySize >
         TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB * 1024 * 1024;
     if (hasReachedWorkflowLimits) {
+      // Continue from where we left off to avoid OOM when processing many files
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>({
         transcriptsConfigurationId,
         startIndex: i,
       });
+      return;
     }
 
     const fileId = filesToProcess[i];
@@ -58,6 +68,8 @@ export async function retrieveNewTranscriptsWorkflow({
       memo,
     });
   }
+
+  // Workflow completes - the schedule will trigger a new run in 5 minutes
 }
 
 export async function processTranscriptWorkflow({
