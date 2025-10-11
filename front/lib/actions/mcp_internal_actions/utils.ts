@@ -20,7 +20,7 @@ import type {
   ToolEarlyExitEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -238,6 +238,6 @@ export function isJITMCPServerView(view: MCPServerViewType): boolean {
   return (
     !isInternalMCPServerOfName(view.server.sId, AGENT_MEMORY_SERVER_NAME) &&
     // Only tools that do not require any configuration can be enabled directly in a conversation.
-    getMCPServerToolsConfigurations(view).configurable !== "required"
+    getMCPServerRequirements(view).noRequirement
   );
 }

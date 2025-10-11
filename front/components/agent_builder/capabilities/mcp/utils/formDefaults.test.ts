@@ -4,16 +4,13 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 import { getDefaultConfiguration } from "./formDefaults";
 
-// Mock the input configuration module
 vi.mock("@app/lib/actions/mcp_internal_actions/input_configuration", () => ({
-  getMCPServerToolsConfigurations: vi.fn(),
+  getMCPServerRequirements: vi.fn(),
 }));
 
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 
-const mockGetMCPServerToolsConfigurations = vi.mocked(
-  getMCPServerToolsConfigurations
-);
+const mockGetMCPServerRequirements = vi.mocked(getMCPServerRequirements);
 
 describe("getDefaultConfiguration", () => {
   beforeEach(() => {
@@ -85,33 +82,19 @@ describe("getDefaultConfiguration", () => {
       toolsMetadata: [],
     };
 
-    it("should use mcpServerView sId as mcpServerViewId", () => {
-      mockGetMCPServerToolsConfigurations.mockReturnValue({
-        mayRequireTimeFrameConfiguration: false,
-        mayRequireJsonSchemaConfiguration: false,
-        stringConfigurations: [],
-        numberConfigurations: [],
-        booleanConfigurations: [],
-        enumConfigurations: {},
-        listConfigurations: {},
-        mayRequireDustAppConfiguration: false,
-        mayRequireSecretConfiguration: false,
-        configurable: "optional",
-      });
-
-      const result = getDefaultConfiguration(mockMCPServerView);
-
-      expect(result.mcpServerViewId).toBe("test-server-123");
-    });
-
     describe("boolean configurations", () => {
       it("should set boolean configurations to false by default", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [],
-          booleanConfigurations: [
+          requiredStrings: [],
+          requiredNumbers: [],
+          requiredBooleans: [
             {
               key: "is_enabled",
               description: "Whether the feature is enabled",
@@ -119,11 +102,11 @@ describe("getDefaultConfiguration", () => {
             { key: "admin_mode", description: "Admin mode setting" },
             { key: "nested.deep.flag", description: "A deeply nested boolean" },
           ],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiredEnums: {},
+          requiredLists: {},
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -140,12 +123,17 @@ describe("getDefaultConfiguration", () => {
       });
 
       it("should use explicit boolean defaults when available", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [],
-          booleanConfigurations: [
+          requiredStrings: [],
+          requiredNumbers: [],
+          requiredBooleans: [
             {
               key: "feature_enabled",
               description: "Feature enabled",
@@ -154,11 +142,11 @@ describe("getDefaultConfiguration", () => {
             { key: "debug_mode", description: "Debug mode", default: false },
             { key: "auto_save", description: "Auto save" }, // no explicit default
           ],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiredEnums: {},
+          requiredLists: {},
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -171,17 +159,22 @@ describe("getDefaultConfiguration", () => {
       });
 
       it("should handle empty boolean configurations", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [],
-          booleanConfigurations: [],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiredStrings: [],
+          requiredNumbers: [],
+          requiredBooleans: [],
+          requiredEnums: {},
+          requiredLists: {},
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -191,14 +184,19 @@ describe("getDefaultConfiguration", () => {
     });
 
     describe("enum configurations", () => {
-      it("should set enum configurations to first option", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+      it("should set enum configurations to the first option", () => {
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [],
-          booleanConfigurations: [],
-          enumConfigurations: {
+          requiredStrings: [],
+          requiredNumbers: [],
+          requiredBooleans: [],
+          requiredEnums: {
             priority: {
               options: [
                 { value: "low", label: "Low" },
@@ -223,10 +221,10 @@ describe("getDefaultConfiguration", () => {
               description: "Nested enum",
             },
           },
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiredLists: {},
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -241,13 +239,18 @@ describe("getDefaultConfiguration", () => {
       });
 
       it("should skip enum configurations with empty options", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [],
-          booleanConfigurations: [],
-          enumConfigurations: {
+          requiredStrings: [],
+          requiredNumbers: [],
+          requiredBooleans: [],
+          requiredEnums: {
             valid_enum: {
               options: [
                 { value: "option1", label: "Option 1" },
@@ -260,10 +263,10 @@ describe("getDefaultConfiguration", () => {
               description: "Empty enum",
             },
           },
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiredLists: {},
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -275,13 +278,18 @@ describe("getDefaultConfiguration", () => {
       });
 
       it("should use explicit enum defaults when available", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [],
-          booleanConfigurations: [],
-          enumConfigurations: {
+          requiredStrings: [],
+          requiredNumbers: [],
+          requiredBooleans: [],
+          requiredEnums: {
             priority: {
               options: [
                 { value: "low", label: "Low" },
@@ -300,10 +308,10 @@ describe("getDefaultConfiguration", () => {
               description: "Status", // no explicit default, should use first
             },
           },
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiredLists: {},
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -317,14 +325,19 @@ describe("getDefaultConfiguration", () => {
 
     describe("list configurations", () => {
       it("should set list configurations to empty arrays", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [],
-          booleanConfigurations: [],
-          enumConfigurations: {},
-          listConfigurations: {
+          requiredStrings: [],
+          requiredNumbers: [],
+          requiredBooleans: [],
+          requiredEnums: {},
+          requiredLists: {
             tags: {
               options: [
                 { value: "tag1", label: "Tag 1" },
@@ -344,9 +357,9 @@ describe("getDefaultConfiguration", () => {
               description: "Nested list",
             },
           },
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -363,10 +376,15 @@ describe("getDefaultConfiguration", () => {
 
     describe("string configurations", () => {
       it("should set defaults for string configurations when available", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [
+          requiredStrings: [
             {
               key: "api_key",
               description: "API Key",
@@ -379,13 +397,13 @@ describe("getDefaultConfiguration", () => {
             },
             { key: "user_name", description: "User Name" }, // no default
           ],
-          numberConfigurations: [],
-          booleanConfigurations: [],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiredNumbers: [],
+          requiredBooleans: [],
+          requiredEnums: {},
+          requiredLists: {},
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -401,21 +419,26 @@ describe("getDefaultConfiguration", () => {
 
     describe("number configurations", () => {
       it("should set defaults for number configurations when available", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [
+          requiredStrings: [],
+          requiredNumbers: [
             { key: "timeout", description: "Timeout in seconds", default: 30 },
             { key: "max_retries", description: "Maximum retries", default: 3 },
             { key: "port", description: "Port number" }, // no default
           ],
-          booleanConfigurations: [],
-          enumConfigurations: {},
-          listConfigurations: {},
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiredBooleans: [],
+          requiredEnums: {},
+          requiredLists: {},
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -431,19 +454,22 @@ describe("getDefaultConfiguration", () => {
 
     describe("mixed configurations", () => {
       it("should handle all configuration types together", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [
+          requiredStrings: [
             { key: "api_key", description: "API Key", default: "secret-key" },
           ],
-          numberConfigurations: [
+          requiredNumbers: [
             { key: "timeout", description: "Timeout", default: 30 },
           ],
-          booleanConfigurations: [
-            { key: "is_enabled", description: "Enabled" },
-          ],
-          enumConfigurations: {
+          requiredBooleans: [{ key: "is_enabled", description: "Enabled" }],
+          requiredEnums: {
             priority: {
               options: [
                 { value: "low", label: "Low" },
@@ -453,15 +479,15 @@ describe("getDefaultConfiguration", () => {
               description: "Priority",
             },
           },
-          listConfigurations: {
+          requiredLists: {
             tags: {
               options: [{ value: "tag1", label: "Tag 1" }],
               description: "Tags",
             },
           },
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -479,10 +505,15 @@ describe("getDefaultConfiguration", () => {
 
     describe("comprehensive default handling", () => {
       it("should handle mixed types with nested paths and explicit defaults", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [
+          requiredStrings: [
             { key: "api.key", description: "API Key", default: "dev-key-123" },
             { key: "api.endpoint", description: "API Endpoint" }, // no default
             {
@@ -491,12 +522,12 @@ describe("getDefaultConfiguration", () => {
               default: "mongodb://localhost:27017",
             },
           ],
-          numberConfigurations: [
+          requiredNumbers: [
             { key: "api.timeout", description: "API Timeout", default: 5000 },
             { key: "database.pool.max", description: "Max Pool Size" }, // no default
             { key: "server.port", description: "Server Port", default: 3000 },
           ],
-          booleanConfigurations: [
+          requiredBooleans: [
             {
               key: "features.auth.enabled",
               description: "Auth enabled",
@@ -504,7 +535,7 @@ describe("getDefaultConfiguration", () => {
             },
             { key: "features.logging.debug", description: "Debug logging" }, // no default (will use false)
           ],
-          enumConfigurations: {
+          requiredEnums: {
             "logging.level": {
               options: [
                 { value: "debug", label: "Debug" },
@@ -524,7 +555,7 @@ describe("getDefaultConfiguration", () => {
               description: "Environment", // no default (will use first)
             },
           },
-          listConfigurations: {
+          requiredLists: {
             "features.experimental": {
               options: [
                 { value: "feature1", label: "Feature 1" },
@@ -541,9 +572,9 @@ describe("getDefaultConfiguration", () => {
               description: "Allowed origins", // no default (will use empty array)
             },
           },
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -585,15 +616,20 @@ describe("getDefaultConfiguration", () => {
 
     describe("nested path handling", () => {
       it("should handle deeply nested configuration paths", () => {
-        mockGetMCPServerToolsConfigurations.mockReturnValue({
+        mockGetMCPServerRequirements.mockReturnValue({
+          requiresDataSourceConfiguration: false,
+          requiresDataWarehouseConfiguration: false,
+          requiresTableConfiguration: false,
+          requiresChildAgentConfiguration: false,
+          requiresReasoningConfiguration: false,
           mayRequireTimeFrameConfiguration: false,
           mayRequireJsonSchemaConfiguration: false,
-          stringConfigurations: [],
-          numberConfigurations: [],
-          booleanConfigurations: [
+          requiredStrings: [],
+          requiredNumbers: [],
+          requiredBooleans: [
             { key: "level1.level2.level3.deep_flag", description: "Deep flag" },
           ],
-          enumConfigurations: {
+          requiredEnums: {
             "a.b.c.d.enum": {
               options: [
                 { value: "x", label: "X" },
@@ -602,15 +638,15 @@ describe("getDefaultConfiguration", () => {
               description: "Deeply nested enum",
             },
           },
-          listConfigurations: {
+          requiredLists: {
             "config.advanced.options": {
               options: [{ value: "opt1", label: "Option 1" }],
               description: "Advanced options",
             },
           },
-          mayRequireDustAppConfiguration: false,
-          mayRequireSecretConfiguration: false,
-          configurable: "optional",
+          requiresDustAppConfiguration: false,
+          requiresSecretConfiguration: false,
+          noRequirement: true,
         });
 
         const result = getDefaultConfiguration(mockMCPServerView);
@@ -639,147 +675,6 @@ describe("getDefaultConfiguration", () => {
           },
         });
       });
-    });
-  });
-
-  describe("when toolsConfigurations is null", () => {
-    it("should return base defaults when getMCPServerToolsConfigurations returns null", () => {
-      const mockMCPServerView: MCPServerViewType = {
-        id: 1,
-        sId: "test-server-123",
-        name: "Test Server",
-        description: "Test server description",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        spaceId: "test-space-123",
-        serverType: "internal",
-        server: {
-          sId: "test",
-          name: "test",
-          version: "1.0.0",
-          description: "Test",
-          tools: [],
-          icon: "ActionEmotionLaughIcon",
-          authorization: null,
-          availability: "manual",
-          allowMultipleInstances: false,
-          documentationUrl: null,
-        },
-        oAuthUseCase: null,
-        editedByUser: null,
-        toolsMetadata: [],
-      };
-
-      // Simulate getMCPServerToolsConfigurations returning null somehow
-      mockGetMCPServerToolsConfigurations.mockReturnValue(null as any);
-
-      const result = getDefaultConfiguration(mockMCPServerView);
-
-      expect(result).toEqual({
-        mcpServerViewId: "test-server-123",
-        dataSourceConfigurations: null,
-        tablesConfigurations: null,
-        childAgentId: null,
-        reasoningModel: null,
-        timeFrame: null,
-        additionalConfiguration: {},
-        dustAppConfiguration: null,
-        jsonSchema: null,
-        _jsonSchemaString: null,
-        secretName: null,
-      });
-    });
-  });
-});
-
-describe("Analysis: Why strings and numbers don't get defaults", () => {
-  describe("Historical reasoning investigation - RESOLVED", () => {
-    it("should demonstrate that the fix provides better UX while maintaining validation", () => {
-      // This test shows how the fix improves UX while keeping validation intact
-
-      const mockMCPServerView: MCPServerViewType = {
-        id: 1,
-        sId: "test-server",
-        name: "Test Server",
-        description: "Test server description",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        spaceId: "test-space-123",
-        serverType: "internal",
-        server: {
-          sId: "test",
-          name: "test",
-          version: "1.0.0",
-          description: "Test",
-          tools: [],
-          icon: "ActionEmotionLaughIcon",
-          authorization: null,
-          availability: "manual",
-          allowMultipleInstances: false,
-          documentationUrl: null,
-        },
-        oAuthUseCase: null,
-        editedByUser: null,
-        toolsMetadata: [],
-      };
-
-      mockGetMCPServerToolsConfigurations.mockReturnValue({
-        mayRequireTimeFrameConfiguration: false,
-        mayRequireJsonSchemaConfiguration: false,
-        stringConfigurations: [
-          { key: "required_field", description: "Required field" }, // no default
-          {
-            key: "optional_field",
-            description: "Optional field",
-            default: "default_value",
-          },
-        ],
-        numberConfigurations: [
-          { key: "required_number", description: "Required number" }, // no default
-          {
-            key: "optional_number",
-            description: "Optional number",
-            default: 42,
-          },
-        ],
-        booleanConfigurations: [],
-        enumConfigurations: {},
-        listConfigurations: {},
-        mayRequireDustAppConfiguration: false,
-        mayRequireSecretConfiguration: false,
-        configurable: "optional",
-      });
-
-      const result = getDefaultConfiguration(mockMCPServerView);
-
-      // Fixed behavior: fields with defaults are pre-filled, fields without defaults remain empty
-      expect(result.additionalConfiguration).toEqual({
-        optional_field: "default_value", // ✅ Default applied - better UX
-        optional_number: 42, // ✅ Default applied - better UX
-        // required_field: missing - will trigger validation if required ✅
-        // required_number: missing - will trigger validation if required ✅
-      });
-
-      // The fix provides:
-      // ✅ Better UX: Users see helpful defaults immediately
-      // ✅ Validation still works: Required fields without defaults trigger validation
-      // ✅ User choice: Defaults can be overridden if needed
-      // ✅ Modern behavior: Forms pre-populate sensible defaults
-    });
-  });
-
-  describe("Current validation behavior", () => {
-    it("should show that validation still works with defaults present", () => {
-      // This test would verify that having defaults doesn't prevent validation
-      // from working properly. Validation should still catch:
-      // - Invalid values (wrong type, out of range, etc.)
-      // - Missing required fields that don't have defaults
-      // - Schema violations
-
-      // The presence of a default value doesn't break validation,
-      // it just provides a starting point for the user
-
-      expect(true).toBe(true); // Placeholder - would need actual validation tests
     });
   });
 });
