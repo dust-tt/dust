@@ -29,14 +29,12 @@ export async function retrieveNewTranscriptsWorkflow({
     );
   }
 
-  // Retrieve new transcripts
   const filesToProcess = await retrieveNewTranscriptsActivity(
     transcriptsConfigurationId
   );
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // Process files starting from startIndex
   for (let i = startIndex; i < filesToProcess.length; i++) {
     const hasReachedWorkflowLimits =
       workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH ||
@@ -68,8 +66,6 @@ export async function retrieveNewTranscriptsWorkflow({
       memo,
     });
   }
-
-  // Workflow completes - the schedule will trigger a new run in 5 minutes
 }
 
 export async function processTranscriptWorkflow({
