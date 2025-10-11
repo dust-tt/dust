@@ -2607,6 +2607,7 @@ export type FileUploadedRequestResponseType = z.infer<
 export const PublicFrameResponseBodySchema = z.object({
   content: z.string().optional(),
   file: FileTypeSchema,
+  conversationId: z.string().nullable(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<
