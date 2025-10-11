@@ -5,6 +5,7 @@ export const MCPInternalActionIconSchema = z.enum([
   "ActionCloudArrowLeftRightIcon",
   "ActionDocumentTextIcon",
   "ActionEmotionLaughIcon",
+  "ActionFrameIcon",
   "ActionGitBranchIcon",
   "ActionGlobeAltIcon",
   "ActionImageIcon",

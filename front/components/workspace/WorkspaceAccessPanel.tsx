@@ -199,7 +199,7 @@ function DomainVerificationTable({
             <IconButton
               icon={XMarkIcon}
               size="xs"
-              variant="tertiary"
+              variant="ghost"
               onClick={() => handleDeleteDomain(row.original.domain)}
               tooltip="Delete domain"
             />
