@@ -72,13 +72,10 @@ export function MCPRunAgentActionDetails({
     disabled: addedMCPServerViewIds.length === 0,
   });
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const queryResource = toolOutput?.find(isRunAgentQueryResourceType) || null;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const resultResource = toolOutput?.find(isRunAgentResultResourceType) || null;
+  const queryResource = toolOutput?.find(isRunAgentQueryResourceType) ?? null;
+  const resultResource = toolOutput?.find(isRunAgentResultResourceType) ?? null;
   const handoverResource =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    toolOutput?.find(isAgentPauseOutputResourceType) || null;
+    toolOutput?.find(isAgentPauseOutputResourceType) ?? null;
 
   const generatedFiles =
     toolOutput
@@ -140,10 +137,7 @@ export function MCPRunAgentActionDetails({
   });
 
   const isBusy = useMemo(() => {
-    if (resultResource) {
-      return false;
-    }
-    return true;
+    return !resultResource;
   }, [resultResource]);
 
   const isStreamingChainOfThought = useMemo(() => {
@@ -224,13 +218,11 @@ export function MCPRunAgentActionDetails({
       }
     >
       {viewType === "conversation" ? (
-        <>
-          {query && (
-            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              {query}
-            </div>
-          )}
-        </>
+        query && (
+          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+            {query}
+          </div>
+        )
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-4">
@@ -278,114 +270,114 @@ export function MCPRunAgentActionDetails({
             )}
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {childAgent && (chainOfThought || response) && (
-              <CollapsibleComponent
-                rootProps={{ defaultOpen: true }}
-                triggerChildren={
-                  <div className="flex w-full items-center gap-4">
-                    <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              <div className="relative">
+                {conversationUrl && (
+                  <div className="absolute right-0">
+                    <Button
+                      icon={ExternalLinkIcon}
+                      label="View full conversation"
+                      variant="outline"
+                      onClick={() => window.open(conversationUrl, "_blank")}
+                      size="xs"
+                      className="!p-1"
+                    />
+                  </div>
+                )}
+                <CollapsibleComponent
+                  rootProps={{ defaultOpen: true }}
+                  triggerChildren={
+                    <span className="p-1 text-sm font-semibold text-foreground dark:text-foreground-night">
                       @{childAgent.name}'s Answer
                     </span>
-                    <div className="ml-auto">
-                      {conversationUrl && (
-                        <Button
-                          icon={ExternalLinkIcon}
-                          label="View full conversation"
-                          variant="outline"
-                          onClick={() => window.open(conversationUrl, "_blank")}
-                          size="xs"
-                          className="!p-1"
-                        />
-                      )}
-                    </div>
-                  </div>
-                }
-                contentChildren={
-                  <div className="flex flex-col gap-4">
-                    {chainOfThought && (
-                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        <ContentMessage
-                          title="Agent thoughts"
-                          variant="primary"
-                          size="lg"
-                        >
-                          <Markdown
-                            content={chainOfThought}
-                            isStreaming={isStreamingChainOfThought}
-                            forcedTextSize="text-sm"
-                            textColor="text-muted-foreground"
-                            isLastMessage={false}
-                          />
-                        </ContentMessage>
-                      </div>
-                    )}
-                    {response && (
-                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        <ContentMessage
-                          title="Response"
-                          variant="primary"
-                          size="lg"
-                        >
-                          <CitationsContext.Provider
-                            value={{
-                              references,
-                              updateActiveReferences,
-                            }}
+                  }
+                  contentChildren={
+                    <div className="flex flex-col gap-4">
+                      {chainOfThought && (
+                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          <ContentMessage
+                            title="Agent thoughts"
+                            variant="primary"
+                            size="lg"
                           >
                             <Markdown
-                              content={response}
-                              isStreaming={isStreamingResponse}
+                              content={chainOfThought}
+                              isStreaming={isStreamingChainOfThought}
                               forcedTextSize="text-sm"
                               textColor="text-muted-foreground"
                               isLastMessage={false}
-                              additionalMarkdownPlugins={
-                                additionalMarkdownPlugins
-                              }
-                              additionalMarkdownComponents={
-                                additionalMarkdownComponents
-                              }
                             />
-                          </CitationsContext.Provider>
+                          </ContentMessage>
+                        </div>
+                      )}
+                      {response && (
+                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                          <ContentMessage
+                            title="Response"
+                            variant="primary"
+                            size="lg"
+                          >
+                            <CitationsContext.Provider
+                              value={{
+                                references,
+                                updateActiveReferences,
+                              }}
+                            >
+                              <Markdown
+                                content={response}
+                                isStreaming={isStreamingResponse}
+                                forcedTextSize="text-sm"
+                                textColor="text-muted-foreground"
+                                isLastMessage={false}
+                                additionalMarkdownPlugins={
+                                  additionalMarkdownPlugins
+                                }
+                                additionalMarkdownComponents={
+                                  additionalMarkdownComponents
+                                }
+                              />
+                            </CitationsContext.Provider>
 
-                          {activeReferences.length > 0 && (
-                            <div className="mt-4">
-                              <CitationGrid variant="grid">
-                                {activeReferences
-                                  .sort((a, b) => a.index - b.index)
-                                  .map(({ document, index }) => (
-                                    <Citation
-                                      key={index}
-                                      onClick={
-                                        document.href
-                                          ? () =>
-                                              window.open(
-                                                document.href,
-                                                "_blank"
-                                              )
-                                          : undefined
-                                      }
-                                      tooltip={
-                                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                                        document.description || document.title
-                                      }
-                                    >
-                                      <CitationIcons>
-                                        <CitationIndex>{index}</CitationIndex>
-                                        {document.icon}
-                                      </CitationIcons>
-                                      <CitationTitle>
-                                        {document.title}
-                                      </CitationTitle>
-                                    </Citation>
-                                  ))}
-                              </CitationGrid>
-                            </div>
-                          )}
-                        </ContentMessage>
-                      </div>
-                    )}
-                  </div>
-                }
-              />
+                            {activeReferences.length > 0 && (
+                              <div className="mt-4">
+                                <CitationGrid variant="grid">
+                                  {activeReferences
+                                    .sort((a, b) => a.index - b.index)
+                                    .map(({ document, index }) => (
+                                      <Citation
+                                        key={index}
+                                        onClick={
+                                          document.href
+                                            ? () =>
+                                                window.open(
+                                                  document.href,
+                                                  "_blank"
+                                                )
+                                            : undefined
+                                        }
+                                        tooltip={
+                                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                                          document.description || document.title
+                                        }
+                                      >
+                                        <CitationIcons>
+                                          <CitationIndex>{index}</CitationIndex>
+                                          {document.icon}
+                                        </CitationIcons>
+                                        <CitationTitle>
+                                          {document.title}
+                                        </CitationTitle>
+                                      </Citation>
+                                    ))}
+                                </CitationGrid>
+                              </div>
+                            )}
+                          </ContentMessage>
+                        </div>
+                      )}
+                    </div>
+                  }
+                />
+              </div>
             )}
             {generatedFiles.length > 0 && (
               <div className="flex flex-col gap-2">
