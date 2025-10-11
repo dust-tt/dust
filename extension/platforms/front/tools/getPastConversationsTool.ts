@@ -93,8 +93,27 @@ export function registerGetPastConversationsTool(
           };
         }
 
+        // Validate email format to prevent injection
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(customerEmail)) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: "Invalid customer email format",
+              },
+            ],
+          };
+        }
+
+        // SECURITY: Sanitize email and wrap in quotes to prevent search injection
+        // Escape quotes and backslashes in the email address
+        const sanitizedEmail = customerEmail.replace(/["\\']/g, "\\$&");
+
         // SECURITY: Only search for conversations from the current customer
-        const results = await frontContext.search(`from:${customerEmail}`);
+        // Wrapping in quotes treats the email as a literal string
+        const results = await frontContext.search(`from:"${sanitizedEmail}"`);
 
         if (!results.conversations || results.conversations.length === 0) {
           return {
