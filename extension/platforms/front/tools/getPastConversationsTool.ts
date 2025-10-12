@@ -139,7 +139,7 @@ export function registerGetPastConversationsTool(
           ],
         };
       } catch (error) {
-        console.error("Error getting past conversations from Front:", error);
+        logger.error({ err: normalizeError(error) }, "Error getting past conversations from Front");
         return {
           isError: true,
           content: [
