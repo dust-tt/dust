@@ -2,10 +2,8 @@ import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import {
-  ConversationModel,
-  ConversationParticipantModel,
-} from "@app/lib/models/assistant/conversation";
+import { ConversationParticipantModel } from "@app/lib/models/assistant/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -124,9 +122,10 @@ async function handler(
     const auth = await Authenticator.fromSession(session, workspace.sId);
     const user = auth.user();
 
-    const conversation = await ConversationModel.findOne({
-      where: { sId: conversationId },
-    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
 
     if (user && conversation) {
       participant = await ConversationParticipantModel.findOne({
@@ -142,8 +141,10 @@ async function handler(
   res.status(200).json({
     content: fileContent,
     file: file.toJSON(),
-    conversationId:
-      participant !== null && conversationId ? conversationId : null,
+    conversationUrl:
+      participant !== null && conversationId
+        ? `/w/${workspace.sId}/agent/${conversationId}`
+        : null,
   });
 }
 

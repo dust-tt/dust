@@ -14,7 +14,7 @@ interface PublicInteractiveContentHeaderProps {
   title: string;
   user: UserTypeWithWorkspaces | null;
   workspaceId?: string;
-  conversationId: string | null;
+  conversationUrl: string | null;
 }
 
 // Applying flex & justify-center to the title won't make it centered in the header
@@ -25,7 +25,7 @@ export function PublicInteractiveContentHeader({
   title,
   user,
   workspaceId,
-  conversationId,
+  conversationUrl,
 }: PublicInteractiveContentHeaderProps) {
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 px-4 @container dark:bg-gray-900">
@@ -56,10 +56,10 @@ export function PublicInteractiveContentHeader({
               className="hidden sm:flex"
             />
           )}
-          {user && workspaceId && conversationId && (
+          {user && workspaceId && conversationUrl && (
             <Button
               label="Go to conversation"
-              href={`/w/${workspaceId}/agent/${conversationId}`}
+              href={conversationUrl}
               variant="outline"
               icon={ChatBubbleBottomCenterTextIcon}
               className="hidden sm:flex"
