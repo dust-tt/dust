@@ -231,7 +231,7 @@ async function handler(
   // This variable is used in the context of the DustAppRun action to use the workspace credentials
   // instead of our managed credentials when running an app with a system API key.
   const useWorkspaceCredentials =
-    req.query["use_workspace_credentials"] === "true";
+    req.query["use_workspace_credentials"] === "true" || !auth.isSystemKey();
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const runFlavor: RunFlavor = req.body.stream
     ? "streaming"
@@ -274,7 +274,7 @@ async function handler(
       );
 
       let credentials: CredentialsType | null = null;
-      if (auth.isSystemKey() && !useWorkspaceCredentials) {
+      if (!useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
         credentials = dustManagedCredentials();
       } else {
@@ -447,6 +447,7 @@ async function handler(
           appId: app.id,
           runType: "deploy",
           workspaceId: keyWorkspaceId,
+          useWorkspaceCredentials,
         });
 
         await run.recordRunUsage(usages);
