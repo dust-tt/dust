@@ -1,14 +1,18 @@
-import { normalizeError } from "@app/shared/lib/utils";
+import { isEmailValid, normalizeError } from "@app/shared/lib/utils";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+
+const DEFAULT_HISTORY_LIMIT = 10;
 
 // Schema for the get past conversations tool arguments.
 export const GetPastConversationsToolArgsSchema = z.object({
   limit: z
     .number()
     .optional()
-    .describe("Maximum number of past conversations to return (default 5)."),
+    .describe(
+      `Maximum number of past conversations to return (default ${DEFAULT_HISTORY_LIMIT}).`
+    ),
 });
 
 /**
@@ -22,10 +26,7 @@ export function registerGetPastConversationsTool(
 ): void {
   server.tool(
     "front-get-past-conversations",
-    "Retrieves past conversations with the current conversation's customer. SECURITY: Only searches\n" +
-      "for conversations from the customer email in the current conversation - cannot search arbitrary\n" +
-      "email addresses. Returns conversation IDs, subjects, dates, and status. Useful for understanding\n" +
-      "conversation history with the current customer.",
+    "Retrieves past conversations with the current conversation's customer.",
     {
       searchParams: GetPastConversationsToolArgsSchema,
     },
@@ -43,43 +44,14 @@ export function registerGetPastConversationsTool(
       }
 
       try {
-        const { limit = 5 } = searchParams;
+        const { limit = DEFAULT_HISTORY_LIMIT } = searchParams;
 
-        // Get the current conversation's messages to extract the customer email
-        const messages = await frontContext.listMessages();
-
-        if (!messages.results || messages.results.length === 0) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: "No messages found in current conversation",
-              },
-            ],
-          };
-        }
-
-        // Find the first inbound message to get the customer's email
-        const inboundMessage = messages.results.find(
-          (msg) => msg.status === "inbound"
-        );
-
-        if (!inboundMessage || !inboundMessage.from) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: "Could not identify customer email from current conversation",
-              },
-            ],
-          };
-        }
-
-        // Extract the customer's email (handle property contains the email)
+        // Extract customer email from conversation recipient
+        const conversation = frontContext.conversation;
         const customerEmail =
-          "handle" in inboundMessage.from ? inboundMessage.from.handle : null;
+          "handle" in conversation.recipient
+            ? conversation.recipient.handle
+            : null;
 
         if (!customerEmail) {
           return {
@@ -94,8 +66,7 @@ export function registerGetPastConversationsTool(
         }
 
         // Validate email format to prevent injection
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(customerEmail)) {
+        if (!isEmailValid(customerEmail)) {
           return {
             isError: true,
             content: [
