@@ -353,10 +353,13 @@ export default async function createServer(
             mainConversation,
             query: isHandoff
               ? `
-You have been summoned by @${mainAgent.name}. Its instructions are: <main_agent_instructions>
+You are now handling this conversation and have been summoned by @${mainAgent.name}.
+The instructions of @${mainAgent.name} are:
+<main_agent_instructions>
 ${instructions ?? ""}
 </main_agent_instructions>
 The ${toolName} tool is not available to you, do not attempt to use it.
+Your goal is to answer the following query:
 ${query}`
               : query,
             toolsetsToAdd: toolsetsToAdd ?? null,
