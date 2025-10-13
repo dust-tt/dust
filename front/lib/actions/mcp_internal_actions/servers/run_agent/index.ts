@@ -337,15 +337,7 @@ export default async function createServer(
             mainAgent,
             mainConversation,
             query: isHandoff
-              ? `
-You are now handling this conversation and have been summoned by @${mainAgent.name}.
-The instructions of @${mainAgent.name} are:
-<main_agent_instructions>
-${instructions ?? ""}
-</main_agent_instructions>
-The ${toolName} tool is not available to you, do not attempt to use it.
-Your goal is to answer the following query:
-${query}`
+              ? `The user's query is being handed off to you from @${mainAgent.name} within the same conversation. The calling agent's instructions are: <caller_agent_instructions>${instructions ?? ""}</caller_agent_instructions>. The tool ${toolName} is not available to you, do not attempt to use it.`
               : query,
             toolsetsToAdd: toolsetsToAdd ?? null,
             fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
@@ -361,7 +353,7 @@ ${query}`
         if (isHandoff) {
           return new Ok(
             makeMCPToolExit({
-              message: `Query delegated to agent @${childAgentBlob.name}`,
+              message: `Handoff from :mention[${mainAgent.name}]{sId=${mainAgent.sId}} to :mention[${childAgentBlob.name}]{sId=${childAgentId}} successfully launched.`,
               isError: false,
             }).content
           );
