@@ -128,10 +128,13 @@ const configurableProperties = {
           z
             .object({
               value: z.literal("run-agent"),
-              label: z.literal("Agent runs in background"),
+              label: z.literal("Agent runs in the background"),
             })
             .describe(
-              "The selected agent runs silently in a background conversation and passes results to the main agent."
+              "The selected agent runs in a background conversation and passes results back to " +
+                "the main agent.\nThis is the default behavior, well suited for breaking down " +
+                "complex work by delegating specific research/analysis subtasks while " +
+                "maintaining control of the overall response."
             ),
           z
             .object({
@@ -139,7 +142,9 @@ const configurableProperties = {
               label: z.literal("Agent responds in conversation"),
             })
             .describe(
-              "The selected agent takes over and responds directly in the conversation."
+              "The selected agent takes over and responds directly in the conversation." +
+                "\nWell suited for a routing use case where the sub-agent should handle " +
+                "the entire interaction going forward."
             ),
         ])
         .optional(),
@@ -164,8 +169,7 @@ export default async function createServer(
   let childAgentId: string | null = null;
 
   if (
-    agentLoopContext &&
-    agentLoopContext.listToolsContext &&
+    agentLoopContext?.listToolsContext &&
     isServerSideMCPServerConfiguration(
       agentLoopContext.listToolsContext.agentActionConfiguration
     ) &&
@@ -176,8 +180,7 @@ export default async function createServer(
   }
 
   if (
-    agentLoopContext &&
-    agentLoopContext.runContext &&
+    agentLoopContext?.runContext &&
     isLightServerSideMCPToolConfiguration(
       agentLoopContext.runContext.toolConfiguration
     ) &&
