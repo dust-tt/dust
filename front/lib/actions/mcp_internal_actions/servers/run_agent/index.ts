@@ -132,8 +132,8 @@ const configurableProperties = {
             })
             .describe(
               "The selected agent runs in a background conversation and passes results back to " +
-                "the main agent.\n This is the default behavior, well suited for delegating " +
-                "specialized tasks such as researching data from company data or the web."
+                "the main agent.\n This is the default behavior, well suited for " +
+                "specialized tasks such as researching from company data or the web."
             ),
           z
             .object({
