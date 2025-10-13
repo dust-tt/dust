@@ -632,18 +632,42 @@ async function handleWorkOSAuth<T>(
   return new Ok(authRes.value);
 }
 
+/**
+ * Checks if the current session has a user that is an active member of the specified workspace.
+ * Returns true if the user is authenticated and is a member of the workspace.
+ * Returns false if not authenticated or not a member.
+ */
+export async function isSessionWithUserFromWorkspace(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  workspaceId: string
+): Promise<boolean> {
+  const auth = await getAuthFromWorkspaceSession(req, res, workspaceId);
+
+  if (!auth) {
+    return false;
+  }
+
+  return auth.isUser();
+}
+
+/**
+ * Get an auth object if the current session has a user that is an active member of the specified
+ * workspace.
+ * Return an Authenticator if the user is authenticated and is a member of the workspace.
+ * Returns null if not authenticated or not a member.
+ */
 export async function getAuthFromWorkspaceSession(
   req: NextApiRequest,
   res: NextApiResponse,
-  workspaceSId: string
+  workspaceId: string
 ): Promise<Authenticator | null> {
   const session = await getSession(req, res);
-
   if (!session) {
     return null;
   }
 
-  const auth = await Authenticator.fromSession(session, workspaceSId);
+  const auth = await Authenticator.fromSession(session, workspaceId);
 
   return auth;
 }

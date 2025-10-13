@@ -1,7 +1,7 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAuthFromWorkspaceSession } from "@app/lib/api/auth_wrappers";
+import { isSessionWithUserFromWorkspace } from "@app/lib/api/auth_wrappers";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -92,8 +92,12 @@ async function handler(
 
   // For workspace sharing, check authentication.
   if (shareScope === "workspace") {
-    const auth = await getAuthFromWorkspaceSession(req, res, workspace.sId);
-    if (!auth) {
+    const isWorkspaceUser = await isSessionWithUserFromWorkspace(
+      req,
+      res,
+      workspace.sId
+    );
+    if (!isWorkspaceUser) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {

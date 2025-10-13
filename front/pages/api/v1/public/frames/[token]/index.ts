@@ -2,6 +2,7 @@ import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAuthFromWorkspaceSession } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -87,6 +88,8 @@ async function handler(
       },
     });
   }
+
+  // TODO: Rename function.
   const auth = await getAuthFromWorkspaceSession(req, res, workspace.sId);
 
   // For workspace sharing, check authentication.
@@ -124,7 +127,7 @@ async function handler(
     file: file.toJSON(),
     // Only return the conversation URL if the user is a participant of the conversation.
     conversationUrl: isParticipant
-      ? `/w/${workspace.sId}/agent/${conversationId}`
+      ? `${config.getClientFacingUrl()}/w/${workspace.sId}/agent/${conversationId}`
       : null,
   });
 }
