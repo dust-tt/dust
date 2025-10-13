@@ -95,20 +95,24 @@ function groupFilesByContentType(
 interface FileRendererProps {
   files: ActionGeneratedFileType[];
   owner: LightWorkspaceType;
+  conversationId: string;
 }
 
-function FileRenderer({ files, owner }: FileRendererProps) {
+function FileRenderer({ files, owner, conversationId }: FileRendererProps) {
   return (
     <CitationGrid variant="grid" className="md:grid-cols-3">
-      {files.map((file) => (
+      {files.map((file, index) => (
         <DefaultAgentMessageGeneratedFiles
-          key={file.fileId}
+          key={index}
           document={{
             href: `/api/w/${owner.sId}/files/${file.fileId}`,
             icon: <DocumentIcon />,
             title: file.title,
+            contentType: file.contentType,
+            fileId: file.fileId,
           }}
-          index={-1}
+          owner={owner}
+          conversationId={conversationId}
         />
       ))}
     </CitationGrid>
@@ -119,12 +123,14 @@ interface FileGroupSectionProps {
   group: FileGroup;
   onFileClick: () => void;
   owner: LightWorkspaceType;
+  conversationId: string;
 }
 
 function FileGroupSection({
   group,
   onFileClick,
   owner,
+  conversationId,
 }: FileGroupSectionProps) {
   const isInteractiveContent = isInteractiveContentContentType(
     group.contentType
@@ -143,7 +149,11 @@ function FileGroupSection({
             onClick={onFileClick}
           />
         ) : (
-          <FileRenderer files={group.files} owner={owner} />
+          <FileRenderer
+            files={group.files}
+            owner={owner}
+            conversationId={conversationId}
+          />
         )}
       </div>
     </div>
@@ -164,7 +174,7 @@ function EmptyFilesState() {
 }
 
 interface ConversationFilesPopoverProps {
-  conversationId: string | null;
+  conversationId: string;
   owner: LightWorkspaceType;
 }
 
@@ -245,6 +255,7 @@ export function ConversationFilesPopover({
                   group={group}
                   owner={owner}
                   onFileClick={handleFileClick}
+                  conversationId={conversationId}
                 />
               ))}
             </div>

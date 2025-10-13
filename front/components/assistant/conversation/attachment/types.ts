@@ -1,6 +1,7 @@
 import type React from "react";
 
 import type {
+  AllSupportedFileContentType,
   SupportedContentFragmentType,
   SupportedFileContentType,
 } from "@app/types";
@@ -32,7 +33,7 @@ export type Attachment = FileAttachment | NodeAttachment;
 
 interface BaseAttachmentCitation {
   id: string;
-  attachmentCitationType: "fragment" | "inputBar";
+  attachmentCitationType: "fragment" | "inputBar" | "mcp";
   title: string;
   sourceUrl?: string | null;
   visual: React.ReactNode;
@@ -56,6 +57,19 @@ export interface NodeAttachmentCitation extends BaseAttachmentCitation {
   spaceName: string;
 }
 
+export interface MarkdownAttachmentCitation extends BaseAttachmentCitation {
+  type: "markdown";
+  attachmentCitationType: "mcp";
+  fileId: string;
+  isUploading: false;
+
+  contentType:
+    | AllSupportedFileContentType
+    | "application/vnd.dust.tool-output.data-source-search-result"
+    | "application/vnd.dust.tool-output.websearch-result";
+}
+
 export type AttachmentCitation =
   | FileAttachmentCitation
-  | NodeAttachmentCitation;
+  | NodeAttachmentCitation
+  | MarkdownAttachmentCitation;

@@ -193,6 +193,8 @@ export function AgentMessage({
               title: citation.title,
               description: citation.description,
               icon: <IconComponent />,
+              contentType: citation.contentType,
+              fileId: key,
             },
           };
         }
@@ -414,8 +416,8 @@ export function AgentMessage({
   const { configuration: agentConfiguration } = agentMessageToRender;
 
   const citations = React.useMemo(
-    () => getCitations({ activeReferences }),
-    [activeReferences]
+    () => getCitations({ activeReferences, owner, conversationId }),
+    [activeReferences, conversationId, owner]
   );
 
   const canMention = agentConfiguration.canRead;
@@ -723,11 +725,15 @@ function AgentMessageContent({
             activeReferences: generatedFiles.map((file) => ({
               index: -1,
               document: {
+                fileId: file.fileId,
+                contentType: file.contentType,
                 href: `/api/w/${owner.sId}/files/${file.fileId}`,
                 icon: <DocumentIcon />,
                 title: file.title,
               },
             })),
+            owner,
+            conversationId,
           })}
         </div>
       )}
@@ -773,11 +779,15 @@ function getAgentMessageToRender({
 
 function getCitations({
   activeReferences,
+  owner,
+  conversationId,
 }: {
   activeReferences: {
     index: number;
     document: MarkdownCitation;
   }[];
+  owner: LightWorkspaceType;
+  conversationId: string;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
 
@@ -786,7 +796,8 @@ function getCitations({
       <DefaultAgentMessageGeneratedFiles
         key={index}
         document={document}
-        index={index}
+        owner={owner}
+        conversationId={conversationId}
       />
     );
   });

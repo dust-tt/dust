@@ -33,7 +33,8 @@ export function AttachmentCitation({
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const tooltipContent =
-    attachmentCitation.type === "file" ? (
+    attachmentCitation.type === "file" ||
+    attachmentCitation.type === "markdown" ? (
       attachmentCitation.title
     ) : (
       <div className="flex flex-col gap-1">
@@ -49,7 +50,8 @@ export function AttachmentCitation({
     );
 
   const previewImageUrl =
-    attachmentCitation.type === "file" &&
+    (attachmentCitation.type === "file" ||
+      attachmentCitation.type === "markdown") &&
     isSupportedImageContentType(attachmentCitation.contentType)
       ? `${attachmentCitation.sourceUrl}?action=view`
       : undefined;
@@ -58,7 +60,8 @@ export function AttachmentCitation({
     attachmentCitation.type === "file" && attachmentCitation.isUploading;
 
   const canOpenInDialog =
-    attachmentCitation.type === "file" &&
+    (attachmentCitation.type === "file" ||
+      attachmentCitation.type === "markdown") &&
     (isTextualContentType(attachmentCitation) ||
       isAudioContentType(attachmentCitation));
 
@@ -114,7 +117,8 @@ export function AttachmentCitation({
         }
         label={tooltipContent}
       />
-      {attachmentCitation.type === "file" && (
+      {(attachmentCitation.type === "file" ||
+        attachmentCitation.type === "markdown") && (
         <AttachmentViewer
           setViewerOpen={setViewerOpen}
           viewerOpen={viewerOpen}

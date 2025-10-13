@@ -2,48 +2,40 @@ import {
   Citation,
   CitationDescription,
   CitationGrid,
-  CitationIcons,
-  CitationIndex,
   CitationTitle,
   Icon,
   SparklesIcon,
 } from "@dust-tt/sparkle";
 
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import type { LightAgentMessageType } from "@app/types";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 import { frameContentType } from "@app/types";
+
+import { AttachmentCitation } from "./attachment/AttachmentCitation";
 
 interface DefaultAgentMessageGeneratedFilesProps {
   document: MarkdownCitation;
-  index: number;
+  owner: LightWorkspaceType;
+  conversationId: string;
 }
 
-function CitationContent({
+export const DefaultAgentMessageGeneratedFiles = ({
   document,
-  index,
-}: DefaultAgentMessageGeneratedFilesProps) {
-  return (
-    <>
-      <CitationIcons>
-        {index !== -1 && <CitationIndex>{index}</CitationIndex>}
-        {document.icon}
-      </CitationIcons>
-      <CitationTitle>{document.title}</CitationTitle>
-    </>
-  );
-}
+  owner,
+  conversationId,
+}: DefaultAgentMessageGeneratedFilesProps) => {
+  const attachmentCitation = markdownCitationToAttachmentCitation(document);
 
-export function DefaultAgentMessageGeneratedFiles({
-  document,
-  index,
-}: DefaultAgentMessageGeneratedFilesProps) {
   return (
-    <Citation href={document.href} tooltip={document.title}>
-      <CitationContent document={document} index={index} />
-    </Citation>
+    <AttachmentCitation
+      attachmentCitation={attachmentCitation}
+      owner={owner}
+      conversationId={conversationId}
+    />
   );
-}
+};
 
 // Interactive content files.
 

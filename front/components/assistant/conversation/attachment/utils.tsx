@@ -19,6 +19,7 @@ import {
   getDisplayNameFromPastedFileId,
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type { ContentFragmentType } from "@app/types";
 import {
@@ -30,7 +31,7 @@ import {
 export const isTextualContentType = (
   attachmentCitation: AttachmentCitation
 ) => {
-  if (attachmentCitation.type !== "file") {
+  if (attachmentCitation.type === "node") {
     return false;
   }
   const ct = attachmentCitation.contentType;
@@ -42,7 +43,7 @@ export const isTextualContentType = (
   );
 };
 export const isAudioContentType = (attachmentCitation: AttachmentCitation) => {
-  if (attachmentCitation.type !== "file") {
+  if (attachmentCitation.type === "node") {
     return false;
   }
   const ct = attachmentCitation.contentType;
@@ -176,6 +177,21 @@ export function attachmentToAttachmentCitation(
       attachmentCitationType: "inputBar",
     };
   }
+}
+
+export function markdownCitationToAttachmentCitation(
+  citation: MarkdownCitation
+): AttachmentCitation {
+  return {
+    id: citation.fileId,
+    fileId: citation.fileId,
+    attachmentCitationType: "mcp",
+    contentType: citation.contentType,
+    title: citation.title,
+    type: "markdown",
+    visual: <IconFromContentType contentType={citation.contentType} />,
+    isUploading: false,
+  };
 }
 
 export const IconFromContentType = ({
