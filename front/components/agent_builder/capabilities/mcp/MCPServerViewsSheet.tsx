@@ -534,7 +534,7 @@ export function MCPServerViewsSheet({
     shouldUnregister: false,
   });
 
-  const toolsConfigurations = useMemo(
+  const requirements = useMemo(
     () =>
       mcpServerView
         ? getMCPServerRequirements(mcpServerView, featureFlags)
@@ -619,10 +619,7 @@ export function MCPServerViewsSheet({
         ? () => getAvatar(mcpServerView.server, "md")
         : undefined,
       content:
-        configurationTool &&
-        mcpServerView &&
-        toolsConfigurations &&
-        formSchema ? (
+        configurationTool && mcpServerView && requirements && formSchema ? (
           <FormProvider form={form} className="h-full">
             <div className="h-full">
               <div className="h-full space-y-6 pt-3">
@@ -634,38 +631,36 @@ export function MCPServerViewsSheet({
                   />
                 )}
 
-                {toolsConfigurations.requiresReasoningConfiguration && (
+                {requirements.requiresReasoningConfiguration && (
                   <ReasoningModelSection />
                 )}
 
-                {toolsConfigurations.requiresChildAgentConfiguration && (
+                {requirements.requiresChildAgentConfiguration && (
                   <ChildAgentSection />
                 )}
 
-                {toolsConfigurations.mayRequireTimeFrameConfiguration && (
+                {requirements.mayRequireTimeFrameConfiguration && (
                   <TimeFrameSection actionType="search" />
                 )}
 
-                {toolsConfigurations.requiresDustAppConfiguration && (
+                {requirements.requiresDustAppConfiguration && (
                   <DustAppSection />
                 )}
 
-                {toolsConfigurations.requiresSecretConfiguration && (
-                  <SecretSection />
-                )}
+                {requirements.requiresSecretConfiguration && <SecretSection />}
 
-                {toolsConfigurations.mayRequireJsonSchemaConfiguration && (
+                {requirements.mayRequireJsonSchemaConfiguration && (
                   <JsonSchemaSection
                     getAgentInstructions={getAgentInstructions}
                   />
                 )}
 
                 <AdditionalConfigurationSection
-                  requiredStrings={toolsConfigurations.requiredStrings}
-                  requiredNumbers={toolsConfigurations.requiredNumbers}
-                  requiredBooleans={toolsConfigurations.requiredBooleans}
-                  requiredEnums={toolsConfigurations.requiredEnums}
-                  requiredLists={toolsConfigurations.requiredLists}
+                  requiredStrings={requirements.requiredStrings}
+                  requiredNumbers={requirements.requiredNumbers}
+                  requiredBooleans={requirements.requiredBooleans}
+                  requiredEnums={requirements.requiredEnums}
+                  requiredLists={requirements.requiredLists}
                 />
               </div>
             </div>
