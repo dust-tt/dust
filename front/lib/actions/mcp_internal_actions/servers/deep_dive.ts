@@ -78,7 +78,7 @@ const createServer = (
         }
 
         const response = makeMCPToolExit({
-          message: `Handoff from @${agentConfiguration.name} to @${DEEP_DIVE_NAME} successfully launched.`,
+          message: `Handoff from :mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} to :mention[${DEEP_DIVE_NAME}]{sId=${GLOBAL_AGENTS_SID.DEEP_DIVE}} successfully launched.`,
           isError: false,
         });
 

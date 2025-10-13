@@ -3,6 +3,8 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 export const DEEP_DIVE_NAME = "deep-dive";
 export const DEEP_DIVE_DESC =
   "Deep dive within the full company data and data warehouses, web search/browse.";
+export const DEEP_DIVE_AVATAR_URL =
+  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
 export const DEEP_DIVE_SERVER_INSTRUCTIONS = `\
 ## HANDOFF TO THE ${DEEP_DIVE_NAME} AGENT
