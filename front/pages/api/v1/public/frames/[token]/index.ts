@@ -1,7 +1,6 @@
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isUserConversationParticipant } from "@app/lib/api/assistant/participants";
 import { getAuthFromWorkspaceSession } from "@app/lib/api/auth_wrappers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -109,24 +108,21 @@ async function handler(
   let isParticipant = false;
 
   if (user && conversationId) {
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        conversationId
-      );
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
 
-    if (user && conversationRes.isOk()) {
-      isParticipant = await isUserConversationParticipant(
-        auth,
-        conversationRes.value,
-        user.id
-      );
+    if (user && conversationResource) {
+      isParticipant =
+        await conversationResource.isConversationParticipant(user);
     }
   }
 
   res.status(200).json({
     content: fileContent,
     file: file.toJSON(),
+    // Only return the conversation URL if the user is a participant of the conversation.
     conversationUrl: isParticipant
       ? `/w/${workspace.sId}/agent/${conversationId}`
       : null,

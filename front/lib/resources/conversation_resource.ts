@@ -21,6 +21,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   ConversationMCPServerViewType,
@@ -687,21 +688,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }[]
   > {
     const query = `
-        SELECT 
+        SELECT
         rank,
         "agentMessageId",
         version
       FROM (
-        SELECT 
+        SELECT
           rank,
           "agentMessageId",
           version,
           ROW_NUMBER() OVER (
-            PARTITION BY rank 
+            PARTITION BY rank
             ORDER BY version DESC
           ) as rn
         FROM messages
-        WHERE 
+        WHERE
           "workspaceId" = :workspaceId
           AND "conversationId" = :conversationId
           AND "agentMessageId" IS NOT NULL
@@ -899,6 +900,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return new Ok({ wasLastMember: remaining <= 1, affectedCount });
+  }
+
+  async isConversationParticipant(user: UserResource): Promise<boolean> {
+    const count = await ConversationParticipantModel.count({
+      where: {
+        conversationId: this.id,
+        userId: user.id,
+        workspaceId: this.workspaceId,
+      },
+    });
+
+    return count > 0;
   }
 
   async delete(
