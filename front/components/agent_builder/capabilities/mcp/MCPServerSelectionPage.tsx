@@ -17,30 +17,6 @@ import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { WhitelistableFeature } from "@app/types";
 
-interface DataVisualizationCardProps {
-  specification: ActionSpecification;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-function DataVisualizationCard({
-  specification,
-  isSelected,
-  onClick,
-}: DataVisualizationCardProps) {
-  return (
-    <ToolCard
-      icon={specification.dropDownIcon}
-      label={specification.label}
-      description={specification.description}
-      isSelected={isSelected}
-      canAdd={!isSelected}
-      onClick={onClick}
-      cardContainerClassName="h-36"
-    />
-  );
-}
-
 interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
@@ -141,10 +117,6 @@ export function MCPServerSelectionPage({
     return mcpIds;
   }, [selectedToolsInSheet]);
 
-  const isDataVisualizationSelected = selectedToolsInSheet.some(
-    (tool) => tool.type === "DATA_VISUALIZATION"
-  );
-
   const hasDataVisualization = dataVisualization && onDataVisualizationClick;
   const hasTopViews = topMCPServerViews.length > 0;
   const hasNonTopViews = nonTopMCPServerViews.length > 0;
@@ -176,14 +148,6 @@ export function MCPServerSelectionPage({
           <span className="text-lg font-semibold">Top tools</span>
         )}
         <div className="grid grid-cols-2 gap-3">
-          {dataVisualization && onDataVisualizationClick && (
-            <DataVisualizationCard
-              key="data-visualization"
-              specification={dataVisualization}
-              isSelected={isDataVisualizationSelected}
-              onClick={onDataVisualizationClick}
-            />
-          )}
           {topMCPServerViews.map((view) => (
             <MCPServerCard
               key={view.id}
