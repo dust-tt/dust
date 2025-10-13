@@ -2,7 +2,6 @@ import { basename } from "node:path";
 import { Readable } from "node:stream";
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { AxiosError } from "axios";
 import type { UploadResult } from "convertapi";
 import ConvertAPI from "convertapi";
 import { marked } from "marked";
