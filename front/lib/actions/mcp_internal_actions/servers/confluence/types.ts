@@ -2,10 +2,16 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import type { MCPError } from "@app/lib/actions/mcp_errors";
+import type { Result } from "@app/types";
+
 export type ConfluenceErrorResult = string;
 export type WithAuthParams = {
   authInfo?: AuthInfo;
-  action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
+  action: (
+    baseUrl: string,
+    accessToken: string
+  ) => Promise<Result<CallToolResult["content"], MCPError>>;
 };
 
 // Schema for Atlassian resource information

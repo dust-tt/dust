@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   createPage,
   getCurrentUser,
@@ -12,29 +13,43 @@ import {
   makeInternalMCPServer,
   makeMCPToolJSONSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { Err, Ok } from "@app/types";
 
-const createServer = (): McpServer => {
+const CONFLUENCE_TOOL_NAME = "confluence";
+
+const createServer = (auth: Authenticator): McpServer => {
   const server = makeInternalMCPServer("confluence");
 
   server.tool(
     "get_current_user",
     "Get information about the currently authenticated Confluence user including account ID, display name, and email.",
     {},
-    async (_, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await getCurrentUser(baseUrl, accessToken);
-          if (result.isErr()) {
-            throw new Error(`Error getting current user: ${result.error}`);
-          }
-          return makeMCPToolJSONSuccess({
-            message: "Current user information retrieved successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: CONFLUENCE_TOOL_NAME },
+      async (_, { authInfo }) => {
+        return withAuth({
+          action: async (baseUrl, accessToken) => {
+            const result = await getCurrentUser(baseUrl, accessToken);
+            if (result.isErr()) {
+              return new Err(
+                new MCPError(`Error getting current user: ${result.error}`)
+              );
+            }
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message: "Current user information retrieved successfully",
+                result: result.value,
+              }).content
+            );
+          },
+          authInfo,
+        });
+      }
+    )
   );
 
   server.tool(
@@ -55,24 +70,32 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Number of results per page (default 25)"),
     },
-    async (params, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await listPages(baseUrl, accessToken, params);
-          if (result.isErr()) {
-            throw new Error(`Error listing pages: ${result.error}`);
-          }
-          return makeMCPToolJSONSuccess({
-            message:
-              result.value.results.length === 0
-                ? "No pages found"
-                : `Found ${result.value.results.length} page(s)`,
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: CONFLUENCE_TOOL_NAME },
+      async (params, { authInfo }) => {
+        return withAuth({
+          action: async (baseUrl, accessToken) => {
+            const result = await listPages(baseUrl, accessToken, params);
+            if (result.isErr()) {
+              return new Err(
+                new MCPError(`Error listing pages: ${result.error}`)
+              );
+            }
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message:
+                  result.value.results.length === 0
+                    ? "No pages found"
+                    : `Found ${result.value.results.length} page(s)`,
+                result: result.value,
+              }).content
+            );
+          },
+          authInfo,
+        });
+      }
+    )
   );
 
   server.tool(
@@ -104,21 +127,29 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Page body content"),
     },
-    async (params, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await createPage(baseUrl, accessToken, params);
-          if (result.isErr()) {
-            throw new Error(`Error creating page: ${result.error}`);
-          }
-          return makeMCPToolJSONSuccess({
-            message: "Page created successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: CONFLUENCE_TOOL_NAME },
+      async (params, { authInfo }) => {
+        return withAuth({
+          action: async (baseUrl, accessToken) => {
+            const result = await createPage(baseUrl, accessToken, params);
+            if (result.isErr()) {
+              return new Err(
+                new MCPError(`Error creating page: ${result.error}`)
+              );
+            }
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message: "Page created successfully",
+                result: result.value,
+              }).content
+            );
+          },
+          authInfo,
+        });
+      }
+    )
   );
 
   server.tool(
@@ -164,21 +195,29 @@ const createServer = (): McpServer => {
         .optional()
         .describe("New parent page ID to move the page under"),
     },
-    async (params, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await updatePage(baseUrl, accessToken, params);
-          if (result.isErr()) {
-            throw new Error(`Error updating page: ${result.error}`);
-          }
-          return makeMCPToolJSONSuccess({
-            message: "Page updated successfully",
-            result: result.value,
-          });
-        },
-        authInfo,
-      });
-    }
+    withToolLogging(
+      auth,
+      { toolNameForMonitoring: CONFLUENCE_TOOL_NAME },
+      async (params, { authInfo }) => {
+        return withAuth({
+          action: async (baseUrl, accessToken) => {
+            const result = await updatePage(baseUrl, accessToken, params);
+            if (result.isErr()) {
+              return new Err(
+                new MCPError(`Error updating page: ${result.error}`)
+              );
+            }
+            return new Ok(
+              makeMCPToolJSONSuccess({
+                message: "Page updated successfully",
+                result: result.value,
+              }).content
+            );
+          },
+          authInfo,
+        });
+      }
+    )
   );
 
   return server;

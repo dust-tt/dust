@@ -92,7 +92,7 @@ export async function getInternalMCPServer(
     case "github":
       return githubServer(auth);
     case "hubspot":
-      return hubspotServer();
+      return hubspotServer(auth, agentLoopContext);
     case "image_generation":
       return imageGenerationDallEServer(auth);
     case "elevenlabs":
@@ -160,15 +160,15 @@ export async function getInternalMCPServer(
     case AGENT_MEMORY_SERVER_NAME:
       return agentMemoryServer(auth, agentLoopContext);
     case "confluence":
-      return confluenceServer();
+      return confluenceServer(auth);
     case "outlook":
       return outlookServer(auth);
     case "outlook_calendar":
-      return outlookCalendarServer();
+      return outlookCalendarServer(auth);
     case "agent_management":
       return agentManagementServer(auth, agentLoopContext);
     case "freshservice":
-      return freshserviceServer();
+      return freshserviceServer(auth);
     case "data_warehouses":
       return dataWarehousesServer(auth, agentLoopContext);
     case "toolsets":
