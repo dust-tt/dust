@@ -238,16 +238,14 @@ export function EditorsSheet() {
 
         <SheetContainer>
           <div className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
-            <div className="flex flex-col gap-3">
-              <SearchInput
-                ref={searchInputRef}
-                value={searchTerm}
-                onChange={setSearchTerm}
-                name="search-editors"
-                placeholder="Search members to add as editors..."
-                isLoading={isWorkspaceMembersLoading}
-              />
-            </div>
+            <SearchInput
+              ref={searchInputRef}
+              value={searchTerm}
+              onChange={setSearchTerm}
+              name="search-editors"
+              placeholder="Search members to add as editors..."
+              isLoading={isWorkspaceMembersLoading}
+            />
 
             {isWorkspaceMembersLoading ? (
               <div className="flex justify-center py-8">
