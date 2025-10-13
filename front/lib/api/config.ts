@@ -275,6 +275,22 @@ const config = {
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
   },
+  getElasticsearchConfig: (): {
+    url: string;
+    username: string;
+    password: string;
+    analyticsIndex: string;
+  } => {
+    return {
+      url: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_URL"),
+      username: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_USERNAME"),
+      password: EnvironmentConfig.getEnvVariable("ELASTICSEARCH_PASSWORD"),
+      analyticsIndex:
+        EnvironmentConfig.getOptionalEnvVariable(
+          "ELASTICSEARCH_ANALYTICS_INDEX"
+        ) ?? "front.agent_message_analytics_1",
+    };
+  },
 };
 
 export default config;
