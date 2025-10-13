@@ -65,7 +65,10 @@ import {
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
-import { getAgentBuilderRoute, getConversationRoute } from "@app/lib/utils/router";
+import {
+  getAgentBuilderRoute,
+  getConversationRoute,
+} from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
