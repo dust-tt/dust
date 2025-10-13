@@ -27,8 +27,8 @@ const GRID_SECTION_CLASSES = classNames(
 
 const DEMO_VIDEO = {
   sectionTitle: "See how it works",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/nkyuwyy93c?web_component=true&seo=true",
+  // TODO: Replace video URL with Marketing one.
+  videoUrl: "https://youtu.be/qM5JXmTwc80",
   showCaptions: true,
 };
 
@@ -49,7 +49,7 @@ function HeroSection() {
             mono
             className="mb-4 text-4xl font-medium leading-tight md:text-5xl lg:text-6xl xl:text-7xl"
           >
-            Create interactive content with <span>Dust Canvas</span>
+            Create interactive content with <span>Frames</span>
           </H1>
           <P
             size="lg"
@@ -81,7 +81,7 @@ function HeroSection() {
             <div className="relative w-full max-w-xl xl:max-w-2xl">
               <div className="relative z-10 mx-auto flex w-full items-center justify-center">
                 <img
-                  src="/static/landing/interactive-content/Ext_Hero.svg"
+                  src="/static/landing/frames/Ext_Hero.svg"
                   alt="Content builder interface showing drag-and-drop elements and real-time preview"
                   className="h-auto w-full max-w-lg rounded-2xl object-contain lg:max-w-xl xl:max-w-2xl"
                 />
@@ -99,7 +99,7 @@ function ContentInAction() {
     <div className={SECTION_CLASSES}>
       <div className={CONTAINER_CLASSES}>
         <div className="mb-12">
-          <H2>Canvas in action</H2>
+          <H2>Frames in action</H2>
           <P size="lg" className="mt-4 text-muted-foreground">
             AI agents shouldn't hand you static charts you paste into a slide
             and forget about. They should hand you something you can poke, edit,
@@ -113,7 +113,7 @@ function ContentInAction() {
               <div className="w-full">
                 <div className="relative w-full overflow-hidden rounded-lg bg-blue-50">
                   <img
-                    src="/static/landing/interactive-content/SalesROI.svg"
+                    src="/static/landing/frames/SalesROI.svg"
                     alt="Data visualizations for client presentations"
                     className="h-auto w-full object-contain"
                   />
@@ -194,7 +194,7 @@ function ContentInAction() {
               <div className="w-full">
                 <div className="relative w-full overflow-hidden rounded-lg bg-pink-50">
                   <img
-                    src="/static/landing/interactive-content/MarketingCampaign.svg"
+                    src="/static/landing/frames/MarketingCampaign.svg"
                     alt="Campaign performance charts and A/B testing results"
                     className="h-auto w-full object-contain"
                   />
@@ -208,7 +208,7 @@ function ContentInAction() {
               <div className="w-full">
                 <div className="relative w-full overflow-hidden rounded-lg bg-green-50">
                   <img
-                    src="/static/landing/interactive-content/UserEngagement.svg"
+                    src="/static/landing/frames/UserEngagement.svg"
                     alt="Usage analytics and health score dashboards"
                     className="h-auto w-full object-contain"
                   />
@@ -289,7 +289,7 @@ function ContentInAction() {
               <div className="w-full">
                 <div className="relative w-full overflow-hidden rounded-lg bg-purple-50">
                   <img
-                    src="/static/landing/interactive-content/ProductTeam.svg"
+                    src="/static/landing/frames/ProductTeam.svg"
                     alt="Feature adoption charts and data exploration tools"
                     className="h-auto w-full object-contain"
                   />
@@ -328,8 +328,8 @@ function AllTheBellsAndWhistlesSection() {
               Secure and collaborative by default
             </h4>
             <P size="sm" className="mt-1 text-muted-foreground">
-              With share and control access, you can use Dust Canvas with your
-              team, customers, or your boss and still sleep at night knowing you
+              With share and control access, you can use Frames with your team,
+              customers, or your boss and still sleep at night knowing you
               control who can touch what.
             </P>
           </div>
@@ -372,7 +372,7 @@ function SharingAndAccessSection() {
             <div className="w-full">
               <div className="relative w-full overflow-hidden rounded-lg bg-violet-100">
                 <img
-                  src="/static/landing/interactive-content/Security-share.svg"
+                  src="/static/landing/frames/Security-share.svg"
                   alt="Security and sharing interface showing access controls and sharing options"
                   className="h-auto w-full object-contain"
                 />
@@ -426,26 +426,26 @@ function JustUseDustSection() {
   );
 }
 
-export default function Canvas() {
+export default function Frames() {
   return (
     <>
       <Head>
-        <title>Dust - Canvas with Dust Canvas</title>
+        <title>Dust - Frames</title>
         <meta
           name="description"
-          content="Create canvas with Dust Canvas. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
+          content="Create frames with Dust. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
         />
-        <meta property="og:title" content="Dust - Canvas with Dust Canvas" />
+        <meta property="og:title" content="Dust - Frames" />
         <meta
           property="og:description"
-          content="Create canvas with Dust Canvas. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
+          content="Create frames with Dust. Turn static outputs from your Dust AI agents into collaborative, editable visuals, tailored to whoever you're sharing them with."
         />
         <meta property="og:type" content="website" />
         <meta
           property="og:image"
           content="https://dust.tt/static/landing/hero_dust.png"
         />
-        <meta property="og:url" content="https://dust.tt/home/canvas" />
+        <meta property="og:url" content="https://dust.tt/home/frames" />
       </Head>
 
       <div className="container flex w-full flex-col gap-16 px-2 py-2">
@@ -461,6 +461,6 @@ export default function Canvas() {
   );
 }
 
-Canvas.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
+Frames.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
