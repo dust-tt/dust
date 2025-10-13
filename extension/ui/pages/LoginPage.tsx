@@ -75,11 +75,9 @@ export const LoginPage = () => {
             </Page.H>
           </div>
           {authError && authError.code === "user_not_found" && (
-            <>
-              <div className="text-md text-center">
-                Please sign up on the web to start using Dust extension.
-              </div>
-            </>
+            <div className="text-md text-center">
+              Please sign up on the web to start using Dust extension.
+            </div>
           )}
           {authError && authError.code !== "user_not_found" && (
             <div className="text-md text-center">{authError.message}</div>
