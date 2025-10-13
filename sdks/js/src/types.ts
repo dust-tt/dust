@@ -685,6 +685,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "web_summarization"
   | "xai_feature"
   | "noop_model_feature"
+  | "elevenlabs_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

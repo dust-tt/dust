@@ -1,5 +1,4 @@
 import type { Avatar, Icon } from "@dust-tt/sparkle";
-import { ActionMegaphoneIcon } from "@dust-tt/sparkle";
 import {
   ActionAtomIcon,
   ActionBrainIcon,
@@ -13,6 +12,7 @@ import {
   ActionLightbulbIcon,
   ActionLockIcon,
   ActionMagnifyingGlassIcon,
+  ActionMegaphoneIcon,
   ActionPieChartIcon,
   ActionRobotIcon,
   ActionScanIcon,
@@ -84,8 +84,8 @@ export const InternalActionIcons = {
   ActionTableIcon,
   ActionPieChartIcon,
   ActionSlideshowIcon,
-  ActionTimeIcon,
   ActionMegaphoneIcon,
+  ActionTimeIcon,
   AsanaLogo,
   CommandLineIcon,
   ConfluenceLogo,

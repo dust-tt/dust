@@ -13,6 +13,7 @@ import { default as conversationFilesServer } from "@app/lib/actions/mcp_interna
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/server";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
+import { default as elevenlabsServer } from "@app/lib/actions/mcp_internal_actions/servers/elevenlabs";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice/server";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
@@ -94,6 +95,8 @@ export async function getInternalMCPServer(
       return hubspotServer();
     case "image_generation":
       return imageGenerationDallEServer(auth);
+    case "elevenlabs":
+      return elevenlabsServer(auth);
     case "file_generation":
       return generateFileServer(auth);
     case "interactive_content":
