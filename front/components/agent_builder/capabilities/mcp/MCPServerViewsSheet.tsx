@@ -661,11 +661,11 @@ export function MCPServerViewsSheet({
                 )}
 
                 <AdditionalConfigurationSection
-                  stringConfigurations={toolsConfigurations.requiredStrings}
-                  numberConfigurations={toolsConfigurations.requiredNumbers}
-                  booleanConfigurations={toolsConfigurations.requiredBooleans}
-                  enumConfigurations={toolsConfigurations.requiredEnums}
-                  listConfigurations={toolsConfigurations.requiredLists}
+                  requiredStrings={toolsConfigurations.requiredStrings}
+                  requiredNumbers={toolsConfigurations.requiredNumbers}
+                  requiredBooleans={toolsConfigurations.requiredBooleans}
+                  requiredEnums={toolsConfigurations.requiredEnums}
+                  requiredLists={toolsConfigurations.requiredLists}
                 />
               </div>
             </div>
