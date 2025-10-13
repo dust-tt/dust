@@ -132,8 +132,9 @@ const configurableProperties = {
             })
             .describe(
               "The selected agent runs in a background conversation and passes results back to " +
-                "the main agent.\n This is the default behavior, well suited for " +
-                "specialized tasks such as researching from company data or the web."
+                "the main agent.\nThis is the default behavior, well suited for breaking down " +
+                "complex work by delegating specific research/analysis subtasks while " +
+                "maintaining control of the overall response."
             ),
           z
             .object({
@@ -142,7 +143,7 @@ const configurableProperties = {
             })
             .describe(
               "The selected agent takes over and responds directly in the conversation." +
-                "\n Well suited for a routing use case where the sub-agent should handle " +
+                "\nWell suited for a routing use case where the sub-agent should handle " +
                 "the entire interaction going forward."
             ),
         ])
