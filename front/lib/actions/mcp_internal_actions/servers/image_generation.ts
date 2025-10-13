@@ -110,7 +110,10 @@ const createServer = (
           return new Err(
             new MCPError(
               `Rate limit of ${maxImagesPerWeek} requests per week exceeded. Contact your ` +
-                "administrator to increase the limit."
+                "administrator to increase the limit.",
+              {
+                tracked: false,
+              }
             )
           );
         }
