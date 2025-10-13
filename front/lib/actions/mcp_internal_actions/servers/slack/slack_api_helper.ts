@@ -87,13 +87,21 @@ export const getCachedPublicChannels = cacheWithRedis(
 
 // Post message function
 export async function executePostMessage(
-  to: string,
-  message: string,
-  threadTs: string | undefined,
-  fileId: string | undefined,
-  accessToken: string,
+  auth: Authenticator,
   agentLoopContext: AgentLoopContextType,
-  auth: Authenticator
+  {
+    accessToken,
+    to,
+    message,
+    threadTs,
+    fileId,
+  }: {
+    accessToken: string;
+    to: string;
+    message: string;
+    threadTs: string | undefined;
+    fileId: string | undefined;
+  }
 ) {
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
