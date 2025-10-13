@@ -1,1 +1,0 @@
-The `azurebot.bicep` module is provided to help you create Azure Bot service when you don't use Azure to host your app. If you use Azure as infrastrcture for your app, `azure.bicep` under infra folder already leverages this module to create Azure Bot service for you. You don't need to deploy `azurebot.bicep` again.
