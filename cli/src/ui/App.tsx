@@ -10,6 +10,7 @@ import Chat from "./commands/Chat.js";
 import Logout from "./commands/Logout.js";
 import NonInteractiveChat from "./commands/NonInteractiveChat.js";
 import Status from "./commands/Status.js";
+import TestMCP from "./commands/TestMCP.js";
 import UpdateInfo from "./components/UpdateInfo.js";
 import Help from "./Help.js";
 
@@ -104,6 +105,8 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Logout />;
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
+    case "test-mcp":
+      return <TestMCP port={flags.port} />;
     case "chat":
       // Check if this is a non-interactive chat operation
       if (flags.message || flags.messageId) {
