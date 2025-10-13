@@ -1081,7 +1081,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: owner.id,
         startAt: new Date(),
-        status: "active",
+        status: "active" as const,
       })),
       { transaction }
     );
