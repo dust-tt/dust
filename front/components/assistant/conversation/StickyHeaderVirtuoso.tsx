@@ -10,7 +10,7 @@ import type {
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
 
-export const StickyHeaderVirtuoso: VirtuosoMessageListProps<
+export const StickyHeader: VirtuosoMessageListProps<
   VirtuosoMessage,
   VirtuosoMessageListContext
 >["StickyHeader"] = () => {

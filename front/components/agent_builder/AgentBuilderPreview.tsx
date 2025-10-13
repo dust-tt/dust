@@ -12,10 +12,10 @@ import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPan
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import ConversationViewerVirtuoso from "@app/components/assistant/conversation/ConversationViewerVirtuoso";
+import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { EditorMention } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
 import type {
@@ -91,7 +91,7 @@ function PreviewContent({
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
         <div className="flex-1 overflow-y-auto">
           {conversation && user && (
-            <ConversationViewerVirtuoso
+            <ConversationViewer
               owner={owner}
               user={user}
               conversationId={conversation.sId}
@@ -108,7 +108,7 @@ function PreviewContent({
 
         {!conversation && (
           <div className="mx-4 flex-shrink-0 py-4">
-            <AssistantInputBar
+            <InputBar
               disable={isSavingDraftAgent}
               owner={owner}
               onSubmit={createConversation}

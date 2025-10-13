@@ -1,56 +1,60 @@
-import { useCallback, useMemo, useReducer, useRef } from "react";
+import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import _ from "lodash";
+import { useCallback, useMemo, useRef } from "react";
 
+import type {
+  AgentMessageStateWithControlEvent,
+  MessageTemporaryState,
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
+import {
+  getMessageSId,
+  isMessageTemporayState,
+} from "@app/components/assistant/conversation/types";
+import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
-import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import type {
-  LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
-  ModelId,
 } from "@app/types";
-import { assertNever, isLightAgentMessageWithActionsType } from "@app/types";
-import type {
-  AgentMCPActionType,
-  AgentMCPActionWithOutputType,
-} from "@app/types/actions";
+import { assertNever } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
-type AgentStateClassification =
-  | "placeholder"
-  | "thinking"
-  | "acting"
-  | "writing"
-  | "done";
+// Throttle the update of the message to avoid excessive re-renders.
+const updateMessageThrottled = _.throttle(
+  ({
+    chainOfThought,
+    content,
+    methods,
+    sId,
+  }: {
+    chainOfThought: string;
+    content: string;
+    methods: VirtuosoMessageListMethods<
+      VirtuosoMessage,
+      VirtuosoMessageListContext
+    >;
+    sId: string;
+  }) => {
+    methods.data.map((m) => {
+      if (isMessageTemporayState(m) && getMessageSId(m) === sId) {
+        return {
+          ...m,
+          message: { ...m.message, chainOfThought, content },
+        };
+      }
+      return m;
+    });
+  },
+  100
+);
 
-type ActionProgressState = Map<
-  ModelId,
-  {
-    action: AgentMCPActionType;
-    progress?: ProgressNotificationContentType;
-  }
->;
-
-interface MessageTemporaryState {
-  message: LightAgentMessageWithActionsType;
-  agentState: AgentStateClassification;
-  isRetrying: boolean;
-  lastUpdated: Date;
-  actionProgress: ActionProgressState;
-  useFullChainOfThought: boolean;
-}
-
-type AgentMessageStateEvent = (AgentMessageEvents | ToolNotificationEvent) & {
-  step: number;
-};
-
-type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
-  AgentMessageStateEvent,
-  { type: "tool_approve_execution" }
->;
-
-function updateMessageWithAction(
+export function updateMessageWithAction(
   m: LightAgentMessageWithActionsType,
   action: AgentMCPActionWithOutputType
 ): LightAgentMessageWithActionsType {
@@ -61,7 +65,7 @@ function updateMessageWithAction(
   };
 }
 
-function updateProgress(
+export function updateProgress(
   state: MessageTemporaryState,
   event: ToolNotificationEvent
 ): MessageTemporaryState {
@@ -83,216 +87,61 @@ function updateProgress(
     }),
   };
 }
-
-const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
-const RETRY_BLOCKED_ACTIONS_STARTED_EVENT = {
-  type: "retry_blocked_actions_started" as const,
-};
-
-type ClearContentEvent = typeof CLEAR_CONTENT_EVENT;
-type RetryBlockedActionsStartedEvent =
-  typeof RETRY_BLOCKED_ACTIONS_STARTED_EVENT;
-
-function messageReducer(
-  state: MessageTemporaryState,
-  event:
-    | AgentMessageStateEventWithoutToolApproveExecution
-    | ClearContentEvent
-    | RetryBlockedActionsStartedEvent
-): MessageTemporaryState {
-  switch (event.type) {
-    case "clear_content":
-      return {
-        ...state,
-        message: {
-          ...state.message,
-          content: null,
-          chainOfThought: null,
-        },
-      };
-
-    case "retry_blocked_actions_started":
-      return {
-        ...state,
-        message: {
-          ...state.message,
-          status: "created",
-          error: null,
-        },
-        // Reset the agent state to "acting" to allow for streaming to continue.
-        agentState: "acting",
-      };
-
-    case "agent_action_success":
-      return {
-        ...state,
-        message: updateMessageWithAction(state.message, event.action),
-        // Clean up progress for this specific action.
-        actionProgress: new Map(
-          Array.from(state.actionProgress.entries()).filter(
-            ([id]) => id !== event.action.id
-          )
-        ),
-      };
-
-    case "tool_notification": {
-      return updateProgress(state, event);
-    }
-
-    case "tool_error":
-    case "agent_error":
-      return {
-        ...state,
-        message: {
-          ...state.message,
-          status: "failed",
-          error: event.error,
-        },
-        agentState: "done",
-      };
-
-    case "agent_generation_cancelled":
-      return {
-        ...state,
-        message: {
-          ...state.message,
-          status: "cancelled",
-        },
-        agentState: "done",
-      };
-
-    case "agent_message_success":
-      return {
-        ...state,
-        message: {
-          ...getLightAgentMessageFromAgentMessage(event.message),
-          actions: state.message.actions,
-        },
-        agentState: "done",
-      };
-
-    case "generation_tokens": {
-      const newState = { ...state };
-      switch (event.classification) {
-        case "closing_delimiter":
-        case "opening_delimiter":
-          break;
-        case "tokens":
-          newState.message.content =
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            (newState.message.content || "") + event.text;
-          newState.agentState = "writing";
-          break;
-        case "chain_of_thought":
-          // If we're not using the full chain of thought, reset at paragraph boundaries.
-          if (!state.useFullChainOfThought && event.text === "\n\n") {
-            newState.message.chainOfThought = "";
-          } else {
-            newState.message.chainOfThought =
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              (newState.message.chainOfThought || "") + event.text;
-          }
-          newState.agentState = "thinking";
-          break;
-        default:
-          assertNever(event);
-      }
-      return newState;
-    }
-    case "tool_params":
-      return {
-        ...state,
-        message: updateMessageWithAction(state.message, event.action),
-        agentState: "acting",
-      };
-
-    default:
-      assertNever(event);
-  }
-}
-
-type AgentMessageStateWithControlEvent =
-  | AgentMessageStateEvent
-  | { type: "end-of-stream" };
-
-function makeInitialMessageStreamState({
-  useFullChainOfThought,
-}: {
-  useFullChainOfThought: boolean;
-}) {
-  return (
-    message: LightAgentMessageType | LightAgentMessageWithActionsType
-  ): MessageTemporaryState => {
-    return {
-      actionProgress: new Map(),
-      agentState: message.status === "created" ? "thinking" : "done",
-      isRetrying: false,
-      lastUpdated: new Date(),
-      message: {
-        ...message,
-        actions: isLightAgentMessageWithActionsType(message)
-          ? message.actions
-          : [],
-      },
-      useFullChainOfThought,
-    };
-  };
-}
-
 interface UseAgentMessageStreamParams {
-  message: LightAgentMessageType | LightAgentMessageWithActionsType;
+  messageStreamState: MessageTemporaryState;
   conversationId: string | null;
   owner: LightWorkspaceType;
   mutateMessage?: () => void;
-  onEventCallback?: (eventStr: string) => void;
+  onEventCallback?: (event: {
+    eventId: string;
+    data: AgentMessageStateWithControlEvent;
+  }) => void;
   streamId: string;
   useFullChainOfThought: boolean;
 }
 
-/**
- * @deprecated This hook is legacy and should not be used for streaming conversation messages.
- * Use the newer streaming implementation via useAgentMessageStreamVirtuoso instead.
- */
 export function useAgentMessageStream({
-  message,
+  messageStreamState,
   conversationId,
   owner,
   mutateMessage,
   onEventCallback: customOnEventCallback,
   streamId,
-  useFullChainOfThought,
 }: UseAgentMessageStreamParams) {
-  const [messageStreamState, dispatch] = useReducer(
-    messageReducer,
-    message,
-    makeInitialMessageStreamState({ useFullChainOfThought })
+  const sId = getMessageSId(messageStreamState);
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+
+  const shouldStream = useMemo(
+    () =>
+      messageStreamState.message.status === "created" &&
+      messageStreamState.agentState !== "placeholder",
+    [messageStreamState.message.status, messageStreamState.agentState]
   );
 
   const isFreshMountWithContent = useRef(
-    message.status === "created" &&
-      (!!message.content || !!message.chainOfThought)
+    shouldStream &&
+      (!!messageStreamState.message.content ||
+        !!messageStreamState.message.chainOfThought)
   );
 
-  const shouldStream = useMemo(() => {
-    if (message.status !== "created") {
-      return false;
-    }
+  // Track the start time of the streaming run to compute duration on completion.
+  const { notify } = useBrowserNotification();
+  const runStartedAtRef = useRef<number | null>(null);
+  if (shouldStream && runStartedAtRef.current === null) {
+    runStartedAtRef.current = Date.now();
+  }
 
-    switch (messageStreamState.message.status) {
-      case "succeeded":
-      case "failed":
-      case "cancelled":
-        return false;
-      case "created":
-        return true;
-      default:
-        assertNever(messageStreamState.message.status);
-    }
-  }, [message.status, messageStreamState.message.status]);
+  const chainOfThought = useRef(
+    messageStreamState.message.chainOfThought ?? ""
+  );
+  const content = useRef(messageStreamState.message.content ?? "");
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -302,11 +151,10 @@ export function useAgentMessageStream({
         // We have a lastEventId, so this is not a fresh mount
         isFreshMountWithContent.current = false;
       }
-      const url = esURL + "?lastEventId=" + lastEventId;
 
-      return url;
+      return esURL + "?lastEventId=" + lastEventId;
     },
-    [conversationId, message.sId, owner.sId]
+    [conversationId, sId, owner.sId]
   );
 
   const onEventCallback = useCallback(
@@ -316,31 +164,166 @@ export function useAgentMessageStream({
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
       const eventType = eventPayload.data.type;
+      switch (eventType) {
+        case "end-of-stream":
+          // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
+          // end of the stream to the client. So we just return.
+          return;
+        case "tool_approve_execution":
+          return;
 
-      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
-      // end of the stream to the client. The message reducer does not, and should not, handle this
-      // event, so we just return.
-      if (eventType === "end-of-stream") {
-        return;
+        case "generation_tokens":
+          if (
+            isFreshMountWithContent.current &&
+            (eventPayload.data.classification === "tokens" ||
+              eventPayload.data.classification === "chain_of_thought")
+          ) {
+            // If this is a fresh mount with existing content and we're getting generation_tokens,
+            // we need to clear the content first to avoid duplication
+            content.current = "";
+            chainOfThought.current = "";
+            isFreshMountWithContent.current = false;
+          }
+
+          const generationTokens = eventPayload.data;
+          const classification = generationTokens.classification;
+
+          if (
+            classification === "tokens" ||
+            classification === "chain_of_thought"
+          ) {
+            if (classification === "tokens") {
+              content.current += generationTokens.text;
+            } else if (classification === "chain_of_thought") {
+              chainOfThought.current += generationTokens.text;
+            }
+            updateMessageThrottled({
+              chainOfThought: chainOfThought.current,
+              content: content.current,
+              methods,
+              sId,
+            });
+          }
+          break;
+
+        case "agent_action_success":
+          const action = eventPayload.data.action;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && getMessageSId(m) === sId
+              ? {
+                  ...m,
+                  message: updateMessageWithAction(m.message, action),
+                  // Clean up progress for this specific action.
+                  actionProgress: new Map(
+                    Array.from(m.actionProgress.entries()).filter(
+                      ([id]) => id !== action.id
+                    )
+                  ),
+                }
+              : m
+          );
+
+          break;
+
+        case "tool_params":
+          const toolParams = eventPayload.data;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && getMessageSId(m) === sId
+              ? {
+                  ...m,
+                  message: updateMessageWithAction(
+                    m.message,
+                    toolParams.action
+                  ),
+                  agentState: "acting",
+                }
+              : m
+          );
+          break;
+
+        case "tool_notification":
+          const toolNotification = eventPayload.data;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && getMessageSId(m) === sId
+              ? updateProgress(m, toolNotification)
+              : m
+          );
+          break;
+
+        case "tool_error":
+        case "agent_error":
+          const error = eventPayload.data.error;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && getMessageSId(m) === sId
+              ? {
+                  ...m,
+                  message: {
+                    ...m.message,
+                    status: "failed",
+                    error: error,
+                  },
+                  agentState: "done",
+                }
+              : m
+          );
+          break;
+
+        case "agent_generation_cancelled":
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && getMessageSId(m) === sId
+              ? {
+                  ...m,
+                  message: { ...m.message, status: "cancelled" },
+                  agentState: "done",
+                }
+              : m
+          );
+          break;
+
+        case "agent_message_success":
+          const messageSuccess = eventPayload.data;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && getMessageSId(m) === sId
+              ? {
+                  ...m,
+                  message: {
+                    ...getLightAgentMessageFromAgentMessage(
+                      messageSuccess.message
+                    ),
+                    status: "succeeded",
+                    actions: m.message.actions,
+                    rank: m.message.rank,
+                    version: m.message.version,
+                  },
+                  agentState: "done",
+                }
+              : m
+          );
+          break;
+
+        default:
+          assertNever(eventType);
       }
 
-      if (eventType === "tool_approve_execution") {
-        if (customOnEventCallback) {
-          customOnEventCallback(eventStr);
+      if (customOnEventCallback) {
+        customOnEventCallback(eventPayload);
+      }
+
+      // Notify if the run took a long time and just finished.
+      if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(eventType)) {
+        if (runStartedAtRef.current !== null) {
+          const elapsedMs = Date.now() - runStartedAtRef.current;
+          const LONG_RUN_THRESHOLD_MS = 120_000; // 2 minutes
+          if (elapsedMs >= LONG_RUN_THRESHOLD_MS) {
+            notify(
+              `${messageStreamState.message.configuration.name} finished`,
+              {
+                body: "The agent run has completed.",
+                tag: `agent-finished-${sId}`,
+              }
+            );
+          }
         }
-        return;
-      }
-
-      // If this is a fresh mount with existing content and we're getting generation_tokens,
-      // we need to clear the content first to avoid duplication
-      if (
-        isFreshMountWithContent.current &&
-        eventType === "generation_tokens" &&
-        (eventPayload.data.classification === "tokens" ||
-          eventPayload.data.classification === "chain_of_thought")
-      ) {
-        dispatch(CLEAR_CONTENT_EVENT);
-        isFreshMountWithContent.current = false;
       }
 
       const shouldRefresh = [
@@ -353,14 +336,15 @@ export function useAgentMessageStream({
       if (shouldRefresh && mutateMessage) {
         void mutateMessage();
       }
-
-      dispatch(eventPayload.data);
-
-      if (customOnEventCallback) {
-        customOnEventCallback(eventStr);
-      }
     },
-    [mutateMessage, customOnEventCallback]
+    [
+      customOnEventCallback,
+      messageStreamState.message.configuration.name,
+      methods,
+      mutateMessage,
+      notify,
+      sId,
+    ]
   );
 
   useEventSource(buildEventSourceURL, onEventCallback, streamId, {
@@ -368,8 +352,6 @@ export function useAgentMessageStream({
   });
 
   return {
-    messageStreamState,
-    dispatch,
     shouldStream,
     isFreshMountWithContent,
   };

@@ -2,9 +2,9 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
-import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainerVirtuoso";
-import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayoutVirtuoso";
-import ConversationLayoutVirtuoso from "@app/components/assistant/conversation/ConversationLayoutVirtuoso";
+import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
+import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
+import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -115,9 +115,7 @@ AgentConversation.getLayout = (
 ) => {
   return (
     <AppRootLayout>
-      <ConversationLayoutVirtuoso pageProps={pageProps}>
-        {page}
-      </ConversationLayoutVirtuoso>
+      <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
     </AppRootLayout>
   );
 };

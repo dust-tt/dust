@@ -1,4 +1,3 @@
-import { cn } from "@dust-tt/sparkle";
 import _ from "lodash";
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -32,7 +31,7 @@ import { compareAgentsForSort, isEqualNode, isGlobalAgentId } from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
-interface AssistantInputBarProps {
+interface InputBarProps {
   owner: WorkspaceType;
   onSubmit: (
     input: string,
@@ -56,7 +55,7 @@ interface AssistantInputBarProps {
  * need to pass the agent configuration to the input bar (it may not be in the
  * user's list of agents)
  */
-export const AssistantInputBar = React.memo(function AssistantInputBar({
+export const InputBar = React.memo(function InputBar({
   owner,
   onSubmit,
   conversationId,
@@ -66,7 +65,7 @@ export const AssistantInputBar = React.memo(function AssistantInputBar({
   disableAutoFocus = false,
   isFloating = true,
   disable = false,
-}: AssistantInputBarProps) {
+}: InputBarProps) {
   const [disableSendButton, setDisableSendButton] = useState(disable);
 
   const [attachedNodes, setAttachedNodes] = useState<
@@ -343,49 +342,3 @@ export const AssistantInputBar = React.memo(function AssistantInputBar({
     </div>
   );
 });
-
-export function FixedAssistantInputBar({
-  owner,
-  onSubmit,
-  stickyMentions,
-  conversationId,
-  additionalAgentConfiguration,
-  actions = DEFAULT_INPUT_BAR_ACTIONS,
-  disableAutoFocus = false,
-  disable = false,
-}: {
-  owner: WorkspaceType;
-  onSubmit: (
-    input: string,
-    mentions: EditorMention[],
-    contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
-  ) => Promise<Result<undefined, DustError>>;
-  stickyMentions?: AgentMention[];
-  conversationId: string | null;
-  additionalAgentConfiguration?: LightAgentConfigurationType;
-  actions?: InputBarContainerProps["actions"];
-  disableAutoFocus?: boolean;
-  disable?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "max-h-dvh sticky bottom-0 z-20 flex w-full",
-        "pb-2",
-        "sm:w-full sm:max-w-3xl sm:pb-4"
-      )}
-    >
-      <AssistantInputBar
-        owner={owner}
-        onSubmit={onSubmit}
-        conversationId={conversationId}
-        stickyMentions={stickyMentions}
-        additionalAgentConfiguration={additionalAgentConfiguration}
-        actions={actions}
-        disableAutoFocus={disableAutoFocus}
-        disable={disable}
-      />
-    </div>
-  );
-}
