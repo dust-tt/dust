@@ -27,7 +27,6 @@ const NavigationListItemStyles = cva(
         active: "active:s-bg-primary-150 dark:active:s-bg-primary-200-night",
         selected: cn(
           "s-text-foreground dark:s-text-foreground-night",
-          "s-font-medium",
           "s-bg-primary-100 dark:s-bg-primary-200-night"
         ),
         unselected:
