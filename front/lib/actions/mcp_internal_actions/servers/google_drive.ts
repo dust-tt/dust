@@ -195,10 +195,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
             }).content
           );
         } catch (err) {
+          const error = normalizeError(err);
           return new Err(
-            new MCPError(
-              normalizeError(err).message || "Failed to search files"
-            )
+            new MCPError(error.message || "Failed to search files", {
+              cause: error,
+            })
           );
         }
       }
@@ -304,7 +305,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
             }
             default:
               return new Err(
-                new MCPError(`Unsupported file type: ${file.mimeType}`)
+                new MCPError(`Unsupported file type: ${file.mimeType}`, {
+                  tracked: false,
+                })
               );
           }
 
