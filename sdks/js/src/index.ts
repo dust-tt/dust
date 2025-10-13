@@ -1225,6 +1225,35 @@ export class DustAPI {
     return new Ok(r.value);
   }
 
+  async downloadFile({ fileId }: { fileId: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `files/${fileId}`,
+      query: new URLSearchParams({ action: "view" }),
+      stream: true,
+    });
+
+    if (res.isErr()) {
+      return res;
+    }
+
+    const { body } = res.value.response;
+
+    if (!body) {
+      return new Err(
+        new Error("Expected a stream response, but got an empty body")
+      );
+    }
+
+    if (typeof body === "string") {
+      return new Err(new Error("Expected a stream response, but got a string"));
+    }
+
+    const blob = await new Response(body).blob();
+
+    return new Ok(blob);
+  }
+
   async uploadFile({
     contentType,
     fileName,
