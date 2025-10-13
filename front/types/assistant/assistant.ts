@@ -23,7 +23,7 @@ import type {
   SupportedModel,
 } from "@app/types/assistant/models/types";
 import {
-  GROK_3_MINI_MODEL_CONFIG,
+  GROK_4_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 
@@ -46,8 +46,7 @@ export function getSmallWhitelistedModel(
     return MISTRAL_SMALL_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "xai")) {
-    // TODO(rcs): move to grok 4 fast non-reasoning
-    return GROK_3_MINI_MODEL_CONFIG;
+    return GROK_4_FAST_NON_REASONING_MODEL_CONFIG;
   }
   return null;
 }
